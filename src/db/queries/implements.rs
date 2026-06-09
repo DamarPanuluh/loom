@@ -75,6 +75,25 @@ pub fn list_implements_for_intent(
 }
 
 
+/// Remove the IMPLEMENTS edge between an intent and a codefile (endpoint-
+/// matched). The ungrounding half of `edge implement` — needed when a
+/// grounding moves down to a child intent during decomposition. Returns false
+/// if no such edge exists.
+pub fn delete_implements(db: &dyn LoomDb, intent_id: &str, codefile_id: &str) -> Result<bool> {
+    let existing = db.execute(&format!(
+        "MATCH (i:Intent {{id: '{}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{}'}}) RETURN i.id",
+        esc(intent_id), esc(codefile_id)
+    ))?;
+    if existing.rows().is_empty() {
+        return Ok(false);
+    }
+    db.execute(&format!(
+        "MATCH (i:Intent {{id: '{}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{}'}}) DELETE e",
+        esc(intent_id), esc(codefile_id)
+    ))?;
+    Ok(true)
+}
+
 /// Every IMPLEMENTS edge in the graph (node-anchored scan — reliable). Used by
 /// the `loom doctor` audit.
 pub fn list_all_implements(db: &dyn LoomDb) -> Result<Vec<Implements>> {

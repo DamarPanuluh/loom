@@ -357,7 +357,11 @@ loom ignore list
 (Discoverability extras: bare `loom` prints an orientation; `loom intent add` takes
  `--aspect happy|sad|fallback|…`; `loom edge implement … --locator "fn run"` grounds
  to a symbol; `loom codefile add 'src/**/*.rs'` bulk-registers via glob. `loom status`
- ends with a phase-aware "→ Next" compass, and status/next carry a `graph_state` pulse.)
+ ends with a phase-aware "→ Next" compass, and status/next carry a `graph_state` pulse.
+ Intents and rules are addressable by id, exact name, or unique name fragment.
+ `loom edge implement <intent> 'src/db/**'` bulk-grounds over REGISTERED paths;
+ `loom edge unimplement <intent> <path|glob>` is the ungrounding half — used to
+ move groundings down to children when decomposing a scattered intent.)
 ```
 
 All commands support `--json` for machine-readable output. LLM driving mode uses `--json` everywhere.

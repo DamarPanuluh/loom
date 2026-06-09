@@ -125,18 +125,34 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         } else {
             base.join(&cf.path)
         };
-        if let Ok(content) = fs::read_to_string(&abs) {
-            let imports = crate::repo::extract_imports(&base, &cf.path, &content);
-            let imports_json = serde_json::to_string(&imports)?;
-            if imports_json != cf.imports {
-                update_codefile_imports(&db, &cf.id, &imports_json)?;
+        match fs::read_to_string(&abs) {
+            Ok(content) => {
+                let imports = crate::repo::extract_imports(&base, &cf.path, &content);
+                let imports_json = serde_json::to_string(&imports)?;
+                if imports_json != cf.imports {
+                    update_codefile_imports(&db, &cf.id, &imports_json)?;
+                }
+                contents.insert(cf.path.as_str(), content);
             }
-            contents.insert(cf.path.as_str(), content);
+            Err(_) if abs.exists() => {
+                // Present but unreadable as text (binary/non-UTF8). Never skip
+                // silently: any non-empty locator on such a file cannot be
+                // verified — surface it instead of letting it rot.
+                for im in list_all_implements(&db)? {
+                    if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
+                        locators_stale.push(format!(
+                            "{} @ '{}' (intent '{}') — file is not readable as text; locator unverifiable",
+                            im.codefile_path, im.locator, im.intent_name
+                        ));
+                    }
+                }
+            }
+            Err(_) => {} // missing on disk — already reported above
         }
     }
     for im in list_all_implements(&db)? {
         let Some(content) = contents.get(im.codefile_path.as_str()) else {
-            continue; // file missing on disk — already reported above
+            continue; // missing or unreadable — reported above
         };
         if !crate::repo::locator_present(content, &im.locator) {
             locators_stale.push(format!(

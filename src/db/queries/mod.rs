@@ -808,6 +808,20 @@ mod tests {
         assert_eq!(imps[0].id, "im0", "first grounding wins");
     }
 
+    /// delete_implements is the ungrounding half of insert: endpoint-matched,
+    /// false when absent, and the intent honestly regresses to unrealized.
+    #[test]
+    fn delete_implements_ungrounds() {
+        let (db, ids) = db_inited(1);
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        assert!(vertical_completeness(&db).unwrap().complete);
+        assert!(delete_implements(&db, &ids[0], "cf").unwrap());
+        assert!(!delete_implements(&db, &ids[0], "cf").unwrap(), "second delete is a no-op");
+        assert!(list_implements_for_intent(&db, &ids[0]).unwrap().is_empty());
+        assert!(!vertical_completeness(&db).unwrap().complete);
+    }
+
     /// Removing a CodeFile (phantom after delete/rename on disk) kills its
     /// IMPLEMENTS edges; intents grounded only there become unrealized leaves
     /// again, so vertical completeness regresses honestly.

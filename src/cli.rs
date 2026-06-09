@@ -307,19 +307,29 @@ pub enum EdgeCmd {
         subcommand: Option<ExploreSubCmd>,
     },
 
-    /// Create an IMPLEMENTS edge: Intent → CodeFile.
+    /// Create IMPLEMENTS edge(s): Intent → CodeFile. The codefile may be an
+    /// id, a registered path, or a glob over REGISTERED paths (quote it:
+    /// 'src/db/**') for bulk grounding.
     Implement {
         intent_id:   String,
         codefile_id: String,
 
         /// Finer-than-file anchor inside the file — a symbol or region, e.g.
-        /// "fn run" or "impl LoomDb". Keeps grounding precise without per-symbol nodes.
+        /// "fn run" or "impl LoomDb". Ignored for glob (bulk) grounding.
         #[arg(long, default_value = "")]
         locator: String,
 
         /// Optional notes about what part of the intent lives in this file.
         #[arg(long, default_value = "")]
         notes: String,
+    },
+
+    /// Remove IMPLEMENTS edge(s) — the ungrounding half of `implement`, for
+    /// moving groundings down to children during decomposition. Accepts an
+    /// id, a registered path, or a glob over registered paths.
+    Unimplement {
+        intent_id:   String,
+        codefile_id: String,
     },
 
     /// Create a GOVERNS edge: QualityRule → Intent.

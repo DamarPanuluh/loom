@@ -37,8 +37,9 @@ pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
 /// paths) on a CodeFile — written by `loom sync`, read by smells/discovery.
 pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports_json: &str) -> Result<()> {
     db.execute(&format!(
-        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.imports = '{}'",
-        esc(id), esc(imports_json)
+        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{imports} = '{}'",
+        esc(id), esc(imports_json),
+        imports = crate::db::schema::prop::IMPORTS,
     ))?;
     Ok(())
 }

@@ -202,32 +202,70 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         EdgeCmd::Implement { intent_id, codefile_id, locator, notes } => {
             gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
-            // Accept a path as well as an id — the path is the natural key a
-            // driver already has in hand (dogfood finding: id-only forced a
-            // `codefile list` + lookup round-trip per grounding).
-            let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &codefile_id)?
-                .ok_or_else(|| anyhow::anyhow!(
-                    "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
-                    codefile_id
-                ))?;
-            let codefile_id = cf.id;
             let now = chrono::Utc::now().to_rfc3339();
-            let edge_id = Uuid::new_v4().to_string();
-            insert_implements(&db, &edge_id, &intent_id, &codefile_id, &locator, &notes, &now)?;
+            let targets = resolve_codefiles(&db, &codefile_id)?;
+            if targets.len() > 1 {
+                // Bulk (glob) grounding: one edge per matched registered file.
+                for cf in &targets {
+                    insert_implements(&db, &Uuid::new_v4().to_string(), &intent_id, &cf.id, "", &notes, &now)?;
+                }
+                if printer.json {
+                    printer.print_json(&serde_json::json!({
+                        "status": "ok", "intent_id": intent_id,
+                        "grounded": targets.iter().map(|c| c.path.clone()).collect::<Vec<_>>(),
+                        "count": targets.len(),
+                    }));
+                } else {
+                    println!("✓ Grounded intent in {} registered file(s) matching '{}'.", targets.len(), codefile_id);
+                }
+            } else {
+                let cf = &targets[0];
+                let edge_id = Uuid::new_v4().to_string();
+                insert_implements(&db, &edge_id, &intent_id, &cf.id, &locator, &notes, &now)?;
+                if printer.json {
+                    printer.print_json(&serde_json::json!({
+                        "status":       "ok",
+                        "edge_id":      edge_id,
+                        "edge_type":    EdgeType::Implements.to_string(),
+                        "intent_id":    intent_id,
+                        "codefile_id":  cf.id,
+                        "locator":      locator,
+                    }));
+                } else {
+                    println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
+                    println!("  intent   → {}", intent_id);
+                    println!("  codefile → {}{}", cf.path,
+                        if locator.is_empty() { String::new() } else { format!("  @ {}", locator) });
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // UNIMPLEMENT: remove grounding (decomposition support)
+        // ----------------------------------------------------------------
+        EdgeCmd::Unimplement { intent_id, codefile_id } => {
+            gate::acting_in_lane("remove an IMPLEMENTS edge", &[role::BUILDER], None)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let targets = resolve_codefiles(&db, &codefile_id)?;
+            let mut removed: Vec<String> = Vec::new();
+            for cf in &targets {
+                if crate::db::queries::delete_implements(&db, &intent_id, &cf.id)? {
+                    removed.push(cf.path.clone());
+                }
+            }
+            if removed.is_empty() {
+                anyhow::bail!(
+                    "No IMPLEMENTS edge between intent '{}' and '{}'.",
+                    intent_id, codefile_id
+                );
+            }
             if printer.json {
                 printer.print_json(&serde_json::json!({
-                    "status":       "ok",
-                    "edge_id":      edge_id,
-                    "edge_type":    EdgeType::Implements.to_string(),
-                    "intent_id":    intent_id,
-                    "codefile_id":  codefile_id,
-                    "locator":      locator,
+                    "status": "ok", "intent_id": intent_id, "removed": removed,
                 }));
             } else {
-                println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
-                println!("  intent   → {}", intent_id);
-                println!("  codefile → {}{}", codefile_id,
-                    if locator.is_empty() { String::new() } else { format!("  @ {}", locator) });
+                println!("✓ Removed {} grounding(s).", removed.len());
+                println!("  → If the intent is a leaf it may be unrealized now — `loom status` will route.");
             }
         }
 
@@ -421,6 +459,33 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Resolve a codefile argument: exact id, exact registered path, or a glob
+/// over REGISTERED paths (bulk). Errors when nothing matches.
+fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeFile>> {
+    let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
+    if is_glob {
+        let pat = glob::Pattern::new(key)
+            .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {}", key, e))?;
+        let matched: Vec<_> = crate::db::queries::list_codefiles(db)?
+            .into_iter()
+            .filter(|c| pat.matches(&c.path))
+            .collect();
+        if matched.is_empty() {
+            anyhow::bail!(
+                "No REGISTERED codefile matches glob '{}'. Register first: loom codefile add '{}'",
+                key, key
+            );
+        }
+        return Ok(matched);
+    }
+    crate::db::queries::get_codefile_by_id_or_path(db, key)?
+        .map(|c| vec![c])
+        .ok_or_else(|| anyhow::anyhow!(
+            "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
+            key
+        ))
+}
 
 fn default_intent(id: &str) -> Intent {
     Intent {
