@@ -110,6 +110,26 @@ pub fn list_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<G
     Ok(result.rows().iter().map(|row| row_to_governs(row, &cols)).collect())
 }
 
+/// Ripple support for `loom sync`: a quality verdict is a claim about code, so
+/// when code implementing an intent changes, its *passing* GOVERNS edges go
+/// `needs_reverification` — green must be re-earned. Failing/uninspected edges
+/// are left alone (they are already open work). Returns the count flagged.
+pub fn flag_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<usize> {
+    let mut count = 0usize;
+    for g in list_governs_for_intent(db, intent_id)? {
+        if g.inspection_status == "passing" {
+            db.execute(&format!(
+                "MATCH (r:QualityRule {{id: '{rid}'}})-[e:GOVERNS]->(i:Intent {{id: '{iid}'}}) \
+                 SET e.inspection_status = 'needs_reverification'",
+                rid = esc(&g.rule_id),
+                iid = esc(intent_id),
+            ))?;
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
 /// Scan every GOVERNS edge. Status filtering happens in Rust — filtering a
 /// relationship by its own property in the query is unreliable in grafeo 0.5.x.
 pub fn list_all_governs(db: &dyn LoomDb) -> Result<Vec<Governs>> {

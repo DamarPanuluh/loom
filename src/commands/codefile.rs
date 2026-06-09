@@ -86,6 +86,32 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             }
         }
 
+        CodefileCmd::Remove { path_or_id } => {
+            crate::gate::acting_in_lane(
+                "remove a code file",
+                &[crate::db::schema::role::BUILDER],
+                None,
+            )?;
+            let removed = crate::db::queries::delete_codefile(&db, &path_or_id)?;
+            let Some(cf) = removed else {
+                anyhow::bail!(
+                    "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
+                    path_or_id
+                );
+            };
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status":  "ok",
+                    "removed": cf,
+                    "message": "CodeFile and its IMPLEMENTS edges removed. Intents grounded \
+                                only here are unrealized again — `loom status` will route to ground.",
+                }));
+            } else {
+                println!("✓ CodeFile removed (with its IMPLEMENTS edges): {}", cf.path);
+                println!("  Intents grounded only here are unrealized again — check `loom status`.");
+            }
+        }
+
         CodefileCmd::List => {
             let files = list_codefiles(&db)?;
             if printer.json {

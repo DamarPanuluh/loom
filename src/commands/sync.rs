@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
-    edges_for_intent, intent_ids_implementing_codefile,
+    edges_for_intent, flag_governs_for_intent, intent_ids_implementing_codefile,
     invalidate_validations_for_codefile, list_codefiles, set_last_synced, update_codefile_mtime,
 };
 use crate::db::schema::esc;
@@ -27,8 +27,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     let mut files_changed = 0usize;
     let mut relates_to_flagged = 0usize;
+    let mut governs_flagged = 0usize;
     let mut validations_invalidated = 0usize;
     let mut changes: Vec<SyncChange> = Vec::new();
+    let mut missing_files: Vec<String> = Vec::new();
 
     for cf in &codefiles {
         // Resolve path relative to the loom project root if not absolute
@@ -42,7 +44,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         let meta = match fs::metadata(&abs_path) {
             Ok(m) => m,
             Err(_) => {
-                // File does not exist on disk; skip silently
+                // File is registered in the graph but gone from disk
+                // (deleted/renamed) — a phantom that distorts coverage and
+                // vertical completeness. Surface it; never skip silently.
+                missing_files.push(cf.path.clone());
                 continue;
             }
         };
@@ -94,6 +99,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         for iid in &intent_ids {
             let nrv = flag_relates_to_for_intent(&db, iid)?;
             relates_to_flagged += nrv;
+            // A passing quality verdict is a claim about the old code — flip
+            // it to needs_reverification so green is re-earned
+            // (`loom next --mode quality`).
+            governs_flagged += flag_governs_for_intent(&db, iid)?;
         }
 
         // 3. Invalidate Validation.last_result for those intents
@@ -108,7 +117,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         files_checked,
         files_changed,
         relates_to_edges_flagged: relates_to_flagged,
+        governs_edges_flagged: governs_flagged,
         validations_invalidated,
+        missing_files,
         changes,
     };
 
@@ -119,6 +130,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         println!("  Files checked:                 {}", report.files_checked);
         println!("  Files changed since last sync: {}", report.files_changed);
         println!("  RELATES_TO edges flagged:      {}", report.relates_to_edges_flagged);
+        println!("  GOVERNS verdicts flagged:      {}", report.governs_edges_flagged);
         println!("  Validations invalidated:       {}", report.validations_invalidated);
         if !report.changes.is_empty() {
             println!();
@@ -127,11 +139,22 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 println!("    {}  (mtime → {})", c.path, c.new_mtime);
             }
         }
+        if !report.missing_files.is_empty() {
+            println!();
+            println!("  ⚠ Registered files MISSING on disk (deleted/renamed?):");
+            for p in &report.missing_files {
+                println!("    {}", p);
+            }
+            println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
+        }
         println!();
-        if report.files_changed == 0 {
+        if report.files_changed == 0 && report.missing_files.is_empty() {
             println!("  ✓ All files up to date — no edges need reverification.");
-        } else {
-            println!("  Run `loom next --mode fix` to begin re-inspecting flagged edges.");
+        } else if report.files_changed > 0 {
+            println!("  Run `loom next --mode fix` to re-inspect flagged edges{}",
+                if report.governs_edges_flagged > 0 {
+                    ", and `loom next --mode quality` to re-earn flagged quality green."
+                } else { "." });
         }
     }
 

@@ -636,7 +636,14 @@ pub struct SyncReport {
     pub files_checked: usize,
     pub files_changed: usize,
     pub relates_to_edges_flagged: usize,
+    /// Passing GOVERNS edges flipped to needs_reverification — quality green
+    /// must be re-earned after the code it judged changes.
+    pub governs_edges_flagged: usize,
     pub validations_invalidated: usize,
+    /// Registered CodeFiles that no longer exist on disk (deleted/renamed).
+    /// Phantom files distort coverage — remove them (`loom codefile remove`)
+    /// or restore them.
+    pub missing_files: Vec<String>,
     pub changes: Vec<SyncChange>,
 }
 

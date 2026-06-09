@@ -253,11 +253,12 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         return Ok(());
     }
 
-    let (intent, score) = &candidates[0];
+    let c = &candidates[0];
+    let (intent, score) = (&c.intent, &c.score);
     let implements = list_implements_for_intent(db, &intent.id)?;
     let validations = validations_for_intent(db, &intent.id)?;
     let notes = notes_for_target(db, &intent.id)?;
-    let action = build_action(intent);
+    let action = build_action(intent, c.rollup);
 
     let item = WorkItem {
         edge_type:         "BUILD".to_string(),
@@ -487,8 +488,18 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     Ok(())
 }
 
-fn build_action(intent: &crate::types::Intent) -> String {
+fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
     match intent.lifecycle.as_str() {
+        // A planned parent whose children are all implemented: the work is
+        // verification + roll-up, never writing code at this altitude.
+        "planned" if rollup => format!(
+            "ROLL UP this intent — all its children are implemented; nothing is built \
+             at this altitude directly.\n\
+             1. Check each child fulfils its criterion (`loom intent show {id}` lists children).\n  \
+             2. If satisfied: loom intent mark {id} --lifecycle implemented\n  \
+             3. If a child falls short: loom intent mark <child-id> --lifecycle needs_change --reason \"…\"",
+            id = intent.id,
+        ),
         "planned" => format!(
             "BUILD this intent — its description/criteria are the spec/acceptance check.\n\
              1. Write the code.\n  \

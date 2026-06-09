@@ -95,21 +95,61 @@ pub fn scored_candidates(
     Ok(scored)
 }
 
+/// A build work item: the intent, its priority, and whether it is a non-leaf
+/// whose children are all implemented (a roll-up, not a code-writing task).
+#[derive(Debug, Clone)]
+pub struct BuildCandidate {
+    pub intent: Intent,
+    pub score: f64,
+    /// True when this is a planned PARENT whose children are all implemented —
+    /// the action is "verify children and mark implemented", not "write code".
+    pub rollup: bool,
+}
+
 /// Intents that need building or changing (lifecycle `planned` | `needs_change`),
 /// scored by centrality + urgency — the worklist for `loom next --mode build`.
 /// `needs_change` (a known issue / refactor) outranks `planned` (greenfield).
-pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<(Intent, f64)>> {
-    let mut scored: Vec<(Intent, f64)> = Vec::new();
+///
+/// Altitude rule: a *planned parent* is never "built" directly — its children
+/// are. While any child is still planned/needs_change the parent is deferred
+/// (the children are in the queue); once all children are implemented the
+/// parent surfaces as a roll-up. `needs_change` intents always surface
+/// (component-level refactors are legitimate work at any altitude).
+pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
+    let intents = list_intents(db, None, None)?;
+    let lifecycle_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
+        .collect();
+    let mut children: HashMap<String, Vec<String>> = HashMap::new();
+    for (p, c) in list_all_hierarchy(db)? {
+        children.entry(p).or_default().push(c);
+    }
+
+    let mut scored: Vec<BuildCandidate> = Vec::new();
     for i in list_intents(db, None, None)? {
         let urgency = match i.lifecycle.as_str() {
             "needs_change" => 4.0,
             "planned" => 2.0,
             _ => continue,
         };
+        let kids = children.get(&i.id);
+        let mut rollup = false;
+        if i.lifecycle == "planned" {
+            if let Some(kids) = kids {
+                let pending = kids.iter().any(|c| {
+                    matches!(lifecycle_of.get(c.as_str()), Some(&"planned") | Some(&"needs_change"))
+                });
+                if pending {
+                    continue; // children first — they are already in the queue
+                }
+                rollup = true;
+            }
+        }
         let score = intent_degree(db, &i.id)? as f64 + urgency;
-        scored.push((i, score));
+        scored.push(BuildCandidate { intent: i, score, rollup });
     }
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
 }
 

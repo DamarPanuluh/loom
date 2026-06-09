@@ -522,6 +522,13 @@ pub enum CodefileCmd {
 
     /// List all registered code files.
     List,
+
+    /// Remove a code file from the graph (with its IMPLEMENTS edges). For
+    /// phantoms after a delete/rename on disk — `loom sync` reports those.
+    Remove {
+        /// The CodeFile id or its exact registered path.
+        path_or_id: String,
+    },
 }
 
 // ---------------------------------------------------------------------------

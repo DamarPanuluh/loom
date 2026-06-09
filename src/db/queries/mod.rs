@@ -452,8 +452,8 @@ mod tests {
 
         let bc = build_candidates(&db).unwrap();
         assert_eq!(bc.len(), 2);
-        assert_eq!(bc[0].0.lifecycle, "needs_change", "needs_change should outrank planned");
-        assert_eq!(bc[1].0.lifecycle, "planned");
+        assert_eq!(bc[0].intent.lifecycle, "needs_change", "needs_change should outrank planned");
+        assert_eq!(bc[1].intent.lifecycle, "planned");
         assert_eq!(graph_state(&db).unwrap().phase, "build");
 
         set_intent_lifecycle(&db, &ids[1], "implemented", "t").unwrap();
@@ -595,6 +595,94 @@ mod tests {
         update_validation_result(&db, "v0", "passed", "t2").unwrap();
         let vc = validate_candidates(&db).unwrap();
         assert!(vc.iter().all(|c| c.intent.id != ids[2]), "{vc:?}");
+    }
+
+    /// Build altitude: a planned parent never surfaces while a child is still
+    /// pending (children first); once all children are implemented it surfaces
+    /// as a roll-up, not a code-writing task.
+    #[test]
+    fn build_queue_defers_planned_parents_until_children_done() {
+        let (db, ids) = db_inited(3); // 0: parent, 1+2: children
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, "h1", &ids[0], &ids[2], "", "t").unwrap();
+        for id in &ids {
+            set_intent_lifecycle(&db, id, "planned", "t").unwrap();
+        }
+
+        let bc = build_candidates(&db).unwrap();
+        let surfaced: Vec<&str> = bc.iter().map(|c| c.intent.id.as_str()).collect();
+        assert!(!surfaced.contains(&ids[0].as_str()), "parent must wait for children: {surfaced:?}");
+        assert_eq!(surfaced.len(), 2, "both leaf children queue");
+        assert!(bc.iter().all(|c| !c.rollup), "leaves are real build work");
+
+        set_intent_lifecycle(&db, &ids[1], "implemented", "t").unwrap();
+        set_intent_lifecycle(&db, &ids[2], "implemented", "t").unwrap();
+        let bc = build_candidates(&db).unwrap();
+        assert_eq!(bc.len(), 1);
+        assert_eq!(bc[0].intent.id, ids[0]);
+        assert!(bc[0].rollup, "parent with implemented children is a roll-up");
+
+        // needs_change surfaces at ANY altitude (component refactors are real).
+        set_intent_lifecycle(&db, &ids[0], "needs_change", "t").unwrap();
+        set_intent_lifecycle(&db, &ids[1], "planned", "t").unwrap();
+        let bc = build_candidates(&db).unwrap();
+        let surfaced: Vec<&str> = bc.iter().map(|c| c.intent.id.as_str()).collect();
+        assert!(surfaced.contains(&ids[0].as_str()), "needs_change parent must surface: {surfaced:?}");
+    }
+
+    /// Quality ripple: when code implementing an intent changes, its *passing*
+    /// GOVERNS verdicts go needs_reverification (green is re-earned via the
+    /// quality queue); failing/uninspected ones are untouched (already open).
+    #[test]
+    fn governs_ripple_invalidates_passing_verdicts() {
+        let (db, ids) = db_inited(1);
+        for (rid, name) in [("r0", "no_eval"), ("r1", "no_uncaught")] {
+            insert_rule(&db, &QualityRule {
+                id: rid.into(), name: name.into(), description: "d".into(),
+                detection_logic: "dl".into(), severity: "error".into(),
+            }).unwrap();
+            insert_governs(&db, &format!("g-{rid}"), rid, &ids[0], "", "t").unwrap();
+        }
+        update_governs_verdict(
+            &db, "r0", &ids[0], "passing", "no dynamic evaluation anywhere",
+            "grep: no eval usage", 0.9, "llm:quality", "t",
+        ).unwrap();
+        update_governs_verdict(
+            &db, "r1", &ids[0], "failing", "no uncaught exceptions escape",
+            "bare JSON.parse at parser.js:1", 0.9, "llm:quality", "t",
+        ).unwrap();
+
+        let flagged = flag_governs_for_intent(&db, &ids[0]).unwrap();
+        assert_eq!(flagged, 1, "only the passing verdict goes stale");
+        let g0 = get_governs_between(&db, "r0", &ids[0]).unwrap().unwrap();
+        let g1 = get_governs_between(&db, "r1", &ids[0]).unwrap().unwrap();
+        assert_eq!(g0.inspection_status, "needs_reverification");
+        assert_eq!(g1.inspection_status, "failing", "open work stays open");
+        // The stale verdict is back on the quality queue.
+        assert!(quality_candidates(&db).unwrap().iter().any(|(g, _)|
+            g.rule_id == "r0" && g.inspection_status == "needs_reverification"));
+    }
+
+    /// Removing a CodeFile (phantom after delete/rename on disk) kills its
+    /// IMPLEMENTS edges; intents grounded only there become unrealized leaves
+    /// again, so vertical completeness regresses honestly.
+    #[test]
+    fn codefile_remove_unrealizes_intents() {
+        let (db, ids) = db_inited(1);
+        insert_codefile(&db, &codefile("cf", "src/gone.rs")).unwrap();
+        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        assert!(vertical_completeness(&db).unwrap().complete);
+
+        // By path, then by id for a missing key.
+        let removed = delete_codefile(&db, "src/gone.rs").unwrap().unwrap();
+        assert_eq!(removed.id, "cf");
+        assert!(delete_codefile(&db, "src/gone.rs").unwrap().is_none());
+
+        assert!(list_codefiles(&db).unwrap().is_empty());
+        assert!(list_implements_for_intent(&db, &ids[0]).unwrap().is_empty());
+        let vc = vertical_completeness(&db).unwrap();
+        assert!(!vc.complete, "intent is unrealized again: {vc:?}");
+        assert_eq!(vc.unrealized_leaves.len(), 1);
     }
 
     /// Doctor audits the trust layer: a verdict recorded by an out-of-lane role,

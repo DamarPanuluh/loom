@@ -183,10 +183,17 @@ When code changes, the graph propagates the impact:
 ```
 loom sync detects file mtime > CodeFile.last_modified
 → CodeFile.last_modified updated
-→ All IMPLEMENTS edges to that file → needs_reverification
 → Those intents' RELATES_TO neighbors → needs_reverification (one hop)
+→ Those intents' passing GOVERNS edges → needs_reverification
+  (quality green is a claim about the old code — it must be re-earned
+   via `loom next --mode quality` + `loom rule verdict`)
 → VALIDATES edges on those intents → Validation.last_result = not_run
-→ HIERARCHY parent intents flagged
+(IMPLEMENTS edges are structural assertions, used as the index — not flipped.)
+
+Files registered in the graph but MISSING on disk (deleted/renamed) are
+reported by sync, never skipped silently — drop phantoms with
+`loom codefile remove <path-or-id>` (kills its IMPLEMENTS edges; intents
+grounded only there become unrealized again and the compass routes to ground).
 ```
 
 The graph structure IS the impact analysis. No custom algorithm — just edge traversal with state transitions.
@@ -245,8 +252,10 @@ loom edge show <edge-id>
 loom cluster <intent-id>
   All unresolved edges touching this intent. For batching neighborhood work.
 
-loom codefile add <path>
+loom codefile add <path>          (or a glob: 'src/**/*.rs')
 loom codefile list
+loom codefile remove <path-or-id> (drop a phantom after delete/rename on disk;
+                                   removes its IMPLEMENTS edges too)
 
 loom validation add --name --type [--command] [--description] [--intent <id>]
   --intent links the new Validation to an intent (VALIDATES) in one step;

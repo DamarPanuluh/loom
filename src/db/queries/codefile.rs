@@ -46,6 +46,29 @@ pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<b
     Ok(true)
 }
 
+/// Resolve a CodeFile by id or by exact path (paths are unique — `codefile add`
+/// skips already-registered paths).
+pub fn get_codefile_by_id_or_path(db: &dyn LoomDb, key: &str) -> Result<Option<CodeFile>> {
+    Ok(list_codefiles(db)?
+        .into_iter()
+        .find(|c| c.id == key || c.path == key))
+}
+
+/// Remove a CodeFile node and every edge attached to it (its IMPLEMENTS
+/// groundings die with it). For dropping phantoms after a file is deleted or
+/// renamed on disk — affected intents become unrealized leaves again, which the
+/// compass routes back to `ground`. Returns the removed file, if found.
+pub fn delete_codefile(db: &dyn LoomDb, key: &str) -> Result<Option<CodeFile>> {
+    let Some(cf) = get_codefile_by_id_or_path(db, key)? else {
+        return Ok(None);
+    };
+    db.execute(&format!(
+        "MATCH (cf:CodeFile {{id: '{}'}}) DETACH DELETE cf",
+        esc(&cf.id)
+    ))?;
+    Ok(Some(cf))
+}
+
 fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
     CodeFile {
         id:            str_val(get(row, cols, "cf.id")),
