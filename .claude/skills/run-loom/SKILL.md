@@ -29,7 +29,7 @@ re-flags the verdict → a validation that *invokes loom itself* (DB-lock
 regression) → export → import into a fresh graph → doctor. 9 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
-Unit/regression suite (50 tests, in-memory DB, fast):
+Unit/regression suite (49 tests, in-memory DB, fast):
 
 ```bash
 cargo test
