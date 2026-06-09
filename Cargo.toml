@@ -1,0 +1,20 @@
+[package]
+name = "loom"
+version = "0.1.0"
+edition = "2021"
+description = "Intent graph CLI for LLM-driven codebase understanding"
+
+[[bin]]
+name = "loom"
+path = "src/main.rs"
+
+[dependencies]
+grafeo = "0.5"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+glob = "0.3"
+ignore = "0.4"

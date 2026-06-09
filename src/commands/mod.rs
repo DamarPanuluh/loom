@@ -1,0 +1,83 @@
+use anyhow::Result;
+use crate::cli::{Cli, Command};
+use crate::output::Printer;
+
+pub mod cluster;
+pub mod codefile;
+pub mod coverage;
+pub mod detect;
+pub mod doctor;
+pub mod guide;
+pub mod hotspots;
+pub mod ignore;
+pub mod edge;
+pub mod init;
+pub mod intent;
+pub mod next;
+pub mod note;
+pub mod report;
+pub mod rule;
+pub mod schema;
+pub mod status;
+pub mod sync;
+pub mod validate;
+pub mod validation;
+
+pub fn dispatch(cli: Cli) -> Result<()> {
+    let printer = Printer::new(cli.json);
+    let command = match cli.command {
+        Some(c) => c,
+        None => return orient(&printer),
+    };
+    match command {
+        Command::Init        { path }       => init::run(&path, &printer),
+        Command::Status                     => status::run(&printer),
+        Command::Intent      { subcommand } => intent::run(subcommand, &printer),
+        Command::Edge        { subcommand } => edge::run(subcommand, &printer),
+        Command::Next        { mode }       => next::run(&mode, &printer),
+        Command::Cluster     { intent_id }  => cluster::run(&intent_id, &printer),
+        Command::Rule        { subcommand } => rule::run(subcommand, &printer),
+        Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
+        Command::Validation  { subcommand } => validation::run(subcommand, &printer),
+        Command::Note        { subcommand } => note::run(subcommand, &printer),
+        Command::Sync        { path }       => sync::run(&path, &printer),
+        Command::Validate    { intent_id }  => validate::run(&intent_id, &printer),
+        Command::Report                     => report::run(&printer),
+        Command::Doctor                     => doctor::run(&printer),
+        Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
+        Command::Schema                     => schema::run(&printer),
+        Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
+        Command::Coverage                   => coverage::run(&printer),
+        Command::Detect                     => detect::run(&printer),
+        Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
+    }
+}
+
+/// Bare `loom` (no subcommand): a short orientation pointing at the self-teaching
+/// commands, so an LLM that knows nothing can find its footing.
+fn orient(printer: &Printer) -> Result<()> {
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "tool": "loom",
+            "what": "Externalized, falsifiable memory for understanding and cleaning up a codebase.",
+            "start_here": [
+                "loom guide    — the full driving protocol (read first)",
+                "loom schema   — the data model (node/edge types, states, vocabularies)",
+                "loom status   — where the graph is now + the recommended next action",
+                "loom next     — get the next thing to inspect",
+            ],
+            "note": "Add --json to any command for machine-readable output. Every command has --help.",
+        }));
+    } else {
+        println!("loom — externalized, falsifiable memory for understanding/cleaning a codebase.");
+        println!();
+        println!("Start here:");
+        println!("  loom guide    learn the loop (read this first)");
+        println!("  loom schema   the data model");
+        println!("  loom status   where am I? what next?");
+        println!("  loom next     get the next thing to inspect");
+        println!();
+        println!("Every command has --help; add --json for machine-readable output.");
+    }
+    Ok(())
+}

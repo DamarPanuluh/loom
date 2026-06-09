@@ -1,0 +1,206 @@
+//! The enforcement layer that makes the role skeleton real.
+//!
+//! Two kinds of gate, both applied at the command boundary (the only write
+//! surface — the LLM never writes GQL):
+//!
+//! **Lane gates.** Schema v3 declared an owning role per field, but ownership
+//! was advisory: any agent could write any field. Here it becomes a contract.
+//! An agent that *declares* a role (`LOOM_AGENT=llm:analyzer` or an explicit
+//! `--by`/`--inspected-by`/`--author` flag) is held to that role's lane — a
+//! builder cannot ground edges, an analyzer cannot confirm intents, nobody but
+//! quality can issue a GOVERNS verdict. A roleless agent (`llm`, `human`) is
+//! solo mode: it passes every lane, because a single agent driving the whole
+//! loop is still a supported way to run loom. The point of the lanes is
+//! separation of duties *when duties are separated* — many limited agents
+//! lifting together, no one of them able to green-light its own work.
+//!
+//! **Evidence gates.** The graph is only as trustworthy as its weakest
+//! criterion. These reject the degenerate inputs that let an agent fake
+//! progress: empty or placeholder criteria/evidence, independence claims with
+//! no recorded why, confidence outside [0, 1].
+
+use anyhow::Result;
+
+use crate::db::schema::{role, ROLES};
+
+// ---------------------------------------------------------------------------
+// Lane gates
+// ---------------------------------------------------------------------------
+
+/// Extract the declared role from an acting-agent string:
+/// `llm:analyzer` → `Some("analyzer")`; bare `llm` / `human` → `None` (solo mode).
+pub fn role_of(agent: &str) -> Option<&str> {
+    agent
+        .split_once(':')
+        .map(|(_, r)| r.trim())
+        .filter(|r| !r.is_empty())
+}
+
+/// The `loom next` mode that serves a role's lane — used in lane-violation
+/// errors to point the agent back at its own queue.
+pub fn mode_for_role(r: &str) -> Option<&'static str> {
+    match r {
+        role::BUILDER => Some("build"),
+        role::ANALYZER => Some("discovery"),
+        role::FIXER => Some("fix"),
+        role::VALIDATOR => Some("validate"),
+        role::QUALITY => Some("quality"),
+        _ => None,
+    }
+}
+
+/// Enforce that `agent` is allowed to perform `action`.
+///
+/// - No declared role → solo mode, always allowed.
+/// - Declared but unknown role → error (a typo must not bypass the lanes).
+/// - Declared role outside `allowed` → lane violation, with a pointer to the
+///   offender's own work queue.
+pub fn enforce_lane(action: &str, allowed: &[&str], agent: &str) -> Result<()> {
+    let Some(r) = role_of(agent) else {
+        return Ok(()); // solo mode
+    };
+    if !ROLES.contains(&r) {
+        anyhow::bail!(
+            "Unknown agent role '{r}' (acting as '{agent}'). Valid roles: {roles}. \
+             Set LOOM_AGENT=llm:<role>, or use a bare 'llm'/'human' for solo mode.",
+            roles = ROLES.join(", "),
+        );
+    }
+    if !allowed.contains(&r) {
+        let own_queue = mode_for_role(r)
+            .map(|m| format!(" Your queue: `loom next --mode {m}`."))
+            .unwrap_or_default();
+        anyhow::bail!(
+            "Lane violation: '{agent}' cannot {action} — that is {lanes} work. \
+             Hand it off to that agent.{own_queue}",
+            lanes = allowed
+                .iter()
+                .map(|a| format!("`{a}`"))
+                .collect::<Vec<_>>()
+                .join("/"),
+        );
+    }
+    Ok(())
+}
+
+/// Resolve the acting agent (explicit flag → $LOOM_AGENT → "llm") and enforce
+/// the lane in one step. Returns the agent string for provenance stamping.
+pub fn acting_in_lane(action: &str, allowed: &[&str], explicit: Option<&str>) -> Result<String> {
+    let agent = crate::agent::acting(explicit);
+    enforce_lane(action, allowed, &agent)?;
+    Ok(agent)
+}
+
+// ---------------------------------------------------------------------------
+// Evidence gates
+// ---------------------------------------------------------------------------
+
+/// Minimum length (chars) for a substantive criterion/evidence/notes value.
+pub const MIN_SUBSTANTIVE_LEN: usize = 10;
+
+/// Inputs that read as "I filled the slot" rather than "I inspected the code".
+pub const PLACEHOLDERS: &[&str] = &[
+    "todo", "tbd", "n/a", "na", "none", "null", "unknown", "x", "xxx", "...",
+    "criterion", "evidence", "notes", "<text>", "<criterion>", "<evidence>",
+    "<notes>", "<why unrelated>", "?", "-",
+];
+
+/// True when a recorded value is empty or a known placeholder — used by both
+/// the write-time gates here and the `loom doctor` audit.
+pub fn is_vacuous(value: &str) -> bool {
+    let v = value.trim().to_lowercase();
+    v.is_empty() || v.chars().count() < MIN_SUBSTANTIVE_LEN || PLACEHOLDERS.contains(&v.as_str())
+}
+
+/// Reject an empty/placeholder/too-short value for a required evidence field.
+/// `field` is the flag name (e.g. "criterion"); `purpose` finishes the sentence
+/// "it must state …" so the error teaches what a good value looks like.
+pub fn require_substantive(field: &str, value: &str, purpose: &str) -> Result<()> {
+    if is_vacuous(value) {
+        anyhow::bail!(
+            "--{field} must be substantive (≥{min} chars, not a placeholder): it must state {purpose}. \
+             Got: '{got}'. A vacuous {field} makes the edge unfalsifiable — the graph would look \
+             inspected without being inspected.",
+            min = MIN_SUBSTANTIVE_LEN,
+            got = value.trim(),
+        );
+    }
+    Ok(())
+}
+
+/// Reject a confidence outside [0.0, 1.0].
+pub fn require_confidence(confidence: f64) -> Result<()> {
+    if !(0.0..=1.0).contains(&confidence) || confidence.is_nan() {
+        anyhow::bail!(
+            "--confidence must be between 0.0 and 1.0 (got {confidence}). \
+             It is a probability that the recorded verdict is correct."
+        );
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn role_parsing() {
+        assert_eq!(role_of("llm:analyzer"), Some("analyzer"));
+        assert_eq!(role_of("human:quality"), Some("quality"));
+        assert_eq!(role_of("llm"), None);
+        assert_eq!(role_of("human"), None);
+        assert_eq!(role_of("llm:"), None);
+    }
+
+    #[test]
+    fn solo_mode_passes_every_lane() {
+        assert!(enforce_lane("ground an edge", &[role::ANALYZER], "llm").is_ok());
+        assert!(enforce_lane("confirm an intent", &[role::VALIDATOR], "human").is_ok());
+    }
+
+    #[test]
+    fn declared_role_is_held_to_its_lane() {
+        // In lane.
+        assert!(enforce_lane("ground an edge", &[role::ANALYZER], "llm:analyzer").is_ok());
+        assert!(
+            enforce_lane("mark a lifecycle", &[role::BUILDER, role::FIXER], "llm:fixer").is_ok()
+        );
+        // Out of lane.
+        let err = enforce_lane("ground an edge", &[role::ANALYZER], "llm:builder")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Lane violation"), "got: {err}");
+        assert!(err.contains("loom next --mode build"), "got: {err}");
+    }
+
+    #[test]
+    fn unknown_role_is_rejected_not_bypassed() {
+        let err = enforce_lane("ground an edge", &[role::ANALYZER], "llm:analyser")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Unknown agent role"), "got: {err}");
+    }
+
+    #[test]
+    fn vacuous_values_are_rejected() {
+        for bad in ["", "  ", "todo", "TBD", "<criterion>", "n/a", "short"] {
+            assert!(is_vacuous(bad), "expected vacuous: '{bad}'");
+            assert!(require_substantive("criterion", bad, "what passing looks like").is_err());
+        }
+        let good = "loom sync flags IMPLEMENTS edges of files whose mtime advanced";
+        assert!(!is_vacuous(good));
+        assert!(require_substantive("criterion", good, "what passing looks like").is_ok());
+    }
+
+    #[test]
+    fn confidence_bounds() {
+        assert!(require_confidence(0.0).is_ok());
+        assert!(require_confidence(0.9).is_ok());
+        assert!(require_confidence(1.0).is_ok());
+        assert!(require_confidence(-0.1).is_err());
+        assert!(require_confidence(7.3).is_err());
+        assert!(require_confidence(f64::NAN).is_err());
+    }
+}

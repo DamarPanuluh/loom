@@ -1,0 +1,329 @@
+//! Graph integrity checks for `loom doctor`.
+//!
+//! grafeo is schema-optional, so loom verifies its own invariants here against
+//! the single declared vocabulary in `crate::db::schema`. Everything uses
+//! reliable query paths: node/edge counts, `IS NULL` presence predicates (which
+//! — unlike relationship *equality* matching — work on edges too), and Rust-side
+//! value validation.
+
+use anyhow::Result;
+
+use crate::db::schema::{self, prop, EDGE_TYPES, NODE_LABELS};
+use crate::db::LoomDb;
+use crate::types::{
+    AbstractionLevel, IntentStatus, NoteKind, Severity, ValidationResult,
+};
+
+use super::row::i64_val;
+use super::{
+    list_all_governs, list_all_implements, list_intents, list_notes, list_relates_to,
+    list_rules, list_validates_for_intent, list_validations,
+};
+
+/// Outcome of a full integrity scan.
+#[derive(Debug)]
+pub struct DoctorReport {
+    pub expected_version: String,
+    pub found_version: String,
+    pub version_ok: bool,
+    /// (label, count)
+    pub node_counts: Vec<(String, i64)>,
+    /// (edge type, count)
+    pub edge_counts: Vec<(String, i64)>,
+    /// Human-readable problems; empty == healthy.
+    pub issues: Vec<String>,
+}
+
+impl DoctorReport {
+    pub fn healthy(&self) -> bool {
+        self.version_ok && self.issues.is_empty()
+    }
+}
+
+fn count(db: &dyn LoomDb, query: &str) -> Result<i64> {
+    let r = db.execute(query)?;
+    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
+}
+
+fn count_nodes(db: &dyn LoomDb, lbl: &str) -> Result<i64> {
+    count(db, &format!("MATCH (n:{lbl}) RETURN count(n) AS c"))
+}
+
+fn count_edges(db: &dyn LoomDb, etype: &str) -> Result<i64> {
+    count(db, &format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"))
+}
+
+/// Nodes of `lbl` missing property `p` (present as NULL / never written).
+fn nodes_missing_prop(db: &dyn LoomDb, lbl: &str, p: &str) -> Result<i64> {
+    count(db, &format!("MATCH (n:{lbl}) WHERE n.{p} IS NULL RETURN count(n) AS c"))
+}
+
+/// Edges of `etype` missing property `p`.
+fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
+    count(db, &format!("MATCH ()-[r:{etype}]->() WHERE r.{p} IS NULL RETURN count(r) AS c"))
+}
+
+/// Run every integrity check and collect a report.
+pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
+    let mut issues = Vec::new();
+
+    // 1. Schema version.
+    let meta = db.execute(schema::CHECK_INITIALIZED)?;
+    let found_version = meta
+        .rows()
+        .first()
+        .map(|row| super::row::str_val(&row[0]))
+        .unwrap_or_default();
+    let expected_version = schema::SCHEMA_VERSION.to_string();
+    let version_ok = found_version == expected_version;
+    if !version_ok {
+        issues.push(format!(
+            "schema version mismatch: graph is '{}', this loom expects '{}' \
+             (re-init or migrate)",
+            found_version, expected_version
+        ));
+    }
+
+    // 2. Node counts + required-property presence.
+    let mut node_counts = Vec::new();
+    for &lbl in NODE_LABELS {
+        node_counts.push((lbl.to_string(), count_nodes(db, lbl)?));
+        for &(p, _owner) in schema::required_node_props(lbl) {
+            let missing = nodes_missing_prop(db, lbl, p)?;
+            if missing > 0 {
+                issues.push(format!("{missing} {lbl} node(s) missing property '{p}'"));
+            }
+        }
+    }
+
+    // 3. Edge counts + required-property presence.
+    let mut edge_counts = Vec::new();
+    for &etype in EDGE_TYPES {
+        edge_counts.push((etype.to_string(), count_edges(db, etype)?));
+        for &(p, _owner) in schema::required_edge_props(etype) {
+            let missing = edges_missing_prop(db, etype, p)?;
+            if missing > 0 {
+                issues.push(format!("{missing} {etype} edge(s) missing property '{p}'"));
+            }
+        }
+    }
+
+    // 4. Value validity for constrained fields (reliable full scans).
+    for i in list_intents(db, None, None)? {
+        if i.id.is_empty() {
+            issues.push(format!("Intent '{}' has an empty id", i.name));
+        }
+        if i.status.parse::<IntentStatus>().is_err() {
+            issues.push(format!("Intent {} has invalid status '{}'", i.id, i.status));
+        }
+        if i.abstraction_level.parse::<AbstractionLevel>().is_err() {
+            issues.push(format!(
+                "Intent {} has invalid abstraction_level '{}'",
+                i.id, i.abstraction_level
+            ));
+        }
+    }
+    for r in list_rules(db)? {
+        if r.severity.parse::<Severity>().is_err() {
+            issues.push(format!("QualityRule {} has invalid severity '{}'", r.id, r.severity));
+        }
+    }
+    for v in list_validations(db)? {
+        if !v.last_result.is_empty() && v.last_result.parse::<ValidationResult>().is_err() {
+            issues.push(format!(
+                "Validation {} has invalid last_result '{}'",
+                v.id, v.last_result
+            ));
+        }
+    }
+
+    // 5. Note validity + referential integrity (dangling targets).
+    let intent_ids: std::collections::HashSet<String> =
+        list_intents(db, None, None)?.into_iter().map(|i| i.id).collect();
+    for n in list_notes(db, None, None)? {
+        if n.kind.parse::<NoteKind>().is_err() {
+            issues.push(format!("Note {} has invalid kind '{}'", n.id, n.kind));
+        }
+        if n.target_kind == "intent" && !intent_ids.contains(&n.target_id) {
+            issues.push(format!(
+                "Note {} targets missing intent '{}'",
+                n.id, n.target_id
+            ));
+        }
+        if n.target_kind == "edge" && edge_id_missing(db, &n.target_id)? {
+            issues.push(format!("Note {} targets missing edge '{}'", n.id, n.target_id));
+        }
+    }
+
+    // 6. Inspectable-edge audit: status vocabulary, confidence bounds, vacuous
+    // evidence behind a verdict, and provenance lanes (a verdict recorded by an
+    // out-of-lane role is a separation-of-duties breach — the whole point of
+    // the role system is that no agent green-lights its own work).
+    audit_inspectable_edges(db, &mut issues)?;
+
+    // 7. HIERARCHY tree well-formedness. These are *structural* violations (the
+    // spine isn't a tree), not progress — so they belong in doctor. The other
+    // completeness facts (unrealized leaves / unreached files) are progress and
+    // are surfaced by `loom report` / the status compass instead.
+    let vc = super::completeness::vertical_completeness(db)?;
+    for name in &vc.multi_parent {
+        issues.push(format!(
+            "Intent '{}' has more than one HIERARCHY parent — the hierarchy must be a tree.",
+            name
+        ));
+    }
+    if vc.cycle {
+        issues.push(
+            "HIERARCHY contains a cycle — the hierarchy must be an acyclic tree.".to_string(),
+        );
+    }
+
+    Ok(DoctorReport {
+        expected_version,
+        found_version,
+        version_ok,
+        node_counts,
+        edge_counts,
+        issues,
+    })
+}
+
+/// A claim-shaped record extracted from any inspectable edge, so one audit
+/// covers RELATES_TO / IMPLEMENTS / GOVERNS uniformly.
+struct EdgeClaim {
+    etype: &'static str,
+    label: String, // "a → b" for the issue message
+    status: String,
+    criterion: String,
+    confidence: f64,
+    notes: String,
+    inspected_by: String,
+}
+
+/// Audit every inspectable edge for: valid inspection_status, confidence in
+/// [0,1], a substantive criterion behind any passing/failing verdict
+/// (RELATES_TO/GOVERNS — IMPLEMENTS starts passing-by-construction with an
+/// empty criterion), recorded reasoning behind `independent`, and provenance
+/// lanes (`inspected_by` role must be the owning role for that edge type).
+fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<()> {
+    use crate::db::schema::role;
+
+    let mut claims: Vec<EdgeClaim> = Vec::new();
+    for e in list_relates_to(db, None)? {
+        claims.push(EdgeClaim {
+            etype: schema::edge::RELATES_TO,
+            label: format!("{} → {}", e.from_name, e.to_name),
+            status: e.inspection_status,
+            criterion: e.criterion,
+            confidence: e.confidence,
+            notes: e.notes,
+            inspected_by: e.inspected_by,
+        });
+    }
+    for e in list_all_implements(db)? {
+        claims.push(EdgeClaim {
+            etype: schema::edge::IMPLEMENTS,
+            label: format!("{} → {}", e.intent_name, e.codefile_path),
+            status: e.inspection_status,
+            criterion: e.criterion,
+            confidence: e.confidence,
+            notes: e.notes,
+            inspected_by: e.inspected_by,
+        });
+    }
+    for e in list_all_governs(db)? {
+        claims.push(EdgeClaim {
+            etype: schema::edge::GOVERNS,
+            label: format!("{} → {}", e.rule_name, e.intent_name),
+            status: e.inspection_status,
+            criterion: e.criterion,
+            confidence: e.confidence,
+            notes: e.notes,
+            inspected_by: e.inspected_by,
+        });
+    }
+    // VALIDATES carries only a status — audit its vocabulary too.
+    for i in list_intents(db, None, None)? {
+        for e in list_validates_for_intent(db, &i.id)? {
+            if !matches!(
+                e.inspection_status.as_str(),
+                "uninspected" | "passing" | "failing" | "needs_reverification"
+            ) {
+                issues.push(format!(
+                    "VALIDATES edge {} → {} has invalid inspection_status '{}'",
+                    e.validation_name, e.intent_name, e.inspection_status
+                ));
+            }
+        }
+    }
+
+    for c in claims {
+        let independent_ok = c.etype == schema::edge::RELATES_TO;
+        let valid_status = matches!(
+            c.status.as_str(),
+            "uninspected" | "passing" | "failing" | "needs_reverification"
+        ) || (independent_ok && c.status == "independent");
+        if !valid_status {
+            issues.push(format!(
+                "{} edge {} has invalid inspection_status '{}'",
+                c.etype, c.label, c.status
+            ));
+        }
+        if !(0.0..=1.0).contains(&c.confidence) || c.confidence.is_nan() {
+            issues.push(format!(
+                "{} edge {} has confidence {} outside [0.0, 1.0]",
+                c.etype, c.label, c.confidence
+            ));
+        }
+        // A verdict with no substantive criterion is unfalsifiable — the graph
+        // looks inspected without having been inspected.
+        if c.etype != schema::edge::IMPLEMENTS
+            && matches!(c.status.as_str(), "passing" | "failing")
+            && crate::gate::is_vacuous(&c.criterion)
+        {
+            issues.push(format!(
+                "{} edge {} is '{}' but its criterion is empty/vacuous ('{}')",
+                c.etype, c.label, c.status, c.criterion.trim()
+            ));
+        }
+        if c.status == "independent" && crate::gate::is_vacuous(&c.notes) {
+            issues.push(format!(
+                "RELATES_TO edge {} is 'independent' but records no why (notes: '{}')",
+                c.label, c.notes.trim()
+            ));
+        }
+        // Provenance lane: a verdict stamped by an out-of-lane role.
+        if c.status != "uninspected" {
+            if let Some(r) = crate::gate::role_of(&c.inspected_by) {
+                let allowed: &[&str] = match c.etype {
+                    schema::edge::GOVERNS => &[role::QUALITY],
+                    _ => &[role::ANALYZER, role::FIXER],
+                };
+                if !allowed.contains(&r) {
+                    issues.push(format!(
+                        "{} edge {} was inspected by '{}' — out of lane (expected {}); \
+                         separation of duties is broken",
+                        c.etype, c.label, c.inspected_by,
+                        allowed.join(" or "),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// True when no edge of any tracked type carries this id. Uses a full
+/// traversal + Rust comparison (reliable), not relationship equality matching.
+fn edge_id_missing(db: &dyn LoomDb, edge_id: &str) -> Result<bool> {
+    for &etype in EDGE_TYPES {
+        let r = db.execute(&format!(
+            "MATCH ()-[r:{etype}]->() RETURN r.{id} AS x",
+            id = prop::ID
+        ))?;
+        if r.rows().iter().any(|row| super::row::str_val(&row[0]) == edge_id) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
