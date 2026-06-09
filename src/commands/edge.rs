@@ -25,6 +25,8 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // RELATES_TO — explore / ground / issue / independent
         // ----------------------------------------------------------------
         EdgeCmd::Explore { intent_a_id, intent_b_id, subcommand } => {
+            let intent_a_id = crate::db::queries::resolve_intent(&db, &intent_a_id)?;
+            let intent_b_id = crate::db::queries::resolve_intent(&db, &intent_b_id)?;
             let now = chrono::Utc::now().to_rfc3339();
 
             match subcommand {
@@ -199,6 +201,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         EdgeCmd::Implement { intent_id, codefile_id, locator, notes } => {
             gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             // Accept a path as well as an id — the path is the natural key a
             // driver already has in hand (dogfood finding: id-only forced a
             // `codefile list` + lookup round-trip per grounding).
@@ -263,6 +266,8 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         EdgeCmd::Hierarchy { parent_id, child_id, notes } => {
             gate::acting_in_lane("create a HIERARCHY edge", &[role::BUILDER], None)?;
+            let parent_id = crate::db::queries::resolve_intent(&db, &parent_id)?;
+            let child_id = crate::db::queries::resolve_intent(&db, &child_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let edge_id = Uuid::new_v4().to_string();
             let n = notes.as_deref().unwrap_or("");
@@ -291,6 +296,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                 &[role::BUILDER, role::VALIDATOR],
                 None,
             )?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let edge_id = Uuid::new_v4().to_string();
             let n = notes.as_deref().unwrap_or("");

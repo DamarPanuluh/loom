@@ -137,6 +137,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
         }
 
         RuleCmd::Check { intent_id } => {
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             // Show all GOVERNS edges for this intent (grouped by inspection_status)
             let governs = list_governs_for_intent(&db, &intent_id)?;
             if printer.json {
@@ -187,6 +188,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
 
         RuleCmd::Apply { rule_id, intent_id, criterion } => {
             gate::acting_in_lane("apply a quality rule", &[role::QUALITY], None)?;
+            let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let edge_id = Uuid::new_v4().to_string();
             let crit = criterion.as_deref().unwrap_or("");
@@ -222,6 +225,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let by = gate::acting_in_lane(
                 "record a GOVERNS verdict", &[role::QUALITY], inspected_by.as_deref(),
             )?;
+            let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!(
                     "Invalid --status '{}'. A verdict is passing (complies), failing (violates), \

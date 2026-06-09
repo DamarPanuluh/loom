@@ -32,6 +32,42 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
     Ok(())
 }
 
+/// Resolve an intent key — exact id, exact name (case-insensitive), or a
+/// unique name fragment — to the intent's id. The natural key a driver has in
+/// hand is the *name*; forcing UUIDs taxed every command with a lookup
+/// round-trip (dogfood finding). Ambiguity is an error that lists the
+/// candidates, so resolution is never a guess.
+pub fn resolve_intent(db: &dyn LoomDb, key: &str) -> Result<String> {
+    let intents = list_intents(db, None, None)?;
+    if intents.iter().any(|i| i.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase() == kl).collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    if exact.len() > 1 {
+        anyhow::bail!(
+            "Intent name '{}' is not unique ({} intents carry it) — use the id. `loom intent list` to see them.",
+            key, exact.len()
+        );
+    }
+    let subs: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase().contains(&kl)).collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+            key,
+            subs.iter().map(|i| format!("'{}'", i.name)).collect::<Vec<_>>().join(", ")
+        ),
+    }
+}
+
 /// Set an intent's lifecycle (planned | implemented | needs_change).
 pub fn set_intent_lifecycle(
     db: &dyn LoomDb,

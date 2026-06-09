@@ -607,6 +607,23 @@ mod tests {
         assert!(import_graph(&db2, &export).is_err());
     }
 
+    /// Name addressing: exact id → exact name → unique fragment; ambiguity and
+    /// no-match are errors that teach, never guesses.
+    #[test]
+    fn resolve_intent_by_name_and_fragment() {
+        let (db, _) = db_inited(0);
+        insert_intent(&db, &intent("i1", "parsing engine")).unwrap();
+        insert_intent(&db, &intent("i2", "rendering surface")).unwrap();
+        insert_intent(&db, &intent("i3", "render cache")).unwrap();
+
+        assert_eq!(resolve_intent(&db, "i2").unwrap(), "i2"); // exact id wins
+        assert_eq!(resolve_intent(&db, "Parsing Engine").unwrap(), "i1"); // name, case-insensitive
+        assert_eq!(resolve_intent(&db, "cache").unwrap(), "i3"); // unique fragment
+        let err = resolve_intent(&db, "render").unwrap_err().to_string();
+        assert!(err.contains("ambiguous"), "{err}"); // matches i2 and i3
+        assert!(resolve_intent(&db, "nonexistent").is_err());
+    }
+
     #[test]
     fn doctor_flags_version_mismatch() {
         let (db, _) = db_with_intents(0);

@@ -42,6 +42,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             // friction; otherwise we tell the driver exactly how to link it.
             let mut linked_intent: Option<String> = None;
             if let Some(iid) = intent {
+                let iid = crate::db::queries::resolve_intent(&db, &iid)?;
                 let edge_id = Uuid::new_v4().to_string();
                 insert_validates(&db, &edge_id, &id, &iid, "", &now)?;
                 linked_intent = Some(iid);

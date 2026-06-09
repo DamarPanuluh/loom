@@ -83,6 +83,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // Confirmation is a *verdict* that the intent is valid — validator
             // lane, so the builder cannot ratify its own proposals.
             gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
             let now  = chrono::Utc::now().to_rfc3339();
             let found = confirm_intent(&db, &id, &now)?;
             if !found {
@@ -108,6 +109,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             )?;
             lifecycle.parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let found = set_intent_lifecycle(&db, &id, &lifecycle, &now)?;
             if !found {
@@ -143,6 +145,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
 
         IntentCmd::Delete { id } => {
             gate::acting_in_lane("delete an intent", &[role::BUILDER], None)?;
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
             let deleted = delete_intent(&db, &id)?;
             if !deleted {
                 anyhow::bail!(
@@ -187,6 +190,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
         }
 
         IntentCmd::Show { id } => {
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
             let intent = get_intent(&db, &id)?;
             match intent {
                 None => anyhow::bail!(

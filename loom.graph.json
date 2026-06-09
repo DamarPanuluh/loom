@@ -3,14 +3,27 @@
     "GOVERNS": [
       {
         "confidence": 0.9,
+        "created_at": "2026-06-09T20:02:56.078188+00:00",
+        "criterion": "all GQL literals pass through schema::esc; no untrusted string reaches a query unescaped",
+        "evidence": "re-inspected: resolver fragments are matched in Rust, not interpolated into GQL; new INSERT paths in portability.rs esc() every string",
+        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
+        "id": "9b2be58e-6caa-41c9-a026-772b42baa38c",
+        "inspected_by": "llm:quality",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:58.560960+00:00",
+        "notes": "",
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-09T19:09:59.807049+00:00",
-        "criterion": "verdict-bearing edges (GOVERNS, VALIDATES, RELATES_TO) are inserted with inspection_status=uninspected",
-        "evidence": "re-inspected after dedupe change: insert defaults unchanged; IMPLEMENTS dedupe no-op does not touch status",
+        "criterion": "verdict-bearing edges are inserted with inspection_status=uninspected",
+        "evidence": "re-inspected: insert defaults untouched this session; transition recording added but does not alter insert status",
         "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
         "id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
         "inspected_by": "llm:quality",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:13:42.702325+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:58.527123+00:00",
         "notes": "",
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
       },
@@ -31,12 +44,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T19:09:59.781200+00:00",
         "criterion": "no GQL matches/filters a relationship by its own property; endpoints or scan+filter only",
-        "evidence": "re-inspected after insert_implements dedupe change: the new existence check matches by endpoint nodes (i.id + cf.id), conforming",
+        "evidence": "re-inspected after resolver work: resolve_intent/resolve_rule are Rust-side scans over node listers; no new relationship-property matching introduced",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "67564ae4-89f0-4802-af81-a647a4f41d37",
         "inspected_by": "llm:quality",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:13:25.635333+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:58.482478+00:00",
         "notes": "",
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
       },
@@ -464,6 +477,34 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-09T20:03:14.683654+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
+        "id": "e28e83ea-81ef-4778-849f-b3bd3fa0413e",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "fn resolve_intent",
+        "notes": "",
+        "to": "3cb4e37d-7dcd-40d4-878f-48dec5e6c5af"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T20:03:14.719052+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
+        "id": "bc18dd15-d8da-4b11-bd06-714257ba976e",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "fn resolve_rule",
+        "notes": "",
+        "to": "5015c7bc-4f78-4340-a026-55b5b2aa5c20"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:10.473509+00:00",
         "criterion": "",
         "evidence": "",
@@ -863,9 +904,9 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
-        "inspected_by": "llm:analyzer",
+        "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T19:54:36.202384+00:00",
+        "last_inspected": "2026-06-09T20:03:35.897052+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -877,9 +918,9 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
-        "inspected_by": "llm:analyzer",
+        "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T19:54:22.070654+00:00",
+        "last_inspected": "2026-06-09T20:03:35.825374+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
@@ -891,9 +932,9 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
-        "inspected_by": "llm:analyzer",
+        "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T19:54:22.103959+00:00",
+        "last_inspected": "2026-06-09T20:03:35.861064+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -906,8 +947,8 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "6c38e08c-6436-41e1-a1bb-d4d4e4f51582",
         "inspected_by": "llm:fixer",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:13:25.768172+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:36.026739+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
@@ -919,9 +960,9 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
-        "inspected_by": "llm:analyzer",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:10:14.082348+00:00",
+        "inspected_by": "llm:fixer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:35.983229+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -934,8 +975,8 @@
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "id": "6602d534-d56c-427d-a8fd-8f857d11e83e",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:10:14.159585+00:00",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-09T20:03:36.099907+00:00",
         "notes": "repo introspection is read-only filesystem walking; it writes no graph state, so no lane or evidence gate ever applies to it",
         "priority_score": 0.0,
         "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
@@ -948,8 +989,8 @@
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
         "inspected_by": "llm:fixer",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:13:25.821095+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:35.939729+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
@@ -961,9 +1002,9 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
-        "inspected_by": "llm:analyzer",
+        "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T19:54:22.137915+00:00",
+        "last_inspected": "2026-06-09T20:03:35.788788+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -990,8 +1031,8 @@
         "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "id": "c65a3245-1fd7-4995-832a-d5e85c0d711f",
         "inspected_by": "llm:fixer",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:13:25.795605+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:03:36.062455+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
@@ -1100,7 +1141,7 @@
         "id": "1118c655-b551-4fa8-9d65-5debeb1f1dfb",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:47:38.453543583+00:00",
+        "last_modified": "2026-06-09T20:01:29.489843878+00:00",
         "path": "src/commands/edge.rs"
       },
       {
@@ -1142,28 +1183,28 @@
         "id": "3cb4e37d-7dcd-40d4-878f-48dec5e6c5af",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:47:38.452929669+00:00",
+        "last_modified": "2026-06-09T20:00:44.202080710+00:00",
         "path": "src/db/queries/intent.rs"
       },
       {
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:53:01.130370419+00:00",
+        "last_modified": "2026-06-09T20:02:31.775151664+00:00",
         "path": "src/db/queries/mod.rs"
       },
       {
         "id": "5015c7bc-4f78-4340-a026-55b5b2aa5c20",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T11:18:57.181970818+00:00",
+        "last_modified": "2026-06-09T20:01:01.553649566+00:00",
         "path": "src/db/queries/rule.rs"
       },
       {
         "id": "59586001-f497-4255-a7bc-75fd8a2f486a",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T18:36:48.756213126+00:00",
+        "last_modified": "2026-06-09T20:01:29.489136129+00:00",
         "path": "src/commands/intent.rs"
       },
       {
@@ -1219,14 +1260,14 @@
         "id": "7be1c91f-171f-4d32-9731-3ae70c8b3ba2",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:10:57.258475124+00:00",
+        "last_modified": "2026-06-09T20:01:51.271531379+00:00",
         "path": "src/commands/validate.rs"
       },
       {
         "id": "8f3a56f9-9b2b-4cbc-b3fa-1bad25b2abed",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T09:20:29.435169596+00:00",
+        "last_modified": "2026-06-09T20:01:51.271068588+00:00",
         "path": "src/commands/cluster.rs"
       },
       {
@@ -1254,7 +1295,7 @@
         "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:52:05.689461465+00:00",
+        "last_modified": "2026-06-09T20:01:29.490651835+00:00",
         "path": "src/commands/rule.rs"
       },
       {
@@ -1268,7 +1309,7 @@
         "id": "a65ac5b7-1d28-40bd-823c-b464615a19a4",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T18:37:03.240724060+00:00",
+        "last_modified": "2026-06-09T20:01:51.271898129+00:00",
         "path": "src/commands/validation.rs"
       },
       {
@@ -1324,7 +1365,7 @@
         "id": "bb6a3984-4231-469f-8dcc-f0373f60b1ce",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T18:03:09.506247071+00:00",
+        "last_modified": "2026-06-09T20:02:08.407266997+00:00",
         "path": "src/commands/note.rs"
       },
       {
@@ -1529,11 +1570,11 @@
         "description": "every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session",
         "domain": "cli",
         "id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "intents addressable by name, not only uuid",
         "source_refs": "[]",
         "status": "proposed",
-        "updated_at": "2026-06-09T19:13:06.129687+00:00"
+        "updated_at": "2026-06-09T20:03:14.765638+00:00"
       },
       {
         "abstraction_level": "component",
@@ -1638,6 +1679,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:03:58.527123+00:00",
+        "id": "0d85283f-c9f5-4d6a-b687-28003c21afa8",
+        "kind": "transition",
+        "target_id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:builder",
         "created_at": "2026-06-09T19:31:07.825735+00:00",
         "id": "182068a9-d8e2-41e2-b5e5-b8434c91fb3b",
@@ -1645,6 +1695,15 @@
         "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: loom smells: scattered across 12 files — decompose into child intents per command family"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T20:03:36.099907+00:00",
+        "id": "1bbc8ece-d2fd-484f-b6dd-fbb79b88f89e",
+        "kind": "transition",
+        "target_id": "6602d534-d56c-427d-a8fd-8f857d11e83e",
+        "target_kind": "edge",
+        "text": "needs_reverification → independent"
       },
       {
         "author": "loom",
@@ -1665,6 +1724,24 @@
         "text": "lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-lived session) while running validation commands as subprocesses; any validation that itself invokes loom (e.g. 'loom status --json') fails with GRAFEO-X001 lock error. Fix: read everything first, RELEASE the connection, run commands, reopen to persist results."
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-09T20:03:14.765638+00:00",
+        "id": "38d30745-dcee-4dbf-a162-c65eeaad9d30",
+        "kind": "transition",
+        "target_id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.788788+00:00",
+        "id": "510f97b9-f93a-47dd-b22c-681454857d7c",
+        "kind": "transition",
+        "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:22.172533+00:00",
         "id": "534832d5-5eff-4485-83ca-8806243233d5",
@@ -1672,6 +1749,15 @@
         "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.825374+00:00",
+        "id": "5b5fec40-dd21-4e31-b8c2-3e91b55b09ba",
+        "kind": "transition",
+        "target_id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:analyzer",
@@ -1701,6 +1787,42 @@
         "text": "lifecycle → implemented: shipped in 5c98e98/32f3c44: suspicion = import links (5x) + shared files (3x) + description overlap + domain; why displayed in the work item"
       },
       {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:14.765638+00:00",
+        "id": "81d55a50-2d83-4701-8181-3fe07a96d895",
+        "kind": "decision",
+        "target_id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: resolve_intent/resolve_rule: exact id → exact name → unique fragment; wired into every intent/rule-taking command; ambiguity errors list candidates"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:03:58.482478+00:00",
+        "id": "a4bb5904-ff4b-48f3-8951-038f39fd4cca",
+        "kind": "transition",
+        "target_id": "67564ae4-89f0-4802-af81-a647a4f41d37",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.861064+00:00",
+        "id": "a7ee2495-191b-4163-b325-2f5f3accb0db",
+        "kind": "transition",
+        "target_id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:03:58.560960+00:00",
+        "id": "a9b6e088-08be-4a74-91e7-6b9fb160b1da",
+        "kind": "transition",
+        "target_id": "9b2be58e-6caa-41c9-a026-772b42baa38c",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:22.103959+00:00",
         "id": "abadd0a2-e3ba-448f-a0a1-430aee98bdeb",
@@ -1719,6 +1841,33 @@
         "text": "lifecycle → implemented: validate.rs now releases the DB session while commands run (read → drop → run → reopen → persist)"
       },
       {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.983229+00:00",
+        "id": "c61989ae-40ce-40a5-a4d1-acda93b95cab",
+        "kind": "transition",
+        "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:36.026739+00:00",
+        "id": "c6c61338-bc02-4bf7-b099-4bfe0d8e5d3a",
+        "kind": "transition",
+        "target_id": "6c38e08c-6436-41e1-a1bb-d4d4e4f51582",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:02:56.204463+00:00",
+        "id": "d2ef3576-2dc4-494e-a582-f2f8a7c4ffd0",
+        "kind": "transition",
+        "target_id": "9b2be58e-6caa-41c9-a026-772b42baa38c",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:22.137915+00:00",
         "id": "ec248457-2258-4b49-b805-2d0dd4acddfd",
@@ -1726,6 +1875,33 @@
         "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.939729+00:00",
+        "id": "f8101da2-8995-4672-a289-3e033b09aef4",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:35.897052+00:00",
+        "id": "f9d9938e-0c55-4df8-a29b-a8baa4810832",
+        "kind": "transition",
+        "target_id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:03:36.062455+00:00",
+        "id": "faa52c04-efe3-484b-bce5-99ac2285210f",
+        "kind": "transition",
+        "target_id": "c65a3245-1fd7-4995-832a-d5e85c0d711f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       }
     ],
     "QualityRule": [
@@ -1819,8 +1995,8 @@
         "command": "cargo test db::queries 2>/dev/null",
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
-        "last_result": "not_run",
-        "last_run": "2026-06-09T19:13:25.092831+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-09T20:03:14.810823+00:00",
         "name": "query-layer regression suite",
         "validation_type": "test"
       },
@@ -1846,8 +2022,8 @@
         "command": "./target/debug/loom --help > /dev/null",
         "description": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
-        "last_result": "not_run",
-        "last_run": "2026-06-09T19:13:25.036799+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-09T20:03:15.456816+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
       },

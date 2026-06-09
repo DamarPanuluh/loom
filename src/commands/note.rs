@@ -21,7 +21,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 anyhow::bail!("A note targets an intent OR an edge, not both.");
             }
             let (target_kind, target_id) = match (intent, edge) {
-                (Some(i), _) => ("intent".to_string(), i),
+                (Some(i), _) => ("intent".to_string(), crate::db::queries::resolve_intent(&db, &i)?),
                 (_, Some(e)) => ("edge".to_string(), e),
                 _            => ("none".to_string(), String::new()),
             };
@@ -52,6 +52,10 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             if let Some(ref k) = kind {
                 k.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
+            let intent = match intent {
+                Some(i) => Some(crate::db::queries::resolve_intent(&db, &i)?),
+                None => None,
+            };
             let target = intent.or(edge);
             let notes = list_notes(&db, target.as_deref(), kind.as_deref())?;
             if printer.json {
