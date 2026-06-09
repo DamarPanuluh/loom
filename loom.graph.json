@@ -4,26 +4,26 @@
       {
         "confidence": 0.9,
         "created_at": "2026-06-09T20:02:56.078188+00:00",
-        "criterion": "all GQL literals pass through schema::esc; no untrusted string reaches a query unescaped",
-        "evidence": "re-inspected: resolver fragments are matched in Rust, not interpolated into GQL; new INSERT paths in portability.rs esc() every string",
+        "criterion": "re-verified after pulse counter change",
+        "evidence": "count_unexplored_pairs uses node listers + Rust arithmetic only: no relationship-property matching, no new inserts, no string interpolation beyond esc()",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "9b2be58e-6caa-41c9-a026-772b42baa38c",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:58.560960+00:00",
+        "last_inspected": "2026-06-09T20:08:36.391119+00:00",
         "notes": "",
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
       },
       {
         "confidence": 0.9,
         "created_at": "2026-06-09T19:09:59.807049+00:00",
-        "criterion": "verdict-bearing edges are inserted with inspection_status=uninspected",
-        "evidence": "re-inspected: insert defaults untouched this session; transition recording added but does not alter insert status",
+        "criterion": "re-verified after pulse counter change",
+        "evidence": "count_unexplored_pairs uses node listers + Rust arithmetic only: no relationship-property matching, no new inserts, no string interpolation beyond esc()",
         "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
         "id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:58.527123+00:00",
+        "last_inspected": "2026-06-09T20:08:36.356345+00:00",
         "notes": "",
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
       },
@@ -42,27 +42,53 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-09T20:07:11.911781+00:00",
+        "criterion": "no naked unwrap/expect in command handlers; all errors propagate via anyhow Result to main",
+        "evidence": "grep over src non-test code: zero .unwrap()/.expect() in commands/cli/main; sole expect is an internal invariant in completeness.rs cycle detection with populated-in-same-fn guarantee",
+        "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
+        "id": "f6c7cb8d-af39-4182-8714-4cf27ec4c62f",
+        "inspected_by": "llm:quality",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:07:11.943203+00:00",
+        "notes": "",
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T20:07:11.978358+00:00",
+        "criterion": "graph_state computes its counters with work proportional to what is counted",
+        "evidence": "stats.rs now calls count_unexplored_pairs (arithmetic over two cheap scans); the O(N^2) enumeration remains only in discovery where items are consumed; test count_unexplored_matches_enumeration pins equivalence",
+        "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
+        "id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "inspected_by": "llm:quality",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:08:19.087319+00:00",
+        "notes": "",
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-09T19:09:59.781200+00:00",
-        "criterion": "no GQL matches/filters a relationship by its own property; endpoints or scan+filter only",
-        "evidence": "re-inspected after resolver work: resolve_intent/resolve_rule are Rust-side scans over node listers; no new relationship-property matching introduced",
+        "criterion": "re-verified after pulse counter change",
+        "evidence": "count_unexplored_pairs uses node listers + Rust arithmetic only: no relationship-property matching, no new inserts, no string interpolation beyond esc()",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "67564ae4-89f0-4802-af81-a647a4f41d37",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:58.482478+00:00",
+        "last_inspected": "2026-06-09T20:08:36.321835+00:00",
         "notes": "",
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
       },
       {
         "confidence": 0.9,
         "created_at": "2026-06-09T19:30:23.707365+00:00",
-        "criterion": "queue queries match nodes only; no relationship matched by its own property",
-        "evidence": "scoring.rs intent_degree + unexplored_pairs use node-anchored MATCH; candidate filtering is list_relates_to scan+filter in Rust",
+        "criterion": "queue queries match nodes only; scan+filter in Rust",
+        "evidence": "count_unexplored_pairs added to scoring.rs follows the same node-anchored pattern",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
         "inspected_by": "llm:quality",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-09T19:30:23.734074+00:00",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T20:08:36.545592+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -906,7 +932,7 @@
         "id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.897052+00:00",
+        "last_inspected": "2026-06-09T20:08:36.166063+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -920,7 +946,7 @@
         "id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.825374+00:00",
+        "last_inspected": "2026-06-09T20:08:36.086473+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
@@ -934,7 +960,7 @@
         "id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.861064+00:00",
+        "last_inspected": "2026-06-09T20:08:36.126622+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -962,7 +988,7 @@
         "id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.983229+00:00",
+        "last_inspected": "2026-06-09T20:08:36.247676+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -990,7 +1016,7 @@
         "id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.939729+00:00",
+        "last_inspected": "2026-06-09T20:08:36.209226+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
@@ -1004,7 +1030,7 @@
         "id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
         "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T20:03:35.788788+00:00",
+        "last_inspected": "2026-06-09T20:08:36.041187+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -1016,9 +1042,9 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
-        "inspected_by": "llm:analyzer",
+        "inspected_by": "llm:fixer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-09T19:54:22.172533+00:00",
+        "last_inspected": "2026-06-09T20:08:36.285321+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -1190,7 +1216,7 @@
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T20:02:31.775151664+00:00",
+        "last_modified": "2026-06-09T20:07:47.622098165+00:00",
         "path": "src/db/queries/mod.rs"
       },
       {
@@ -1337,7 +1363,7 @@
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:48:56.118408208+00:00",
+        "last_modified": "2026-06-09T20:07:26.042687634+00:00",
         "path": "src/db/queries/scoring.rs"
       },
       {
@@ -1393,7 +1419,7 @@
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T18:41:29.576043407+00:00",
+        "last_modified": "2026-06-09T20:07:35.991263160+00:00",
         "path": "src/db/queries/stats.rs"
       },
       {
@@ -1626,7 +1652,7 @@
         "name": "completeness and integrity checking",
         "source_refs": "[]",
         "status": "confirmed",
-        "updated_at": "2026-06-09T19:09:12.719779+00:00"
+        "updated_at": "2026-06-09T20:08:18.910368+00:00"
       },
       {
         "abstraction_level": "component",
@@ -1670,6 +1696,15 @@
     ],
     "Note": [
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:08:19.087319+00:00",
+        "id": "0494e9a1-d03e-4e91-8e1b-ea9b889351f0",
+        "kind": "transition",
+        "target_id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "target_kind": "edge",
+        "text": "failing → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:36.202384+00:00",
         "id": "0a1e5ee8-bdc5-44c0-aff6-350ce24c07f2",
@@ -1684,6 +1719,15 @@
         "id": "0d85283f-c9f5-4d6a-b687-28003c21afa8",
         "kind": "transition",
         "target_id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:08:36.321835+00:00",
+        "id": "0daebce4-2382-42a7-a1c6-e6efd5485d96",
+        "kind": "transition",
+        "target_id": "67564ae4-89f0-4802-af81-a647a4f41d37",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -1706,6 +1750,24 @@
         "text": "needs_reverification → independent"
       },
       {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.086473+00:00",
+        "id": "2291eaef-af8a-470e-8bfd-b928dbaffb6d",
+        "kind": "transition",
+        "target_id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:07:12.015551+00:00",
+        "id": "22e065f3-c948-4d01-a6b1-de9e615ba50b",
+        "kind": "transition",
+        "target_id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "target_kind": "edge",
+        "text": "uninspected → failing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-09T19:57:05.034661+00:00",
         "id": "22ef0c08-d6ee-411e-a5bd-f8adbe5f1ea5",
@@ -1713,6 +1775,15 @@
         "target_id": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
         "target_kind": "intent",
         "text": "planned → implemented"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-09T20:07:12.079615+00:00",
+        "id": "23bdaebd-933d-4c25-860a-66f42fbf8480",
+        "kind": "transition",
+        "target_id": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "target_kind": "intent",
+        "text": "implemented → needs_change"
       },
       {
         "author": "llm:fixer",
@@ -1724,6 +1795,15 @@
         "text": "lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-lived session) while running validation commands as subprocesses; any validation that itself invokes loom (e.g. 'loom status --json') fails with GRAFEO-X001 lock error. Fix: read everything first, RELEASE the connection, run commands, reopen to persist results."
       },
       {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.126622+00:00",
+        "id": "3581f114-d7fa-41cf-8077-a1e644096223",
+        "kind": "transition",
+        "target_id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-09T20:03:14.765638+00:00",
         "id": "38d30745-dcee-4dbf-a162-c65eeaad9d30",
@@ -1731,6 +1811,24 @@
         "target_id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
         "target_kind": "intent",
         "text": "planned → implemented"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.247676+00:00",
+        "id": "457563f8-4ef5-46f6-93a8-fa73baa79d03",
+        "kind": "transition",
+        "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:08:36.391119+00:00",
+        "id": "4905b6cf-7e24-407d-ad39-b5fea097da57",
+        "kind": "transition",
+        "target_id": "9b2be58e-6caa-41c9-a026-772b42baa38c",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:fixer",
@@ -1749,6 +1847,15 @@
         "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:07:11.866936+00:00",
+        "id": "598f8b17-a2db-4c21-bc48-515571718d43",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:fixer",
@@ -1779,6 +1886,15 @@
       },
       {
         "author": "llm:fixer",
+        "created_at": "2026-06-09T20:07:12.079615+00:00",
+        "id": "6c918130-7335-40f9-9d43-2b625dd6adc0",
+        "kind": "decision",
+        "target_id": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "target_kind": "intent",
+        "text": "lifecycle → needs_change: iso5055-perf-no-redundant-work failing: graph_state pays full O(N^2) scoring on every pulse just to count unexplored pairs — add a cheap arithmetic counter in scoring.rs and use it in stats.rs"
+      },
+      {
+        "author": "llm:fixer",
         "created_at": "2026-06-09T19:57:05.034661+00:00",
         "id": "730f6b24-7962-46f5-81b8-f1ddafce4297",
         "kind": "decision",
@@ -1794,6 +1910,33 @@
         "target_id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
         "target_kind": "intent",
         "text": "lifecycle → implemented: resolve_intent/resolve_rule: exact id → exact name → unique fragment; wired into every intent/rule-taking command; ambiguity errors list candidates"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:18.910368+00:00",
+        "id": "91dca406-7c40-43f0-a457-e246b2d5a92c",
+        "kind": "decision",
+        "target_id": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: count_unexplored_pairs: arithmetic C(n,2) minus linked unordered pairs; graph_state no longer pays O(N^2) scoring per pulse; cross-check test pins count == enumeration"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.041187+00:00",
+        "id": "978dd371-d20a-40e4-b5da-532a3023ae16",
+        "kind": "transition",
+        "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:08:36.356345+00:00",
+        "id": "99f94dfc-3671-4735-9351-3f7921be682c",
+        "kind": "transition",
+        "target_id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -1833,12 +1976,48 @@
       },
       {
         "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.166063+00:00",
+        "id": "b2593875-149c-45a7-be82-b19c66467ffa",
+        "kind": "transition",
+        "target_id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:fixer",
         "created_at": "2026-06-09T19:11:27.457007+00:00",
         "id": "b4e43101-ddfa-4436-a487-d56157067dc6",
         "kind": "decision",
         "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "intent",
         "text": "lifecycle → implemented: validate.rs now releases the DB session while commands run (read → drop → run → reopen → persist)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:07:11.943203+00:00",
+        "id": "b5a75a68-605c-4a9f-aa0c-0dfdb4a992f1",
+        "kind": "transition",
+        "target_id": "f6c7cb8d-af39-4182-8714-4cf27ec4c62f",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-09T20:08:36.545592+00:00",
+        "id": "c0c93751-d8bf-4cc8-8d0e-096dda8e4cde",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-09T20:08:18.910368+00:00",
+        "id": "c196078e-79b6-4459-beba-378e0703d812",
+        "kind": "transition",
+        "target_id": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "target_kind": "intent",
+        "text": "needs_change → implemented"
       },
       {
         "author": "llm:fixer",
@@ -1868,6 +2047,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.285321+00:00",
+        "id": "d98f0f0a-779d-4e3d-abe2-56981866b8d6",
+        "kind": "transition",
+        "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:22.137915+00:00",
         "id": "ec248457-2258-4b49-b805-2d0dd4acddfd",
@@ -1875,6 +2063,15 @@
         "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T20:08:36.209226+00:00",
+        "id": "f2a076dc-07d7-41a4-9330-b9cecc0a7e54",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:fixer",
@@ -1995,7 +2192,7 @@
         "command": "cargo test db::queries 2>/dev/null",
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-09T20:03:14.810823+00:00",
         "name": "query-layer regression suite",
         "validation_type": "test"
@@ -2004,8 +2201,8 @@
         "command": "cargo test -- completeness doctor 2>/dev/null",
         "description": "",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
-        "last_result": "not_run",
-        "last_run": "2026-06-09T19:08:51.352571+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-09T20:08:36.595177+00:00",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },

@@ -233,6 +233,26 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
     Ok(scored)
 }
 
+/// Count of intent pairs with no RELATES_TO edge (and no HIERARCHY link) —
+/// arithmetic, not enumerative: C(n,2) minus linked unordered pairs. This is
+/// what `graph_state` needs on every pulse; building the full scored O(N²)
+/// list just to .len() it was an iso5055-perf-no-redundant-work violation
+/// found by loom measuring itself.
+pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
+    let n = list_intents(db, None, None)?.len() as i64;
+    let mut linked: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+    let mut key = |a: &str, b: &str| {
+        if a < b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
+    };
+    for e in list_relates_to(db, None)? {
+        linked.insert(key(&e.from_id, &e.to_id));
+    }
+    for (p, c) in list_all_hierarchy(db)? {
+        linked.insert(key(&p, &c));
+    }
+    Ok((n * (n - 1) / 2 - linked.len() as i64).max(0))
+}
+
 /// Intent pairs that have NO RELATES_TO edge between them yet, returned as
 /// synthetic "unexplored" candidates. Scored by combined centrality PLUS a
 /// suspicion bonus — pairs that share implemented files, read alike, or live

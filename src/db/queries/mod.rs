@@ -624,6 +624,25 @@ mod tests {
         assert!(resolve_intent(&db, "nonexistent").is_err());
     }
 
+    /// The arithmetic pair count must always agree with the full enumeration —
+    /// including when both directions of a pair carry an edge, and when a pair
+    /// is linked by HIERARCHY instead of RELATES_TO.
+    #[test]
+    fn count_unexplored_matches_enumeration() {
+        let (db, ids) = db_with_intents(5); // C(5,2) = 10 pairs
+        assert_eq!(count_unexplored_pairs(&db).unwrap(), 10);
+
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        // Reverse direction of the same pair — must not double-count.
+        get_or_create_relates_to(&db, "e1", &ids[1], &ids[0], "t").unwrap();
+        insert_hierarchy(&db, "h0", &ids[2], &ids[3], "", "t").unwrap();
+
+        let counted = count_unexplored_pairs(&db).unwrap();
+        let enumerated = unexplored_pairs_scored(&db).unwrap().len() as i64;
+        assert_eq!(counted, enumerated, "cheap count must equal full enumeration");
+        assert_eq!(counted, 8); // 10 − {0,1} − {2,3}
+    }
+
     #[test]
     fn doctor_flags_version_mismatch() {
         let (db, _) = db_with_intents(0);

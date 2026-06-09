@@ -14,7 +14,7 @@ use super::intent::{intents_without_validations, list_intents};
 use super::meta::get_meta;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
-use super::scoring::{intent_degree, unexplored_pairs_scored};
+use super::scoring::{count_unexplored_pairs, intent_degree};
 
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
@@ -171,7 +171,9 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // Use the SAME computation `loom next` uses for discovery candidates, so the
     // compass can never disagree with what `loom next` actually surfaces (e.g.
     // hierarchy-linked pairs are excluded). Authoritative, not a heuristic.
-    let unexplored_pairs = unexplored_pairs_scored(db)?.len() as i64;
+    // Arithmetic count — the full scored O(N²) enumeration lives in discovery
+    // (`unexplored_pairs_scored`) where the items are actually consumed.
+    let unexplored_pairs = count_unexplored_pairs(db)?;
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
     let all_intents = list_intents(db, None, None)?;
