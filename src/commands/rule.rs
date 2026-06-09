@@ -12,6 +12,47 @@ use crate::gate;
 use crate::output::{fmt_rule_row, Printer};
 use crate::types::QualityRule;
 
+/// The ISO 5055 measuring sticks: (name, severity, description, detection_logic).
+/// Two-to-three CWE-grounded rules per quality characteristic, written so an
+/// LLM holding one against an intent's code knows exactly what to look for.
+/// They are sticks, not detectors — verdicts still come from inspection.
+const ISO5055_PACK: &[(&str, &str, &str, &str)] = &[
+    // Reliability
+    ("iso5055-rel-no-unchecked-failure", "error",
+     "ISO 5055 Reliability (CWE-252/248/391): every fallible operation's failure path is handled or explicitly propagated — no silently ignored return value, no exception/panic escaping a boundary uncaught.",
+     "Inspect the intent's error paths: ignored Results/return codes, unwrap/expect on external input, bare catch-alls, missing error branches at I/O, parse, lock, and network boundaries."),
+    ("iso5055-rel-resource-release", "error",
+     "ISO 5055 Reliability (CWE-772/404): every acquired resource (file, lock, connection, handle) is released on ALL paths, including error paths.",
+     "Look for acquisitions without RAII/defer/finally protection, locks held across I/O or awaits, and early returns that skip cleanup."),
+    ("iso5055-rel-boundary-validation", "error",
+     "ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.",
+     "Trace each external input to its first use: is there a validation/parse step with an error path before the value reaches logic or storage?"),
+    // Security
+    ("iso5055-sec-no-injection", "error",
+     "ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.",
+     "Trace untrusted inputs to every interpreter sink (exec/system calls, query strings, format/eval, HTML output) and check the escaping/parameterization at each."),
+    ("iso5055-sec-no-hardcoded-secrets", "error",
+     "ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.",
+     "Scan the intent's files for key-like literals, connection strings with passwords, and tokens; check how the code obtains credentials."),
+    ("iso5055-sec-least-surface", "error",
+     "ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.",
+     "Enumerate what the intent exposes (endpoints, files written, flags) and check each against who actually needs it."),
+    // Performance efficiency
+    ("iso5055-perf-bounded-work", "warning",
+     "ISO 5055 Performance Efficiency (CWE-834/1050): no unbounded loops/recursion over external-sized data; iteration and queries are bounded, paginated, or capped.",
+     "Look for loops over unbounded collections nested in loops (N+1 patterns), recursion without a depth guard, and full scans where a limit exists."),
+    ("iso5055-perf-no-redundant-work", "warning",
+     "ISO 5055 Performance Efficiency (CWE-1042/1046): no repeated identical I/O, queries, or allocation in hot paths — cache or hoist invariant work out of loops.",
+     "Find work inside loops that is invariant across iterations (reads, compiles, allocations) and repeated identical calls that could be batched."),
+    // Maintainability
+    ("iso5055-main-single-responsibility", "warning",
+     "ISO 5055 Maintainability (CWE-1080/1120): each unit (file, function, intent) owns one coherent responsibility; oversized or multi-concern units are split.",
+     "Check unit sizes and concern count; cross-check `loom smells` (tangled_file / scattered_intent) for the same intent."),
+    ("iso5055-main-no-dead-or-duplicate-code", "warning",
+     "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
+     "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files."),
+];
+
 pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let cwd = env::current_dir()?;
     let db_file = ensure_initialized(&cwd)?;
@@ -38,6 +79,47 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 printer.print_json(&rule);
             } else {
                 println!("✓ Rule '{}' created  (id: {})", name, id);
+            }
+        }
+
+        RuleCmd::Seed { pack } => {
+            gate::acting_in_lane("seed a rule pack", &[role::QUALITY], None)?;
+            if pack != "iso5055" {
+                anyhow::bail!("Unknown pack '{}'. Available: iso5055", pack);
+            }
+            let existing: std::collections::HashSet<String> =
+                list_rules(&db)?.into_iter().map(|r| r.name).collect();
+            let mut created: Vec<QualityRule> = Vec::new();
+            let mut skipped = 0usize;
+            for (name, severity, description, detection) in ISO5055_PACK {
+                if existing.contains(*name) {
+                    skipped += 1;
+                    continue;
+                }
+                let rule = QualityRule {
+                    id:              Uuid::new_v4().to_string(),
+                    name:            (*name).to_string(),
+                    description:     (*description).to_string(),
+                    detection_logic: (*detection).to_string(),
+                    severity:        (*severity).to_string(),
+                };
+                insert_rule(&db, &rule)?;
+                created.push(rule);
+            }
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "pack": pack,
+                    "created": created, "skipped_existing": skipped,
+                    "next": "loom smells will flag every coded intent these rules were never held against; \
+                             resolve each with loom rule apply + loom rule verdict (passing|failing|independent).",
+                }));
+            } else {
+                println!("✓ Seeded pack '{}': {} rule(s) created, {} already present.", pack, created.len(), skipped);
+                for r in &created {
+                    println!("  + [{}] {}", r.severity, r.name);
+                }
+                println!("  → `loom smells` now flags every coded intent these were never held against;");
+                println!("    measure with `loom rule apply` + `loom rule verdict` (independent = doesn't apply).");
             }
         }
 

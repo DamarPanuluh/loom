@@ -165,6 +165,20 @@ pub enum Command {
         #[command(subcommand)]
         subcommand: IgnoreCmd,
     },
+
+    /// Export the graph as deterministic JSON — commit it so the graph travels
+    /// with the repo (and graph changes become diffable in PRs).
+    Export {
+        /// Output file ("-" for stdout).
+        #[arg(long, default_value = "loom.graph.json")]
+        out: String,
+    },
+
+    /// Rebuild a graph from a `loom export` file (into a fresh `loom init`).
+    Import {
+        /// The export file to restore from.
+        file: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +437,14 @@ pub enum RuleCmd {
     /// Show all GOVERNS edges for an intent (violations and passing checks).
     Check {
         intent_id: String,
+    },
+
+    /// Seed a built-in measuring-stick pack (e.g. iso5055: reliability,
+    /// security, performance efficiency, maintainability — CWE-grounded,
+    /// written for LLM inspection). Already-present rule names are skipped.
+    Seed {
+        /// Pack name. Available: iso5055
+        pack: String,
     },
 
     /// Apply a rule to an intent — creates a GOVERNS edge (uninspected).

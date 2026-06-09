@@ -76,9 +76,9 @@ pub fn update_governs_verdict(
     inspected_by: &str,
     now: &str,
 ) -> Result<bool> {
-    if get_governs_between(db, rule_id, intent_id)?.is_none() {
+    let Some(prev) = get_governs_between(db, rule_id, intent_id)? else {
         return Ok(false);
-    }
+    };
     db.execute(&format!(
         "MATCH (r:QualityRule {{id: '{rid}'}})-[e:GOVERNS]->(i:Intent {{id: '{iid}'}}) \
          SET e.inspection_status = '{status}', e.criterion = '{crit}', \
@@ -93,6 +93,7 @@ pub fn update_governs_verdict(
         by     = esc(inspected_by),
         now    = esc(now),
     ))?;
+    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, status, inspected_by, now)?;
     Ok(true)
 }
 

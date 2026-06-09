@@ -1,0 +1,1870 @@
+{
+  "edges": {
+    "GOVERNS": [
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:09:59.807049+00:00",
+        "criterion": "verdict-bearing edges (GOVERNS, VALIDATES, RELATES_TO) are inserted with inspection_status=uninspected",
+        "evidence": "re-inspected after dedupe change: insert defaults unchanged; IMPLEMENTS dedupe no-op does not touch status",
+        "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
+        "id": "66a82564-3443-4deb-8ca6-9bbaa2b697ef",
+        "inspected_by": "llm:quality",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:13:42.702325+00:00",
+        "notes": "",
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:30:23.806989+00:00",
+        "criterion": "would require gate.rs/agent.rs to insert verdict-bearing edges",
+        "evidence": "the gate layer validates inputs and resolves provenance; it performs zero graph writes — edge defaults live in the query layer",
+        "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
+        "id": "8b6cbe08-bca4-4aef-8a5f-304dbe24b07b",
+        "inspected_by": "llm:quality",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-09T19:30:23.831431+00:00",
+        "notes": "",
+        "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:09:59.781200+00:00",
+        "criterion": "no GQL matches/filters a relationship by its own property; endpoints or scan+filter only",
+        "evidence": "re-inspected after insert_implements dedupe change: the new existence check matches by endpoint nodes (i.id + cf.id), conforming",
+        "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
+        "id": "67564ae4-89f0-4802-af81-a647a4f41d37",
+        "inspected_by": "llm:quality",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:13:25.635333+00:00",
+        "notes": "",
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:30:23.707365+00:00",
+        "criterion": "queue queries match nodes only; no relationship matched by its own property",
+        "evidence": "scoring.rs intent_degree + unexplored_pairs use node-anchored MATCH; candidate filtering is list_relates_to scan+filter in Rust",
+        "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
+        "id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "inspected_by": "llm:quality",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:30:23.734074+00:00",
+        "notes": "",
+        "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:30:23.757969+00:00",
+        "criterion": "would require output code to construct GQL relationship matches",
+        "evidence": "output.rs renders structs to text/JSON only; it constructs no queries, so the rule has no surface here",
+        "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
+        "id": "3e9d343f-e16e-4f44-a6e0-6650be668708",
+        "inspected_by": "llm:quality",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-09T19:30:23.781802+00:00",
+        "notes": "",
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      }
+    ],
+    "HIERARCHY": [
+      {
+        "created_at": "2026-06-09T19:13:06.453432+00:00",
+        "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "id": "ed26acbc-e41f-4e1b-8452-9fa7759f78a9",
+        "notes": "",
+        "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.714803+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "9933dc66-2282-4479-ba4e-69d66a591fe8",
+        "notes": "",
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.763364+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "da89c4e4-5aeb-492a-8b0e-192f8abb95c1",
+        "notes": "",
+        "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.746812+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "c5c43ee8-1287-409e-9037-caa6955d70d2",
+        "notes": "",
+        "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.814694+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "3846ebb2-607c-4282-b7dd-7f218fe812bd",
+        "notes": "",
+        "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.731120+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "0ac47b54-fea2-415c-af95-598ae86e5eb2",
+        "notes": "",
+        "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.695835+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "abf7d947-a6a0-4811-b3f9-2f15185c71ac",
+        "notes": "",
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.779392+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "6f1c79b4-7152-4617-89e1-936716d4006e",
+        "notes": "",
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.797633+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "9b849721-5745-4bbf-ae99-6099574205b2",
+        "notes": "",
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
+        "created_at": "2026-06-09T19:07:33.831122+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "a70ce2ef-3e78-4f9c-b138-9c83cb65ef6e",
+        "notes": "",
+        "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "created_at": "2026-06-09T19:13:06.427432+00:00",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "cc1ad510-f58b-4c67-a48b-3e5c89029b4b",
+        "notes": "",
+        "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
+      },
+      {
+        "created_at": "2026-06-09T19:13:06.397312+00:00",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "d57db80e-49b1-41f1-a09e-a9f3e2b1356d",
+        "notes": "",
+        "to": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433"
+      }
+    ],
+    "IMPLEMENTS": [
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.981029+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "1c9b799d-c4cc-45c4-bd18-1e861467b622",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "0c5bde3a-5f38-4121-ada8-f3cf2fc5491a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.244560+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "b2bc9a67-05fa-4cba-92bc-b560482dbe43",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "0e7293c8-d1ce-45bd-8790-67e6e72e9d36"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.265646+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "d44e320d-59c5-485c-a2ff-03c3e043791f",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "128fda40-a588-469a-ab5c-fb60a4cb1af5"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.001231+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "c79cc541-d1cf-43a3-bece-dcd06b29ea60",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "1ad55221-b661-458a-b55a-5d38bab9d3f1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.906434+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "af1a1605-7ab3-40bf-b0ba-5abe4c6bb9f9",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "39e01277-391e-416e-a5bf-b6561c4affec"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.039468+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "c8b1a70e-37dd-4f49-9f37-309b481d01f6",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "3cb4e37d-7dcd-40d4-878f-48dec5e6c5af"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.077664+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "475a2887-8632-412c-b15e-9f86b2a5d27a",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.166099+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "c86a3351-59d3-476a-ad2c-91f08f336519",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "5015c7bc-4f78-4340-a026-55b5b2aa5c20"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.225429+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "0ae07570-8aed-4e9d-a5f4-7674a7855e67",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "7631b4fd-0a35-4ae7-94f4-ed32865e67f0"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.372731+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "8a74a3e2-7cfe-43c2-8ffc-9dec5202be47",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "90a34209-fe1e-46e3-874a-cffbcd47b60f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.057878+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "3b8cd8ed-c8a0-452c-bc3f-c988fc326c81",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "a81af48d-72ad-4b70-8da4-813de7f8b7dd"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.097536+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "e81a3c3f-ecb3-4b43-b6fc-da6a82bc4bbe",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "afb8cfa4-9efd-41df-adcb-18162a17eef4"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.962306+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "65738451-3b00-4ee1-9285-61080d1ddcc9",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "eb6f75c9-50a2-4076-a1c5-20b8a9335269"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.943922+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "939aaca1-9f94-4b6a-bb9a-90beb7fda462",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "ebe78bdf-ce58-442c-afa9-24655bef3896"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.116335+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "07a2f8f0-6bd6-4ddf-85dd-52e2d187f17b",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "ecd4abeb-80b1-4d15-bf77-c355062c451f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.135518+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "49c30cdd-0eba-453d-b25f-0415c23d24da",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "ed23fd79-5547-416b-9851-f956a44a2897"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.887590+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "2e193f0a-aa13-4f4b-92f3-8b44d8bb5c52",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "f62eec3c-420e-4cf9-9d7b-6955cf1dd672"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.292556+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
+        "id": "0100a2e4-3629-4c1f-837e-5f23b0aa82b2",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "0dc19b2f-02d4-4e56-8a53-f17b4499c225"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.433518+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
+        "id": "26cd6043-b37e-4676-afa1-309fdd38b169",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "5ff43321-c1a7-4443-b853-3dd03e68b1cd"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.828351+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
+        "id": "90f857ee-937e-4690-a7fd-4808cf585fe9",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.529956+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "id": "0c60bb37-1b71-408a-892d-48fdcfb05d9c",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "2fa22005-5a17-4c07-9887-6ad5bdb6c2d0"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.353562+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "id": "0ce7cbb0-da5e-4ca1-a97c-d1dfdead825b",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "f4679c54-0f38-46c3-8b8a-a194497c42df"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.473509+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "id": "bca2342d-0818-4079-80d1-4f414d985d05",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "8f3a56f9-9b2b-4cbc-b3fa-1bad25b2abed"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.707761+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "id": "16c65e1f-dbad-4088-99c8-e0b10c4a2dbe",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "94b1873b-7573-41c7-9963-4bb0201a9b55"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.185273+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "id": "e30c8445-ada0-4bb8-96b7-27ada2516642",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:32.786278+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "4b0c748c-40a6-4095-9065-f9862c07f53c",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "[dependencies]",
+        "notes": "embedded grafeo + clap + serde; the stack choice is a system-level decision",
+        "to": "6e45d28c-4921-4452-8e9b-188f9e088169"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.568106+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "838cb48a-c67d-4ff9-8cbe-c2d278c651c8",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "1118c655-b551-4fa8-9d65-5debeb1f1dfb"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.668051+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "80e0504a-d526-4104-a49a-abf4849715ee",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "59586001-f497-4255-a7bc-75fd8a2f486a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.628171+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "39a3b0df-dfae-44fc-b58c-463a7b539eec",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "61d1f5b0-4942-4ebf-8846-2815eb302286"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.687750+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "cc3a8f0c-e5f3-4e8b-a4e7-24ee6d7a67d6",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "62532fce-0993-4eb2-94cd-f9c069a6e502"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.492044+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "06cb20dd-187f-47ce-a3ad-2da33df69527",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "7bc067f9-79ea-4123-a3e6-571318d9f6f3"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.847947+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "b55b8415-9056-4f70-a494-c08fe1d9bbf1",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "7be1c91f-171f-4d32-9731-3ae70c8b3ba2"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.313488+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "dd1d4acd-2d2b-40dd-98ad-297e2c48a71d",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "966a7e34-2119-4aa8-8e06-d222e9f66ed2"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.767784+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "9b5cd70e-f529-47e7-a937-f958c2b01888",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "a12abcff-1325-4014-b5b6-0b56b6f543c1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.868333+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "79d346f7-b41c-4524-941c-19b207a49d3a",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "a65ac5b7-1d28-40bd-823c-b464615a19a4"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.648127+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "070b0956-89c1-4628-ab09-51644a4352ef",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "b88058a0-287e-4cd1-85d0-d02caa0b996a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.729501+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "79620cab-6705-4178-b11b-97062b6a55ef",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "bb6a3984-4231-469f-8dcc-f0373f60b1ce"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.453031+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "15e0d867-c64c-4335-9087-61464f34e3be",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "db9d0090-a0bd-4179-9a02-f6523379e99a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.925003+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "d5178cbf-9011-48fa-8e2a-eb9a2e51b594",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "a4742512-8274-4e59-810d-1281146a7b16"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.510641+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "8f960f65-c061-4383-9f95-1c5ca3f75a0c",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "aaff5296-2082-46f5-8d48-6203c07352df"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.548215+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "0ace1880-558e-44c7-8179-bc21cfad561a",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "ac0925d4-fc84-414b-9c3a-0d9497ba906a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.608150+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "506caa99-502a-4a00-9451-217f505a5779",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "b71a9811-845a-434e-bc20-3bd62aa2aec1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.748917+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "b532e2a2-cf90-4a91-9808-7b4548bb6b4f",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "bc42a36d-0d95-4474-bbe8-59ce73c185a1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.807910+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "884a3876-a2bb-4a16-ae4b-756f76805eb8",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "bc90d157-fc72-4c2d-80be-8baf51682e92"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.020303+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "a22c42b8-bfd7-4d83-b05f-a87e16d8a4ed",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "bec5a791-c098-48e4-8444-bd7de2b7c465"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.206155+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "49fcafcf-8fbe-42a9-9cf4-73d616216ed7",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:11.334629+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "id": "a4dd2574-aa46-4797-a5a2-32f3cea39702",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.588230+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "id": "69e6e9d6-d631-460d-a50b-790bff7e33d6",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:08:10.787173+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "id": "e769d5ab-d106-4767-9818-9cafc541c17f",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "f856fe8e-8a54-421e-a2e9-10734aabd732"
+      }
+    ],
+    "RELATES_TO": [
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:54:36.202384+00:00",
+        "criterion": "sync mutates the graph exclusively through query-layer functions (flag/update/invalidate listers); 4 static import links confirm the dependency direction db←sync",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T19:54:36.202384+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:54:22.070654+00:00",
+        "criterion": "every command handler reaches the graph only through the query layer (LoomDb trait + flat re-exports); no handler builds GQL",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T19:54:22.070654+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:54:22.103959+00:00",
+        "criterion": "health checks (integrity/completeness/stats) are query-layer modules: they read through the same row helpers and listers as every other query",
+        "evidence": "",
+        "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T19:54:22.103959+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:10:14.108040+00:00",
+        "criterion": "every mutating command handler calls gate::acting_in_lane before its first write",
+        "evidence": "",
+        "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
+        "id": "6c38e08c-6436-41e1-a1bb-d4d4e4f51582",
+        "inspected_by": "llm:fixer",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:13:25.768172+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:10:14.082348+00:00",
+        "criterion": "sync stamps last_synced on LoomMeta which stats.rs surfaces as the freshness pulse in graph_state",
+        "evidence": "",
+        "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
+        "id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:10:14.082348+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-09T19:10:14.159585+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "id": "6602d534-d56c-427d-a8fd-8f857d11e83e",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:10:14.159585+00:00",
+        "notes": "repo introspection is read-only filesystem walking; it writes no graph state, so no lane or evidence gate ever applies to it",
+        "priority_score": 0.0,
+        "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:10:14.055982+00:00",
+        "criterion": "every queue read goes through the LoomDb trait; scoring.rs executes no raw GQL outside the query layer",
+        "evidence": "",
+        "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "inspected_by": "llm:fixer",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:13:25.821095+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:54:22.137915+00:00",
+        "criterion": "dispatch routes doctor/report/status/coverage to the health component's handlers; health has no other entry point",
+        "evidence": "",
+        "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T19:54:22.137915+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:54:22.172533+00:00",
+        "criterion": "every health handler renders through &Printer (text + --json) including the graph_state pulse",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-09T19:54:22.172533+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-09T19:10:14.133873+00:00",
+        "criterion": "every handler renders through &Printer including the path-accepting implement arm",
+        "evidence": "",
+        "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "id": "c65a3245-1fd7-4995-832a-d5e85c0d711f",
+        "inspected_by": "llm:fixer",
+        "inspection_status": "needs_reverification",
+        "last_inspected": "2026-06-09T19:13:25.795605+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      }
+    ],
+    "VALIDATES": [
+      {
+        "created_at": "2026-06-09T19:08:50.135122+00:00",
+        "from": "02259817-e64a-41f7-909e-7e806f040d3d",
+        "id": "3bd9530e-a38a-4a98-986e-1daf68f72d95",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
+      },
+      {
+        "created_at": "2026-06-09T19:08:50.220644+00:00",
+        "from": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
+        "id": "08f4d5dc-9066-48ae-835e-2bba0c9babfb",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "created_at": "2026-06-09T19:08:50.178692+00:00",
+        "from": "4bb6ef5a-46a2-4aac-ac17-8807468c996f",
+        "id": "58674998-ab07-4b11-8a65-c536046cc7ac",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
+      },
+      {
+        "created_at": "2026-06-09T19:09:11.760230+00:00",
+        "from": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
+        "id": "c1fcc942-a1eb-4543-b3e5-422ac4283d22",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "created_at": "2026-06-09T19:08:50.199396+00:00",
+        "from": "6263dc09-2cf5-4400-84da-35a7e13b14da",
+        "id": "19a8ee80-d02d-441b-9f34-5352249cdaf3",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
+      },
+      {
+        "created_at": "2026-06-09T19:08:50.159117+00:00",
+        "from": "6aa2fdc3-ad8b-4849-830c-44673c46bc22",
+        "id": "3e6ca41f-2418-4418-a929-ff08796a5642",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
+      },
+      {
+        "created_at": "2026-06-09T19:09:11.821531+00:00",
+        "from": "9c81436c-9bbc-42fb-bf3a-e9e3f2e35553",
+        "id": "f601649a-1767-40d1-8ae6-6aed7650a5e0",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
+      },
+      {
+        "created_at": "2026-06-09T19:09:11.792447+00:00",
+        "from": "b0b2d205-a258-4b34-bcf9-9b5873152463",
+        "id": "7a843676-8b86-4ac4-a696-7bb92ac3651c",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "created_at": "2026-06-09T19:09:11.843109+00:00",
+        "from": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
+        "id": "bfbe2822-f2ab-45fc-abb6-cd7ea8c2568d",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      }
+    ]
+  },
+  "loom_export": 1,
+  "nodes": {
+    "CodeFile": [
+      {
+        "id": "0c5bde3a-5f38-4121-ada8-f3cf2fc5491a",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T13:34:18.975885466+00:00",
+        "path": "src/db/queries/ignore.rs"
+      },
+      {
+        "id": "0dc19b2f-02d4-4e56-8a53-f17b4499c225",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:32:58.715088202+00:00",
+        "path": "src/gate.rs"
+      },
+      {
+        "id": "0e7293c8-d1ce-45bd-8790-67e6e72e9d36",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T11:18:57.187661500+00:00",
+        "path": "src/db/queries/validation.rs"
+      },
+      {
+        "id": "1118c655-b551-4fa8-9d65-5debeb1f1dfb",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:47:38.453543583+00:00",
+        "path": "src/commands/edge.rs"
+      },
+      {
+        "id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:42:24.303040058+00:00",
+        "path": "src/db/schema.rs"
+      },
+      {
+        "id": "1ad55221-b661-458a-b55a-5d38bab9d3f1",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:12:22.023713042+00:00",
+        "path": "src/db/queries/implements.rs"
+      },
+      {
+        "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
+        "imports": "[\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:53:28.086064943+00:00",
+        "path": "src/commands/guide.rs"
+      },
+      {
+        "id": "2fa22005-5a17-4c07-9887-6ad5bdb6c2d0",
+        "imports": "[\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T13:36:10.365828346+00:00",
+        "path": "src/commands/detect.rs"
+      },
+      {
+        "id": "39e01277-391e-416e-a5bf-b6561c4affec",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:43:08.964205756+00:00",
+        "path": "src/db/queries/codefile.rs"
+      },
+      {
+        "id": "3cb4e37d-7dcd-40d4-878f-48dec5e6c5af",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:47:38.452929669+00:00",
+        "path": "src/db/queries/intent.rs"
+      },
+      {
+        "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:53:01.130370419+00:00",
+        "path": "src/db/queries/mod.rs"
+      },
+      {
+        "id": "5015c7bc-4f78-4340-a026-55b5b2aa5c20",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T11:18:57.181970818+00:00",
+        "path": "src/db/queries/rule.rs"
+      },
+      {
+        "id": "59586001-f497-4255-a7bc-75fd8a2f486a",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:36:48.756213126+00:00",
+        "path": "src/commands/intent.rs"
+      },
+      {
+        "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T16:45:00.495091482+00:00",
+        "path": "src/output.rs"
+      },
+      {
+        "id": "5ff43321-c1a7-4443-b853-3dd03e68b1cd",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:02:13.973575962+00:00",
+        "path": "src/agent.rs"
+      },
+      {
+        "id": "61d1f5b0-4942-4ebf-8846-2815eb302286",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:03:27.882659999+00:00",
+        "path": "src/commands/ignore.rs"
+      },
+      {
+        "id": "62532fce-0993-4eb2-94cd-f9c069a6e502",
+        "imports": "[\"src/cli.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:50:44.660246609+00:00",
+        "path": "src/commands/mod.rs"
+      },
+      {
+        "id": "6e45d28c-4921-4452-8e9b-188f9e088169",
+        "imports": "[]",
+        "language": "unknown",
+        "last_modified": "2026-06-09T13:33:28.657883518+00:00",
+        "path": "Cargo.toml"
+      },
+      {
+        "id": "7631b4fd-0a35-4ae7-94f4-ed32865e67f0",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T11:19:11.324143386+00:00",
+        "path": "src/db/queries/validates.rs"
+      },
+      {
+        "id": "7bc067f9-79ea-4123-a3e6-571318d9f6f3",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:44:24.836673643+00:00",
+        "path": "src/commands/codefile.rs"
+      },
+      {
+        "id": "7be1c91f-171f-4d32-9731-3ae70c8b3ba2",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:10:57.258475124+00:00",
+        "path": "src/commands/validate.rs"
+      },
+      {
+        "id": "8f3a56f9-9b2b-4cbc-b3fa-1bad25b2abed",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T09:20:29.435169596+00:00",
+        "path": "src/commands/cluster.rs"
+      },
+      {
+        "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:45:46.048031586+00:00",
+        "path": "src/types.rs"
+      },
+      {
+        "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:44:26.457706023+00:00",
+        "path": "src/commands/next.rs"
+      },
+      {
+        "id": "966a7e34-2119-4aa8-8e06-d222e9f66ed2",
+        "imports": "[\"src/agent.rs\",\"src/cli.rs\",\"src/commands/mod.rs\",\"src/db/mod.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/repo.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:33:04.442462824+00:00",
+        "path": "src/main.rs"
+      },
+      {
+        "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:52:05.689461465+00:00",
+        "path": "src/commands/rule.rs"
+      },
+      {
+        "id": "a4742512-8274-4e59-810d-1281146a7b16",
+        "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:06:21.755096283+00:00",
+        "path": "src/db/queries/completeness.rs"
+      },
+      {
+        "id": "a65ac5b7-1d28-40bd-823c-b464615a19a4",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:37:03.240724060+00:00",
+        "path": "src/commands/validation.rs"
+      },
+      {
+        "id": "a81af48d-72ad-4b70-8da4-813de7f8b7dd",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T12:31:24.527306232+00:00",
+        "path": "src/db/queries/meta.rs"
+      },
+      {
+        "id": "aaff5296-2082-46f5-8d48-6203c07352df",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T13:36:28.796802190+00:00",
+        "path": "src/commands/coverage.rs"
+      },
+      {
+        "id": "ac0925d4-fc84-414b-9c3a-0d9497ba906a",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T12:01:12.488870373+00:00",
+        "path": "src/commands/doctor.rs"
+      },
+      {
+        "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:48:56.118408208+00:00",
+        "path": "src/db/queries/scoring.rs"
+      },
+      {
+        "id": "afb8cfa4-9efd-41df-adcb-18162a17eef4",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:46:03.670965652+00:00",
+        "path": "src/db/queries/note.rs"
+      },
+      {
+        "id": "b71a9811-845a-434e-bc20-3bd62aa2aec1",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T12:43:36.804566726+00:00",
+        "path": "src/commands/hotspots.rs"
+      },
+      {
+        "id": "b88058a0-287e-4cd1-85d0-d02caa0b996a",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T12:51:10.995404421+00:00",
+        "path": "src/commands/init.rs"
+      },
+      {
+        "id": "bb6a3984-4231-469f-8dcc-f0373f60b1ce",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:03:09.506247071+00:00",
+        "path": "src/commands/note.rs"
+      },
+      {
+        "id": "bc42a36d-0d95-4474-bbe8-59ce73c185a1",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T16:45:13.688414138+00:00",
+        "path": "src/commands/report.rs"
+      },
+      {
+        "id": "bc90d157-fc72-4c2d-80be-8baf51682e92",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T12:47:06.172716127+00:00",
+        "path": "src/commands/status.rs"
+      },
+      {
+        "id": "bec5a791-c098-48e4-8444-bd7de2b7c465",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:26:47.264655365+00:00",
+        "path": "src/db/queries/integrity.rs"
+      },
+      {
+        "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
+        "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T18:41:29.576043407+00:00",
+        "path": "src/db/queries/stats.rs"
+      },
+      {
+        "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:51:26.141155698+00:00",
+        "path": "src/cli.rs"
+      },
+      {
+        "id": "eb6f75c9-50a2-4076-a1c5-20b8a9335269",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T17:57:59.891368863+00:00",
+        "path": "src/db/queries/hierarchy.rs"
+      },
+      {
+        "id": "ebe78bdf-ce58-442c-afa9-24655bef3896",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:47:38.453171918+00:00",
+        "path": "src/db/queries/governs.rs"
+      },
+      {
+        "id": "ecd4abeb-80b1-4d15-bf77-c355062c451f",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:47:09.798558136+00:00",
+        "path": "src/db/queries/relates_to.rs"
+      },
+      {
+        "id": "ed23fd79-5547-416b-9851-f956a44a2897",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T11:18:57.161215208+00:00",
+        "path": "src/db/queries/row.rs"
+      },
+      {
+        "id": "f4679c54-0f38-46c3-8b8a-a194497c42df",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:44:53.498046813+00:00",
+        "path": "src/repo.rs"
+      },
+      {
+        "id": "f62eec3c-420e-4cf9-9d7b-6955cf1dd672",
+        "imports": "[\"src/db/queries/mod.rs\",\"src/db/schema.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T11:10:23.963150098+00:00",
+        "path": "src/db/mod.rs"
+      },
+      {
+        "id": "f856fe8e-8a54-421e-a2e9-10734aabd732",
+        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:27:35.085852519+00:00",
+        "path": "src/commands/schema.rs"
+      },
+      {
+        "id": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-09T19:44:06.553668118+00:00",
+        "path": "src/commands/sync.rs"
+      }
+    ],
+    "Ignore": [
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:08:32.617332+00:00",
+        "id": "11a3e7e4-58a9-434a-b1c8-7e9e8c9bfadd",
+        "pattern": "build.command",
+        "reason": "developer convenience launcher, not product code"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:08:32.542430+00:00",
+        "id": "31aac448-a13e-49d6-8eb7-d2079aba49e2",
+        "pattern": "Cargo.lock",
+        "reason": "lockfile, generated from Cargo.toml"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:08:32.596738+00:00",
+        "id": "5a2c3819-8c74-4a9b-9d8e-7a256dde850f",
+        "pattern": "CLAUDE.md",
+        "reason": "developer handoff doc for loom contributors; driver knowledge lives in the binary (loom guide/schema)"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:54:36.248397+00:00",
+        "id": "cc45a293-94d9-4017-8fd5-68a6477260f5",
+        "pattern": "loom.graph.json",
+        "reason": "the graph's own travel format, generated by loom export"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:08:32.571701+00:00",
+        "id": "e52ad8f5-252e-47de-b762-49a271fa53c0",
+        "pattern": "LICENSE",
+        "reason": "legal text, not behavior"
+      }
+    ],
+    "Intent": [
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:32.831143+00:00",
+        "description": "embedded grafeo DB behind a LoomDb trait; one long-lived session; all edge queries endpoint-matched or scan+filter because grafeo 0.5.x cannot match relationships by their own property",
+        "domain": "db",
+        "id": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "lifecycle": "needs_change",
+        "name": "graph persistence on grafeo",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:31:07.796416+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.175497+00:00",
+        "description": "a declared LOOM_AGENT role is held to its lane at the command boundary; criterion/evidence/notes must be substantive; confidence bounded to [0,1]; solo mode passes all lanes",
+        "domain": "trust",
+        "id": "20bf582e-df31-4f96-8b37-6171c38e3478",
+        "lifecycle": "implemented",
+        "name": "role lanes and evidence gates",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.697597+00:00"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-09T19:13:06.184910+00:00",
+        "description": "edge implement <intent> 'src/db/**' should ground every matching registered file in one call, mirroring codefile add's glob support; dogfood finding: 48 files needed 48 invocations",
+        "domain": "cli",
+        "id": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
+        "lifecycle": "planned",
+        "name": "bulk grounding via glob",
+        "source_refs": "[]",
+        "status": "proposed",
+        "updated_at": "2026-06-09T19:13:06.184910+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.060085+00:00",
+        "description": "mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported",
+        "domain": "workflow",
+        "id": "29799603-3704-4dfa-9ba4-387a7c1942f8",
+        "lifecycle": "implemented",
+        "name": "sync flag engine",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.676270+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.487387+00:00",
+        "description": "gitignore-aware file walk, stack detection, greenfield/brownfield suggestion; runs before init",
+        "domain": "repo",
+        "id": "382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "lifecycle": "implemented",
+        "name": "repo introspection",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.762829+00:00"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-09T19:13:06.129687+00:00",
+        "description": "every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session",
+        "domain": "cli",
+        "id": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
+        "lifecycle": "planned",
+        "name": "intents addressable by name, not only uuid",
+        "source_refs": "[]",
+        "status": "proposed",
+        "updated_at": "2026-06-09T19:13:06.129687+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:32.943972+00:00",
+        "description": "loom next: one queue per agent role (discovery/fix/build/validate/quality), scored by centrality + urgency - staleness; returns one item with full context so no second lookup is needed",
+        "domain": "workflow",
+        "id": "47c9182c-f7a8-4a50-9281-6d05507e646c",
+        "lifecycle": "implemented",
+        "name": "priority-scored work queues",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.652916+00:00"
+      },
+      {
+        "abstraction_level": "system",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:32.615308+00:00",
+        "description": "Builds and maintains a falsifiable intent graph of a codebase (semantic/physical/normative planes) that any LLM drives via structured CLI commands; the graph is durable memory, the context window is the working set",
+        "domain": "core",
+        "id": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "lifecycle": "implemented",
+        "name": "loom: living intent graph CLI",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.587403+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:32.723724+00:00",
+        "description": "clap-derive command definitions and dispatch to command handlers; bare invocation prints orientation",
+        "domain": "cli",
+        "id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "lifecycle": "needs_change",
+        "name": "CLI surface and dispatch",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:31:07.825735+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.280027+00:00",
+        "description": "vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes",
+        "domain": "health",
+        "id": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "lifecycle": "implemented",
+        "name": "completeness and integrity checking",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.719779+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.385499+00:00",
+        "description": "every command renders human-readable text or --json including a graph_state pulse",
+        "domain": "cli",
+        "id": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "lifecycle": "implemented",
+        "name": "dual-mode output",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.741086+00:00"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-09T19:13:06.293209+00:00",
+        "description": "unexplored RELATES_TO pairs should be ranked beyond raw centrality (e.g. shared files, shared domain, co-change) so a driver is not pointed at 31 equally-scored pairs on a 10-intent graph",
+        "domain": "workflow",
+        "id": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
+        "lifecycle": "planned",
+        "name": "discovery queue ranks pairs by plausibility",
+        "source_refs": "[]",
+        "status": "proposed",
+        "updated_at": "2026-06-09T19:13:06.293209+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-09T19:07:33.589765+00:00",
+        "description": "guide/schema/orientation embed the full driving protocol in the binary so a cold LLM needs no external docs",
+        "domain": "teaching",
+        "id": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "lifecycle": "implemented",
+        "name": "self-teaching surface",
+        "source_refs": "[]",
+        "status": "confirmed",
+        "updated_at": "2026-06-09T19:09:12.785780+00:00"
+      }
+    ],
+    "Note": [
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T19:54:36.202384+00:00",
+        "id": "0a1e5ee8-bdc5-44c0-aff6-350ce24c07f2",
+        "kind": "transition",
+        "target_id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:31:07.825735+00:00",
+        "id": "182068a9-d8e2-41e2-b5e5-b8434c91fb3b",
+        "kind": "decision",
+        "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "target_kind": "intent",
+        "text": "lifecycle → needs_change: loom smells: scattered across 12 files — decompose into child intents per command family"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T19:10:33.851381+00:00",
+        "id": "34243df7-0c16-498f-89dd-5924470efd32",
+        "kind": "decision",
+        "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "target_kind": "intent",
+        "text": "lifecycle → needs_change: loom validate holds the grafeo DB lock (one long-lived session) while running validation commands as subprocesses; any validation that itself invokes loom (e.g. 'loom status --json') fails with GRAFEO-X001 lock error. Fix: read everything first, RELEASE the connection, run commands, reopen to persist results."
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T19:54:22.172533+00:00",
+        "id": "534832d5-5eff-4485-83ca-8806243233d5",
+        "kind": "transition",
+        "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T19:54:22.070654+00:00",
+        "id": "63eddbc9-d5a6-4772-bafc-189c3587b4b6",
+        "kind": "transition",
+        "target_id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:builder",
+        "created_at": "2026-06-09T19:31:07.796416+00:00",
+        "id": "66d11ae0-d5d0-4864-9651-7a7ae79697be",
+        "kind": "decision",
+        "target_id": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
+        "target_kind": "intent",
+        "text": "lifecycle → needs_change: loom smells: scattered across 17 files — decompose into child intents per query concern (node queries / edge queries / scoring / health)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T19:54:22.103959+00:00",
+        "id": "abadd0a2-e3ba-448f-a0a1-430aee98bdeb",
+        "kind": "transition",
+        "target_id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T19:11:27.457007+00:00",
+        "id": "b4e43101-ddfa-4436-a487-d56157067dc6",
+        "kind": "decision",
+        "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: validate.rs now releases the DB session while commands run (read → drop → run → reopen → persist)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-09T19:54:22.137915+00:00",
+        "id": "ec248457-2258-4b49-b805-2d0dd4acddfd",
+        "kind": "transition",
+        "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      }
+    ],
+    "QualityRule": [
+      {
+        "description": "ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.",
+        "detection_logic": "Enumerate what the intent exposes (endpoints, files written, flags) and check each against who actually needs it.",
+        "id": "1eb1cdd6-b7e3-4541-80f3-a63a9c58992d",
+        "name": "iso5055-sec-least-surface",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.",
+        "detection_logic": "Trace untrusted inputs to every interpreter sink (exec/system calls, query strings, format/eval, HTML output) and check the escaping/parameterization at each.",
+        "id": "25901364-0607-4ca6-bf98-d60ec49d5cce",
+        "name": "iso5055-sec-no-injection",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.",
+        "detection_logic": "Scan the intent's files for key-like literals, connection strings with passwords, and tokens; check how the code obtains credentials.",
+        "id": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
+        "name": "iso5055-sec-no-hardcoded-secrets",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Reliability (CWE-772/404): every acquired resource (file, lock, connection, handle) is released on ALL paths, including error paths.",
+        "detection_logic": "Look for acquisitions without RAII/defer/finally protection, locks held across I/O or awaits, and early returns that skip cleanup.",
+        "id": "40432472-8004-405c-95b9-428c5087179f",
+        "name": "iso5055-rel-resource-release",
+        "severity": "error"
+      },
+      {
+        "description": "trust norm: no verdict-bearing edge may default to passing; compliance/proof states start uninspected and are earned by an inspecting agent",
+        "detection_logic": "",
+        "id": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
+        "name": "green-is-earned",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Performance Efficiency (CWE-834/1050): no unbounded loops/recursion over external-sized data; iteration and queries are bounded, paginated, or capped.",
+        "detection_logic": "Look for loops over unbounded collections nested in loops (N+1 patterns), recursion without a depth guard, and full scans where a limit exists.",
+        "id": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
+        "name": "iso5055-perf-bounded-work",
+        "severity": "warning"
+      },
+      {
+        "description": "ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.",
+        "detection_logic": "Trace each external input to its first use: is there a validation/parse step with an error path before the value reaches logic or storage?",
+        "id": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
+        "name": "iso5055-rel-boundary-validation",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
+        "detection_logic": "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files.",
+        "id": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
+        "name": "iso5055-main-no-dead-or-duplicate-code",
+        "severity": "warning"
+      },
+      {
+        "description": "ISO 5055 Maintainability (CWE-1080/1120): each unit (file, function, intent) owns one coherent responsibility; oversized or multi-concern units are split.",
+        "detection_logic": "Check unit sizes and concern count; cross-check `loom smells` (tangled_file / scattered_intent) for the same intent.",
+        "id": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
+        "name": "iso5055-main-single-responsibility",
+        "severity": "warning"
+      },
+      {
+        "description": "ISO 5055 Reliability (CWE-252/248/391): every fallible operation's failure path is handled or explicitly propagated — no silently ignored return value, no exception/panic escaping a boundary uncaught.",
+        "detection_logic": "Inspect the intent's error paths: ignored Results/return codes, unwrap/expect on external input, bare catch-alls, missing error branches at I/O, parse, lock, and network boundaries.",
+        "id": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
+        "name": "iso5055-rel-no-unchecked-failure",
+        "severity": "error"
+      },
+      {
+        "description": "ISO 5055 Performance Efficiency (CWE-1042/1046): no repeated identical I/O, queries, or allocation in hot paths — cache or hoist invariant work out of loops.",
+        "detection_logic": "Find work inside loops that is invariant across iterations (reads, compiles, allocations) and repeated identical calls that could be batched.",
+        "id": "a3acb075-bf35-4985-8c48-d519f39c0c31",
+        "name": "iso5055-perf-no-redundant-work",
+        "severity": "warning"
+      },
+      {
+        "description": "ISO 5055 reliability: no GQL may match or filter a relationship by its own property (grafeo 0.5.x returns nondeterministic results); edges are keyed by endpoint nodes or scanned and filtered in Rust",
+        "detection_logic": "",
+        "id": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
+        "name": "endpoint-matched-edges",
+        "severity": "error"
+      }
+    ],
+    "Validation": [
+      {
+        "command": "cargo test db::queries 2>/dev/null",
+        "description": "",
+        "id": "02259817-e64a-41f7-909e-7e806f040d3d",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:13:25.092831+00:00",
+        "name": "query-layer regression suite",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test -- completeness doctor 2>/dev/null",
+        "description": "",
+        "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:08:51.352571+00:00",
+        "name": "completeness + doctor tests",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test build_queue_defers_planned_parents_until_children_done 2>/dev/null",
+        "description": "",
+        "id": "4bb6ef5a-46a2-4aac-ac17-8807468c996f",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:08:51.065598+00:00",
+        "name": "build-altitude and queue tests",
+        "validation_type": "test"
+      },
+      {
+        "command": "./target/debug/loom --help > /dev/null",
+        "description": "",
+        "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:13:25.036799+00:00",
+        "name": "CLI parses and dispatches: --help exits 0",
+        "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test governs_ripple_invalidates_passing_verdicts 2>/dev/null",
+        "description": "",
+        "id": "6263dc09-2cf5-4400-84da-35a7e13b14da",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:08:51.214371+00:00",
+        "name": "governs ripple test",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test gate::tests 2>/dev/null",
+        "description": "",
+        "id": "6aa2fdc3-ad8b-4849-830c-44673c46bc22",
+        "last_result": "passed",
+        "last_run": "2026-06-09T19:08:50.931198+00:00",
+        "name": "lane + evidence gate unit tests",
+        "validation_type": "test"
+      },
+      {
+        "command": "./target/debug/loom detect --json | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d[\"suggested_mode\"]'",
+        "description": "",
+        "id": "9c81436c-9bbc-42fb-bf3a-e9e3f2e35553",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:09:12.195988+00:00",
+        "name": "detect runs pre-init and reports the stack",
+        "validation_type": "assertion"
+      },
+      {
+        "command": "./target/debug/loom --json > /dev/null && ./target/debug/loom guide --json | python3 -m json.tool > /dev/null && ./target/debug/loom schema --json | python3 -m json.tool > /dev/null",
+        "description": "",
+        "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
+        "last_result": "not_run",
+        "last_run": "2026-06-09T19:09:11.911942+00:00",
+        "name": "orientation + guide + schema emit valid JSON",
+        "validation_type": "assertion"
+      },
+      {
+        "command": "./target/debug/loom status --json | python3 -c 'import sys,json; gs=json.load(sys.stdin)[\"graph_state\"]; assert gs[\"phase\"]'",
+        "description": "",
+        "id": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
+        "last_result": "passed",
+        "last_run": "2026-06-09T19:11:27.493522+00:00",
+        "name": "status --json carries the graph_state pulse",
+        "validation_type": "assertion"
+      }
+    ]
+  },
+  "schema_version": "3"
+}

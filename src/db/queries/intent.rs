@@ -39,16 +39,16 @@ pub fn set_intent_lifecycle(
     lifecycle: &str,
     updated_at: &str,
 ) -> Result<bool> {
-    let check = db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)
-    ))?;
-    if check.rows().is_empty() {
+    let Some(prev) = get_intent(db, id)? else {
         return Ok(false);
-    }
+    };
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.lifecycle = '{}', n.updated_at = '{}'",
         esc(id), esc(lifecycle), esc(updated_at)
     ))?;
+    // Lifecycle changes are the intent-level recurrence signal (an intent
+    // that keeps returning to needs_change is a hotspot of trouble).
+    super::note::record_transition(db, "intent", id, &prev.lifecycle, lifecycle, "loom", updated_at)?;
     Ok(true)
 }
 

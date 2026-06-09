@@ -37,6 +37,33 @@ pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
     Ok(())
 }
 
+/// Auto-record a status transition as an append-only `transition` note — the
+/// graph's recurrence memory. Written by loom itself at every verdict change;
+/// `loom smells` reads the history to surface targets that keep regressing.
+/// Text format is machine-parseable: "<old> → <new>".
+pub fn record_transition(
+    db: &dyn LoomDb,
+    target_kind: &str, // "edge" | "intent"
+    target_id: &str,
+    old_status: &str,
+    new_status: &str,
+    author: &str,
+    now: &str,
+) -> Result<()> {
+    if old_status == new_status {
+        return Ok(());
+    }
+    insert_note(db, &Note {
+        id: uuid::Uuid::new_v4().to_string(),
+        kind: "transition".to_string(),
+        text: format!("{} → {}", if old_status.is_empty() { "?" } else { old_status }, new_status),
+        author: author.to_string(),
+        target_kind: target_kind.to_string(),
+        target_id: target_id.to_string(),
+        created_at: now.to_string(),
+    })
+}
+
 /// All notes, newest last, optionally filtered (in Rust) by target id and/or
 /// kind. Scanning + filtering in Rust keeps this on the reliable query path.
 pub fn list_notes(

@@ -58,6 +58,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     // Stamp the current mtime so the first `loom sync` is a no-op
                     // and only genuine later edits ripple needs_reverification.
                     last_modified: crate::repo::mtime_rfc3339(&cwd.join(&p)).unwrap_or_default(),
+                    imports:       "[]".to_string(), // populated by `loom sync`
                 };
                 insert_codefile(&db, &cf)?;
                 added.push(cf);

@@ -310,14 +310,34 @@ loom smells [--limit N]
   Derived problem signals — the graph as instrument, not ledger. Computed from
   structure alone (no LLM judgment in the flagging): twin intents (split-brain:
   same level, similar wording, no edge), overlapping ownership (two intents
-  claim the same file, no edge), scattered intents (≥6 files), tangled files
-  (≥3 intents), unmeasured intents (a QualityRule exists but was never held
-  against an intent that has code), unused rules. Each finding carries the
-  exact remedy command. The same suspicion signals (shared files, description
-  overlap, same domain) rank unexplored pairs in `loom next` discovery, with
-  the why in the work item's notes. `loom rule verdict --status independent`
-  records "measured — rule does not apply" so unmeasured findings can be
-  resolved honestly without faking compliance.
+  claim the same file, no edge), scattered intents (level-aware thresholds),
+  tangled files (≥3 intents), undeclared coupling (file A imports file B but
+  their intents have no edge — physical evidence vs semantic graph), recurrent
+  trouble (a target whose transition history keeps returning to failing/
+  needs_change — redesign, don't re-patch), unmeasured intents (a QualityRule
+  exists but was never held against an intent that has code), unused rules.
+  Each finding carries the exact remedy command. The same suspicion signals
+  (import links, shared files, description overlap, same domain) rank
+  unexplored pairs in `loom next` discovery, with the why in the work item's
+  notes. `loom rule verdict --status independent` records "measured — rule
+  does not apply" so unmeasured findings resolve honestly.
+
+loom rule seed iso5055
+  Seed the built-in ISO 5055 measuring sticks: 10 CWE-grounded rules across
+  Reliability / Security / Performance Efficiency / Maintainability, written
+  for LLM inspection (detection_logic says what to look for). Idempotent.
+  `loom smells` then drives normative coverage (unmeasured_intents).
+
+loom export [--out loom.graph.json]   ("-" = stdout)
+loom import <file>
+  The graph's travel format: deterministic JSON (same graph → identical bytes)
+  meant to be committed so the graph travels with the repo and graph changes
+  are diffable in PRs. Import restores into a fresh `loom init` (never merges);
+  run `loom sync` after to reconcile with the machine's files.
+
+Every verdict transition (ground/issue/independent/fix/rule verdict/lifecycle
+mark) is auto-recorded as an append-only note (kind=transition) — the graph's
+recurrence memory, read by the recurrent_trouble smell.
 
 loom coverage
   Reconcile files on disk (respecting .gitignore) against the graph. Buckets each

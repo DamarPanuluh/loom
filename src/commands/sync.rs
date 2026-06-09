@@ -6,7 +6,8 @@ use std::path::Path;
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
     edges_for_intent, flag_governs_for_intent, intent_ids_implementing_codefile,
-    invalidate_validations_for_codefile, list_codefiles, set_last_synced, update_codefile_mtime,
+    invalidate_validations_for_codefile, list_all_implements, list_codefiles,
+    set_last_synced, update_codefile_imports, update_codefile_mtime,
 };
 use crate::db::schema::esc;
 use crate::output::Printer;
@@ -110,6 +111,49 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         validations_invalidated += n_val;
     }
 
+    // 4. Grounding-truth pass over every file present on disk:
+    //    a) re-extract static imports (the physical-plane evidence that
+    //       smells/discovery reconcile against the semantic graph), and
+    //    b) verify every IMPLEMENTS locator still occurs in its file —
+    //       a renamed symbol must not leave a grounding silently pointing
+    //       at nothing.
+    let mut locators_stale: Vec<String> = Vec::new();
+    let mut contents: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
+    for cf in &codefiles {
+        let abs = if Path::new(&cf.path).is_absolute() {
+            Path::new(&cf.path).to_path_buf()
+        } else {
+            base.join(&cf.path)
+        };
+        if let Ok(content) = fs::read_to_string(&abs) {
+            let imports = crate::repo::extract_imports(&base, &cf.path, &content);
+            let imports_json = serde_json::to_string(&imports)?;
+            if imports_json != cf.imports {
+                update_codefile_imports(&db, &cf.id, &imports_json)?;
+            }
+            contents.insert(cf.path.as_str(), content);
+        }
+    }
+    for im in list_all_implements(&db)? {
+        let Some(content) = contents.get(im.codefile_path.as_str()) else {
+            continue; // file missing on disk — already reported above
+        };
+        if !crate::repo::locator_present(content, &im.locator) {
+            locators_stale.push(format!(
+                "{} @ '{}' (intent '{}')",
+                im.codefile_path, im.locator, im.intent_name
+            ));
+            if im.inspection_status == "passing" {
+                db.execute(&format!(
+                    "MATCH (i:Intent {{id: '{iid}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{cfid}'}}) \
+                     SET e.inspection_status = 'needs_reverification'",
+                    iid = esc(&im.intent_id),
+                    cfid = esc(&im.codefile_id),
+                ))?;
+            }
+        }
+    }
+
     // Stamp the graph as reconciled against disk (freshness signal).
     set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
 
@@ -120,6 +164,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         governs_edges_flagged: governs_flagged,
         validations_invalidated,
         missing_files,
+        locators_stale,
         changes,
     };
 
@@ -146,6 +191,14 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 println!("    {}", p);
             }
             println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
+        }
+        if !report.locators_stale.is_empty() {
+            println!();
+            println!("  ⚠ STALE locators (symbol renamed/moved? grounding flipped to needs_reverification):");
+            for l in &report.locators_stale {
+                println!("    {}", l);
+            }
+            println!("    → re-ground: `loom edge implement <intent> <path> --locator \"<current symbol>\"`.");
         }
         println!();
         if report.files_changed == 0 && report.missing_files.is_empty() {

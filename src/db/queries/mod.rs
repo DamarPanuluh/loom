@@ -22,6 +22,7 @@ pub mod integrity;
 pub mod intent;
 pub mod meta;
 pub mod note;
+pub mod portability;
 pub mod relates_to;
 pub mod rule;
 pub mod scoring;
@@ -43,6 +44,7 @@ pub use integrity::*;
 pub use intent::*;
 pub use meta::*;
 pub use note::*;
+pub use portability::*;
 pub use relates_to::*;
 pub use rule::*;
 pub use scoring::*;
@@ -166,7 +168,7 @@ mod tests {
         update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap();
 
         let e1 = get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap();
-        assert!(fix_edge(&db, &e1.id, "fixed", "t").unwrap());
+        assert!(fix_edge(&db, &e1.id, "fixed", "llm:fixer", "t").unwrap());
 
         assert_eq!(get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap().inspection_status, "passing");
         assert_eq!(get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().inspection_status, "needs_reverification");
@@ -325,7 +327,7 @@ mod tests {
     }
 
     fn codefile(id: &str, path: &str) -> CodeFile {
-        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into() }
+        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: "[]".into() }
     }
 
     /// IMPLEMENTS is a structural grounding assertion → defaults to `passing`,
@@ -511,6 +513,98 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
         assert_eq!(gs.phase, "quality", "uninspected quality gate should drive the quality lane");
+    }
+
+    /// Recurrence memory: verdict transitions are auto-recorded as transition
+    /// notes, and a target that keeps regressing surfaces as recurrent_trouble.
+    #[test]
+    fn transition_history_feeds_recurrent_smell() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        // fail → fix → fail again: two regressions.
+        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence one", 0.9, "llm:analyzer", "t1").unwrap();
+        let e = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        fix_edge(&db, &e.id, "patched once", "llm:fixer", "t2").unwrap();
+        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence two", 0.9, "llm:analyzer", "t3").unwrap();
+
+        let transitions = list_notes(&db, Some(&e.id), Some("transition")).unwrap();
+        assert!(transitions.len() >= 3, "every verdict change recorded: {transitions:?}");
+
+        let smells = compute_smells(&db).unwrap();
+        let rec: Vec<_> = smells.iter().filter(|s| s.kind == "recurrent_trouble").collect();
+        assert_eq!(rec.len(), 1, "{smells:?}");
+        assert!(rec[0].summary.contains("regressed 2 times"), "{}", rec[0].summary);
+    }
+
+    /// Undeclared coupling: file A imports file B, their owning intents have no
+    /// edge → flagged; recording the relationship silences it. The same link
+    /// boosts discovery suspicion.
+    #[test]
+    fn undeclared_coupling_from_imports() {
+        let (db, _) = db_inited(0);
+        insert_intent(&db, &intent("a", "alpha engine")).unwrap();
+        insert_intent(&db, &intent("b", "beta surface")).unwrap();
+        insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfb", "src/b.rs")).unwrap();
+        insert_implements(&db, "im1", "a", "cfa", "", "", "t").unwrap();
+        insert_implements(&db, "im2", "b", "cfb", "", "", "t").unwrap();
+        update_codefile_imports(&db, "cfa", "[\"src/b.rs\"]").unwrap();
+
+        let smells = compute_smells(&db).unwrap();
+        assert!(smells.iter().any(|s| s.kind == "undeclared_coupling"
+            && s.evidence.contains("src/a.rs → src/b.rs")), "{smells:?}");
+        let pairs = unexplored_pairs_scored(&db).unwrap();
+        assert!(pairs[0].0.notes.contains("imports each other"), "{}", pairs[0].0.notes);
+
+        get_or_create_relates_to(&db, "e0", "a", "b", "t").unwrap();
+        update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", 0.9, "llm:analyzer", "t").unwrap();
+        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "undeclared_coupling"));
+    }
+
+    /// Portability: export is deterministic, and an import into a fresh graph
+    /// reproduces every node and edge with its meta intact.
+    #[test]
+    fn export_import_round_trip() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(2);
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        update_codefile_imports(&db, "cf", "[\"src/y.rs\"]").unwrap();
+        insert_implements(&db, "im", &ids[1], "cf", "fn x", "", "t").unwrap();
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", 0.8, "llm:analyzer", "t").unwrap();
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "no_sql".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+        }).unwrap();
+        insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+
+        let export = export_graph(&db).unwrap();
+        let again = export_graph(&db).unwrap();
+        assert_eq!(
+            serde_json::to_string(&export).unwrap(),
+            serde_json::to_string(&again).unwrap(),
+            "export must be deterministic"
+        );
+
+        let db2 = GrafeoDb::in_memory();
+        let report = import_graph(&db2, &export).unwrap();
+        assert!(report.nodes >= 5 && report.edges >= 5, "{report:?}");
+        // Spot-check fidelity: verdict meta and imports survive the trip.
+        let e = get_relates_to_between(&db2, &ids[0], &ids[1]).unwrap().unwrap();
+        assert_eq!(e.inspection_status, "passing");
+        assert_eq!(e.criterion, "parent and child coexist by design");
+        assert!((e.confidence - 0.8).abs() < 1e-9);
+        let cf = list_codefiles(&db2).unwrap();
+        assert_eq!(cf[0].imports, "[\"src/y.rs\"]");
+        // Re-import into the same graph must refuse (restoration, not merge).
+        assert!(import_graph(&db2, &export).is_err());
     }
 
     #[test]

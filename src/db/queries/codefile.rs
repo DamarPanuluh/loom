@@ -13,11 +13,12 @@ use super::row::{col_map, get, str_val};
 pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
     let q = format!(
         "INSERT (:CodeFile {{id: '{id}', path: '{path}', language: '{lang}', \
-         last_modified: '{mtime}'}})",
-        id    = esc(&cf.id),
-        path  = esc(&cf.path),
-        lang  = esc(&cf.language),
-        mtime = esc(&cf.last_modified),
+         last_modified: '{mtime}', imports: '{imports}'}})",
+        id      = esc(&cf.id),
+        path    = esc(&cf.path),
+        lang    = esc(&cf.language),
+        mtime   = esc(&cf.last_modified),
+        imports = esc(if cf.imports.is_empty() { "[]" } else { &cf.imports }),
     );
     db.execute(&q)?;
     Ok(())
@@ -25,11 +26,21 @@ pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
 
 pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
     let q = "MATCH (cf:CodeFile) \
-             RETURN cf.id, cf.path, cf.language, cf.last_modified \
+             RETURN cf.id, cf.path, cf.language, cf.last_modified, cf.imports \
              ORDER BY cf.path";
     let result = db.execute(q)?;
     let cols = col_map(&result);
     Ok(result.rows().iter().map(|row| row_to_codefile(row, &cols)).collect())
+}
+
+/// Store the statically-extracted import list (JSON array of repo-relative
+/// paths) on a CodeFile — written by `loom sync`, read by smells/discovery.
+pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports_json: &str) -> Result<()> {
+    db.execute(&format!(
+        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.imports = '{}'",
+        esc(id), esc(imports_json)
+    ))?;
+    Ok(())
 }
 
 pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<bool> {
@@ -75,5 +86,6 @@ fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
         path:          str_val(get(row, cols, "cf.path")),
         language:      str_val(get(row, cols, "cf.language")),
         last_modified: str_val(get(row, cols, "cf.last_modified")),
+        imports:       str_val(get(row, cols, "cf.imports")),
     }
 }

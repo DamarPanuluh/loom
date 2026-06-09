@@ -151,9 +151,9 @@ pub fn update_relates_to_ground(
     inspected_by: &str,
     now: &str,
 ) -> Result<bool> {
-    if get_relates_to_between(db, from_id, to_id)?.is_none() {
+    let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
-    }
+    };
     db.execute(&format!(
         "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
          SET r.inspection_status = 'passing', r.criterion = '{crit}', \
@@ -166,6 +166,7 @@ pub fn update_relates_to_ground(
         by   = esc(inspected_by),
         now  = esc(now),
     ))?;
+    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "passing", inspected_by, now)?;
     Ok(true)
 }
 
@@ -180,9 +181,9 @@ pub fn update_relates_to_issue(
     inspected_by: &str,
     now: &str,
 ) -> Result<bool> {
-    if get_relates_to_between(db, from_id, to_id)?.is_none() {
+    let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
-    }
+    };
     db.execute(&format!(
         "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
          SET r.inspection_status = 'failing', r.criterion = '{crit}', \
@@ -196,6 +197,7 @@ pub fn update_relates_to_issue(
         by   = esc(inspected_by),
         now  = esc(now),
     ))?;
+    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "failing", inspected_by, now)?;
     Ok(true)
 }
 
@@ -208,9 +210,9 @@ pub fn update_relates_to_independent(
     inspected_by: &str,
     now: &str,
 ) -> Result<bool> {
-    if get_relates_to_between(db, from_id, to_id)?.is_none() {
+    let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
-    }
+    };
     db.execute(&format!(
         "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
          SET r.inspection_status = 'independent', r.notes = '{notes}', \
@@ -221,6 +223,7 @@ pub fn update_relates_to_independent(
         by    = esc(inspected_by),
         now   = esc(now),
     ))?;
+    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "independent", inspected_by, now)?;
     Ok(true)
 }
 
@@ -230,6 +233,7 @@ pub fn fix_edge(
     db: &dyn LoomDb,
     edge_id: &str,
     description: &str,
+    fixed_by: &str,
     now: &str,
 ) -> Result<bool> {
     // Resolve the edge's endpoints by scanning (reliable) — relationship
@@ -240,6 +244,7 @@ pub fn fix_edge(
     };
     let from_id = edge.from_id.clone();
     let to_id = edge.to_id.clone();
+    super::note::record_transition(db, "edge", &edge.id, &edge.inspection_status, "passing", fixed_by, now)?;
 
     // Mark the edge as passing (fixed), keyed by its endpoints.
     db.execute(&format!(

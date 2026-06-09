@@ -288,6 +288,9 @@ pub enum NoteKind {
     Decision,
     /// A follow-up action.
     Todo,
+    /// Auto-recorded status change (the graph's recurrence memory) —
+    /// written by loom itself on every verdict transition, never by hand.
+    Transition,
 }
 
 impl std::fmt::Display for NoteKind {
@@ -299,6 +302,7 @@ impl std::fmt::Display for NoteKind {
             Self::Question      => "question",
             Self::Decision      => "decision",
             Self::Todo          => "todo",
+            Self::Transition    => "transition",
         };
         write!(f, "{s}")
     }
@@ -314,8 +318,9 @@ impl std::str::FromStr for NoteKind {
             "question"      => Ok(Self::Question),
             "decision"      => Ok(Self::Decision),
             "todo"          => Ok(Self::Todo),
+            "transition"    => Ok(Self::Transition),
             other => anyhow::bail!(
-                "Unknown note kind '{}'. Valid: justification, commentary, idea, question, decision, todo",
+                "Unknown note kind '{}'. Valid: justification, commentary, idea, question, decision, todo, transition",
                 other
             ),
         }
@@ -395,6 +400,10 @@ pub struct CodeFile {
     pub path: String,
     pub language: String,
     pub last_modified: String,
+    /// JSON array of repo-relative paths this file statically imports
+    /// (extracted by `loom sync`; empty string on never-synced graphs).
+    #[serde(default)]
+    pub imports: String,
 }
 
 /// Named anti-pattern rule.
@@ -644,6 +653,10 @@ pub struct SyncReport {
     /// Phantom files distort coverage — remove them (`loom codefile remove`)
     /// or restore them.
     pub missing_files: Vec<String>,
+    /// IMPLEMENTS locators that no longer occur in their file (renamed
+    /// symbol?) — the edge was flipped to needs_reverification if it was
+    /// passing. Re-ground with a fresh locator.
+    pub locators_stale: Vec<String>,
     pub changes: Vec<SyncChange>,
 }
 

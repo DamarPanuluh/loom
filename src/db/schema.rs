@@ -141,6 +141,11 @@ pub mod prop {
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";
     pub const LAST_MODIFIED: &str = "last_modified";
+    /// CodeFile: JSON array of repo-relative paths this file statically
+    /// imports — extracted by `loom sync`, consumed by smells/discovery for
+    /// undeclared-coupling reconciliation. NOT in the required-property table
+    /// (additive in v3; absent on older graphs until the next sync).
+    pub const IMPORTS: &str = "imports";
     // QualityRule
     pub const DETECTION_LOGIC: &str = "detection_logic";
     pub const SEVERITY: &str = "severity";

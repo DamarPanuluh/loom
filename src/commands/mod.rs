@@ -7,7 +7,9 @@ pub mod codefile;
 pub mod coverage;
 pub mod detect;
 pub mod doctor;
+pub mod export;
 pub mod guide;
+pub mod import;
 pub mod hotspots;
 pub mod ignore;
 pub mod edge;
@@ -52,6 +54,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Coverage                   => coverage::run(&printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
+        Command::Export      { out }        => export::run(&out, &printer),
+        Command::Import      { file }       => import::run(&file, &printer),
     }
 }
 

@@ -382,13 +382,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // Fix a failing RELATES_TO edge → sets inspection_status = passing
         // ----------------------------------------------------------------
         EdgeCmd::Fix { edge_id, description } => {
-            gate::acting_in_lane("mark a failing edge fixed", &[role::FIXER], None)?;
+            let by = gate::acting_in_lane("mark a failing edge fixed", &[role::FIXER], None)?;
             gate::require_substantive(
                 "description", &description,
                 "what was changed in the code to resolve the violation",
             )?;
             let now = chrono::Utc::now().to_rfc3339();
-            let found = fix_edge(&db, &edge_id, &description, &now)?;
+            let found = fix_edge(&db, &edge_id, &description, &by, &now)?;
             if !found {
                 anyhow::bail!(
                     "Edge '{}' not found.\nRun `loom edge list` to see available edges.",

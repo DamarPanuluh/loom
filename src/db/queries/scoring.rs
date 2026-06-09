@@ -255,6 +255,17 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
         .iter()
         .map(|i| (i.id.as_str(), tokens(&format!("{} {}", i.name, i.description))))
         .collect();
+    // file → file static import links (extracted by `loom sync`): the physical
+    // evidence that two intents' code actually touches.
+    let mut import_links: std::collections::HashSet<(String, String)> =
+        std::collections::HashSet::new();
+    for cf in super::codefile::list_codefiles(db)? {
+        let imports: Vec<String> = serde_json::from_str(&cf.imports).unwrap_or_default();
+        for t in imports {
+            import_links.insert((cf.path.clone(), t.clone()));
+            import_links.insert((t, cf.path.clone()));
+        }
+    }
 
     // Mark every ordered direction that already has an edge, so an existing
     // a→b edge also suppresses the b→a pair (RELATES_TO is conceptually
@@ -302,7 +313,15 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             let shared = fa.intersection(fb).count();
             let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
             let same_domain = !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown";
+            let imports = fa
+                .iter()
+                .flat_map(|x| fb.iter().map(move |y| (x.clone(), y.clone())))
+                .filter(|p| import_links.contains(p))
+                .count();
             let mut why: Vec<String> = Vec::new();
+            if imports > 0 {
+                why.push(format!("their code imports each other ({imports} link(s))"));
+            }
             if shared > 0 {
                 why.push(format!("share {shared} implemented file(s)"));
             }
@@ -312,8 +331,10 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             if same_domain {
                 why.push(format!("same domain '{}'", a.domain));
             }
-            let suspicion =
-                3.0 * shared as f64 + 4.0 * sim + if same_domain { 1.0 } else { 0.0 };
+            let suspicion = 5.0 * imports as f64
+                + 3.0 * shared as f64
+                + 4.0 * sim
+                + if same_domain { 1.0 } else { 0.0 };
 
             let score = degree_of(db, &a.id)? as f64
                 + degree_of(db, &b.id)? as f64

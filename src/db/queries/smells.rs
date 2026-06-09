@@ -16,10 +16,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
 
+use super::codefile::list_codefiles;
 use super::governs::list_all_governs;
 use super::hierarchy::list_all_hierarchy;
 use super::implements::list_all_implements;
 use super::intent::list_intents;
+use super::note::list_notes;
 use super::relates_to::list_relates_to;
 use super::rule::list_rules;
 
@@ -274,7 +276,101 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
         });
     }
 
-    // 6. Unused rule — a measuring stick connected to nothing at all.
+    // 6. Undeclared coupling — the physical plane contradicts the semantic:
+    //    file A statically imports file B, but the intents owning A and B have
+    //    no recorded relationship. The strongest split-brain detector loom has,
+    //    because it is grounded in the code itself, not in testimony.
+    {
+        let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
+        for cf in list_codefiles(db)? {
+            let imports: Vec<String> = serde_json::from_str(&cf.imports).unwrap_or_default();
+            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
+            for target in &imports {
+                let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
+                for a in owners_a {
+                    for b in owners_b {
+                        if a == b || linked.contains(&(a.to_string(), b.to_string())) {
+                            continue;
+                        }
+                        let key = if a < b {
+                            (a.to_string(), b.to_string())
+                        } else {
+                            (b.to_string(), a.to_string())
+                        };
+                        let example = format!("{} → {}", cf.path, target);
+                        let entry = pair_files.entry(key).or_default();
+                        if !entry.contains(&example) {
+                            entry.push(example);
+                        }
+                    }
+                }
+            }
+        }
+        for ((a, b), examples) in pair_files {
+            let (na, nb) = (
+                name_of.get(a.as_str()).copied().unwrap_or(&a),
+                name_of.get(b.as_str()).copied().unwrap_or(&b),
+            );
+            smells.push(Smell {
+                kind: "undeclared_coupling".into(),
+                score: 4.0 + examples.len() as f64,
+                summary: format!(
+                    "code of '{}' imports code of '{}' but no relationship is recorded",
+                    na, nb
+                ),
+                evidence: format!("imports: {}", examples.join(", ")),
+                remedy: format!(
+                    "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
+                    a, b
+                ),
+            });
+        }
+    }
+
+    // 7. Recurrent trouble — the graph's memory of regressions: targets whose
+    //    transition history keeps returning to failing / needs_change. A spot
+    //    that broke twice will break a third time; it needs redesign, not
+    //    another patch.
+    {
+        let mut trouble: HashMap<(String, String), usize> = HashMap::new();
+        for n in list_notes(db, None, Some("transition"))? {
+            if n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change") {
+                *trouble.entry((n.target_kind.clone(), n.target_id.clone())).or_insert(0) += 1;
+            }
+        }
+        let edge_label: HashMap<&str, String> = {
+            let mut m: HashMap<&str, String> = HashMap::new();
+            for e in &relates {
+                m.insert(e.id.as_str(), format!("{} × {}", e.from_name, e.to_name));
+            }
+            for g in &governs {
+                m.insert(g.id.as_str(), format!("{} → {}", g.rule_name, g.intent_name));
+            }
+            m
+        };
+        for ((kind, id), count) in trouble {
+            if count < 2 {
+                continue;
+            }
+            let label = if kind == "intent" {
+                name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
+            } else {
+                edge_label.get(id.as_str()).cloned().unwrap_or_else(|| id.clone())
+            };
+            smells.push(Smell {
+                kind: "recurrent_trouble".into(),
+                score: 2.0 * count as f64,
+                summary: format!(
+                    "'{}' has regressed {} times (transitions to failing/needs_change)",
+                    label, count
+                ),
+                evidence: "see its transition notes (`loom note list --kind transition`)".into(),
+                remedy: "recurring breakage means the criterion or the design is wrong — redesign the intent (decompose, re-specify the criterion) instead of patching again".into(),
+            });
+        }
+    }
+
+    // 8. Unused rule — a measuring stick connected to nothing at all.
     let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
     for r in &rules {
         if !used.contains(r.id.as_str()) {

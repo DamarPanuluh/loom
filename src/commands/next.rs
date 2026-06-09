@@ -79,6 +79,7 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
             path:          imp.codefile_path.clone(),
             language:      String::new(), // path is the primary identifier
             last_modified: String::new(),
+            imports:       String::new(),
         })
         .collect();
 

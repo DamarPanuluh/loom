@@ -124,6 +124,191 @@ pub fn detect(root: &Path) -> Detection {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Grounding truth helpers: locator presence + static import extraction
+// ---------------------------------------------------------------------------
+
+/// True when an IMPLEMENTS locator can still be found in the file's content.
+/// Empty locators are vacuously present (file-level grounding).
+pub fn locator_present(content: &str, locator: &str) -> bool {
+    let l = locator.trim();
+    l.is_empty() || content.contains(l)
+}
+
+/// Best-effort static import extraction: repo-relative paths of files that
+/// `rel_path` references. Heuristic, language-aware (rust / js-ts / python),
+/// and conservative — a candidate is only returned if it exists under `root`.
+/// This is the physical-plane evidence smells reconciles against the semantic
+/// graph (undeclared coupling), so false negatives are fine; false positives
+/// are not.
+pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    let push_if_file = |cand: String, found: &mut Vec<String>| {
+        let norm = normalize(&cand);
+        if !norm.is_empty() && norm != rel_path && root.join(&norm).is_file()
+            && !found.contains(&norm)
+        {
+            found.push(norm);
+        }
+    };
+
+    let ext = Path::new(rel_path).extension().and_then(|e| e.to_str()).unwrap_or("");
+    let dir = Path::new(rel_path)
+        .parent()
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_default();
+
+    match ext {
+        "rs" => {
+            for line in content.lines() {
+                let t = line.trim().strip_prefix("pub ").unwrap_or(line.trim());
+                // `mod x;` → sibling module file.
+                if let Some(rest) = t.strip_prefix("mod ") {
+                    if let Some(name) = rest.strip_suffix(';') {
+                        let name = name.trim();
+                        if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                            push_if_file(format!("{dir}/{name}.rs"), &mut found);
+                            push_if_file(format!("{dir}/{name}/mod.rs"), &mut found);
+                        }
+                    }
+                }
+                // `use crate::a::b::…` → src/a.rs | src/a/mod.rs | src/a/b.rs | …
+                if let Some(rest) = t.strip_prefix("use crate::") {
+                    let path_part: String = rest
+                        .chars()
+                        .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == ':')
+                        .collect();
+                    let segs: Vec<&str> = path_part.split("::").filter(|s| !s.is_empty()).collect();
+                    let mut acc = String::from("src");
+                    for seg in &segs {
+                        acc = format!("{acc}/{seg}");
+                        push_if_file(format!("{acc}.rs"), &mut found);
+                        push_if_file(format!("{acc}/mod.rs"), &mut found);
+                    }
+                }
+            }
+        }
+        "ts" | "tsx" | "js" | "jsx" | "mjs" => {
+            for line in content.lines() {
+                for marker in ["from '", "from \"", "require('", "require(\"", "import('", "import(\""] {
+                    if let Some(idx) = line.find(marker) {
+                        let rest = &line[idx + marker.len()..];
+                        let spec: String = rest
+                            .chars()
+                            .take_while(|c| *c != '\'' && *c != '"')
+                            .collect();
+                        if !spec.starts_with('.') {
+                            continue; // package import, not a repo file
+                        }
+                        let base = format!("{dir}/{spec}");
+                        push_if_file(base.clone(), &mut found);
+                        for e in [".ts", ".tsx", ".js", ".jsx", ".mjs"] {
+                            push_if_file(format!("{base}{e}"), &mut found);
+                        }
+                        for e in ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"] {
+                            push_if_file(format!("{base}{e}"), &mut found);
+                        }
+                    }
+                }
+            }
+        }
+        "py" => {
+            for line in content.lines() {
+                let t = line.trim();
+                let module: Option<(String, bool)> = if let Some(rest) = t.strip_prefix("from ") {
+                    rest.split_whitespace().next().map(|m| (m.to_string(), true))
+                } else {
+                    t.strip_prefix("import ")
+                        .and_then(|rest| rest.split([' ', ',']).next().map(|m| (m.to_string(), false)))
+                };
+                if let Some((m, _)) = module {
+                    let (mut base, name) = if let Some(stripped) = m.strip_prefix('.') {
+                        // relative: each extra leading dot climbs a directory
+                        let ups = stripped.chars().take_while(|c| *c == '.').count();
+                        let name = stripped.trim_start_matches('.');
+                        let mut d = dir.clone();
+                        for _ in 0..ups {
+                            d = Path::new(&d).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                        }
+                        (d, name.to_string())
+                    } else {
+                        (String::new(), m)
+                    };
+                    if base.is_empty() {
+                        base = ".".into();
+                    }
+                    let as_path = name.replace('.', "/");
+                    push_if_file(format!("{base}/{as_path}.py"), &mut found);
+                    push_if_file(format!("{base}/{as_path}/__init__.py"), &mut found);
+                }
+            }
+        }
+        _ => {}
+    }
+    found.sort();
+    found
+}
+
+/// Normalize `a/./b/../c` → `a/c` and strip leading `./`.
+fn normalize(p: &str) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    for seg in p.split('/') {
+        match seg {
+            "" | "." => {}
+            ".." => {
+                if out.pop().is_none() {
+                    return String::new(); // escapes the repo root
+                }
+            }
+            s => out.push(s),
+        }
+    }
+    out.join("/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn locator_presence() {
+        assert!(locator_present("fn run() {}", "fn run"));
+        assert!(locator_present("anything", "")); // file-level grounding
+        assert!(!locator_present("fn walk() {}", "fn run"));
+    }
+
+    #[test]
+    fn imports_rust_js_python() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("src/db")).unwrap();
+        fs::create_dir_all(dir.join("web")).unwrap();
+        fs::create_dir_all(dir.join("pkg")).unwrap();
+        fs::write(dir.join("src/db/mod.rs"), "").unwrap();
+        fs::write(dir.join("src/db/schema.rs"), "").unwrap();
+        fs::write(dir.join("src/gate.rs"), "").unwrap();
+        fs::write(dir.join("src/main.rs"), "mod gate;\nuse crate::db::schema::esc;\n").unwrap();
+        fs::write(dir.join("web/util.ts"), "").unwrap();
+        fs::write(dir.join("web/app.ts"), "import {x} from './util';\nimport pkg from 'react';\n").unwrap();
+        fs::write(dir.join("pkg/helper.py"), "").unwrap();
+        fs::write(dir.join("pkg/main.py"), "from .helper import thing\nimport os\n").unwrap();
+
+        let rs = extract_imports(&dir, "src/main.rs", &fs::read_to_string(dir.join("src/main.rs")).unwrap());
+        assert!(rs.contains(&"src/gate.rs".to_string()), "{rs:?}");
+        assert!(rs.contains(&"src/db/mod.rs".to_string()), "{rs:?}");
+        assert!(rs.contains(&"src/db/schema.rs".to_string()), "{rs:?}");
+
+        let ts = extract_imports(&dir, "web/app.ts", &fs::read_to_string(dir.join("web/app.ts")).unwrap());
+        assert_eq!(ts, vec!["web/util.ts".to_string()], "package imports excluded");
+
+        let py = extract_imports(&dir, "pkg/main.py", &fs::read_to_string(dir.join("pkg/main.py")).unwrap());
+        assert_eq!(py, vec!["pkg/helper.py".to_string()], "stdlib imports excluded: {py:?}");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
 fn lang_of(path: &str) -> &'static str {
     let ext = Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("");
     match ext {
