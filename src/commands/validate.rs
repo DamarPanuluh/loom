@@ -48,23 +48,32 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         return Ok(());
     }
 
+    // Phase 1 (DB open): resolve every Validation node up front.
+    let mut to_run: Vec<crate::types::Validation> = Vec::new();
+    for ve in &validates_edges {
+        match get_validation(&db, &ve.validation_id)? {
+            Some(v) => to_run.push(v),
+            None => eprintln!(
+                "Warning: Validation node '{}' not found in DB — skipping.",
+                ve.validation_id
+            ),
+        }
+    }
+
+    // Phase 2 (DB CLOSED): run the commands with the graph lock released.
+    // loom holds one exclusive grafeo session; a validation command may itself
+    // invoke loom (e.g. `loom status --json` as a smoke check) or anything else
+    // that reads the graph — holding the lock here would deadlock it with
+    // GRAFEO-X001. Found by loom validating itself.
+    drop(db);
+
     let now = chrono::Utc::now().to_rfc3339();
     let mut results: Vec<serde_json::Value> = Vec::new();
+    let mut outcomes: Vec<(String, String)> = Vec::new(); // (validation_id, result)
     let mut passed = 0usize;
     let mut failed = 0usize;
 
-    for ve in &validates_edges {
-        let validation = match get_validation(&db, &ve.validation_id)? {
-            Some(v) => v,
-            None => {
-                eprintln!(
-                    "Warning: Validation node '{}' not found in DB — skipping.",
-                    ve.validation_id
-                );
-                continue;
-            }
-        };
-
+    for validation in &to_run {
         if validation.command.is_empty() {
             results.push(serde_json::json!({
                 "validation_id": validation.id,
@@ -103,12 +112,7 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
             }
         };
         let new_result = result.to_string();
-
-        // Persist result on the Validation node
-        update_validation_result(&db, &validation.id, &new_result, &now)?;
-
-        // Update the VALIDATES edge inspection_status to reflect the outcome
-        set_validates_edge_status(&db, &ve.validation_id, intent_id, &new_result)?;
+        outcomes.push((validation.id.clone(), new_result.clone()));
 
         results.push(serde_json::json!({
             "validation_id": validation.id,
@@ -124,6 +128,14 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
             println!("  {} {} [{}]", mark, validation.name, new_result);
             println!("    cmd: {}", validation.command);
         }
+    }
+
+    // Phase 3 (DB reopened): persist results on the Validation nodes and the
+    // VALIDATES edges.
+    let db = GrafeoDb::open(&db_file)?;
+    for (vid, new_result) in &outcomes {
+        update_validation_result(&db, vid, new_result, &now)?;
+        set_validates_edge_status(&db, vid, intent_id, new_result)?;
     }
 
     if printer.json {

@@ -663,6 +663,19 @@ mod tests {
             g.rule_id == "r0" && g.inspection_status == "needs_reverification"));
     }
 
+    /// IMPLEMENTS is unique per (intent, codefile) pair — re-grounding the same
+    /// pair is a no-op, so endpoint-matched updates stay unambiguous.
+    #[test]
+    fn insert_implements_is_idempotent_per_pair() {
+        let (db, ids) = db_inited(1);
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, "im1", &ids[0], "cf", "fn y", "other", "t2").unwrap();
+        let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
+        assert_eq!(imps.len(), 1, "duplicate IMPLEMENTS must not be created");
+        assert_eq!(imps[0].id, "im0", "first grounding wins");
+    }
+
     /// Removing a CodeFile (phantom after delete/rename on disk) kills its
     /// IMPLEMENTS edges; intents grounded only there become unrealized leaves
     /// again, so vertical completeness regresses honestly.

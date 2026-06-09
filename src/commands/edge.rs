@@ -199,6 +199,15 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         EdgeCmd::Implement { intent_id, codefile_id, locator, notes } => {
             gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
+            // Accept a path as well as an id — the path is the natural key a
+            // driver already has in hand (dogfood finding: id-only forced a
+            // `codefile list` + lookup round-trip per grounding).
+            let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &codefile_id)?
+                .ok_or_else(|| anyhow::anyhow!(
+                    "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
+                    codefile_id
+                ))?;
+            let codefile_id = cf.id;
             let now = chrono::Utc::now().to_rfc3339();
             let edge_id = Uuid::new_v4().to_string();
             insert_implements(&db, &edge_id, &intent_id, &codefile_id, &locator, &notes, &now)?;

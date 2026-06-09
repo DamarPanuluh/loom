@@ -32,6 +32,16 @@ pub fn insert_implements(
     if check_cf.rows().is_empty() {
         anyhow::bail!("CodeFile '{}' not found. Add it with `loom codefile add` first.", codefile_id);
     }
+    // Endpoint-pair uniqueness is the invariant every edge update relies on
+    // (edges are matched by endpoints, never by their own id) — enforce it at
+    // insert: re-grounding the same pair is a no-op, like get_or_create.
+    let existing = db.execute(&format!(
+        "MATCH (i:Intent {{id: '{}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{}'}}) RETURN i.id",
+        esc(intent_id), esc(codefile_id)
+    ))?;
+    if !existing.rows().is_empty() {
+        return Ok(());
+    }
     db.execute(&format!(
         "MATCH (i:Intent {{id: '{iid}'}}), (cf:CodeFile {{id: '{cfid}'}}) \
          INSERT (i)-[:IMPLEMENTS {{id: '{eid}', inspection_status: 'passing', \
