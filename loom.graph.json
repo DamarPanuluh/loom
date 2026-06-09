@@ -814,6 +814,20 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-09T19:57:05.003408+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
+        "id": "de1be32a-9c54-4d38-92f5-147d66c222df",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "unexplored_pairs_scored",
+        "notes": "",
+        "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:10.588230+00:00",
         "criterion": "",
         "evidence": "",
@@ -1593,11 +1607,11 @@
         "description": "unexplored RELATES_TO pairs should be ranked beyond raw centrality (e.g. shared files, shared domain, co-change) so a driver is not pointed at 31 equally-scored pairs on a 10-intent graph",
         "domain": "workflow",
         "id": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "discovery queue ranks pairs by plausibility",
         "source_refs": "[]",
         "status": "proposed",
-        "updated_at": "2026-06-09T19:13:06.293209+00:00"
+        "updated_at": "2026-06-09T19:57:05.034661+00:00"
       },
       {
         "abstraction_level": "component",
@@ -1631,6 +1645,15 @@
         "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: loom smells: scattered across 12 files — decompose into child intents per command family"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-09T19:57:05.034661+00:00",
+        "id": "22ef0c08-d6ee-411e-a5bd-f8adbe5f1ea5",
+        "kind": "transition",
+        "target_id": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "author": "llm:fixer",
@@ -1667,6 +1690,15 @@
         "target_id": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: loom smells: scattered across 17 files — decompose into child intents per query concern (node queries / edge queries / scoring / health)"
+      },
+      {
+        "author": "llm:fixer",
+        "created_at": "2026-06-09T19:57:05.034661+00:00",
+        "id": "730f6b24-7962-46f5-81b8-f1ddafce4297",
+        "kind": "decision",
+        "target_id": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: shipped in 5c98e98/32f3c44: suspicion = import links (5x) + shared files (3x) + description overlap + domain; why displayed in the work item"
       },
       {
         "author": "llm:analyzer",
