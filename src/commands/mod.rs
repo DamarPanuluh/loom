@@ -65,6 +65,7 @@ fn orient(printer: &Printer) -> Result<()> {
                 "loom schema   — the data model (node/edge types, states, vocabularies)",
                 "loom status   — where the graph is now + the recommended next action",
                 "loom next     — get the next thing to inspect",
+                "loom sync     — run after ANY code change (flags stale edges/verdicts/proofs)",
             ],
             "note": "Add --json to any command for machine-readable output. Every command has --help.",
         }));
@@ -76,6 +77,7 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("  loom schema   the data model");
         println!("  loom status   where am I? what next?");
         println!("  loom next     get the next thing to inspect");
+        println!("  loom sync     run after ANY code change");
         println!();
         println!("Every command has --help; add --json for machine-readable output.");
     }

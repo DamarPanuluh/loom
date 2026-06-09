@@ -67,7 +67,8 @@ pub enum Command {
         mode: String,
     },
 
-    /// Return all unresolved edges touching a given intent.
+    /// Return all unresolved edges touching a given intent — batch a
+    /// neighborhood while you have its context loaded (locality is free).
     Cluster {
         /// Intent ID to cluster around.
         intent_id: String,
@@ -97,7 +98,10 @@ pub enum Command {
         subcommand: NoteCmd,
     },
 
-    /// Detect file changes on disk and flag affected edges for re-inspection.
+    /// The flag engine — run after ANY code change. Detects mtime deltas on
+    /// registered files and propagates one hop: stale RELATES_TO edges and
+    /// passing GOVERNS verdicts → needs_reverification, linked validations →
+    /// not_run; files missing on disk are reported (drop with `codefile remove`).
     Sync {
         /// Project root (default: current directory, where .loom/ lives).
         #[arg(default_value = ".")]
