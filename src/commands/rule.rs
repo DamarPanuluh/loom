@@ -140,10 +140,10 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let by = gate::acting_in_lane(
                 "record a GOVERNS verdict", &[role::QUALITY], inspected_by.as_deref(),
             )?;
-            if status != "passing" && status != "failing" {
+            if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!(
-                    "Invalid --status '{}'. A verdict is passing (complies) or failing (violates). \
-                     For 'rule no longer applies', delete and re-apply judiciously.",
+                    "Invalid --status '{}'. A verdict is passing (complies), failing (violates), \
+                     or independent (measured — the rule does not apply to this intent).",
                     status
                 );
             }
@@ -153,7 +153,11 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             )?;
             gate::require_substantive(
                 "evidence", &evidence,
-                "what was actually found in the code during inspection",
+                if status == "independent" {
+                    "why this rule does not apply to this intent"
+                } else {
+                    "what was actually found in the code during inspection"
+                },
             )?;
             gate::require_confidence(confidence)?;
 
@@ -182,7 +186,11 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "last_inspected":    now,
                 }));
             } else {
-                let mark = if status == "passing" { "✓" } else { "✗" };
+                let mark = match status.as_str() {
+                    "passing" => "✓",
+                    "independent" => "◦",
+                    _ => "✗",
+                };
                 println!("{} GOVERNS verdict recorded: {}", mark, status);
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);

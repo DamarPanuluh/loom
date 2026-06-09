@@ -18,6 +18,7 @@ pub mod note;
 pub mod report;
 pub mod rule;
 pub mod schema;
+pub mod smells;
 pub mod status;
 pub mod sync;
 pub mod validate;
@@ -47,6 +48,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
+        Command::Smells      { limit }      => smells::run(limit, &printer),
         Command::Coverage                   => coverage::run(&printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),

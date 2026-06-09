@@ -46,7 +46,7 @@ const STATES: &[(&str, &str)] = &[
     ("uninspected", "declared but never verified against actual code"),
     ("passing", "inspected, criterion met"),
     ("failing", "inspected, criterion violated"),
-    ("independent", "inspected, confirmed no relationship (RELATES_TO only)"),
+    ("independent", "inspected, confirmed no relationship (RELATES_TO: intents unrelated; GOVERNS: rule does not apply)"),
     ("needs_reverification", "was passing/failing, adjacent code changed — stale"),
 ];
 

@@ -50,6 +50,7 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
         ("coverage", "`loom coverage` — map or `loom ignore` every file so nothing is missed."),
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`."),
         ("gate", "Encode the codebase's norms (e.g. ISO 5055-style reliability/security/maintainability): `loom rule add …`, `loom rule apply <rule> <intent>`, then earn green — `loom next --mode quality` + `loom rule verdict … --status passing|failing --criterion … --evidence …`."),
+        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), overlapping ownership, scatter, tangles, rules never held against coded intents. Refute or confirm each via its remedy; `independent` is as valuable as a fix."),
     ]
 }
 
@@ -67,6 +68,7 @@ fn greenfield() -> Vec<(&'static str, &'static str)> {
 fn refactor() -> Vec<(&'static str, &'static str)> {
     vec![
         ("map first if needed", "If the area isn't in the graph yet, do the brownfield steps for it."),
+        ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, and unmeasured quality rules; each finding carries its remedy command."),
         ("flag what must change", "`loom intent mark <id> --lifecycle needs_change --reason \"…\"`. Set/refresh the criterion to the desired end state; capture rationale (the --reason is recorded as a note). This is the honest 'known issue' state — no faking a verdict."),
         ("build", "`loom next --mode build` surfaces needs_change intents first. Make the minimal change, then `loom intent mark <id> --lifecycle implemented`."),
         ("re-verify", "`loom sync` — it flags everything the change touched (stale relationships, stale quality green, invalidated proofs). Then `loom next --mode fix`, `--mode quality`, and `loom validate` until the compass is green."),

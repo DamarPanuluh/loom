@@ -104,7 +104,8 @@ never "inspected".
 uninspected          declared but never verified against actual code
 passing              inspected, criterion met
 failing              inspected, criterion violated
-independent          inspected, confirmed no relationship (RELATES_TO only)
+independent          inspected, confirmed no relationship (RELATES_TO: intents
+                     unrelated; GOVERNS: rule does not apply to this intent)
 needs_reverification was passing/failing, but adjacent code changed — stale
 ```
 
@@ -304,6 +305,19 @@ loom schema
 loom hotspots [--limit N]
   Structural importance (graph centrality, NOT runtime profiling): most-central
   intents (blast radius) and most-tangled files (most intents in one file).
+
+loom smells [--limit N]
+  Derived problem signals — the graph as instrument, not ledger. Computed from
+  structure alone (no LLM judgment in the flagging): twin intents (split-brain:
+  same level, similar wording, no edge), overlapping ownership (two intents
+  claim the same file, no edge), scattered intents (≥6 files), tangled files
+  (≥3 intents), unmeasured intents (a QualityRule exists but was never held
+  against an intent that has code), unused rules. Each finding carries the
+  exact remedy command. The same suspicion signals (shared files, description
+  overlap, same domain) rank unexplored pairs in `loom next` discovery, with
+  the why in the work item's notes. `loom rule verdict --status independent`
+  records "measured — rule does not apply" so unmeasured findings can be
+  resolved honestly without faking compliance.
 
 loom coverage
   Reconcile files on disk (respecting .gitignore) against the graph. Buckets each

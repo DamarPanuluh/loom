@@ -196,6 +196,7 @@ struct EdgeClaim {
     status: String,
     criterion: String,
     confidence: f64,
+    evidence: String,
     notes: String,
     inspected_by: String,
 }
@@ -216,6 +217,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             status: e.inspection_status,
             criterion: e.criterion,
             confidence: e.confidence,
+            evidence: e.evidence,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -227,6 +229,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             status: e.inspection_status,
             criterion: e.criterion,
             confidence: e.confidence,
+            evidence: e.evidence,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -238,6 +241,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             status: e.inspection_status,
             criterion: e.criterion,
             confidence: e.confidence,
+            evidence: e.evidence,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -258,7 +262,10 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
     }
 
     for c in claims {
-        let independent_ok = c.etype == schema::edge::RELATES_TO;
+        // `independent` is valid on RELATES_TO (confirmed unrelated) and on
+        // GOVERNS (measured — the rule does not apply to this intent).
+        let independent_ok =
+            c.etype == schema::edge::RELATES_TO || c.etype == schema::edge::GOVERNS;
         let valid_status = matches!(
             c.status.as_str(),
             "uninspected" | "passing" | "failing" | "needs_reverification"
@@ -286,11 +293,21 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
                 c.etype, c.label, c.status, c.criterion.trim()
             ));
         }
-        if c.status == "independent" && crate::gate::is_vacuous(&c.notes) {
-            issues.push(format!(
-                "RELATES_TO edge {} is 'independent' but records no why (notes: '{}')",
-                c.label, c.notes.trim()
-            ));
+        if c.status == "independent" {
+            // The why lives in `notes` for RELATES_TO (unrelated) and in
+            // `evidence` for GOVERNS (rule doesn't apply — recorded by verdict).
+            if c.etype == schema::edge::RELATES_TO && crate::gate::is_vacuous(&c.notes) {
+                issues.push(format!(
+                    "RELATES_TO edge {} is 'independent' but records no why (notes: '{}')",
+                    c.label, c.notes.trim()
+                ));
+            }
+            if c.etype == schema::edge::GOVERNS && crate::gate::is_vacuous(&c.evidence) {
+                issues.push(format!(
+                    "GOVERNS edge {} is 'independent' (rule doesn't apply) but records no why (evidence: '{}')",
+                    c.label, c.evidence.trim()
+                ));
+            }
         }
         // Provenance lane: a verdict stamped by an out-of-lane role.
         if c.status != "uninspected" {

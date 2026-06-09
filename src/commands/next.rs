@@ -198,12 +198,13 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
 fn build_suggested_action(edge: &crate::types::RelatesTo, _score: &f64) -> String {
     match edge.inspection_status.as_str() {
         "unexplored" => format!(
-            "No relationship is tracked yet between intent '{}' and intent '{}'. \
+            "No relationship is tracked yet between intent '{}' and intent '{}'.{} \
              Inspect whether they interact, then record the result (this creates the edge):\n\
              \n  loom edge explore {from} {to} ground --criterion \"<coexistence criterion>\" --confidence 0.9\
              \n  loom edge explore {from} {to} issue  --criterion \"<criterion>\" --evidence \"<problem>\"\
              \n  loom edge explore {from} {to} independent --notes \"<why unrelated>\"",
             edge.from_name, edge.to_name,
+            if edge.notes.is_empty() { String::new() } else { format!(" ({})", edge.notes) },
             from = edge.from_id, to = edge.to_id,
         ),
         "uninspected" => format!(

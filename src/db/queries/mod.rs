@@ -25,6 +25,7 @@ pub mod note;
 pub mod relates_to;
 pub mod rule;
 pub mod scoring;
+pub mod smells;
 pub mod stats;
 pub mod validates;
 pub mod validation;
@@ -45,6 +46,7 @@ pub use note::*;
 pub use relates_to::*;
 pub use rule::*;
 pub use scoring::*;
+pub use smells::*;
 pub use stats::*;
 pub use validates::*;
 pub use validation::*;
@@ -696,6 +698,100 @@ mod tests {
         let vc = vertical_completeness(&db).unwrap();
         assert!(!vc.complete, "intent is unrealized again: {vc:?}");
         assert_eq!(vc.unrealized_leaves.len(), 1);
+    }
+
+    /// Smells: twin intents (similar wording, no edge), overlapping ownership
+    /// (shared file, no edge), unmeasured intents (rule never held against an
+    /// intent with code), unused rules — each disappears once the relationship
+    /// is recorded or the rule considered.
+    #[test]
+    fn smells_surface_twins_overlap_and_unmeasured() {
+        let (db, _) = db_inited(0);
+        // Twins: same level, near-identical wording, no edge.
+        insert_intent(&db, &Intent {
+            id: "t1".into(), name: "parse markdown input".into(),
+            description: "turns markdown text into an AST for rendering".into(),
+            ..intent("t1", "x")
+        }).unwrap();
+        insert_intent(&db, &Intent {
+            id: "t2".into(), name: "markdown input parsing".into(),
+            description: "turns markdown text into an AST tree".into(),
+            ..intent("t2", "x")
+        }).unwrap();
+        // Overlap: two unrelated intents grounded in the same file.
+        insert_intent(&db, &intent("o1", "alpha responsibility")).unwrap();
+        insert_intent(&db, &intent("o2", "beta duty")).unwrap();
+        insert_codefile(&db, &codefile("cf", "src/shared.rs")).unwrap();
+        insert_implements(&db, "im1", "o1", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "im2", "o2", "cf", "", "", "t").unwrap();
+        // A rule that has never been considered against o1/o2, and an unused one.
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "no_panics".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "error".into(),
+        }).unwrap();
+
+        let smells = compute_smells(&db).unwrap();
+        let kinds: Vec<&str> = smells.iter().map(|s| s.kind.as_str()).collect();
+        assert!(kinds.contains(&"twin_intents"), "{kinds:?}");
+        assert!(kinds.contains(&"overlapping_ownership"), "{kinds:?}");
+        assert!(kinds.contains(&"unmeasured_intents"), "{kinds:?}");
+        assert!(kinds.contains(&"unused_rule"), "{kinds:?}");
+
+        // Recording the relationships/verdicts silences the smells.
+        get_or_create_relates_to(&db, "e0", "t1", "t2", "t").unwrap();
+        update_relates_to_independent(&db, "t1", "t2", "twin in name only — verified distinct", "llm:analyzer", "t").unwrap();
+        get_or_create_relates_to(&db, "e1", "o1", "o2", "t").unwrap();
+        insert_governs(&db, "g1", "r0", "o1", "", "t").unwrap();
+        insert_governs(&db, "g2", "r0", "o2", "", "t").unwrap();
+        update_governs_verdict(&db, "r0", "o2", "independent",
+            "panic-freedom criterion does not constrain beta",
+            "beta duty has no execution path that can panic", 0.9, "llm:quality", "t").unwrap();
+        let kinds: Vec<String> = compute_smells(&db).unwrap().iter().map(|s| s.kind.clone()).collect();
+        assert!(!kinds.contains(&"twin_intents".to_string()), "{kinds:?}");
+        assert!(!kinds.contains(&"overlapping_ownership".to_string()), "{kinds:?}");
+        assert!(!kinds.contains(&"unmeasured_intents".to_string()), "{kinds:?}");
+        assert!(!kinds.contains(&"unused_rule".to_string()), "{kinds:?}");
+    }
+
+    /// Discovery suspicion: a pair sharing an implemented file outranks an
+    /// unrelated pair of equal degree, and the why travels in the notes.
+    #[test]
+    fn unexplored_pairs_ranked_by_suspicion() {
+        let (db, _) = db_inited(0);
+        insert_intent(&db, &intent("a", "alpha parsing engine")).unwrap();
+        insert_intent(&db, &intent("b", "beta rendering surface")).unwrap();
+        insert_intent(&db, &intent("c", "gamma unrelated thing")).unwrap();
+        insert_codefile(&db, &codefile("cf", "src/shared.rs")).unwrap();
+        insert_implements(&db, "im1", "a", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "im2", "b", "cf", "", "", "t").unwrap();
+
+        let pairs = unexplored_pairs_scored(&db).unwrap();
+        let top = &pairs[0].0;
+        let pair_ids = [top.from_id.as_str(), top.to_id.as_str()];
+        assert!(pair_ids.contains(&"a") && pair_ids.contains(&"b"),
+            "shared-file pair should rank first: {} × {}", top.from_name, top.to_name);
+        assert!(top.notes.contains("share 1 implemented file"), "{}", top.notes);
+    }
+
+    /// GOVERNS `independent` = measured, rule does not apply: a valid verdict
+    /// that is not quality work and passes doctor (with evidence recorded).
+    #[test]
+    fn governs_independent_verdict_is_terminal_and_audited() {
+        let (db, ids) = db_inited(1);
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "no_sql".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+        }).unwrap();
+        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        update_governs_verdict(&db, "r0", &ids[0], "independent",
+            "criterion would be: no raw SQL strings constructed",
+            "this intent touches no datastore at all — the rule has no surface here",
+            0.9, "llm:quality", "t").unwrap();
+
+        assert!(quality_candidates(&db).unwrap().is_empty(), "independent is not open work");
+        let rep = check_graph(&db).unwrap();
+        assert!(rep.issues.iter().all(|i| !i.contains("invalid inspection_status")), "{:?}", rep.issues);
+        assert!(rep.issues.iter().all(|i| !i.contains("records no why")), "{:?}", rep.issues);
     }
 
     /// Doctor audits the trust layer: a verdict recorded by an out-of-lane role,

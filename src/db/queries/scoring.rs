@@ -234,13 +234,27 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
 }
 
 /// Intent pairs that have NO RELATES_TO edge between them yet, returned as
-/// synthetic "unexplored" candidates scored by combined centrality. This lets
-/// `loom next --mode discovery` keep driving exploration of the N×N intent grid
-/// once every materialised edge has been inspected — the agent never has to
-/// decide manually which pair to look at next.
+/// synthetic "unexplored" candidates. Scored by combined centrality PLUS a
+/// suspicion bonus — pairs that share implemented files, read alike, or live
+/// in the same domain are the ones most likely to hide a real relationship
+/// (or a split-brain), so the analyzer is pointed at them first instead of
+/// grinding a flat N×N grid. The why travels in the synthetic edge's `notes`
+/// so `loom next` can display it.
 pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>> {
+    use super::smells::{jaccard, tokens};
+
     let intents = list_intents(db, None, None)?;
     let edges = list_relates_to(db, None)?;
+
+    // Suspicion inputs, computed once per intent.
+    let mut files_of: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
+    for im in super::implements::list_all_implements(db)? {
+        files_of.entry(im.intent_id).or_default().insert(im.codefile_path);
+    }
+    let toks: HashMap<&str, std::collections::HashSet<String>> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), tokens(&format!("{} {}", i.name, i.description))))
+        .collect();
 
     // Mark every ordered direction that already has an edge, so an existing
     // a→b edge also suppresses the b→a pair (RELATES_TO is conceptually
@@ -272,6 +286,7 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
     };
 
     let base_urgency = InspectionStatus::Uninspected.urgency();
+    let empty_files = std::collections::HashSet::new();
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
     for i in 0..intents.len() {
         for j in (i + 1)..intents.len() {
@@ -280,7 +295,30 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             if linked.contains(&(a.id.clone(), b.id.clone())) {
                 continue;
             }
-            let score = degree_of(db, &a.id)? as f64 + degree_of(db, &b.id)? as f64 + base_urgency;
+
+            // Suspicion bonus + human-readable why.
+            let fa = files_of.get(&a.id).unwrap_or(&empty_files);
+            let fb = files_of.get(&b.id).unwrap_or(&empty_files);
+            let shared = fa.intersection(fb).count();
+            let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
+            let same_domain = !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown";
+            let mut why: Vec<String> = Vec::new();
+            if shared > 0 {
+                why.push(format!("share {shared} implemented file(s)"));
+            }
+            if sim >= 0.25 {
+                why.push(format!("descriptions overlap ({sim:.2})"));
+            }
+            if same_domain {
+                why.push(format!("same domain '{}'", a.domain));
+            }
+            let suspicion =
+                3.0 * shared as f64 + 4.0 * sim + if same_domain { 1.0 } else { 0.0 };
+
+            let score = degree_of(db, &a.id)? as f64
+                + degree_of(db, &b.id)? as f64
+                + base_urgency
+                + suspicion;
             scored.push((
                 RelatesTo {
                     id:                String::new(),
@@ -295,7 +333,11 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
                     last_inspected:    String::new(),
                     inspected_by:      String::new(),
                     priority_score:    score,
-                    notes:             String::new(),
+                    notes:             if why.is_empty() {
+                        String::new()
+                    } else {
+                        format!("suspicion: {}", why.join("; "))
+                    },
                 },
                 score,
             ));

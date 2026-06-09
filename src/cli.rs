@@ -142,6 +142,16 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Derived problem signals computed from the graph — split-brain twins,
+    /// overlapping ownership, scattered intents, tangled files, and quality
+    /// rules never held against intents that have code. Each finding carries
+    /// the exact remedy command.
+    Smells {
+        /// How many findings to show.
+        #[arg(long, default_value_t = 15)]
+        limit: usize,
+    },
+
     /// Reconcile files on disk against the graph: grounded / excluded /
     /// unaccounted — so nothing is silently missed (respects .gitignore).
     Coverage,
@@ -435,7 +445,9 @@ pub enum RuleCmd {
         rule_id:   String,
         intent_id: String,
 
-        /// The verdict: passing (complies) | failing (violates).
+        /// The verdict: passing (complies) | failing (violates) | independent
+        /// (measured — the rule does not apply to this intent; silences the
+        /// `unmeasured_intents` smell without faking compliance).
         #[arg(long)]
         status: String,
 
