@@ -30,7 +30,7 @@ queue + one-command `rule verdict` (creates the edge) → ISO 5055 verdict →
 ripple re-flags the verdict → a validation that *invokes loom itself*
 (DB-lock regression) → a `blocked` proof (reason gated, queue silent) →
 `next --all` closeout → positional export + `--check` commit guard (fresh
-passes, drift fails) → import into a fresh graph → doctor. 15 checks; exits
+passes, drift fails) → import into a fresh graph → doctor. 16 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
 Unit/regression suite (64 tests, in-memory DB, fast):

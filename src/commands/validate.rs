@@ -151,7 +151,7 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
     for (vid, new_result) in &outcomes {
         update_validation_result(&db, vid, new_result, &now)?;
-        set_validates_edge_status(&db, vid, intent_id, new_result)?;
+        set_validates_edge_status(&db, vid, new_result)?;
     }
 
     if printer.json {
@@ -176,7 +176,6 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
 fn set_validates_edge_status(
     db: &GrafeoDb,
     validation_id: &str,
-    intent_id: &str,
     validation_result: &str,
 ) -> Result<()> {
     let new_status = match validation_result {
@@ -184,13 +183,17 @@ fn set_validates_edge_status(
         "failed"  => "failing",
         _         => "uninspected",
     };
-    // Identify the VALIDATES edge by its endpoints (validation → intent), which
-    // is reliable; matching a relationship by its own id property is not in
-    // grafeo 0.5.x.
+    // The proof run belongs to the VALIDATION, not to the (validation, intent)
+    // pair: one command ran once, and its result proves (or fails) every intent
+    // the validation has a VALIDATES edge to. Updating only the invoked
+    // intent's edge left sibling edges `uninspected` forever — the validator
+    // queue (keyed on last_result) went quiet while the compass (keyed on edge
+    // states) kept saying phase=validate. Node-anchored match; matching a
+    // relationship by its own id property is unreliable in grafeo 0.5.x.
     db.execute(&format!(
-        "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(i:Intent {{id: '{iid}'}}) \
+        "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(:Intent) \
          SET e.inspection_status = '{status}'",
-        vid = esc(validation_id), iid = esc(intent_id), status = new_status
+        vid = esc(validation_id), status = new_status
     ))?;
     Ok(())
 }

@@ -378,7 +378,9 @@ loom smells [--limit N]
   `loom codefile show`), undeclared coupling (file A imports file B but
   their intents have no edge — physical evidence vs semantic graph), recurrent
   trouble (a target whose transition history keeps returning to failing/
-  needs_change — redesign, don't re-patch), unmeasured intents (a QualityRule
+  needs_change — redesign, don't re-patch; a kind=decision note NEWER than the
+  last regression resolves the finding without erasing history, and a later
+  regression re-flags it), unmeasured intents (a QualityRule
   was never held against a coded intent — HIERARCHY-AWARE: a verdict on a
   component covers its descendants, so measure at the highest honest altitude
   instead of grinding per-leaf busywork; a leaf can still get its own, more

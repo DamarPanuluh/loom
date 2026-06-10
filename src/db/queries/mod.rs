@@ -558,6 +558,27 @@ mod tests {
         let rec: Vec<_> = smells.iter().filter(|s| s.kind == "recurrent_trouble").collect();
         assert_eq!(rec.len(), 1, "{smells:?}");
         assert!(rec[0].summary.contains("regressed 2 times"), "{}", rec[0].summary);
+
+        // Terminal state: a decision note NEWER than the last regression marks
+        // the recurrence addressed — finding resolves, history stays intact.
+        let mut decision = note("nd", "decision", "edge", &e.id);
+        decision.text = "redesigned the criterion; root cause was X".into();
+        decision.created_at = "t4".into(); // after the t3 regression
+        insert_note(&db, &decision).unwrap();
+        let smells = compute_smells(&db).unwrap();
+        assert!(
+            !smells.iter().any(|s| s.kind == "recurrent_trouble"),
+            "a decision newer than the last regression must resolve the finding: {smells:?}"
+        );
+
+        // …but a NEW regression after the decision re-flags it.
+        fix_edge(&db, &e.id, "patched again", "llm:fixer", "t5").unwrap();
+        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence three", 0.9, "llm:analyzer", "t6").unwrap();
+        let smells = compute_smells(&db).unwrap();
+        assert!(
+            smells.iter().any(|s| s.kind == "recurrent_trouble"),
+            "a regression after the decision must re-flag: {smells:?}"
+        );
     }
 
     /// Undeclared coupling: file A imports file B, their owning intents have no

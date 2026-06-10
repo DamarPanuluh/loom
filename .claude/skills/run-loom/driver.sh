@@ -116,6 +116,14 @@ export LOOM_AGENT=llm:validator
 OUT="$("$L" validate "add item")"
 echo "$OUT" | grep -q "1/1 passed" || fail "validate (DB lock regression?): $OUT"
 ok "validation command may read the graph (session released during exec)"
+# One validation can prove SEVERAL intents — a single run's result must mirror
+# to ALL its VALIDATES edges, or the compass (edge states) disagrees with the
+# validator queue (last_result) forever: phase=validate with an empty queue.
+"$L" edge validates "loom self-read under validate" "reject empty" >/dev/null
+"$L" validate "add item" >/dev/null
+[ "$("$L" status --json | jget "['graph_state']['phase']")" != validate ] \
+  || fail "compass stuck on validate: passed run left a sibling VALIDATES edge uninspected"
+ok "a validation run proves every intent it validates (compass agrees with queue)"
 
 echo "── blocked proof: reason required, out of the queue, visible ──"
 "$L" validation add --name "external smoke" --type manual_check --intent "reject empty" >/dev/null

@@ -379,11 +379,30 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //    transition history keeps returning to failing / needs_change. A spot
     //    that broke twice will break a third time; it needs redesign, not
     //    another patch.
+    //
+    //    TERMINAL STATE: a kind=decision note on the target that is NEWER than
+    //    its last regression refutes the finding ("redesigned/resolved, here's
+    //    why") — the append-only history stays intact, but an addressed
+    //    recurrence stops nagging. A regression AFTER the decision re-flags.
     {
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
+        let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
         for n in list_notes(db, None, Some("transition"))? {
             if n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change") {
-                *trouble.entry((n.target_kind.clone(), n.target_id.clone())).or_insert(0) += 1;
+                let key = (n.target_kind.clone(), n.target_id.clone());
+                *trouble.entry(key.clone()).or_insert(0) += 1;
+                let e = last_trouble.entry(key).or_default();
+                if n.created_at > *e {
+                    *e = n.created_at.clone();
+                }
+            }
+        }
+        let mut last_decision: HashMap<(String, String), String> = HashMap::new();
+        for n in list_notes(db, None, Some("decision"))? {
+            let key = (n.target_kind.clone(), n.target_id.clone());
+            let e = last_decision.entry(key).or_default();
+            if n.created_at > *e {
+                *e = n.created_at.clone();
             }
         }
         let edge_label: HashMap<&str, String> = {
@@ -400,6 +419,14 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             if count < 2 {
                 continue;
             }
+            // Addressed: a decision note recorded after the last regression.
+            if let Some(d) = last_decision.get(&(kind.clone(), id.clone())) {
+                if let Some(t) = last_trouble.get(&(kind.clone(), id.clone())) {
+                    if d > t {
+                        continue;
+                    }
+                }
+            }
             let label = if kind == "intent" {
                 name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
             } else {
@@ -413,7 +440,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     label, count
                 ),
                 evidence: "see its transition notes (`loom note list --kind transition`)".into(),
-                remedy: "recurring breakage means the criterion or the design is wrong — redesign the intent (decompose, re-specify the criterion) instead of patching again".into(),
+                remedy: "recurring breakage means the criterion or the design is wrong — redesign the intent (decompose, re-specify the criterion) instead of patching again; once addressed, record it: `loom note add --intent <id> --kind decision --text \"<what was redesigned and why it won't recur>\"` (a decision newer than the last regression resolves this finding; history stays intact)".into(),
             });
         }
     }

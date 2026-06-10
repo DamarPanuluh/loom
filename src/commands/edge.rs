@@ -334,6 +334,9 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                 &[role::BUILDER, role::VALIDATOR],
                 None,
             )?;
+            // Validations resolve by id, exact name, or unique fragment —
+            // same addressability contract as intents and rules.
+            let validation_id = crate::db::queries::resolve_validation(&db, &validation_id)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let edge_id = Uuid::new_v4().to_string();
