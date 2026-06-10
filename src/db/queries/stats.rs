@@ -152,8 +152,26 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // backlog and the compass routes to them — otherwise an unrun validation
     // would show as "uninspected: N" in status while the compass said complete.
     let v = edge_status_counts(db, "VALIDATES")?;
-    let v_uninspected = *v.get("uninspected").unwrap_or(&0);
     let v_failing = *v.get("failing").unwrap_or(&0);
+    // `blocked` proofs are recorded decisions ("can't run yet — reason on
+    // file"), not pending work: exclude their uninspected VALIDATES edges so
+    // the compass doesn't route to work nobody can do. Filtering happens in
+    // Rust (node-anchored scan) — the reliable path.
+    let blocked_uninspected = {
+        let r = db.execute(
+            "MATCH (v:Validation)-[e:VALIDATES]->(:Intent) \
+             RETURN v.last_result AS lr, e.inspection_status AS s",
+        )?;
+        let cols = col_map(&r);
+        r.rows()
+            .iter()
+            .filter(|row| {
+                str_val(get(row, &cols, "lr")) == "blocked"
+                    && str_val(get(row, &cols, "s")) == "uninspected"
+            })
+            .count() as i64
+    };
+    let v_uninspected = (*v.get("uninspected").unwrap_or(&0) - blocked_uninspected).max(0);
 
     // GOVERNS is the green gate: an uninspected gate is an unchecked quality
     // claim; failing is a violation. Both are quality work — surfaced by

@@ -75,15 +75,30 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let mut failed = 0usize;
 
     for validation in &to_run {
+        if validation.last_result == "blocked" {
+            // A recorded "can't run yet" — don't run it, don't overwrite it.
+            // Unblock by re-marking: `loom validation mark <id> --result passed|failed`.
+            results.push(serde_json::json!({
+                "validation_id": validation.id,
+                "name":          validation.name,
+                "result":        "blocked",
+                "reason":        "marked blocked — see its VALIDATES edge notes for why",
+            }));
+            if !printer.json {
+                println!("  ⊘ {} [blocked — re-mark with `loom validation mark` when unblocked]", validation.name);
+            }
+            continue;
+        }
         if validation.command.is_empty() {
             results.push(serde_json::json!({
                 "validation_id": validation.id,
                 "name":          validation.name,
                 "result":        "skipped",
-                "reason":        "no command defined",
+                "reason":        "no command defined — record by hand: `loom validation mark`",
             }));
             if !printer.json {
-                println!("  - {} [skipped — no command defined]", validation.name);
+                println!("  - {} [skipped — no command; record by hand: `loom validation mark {}`]",
+                    validation.name, validation.id);
             }
             continue;
         }

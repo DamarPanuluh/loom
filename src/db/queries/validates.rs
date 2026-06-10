@@ -44,6 +44,31 @@ pub fn insert_validates(
     Ok(())
 }
 
+/// Set the per-intent proof verdict (and evidence note) on every VALIDATES edge
+/// from this validation. Matched via the validation endpoint node — the reliable
+/// pattern — so it's safe to SET the edge property. Returns how many intents the
+/// validation links to. Used by `loom validation mark` (manual/async proofs).
+pub fn set_validates_status_for_validation(
+    db: &dyn LoomDb,
+    validation_id: &str,
+    status: &str,
+    notes: &str,
+) -> Result<usize> {
+    let count_q = format!(
+        "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(i:Intent) RETURN i.id AS x",
+        vid = esc(validation_id)
+    );
+    let n = db.execute(&count_q)?.rows().len();
+    db.execute(&format!(
+        "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(:Intent) \
+         SET e.inspection_status = '{status}', e.notes = '{notes}'",
+        vid = esc(validation_id),
+        status = esc(status),
+        notes = esc(notes),
+    ))?;
+    Ok(n)
+}
+
 /// Return all VALIDATES edges pointing to an intent, with Validation details.
 pub fn list_validates_for_intent(
     db: &dyn LoomDb,
@@ -92,9 +117,12 @@ pub fn invalidate_validations_for_codefile(
     for iid in &intent_ids {
         let edges = list_validates_for_intent(db, iid)?;
         for edge in &edges {
-            // Get validation and check if it's not already not_run
+            // Skip already-not_run (nothing to invalidate) and `blocked` — a
+            // blocked proof is waiting on something external; a code change
+            // doesn't unblock it, and flipping it to not_run would erase the
+            // recorded reason it can't run.
             if let Some(v) = get_validation(db, &edge.validation_id)? {
-                if v.last_result != "not_run" {
+                if v.last_result != "not_run" && v.last_result != "blocked" {
                     db.execute(&format!(
                         "MATCH (v:Validation {{id: '{}'}}) SET v.last_result = 'not_run'",
                         esc(&v.id)

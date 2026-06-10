@@ -49,6 +49,9 @@ id              STRING (uuid)
 path            STRING  -- absolute path
 language        STRING
 last_modified   STRING  -- mtime from filesystem, updated by loom sync
+imports         STRING  -- JSON array of statically-imported repo paths (loom sync)
+content_hash    STRING  -- FNV-1a 64 hex of the bytes; sync's change detector
+                           (mtime churn from checkout/rebase never false-flags)
 ```
 
 ### QualityRule
@@ -70,7 +73,10 @@ description      STRING
 validation_type  STRING  -- "test" | "assertion" | "benchmark" | "manual_check"
 command          STRING  -- e.g. "cargo test --test foo"
 last_run         STRING  -- timestamp
-last_result      STRING  -- "passed" | "failed" | "not_run"
+last_result      STRING  -- "passed" | "failed" | "not_run" | "blocked"
+                            (blocked = recorded "can't run yet" + reason; out of
+                             the validator queue/compass, visible in report,
+                             sticky across sync — code changes don't unblock)
 ```
 
 ## Edge types (5)
@@ -182,14 +188,18 @@ High-centrality intents surface first. Failing edges before ungrounded ones. The
 When code changes, the graph propagates the impact:
 
 ```
-loom sync detects file mtime > CodeFile.last_modified
-→ CodeFile.last_modified updated
+loom sync detects content change (content_hash differs; mtime is only the
+                                  never-hashed fallback — checkout churn is quiet upkeep)
+→ CodeFile.last_modified + content_hash updated
 → Those intents' RELATES_TO neighbors → needs_reverification (one hop)
 → Those intents' passing GOVERNS edges → needs_reverification
   (quality green is a claim about the old code — it must be re-earned
    via `loom next --mode quality` + `loom rule verdict`)
 → VALIDATES edges on those intents → Validation.last_result = not_run
-(IMPLEMENTS edges are structural assertions, used as the index — not flipped.)
+  (blocked validations are NOT flipped — a code change doesn't unblock them)
+(IMPLEMENTS edges are structural assertions, used as the index — not flipped.
+ Every flipped edge gets a transition note naming the changed file, so a stale
+ edge explains itself: "passing → needs_reverification (sync: src/foo.rs changed)".)
 
 Files registered in the graph but MISSING on disk (deleted/renamed) are
 reported by sync, never skipped silently — drop phantoms with
@@ -211,9 +221,20 @@ loom status
 
 loom sync [path]
   THE PROGRAMMATIC FLAG ENGINE.
-  Walks CodeFiles, stats disk, detects mtime deltas, propagates needs_reverification.
-  Output: N files changed, M edges flagged, K validations invalidated.
-  LLM calls this after any code change, then calls loom next.
+  Walks CodeFiles and detects CONTENT changes (content_hash; mtime is only the
+  first-run fallback — checkout/rebase timestamp churn never false-flags),
+  then propagates needs_reverification. Every flipped edge gets an append-only
+  transition note naming the changed file ("passing → needs_reverification
+  (sync: src/foo.rs changed)") — staleness explains itself in `loom edge show`
+  and `loom next`. Output: N files changed, M edges flagged, K validations
+  invalidated. LLM calls this after any code change, then calls loom next.
+
+loom next --all
+  THE CLOSEOUT VIEW: every role queue at once — counts + top item per queue
+  (build/fix/ground/validate/quality/discovery, in handoff order), vertical-
+  completeness gaps, doctor health, and top smells, as ONE prioritized list.
+  The single operational answer to "what's left?" — no reconciling five
+  commands by hand. Discovery is flagged optional (horizontal axis).
 
 loom next [--mode discovery|fix|build|validate|quality]
   One queue per agent role:
@@ -236,6 +257,9 @@ loom intent mark <id> --lifecycle planned|implemented|needs_change [--reason "<w
   Set the prescriptive lifecycle. needs_change = a known issue/refactor (honest,
   no faked verdict); --reason is recorded as a note. Feeds `loom next --mode build`.
 loom intent delete <id>          (remove a mistake: node + its edges + notes)
+loom intent source add <id> <path>     (append to source_refs — docs AND code:
+                                        contracts, ADRs, design notes; idempotent)
+loom intent source remove <id> <path>
 loom intent list [--status] [--level]
 loom intent show <id>            (intent + edges + hierarchy + implements + notes)
 
@@ -255,16 +279,29 @@ loom cluster <intent-id>
 
 loom codefile add <path>          (or a glob: 'src/**/*.rs')
 loom codefile list
+loom codefile show <path-or-id>
+  The per-file OWNERSHIP view: which intents claim it (level + locator +
+  status), which quality rules reach it through them, its imports, and a
+  tangled flag (≥3 intents). The answer hotspots only hint at.
 loom codefile remove <path-or-id> (drop a phantom after delete/rename on disk;
                                    removes its IMPLEMENTS edges too)
 
 loom validation add --name --type [--command] [--description] [--intent <id>]
   --intent links the new Validation to an intent (VALIDATES) in one step;
   omit it to link later with `loom edge validates <validation-id> <intent-id>`.
+loom validation mark <id|name> --result passed|failed --evidence "<what you checked>"
+loom validation mark <id|name> --result blocked --reason "<what it is waiting on>"
+  Record a verdict BY HAND for a manual_check / async proof that has no runnable
+  --command (which `loom validate` would otherwise skip). Validator-lane; evidence/
+  reason must be substantive. Updates last_result + the per-intent VALIDATES verdict.
+  `blocked` = honest "can't run yet" (live target down, missing credential): leaves
+  the validator queue + compass, stays visible in `loom report`, survives sync
+  (a code change doesn't unblock it). Re-mark passed/failed to unblock.
 loom validation list [--intent <id>]
 
 loom validate <intent-id>
-  Runs command on all VALIDATES edges for this intent.
+  Runs command on all VALIDATES edges for this intent. (manual_check without a
+  command is skipped — use `loom validation mark` for those.)
   Updates Validation.last_result and VALIDATES edge inspection_status.
 
 loom rule add --name --description --severity
@@ -289,7 +326,12 @@ loom note list [--intent <id>] [--edge <id>] [--kind <kind>]
 
 loom doctor
   Verify graph integrity against the declared schema (src/db/schema.rs):
-  schema version, required-property presence, valid field values, dangling references.
+  schema version, required-property presence, valid field values, dangling
+  references, and the evidence audit behind every verdict — vacuous criterion,
+  confidence outside [0,1], confidence still 0.0 behind passing/failing, empty
+  last_inspected behind a verdict, out-of-lane provenance. Also emits advisory
+  HINTS (never fail the exit code): all-solo provenance (declare roles for real
+  separation of duties), and a stale committed loom.graph.json.
   Exits non-zero if any issue is found. Run after upgrades or if results look wrong.
 
 loom guide [--mode greenfield|brownfield|refactor]
@@ -310,8 +352,11 @@ loom smells [--limit N]
   Derived problem signals — the graph as instrument, not ledger. Computed from
   structure alone (no LLM judgment in the flagging): twin intents (split-brain:
   same level, similar wording, no edge), overlapping ownership (two intents
-  claim the same file, no edge), scattered intents (level-aware thresholds),
-  tangled files (≥3 intents), undeclared coupling (file A imports file B but
+  claim the same file, no edge), scattered intents (level-aware thresholds;
+  the evidence GROUPS the grounded files BY DIRECTORY — the mechanical
+  clustering for a decompose: loom shows where the files cluster, the LLM
+  names the children), tangled files (≥3 intents — per-file detail via
+  `loom codefile show`), undeclared coupling (file A imports file B but
   their intents have no edge — physical evidence vs semantic graph), recurrent
   trouble (a target whose transition history keeps returning to failing/
   needs_change — redesign, don't re-patch), unmeasured intents (a QualityRule
@@ -328,7 +373,14 @@ loom rule seed iso5055
   for LLM inspection (detection_logic says what to look for). Idempotent.
   `loom smells` then drives normative coverage (unmeasured_intents).
 
-loom export [--out loom.graph.json]   ("-" = stdout)
+loom export [path]                    (default loom.graph.json; "-" = stdout;
+                                       positional, mirroring `loom import <file>`;
+                                       --out <path> still accepted)
+loom export --check
+  THE COMMIT GUARD: verify the existing export matches the live graph
+  byte-for-byte (determinism makes freshness a byte comparison). Exits
+  non-zero on drift or a missing file — hook it into pre-commit/CI so a graph
+  change can never silently ship without its travel format.
 loom import <file>
   The graph's travel format: deterministic JSON (same graph → identical bytes)
   meant to be committed so the graph travels with the repo and graph changes

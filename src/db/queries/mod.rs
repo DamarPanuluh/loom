@@ -327,7 +327,7 @@ mod tests {
     }
 
     fn codefile(id: &str, path: &str) -> CodeFile {
-        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: "[]".into() }
+        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: "[]".into(), content_hash: "".into() }
     }
 
     /// IMPLEMENTS is a structural grounding assertion → defaults to `passing`,
@@ -643,6 +643,147 @@ mod tests {
         assert_eq!(counted, 8); // 10 − {0,1} − {2,3}
     }
 
+    /// `blocked` is a recorded "can't run yet": it leaves the validator queue
+    /// (not nagging about work nobody can do), the compass stops routing to it,
+    /// and a later code-change sync does NOT flip it back to not_run.
+    #[test]
+    fn blocked_validation_leaves_queue_and_survives_sync() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(1);
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "external smoke".into(), description: String::new(),
+            validation_type: "manual_check".into(), command: String::new(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        // not_run → in the validator queue
+        assert!(validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+
+        update_validation_result(&db, "v0", "blocked", "t1").unwrap();
+        set_validates_status_for_validation(&db, "v0", "uninspected", "blocked: needs a live target URL").unwrap();
+        // blocked → out of the queue, compass no longer routes to validate
+        assert!(!validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+        assert_ne!(graph_state(&db).unwrap().phase, "validate");
+
+        // a code change doesn't unblock it (and doesn't erase the state)
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, "im", &ids[0], "cf", "", "", "t").unwrap();
+        let n = invalidate_validations_for_codefile(&db, "cf").unwrap();
+        assert_eq!(n, 0, "blocked proofs are not flipped to not_run");
+        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "blocked");
+    }
+
+    /// `intent source add/remove` — source_refs is editable after creation
+    /// (docs and code alike), idempotent on add, honest on a missing remove.
+    #[test]
+    fn source_refs_add_remove_roundtrip() {
+        let (db, ids) = db_with_intents(1);
+        let refs = |db: &GrafeoDb| -> Vec<String> {
+            serde_json::from_str(&get_intent(db, &ids[0]).unwrap().unwrap().source_refs).unwrap()
+        };
+        assert!(add_source_ref(&db, &ids[0], "docs/CONTRACT.md", "t1").unwrap());
+        assert!(add_source_ref(&db, &ids[0], "src/main.rs", "t2").unwrap());
+        assert!(add_source_ref(&db, &ids[0], "docs/CONTRACT.md", "t3").unwrap()); // idempotent
+        assert_eq!(refs(&db), vec!["docs/CONTRACT.md".to_string(), "src/main.rs".to_string()]);
+        assert_eq!(remove_source_ref(&db, &ids[0], "src/main.rs", "t4").unwrap(), Some(true));
+        assert_eq!(remove_source_ref(&db, &ids[0], "src/main.rs", "t5").unwrap(), Some(false));
+        assert_eq!(refs(&db), vec!["docs/CONTRACT.md".to_string()]);
+        assert!(remove_source_ref(&db, "ghost", "x", "t6").unwrap().is_none());
+    }
+
+    /// The content fingerprint round-trips and is the sync change baseline.
+    #[test]
+    fn content_hash_roundtrip() {
+        let (db, _) = db_with_intents(0);
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        assert_eq!(list_codefiles(&db).unwrap()[0].content_hash, "");
+        let h = crate::repo::content_hash(b"fn main() {}");
+        update_codefile_hash(&db, "cf", &h).unwrap();
+        assert_eq!(list_codefiles(&db).unwrap()[0].content_hash, h);
+        // deterministic + content-sensitive
+        assert_eq!(h, crate::repo::content_hash(b"fn main() {}"));
+        assert_ne!(h, crate::repo::content_hash(b"fn main() { }"));
+    }
+
+    /// A sync flip explains itself: the transition note names the changed file.
+    #[test]
+    fn sync_flip_note_names_the_cause() {
+        let (db, ids) = db_with_intents(1);
+        record_sync_flip(&db, "edge", "e0", "passing", "needs_reverification",
+            "src/db/mod.rs changed", "t").unwrap();
+        let notes = notes_for_target(&db, "e0").unwrap();
+        assert_eq!(notes.len(), 1);
+        assert_eq!(notes[0].kind, "transition");
+        assert!(notes[0].text.contains("(sync: src/db/mod.rs changed)"), "{}", notes[0].text);
+        // …and it never reads as a verdict regression to the recurrence smell.
+        assert!(!notes[0].text.ends_with("→ failing"));
+        let _ = ids;
+    }
+
+    /// Doctor catches verdicts that read as inspected without having been
+    /// inspected: confidence still 0.0, or no last_inspected timestamp.
+    #[test]
+    fn doctor_flags_defaulted_verdicts() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        // Verdict recorded with the 0.0 default — query layer permits it; the
+        // command-layer gate normally prevents it; doctor must catch it.
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
+            0.0, "llm", "t1").unwrap();
+        let rep = check_graph(&db).unwrap();
+        assert!(rep.issues.iter().any(|i| i.contains("confidence 0.0")), "{:?}", rep.issues);
+
+        // Erase the timestamp behind the verdict → second flavour of the same lie.
+        db.execute(&format!(
+            "MATCH (a:Intent {{id: '{}'}})-[r:RELATES_TO]->(b:Intent {{id: '{}'}}) \
+             SET r.last_inspected = '', r.confidence = 0.9",
+            ids[0], ids[1]
+        )).unwrap();
+        let rep = check_graph(&db).unwrap();
+        assert!(rep.issues.iter().any(|i| i.contains("last_inspected is empty")), "{:?}", rep.issues);
+    }
+
+    /// Solo-mode provenance is legal but worth a nudge: all-bare verdicts →
+    /// hint; a declared role anywhere → no hint.
+    #[test]
+    fn doctor_hints_solo_mode_provenance() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
+            0.9, "llm", "t1").unwrap();
+        let rep = check_graph(&db).unwrap();
+        assert!(rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
+        assert!(rep.healthy(), "hints never fail doctor: {:?}", rep.issues);
+
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
+            0.9, "llm:analyzer", "t2").unwrap();
+        let rep = check_graph(&db).unwrap();
+        assert!(!rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
+    }
+
+    /// `loom validation mark` path: a manual_check with no command can be given a
+    /// verdict by hand — node last_result + the per-intent VALIDATES edge both move.
+    #[test]
+    fn validation_mark_records_manual_verdict() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(1);
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "manual smoke".into(), description: String::new(),
+            validation_type: "manual_check".into(), command: String::new(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+
+        update_validation_result(&db, "v0", "passed", "t").unwrap();
+        let n = set_validates_status_for_validation(&db, "v0", "passing", "checked by hand").unwrap();
+        assert_eq!(n, 1);
+        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "passed");
+        let edges = list_validates_for_intent(&db, &ids[0]).unwrap();
+        assert_eq!(edges[0].inspection_status, "passing");
+        assert_eq!(edges[0].notes, "checked by hand");
+        assert_eq!(resolve_validation(&db, "manual smoke").unwrap(), "v0");
+    }
+
     #[test]
     fn doctor_flags_version_mismatch() {
         let (db, _) = db_with_intents(0);
@@ -784,7 +925,7 @@ mod tests {
             "bare JSON.parse at parser.js:1", 0.9, "llm:quality", "t",
         ).unwrap();
 
-        let flagged = flag_governs_for_intent(&db, &ids[0]).unwrap();
+        let flagged = flag_governs_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
         assert_eq!(flagged, 1, "only the passing verdict goes stale");
         let g0 = get_governs_between(&db, "r0", &ids[0]).unwrap().unwrap();
         let g1 = get_governs_between(&db, "r1", &ids[0]).unwrap().unwrap();

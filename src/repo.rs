@@ -54,6 +54,21 @@ pub fn mtime_rfc3339(path: &Path) -> Option<String> {
     Some(dt.to_rfc3339())
 }
 
+/// FNV-1a 64-bit hash of raw bytes, as lowercase hex. `loom sync`'s change
+/// detector: mtime alone false-flags after checkout/rebase (timestamps churn,
+/// bytes don't), so "changed" is decided by content. Not cryptographic — just a
+/// cheap, dependency-free fingerprint, which is all change detection needs.
+pub fn content_hash(bytes: &[u8]) -> String {
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut h = FNV_OFFSET;
+    for &b in bytes {
+        h ^= b as u64;
+        h = h.wrapping_mul(FNV_PRIME);
+    }
+    format!("{h:016x}")
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct LangCount {
     pub language: String,

@@ -7,7 +7,8 @@ use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
     edges_for_intent, flag_governs_for_intent, intent_ids_implementing_codefile,
     invalidate_validations_for_codefile, list_all_implements, list_codefiles,
-    set_last_synced, update_codefile_imports, update_codefile_mtime,
+    record_sync_flip, set_last_synced, update_codefile_hash, update_codefile_imports,
+    update_codefile_mtime,
 };
 use crate::db::schema::esc;
 use crate::output::Printer;
@@ -25,6 +26,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     let codefiles = list_codefiles(&db)?;
     let files_checked = codefiles.len();
+    let now = chrono::Utc::now().to_rfc3339();
 
     let mut files_changed = 0usize;
     let mut relates_to_flagged = 0usize;
@@ -62,21 +64,42 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             dt.to_rfc3339()
         };
 
-        // Determine whether the file changed since the stored last_modified
-        let changed = if cf.last_modified.is_empty() {
-            true // never synced
-        } else {
-            match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
-                Ok(stored) => {
-                    let stored_utc = stored.with_timezone(&chrono::Utc);
-                    let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
-                    disk_utc > stored_utc
+        // "Changed" means the BYTES changed: the content fingerprint decides.
+        // mtime alone false-flags after a checkout/rebase (timestamps churn,
+        // content doesn't) — that would reset half the graph for nothing. The
+        // mtime comparison remains only as the fallback when no fingerprint is
+        // stored yet (pre-upgrade graph / unreadable file).
+        let new_hash = fs::read(&abs_path).ok().map(|b| crate::repo::content_hash(&b));
+        let changed = match &new_hash {
+            Some(h) if !cf.content_hash.is_empty() => *h != cf.content_hash,
+            _ => {
+                if cf.last_modified.is_empty() {
+                    true // never synced
+                } else {
+                    match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
+                        Ok(stored) => {
+                            let stored_utc = stored.with_timezone(&chrono::Utc);
+                            let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
+                            disk_utc > stored_utc
+                        }
+                        Err(_) => true, // malformed timestamp → treat as changed
+                    }
                 }
-                Err(_) => true, // malformed timestamp → treat as changed
             }
         };
 
+        // Keep the stored fingerprint + mtime current even when nothing
+        // propagates (first hash on an upgraded graph, checkout-only churn) —
+        // quiet upkeep, not a change.
+        if let Some(h) = &new_hash {
+            if *h != cf.content_hash {
+                update_codefile_hash(&db, &cf.id, h)?;
+            }
+        }
         if !changed {
+            if mtime_str != cf.last_modified {
+                update_codefile_mtime(&db, &cf.id, &mtime_str)?;
+            }
             continue;
         }
 
@@ -95,15 +118,18 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         //    RELATES_TO neighbours needs_reverification. The IMPLEMENTS edges
         //    themselves are structural assertions and are not mutated — flagging
         //    them would leave an unresolvable state (the loop only re-inspects
-        //    RELATES_TO).
+        //    RELATES_TO). Each flip records a transition note naming the
+        //    triggering file, so a stale edge explains itself in `loom edge
+        //    show` / `loom next`.
+        let cause = format!("{} changed", cf.path);
         let intent_ids = intent_ids_implementing_codefile(&db, &cf.id)?;
         for iid in &intent_ids {
-            let nrv = flag_relates_to_for_intent(&db, iid)?;
+            let nrv = flag_relates_to_for_intent(&db, iid, &cause, &now)?;
             relates_to_flagged += nrv;
             // A passing quality verdict is a claim about the old code — flip
             // it to needs_reverification so green is re-earned
             // (`loom next --mode quality`).
-            governs_flagged += flag_governs_for_intent(&db, iid)?;
+            governs_flagged += flag_governs_for_intent(&db, iid, &cause, &now)?;
         }
 
         // 3. Invalidate Validation.last_result for those intents
@@ -224,6 +250,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 if report.governs_edges_flagged > 0 {
                     ", and `loom next --mode quality` to re-earn flagged quality green."
                 } else { "." });
+            if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
+                println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
+            }
         }
     }
 
@@ -235,12 +264,18 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 // Returns count of edges updated.
 // ---------------------------------------------------------------------------
 
-fn flag_relates_to_for_intent(db: &GrafeoDb, intent_id: &str) -> Result<usize> {
+fn flag_relates_to_for_intent(
+    db: &GrafeoDb,
+    intent_id: &str,
+    cause: &str,
+    now: &str,
+) -> Result<usize> {
     // Read every RELATES_TO edge touching this intent (node-keyed traversal is
     // reliable), filter to passing/independent in Rust, then flip each one to
     // needs_reverification keyed by its endpoints. Filtering or updating a
     // relationship by its own property in the query is unreliable in grafeo
-    // 0.5.x, so we never do that.
+    // 0.5.x, so we never do that. Each flip records WHY (the changed file) as
+    // a transition note on the edge — staleness that explains itself.
     let mut count = 0usize;
     for edge in edges_for_intent(db, intent_id)? {
         if edge.inspection_status == "passing" || edge.inspection_status == "independent" {
@@ -250,6 +285,10 @@ fn flag_relates_to_for_intent(db: &GrafeoDb, intent_id: &str) -> Result<usize> {
                 from = esc(&edge.from_id),
                 to   = esc(&edge.to_id),
             ))?;
+            record_sync_flip(
+                db, "edge", &edge.id, &edge.inspection_status,
+                "needs_reverification", cause, now,
+            )?;
             count += 1;
         }
     }

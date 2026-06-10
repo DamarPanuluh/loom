@@ -2,12 +2,12 @@ use anyhow::Result;
 use std::env;
 use uuid::Uuid;
 
-use crate::cli::IntentCmd;
+use crate::cli::{IntentCmd, SourceCmd};
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    confirm_intent, delete_intent, edges_for_intent, get_intent, insert_intent,
-    list_hierarchy_for_intent, list_implements_for_intent, list_intents, notes_for_target,
-    set_intent_lifecycle,
+    add_source_ref, confirm_intent, delete_intent, edges_for_intent, get_intent,
+    insert_intent, list_hierarchy_for_intent, list_implements_for_intent, list_intents,
+    notes_for_target, remove_source_ref, set_intent_lifecycle,
 };
 use crate::db::schema::role;
 use crate::gate;
@@ -65,7 +65,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 if let Some(obj) = v.as_object_mut() {
                     obj.insert("next_steps".to_string(), serde_json::json!([
                         tree_step,
-                        "Ground it to code: `loom edge implement <intent> <codefile> --locator \"fn …\"` (required for leaf intents).",
+                        "Ground it to code: `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol as it appears in the file — e.g. `def foo`, `fn foo`; required for leaf intents).",
                         "Relate it to other intents — `loom next` will surface unexplored pairs (optional).",
                         "If this is a feature, add its sad/fallback siblings (--aspect).",
                     ]));
@@ -75,7 +75,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 println!("✓ Intent created");
                 println!("{}", fmt_intent(&intent));
                 println!("  → Next: {}", tree_step);
-                println!("          then ground it: `loom edge implement {} <codefile> --locator \"fn …\"`.", id);
+                println!("          then ground it: `loom edge implement {} <codefile> --locator \"<symbol>\"` (symbol as written in the file).", id);
             }
         }
 
@@ -184,6 +184,50 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     println!("  {}", "-".repeat(90));
                     for i in &intents {
                         println!("{}", fmt_intent_row(i));
+                    }
+                }
+            }
+        }
+
+        IntentCmd::Source { subcommand } => {
+            // source_refs is builder-owned (it's part of declaring the intent).
+            gate::acting_in_lane("edit an intent's source refs", &[role::BUILDER], None)?;
+            let now = chrono::Utc::now().to_rfc3339();
+            match subcommand {
+                SourceCmd::Add { id, path } => {
+                    let id = crate::db::queries::resolve_intent(&db, &id)?;
+                    if !add_source_ref(&db, &id, &path, &now)? {
+                        anyhow::bail!("Intent '{}' not found.", id);
+                    }
+                    let refs = get_intent(&db, &id)?
+                        .map(|i| i.source_refs)
+                        .unwrap_or_default();
+                    if printer.json {
+                        printer.print_json(&serde_json::json!({
+                            "status": "ok", "id": id, "added": path,
+                            "source_refs": serde_json::from_str::<Vec<String>>(&refs).unwrap_or_default(),
+                        }));
+                    } else {
+                        println!("✓ Source ref added to intent {id}: {path}");
+                    }
+                }
+                SourceCmd::Remove { id, path } => {
+                    let id = crate::db::queries::resolve_intent(&db, &id)?;
+                    match remove_source_ref(&db, &id, &path, &now)? {
+                        None => anyhow::bail!("Intent '{}' not found.", id),
+                        Some(false) => anyhow::bail!(
+                            "Intent {} has no source ref '{}' — `loom intent show {}` lists them.",
+                            id, path, id
+                        ),
+                        Some(true) => {
+                            if printer.json {
+                                printer.print_json(&serde_json::json!({
+                                    "status": "ok", "id": id, "removed": path,
+                                }));
+                            } else {
+                                println!("✓ Source ref removed from intent {id}: {path}");
+                            }
+                        }
                     }
                 }
             }

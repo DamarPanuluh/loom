@@ -13,12 +13,13 @@ use super::row::{col_map, get, str_val};
 pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
     let q = format!(
         "INSERT (:CodeFile {{id: '{id}', path: '{path}', language: '{lang}', \
-         last_modified: '{mtime}', imports: '{imports}'}})",
+         last_modified: '{mtime}', imports: '{imports}', content_hash: '{hash}'}})",
         id      = esc(&cf.id),
         path    = esc(&cf.path),
         lang    = esc(&cf.language),
         mtime   = esc(&cf.last_modified),
         imports = esc(if cf.imports.is_empty() { "[]" } else { &cf.imports }),
+        hash    = esc(&cf.content_hash),
     );
     db.execute(&q)?;
     Ok(())
@@ -26,11 +27,23 @@ pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
 
 pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
     let q = "MATCH (cf:CodeFile) \
-             RETURN cf.id, cf.path, cf.language, cf.last_modified, cf.imports \
+             RETURN cf.id, cf.path, cf.language, cf.last_modified, cf.imports, \
+                    cf.content_hash \
              ORDER BY cf.path";
     let result = db.execute(q)?;
     let cols = col_map(&result);
     Ok(result.rows().iter().map(|row| row_to_codefile(row, &cols)).collect())
+}
+
+/// Store the content fingerprint (see `repo::content_hash`) on a CodeFile —
+/// written by `loom sync`, read back as the next sync's change baseline.
+pub fn update_codefile_hash(db: &dyn LoomDb, id: &str, hash: &str) -> Result<()> {
+    db.execute(&format!(
+        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{h} = '{}'",
+        esc(id), esc(hash),
+        h = crate::db::schema::prop::CONTENT_HASH,
+    ))?;
+    Ok(())
 }
 
 /// Store the statically-extracted import list (JSON array of repo-relative
@@ -88,5 +101,6 @@ fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
         language:      str_val(get(row, cols, "cf.language")),
         last_modified: str_val(get(row, cols, "cf.last_modified")),
         imports:       str_val(get(row, cols, "cf.imports")),
+        content_hash:  str_val(get(row, cols, "cf.content_hash")),
     }
 }

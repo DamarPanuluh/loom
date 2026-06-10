@@ -32,6 +32,9 @@ pub struct DoctorReport {
     pub edge_counts: Vec<(String, i64)>,
     /// Human-readable problems; empty == healthy.
     pub issues: Vec<String>,
+    /// Advisory observations — worth knowing, never failing (doctor stays
+    /// scriptable: exit code reflects `issues` only).
+    pub hints: Vec<String>,
 }
 
 impl DoctorReport {
@@ -66,6 +69,7 @@ fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
 /// Run every integrity check and collect a report.
 pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     let mut issues = Vec::new();
+    let mut hints = Vec::new();
 
     // 1. Schema version.
     let meta = db.execute(schema::CHECK_INITIALIZED)?;
@@ -159,7 +163,7 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     // evidence behind a verdict, and provenance lanes (a verdict recorded by an
     // out-of-lane role is a separation-of-duties breach — the whole point of
     // the role system is that no agent green-lights its own work).
-    audit_inspectable_edges(db, &mut issues)?;
+    audit_inspectable_edges(db, &mut issues, &mut hints)?;
 
     // 7. HIERARCHY tree well-formedness. These are *structural* violations (the
     // spine isn't a tree), not progress — so they belong in doctor. The other
@@ -185,6 +189,7 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         node_counts,
         edge_counts,
         issues,
+        hints,
     })
 }
 
@@ -197,6 +202,7 @@ struct EdgeClaim {
     criterion: String,
     confidence: f64,
     evidence: String,
+    last_inspected: String,
     notes: String,
     inspected_by: String,
 }
@@ -204,9 +210,14 @@ struct EdgeClaim {
 /// Audit every inspectable edge for: valid inspection_status, confidence in
 /// [0,1], a substantive criterion behind any passing/failing verdict
 /// (RELATES_TO/GOVERNS — IMPLEMENTS starts passing-by-construction with an
-/// empty criterion), recorded reasoning behind `independent`, and provenance
-/// lanes (`inspected_by` role must be the owning role for that edge type).
-fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<()> {
+/// empty criterion), a meaningful confidence + timestamp behind any verdict,
+/// recorded reasoning behind `independent`, and provenance lanes
+/// (`inspected_by` role must be the owning role for that edge type).
+fn audit_inspectable_edges(
+    db: &dyn LoomDb,
+    issues: &mut Vec<String>,
+    hints: &mut Vec<String>,
+) -> Result<()> {
     use crate::db::schema::role;
 
     let mut claims: Vec<EdgeClaim> = Vec::new();
@@ -218,6 +229,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             criterion: e.criterion,
             confidence: e.confidence,
             evidence: e.evidence,
+            last_inspected: e.last_inspected,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -230,6 +242,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             criterion: e.criterion,
             confidence: e.confidence,
             evidence: e.evidence,
+            last_inspected: e.last_inspected,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -242,6 +255,7 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
             criterion: e.criterion,
             confidence: e.confidence,
             evidence: e.evidence,
+            last_inspected: e.last_inspected,
             notes: e.notes,
             inspected_by: e.inspected_by,
         });
@@ -259,6 +273,23 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
                 ));
             }
         }
+    }
+
+    // Solo-mode observation: when every recorded verdict is bare `llm`/`human`
+    // (no role declared), separation of duties rests on one agent's discipline.
+    // Legitimate (solo driving is supported), so a hint — not an issue.
+    let verdicts = claims.iter().filter(|c| c.status != "uninspected").count();
+    if verdicts > 0
+        && !claims
+            .iter()
+            .filter(|c| c.status != "uninspected")
+            .any(|c| crate::gate::role_of(&c.inspected_by).is_some())
+    {
+        hints.push(format!(
+            "all {verdicts} verdict(s) were recorded in solo mode (bare llm/human) — \
+             for real separation of duties, declare roles per agent \
+             (LOOM_AGENT=llm:analyzer|quality|…); see `loom guide`"
+        ));
     }
 
     for c in claims {
@@ -292,6 +323,30 @@ fn audit_inspectable_edges(db: &dyn LoomDb, issues: &mut Vec<String>) -> Result<
                 "{} edge {} is '{}' but its criterion is empty/vacuous ('{}')",
                 c.etype, c.label, c.status, c.criterion.trim()
             ));
+        }
+        // A verdict whose confidence is still the 0.0 default, or whose
+        // last_inspected was never stamped, reads as "inspected" without having
+        // been inspected. IMPLEMENTS is exempt: it starts passing-by-construction
+        // (a structural assertion, not a verdict) with exactly those defaults.
+        // `independent` carries no confidence slot (its why lives in notes/
+        // evidence), so the confidence check applies to passing/failing only.
+        if c.etype != schema::edge::IMPLEMENTS {
+            if matches!(c.status.as_str(), "passing" | "failing") && c.confidence == 0.0 {
+                issues.push(format!(
+                    "{} edge {} is '{}' with confidence 0.0 — the uninspected default \
+                     leaked into a verdict (re-record it with a real --confidence)",
+                    c.etype, c.label, c.status
+                ));
+            }
+            if matches!(c.status.as_str(), "passing" | "failing" | "independent")
+                && c.last_inspected.trim().is_empty()
+            {
+                issues.push(format!(
+                    "{} edge {} is '{}' but last_inspected is empty — \
+                     the verdict has no inspection timestamp",
+                    c.etype, c.label, c.status
+                ));
+            }
         }
         if c.status == "independent" {
             // The why lives in `notes` for RELATES_TO (unrelated) and in

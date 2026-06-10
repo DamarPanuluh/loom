@@ -114,8 +114,15 @@ pub fn list_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<G
 /// Ripple support for `loom sync`: a quality verdict is a claim about code, so
 /// when code implementing an intent changes, its *passing* GOVERNS edges go
 /// `needs_reverification` — green must be re-earned. Failing/uninspected edges
-/// are left alone (they are already open work). Returns the count flagged.
-pub fn flag_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<usize> {
+/// are left alone (they are already open work). A non-empty `cause` (e.g.
+/// "src/db/mod.rs changed") is recorded as a transition note on each flipped
+/// edge, so the staleness explains itself. Returns the count flagged.
+pub fn flag_governs_for_intent(
+    db: &dyn LoomDb,
+    intent_id: &str,
+    cause: &str,
+    now: &str,
+) -> Result<usize> {
     let mut count = 0usize;
     for g in list_governs_for_intent(db, intent_id)? {
         if g.inspection_status == "passing" {
@@ -125,6 +132,11 @@ pub fn flag_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<usize
                 rid = esc(&g.rule_id),
                 iid = esc(intent_id),
             ))?;
+            if !cause.is_empty() {
+                super::note::record_sync_flip(
+                    db, "edge", &g.id, "passing", "needs_reverification", cause, now,
+                )?;
+            }
             count += 1;
         }
     }

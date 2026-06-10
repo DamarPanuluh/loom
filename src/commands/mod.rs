@@ -37,7 +37,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Status                     => status::run(&printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
-        Command::Next        { mode }       => next::run(&mode, &printer),
+        Command::Next        { mode, all }  => next::run(&mode, all, &printer),
         Command::Cluster     { intent_id }  => cluster::run(&intent_id, &printer),
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
@@ -54,7 +54,10 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Coverage                   => coverage::run(&printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
-        Command::Export      { out }        => export::run(&out, &printer),
+        Command::Export      { path, out, check } => {
+            let out = path.or(out).unwrap_or_else(|| "loom.graph.json".to_string());
+            export::run(&out, check, &printer)
+        }
         Command::Import      { file }       => import::run(&file, &printer),
     }
 }
@@ -67,11 +70,13 @@ fn orient(printer: &Printer) -> Result<()> {
             "tool": "loom",
             "what": "Externalized, falsifiable memory for understanding and cleaning up a codebase.",
             "start_here": [
-                "loom guide    — the full driving protocol (read first)",
-                "loom schema   — the data model (node/edge types, states, vocabularies)",
-                "loom status   — where the graph is now + the recommended next action",
-                "loom next     — get the next thing to inspect",
-                "loom sync     — run after ANY code change (flags stale edges/verdicts/proofs)",
+                "loom guide      — the full driving protocol (read first)",
+                "loom schema     — the data model (node/edge types, states, vocabularies)",
+                "loom status     — where the graph is now + the recommended next action",
+                "loom next       — get the next thing to inspect",
+                "loom next --all — the closeout view: every role queue + gaps in one list",
+                "loom sync       — run after ANY code change (flags stale edges/verdicts/proofs)",
+                "loom export --check — fail if the committed graph export went stale",
             ],
             "note": "Add --json to any command for machine-readable output. Every command has --help.",
         }));
@@ -79,11 +84,12 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("loom — externalized, falsifiable memory for understanding/cleaning a codebase.");
         println!();
         println!("Start here:");
-        println!("  loom guide    learn the loop (read this first)");
-        println!("  loom schema   the data model");
-        println!("  loom status   where am I? what next?");
-        println!("  loom next     get the next thing to inspect");
-        println!("  loom sync     run after ANY code change");
+        println!("  loom guide       learn the loop (read this first)");
+        println!("  loom schema      the data model");
+        println!("  loom status      where am I? what next?");
+        println!("  loom next        get the next thing to inspect");
+        println!("  loom next --all  closeout: every role queue + gaps in one list");
+        println!("  loom sync        run after ANY code change");
         println!();
         println!("Every command has --help; add --json for machine-readable output.");
     }

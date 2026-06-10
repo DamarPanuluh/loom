@@ -40,6 +40,32 @@ pub fn get_validation(db: &dyn LoomDb, id: &str) -> Result<Option<Validation>> {
     Ok(result.rows().first().map(|row| row_to_validation(row, &cols)))
 }
 
+/// Resolve a validation key (exact id, exact name, or unique name fragment) to
+/// its id — mirrors `resolve_intent`/`resolve_rule` for consistent UX.
+pub fn resolve_validation(db: &dyn LoomDb, key: &str) -> Result<String> {
+    let vs = list_validations(db)?;
+    if vs.iter().any(|v| v.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = vs.iter().filter(|v| v.name.to_lowercase() == kl).collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let subs: Vec<_> = vs.iter().filter(|v| v.name.to_lowercase().contains(&kl)).collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No validation matches '{}' (by id, name, or fragment). Run `loom validation list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — matches {} validations. Use the id (`loom validation list`).",
+            key, subs.len()
+        ),
+    }
+}
+
 pub fn list_validations(db: &dyn LoomDb) -> Result<Vec<Validation>> {
     let q = "MATCH (v:Validation) \
              RETURN v.id, v.name, v.description, v.validation_type, \

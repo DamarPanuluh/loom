@@ -17,13 +17,19 @@ const GOLDEN_RULES: &[&str] = &[
     "Prescriptive intents (planned/needs_change) still need a falsifiable criterion — that's what makes the design a test.",
     "Two axes of completeness. VERTICAL is the binding spine: HIERARCHY is a tree (one parent per intent), every implemented leaf intent is grounded in code (IMPLEMENTS), every CodeFile is reached. HORIZONTAL (RELATES_TO, the N×N grid) is optional understanding/cleanup.",
     "Done (vertical) when `loom status` shows vertical ✓ + `loom coverage` reports nothing unaccounted. Horizontal closure (phase=complete) is optional polish.",
-    "Criteria and evidence must be substantive — loom rejects placeholders, and `loom doctor` audits verdicts (vacuous criterion, bad confidence, out-of-lane provenance).",
+    "Criteria and evidence must be substantive — loom rejects placeholders, and `loom doctor` audits verdicts (vacuous criterion, bad confidence, missing timestamp, out-of-lane provenance).",
+    "CLOSE OUT with `loom next --all` — every role queue, vertical gaps, and doctor health as ONE prioritized list (the answer to \"what's left?\" without reconciling five commands by hand).",
+    "A proof that CANNOT run yet (live target down, missing credential) is `loom validation mark <id> --result blocked --reason \"…\"` — honest and out of the queue; never leave it looking forgotten as not_run.",
+    "Before committing: `loom export --check` — fails if the committed loom.graph.json is stale vs the live graph (hook it into pre-commit/CI so the graph always travels with the code).",
 ];
 
-/// What `loom sync` invalidates when a registered file's mtime advances — the
+/// What `loom sync` invalidates when a registered file's CONTENT changes — the
 /// graph's impact analysis, taught up-front so a driver knows why green decays.
+/// (Change detection is content-hash based: checkout/rebase mtime churn does
+/// not false-flag. Every flipped edge gets a transition note naming the file
+/// that caused it, so staleness explains itself in `loom edge show`/`loom next`.)
 const RIPPLE: &[&str] = &[
-    "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`)",
+    "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`; the edge's transition note names the changed file)",
     "passing GOVERNS verdicts on those intents → needs_reverification (quality green is re-earned via `loom next --mode quality` + `loom rule verdict`)",
     "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`)",
     "IMPLEMENTS locators that no longer occur in their file (renamed symbol) → needs_reverification, and reported — re-ground with a fresh locator",
@@ -42,17 +48,41 @@ const ROLE_LANES: &[(&str, &str, &str)] = &[
     ("quality",   "quality",   "the green gate: defines rules, applies them, records GOVERNS verdicts (`loom rule verdict`)"),
 ];
 
+/// Orchestration — loom defines the CONTRACT (roles, lanes, owned fields, the
+/// handoff dependency). It does NOT predefine the TOPOLOGY: one agent switching
+/// hats, sequential subagents, parallel fan-out, or any mix are all valid. loom
+/// enforces the lane when a role is declared; it never dictates when or how many.
+const ORCHESTRATION: &[&str] = &[
+    "loom tells you HOW to work with it; YOU choose how your agents are organized. Valid shapes:",
+    "  · one agent, all roles (bare `llm`) — switch hats as the phase changes",
+    "  · one agent declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
+    "  · many agents in sequence — builder finishes → analyzer picks up → … (handoff via the graph)",
+    "  · many agents in parallel — each role works its own lane at once",
+    "THE CONTRACT (identical in every shape):",
+    "  · declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo)",
+    "  · stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane",
+    "  · hand off through the GRAPH, not chat — the next agent reads `loom status`/`loom next`/notes and continues",
+    "HANDOFF ORDER is a DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify)",
+    "  → validator (prove) → quality (green); fixer on any failing/needs_change. Run these one at a",
+    "  time or overlap where the graph allows — loom enforces the lane, never the timing.",
+    "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
+    "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
+    "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
+    "  fields per item) → repeat until vertical ✓ (and green, if you want the quality bar).",
+];
+
 fn brownfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the repo root."),
         ("seed intents", "Read the code; add `system` → `component` → `feature` intents (lifecycle defaults to `implemented`). Link with `loom edge hierarchy <parent> <child>`."),
-        ("ground to code", "`loom codefile add '<glob>'` then `loom edge implement <intent> <codefile> --locator \"fn …\"`."),
+        ("ground to code", "`loom codefile add '<glob>'` then `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol AS IT APPEARS in the file — e.g. `def shorten`, `fn run`, `class Link` — `loom sync` flags it stale if it isn't found verbatim)."),
         ("discover", "`loom next` repeatedly: read the code it points to, then record `loom edge explore <a> <b> ground|issue|independent …`."),
         ("fix", "`loom next --mode fix` for failing/stale edges."),
         ("coverage", "`loom coverage` — map or `loom ignore` every file so nothing is missed."),
-        ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`."),
+        ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
         ("gate", "Encode the codebase's norms (e.g. ISO 5055-style reliability/security/maintainability): `loom rule add …`, `loom rule apply <rule> <intent>`, then earn green — `loom next --mode quality` + `loom rule verdict … --status passing|failing --criterion … --evidence …`."),
-        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), overlapping ownership, scatter, tangles, rules never held against coded intents. Refute or confirm each via its remedy; `independent` is as valuable as a fix."),
+        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), overlapping ownership, scatter, tangles, rules never held against coded intents. Refute or confirm each via its remedy; `independent` is as valuable as a fix. Per-file ownership questions: `loom codefile show <path>`."),
+        ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]
 }
 
@@ -73,7 +103,8 @@ fn refactor() -> Vec<(&'static str, &'static str)> {
         ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, and unmeasured quality rules; each finding carries its remedy command."),
         ("flag what must change", "`loom intent mark <id> --lifecycle needs_change --reason \"…\"`. Set/refresh the criterion to the desired end state; capture rationale (the --reason is recorded as a note). This is the honest 'known issue' state — no faking a verdict."),
         ("build", "`loom next --mode build` surfaces needs_change intents first. Make the minimal change, then `loom intent mark <id> --lifecycle implemented`."),
-        ("re-verify", "`loom sync` — it flags everything the change touched (stale relationships, stale quality green, invalidated proofs). Then `loom next --mode fix`, `--mode quality`, and `loom validate` until the compass is green."),
+        ("re-verify", "`loom sync` — it flags everything the change touched (stale relationships, stale quality green, invalidated proofs), and notes WHY on each flipped edge. Then `loom next --mode fix`, `--mode quality`, and `loom validate` until the compass is green."),
+        ("close out", "`loom next --all` for the cross-lane remainder, then `loom export --check` before committing."),
     ]
 }
 
@@ -130,6 +161,19 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                     "role": role, "queue": format!("loom next --mode {mode}"), "does": what,
                 })).collect::<Vec<_>>(),
             },
+            "orchestration": {
+                "principle": "loom defines the CONTRACT (roles, lanes, owned fields, the handoff dependency). It does NOT predefine the TOPOLOGY — you choose how agents are organized; loom enforces the lane when a role is declared, never when or how many.",
+                "topologies": [
+                    "one agent, all roles (bare `llm`) — switch hats as the phase changes",
+                    "one agent declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
+                    "many agents in sequence — builder finishes, analyzer picks up, … (handoff via the graph)",
+                    "many agents in parallel — each role works its own lane at once",
+                ],
+                "contract": "Identical in every shape: declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo); stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane; hand off through the GRAPH (status/next/notes), not chat.",
+                "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
+                "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
+                "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until vertical ✓ (and green if wanted).",
+            },
             "completeness": {
                 "vertical": "BINDING spine, mechanically verifiable: HIERARCHY is a well-formed tree (one parent per non-root intent, no cycles); every implemented leaf intent has ≥1 IMPLEMENTS (realized); every CodeFile is reached by ≥1 IMPLEMENTS. Surfaced as `vertically_complete` in `loom status`; details in `loom report` + `loom doctor` + `loom coverage`.",
                 "horizontal": "OPTIONAL closure: every intent pair has an inspected RELATES_TO edge (passing/failing/independent). Surfaced as `horizontally_explored`. Good for deep understanding/cleanup, but never required for 'done'.",
@@ -182,6 +226,11 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("  Bare 'llm'/'human' = solo mode (one agent, all lanes). Separation of duties:");
     println!("  builders never green-light their own work — verdicts live in other lanes,");
     println!("  and `loom doctor` audits provenance.");
+    println!();
+    println!("ORCHESTRATION (you have loom access — usually an orchestrator that can spawn subagents)");
+    for line in ORCHESTRATION {
+        println!("  {}", line);
+    }
     println!();
     println!("Other modes: `loom guide --mode greenfield|brownfield|refactor`. Start: `loom status` · `loom next`.");
     Ok(())

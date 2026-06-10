@@ -29,7 +29,7 @@ re-flags the verdict → a validation that *invokes loom itself* (DB-lock
 regression) → export → import into a fresh graph → doctor. 9 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
-Unit/regression suite (49 tests, in-memory DB, fast):
+Unit/regression suite (56 tests, in-memory DB, fast):
 
 ```bash
 cargo test
@@ -53,9 +53,13 @@ loom schema     # data model: nodes, edges, states, field owners
 The loop, compressed: `loom init .` → seed intents (`loom rule seed iso5055`
 early) → ground to files → then repeat **`loom status` → do what the compass
 says → `loom sync` after ANY code change**. Work queues per agent role:
-`loom next --mode build|discovery|fix|validate|quality`. Derived problems:
-`loom smells`. Ship the graph: `loom export` (commit `loom.graph.json`,
-gitignore `.loom/`).
+`loom next --mode build|discovery|fix|validate|quality`; the cross-role
+closeout is `loom next --all` (every queue + gaps + doctor in one list).
+Derived problems: `loom smells`; per-file ownership: `loom codefile show`.
+Proofs that can't run yet: `loom validation mark <id> --result blocked
+--reason "…"` (honest, out of the queue, visible in `loom report`).
+Ship the graph: `loom export` (commit `loom.graph.json`, gitignore `.loom/`);
+guard freshness with `loom export --check` (non-zero on drift — pre-commit/CI).
 
 Multi-agent: set `LOOM_AGENT=llm:builder|analyzer|fixer|validator|quality`
 per agent — lanes are enforced. Unset (bare `llm`) = solo mode, all lanes pass.
@@ -66,9 +70,10 @@ per agent — lanes are enforced. Unset (bare `llm`) = solo mode, all lanes pass
   a second concurrent loom process fails with `GRAFEO-X001 … locked`.
   Sequential commands are fine. Validation commands MAY invoke loom (the
   session is released while they run) — but don't parallelize loom itself.
-- **mtime granularity is 1s.** Editing a file and running `loom sync` within
-  the same second can miss the change — `sleep 1` between write and sync in
-  scripts (the driver does).
+- **Sync detects CONTENT changes, not timestamps.** `loom sync` hashes file
+  bytes (`content_hash`): a `touch`/checkout that doesn't change bytes flags
+  nothing, and a byte change is caught even within the same second. Only a
+  never-hashed graph (pre-upgrade) falls back to mtime once.
 - **Quote globs.** `loom codefile add 'src/**/*.rs'` — unquoted, the shell
   expands and only the first file is registered.
 - **Evidence gates bite.** `--criterion "todo"` or anything <10 chars /

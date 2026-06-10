@@ -64,6 +64,37 @@ pub fn record_transition(
     })
 }
 
+/// Auto-record a `loom sync` staleness flip with its CAUSE — "why is this edge
+/// needs_reverification?" answered in place. Same transition-note channel as
+/// `record_transition`, with the triggering file appended: the text stays
+/// machine-screenable (the recurrent-trouble smell matches on the "→ <status>"
+/// suffix of *verdict* transitions, which a "(sync: …)" tail never fakes) while
+/// `loom edge show` / `loom next` surface the explanation with no extra lookup.
+pub fn record_sync_flip(
+    db: &dyn LoomDb,
+    target_kind: &str, // "edge" | "intent"
+    target_id: &str,
+    old_status: &str,
+    new_status: &str,
+    cause: &str, // e.g. "src/db/mod.rs changed"
+    now: &str,
+) -> Result<()> {
+    insert_note(db, &Note {
+        id: uuid::Uuid::new_v4().to_string(),
+        kind: "transition".to_string(),
+        text: format!(
+            "{} → {} (sync: {})",
+            if old_status.is_empty() { "?" } else { old_status },
+            new_status,
+            cause
+        ),
+        author: "loom".to_string(),
+        target_kind: target_kind.to_string(),
+        target_id: target_id.to_string(),
+        created_at: now.to_string(),
+    })
+}
+
 /// All notes, newest last, optionally filtered (in Rust) by target id and/or
 /// kind. Scanning + filtering in Rust keeps this on the reliable query path.
 pub fn list_notes(

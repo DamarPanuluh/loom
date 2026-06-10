@@ -5,7 +5,10 @@ use uuid::Uuid;
 
 use crate::cli::CodefileCmd;
 use crate::db::{ensure_initialized, GrafeoDb};
-use crate::db::queries::{insert_codefile, list_codefiles};
+use crate::db::queries::{
+    get_codefile_by_id_or_path, get_intent, insert_codefile, list_all_implements,
+    list_codefiles, list_governs_for_intent,
+};
 use crate::output::Printer;
 use crate::types::CodeFile;
 
@@ -55,10 +58,14 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     id:            Uuid::new_v4().to_string(),
                     path:          p.clone(),
                     language:      language.clone().unwrap_or_else(|| detect_language(&p)),
-                    // Stamp the current mtime so the first `loom sync` is a no-op
-                    // and only genuine later edits ripple needs_reverification.
+                    // Stamp the current mtime + content fingerprint so the first
+                    // `loom sync` is a no-op and only genuine later edits ripple
+                    // needs_reverification.
                     last_modified: crate::repo::mtime_rfc3339(&cwd.join(&p)).unwrap_or_default(),
                     imports:       "[]".to_string(), // populated by `loom sync`
+                    content_hash:  std::fs::read(cwd.join(&p))
+                        .map(|b| crate::repo::content_hash(&b))
+                        .unwrap_or_default(),
                 };
                 insert_codefile(&db, &cf)?;
                 added.push(cf);
@@ -75,7 +82,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 println!("✓ CodeFile added  (id: {})", cf.id);
                 println!("  path:     {}", cf.path);
                 println!("  language: {}", cf.language);
-                println!("  → Next: ground an intent to it — `loom edge implement <intent> {} --locator \"fn …\"`", cf.id);
+                println!("  → Next: ground an intent to it — `loom edge implement <intent> {} --locator \"<symbol>\"` (symbol as it appears in the file, e.g. `def foo`/`fn foo`)", cf.id);
             } else {
                 println!("✓ Registered {} code file(s) ({} already present, skipped).", added.len(), skipped);
                 for cf in &added {
@@ -83,6 +90,107 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 }
                 if !added.is_empty() {
                     println!("  → Next: `loom sync` to stamp mtimes, then ground intents with `loom edge implement`.");
+                }
+            }
+        }
+
+        CodefileCmd::Show { path_or_id } => {
+            let Some(cf) = get_codefile_by_id_or_path(&db, &path_or_id)? else {
+                anyhow::bail!(
+                    "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
+                    path_or_id
+                );
+            };
+            // The ownership view: every intent claiming this file (via
+            // IMPLEMENTS), each with its abstraction level so cross-cutting
+            // claims read differently from a feature owning its home file.
+            let claims: Vec<_> = list_all_implements(&db)?
+                .into_iter()
+                .filter(|im| im.codefile_id == cf.id)
+                .collect();
+            let mut owners = Vec::new();
+            for im in &claims {
+                let intent = get_intent(&db, &im.intent_id)?;
+                let (level, lifecycle) = intent
+                    .map(|i| (i.abstraction_level, i.lifecycle))
+                    .unwrap_or_default();
+                owners.push(serde_json::json!({
+                    "intent_id": im.intent_id,
+                    "intent_name": im.intent_name,
+                    "level": level,
+                    "lifecycle": lifecycle,
+                    "locator": im.locator,
+                    "inspection_status": im.inspection_status,
+                }));
+            }
+            // Quality rules reaching this file through its owning intents.
+            let mut rules: Vec<serde_json::Value> = Vec::new();
+            let mut seen_rules = HashSet::new();
+            for im in &claims {
+                for g in list_governs_for_intent(&db, &im.intent_id)? {
+                    if seen_rules.insert(format!("{}|{}", g.rule_id, g.intent_id)) {
+                        rules.push(serde_json::json!({
+                            "rule": g.rule_name,
+                            "via_intent": g.intent_name,
+                            "inspection_status": g.inspection_status,
+                        }));
+                    }
+                }
+            }
+            let imports: Vec<String> = serde_json::from_str(&cf.imports).unwrap_or_default();
+            let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
+
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "codefile": cf,
+                    "owners": owners,
+                    "owner_count": owners.len(),
+                    "tangled": tangled,
+                    "governing_rules": rules,
+                    "imports": imports,
+                }));
+            } else {
+                println!("── CodeFile ───────────────────────────────────────────────────────");
+                println!("  path:      {}", cf.path);
+                println!("  language:  {}", cf.language);
+                println!("  modified:  {}", if cf.last_modified.is_empty() { "(never synced)" } else { &cf.last_modified });
+                println!("  id:        {}", cf.id);
+                println!();
+                println!("── Owned by ({} intent(s)){} ────────────────────────────────────────",
+                    owners.len(),
+                    if tangled { "  ⚠ TANGLED" } else { "" });
+                if claims.is_empty() {
+                    println!("  (none — unexplained code; ground it: `loom edge implement <intent> {}`)", cf.path);
+                } else {
+                    for im in &claims {
+                        let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
+                        let intent = get_intent(&db, &im.intent_id)?;
+                        let level = intent.map(|i| i.abstraction_level).unwrap_or_default();
+                        println!("  [{:<13}] {}{}  ({})", level, im.intent_name, loc, im.intent_id);
+                    }
+                }
+                if tangled {
+                    println!("  ⚠ {} intents in one file (threshold {}) — consider splitting along intent lines.",
+                        claims.len(), crate::db::queries::smells::TANGLE_INTENTS);
+                }
+                println!();
+                println!("── Governing rules (via owners) ────────────────────────────────────");
+                if rules.is_empty() {
+                    println!("  (none)");
+                } else {
+                    for r in &rules {
+                        println!("  [{:<20}] {}  (via '{}')",
+                            r["inspection_status"].as_str().unwrap_or(""),
+                            r["rule"].as_str().unwrap_or(""),
+                            r["via_intent"].as_str().unwrap_or(""));
+                    }
+                }
+                if !imports.is_empty() {
+                    println!();
+                    println!("── Imports ({}) ─────────────────────────────────────────────────────", imports.len());
+                    for i in &imports {
+                        println!("  → {}", i);
+                    }
                 }
             }
         }

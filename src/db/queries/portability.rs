@@ -22,6 +22,7 @@ fn node_props(lbl: &str) -> Vec<&'static str> {
         schema::required_node_props(lbl).iter().map(|(p, _)| *p).collect();
     if lbl == label::CODE_FILE {
         props.push(prop::IMPORTS);
+        props.push(prop::CONTENT_HASH);
     }
     props
 }

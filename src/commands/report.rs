@@ -4,7 +4,7 @@ use std::env;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     completeness_gaps, count_all_edges_by_inspection_status, count_codefiles, count_intents,
-    count_validations, intents_without_validations, list_all_failing_governs,
+    count_validations, intents_without_validations, list_all_failing_governs, list_validations,
     recent_passing, top_intents_by_centrality, validation_pass_rate, vertical_completeness,
 };
 use crate::output::{fmt_status, Printer};
@@ -64,12 +64,19 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     let gaps = completeness_gaps(&db)?;
     let vc = vertical_completeness(&db)?;
+    // Blocked proofs leave the validator queue (deliberate — they can't run),
+    // so the report is where they stay visible until someone unblocks them.
+    let blocked: Vec<_> = list_validations(&db)?
+        .into_iter()
+        .filter(|v| v.last_result == "blocked")
+        .collect();
 
     if printer.json {
         let mut v = serde_json::to_value(&report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("completeness_gaps".to_string(), serde_json::to_value(&gaps)?);
             obj.insert("vertical_completeness".to_string(), serde_json::to_value(&vc)?);
+            obj.insert("blocked_validations".to_string(), serde_json::to_value(&blocked)?);
         }
         printer.print_json(&v);
         return Ok(());
@@ -132,6 +139,16 @@ pub fn run(printer: &Printer) -> Result<()> {
         }
     }
     println!();
+
+    if !blocked.is_empty() {
+        println!("── Blocked Validations ({}) ─────────────────────────────────────────", blocked.len());
+        for v in &blocked {
+            println!("  ⊘ {}  ({})", v.name, v.id);
+        }
+        println!("  → Waiting on something external (the why is on each VALIDATES edge).");
+        println!("    Unblock with `loom validation mark <id> --result passed|failed --evidence …`.");
+        println!();
+    }
 
     println!("── Recent Passing Edges ({}) ────────────────────────────────────────", recent.len());
     if recent.is_empty() {

@@ -68,6 +68,52 @@ pub fn resolve_intent(db: &dyn LoomDb, key: &str) -> Result<String> {
     }
 }
 
+/// Append a path to an intent's `source_refs` (the canonical-source list: code
+/// AND docs — contracts, ADRs, design notes). Idempotent: re-adding an existing
+/// ref is a no-op. Returns false when the intent doesn't exist.
+pub fn add_source_ref(db: &dyn LoomDb, id: &str, path: &str, updated_at: &str) -> Result<bool> {
+    let Some(intent) = get_intent(db, id)? else {
+        return Ok(false);
+    };
+    let mut refs: Vec<String> = serde_json::from_str(&intent.source_refs).unwrap_or_default();
+    if !refs.iter().any(|r| r == path) {
+        refs.push(path.to_string());
+        set_source_refs(db, id, &refs, updated_at)?;
+    }
+    Ok(true)
+}
+
+/// Remove a path from an intent's `source_refs`. Returns Ok(None) when the
+/// intent doesn't exist, Ok(Some(false)) when the ref wasn't present.
+pub fn remove_source_ref(
+    db: &dyn LoomDb,
+    id: &str,
+    path: &str,
+    updated_at: &str,
+) -> Result<Option<bool>> {
+    let Some(intent) = get_intent(db, id)? else {
+        return Ok(None);
+    };
+    let mut refs: Vec<String> = serde_json::from_str(&intent.source_refs).unwrap_or_default();
+    let before = refs.len();
+    refs.retain(|r| r != path);
+    if refs.len() == before {
+        return Ok(Some(false));
+    }
+    set_source_refs(db, id, &refs, updated_at)?;
+    Ok(Some(true))
+}
+
+fn set_source_refs(db: &dyn LoomDb, id: &str, refs: &[String], updated_at: &str) -> Result<()> {
+    db.execute(&format!(
+        "MATCH (n:Intent {{id: '{}'}}) SET n.source_refs = '{}', n.updated_at = '{}'",
+        esc(id),
+        esc(&serde_json::to_string(refs)?),
+        esc(updated_at)
+    ))?;
+    Ok(())
+}
+
 /// Set an intent's lifecycle (planned | implemented | needs_change).
 pub fn set_intent_lifecycle(
     db: &dyn LoomDb,

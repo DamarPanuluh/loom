@@ -65,6 +65,12 @@ pub enum Command {
         /// (validator: run/repair proofs) | quality (quality: earn GOVERNS green).
         #[arg(long, default_value = "discovery")]
         mode: String,
+
+        /// The CLOSEOUT view: every role queue at once — counts + top item per
+        /// queue, vertical-completeness gaps, and doctor health, as one
+        /// prioritized list. The single operational answer to "what's left?".
+        #[arg(long, conflicts_with = "mode")]
+        all: bool,
     },
 
     /// Return all unresolved edges touching a given intent — batch a
@@ -98,10 +104,12 @@ pub enum Command {
         subcommand: NoteCmd,
     },
 
-    /// The flag engine — run after ANY code change. Detects mtime deltas on
-    /// registered files and propagates one hop: stale RELATES_TO edges and
-    /// passing GOVERNS verdicts → needs_reverification, linked validations →
-    /// not_run; files missing on disk are reported (drop with `codefile remove`).
+    /// The flag engine — run after ANY code change. Detects CONTENT changes on
+    /// registered files (content-hash; checkout-only mtime churn never false-
+    /// flags) and propagates one hop: stale RELATES_TO edges and passing
+    /// GOVERNS verdicts → needs_reverification (each flip noted with the file
+    /// that caused it), linked validations → not_run; files missing on disk
+    /// are reported (drop with `codefile remove`).
     Sync {
         /// Project root (default: current directory, where .loom/ lives).
         #[arg(default_value = ".")]
@@ -168,10 +176,25 @@ pub enum Command {
 
     /// Export the graph as deterministic JSON — commit it so the graph travels
     /// with the repo (and graph changes become diffable in PRs).
+    #[command(after_help = "EXAMPLES:\n  \
+        loom export                      # writes loom.graph.json\n  \
+        loom export graph-backup.json    # positional path (mirrors `loom import <file>`)\n  \
+        loom export -                    # stdout\n  \
+        loom export --check              # verify the committed export is fresh (CI/pre-commit)")]
     Export {
-        /// Output file ("-" for stdout).
-        #[arg(long, default_value = "loom.graph.json")]
-        out: String,
+        /// Output file ("-" for stdout). Positional, mirroring `loom import
+        /// <file>`. Defaults to loom.graph.json.
+        path: Option<String>,
+
+        /// Output file (legacy flag form; same as the positional path).
+        #[arg(long, conflicts_with = "path")]
+        out: Option<String>,
+
+        /// Don't write — verify the existing export file matches the live
+        /// graph byte-for-byte. Exits non-zero on drift (or a missing file),
+        /// so a pre-commit hook / CI can stop a stale export from shipping.
+        #[arg(long)]
+        check: bool,
     },
 
     /// Rebuild a graph from a `loom export` file (into a fresh `loom init`).
@@ -284,6 +307,37 @@ pub enum IntentCmd {
     /// Show full detail of one intent including all its edges.
     Show {
         id: String,
+    },
+
+    /// Manage an intent's source_refs — the canonical-source list (code AND
+    /// docs: contracts, ADRs, design notes). Set at `intent add --source`;
+    /// these subcommands edit it afterwards.
+    Source {
+        #[command(subcommand)]
+        subcommand: SourceCmd,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SourceCmd {
+    /// Append a path to an intent's source_refs (idempotent).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent source add gate-authority docs/AUTHORING-CONTRACT.md")]
+    Add {
+        /// Intent id, exact name, or unique name fragment.
+        id: String,
+
+        /// File path (code or doc) — anchors like `docs/x.md#section` are fine.
+        path: String,
+    },
+
+    /// Remove a path from an intent's source_refs.
+    Remove {
+        /// Intent id, exact name, or unique name fragment.
+        id: String,
+
+        /// The exact path to remove.
+        path: String,
     },
 }
 
@@ -571,6 +625,14 @@ pub enum CodefileCmd {
     /// List all registered code files.
     List,
 
+    /// The ownership view of ONE file: which intents claim it (with locators),
+    /// which quality rules reach it through them, and whether it is tangled
+    /// (serving too many intents). The per-file answer hotspots only hint at.
+    Show {
+        /// The CodeFile id or its exact registered path.
+        path_or_id: String,
+    },
+
     /// Remove a code file from the graph (with its IMPLEMENTS edges). For
     /// phantoms after a delete/rename on disk — `loom sync` reports those.
     Remove {
@@ -605,6 +667,33 @@ pub enum ValidationCmd {
         /// edge in the same step). Omit to link later with `loom edge validates`.
         #[arg(long)]
         intent: Option<String>,
+    },
+
+    /// Record a validation's result by hand (for manual_check / async proofs that
+    /// have no runnable --command). Updates the node's last_result and the
+    /// per-intent VALIDATES verdict. Validator-lane work.
+    #[command(after_help = "EXAMPLES:\n  \
+        loom validation mark smoke-bundle --result passed --evidence \"ran the bundle against staging; 200s on all 4 routes\"\n  \
+        loom validation mark smoke-bundle --result blocked --reason \"needs a live TARGET_URL — staging is down until the infra migration lands\"")]
+    Mark {
+        /// Validation id, name, or unique name fragment.
+        id: String,
+
+        /// The verdict: passed | failed | blocked. `blocked` = cannot run yet
+        /// for a recorded external reason (distinct from not_run = forgotten);
+        /// blocked proofs leave the validator queue until you mark them again.
+        #[arg(long)]
+        result: String,
+
+        /// What you checked to reach a passed/failed verdict (substantive —
+        /// recorded as the VALIDATES edge evidence). Required for passed/failed.
+        #[arg(long)]
+        evidence: Option<String>,
+
+        /// Why this proof cannot run yet (substantive — recorded on the
+        /// VALIDATES edge). Required for --result blocked.
+        #[arg(long)]
+        reason: Option<String>,
     },
 
     /// List all validation nodes.

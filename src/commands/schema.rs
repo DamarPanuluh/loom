@@ -84,6 +84,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo"],
         "severity": ["warning", "error"],
         "validation_type": ["test", "assertion", "benchmark", "manual_check"],
+        "validation_result": ["passed", "failed", "not_run", "blocked"],
         "aspect": {"open": true, "suggested": ["happy", "sad", "fallback", "edge_case", "lifecycle", "security", "performance"]},
     });
 
@@ -141,6 +142,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  note_kind:         justification | commentary | idea | question | decision | todo");
     println!("  severity:          warning | error");
     println!("  validation_type:   test | assertion | benchmark | manual_check");
+    println!("  validation_result: passed | failed | not_run | blocked (recorded \"can't run yet\" + reason)");
     println!("  aspect (open):     happy | sad | fallback | edge_case | lifecycle | security | performance | …");
     Ok(())
 }

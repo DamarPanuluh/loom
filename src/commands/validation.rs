@@ -4,9 +4,12 @@ use uuid::Uuid;
 
 use crate::cli::ValidationCmd;
 use crate::db::{ensure_initialized, GrafeoDb};
-use crate::db::queries::{get_validation, insert_validates, insert_validation, list_validations};
+use crate::db::queries::{
+    get_validation, insert_validates, insert_validation, list_validations, resolve_validation,
+    set_validates_status_for_validation, update_validation_result,
+};
 use crate::output::Printer;
-use crate::types::Validation;
+use crate::types::{Validation, ValidationResult};
 
 pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let cwd = env::current_dir()?;
@@ -74,6 +77,64 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 match &linked_intent {
                     Some(iid) => println!("  → Linked to intent {iid}. Run it: `loom validate {iid}`."),
                     None => println!("  → Next: link it — `loom edge validates {id} <intent-id>` (or re-add with --intent)."),
+                }
+            }
+        }
+
+        ValidationCmd::Mark { id, result, evidence, reason } => {
+            crate::gate::acting_in_lane(
+                "mark a validation result",
+                &[crate::db::schema::role::VALIDATOR],
+                None,
+            )?;
+            // Verdict must be passed/failed/blocked ("not_run" is not a verdict).
+            let res: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
+            if res == ValidationResult::NotRun {
+                anyhow::bail!(
+                    "--result must be 'passed', 'failed', or 'blocked' (not_run is not a verdict)."
+                );
+            }
+            // passed/failed carry evidence (what you checked); blocked carries a
+            // reason (why it can't run) — recorded on the VALIDATES edge either
+            // way so the state explains itself.
+            let edge_note = if res == ValidationResult::Blocked {
+                let r = reason.as_deref().unwrap_or("");
+                crate::gate::require_substantive(
+                    "reason", r, "why this proof cannot run yet (what it is waiting on)",
+                )?;
+                format!("blocked: {r}")
+            } else {
+                let ev = evidence.as_deref().unwrap_or("");
+                crate::gate::require_substantive(
+                    "evidence", ev, "what you checked to reach this verdict",
+                )?;
+                ev.to_string()
+            };
+            let vid = resolve_validation(&db, &id)?;
+            let now = chrono::Utc::now().to_rfc3339();
+            update_validation_result(&db, &vid, &res.to_string(), &now)?;
+            // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
+            // leaves the edge uninspected (no proof was produced — that's
+            // honest); the "blocked: <reason>" note distinguishes it from
+            // forgotten, and the compass + validator queue skip blocked proofs.
+            let status = match res {
+                ValidationResult::Passed => "passing",
+                ValidationResult::Failed => "failing",
+                _ => "uninspected",
+            };
+            let n = set_validates_status_for_validation(&db, &vid, status, &edge_note)?;
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "validation_id": vid, "result": res.to_string(),
+                    "intents_updated": n, "note": edge_note,
+                }));
+            } else {
+                println!("✓ Validation {vid} marked {res}  ({n} linked intent(s) updated)");
+                if res == ValidationResult::Blocked {
+                    println!("  Out of the validator queue until re-marked; visible in `loom validation list` / `loom report`.");
+                }
+                if n == 0 {
+                    println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
                 }
             }
         }

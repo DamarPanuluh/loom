@@ -186,6 +186,10 @@ pub enum ValidationResult {
     Passed,
     Failed,
     NotRun,
+    /// Cannot run yet — waiting on something external (a live target, an env
+    /// var, a credential). Distinct from `not_run` (forgotten/pending): blocked
+    /// is a *recorded decision* with a reason, so it never reads as neglect.
+    Blocked,
 }
 
 impl std::fmt::Display for ValidationResult {
@@ -194,6 +198,7 @@ impl std::fmt::Display for ValidationResult {
             Self::Passed  => write!(f, "passed"),
             Self::Failed  => write!(f, "failed"),
             Self::NotRun  => write!(f, "not_run"),
+            Self::Blocked => write!(f, "blocked"),
         }
     }
 }
@@ -205,8 +210,9 @@ impl std::str::FromStr for ValidationResult {
             "passed"  => Ok(Self::Passed),
             "failed"  => Ok(Self::Failed),
             "not_run" => Ok(Self::NotRun),
+            "blocked" => Ok(Self::Blocked),
             other => anyhow::bail!(
-                "Unknown validation result '{}'. Valid: passed, failed, not_run",
+                "Unknown validation result '{}'. Valid: passed, failed, not_run, blocked",
                 other
             ),
         }
@@ -404,6 +410,12 @@ pub struct CodeFile {
     /// (extracted by `loom sync`; empty string on never-synced graphs).
     #[serde(default)]
     pub imports: String,
+    /// Content hash (FNV-1a 64, hex) of the file's bytes — `loom sync`'s change
+    /// detector. mtime alone false-flags on checkout/rebase (mtime churns,
+    /// content doesn't); the hash makes "changed" mean the bytes changed.
+    /// Empty on never-synced/pre-upgrade graphs (sync falls back to mtime once).
+    #[serde(default)]
+    pub content_hash: String,
 }
 
 /// Named anti-pattern rule.

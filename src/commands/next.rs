@@ -3,14 +3,21 @@ use std::env;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    build_candidates, get_intent, graph_state, list_implements_for_intent, notes_for_target,
-    quality_candidates, scored_candidates, unexplored_pairs_scored, validate_candidates,
-    validations_for_intent,
+    build_candidates, check_graph, compute_smells, get_intent, graph_state,
+    list_implements_for_intent, notes_for_target, quality_candidates, scored_candidates,
+    unexplored_pairs_scored, validate_candidates, validations_for_intent,
+    vertical_completeness,
 };
 use crate::output::{fmt_edge_detail, fmt_intent, fmt_pulse, Printer};
 use crate::types::{CodeFile, EdgeType, WorkItem};
 
-pub fn run(mode: &str, printer: &Printer) -> Result<()> {
+pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
+    if all {
+        let cwd = env::current_dir()?;
+        let db_file = ensure_initialized(&cwd)?;
+        let db = GrafeoDb::open(&db_file)?;
+        return run_all(&db, printer);
+    }
     if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "quality") {
         anyhow::bail!(
             "Unknown mode '{}'. Valid values: discovery, fix, build, validate, quality\n\
@@ -80,6 +87,7 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
             language:      String::new(), // path is the primary identifier
             last_modified: String::new(),
             imports:       String::new(),
+            content_hash:  String::new(),
         })
         .collect();
 
@@ -114,10 +122,14 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
         suggested_action:  suggested_action.clone(),
     };
 
+    // discovery surfaces analyzer work; fix surfaces fixer work.
+    let role = if mode == "fix" { "fixer" } else { "analyzer" };
+
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            add_dispatch(obj, role);
         }
         printer.print_json(&v);
         return Ok(());
@@ -164,6 +176,7 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
             let result_mark = match v.last_result.as_str() {
                 "passed"  => "✓",
                 "failed"  => "✗",
+                "blocked" => "⊘",
                 _         => "?",
             };
             println!(
@@ -187,6 +200,7 @@ pub fn run(mode: &str, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", suggested_action);
     println!();
+    println!("  Dispatch — {}", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
 
     Ok(())
@@ -229,6 +243,169 @@ fn build_suggested_action(edge: &crate::types::RelatesTo, _score: &f64) -> Strin
         ),
         other => format!("Review edge with inspection_status='{}' (id: {})", other, edge.id),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Role dispatch — name the lane that owns this item + the fields it fills, so an
+// orchestrator can hand it to a role-scoped subagent straight from `loom next`.
+// ---------------------------------------------------------------------------
+
+/// The fields the owning role fills for a work item, keyed by role.
+fn role_fills(role: &str) -> &'static str {
+    match role {
+        "analyzer"  => "criterion, evidence, confidence, inspection_status (the verdict)",
+        "builder"   => "write code → `loom codefile add` → `loom edge implement` (locator) → mark implemented",
+        "fixer"     => "the minimal change → `loom edge fix` / mark implemented",
+        "validator" => "run the proof (or `loom validation mark`) → `loom intent confirm`",
+        "quality"   => "the GOVERNS verdict — criterion, evidence, confidence (`loom rule verdict`)",
+        _ => "its owned fields (see `loom schema`)",
+    }
+}
+
+/// One-line dispatch hint: which role owns this item, how to run it as that role,
+/// and what it fills. Used in both `--json` (as `owner_role`/`dispatch`) and human.
+fn dispatch_line(role: &str) -> String {
+    let lane = crate::gate::mode_for_role(role).unwrap_or("");
+    format!(
+        "this is {role} work — fills {fills}. Whoever takes it declares `LOOM_AGENT=llm:{role}` \
+         (or stay bare `llm` for solo); its queue is `loom next --mode {lane}`. Same contract whether \
+         that's you now, a later pass, or a parallel agent.",
+        fills = role_fills(role),
+    )
+}
+
+/// Inject `owner_role` + `dispatch` into a work-item JSON object.
+fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str) {
+    obj.insert("owner_role".to_string(), serde_json::json!(role));
+    obj.insert("dispatch".to_string(), serde_json::json!(dispatch_line(role)));
+}
+
+// ---------------------------------------------------------------------------
+// --all: the CLOSEOUT view — every role queue at once. One prioritized answer
+// to "what's left?" instead of five `next` calls + status + doctor reconciled
+// by hand. Read-only; each line carries the exact command that works it.
+// ---------------------------------------------------------------------------
+
+fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+    let gs = graph_state(db)?;
+    let doctor = check_graph(db)?;
+    let vc = vertical_completeness(db)?;
+    let build = build_candidates(db)?;
+    let fix = scored_candidates(db, "fix")?;
+    let discovery = scored_candidates(db, "discovery")?;
+    let validate = validate_candidates(db)?;
+    let quality = quality_candidates(db)?;
+    let all_smells = compute_smells(db)?;
+    let smells_total = all_smells.len();
+    let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
+
+    // Queues in dependency order (the handoff order from `loom guide`), each
+    // with its count + top item. Vertical gaps slot in as builder work; the
+    // horizontal grid comes last, flagged optional.
+    let mut queues: Vec<serde_json::Value> = Vec::new();
+    if !build.is_empty() {
+        let c = &build[0];
+        queues.push(serde_json::json!({
+            "queue": "build", "role": if c.intent.lifecycle == "needs_change" { "fixer" } else { "builder" },
+            "count": build.len(), "command": "loom next --mode build",
+            "top": format!("'{}' ({})", c.intent.name, c.intent.lifecycle),
+        }));
+    }
+    if !fix.is_empty() {
+        let (e, _) = &fix[0];
+        queues.push(serde_json::json!({
+            "queue": "fix", "role": "fixer",
+            "count": fix.len(), "command": "loom next --mode fix",
+            "top": format!("'{}' × '{}' [{}]", e.from_name, e.to_name, e.inspection_status),
+        }));
+    }
+    let ground_gaps = vc.unrealized_leaves.len() + vc.unreached_codefiles.len();
+    if ground_gaps > 0 {
+        let top = vc.unrealized_leaves.first()
+            .map(|n| format!("unrealized leaf intent '{n}'"))
+            .or_else(|| vc.unreached_codefiles.first().map(|p| format!("unreached file {p}")))
+            .unwrap_or_default();
+        queues.push(serde_json::json!({
+            "queue": "ground", "role": "builder",
+            "count": ground_gaps, "command": "loom report  (then `loom edge implement` / `loom edge hierarchy` / `loom ignore`)",
+            "top": top,
+        }));
+    }
+    if !validate.is_empty() {
+        let c = &validate[0];
+        queues.push(serde_json::json!({
+            "queue": "validate", "role": "validator",
+            "count": validate.len(), "command": "loom next --mode validate",
+            "top": format!("'{}' — {}", c.intent.name, c.reason),
+        }));
+    }
+    if !quality.is_empty() {
+        let (g, _) = &quality[0];
+        queues.push(serde_json::json!({
+            "queue": "quality", "role": "quality",
+            "count": quality.len(), "command": "loom next --mode quality",
+            "top": format!("rule '{}' → '{}' [{}]", g.rule_name, g.intent_name, g.inspection_status),
+        }));
+    }
+    let discovery_backlog = discovery.len() as i64 + gs.unexplored_pairs;
+    if discovery_backlog > 0 {
+        queues.push(serde_json::json!({
+            "queue": "discovery", "role": "analyzer", "optional": true,
+            "count": discovery_backlog, "command": "loom next",
+            "top": "the horizontal N×N grid — understanding/cleanup, not required for done",
+        }));
+    }
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "mode": "all",
+            "doctor": { "healthy": doctor.healthy(), "issues": doctor.issues, "hints": doctor.hints },
+            "queues": queues,
+            "vertical_gaps": {
+                "unrealized_leaves": vc.unrealized_leaves,
+                "unreached_codefiles": vc.unreached_codefiles,
+            },
+            "smells_total": smells_total,
+            "smells_top": smells_top,
+            "graph_state": gs,
+        }));
+        return Ok(());
+    }
+
+    println!("── Closeout — every lane, one list ─────────────────────────────────");
+    println!();
+    if !doctor.healthy() {
+        println!("  0. [integrity] {} issue(s) — fix these first: `loom doctor`", doctor.issues.len());
+    }
+    if queues.is_empty() && doctor.healthy() {
+        println!("  ✓ Nothing left in any queue — every lane is clear.");
+    }
+    for (i, q) in queues.iter().enumerate() {
+        let opt = if q.get("optional").is_some() { "  (optional)" } else { "" };
+        println!(
+            "  {}. [{:<9}] {:<9} {:>4} item(s)   → {}{}",
+            i + 1,
+            q["role"].as_str().unwrap_or(""),
+            q["queue"].as_str().unwrap_or(""),
+            q["count"].as_i64().unwrap_or(0),
+            q["command"].as_str().unwrap_or(""),
+            opt,
+        );
+        println!("       top: {}", q["top"].as_str().unwrap_or(""));
+    }
+    println!();
+    if smells_total > 0 {
+        println!("  smells: {} finding(s), top: {} — `loom smells`", smells_total,
+            smells_top.first().map(|s| s.summary.as_str()).unwrap_or(""));
+    }
+    if doctor.healthy() {
+        println!("  doctor: ✓ healthy{}", if doctor.hints.is_empty() { String::new() }
+            else { format!("  ({} hint(s) — `loom doctor`)", doctor.hints.len()) });
+    }
+    println!();
+    println!("  Start here → {}", gs.next_action);
+    println!("  {}", fmt_pulse(&gs));
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -278,10 +455,14 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         suggested_action:  action.clone(),
     };
 
+    // planned → builder constructs it; needs_change → fixer changes it.
+    let role = if intent.lifecycle == "needs_change" { "fixer" } else { "builder" };
+
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            add_dispatch(obj, role);
         }
         printer.print_json(&v);
         return Ok(());
@@ -313,6 +494,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
+    println!("  Dispatch — {}", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
@@ -371,6 +553,8 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "validations":      validations,
             "notes":            notes,
             "suggested_action": action,
+            "owner_role":       "validator",
+            "dispatch":         dispatch_line("validator"),
             "graph_state":      gs,
         }));
         return Ok(());
@@ -392,6 +576,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             let mark = match v.last_result.as_str() {
                 "passed" => "✓",
                 "failed" => "✗",
+                "blocked" => "⊘",
                 _ => "?",
             };
             println!("  {} {}  [{}]  cmd: {}", mark, v.name, v.last_result, v.command);
@@ -401,6 +586,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
+    println!("  Dispatch — {}", dispatch_line("validator"));
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
@@ -452,6 +638,8 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "implements":       implements,
             "notes":            notes,
             "suggested_action": action,
+            "owner_role":       "quality",
+            "dispatch":         dispatch_line("quality"),
             "graph_state":      gs,
         }));
         return Ok(());
@@ -486,6 +674,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
+    println!("  Dispatch — {}", dispatch_line("quality"));
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }

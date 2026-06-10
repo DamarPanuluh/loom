@@ -195,6 +195,25 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             continue;
         };
         if files.len() >= threshold {
+            // Group the grounded files by directory — the mechanical clustering
+            // evidence for a split. The flagging stays judgment-free: loom shows
+            // where the files cluster; the driving LLM names the child intents.
+            let mut by_dir: HashMap<&str, usize> = HashMap::new();
+            for f in files {
+                let dir = std::path::Path::new(f)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .filter(|d| !d.is_empty())
+                    .unwrap_or(".");
+                *by_dir.entry(dir).or_insert(0) += 1;
+            }
+            let mut dirs: Vec<(&str, usize)> = by_dir.into_iter().collect();
+            dirs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+            let clusters = dirs
+                .iter()
+                .map(|(d, n)| format!("{d} ({n})"))
+                .collect::<Vec<_>>()
+                .join(" · ");
             smells.push(Smell {
                 kind: "scattered_intent".into(),
                 score: files.len() as f64,
@@ -204,12 +223,12 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     files.len()
                 ),
                 evidence: format!(
-                    "a {}-level intent normally stays under {} files",
-                    i.abstraction_level, threshold
+                    "a {}-level intent normally stays under {} files; groundings cluster by directory: {}",
+                    i.abstraction_level, threshold, clusters
                 ),
                 remedy: format!(
-                    "decompose it: add child intents per cohesive slice, `loom edge hierarchy {} <child>`, re-ground the children",
-                    i.id
+                    "decompose along the directory clusters: add a child intent per cohesive slice, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`)",
+                    id = i.id
                 ),
             });
         }

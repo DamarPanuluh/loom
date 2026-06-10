@@ -223,7 +223,11 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
             {
                 (2.0, "linked validations have not been run (or were invalidated by a code change)".to_string())
             } else {
-                continue; // all proofs green
+                // All proofs green — or `blocked`, which is deliberately NOT
+                // queue work: it's a recorded "can't run yet" with a reason
+                // (visible in `loom validation list` / `loom report`), and
+                // surfacing it here would nag about work nobody can do.
+                continue;
             }
         };
         let score = intent_degree(db, &i.id)? as f64 + urgency;
@@ -241,7 +245,7 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
 pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
     let n = list_intents(db, None, None)?.len() as i64;
     let mut linked: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
-    let mut key = |a: &str, b: &str| {
+    let key = |a: &str, b: &str| {
         if a < b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
     };
     for e in list_relates_to(db, None)? {

@@ -146,6 +146,10 @@ pub mod prop {
     /// undeclared-coupling reconciliation. NOT in the required-property table
     /// (additive in v3; absent on older graphs until the next sync).
     pub const IMPORTS: &str = "imports";
+    /// CodeFile: FNV-1a 64 hex hash of the file's bytes — `loom sync`'s change
+    /// detector (mtime false-flags on checkout; content is the truth). NOT in
+    /// the required-property table (additive; absent until the next sync).
+    pub const CONTENT_HASH: &str = "content_hash";
     // QualityRule
     pub const DETECTION_LOGIC: &str = "detection_logic";
     pub const SEVERITY: &str = "severity";
