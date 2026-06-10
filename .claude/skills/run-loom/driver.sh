@@ -144,6 +144,17 @@ echo "── blocked proof: reason required, out of the queue, visible ──"
 "$L" validation list --json | grep -q '"blocked"' || fail "blocked not visible in list"
 ok "blocked: reason gated, queue silent, state visible"
 
+echo "── graph pin: LOOM_GRAPH beats cwd (the cd-fallback incident class) ──"
+PINHOME="$PWD"
+FOREIGN="$(mktemp -d)"
+cd "$FOREIGN"   # a foreign cwd with no .loom
+LOOM_GRAPH="$PINHOME" "$L" note add --text "pinned write landed in the pinned graph despite a foreign cwd" --kind commentary >/dev/null \
+  || fail "pinned command failed from foreign cwd"
+"$L" status >/dev/null 2>&1 && fail "unpinned command in a bare dir found a graph" || true
+cd "$PINHOME"; rm -rf "$FOREIGN"
+"$L" note list --kind commentary | grep -q "pinned write landed" || fail "pin write missing from pinned graph"
+ok "graph pin: foreign-cwd mutation hit the pinned graph; unpinned stays strict"
+
 echo "── closeout ──"
 [ "$("$L" next --all --json | jget "['mode']")" = all ] || fail "next --all"
 ok "closeout view answers across every lane"

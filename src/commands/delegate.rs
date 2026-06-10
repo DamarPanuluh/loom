@@ -6,7 +6,6 @@
 //! `loom coverage` composes across the federation instead of going blind.
 
 use anyhow::Result;
-use std::env;
 use uuid::Uuid;
 
 use crate::cli::DelegateCmd;
@@ -16,7 +15,7 @@ use crate::output::Printer;
 use crate::types::Delegation;
 
 pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

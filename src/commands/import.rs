@@ -2,15 +2,14 @@
 //! into a fresh `loom init`, not a merge.
 
 use anyhow::Result;
-use std::env;
 use std::fs;
 
 use crate::db::queries::import_graph;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
-pub fn run(file: &str, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
@@ -19,13 +18,21 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     let data: serde_json::Value = serde_json::from_str(&raw)
         .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {}", file, e))?;
 
-    let report = import_graph(&db, &data)?;
+    let report = import_graph(&db, &data, as_planned)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({
-            "status": "ok", "file": file,
+            "status": "ok", "file": file, "as_planned": as_planned,
             "nodes": report.nodes, "edges": report.edges,
+            "skipped_nodes": report.skipped_nodes, "skipped_edges": report.skipped_edges,
         }));
+    } else if as_planned {
+        println!(
+            "✓ Design adopted from {file}  ({} nodes, {} edges; {} node(s) + {} edge(s) dropped — the old repo's files/groundings)",
+            report.nodes, report.edges, report.skipped_nodes, report.skipped_edges
+        );
+        println!("  Every intent arrived lifecycle=planned; every proof not_run; verdict meta reset to uninspected.");
+        println!("  → `loom guide --mode port` for the re-realization loop, then `loom next --mode build`.");
     } else {
         println!("✓ Graph imported from {file}  ({} nodes, {} edges)", report.nodes, report.edges);
         println!("  → `loom sync` to reconcile against this machine's files, then `loom status`.");

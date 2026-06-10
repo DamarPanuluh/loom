@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 use uuid::Uuid;
 
 use crate::cli::{EdgeCmd, ExploreSubCmd};
@@ -16,7 +15,7 @@ use crate::output::{fmt_edge_detail, fmt_edge_row, fmt_intent, Printer};
 use crate::types::{EdgeType, Intent, RelatesTo};
 
 pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

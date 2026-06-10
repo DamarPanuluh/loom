@@ -73,7 +73,11 @@ Topology is yours: one agent switching hats, sequential handoffs, or parallel ag
 
 ## The graph travels with the repo
 
-`.loom/` is a local binary cache (gitignore it). The committed artifact is `loom.graph.json` — a **deterministic export** (same graph → identical bytes), so graph changes are diffable in PRs and `loom export --check` can gate CI/pre-commit: it exits non-zero whenever the committed export drifts from the live graph. Rebuild anywhere with `loom init . && loom import loom.graph.json && loom sync`.
+`.loom/` is a local binary cache (gitignore it). The committed artifact is `loom.graph.json` — a **deterministic export** (same graph → identical bytes), so graph changes are diffable in PRs and `loom export --check` can gate CI/pre-commit: it exits non-zero whenever the committed export drifts from the live graph. Rebuild anywhere with `loom init . && loom import loom.graph.json && loom sync`. Import is **two-phase**: a corrupted export is rejected loudly and never leaves a partial graph.
+
+**Porting** is the travel format's second job: `loom import <source-export> --as-planned` adopts another repo's graph as a *design* — intents, hierarchy, criteria, rules, and notes travel; groundings, verdicts, and proof results don't (they were earned against the old code). Every intent arrives `planned`, every proof `not_run`, and the build queue drives re-realization in the new language — the criteria written for the old code become the acceptance contract for the new. `loom guide --mode port` teaches the loop.
+
+Commands target the current directory's graph by default; scripts and orchestrators can **pin** one explicitly — `--graph <path>` or `export LOOM_GRAPH=<path>` — so a stray `cd` can never land a mutation in the wrong repo's graph.
 
 ## Honesty primitives
 

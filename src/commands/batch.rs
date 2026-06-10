@@ -22,7 +22,6 @@
 //! line failed — so CI and drivers can't mistake a partial batch for a clean one.
 
 use anyhow::Result;
-use std::env;
 use std::io::Read;
 use uuid::Uuid;
 
@@ -51,7 +50,7 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
             .map_err(|e| anyhow::anyhow!("Cannot read batch file '{file}': {e}"))?
     };
 
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

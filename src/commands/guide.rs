@@ -3,7 +3,6 @@
 //! auto-detected from the repo (via `loom detect`) unless given with `--mode`.
 
 use anyhow::Result;
-use std::env;
 
 use crate::output::Printer;
 
@@ -111,17 +110,31 @@ fn refactor() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+/// PORTING: the semantic plane travels, the physical plane is rebuilt. The
+/// criteria written for the old code become the acceptance contract for the new.
+fn port() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("export the source", "In the SOURCE repo: `loom export` (its committed loom.graph.json carries the semantic plane — intents, hierarchy, criteria, quality rules, proofs-as-specs, the note history)."),
+        ("adopt as design", "In the TARGET repo: `loom init . --name <target>` then `loom import <source-export> --as-planned`. Intents/hierarchy/criteria/rules/notes travel; CodeFiles, groundings, verdicts, and proof results do NOT — they were claims about the OLD code. Every intent arrives lifecycle=planned (the design), every proof not_run (the spec), every RELATES_TO/GOVERNS uninspected with its criterion intact (the contract). The target keeps its OWN graph identity — a port is a new graph."),
+        ("re-realize", "`loom next --mode build` walks the design leaf-by-leaf in dependency order: write the code in the new language, `loom codefile add`, `loom edge implement <intent> <file> --locator …`, then `loom intent mark <id> --lifecycle implemented`. The criterion written for the old code is the acceptance test for the new — if it can't be met in the new language, that's a real design decision: record it (`loom note add --kind decision`) and update the intent, never silently diverge."),
+        ("re-prove", "Each validation's command is a SPEC from the old toolchain — re-express it (`loom validation update <name> --command \"<new-toolchain equivalent>\"`; the reset-to-not_run is the point), then `loom validate <intent>`. Re-earn quality green per `loom next --mode quality` (the packs apply to the new language exactly as the old)."),
+        ("verify the seams", "`loom next` (discovery) on the ported pairs: the criteria still describe how intents coexist — confirm the NEW code honors each, or record the divergence as an issue. Parity is measured per criterion, not vibes."),
+        ("close out", "`loom next --all` until only optional discovery remains; `loom coverage` for unaccounted files (new-repo scaffolding may need `loom ignore add … --reason`); `loom export --check` before committing the new graph."),
+    ]
+}
+
 fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
     if let Some(m) = mode {
         return match m {
             "greenfield" => Ok("greenfield"),
             "brownfield" => Ok("brownfield"),
             "refactor" => Ok("refactor"),
-            other => anyhow::bail!("Unknown mode '{}'. Valid: greenfield, brownfield, refactor", other),
+            "port" => Ok("port"),
+            other => anyhow::bail!("Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port", other),
         };
     }
     // Auto-detect from the repo: no source on disk → greenfield, else brownfield.
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     Ok(if crate::repo::detect(&cwd)?.has_source { "brownfield" } else { "greenfield" })
 }
 
@@ -130,6 +143,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     let steps = match m {
         "greenfield" => greenfield(),
         "refactor" => refactor(),
+        "port" => port(),
         _ => brownfield(),
     };
 
@@ -204,6 +218,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("PLAYBOOK ({} — {})", m, match m {
         "greenfield" => "design first, then build",
         "refactor" => "change existing code with intent",
+        "port" => "re-realize a mapped system in a new language/repo",
         _ => "map & verify existing code",
     });
     for (i, (title, doc)) in steps.iter().enumerate() {

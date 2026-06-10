@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 use uuid::Uuid;
 
 use crate::cli::ValidationCmd;
@@ -13,7 +12,7 @@ use crate::output::Printer;
 use crate::types::{Validation, ValidationResult};
 
 pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

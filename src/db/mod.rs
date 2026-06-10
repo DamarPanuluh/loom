@@ -97,8 +97,54 @@ pub fn ensure_initialized(cwd: &Path) -> Result<PathBuf> {
     if !dir.exists() {
         anyhow::bail!(
             "No loom graph found in this directory.\n\
-             Run `loom init` to create one, or `cd` into a directory that has one."
+             Run `loom init` to create one, or `cd` into a directory that has one\n\
+             (or pin one explicitly: `--graph <path>` / `export LOOM_GRAPH=<path>`)."
         );
     }
     Ok(db_path(cwd))
+}
+
+// ---------------------------------------------------------------------------
+// Graph targeting — which repo's graph does this command hit?
+// ---------------------------------------------------------------------------
+
+/// The `--graph` flag's value, stamped once at dispatch. OnceLock instead of
+/// mutating the process env: no unsafe, no surprise inheritance by child
+/// processes (a validation command spawned by `loom validate` should resolve
+/// its OWN target, not silently inherit this process's flag).
+static EXPLICIT_GRAPH: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+pub fn set_explicit_graph(path: &str) {
+    let _ = EXPLICIT_GRAPH.set(PathBuf::from(path));
+}
+
+/// Resolve the directory whose graph this command targets:
+/// `--graph <path>` > `$LOOM_GRAPH` > current working directory.
+///
+/// The pin exists because cwd-implicit targeting has ONE sharp edge: a script
+/// whose `cd` fails and falls back into a directory that happens to contain a
+/// `.loom/` mutates that graph silently (it happened — it cost a graph's note
+/// history). `LOOM_GRAPH`, set once per session, makes every loom call hit the
+/// pinned graph no matter what `cd` does. Interactive driving keeps the
+/// zero-ceremony cwd default.
+pub fn resolve_root() -> Result<PathBuf> {
+    if let Some(p) = EXPLICIT_GRAPH.get() {
+        anyhow::ensure!(
+            p.is_dir(),
+            "--graph points at '{}', which is not a directory.",
+            p.display()
+        );
+        return Ok(p.clone());
+    }
+    if let Ok(p) = std::env::var("LOOM_GRAPH") {
+        if !p.trim().is_empty() {
+            let pb = PathBuf::from(&p);
+            anyhow::ensure!(
+                pb.is_dir(),
+                "LOOM_GRAPH points at '{p}', which is not a directory."
+            );
+            return Ok(pb);
+        }
+    }
+    Ok(std::env::current_dir()?)
 }

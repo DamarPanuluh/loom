@@ -30,6 +30,9 @@ pub mod validation;
 
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
+    if let Some(g) = &cli.graph {
+        crate::db::set_explicit_graph(g);
+    }
     let command = match cli.command {
         Some(c) => c,
         None => return orient(&printer),
@@ -63,7 +66,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             let out = path.or(out).unwrap_or_else(|| "loom.graph.json".to_string());
             export::run(&out, check, &printer)
         }
-        Command::Import      { file }       => import::run(&file, &printer),
+        Command::Import      { file, as_planned } => import::run(&file, as_planned, &printer),
     }
 }
 

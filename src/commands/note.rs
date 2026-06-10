@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 use uuid::Uuid;
 
 use crate::cli::NoteCmd;
@@ -9,7 +8,7 @@ use crate::output::Printer;
 use crate::types::{Note, NoteKind};
 
 pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

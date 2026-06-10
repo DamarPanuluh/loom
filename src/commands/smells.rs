@@ -4,14 +4,13 @@
 //! remedy is an existing loom command sequence.
 
 use anyhow::Result;
-use std::env;
 
 use crate::db::queries::compute_smells;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
 pub fn run(limit: usize, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

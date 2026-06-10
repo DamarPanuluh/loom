@@ -1,12 +1,11 @@
 use anyhow::Result;
-use std::env;
 
 use crate::db::queries::check_graph;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
 pub fn run(printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

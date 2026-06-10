@@ -363,11 +363,13 @@ loom doctor
   separation of duties), and a stale committed loom.graph.json.
   Exits non-zero if any issue is found. Run after upgrades or if results look wrong.
 
-loom guide [--mode greenfield|brownfield|refactor]
+loom guide [--mode greenfield|brownfield|refactor|port]
   Self-contained driving protocol for an LLM new to loom: mental model, the loop,
   the done-condition, and a MODE-SPECIFIC population checklist (auto-detected via
   `loom detect` if --mode omitted): greenfield = design-as-planned-intents then
-  build; brownfield = map & verify existing; refactor = flag needs_change & change.
+  build; brownfield = map & verify existing; refactor = flag needs_change & change;
+  port = adopt a source graph's design (`import --as-planned`) and re-realize
+  it in a new language/repo.
 
 loom schema
   The data model — node/edge types + properties, the inspection state machine,
@@ -433,7 +435,17 @@ loom import <file>
   The graph's travel format: deterministic JSON (same graph → identical bytes)
   meant to be committed so the graph travels with the repo and graph changes
   are diffable in PRs. Import restores into a fresh `loom init` (never merges);
-  run `loom sync` after to reconcile with the machine's files.
+  run `loom sync` after to reconcile with the machine's files. TWO-PHASE: every
+  node and edge is validated before anything is written — a corrupted/hostile
+  export is rejected loudly (field-naming error) and leaves NO partial graph.
+loom import <file> --as-planned
+  PORTING: the semantic plane travels, the physical plane is rebuilt. Intents/
+  hierarchy/criteria/rules/notes are adopted; CodeFiles, IMPLEMENTS groundings,
+  verdict meta, and proof results are dropped (they were earned against the OLD
+  code). Every intent arrives lifecycle=planned, every proof not_run with its
+  command kept as the spec to re-express; the target keeps its own graph
+  identity. `loom guide --mode port` teaches the re-realization loop; the
+  criteria written for the old code are the acceptance contract for the new.
 
 Every verdict transition (ground/issue/independent/fix/rule verdict/lifecycle
 mark) is auto-recorded as an append-only note (kind=transition) — the graph's
@@ -478,6 +490,14 @@ loom delegate list
 ```
 
 All commands support `--json` for machine-readable output. LLM driving mode uses `--json` everywhere.
+
+GRAPH TARGETING: every command resolves its graph via `--graph <path>` >
+`$LOOM_GRAPH` > cwd (one shared `resolve_root()` in db/mod.rs). Pin a session
+with `export LOOM_GRAPH=<repo>` and every loom call hits that graph no matter
+what `cd` does — kills the cd-fallback incident class (a failed cd + a
+mutating script silently hitting whatever graph cwd landed in). Interactive
+driving keeps the zero-ceremony cwd default; an unpinned command in a bare
+directory still errors rather than guessing.
 
 ## Traversal strategy
 

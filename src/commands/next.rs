@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
@@ -13,7 +12,7 @@ use crate::types::{CodeFile, EdgeType, WorkItem};
 
 pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
     if all {
-        let cwd = env::current_dir()?;
+        let cwd = crate::db::resolve_root()?;
         let db_file = ensure_initialized(&cwd)?;
         let db = GrafeoDb::open(&db_file)?;
         return run_all(&db, printer);
@@ -28,7 +27,7 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         );
     }
 
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 

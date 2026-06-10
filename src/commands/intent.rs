@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 use uuid::Uuid;
 
 use crate::cli::{IntentCmd, SourceCmd};
@@ -15,7 +14,7 @@ use crate::output::{fmt_edge_row, fmt_intent, fmt_intent_row, Printer};
 use crate::types::Intent;
 
 pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
@@ -212,10 +211,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     let refs = get_intent(&db, &id)?
                         .map(|i| i.source_refs)
                         .unwrap_or_default();
+                    // add_source_ref just wrote this JSON; a parse failure here
+                    // means corrupted storage — surface it, never render [].
+                    let parsed: Vec<String> = serde_json::from_str(&refs)
+                        .map_err(|e| anyhow::anyhow!("Intent '{id}' has malformed source_refs JSON: {e}"))?;
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "added": path,
-                            "source_refs": serde_json::from_str::<Vec<String>>(&refs).unwrap_or_default(),
+                            "source_refs": parsed,
                         }));
                     } else {
                         println!("✓ Source ref added to intent {id}: {path}");

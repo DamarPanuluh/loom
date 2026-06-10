@@ -24,6 +24,13 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
+    /// Target this repo's graph instead of the current directory's — the pin
+    /// for scripts/orchestrators. Precedence: --graph > $LOOM_GRAPH > cwd.
+    /// Pin a whole session with `export LOOM_GRAPH=<path>`: every loom call
+    /// then hits that graph no matter what `cd` does.
+    #[arg(long, global = true)]
+    pub graph: Option<String>,
+
     /// A subcommand. Omit it to print a short orientation (then try `loom guide`).
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -237,6 +244,15 @@ pub enum Command {
     Import {
         /// The export file to restore from.
         file: String,
+
+        /// PORTING mode: adopt the export's semantic plane as a DESIGN —
+        /// intents/hierarchy/criteria/rules/notes travel; codefiles,
+        /// groundings, verdicts, and proof results do NOT (they were earned
+        /// against the OLD code). Every intent arrives lifecycle=planned,
+        /// every proof not_run; the build queue then drives re-realization
+        /// in the new repo/language. See `loom guide --mode port`.
+        #[arg(long)]
+        as_planned: bool,
     },
 }
 

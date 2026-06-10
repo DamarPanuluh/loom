@@ -1,6 +1,5 @@
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fs;
 use std::path::Path;
 
@@ -17,7 +16,7 @@ use crate::types::{SyncChange, SyncReport};
 
 pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let base = if path == "." {
-        env::current_dir()?
+        crate::db::resolve_root()?
     } else {
         Path::new(path).canonicalize().unwrap_or_else(|_| Path::new(path).to_path_buf())
     };

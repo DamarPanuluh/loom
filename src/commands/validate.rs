@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::env;
 use std::process::Command as StdCommand;
 
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
@@ -19,7 +18,7 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         &[crate::db::schema::role::VALIDATOR],
         None,
     )?;
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
     let intent_id = &crate::db::queries::resolve_intent(&db, intent_id)?;

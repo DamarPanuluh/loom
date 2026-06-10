@@ -1,12 +1,11 @@
 use anyhow::Result;
-use std::env;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{get_intent, unresolved_edges_for_intent};
 use crate::output::{fmt_edge_row, fmt_intent, Printer};
 
 pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
     let intent_id = &crate::db::queries::resolve_intent(&db, intent_id)?;

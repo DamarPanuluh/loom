@@ -3,12 +3,11 @@
 //! deciding greenfield vs brownfield before `loom init`).
 
 use anyhow::Result;
-use std::env;
 
 use crate::output::Printer;
 
 pub fn run(printer: &Printer) -> Result<()> {
-    let cwd = env::current_dir()?;
+    let cwd = crate::db::resolve_root()?;
     let d = crate::repo::detect(&cwd)?;
 
     if printer.json {

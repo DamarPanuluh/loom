@@ -785,7 +785,7 @@ mod tests {
         );
 
         let db2 = GrafeoDb::in_memory();
-        let report = import_graph(&db2, &export).unwrap();
+        let report = import_graph(&db2, &export, false).unwrap();
         assert!(report.nodes >= 5 && report.edges >= 5, "{report:?}");
         // Spot-check fidelity: verdict meta and imports survive the trip.
         let e = get_relates_to_between(&db2, &ids[0], &ids[1]).unwrap().unwrap();
@@ -795,7 +795,7 @@ mod tests {
         let cf = list_codefiles(&db2).unwrap();
         assert_eq!(cf[0].imports, "[\"src/y.rs\"]");
         // Re-import into the same graph must refuse (restoration, not merge).
-        assert!(import_graph(&db2, &export).is_err());
+        assert!(import_graph(&db2, &export, false).is_err());
     }
 
     #[test]
@@ -808,7 +808,7 @@ mod tests {
             "edges": {},
         });
 
-        let err = import_graph(&db, &malformed).unwrap_err().to_string();
+        let err = import_graph(&db, &malformed, false).unwrap_err().to_string();
         assert!(err.contains("missing `nodes.Intent` array"), "{err}");
     }
 
@@ -1009,10 +1009,71 @@ mod tests {
         db2.execute(&crate::db::schema::insert_meta(
             crate::db::schema::SCHEMA_VERSION, "t", "g-fresh", "fresh", "owned",
         )).unwrap();
-        import_graph(&db2, &export).unwrap();
+        import_graph(&db2, &export, false).unwrap();
         let m2 = get_meta(&db2).unwrap().unwrap();
         assert_eq!(m2.graph_id, "g-grid", "restore adopts the exported identity");
         assert_eq!(m2.custody, "observed");
+    }
+
+    /// PORTING (`loom import --as-planned`): the semantic plane travels — the
+    /// physical plane is rebuilt. Intents arrive planned, criteria intact;
+    /// codefiles/groundings dropped; verdicts reset to uninspected with
+    /// evidence cleared; proofs not_run; identity NOT adopted.
+    #[test]
+    fn import_as_planned_ports_the_semantic_plane() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(2);
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_codefile(&db, &codefile("cf", "src/old_lang.rs")).unwrap();
+        insert_implements(&db, "im", &ids[1], "cf", "fn old", "", "t").unwrap();
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1],
+            "parent rolls up the child's contract", 0.9, "llm", "t").unwrap();
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+        }).unwrap();
+        insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
+        update_governs_verdict(&db, "r0", &ids[1], "passing",
+            "criterion text long enough", "evidence from the OLD code",
+            0.9, "llm:quality", "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "cargo test old".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+
+        let export = export_graph(&db).unwrap();
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-target", "target", "owned",
+        )).unwrap();
+        let report = import_graph(&db2, &export, true).unwrap();
+        assert!(report.skipped_nodes >= 1, "codefile dropped: {report:?}");
+        assert!(report.skipped_edges >= 1, "grounding dropped: {report:?}");
+
+        // Identity stays the TARGET's — a port is a new graph.
+        assert_eq!(get_meta(&db2).unwrap().unwrap().graph_id, "g-target");
+        // Physical plane gone; semantic plane planned.
+        assert!(list_codefiles(&db2).unwrap().is_empty());
+        for i in list_intents(&db2, None, None).unwrap() {
+            assert_eq!(i.lifecycle, "planned", "{}", i.name);
+            assert!(list_implements_for_intent(&db2, &i.id).unwrap().is_empty());
+        }
+        // The contract travels; the old proof does not.
+        let e = get_relates_to_between(&db2, &ids[0], &ids[1]).unwrap().unwrap();
+        assert_eq!(e.inspection_status, "uninspected");
+        assert_eq!(e.criterion, "parent rolls up the child's contract");
+        assert!(e.evidence.is_empty(), "old-code evidence must not travel");
+        let g = get_governs_between(&db2, "r0", &ids[1]).unwrap().unwrap();
+        assert_eq!(g.inspection_status, "uninspected");
+        assert!(g.evidence.is_empty());
+        let v = get_validation(&db2, "v0").unwrap().unwrap();
+        assert_eq!(v.last_result, "not_run", "the proof is a spec to re-express");
+        assert_eq!(v.command, "cargo test old", "the command text travels as the spec");
+        // The port lands as a buildable design: the build queue is full.
+        assert!(!build_candidates(&db2).unwrap().is_empty());
     }
 
     /// The custody gate: an observed graph (someone else's code) rejects

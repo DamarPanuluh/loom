@@ -168,11 +168,24 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
 pub struct ImportReport {
     pub nodes: usize,
     pub edges: usize,
+    /// Nodes/edges deliberately not carried over by `--as-planned` (groundings,
+    /// codefiles, old-repo ignore/delegation patterns).
+    pub skipped_nodes: usize,
+    pub skipped_edges: usize,
 }
 
 /// Rebuild a graph from an export. The target graph must be content-empty
 /// (fresh `loom init`) — import is restoration, not merge.
-pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
+///
+/// `as_planned` is the PORTING mode: the semantic plane travels, the physical
+/// plane is rebuilt. Intents/hierarchy/criteria/rules/notes are adopted;
+/// CodeFiles, IMPLEMENTS groundings, and old-repo Ignore/Delegation patterns
+/// are dropped (they describe the SOURCE repo's disk); every intent arrives
+/// lifecycle=planned; every verdict meta is reset to uninspected (it was
+/// earned against the old code — criteria stay as the acceptance contract);
+/// every validation arrives not_run (its command is a spec to re-express).
+/// The source graph's identity is NOT adopted — a port is a new graph.
+pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<ImportReport> {
     if data.get("loom_export").and_then(J::as_i64) != Some(1) {
         anyhow::bail!("Not a loom export (missing/unknown `loom_export` marker).");
     }
@@ -193,45 +206,78 @@ pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
         }
     }
 
-    // A restore IS the exported graph — adopt its identity + custody (the
-    // fresh init's identity was a placeholder). Older exports without one
-    // keep the fresh identity.
-    let gid = data.get("graph_id").and_then(J::as_str).unwrap_or("");
-    if !gid.is_empty() {
-        super::meta::set_identity(
-            db,
-            gid,
-            data.get("graph_name").and_then(J::as_str).unwrap_or(""),
-            data.get("custody").and_then(J::as_str).unwrap_or("owned"),
-        )?;
-    }
-
+    // TWO-PHASE import: phase 1 validates EVERY node and edge and builds the
+    // full statement list with NO database writes; phase 2 executes. A
+    // malformed item at row 500 therefore rejects the whole file loudly and
+    // leaves the fresh graph untouched — a hostile/corrupted export can never
+    // half-import (identity adoption is also deferred past validation).
     let mut report = ImportReport::default();
     let nodes = object_field(data, "nodes")?;
     let edges = object_field(data, "edges")?;
+    let mut stmts: Vec<String> = Vec::new();
 
-    // Nodes first.
+    // Porting drops the physical plane + repo-specific patterns…
+    let skip_label = |lbl: &str| {
+        as_planned && matches!(lbl, label::CODE_FILE | label::IGNORE | label::DELEGATION)
+    };
+    let skip_edge = |etype: &str| as_planned && etype == edge::IMPLEMENTS;
+    // …and resets what was EARNED against the old code, keeping what was
+    // DESIGNED (criterion, notes — the contract travels; the proof doesn't).
+    let node_override = |lbl: &str, prop: &str, v: &str| -> Option<String> {
+        if !as_planned {
+            return None;
+        }
+        let _ = v;
+        match (lbl, prop) {
+            (label::INTENT, "lifecycle") => Some("planned".into()),
+            (label::VALIDATION, "last_result") => Some("not_run".into()),
+            (label::VALIDATION, "last_run") => Some(String::new()),
+            _ => None,
+        }
+    };
+    let edge_override = |prop: &str| -> Option<&'static str> {
+        if !as_planned {
+            return None;
+        }
+        match prop {
+            "inspection_status" => Some("uninspected"),
+            "evidence" | "last_inspected" | "inspected_by" => Some(""),
+            "confidence" | "priority_score" => Some("0"),
+            _ => None,
+        }
+    };
+
+    // Phase 1a: nodes.
     for &lbl in NODE_LABELS {
         let items = array_in_object(nodes, "nodes", lbl)?;
+        if skip_label(lbl) {
+            report.skipped_nodes += items.len();
+            continue;
+        }
         for item in items {
             let obj = item_object(item, &format!("nodes.{lbl}"))?;
             let assigns = node_props(lbl)
                 .iter()
                 .map(|p| {
                     let v = required_str(obj, p, &format!("nodes.{lbl}"))?;
-                    Ok(format!("{p}: '{}'", schema::esc(v)))
+                    let v = node_override(lbl, p, v).unwrap_or_else(|| v.to_string());
+                    Ok(format!("{p}: '{}'", schema::esc(&v)))
                 })
                 .collect::<Result<Vec<_>>>()?
                 .join(", ");
-            db.execute(&format!("INSERT (:{lbl} {{{assigns}}})"))?;
+            stmts.push(format!("INSERT (:{lbl} {{{assigns}}})"));
             report.nodes += 1;
         }
     }
 
-    // Then edges, endpoint-matched.
+    // Phase 1b: edges, endpoint-matched.
     for &etype in EDGE_TYPES {
         let (la, lb) = endpoints(etype);
         let items = array_in_object(edges, "edges", etype)?;
+        if skip_edge(etype) {
+            report.skipped_edges += items.len();
+            continue;
+        }
         for item in items {
             let obj = item_object(item, &format!("edges.{etype}"))?;
             let from = required_str(obj, "from", &format!("edges.{etype}"))?;
@@ -241,22 +287,41 @@ pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
                 .map(|p| {
                     if is_numeric(p) {
                         let v = required_f64(obj, p, &format!("edges.{etype}"))?;
+                        let v = edge_override(p).map(|o| o.to_string()).unwrap_or_else(|| v.to_string());
                         Ok(format!("{p}: {v}"))
                     } else {
                         let v = required_str(obj, p, &format!("edges.{etype}"))?;
+                        let v = edge_override(p).unwrap_or(v);
                         Ok(format!("{p}: '{}'", schema::esc(v)))
                     }
                 })
                 .collect::<Result<Vec<_>>>()?
                 .join(", ");
-            db.execute(&format!(
+            stmts.push(format!(
                 "MATCH (a:{la} {{id: '{from}'}}), (b:{lb} {{id: '{to}'}}) \
                  INSERT (a)-[:{etype} {{{assigns}}}]->(b)",
                 from = schema::esc(from),
                 to = schema::esc(to),
-            ))?;
+            ));
             report.edges += 1;
         }
+    }
+
+    // Everything validated — adopt identity + custody (a restore IS the
+    // exported graph; the fresh init's identity was a placeholder; older
+    // exports without one keep the fresh identity), then write. A PORT does
+    // NOT adopt identity: the target is a different repo — a new graph.
+    let gid = data.get("graph_id").and_then(J::as_str).unwrap_or("");
+    if !gid.is_empty() && !as_planned {
+        super::meta::set_identity(
+            db,
+            gid,
+            data.get("graph_name").and_then(J::as_str).unwrap_or(""),
+            data.get("custody").and_then(J::as_str).unwrap_or("owned"),
+        )?;
+    }
+    for s in &stmts {
+        db.execute(s)?;
     }
     Ok(report)
 }
