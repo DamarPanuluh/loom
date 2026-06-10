@@ -5299,11 +5299,11 @@
         "path": "src/db/queries/integrity.rs"
       },
       {
-        "content_hash": "d5955f96e5e85138",
+        "content_hash": "4e8bca8dc70bda18",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:23:47.715973180+00:00",
+        "last_modified": "2026-06-10T07:01:51.356959326+00:00",
         "path": "src/db/queries/stats.rs"
       },
       {

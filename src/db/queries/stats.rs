@@ -237,7 +237,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
             "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
         ))
     } else {
-        ("complete", "Vertically complete ✓ and horizontally explored ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`.".to_string())
+        ("complete", "Vertically complete ✓ and horizontally explored ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: wire `loom export --check` into pre-commit/CI so a code change can't merge with a stale committed graph, and keep running `loom sync` after changes (maintenance mode).".to_string())
     };
 
     let meta = get_meta(db)?;
