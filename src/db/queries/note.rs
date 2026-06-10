@@ -16,13 +16,14 @@ use super::row::{col_map, get, str_val};
 pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
     let q = format!(
         "INSERT (:{lbl} {{{id}: '{}', {kind}: '{}', {text}: '{}', {author}: '{}', \
-         {tkind}: '{}', {tid}: '{}', {created}: '{}'}})",
+         {tkind}: '{}', {tid}: '{}', {aud}: '{}', {created}: '{}'}})",
         esc(&note.id),
         esc(&note.kind),
         esc(&note.text),
         esc(&note.author),
         esc(&note.target_kind),
         esc(&note.target_id),
+        esc(&note.audience),
         esc(&note.created_at),
         lbl = label::NOTE,
         id = prop::ID,
@@ -31,6 +32,7 @@ pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
         author = prop::AUTHOR,
         tkind = prop::TARGET_KIND,
         tid = prop::TARGET_ID,
+        aud = prop::AUDIENCE,
         created = prop::CREATED_AT,
     );
     db.execute(&q)?;
@@ -60,6 +62,7 @@ pub fn record_transition(
         author: author.to_string(),
         target_kind: target_kind.to_string(),
         target_id: target_id.to_string(),
+        audience: String::new(),
         created_at: now.to_string(),
     })
 }
@@ -91,6 +94,7 @@ pub fn record_sync_flip(
         author: "loom".to_string(),
         target_kind: target_kind.to_string(),
         target_id: target_id.to_string(),
+        audience: String::new(),
         created_at: now.to_string(),
     })
 }
@@ -104,7 +108,7 @@ pub fn list_notes(
 ) -> Result<Vec<Note>> {
     let q = format!(
         "MATCH (n:{lbl}) \
-         RETURN n.{id}, n.{kind}, n.{text}, n.{author}, n.{tkind}, n.{tid}, n.{created} \
+         RETURN n.{id}, n.{kind}, n.{text}, n.{author}, n.{tkind}, n.{tid}, n.{aud}, n.{created} \
          ORDER BY n.{created}",
         lbl = label::NOTE,
         id = prop::ID,
@@ -113,6 +117,7 @@ pub fn list_notes(
         author = prop::AUTHOR,
         tkind = prop::TARGET_KIND,
         tid = prop::TARGET_ID,
+        aud = prop::AUDIENCE,
         created = prop::CREATED_AT,
     );
     let result = db.execute(&q)?;
@@ -141,6 +146,8 @@ fn row_to_note(row: &[Value], cols: &HashMap<&str, usize>) -> Note {
         author:      str_val(get(row, cols, "n.author")),
         target_kind: str_val(get(row, cols, "n.target_kind")),
         target_id:   str_val(get(row, cols, "n.target_id")),
+        // Optional — "" (everyone) on notes from older graphs.
+        audience:    str_val(get(row, cols, "n.audience")),
         created_at:  str_val(get(row, cols, "n.created_at")),
     }
 }

@@ -23,7 +23,7 @@ use crate::types::Intent;
 use super::codefile::list_codefiles;
 use super::hierarchy::list_all_hierarchy;
 use super::implements::intents_with_implements;
-use super::intent::list_intents;
+use super::intent::list_active_intents;
 use super::row::{col_map, get, str_val};
 
 /// The verifiable state of the completeness spine. Every field is computed from
@@ -55,7 +55,7 @@ pub struct VerticalCompleteness {
 /// Compute the vertical-completeness spine. Pure graph analysis — cheap enough
 /// for `loom status` / `loom report` on any realistic graph.
 pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
-    let intents = list_intents(db, None, None)?;
+    let intents = list_active_intents(db)?;
     let hier = list_all_hierarchy(db)?;
 
     // Tree shape: parent multiplicity, who-is-a-child, who-is-a-parent.
@@ -135,11 +135,18 @@ pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
 
 /// Distinct CodeFile paths reached by at least one IMPLEMENTS edge.
 fn reached_codefile_paths(db: &dyn LoomDb) -> Result<HashSet<String>> {
+    // Status returned as a column and filtered in Rust: a file owned ONLY by a
+    // retired intent is UNREACHED — retiring the sole owner surfaces the file
+    // as a vertical gap instead of leaving it covered by dead design.
     let r = db.execute(
-        "MATCH (:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p",
+        "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s",
     )?;
     let cols = col_map(&r);
-    Ok(r.rows().iter().map(|row| str_val(get(row, &cols, "p"))).collect())
+    Ok(r.rows()
+        .iter()
+        .filter(|row| str_val(get(row, &cols, "s")) != "deprecated")
+        .map(|row| str_val(get(row, &cols, "p")))
+        .collect())
 }
 
 /// Cycle detection over the parent→child digraph via Kahn's algorithm: if some

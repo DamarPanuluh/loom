@@ -13,7 +13,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        NoteCmd::Add { text, kind, intent, edge, author } => {
+        NoteCmd::Add { text, kind, intent, edge, author, for_role } => {
             // Validate the kind against the vocabulary.
             kind.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
             if intent.is_some() && edge.is_some() {
@@ -25,6 +25,20 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 _            => ("none".to_string(), String::new()),
             };
 
+            let audience = match &for_role {
+                Some(r) => {
+                    use crate::db::schema::role;
+                    if ![role::BUILDER, role::ANALYZER, role::FIXER, role::VALIDATOR, role::QUALITY]
+                        .contains(&r.as_str())
+                    {
+                        anyhow::bail!(
+                            "--for must be a lane: builder | analyzer | fixer | validator | quality (got '{r}')."
+                        );
+                    }
+                    r.clone()
+                }
+                None => String::new(),
+            };
             let note = Note {
                 id:          Uuid::new_v4().to_string(),
                 kind,
@@ -32,6 +46,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 author:      crate::agent::acting(author.as_deref()),
                 target_kind,
                 target_id,
+                audience,
                 created_at:  chrono::Utc::now().to_rfc3339(),
             };
             insert_note(&db, &note)?;
@@ -39,7 +54,8 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             if printer.json {
                 printer.print_json(&note);
             } else {
-                println!("✓ Note added  [{}]", note.kind);
+                println!("✓ Note added  [{}]{}", note.kind,
+                    if note.audience.is_empty() { String::new() } else { format!("  → for {}", note.audience) });
                 if note.target_kind != "none" {
                     println!("  on {} {}", note.target_kind, note.target_id);
                 }
@@ -47,7 +63,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        NoteCmd::List { intent, edge, kind } => {
+        NoteCmd::List { intent, edge, kind, for_role } => {
             if let Some(ref k) = kind {
                 k.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
@@ -56,7 +72,11 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 None => None,
             };
             let target = intent.or(edge);
-            let notes = list_notes(&db, target.as_deref(), kind.as_deref())?;
+            let mut notes = list_notes(&db, target.as_deref(), kind.as_deref())?;
+            // The lane's inbox: only notes explicitly addressed to this role.
+            if let Some(r) = &for_role {
+                notes.retain(|n| &n.audience == r);
+            }
             if printer.json {
                 printer.print_json(&notes);
             } else if notes.is_empty() {
@@ -69,7 +89,8 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         let short = &n.target_id[..n.target_id.len().min(8)];
                         format!("{} {}", n.target_kind, short)
                     };
-                    println!("  [{:<13}] {}", n.kind, n.text);
+                    let aud = if n.audience.is_empty() { String::new() } else { format!(" → for {}", n.audience) };
+                    println!("  [{:<13}]{} {}", n.kind, aud, n.text);
                     println!("      ({} · {})", n.author, tgt);
                 }
             }

@@ -163,6 +163,11 @@ pub mod prop {
     // QualityRule
     pub const DETECTION_LOGIC: &str = "detection_logic";
     pub const SEVERITY: &str = "severity";
+    /// QualityRule: how much capability INSPECTING this rule needs —
+    /// "low" | "mid" | "high" ("" reads as mid). Owner: quality. A statement
+    /// about the work; the harness maps it to models. NOT in the
+    /// required-property table (additive; absent on rules from older packs).
+    pub const INSPECTION_EFFORT: &str = "inspection_effort";
     // Validation node
     pub const VALIDATION_TYPE: &str = "validation_type";
     pub const COMMAND: &str = "command";
@@ -183,6 +188,11 @@ pub mod prop {
     pub const TEXT: &str = "text";
     pub const AUTHOR: &str = "author";
     pub const TARGET_KIND: &str = "target_kind";
+    /// Note: optional lane this note is addressed to ("" = everyone) —
+    /// builder | analyzer | fixer | validator | quality. Out-of-lane findings
+    /// become directed handoff messages; `loom next` surfaces notes addressed
+    /// to the work item's owner role first.
+    pub const AUDIENCE: &str = "audience";
     pub const TARGET_ID: &str = "target_id";
     // Ignore (coverage escape hatch)
     pub const PATTERN: &str = "pattern";
@@ -238,6 +248,9 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (ID, LOOM), (KIND, ANY), (TEXT, ANY), (AUTHOR, ANY),
             (TARGET_KIND, ANY), (TARGET_ID, ANY), (CREATED_AT, LOOM),
         ],
+        // Note also carries an OPTIONAL `audience` ("" | a role name): a note
+        // addressed to a specific lane — the directed-handoff channel. Not in
+        // the required table (additive; absent on notes from older graphs).
         self::label::IGNORE => &[
             (ID, LOOM), (PATTERN, BUILDER), (REASON, BUILDER),
             (AUTHOR, ANY), (CREATED_AT, LOOM),

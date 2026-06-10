@@ -202,6 +202,7 @@ mod tests {
             author:      "llm".to_string(),
             target_kind: tk.to_string(),
             target_id:   tid.to_string(),
+            audience:    String::new(),
             created_at:  "t0".to_string(),
         }
     }
@@ -385,7 +386,7 @@ mod tests {
         // edge — the one-command path) → now genuinely complete.
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.phase, "quality", "unmeasured pairs should route to quality");
@@ -548,7 +549,7 @@ mod tests {
         insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
-            detection_logic: "many concerns in one unit".into(), severity: "warning".into(),
+            detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[0], "no god objects", "t").unwrap();
 
@@ -639,7 +640,7 @@ mod tests {
         // unmeasured pairs → quality with a non-empty queue
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         assert_coherent(&db, "unmeasured rule");
         for id in &ids {
@@ -766,7 +767,7 @@ mod tests {
         update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", 0.8, "llm:analyzer", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_sql".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
         insert_validation(&db, &Validation {
@@ -1031,7 +1032,7 @@ mod tests {
             "parent rolls up the child's contract", 0.9, "llm", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[1], "passing",
@@ -1074,6 +1075,160 @@ mod tests {
         assert_eq!(v.command, "cargo test old", "the command text travels as the spec");
         // The port lands as a buildable design: the build queue is full.
         assert!(!build_candidates(&db2).unwrap().is_empty());
+    }
+
+    /// THE RETIREMENT CONTRACT: a retired intent is invisible to computation,
+    /// visible to history. Fallout is reported (orphans, solely-owned files,
+    /// dangling proofs), and every queue/axis/centrality stops counting it —
+    /// including the trigger: a file owned only by retired design reads
+    /// UNREACHED again.
+    #[test]
+    fn retire_is_invisible_to_computation_visible_to_history() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(3); // 0: parent, 1: child (to retire), 2: sibling
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, "h1", &ids[0], &ids[2], "", "t").unwrap();
+        insert_codefile(&db, &codefile("cf-solo", "src/only_old.rs")).unwrap();
+        insert_codefile(&db, &codefile("cf-shared", "src/shared.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[1], "cf-solo", "fn old", "", "t").unwrap();
+        insert_implements(&db, "im1", &ids[1], "cf-shared", "fn a", "", "t").unwrap();
+        insert_implements(&db, "im2", &ids[2], "cf-shared", "fn b", "", "t").unwrap();
+        get_or_create_relates_to(&db, "e0", &ids[1], &ids[2], "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "old-proof".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+
+        // Fallout names exactly the triggered work.
+        let f = retire_fallout(&db, &ids[1]).unwrap();
+        assert_eq!(f.solely_grounded_files, vec!["src/only_old.rs".to_string()]);
+        assert_eq!(f.dangling_validations, vec!["old-proof".to_string()]);
+        assert_eq!(f.edges_leaving_computation, 1);
+        assert!(f.orphaned_children.is_empty());
+
+        assert!(retire_intent(&db, &ids[1], "superseded by a new decomposition", Some(&ids[2]), "t2").unwrap());
+
+        // History: node + edges + a decision note naming the successor remain.
+        let i = get_intent(&db, &ids[1]).unwrap().unwrap();
+        assert_eq!(i.status, "deprecated");
+        let notes = list_notes(&db, Some(&ids[1]), Some("decision")).unwrap();
+        assert!(notes.iter().any(|n| n.text.contains("replaced by")), "{notes:?}");
+
+        // Computation: the retired intent is gone from every number.
+        assert!(list_active_intents(&db).unwrap().iter().all(|i| i.id != ids[1]));
+        assert!(scored_candidates(&db, "discovery").unwrap().iter()
+            .all(|(e, _)| e.from_id != ids[1] && e.to_id != ids[1]), "queues drop its edges");
+        assert!(!all_intent_degrees(&db).unwrap().contains_key(&ids[1]), "centrality drops it");
+        assert!(validate_selection(&db).unwrap().iter().all(|(i, _, _)| i.id != ids[1]),
+            "its proofs stop nagging the validator");
+        let vc = vertical_completeness(&db).unwrap();
+        assert!(vc.unreached_codefiles.contains(&"src/only_old.rs".to_string()),
+            "the solely-owned file surfaces as a gap: {vc:?}");
+        assert!(!vc.unreached_codefiles.contains(&"src/shared.rs".to_string()),
+            "the shared file stays reached via the sibling");
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.intents, 2, "pulse counts active intents only");
+    }
+
+    /// Centrality counts REAL relationships only: `independent` edges give the
+    /// grid closure but contribute nothing to blast radius.
+    #[test]
+    fn degree_excludes_independent_edges() {
+        let (db, ids) = db_inited(3);
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+        get_or_create_relates_to(&db, "e1", &ids[0], &ids[2], "t").unwrap();
+        update_relates_to_independent(&db, &ids[0], &ids[2],
+            "verified: no shared surface at all between these", "llm", "t").unwrap();
+
+        let d = all_intent_degrees(&db).unwrap();
+        assert_eq!(*d.get(&ids[0]).unwrap_or(&0), 1, "independent edge must not count");
+        assert_eq!(*d.get(&ids[1]).unwrap_or(&0), 1);
+        assert!(!d.contains_key(&ids[2]), "only an independent edge → zero centrality");
+    }
+
+    /// The review queue — confidence is the coordination channel between
+    /// tiers: an honest low-confidence verdict surfaces for re-inspection,
+    /// ranked by (1−conf)×centrality; re-recording at/above the threshold
+    /// resolves it. Both RELATES_TO and GOVERNS verdicts participate.
+    #[test]
+    fn low_confidence_verdicts_feed_the_review_queue() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        // A scout grounds with HONEST uncertainty.
+        update_relates_to_ground(&db, &ids[0], &ids[1],
+            "names overlap but the call path was not traced", 0.45, "llm:analyzer", "t").unwrap();
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+            inspection_effort: "high".into(),
+        }).unwrap();
+        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        update_governs_verdict(&db, "r0", &ids[0], "passing",
+            "criterion text long enough", "evidence text long enough",
+            0.5, "llm:quality", "t").unwrap();
+
+        let rc = review_candidates(&db).unwrap();
+        assert_eq!(rc.len(), 2, "both uncertain verdicts surface: {}", rc.len());
+
+        // Reviewer confirms the edge with real confidence → off the queue.
+        update_relates_to_ground(&db, &ids[0], &ids[1],
+            "traced: a calls b's parser in fn run", 0.9, "llm:analyzer", "t2").unwrap();
+        let rc = review_candidates(&db).unwrap();
+        assert_eq!(rc.len(), 1, "confirmed edge resolved");
+        assert!(matches!(rc[0].0, ReviewCandidate::Governs(_)));
+        update_governs_verdict(&db, "r0", &ids[0], "passing",
+            "criterion text long enough", "re-inspected: holds with specifics",
+            0.85, "llm:quality", "t3").unwrap();
+        assert!(review_candidates(&db).unwrap().is_empty(), "queue drains");
+    }
+
+    /// Notes carry an optional audience — the directed-handoff channel — and
+    /// rules carry inspection_effort; both round-trip through export/import,
+    /// and exports WITHOUT the optional fields still import (additive schema).
+    #[test]
+    fn audience_and_effort_round_trip_and_stay_optional() {
+        let (db, ids) = db_inited(1);
+        insert_note(&db, &Note {
+            id: "n0".into(), kind: "todo".into(),
+            text: "locator broke in src/x.rs — re-ground it".into(),
+            author: "llm:analyzer".into(), target_kind: "intent".into(),
+            target_id: ids[0].clone(), audience: "builder".into(),
+            created_at: "t".into(),
+        }).unwrap();
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+            inspection_effort: "low".into(),
+        }).unwrap();
+
+        let export = export_graph(&db).unwrap();
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, false).unwrap();
+        let n = list_notes(&db2, Some(&ids[0]), None).unwrap();
+        assert!(n.iter().any(|x| x.audience == "builder"), "{n:?}");
+        let r = list_rules(&db2).unwrap();
+        assert_eq!(r[0].inspection_effort, "low");
+
+        // An export missing the optional fields (older binary) still imports.
+        let mut old = export.clone();
+        for note in old["nodes"]["Note"].as_array_mut().unwrap() {
+            note.as_object_mut().unwrap().remove("audience");
+        }
+        for rule in old["nodes"]["QualityRule"].as_array_mut().unwrap() {
+            rule.as_object_mut().unwrap().remove("inspection_effort");
+        }
+        let db3 = GrafeoDb::in_memory();
+        db3.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
+        )).unwrap();
+        import_graph(&db3, &old, false).unwrap();
+        assert_eq!(list_rules(&db3).unwrap()[0].inspection_effort, "");
     }
 
     /// The custody gate: an observed graph (someone else's code) rejects
@@ -1125,7 +1280,7 @@ mod tests {
         }
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no-eval".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "error".into(),
+            detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(
@@ -1215,7 +1370,7 @@ mod tests {
         let (db, ids) = db_inited(1);
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
-            detection_logic: "many concerns in one unit".into(), severity: "warning".into(),
+            detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
 
@@ -1262,7 +1417,7 @@ mod tests {
         insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "what to look for".into(), severity: "warning".into(),
+            detection_logic: "what to look for".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
 
         let qc = quality_candidates(&db).unwrap();
@@ -1428,7 +1583,7 @@ mod tests {
         for (rid, name) in [("r0", "no_eval"), ("r1", "no_uncaught")] {
             insert_rule(&db, &QualityRule {
                 id: rid.into(), name: name.into(), description: "d".into(),
-                detection_logic: "dl".into(), severity: "error".into(),
+                detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
             }).unwrap();
             insert_governs(&db, &format!("g-{rid}"), rid, &ids[0], "", "t").unwrap();
         }
@@ -1528,7 +1683,7 @@ mod tests {
         // A rule that has never been considered against o1/o2, and an unused one.
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_panics".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "error".into(),
+            detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
         }).unwrap();
 
         let smells = compute_smells(&db).unwrap();
@@ -1581,7 +1736,7 @@ mod tests {
         let (db, ids) = db_inited(1);
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_sql".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
         insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[0], "independent",

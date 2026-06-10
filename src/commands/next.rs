@@ -17,12 +17,15 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         let db = GrafeoDb::open(&db_file)?;
         return run_all(&db, printer);
     }
-    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "quality") {
+    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "quality" | "review") {
         anyhow::bail!(
-            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, quality\n\
-             discovery = inspect relationships (analyzer) · fix = resolve failures/stale (fixer) · \
+            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, quality, review
+\
+             discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \
              build = realize planned/needs_change intents (builder) · \
-             validate = run/repair proofs (validator) · quality = earn GOVERNS green (quality).",
+             validate = run/repair proofs (validator) · quality = earn GOVERNS green (quality) · \
+             review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \
+             re-recording with confidence ≥ 0.7 or overturning).",
             mode
         );
     }
@@ -35,6 +38,7 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         "build" => return run_build(&db, printer),
         "validate" => return run_validate(&db, printer),
         "quality" => return run_quality(&db, printer),
+        "review" => return run_review(&db, printer),
         _ => {}
     }
 
@@ -93,6 +97,17 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
     // Fetch validations for intent_a (via VALIDATES)
     let validations = validations_for_intent(&db, &top_edge.from_id)?;
 
+    // discovery surfaces analyzer work. The fix queue SPLITS by what the item
+    // actually is: a stale (needs_reverification) claim is RE-INSPECTION — the
+    // criterion already exists, nothing gets fixed unless the re-inspection
+    // finds breakage — so it belongs to the analyzer at mid effort; only a
+    // recorded failure is repair work for the fixer, at high effort.
+    let (role, effort) = match (mode, top_edge.inspection_status.as_str()) {
+        ("fix", "failing") => ("fixer", "high"),
+        ("fix", _) => ("analyzer", "mid"),
+        _ => ("analyzer", "mid"),
+    };
+
     // Gather accumulated memory: notes on the edge (if it exists yet) and on
     // both intents, so prior reasoning travels with the work item.
     let mut notes = Vec::new();
@@ -101,6 +116,7 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
     }
     notes.extend(notes_for_target(&db, &top_edge.from_id)?);
     notes.extend(notes_for_target(&db, &top_edge.to_id)?);
+    sort_notes_for_role(&mut notes, role);
 
     // Build suggested action string
     let suggested_action = build_suggested_action(top_edge, score);
@@ -121,14 +137,11 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         suggested_action:  suggested_action.clone(),
     };
 
-    // discovery surfaces analyzer work; fix surfaces fixer work.
-    let role = if mode == "fix" { "fixer" } else { "analyzer" };
-
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
-            add_dispatch(obj, role);
+            add_dispatch(obj, role, effort);
         }
         printer.print_json(&v);
         return Ok(());
@@ -199,7 +212,7 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", suggested_action);
     println!();
-    println!("  Dispatch — {}", dispatch_line(role));
+    println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
 
     Ok(())
@@ -273,9 +286,13 @@ fn dispatch_line(role: &str) -> String {
     )
 }
 
-/// Inject `owner_role` + `dispatch` into a work-item JSON object.
-fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str) {
+/// Inject `owner_role` + `effort` + `dispatch` into a work-item JSON object.
+/// `effort` (low | mid | high) names how much capability THIS item's work
+/// needs — a statement about the work, computed from structure; the harness
+/// maps it to whatever models exist. Never a model name.
+fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str, effort: &str) {
     obj.insert("owner_role".to_string(), serde_json::json!(role));
+    obj.insert("effort".to_string(), serde_json::json!(effort));
     obj.insert("dispatch".to_string(), serde_json::json!(dispatch_line(role)));
 }
 
@@ -344,6 +361,14 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "queue": "quality", "role": "quality",
             "count": quality.len(), "command": "loom next --mode quality",
             "top": format!("rule '{}' → '{}' [{}]", g.rule_name, g.intent_name, g.inspection_status),
+        }));
+    }
+    let review = crate::db::queries::review_candidates(db)?;
+    if !review.is_empty() {
+        queues.push(serde_json::json!({
+            "queue": "review", "role": "reviewer", "optional": true, "effort": "high",
+            "count": review.len(), "command": "loom next --mode review",
+            "top": "low-confidence verdicts × centrality — the tiered double-check",
         }));
     }
     let discovery_backlog = discovery.len() as i64 + gs.unexplored_pairs;
@@ -438,7 +463,19 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let (intent, score) = (&c.intent, &c.score);
     let implements = list_implements_for_intent(db, &intent.id)?;
     let validations = validations_for_intent(db, &intent.id)?;
-    let notes = notes_for_target(db, &intent.id)?;
+    // planned → builder constructs it; needs_change → fixer changes it.
+    // Effort names the work: writing NEW code from a criterion (planned leaf)
+    // and repairing existing code (needs_change) are high; verifying a
+    // roll-up is mid.
+    let (role, effort) = if intent.lifecycle == "needs_change" {
+        ("fixer", "high")
+    } else if c.rollup {
+        ("builder", "mid")
+    } else {
+        ("builder", "high")
+    };
+    let mut notes = notes_for_target(db, &intent.id)?;
+    sort_notes_for_role(&mut notes, role);
     let action = build_action(intent, c.rollup);
 
     let item = WorkItem {
@@ -457,14 +494,11 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         suggested_action:  action.clone(),
     };
 
-    // planned → builder constructs it; needs_change → fixer changes it.
-    let role = if intent.lifecycle == "needs_change" { "fixer" } else { "builder" };
-
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
-            add_dispatch(obj, role);
+            add_dispatch(obj, role, effort);
         }
         printer.print_json(&v);
         return Ok(());
@@ -527,7 +561,8 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 
     let c = &candidates[0];
     let validations = validations_for_intent(db, &c.intent.id)?;
-    let notes = notes_for_target(db, &c.intent.id)?;
+    let mut notes = notes_for_target(db, &c.intent.id)?;
+    sort_notes_for_role(&mut notes, "validator");
     let action = if validations.is_empty() {
         format!(
             "PROVE this intent — it has no validations:\n\
@@ -556,6 +591,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "notes":            notes,
             "suggested_action": action,
             "owner_role":       "validator",
+            "effort":           if validations.is_empty() { "mid" } else { "low" },
             "dispatch":         dispatch_line("validator"),
             "graph_state":      gs,
         }));
@@ -588,7 +624,8 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
-    println!("  Dispatch — {}", dispatch_line("validator"));
+    println!("  Dispatch — {}  [effort: {}]", dispatch_line("validator"),
+        if validations.is_empty() { "mid" } else { "low" });
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
@@ -620,7 +657,17 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let (g, score) = &candidates[0];
     let intent = get_intent(db, &g.intent_id)?;
     let implements = list_implements_for_intent(db, &g.intent_id)?;
-    let notes = if g.id.is_empty() { Vec::new() } else { notes_for_target(db, &g.id)? };
+    let mut notes = if g.id.is_empty() { Vec::new() } else { notes_for_target(db, &g.id)? };
+    sort_notes_for_role(&mut notes, "quality");
+    // Effort comes from the RULE: the pack author knows statically whether
+    // holding this stick against code is a near-mechanical scan or deep
+    // semantic reading. "" (unannotated/older rules) reads as mid.
+    let rule_effort = crate::db::queries::list_rules(db)?
+        .into_iter()
+        .find(|r| r.id == g.rule_id)
+        .map(|r| r.inspection_effort)
+        .filter(|e| !e.is_empty())
+        .unwrap_or_else(|| "mid".to_string());
     let action = if g.inspection_status == "unmeasured" {
         format!(
             "MEASURE: rule '{rule}' has never been held against intent '{name}' (no GOVERNS edge \
@@ -658,6 +705,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "notes":            notes,
             "suggested_action": action,
             "owner_role":       "quality",
+            "effort":           rule_effort,
             "dispatch":         dispatch_line("quality"),
             "graph_state":      gs,
         }));
@@ -698,7 +746,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
-    println!("  Dispatch — {}", dispatch_line("quality"));
+    println!("  Dispatch — {}  [effort: {rule_effort}]", dispatch_line("quality"));
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
@@ -709,27 +757,153 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
         // verification + roll-up, never writing code at this altitude.
         "planned" if rollup => format!(
             "ROLL UP this intent — all its children are implemented; nothing is built \
-             at this altitude directly.\n\
-             1. Check each child fulfils its criterion (`loom intent show {id}` lists children).\n  \
-             2. If satisfied: loom intent mark {id} --lifecycle implemented\n  \
+             at this altitude directly.
+\
+             1. Check each child fulfils its criterion (`loom intent show {id}` lists children).
+  \
+             2. If satisfied: loom intent mark {id} --lifecycle implemented
+  \
              3. If a child falls short: loom intent mark <child-id> --lifecycle needs_change --reason \"…\"",
             id = intent.id,
         ),
         "planned" => format!(
-            "BUILD this intent — its description/criteria are the spec/acceptance check.\n\
-             1. Write the code.\n  \
-             2. Register it: loom codefile add <path>\n  \
-             3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"\n  \
+            "BUILD this intent — its description/criteria are the spec/acceptance check.
+\
+             1. Write the code.
+  \
+             2. Register it: loom codefile add <path>
+  \
+             3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"
+  \
              4. Mark done: loom intent mark {id} --lifecycle implemented",
             id = intent.id,
         ),
         "needs_change" => format!(
-            "CHANGE the code for this intent (the description/criteria + notes describe the desired end state).\n\
-             1. Make the minimal change.\n  \
-             2. Mark done: loom intent mark {id} --lifecycle implemented\n  \
+            "CHANGE the code for this intent (the description/criteria + notes describe the desired end state).
+\
+             1. Make the minimal change.
+  \
+             2. Mark done: loom intent mark {id} --lifecycle implemented
+  \
              3. Re-verify affected relationships: loom next --mode fix",
             id = intent.id,
         ),
         other => format!("Intent '{}' has lifecycle '{}' — review it.", intent.name, other),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Review mode: the strategic double-check for tiered agents — verdicts whose
+// recorded confidence is below REVIEW_CONFIDENCE, highest (1−conf)×centrality
+// first. A low-capability scout records honest uncertainty; the graph routes
+// exactly those claims to a stronger reviewer. Resolves by RE-RECORDING the
+// verdict (confirm with confidence ≥ 0.7, or overturn) via the normal write
+// paths — no special review write exists, so every gate still applies.
+// ---------------------------------------------------------------------------
+
+fn run_review(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+    use crate::db::queries::{review_candidates, ReviewCandidate, REVIEW_CONFIDENCE};
+    let candidates = review_candidates(db)?;
+    let gs = graph_state(db)?;
+
+    if candidates.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "empty", "mode": "review",
+                "message": format!("No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."),
+                "graph_state": gs,
+            }));
+        } else {
+            println!("✓ No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look.");
+            println!();
+            println!("  {}", fmt_pulse(&gs));
+            println!("  → Next: {}", gs.next_action);
+        }
+        return Ok(());
+    }
+
+    let (item, score) = &candidates[0];
+    let protocol = "INDEPENDENT RE-INSPECTION: form your own hypothesis from the intents and the \
+code BEFORE reading the recorded evidence (anchoring on a low-confidence claim defeats the \
+review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this item) or overturn.";
+
+    match item {
+        ReviewCandidate::RelatesTo(e) => {
+            let intent_a = get_intent(db, &e.from_id)?;
+            let intent_b = get_intent(db, &e.to_id)?;
+            let mut notes = notes_for_target(db, &e.id)?;
+            sort_notes_for_role(&mut notes, "analyzer");
+            let action = format!(
+                "{protocol}
+
+  loom edge explore {a} {b} ground --criterion \"…\" --confidence 0.9
+  loom edge explore {a} {b} issue --criterion \"…\" --evidence \"…\"
+  loom edge explore {a} {b} independent --notes \"…\"",
+                a = e.from_id, b = e.to_id,
+            );
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "mode": "review", "kind": "relates_to", "priority_score": score,
+                    "edge": e, "intent_a": intent_a, "intent_b": intent_b, "notes": notes,
+                    "suggested_action": action,
+                    "owner_role": "analyzer", "effort": "high",
+                    "dispatch": dispatch_line("analyzer"),
+                    "graph_state": gs,
+                }));
+                return Ok(());
+            }
+            println!("── Next Review Item  [relates_to  confidence={:.2}  priority={:.2}] ──────", e.confidence, score);
+            println!();
+            println!("  {} × {}", e.from_name, e.to_name);
+            println!("  recorded verdict: {}  (by {})", e.inspection_status, e.inspected_by);
+            println!("  criterion: {}", e.criterion);
+            println!();
+            println!("── Suggested Action ────────────────────────────────────────────────");
+            println!("{action}");
+            println!();
+            println!("  Dispatch — {}  [effort: high]", dispatch_line("analyzer"));
+            println!("  {}", fmt_pulse(&gs));
+        }
+        ReviewCandidate::Governs(g) => {
+            let intent = get_intent(db, &g.intent_id)?;
+            let mut notes = notes_for_target(db, &g.id)?;
+            sort_notes_for_role(&mut notes, "quality");
+            let action = format!(
+                "{protocol}
+
+  loom rule verdict {r} {i} --status passing|failing|independent --criterion \"…\" --evidence \"…\" --confidence 0.9",
+                r = g.rule_id, i = g.intent_id,
+            );
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "mode": "review", "kind": "governs", "priority_score": score,
+                    "governs": g, "intent": intent, "notes": notes,
+                    "suggested_action": action,
+                    "owner_role": "quality", "effort": "high",
+                    "dispatch": dispatch_line("quality"),
+                    "graph_state": gs,
+                }));
+                return Ok(());
+            }
+            println!("── Next Review Item  [governs  confidence={:.2}  priority={:.2}] ─────────", g.confidence, score);
+            println!();
+            println!("  rule {} → intent {}", g.rule_name, g.intent_name);
+            println!("  recorded verdict: {}  (by {})", g.inspection_status, g.inspected_by);
+            println!("  criterion: {}", g.criterion);
+            println!();
+            println!("── Suggested Action ────────────────────────────────────────────────");
+            println!("{action}");
+            println!();
+            println!("  Dispatch — {}  [effort: high]", dispatch_line("quality"));
+            println!("  {}", fmt_pulse(&gs));
+        }
+    }
+    Ok(())
+}
+
+/// Addressed notes first: a note with `audience == role` is a directed handoff
+/// message for whoever is working this item — surface it before the ambient
+/// memory. Stable within groups (chronological order preserved).
+fn sort_notes_for_role(notes: &mut [crate::types::Note], role: &str) {
+    notes.sort_by_key(|n| if n.audience == role { 0 } else { 1 });
 }

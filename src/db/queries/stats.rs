@@ -10,7 +10,7 @@ use crate::types::{Intent, IntentCentrality};
 use super::completeness::vertical_completeness;
 use super::hierarchy::list_hierarchy_for_intent;
 use super::implements::list_implements_for_intent;
-use super::intent::{intents_without_validations, list_intents};
+use super::intent::{intents_without_validations, list_active_intents};
 use super::meta::get_meta;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
@@ -22,7 +22,7 @@ use super::scoring::{all_intent_degrees, count_unexplored_pairs, normative_cover
 /// happy path but no sad/fallback sibling (path-coverage via the `aspect` tag).
 pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
     let mut gaps = Vec::new();
-    let intents = list_intents(db, None, None)?;
+    let intents = list_active_intents(db)?;
     let aspect_by_id: HashMap<String, String> =
         intents.iter().map(|i| (i.id.clone(), i.aspect.clone())).collect();
 
@@ -167,7 +167,10 @@ fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i6
 
 /// Compute the graph pulse + phase + recommended next action.
 pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
-    let intents = count_intents(db)?;
+    // Active intents only: retired (deprecated) design is invisible to every
+    // computed number here — counts, pair denominators, coverage axes.
+    let all_intents = list_active_intents(db)?;
+    let intents = all_intents.len() as i64;
     let codefiles = count_codefiles(db)?;
     let validations = count_validations(db)?;
     let notes = db
@@ -245,7 +248,6 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let unexplored_pairs = count_unexplored_pairs(db)?;
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
-    let all_intents = list_intents(db, None, None)?;
     let needs_change = all_intents.iter().filter(|i| i.lifecycle == "needs_change").count() as i64;
     let planned = all_intents.iter().filter(|i| i.lifecycle == "planned").count() as i64;
 
@@ -458,11 +460,15 @@ pub fn validation_pass_rate(db: &dyn LoomDb) -> Result<f64> {
 /// Distinct CodeFile paths that at least one intent IMPLEMENTS (i.e. grounded
 /// in an intent). Used by `loom coverage`.
 pub fn grounded_paths(db: &dyn LoomDb) -> Result<Vec<String>> {
-    let r = db.execute("MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p")?;
+    // Grounded means grounded by LIVE design: a file whose only owner was
+    // retired is no longer explained (status filtered in Rust).
+    let r = db.execute("MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s")?;
     let cols = col_map(&r);
     let mut set: std::collections::HashSet<String> = std::collections::HashSet::new();
     for row in r.rows() {
-        set.insert(str_val(get(row, &cols, "p")));
+        if str_val(get(row, &cols, "s")) != "deprecated" {
+            set.insert(str_val(get(row, &cols, "p")));
+        }
     }
     Ok(set.into_iter().collect())
 }
@@ -485,7 +491,7 @@ pub fn tangled_files(db: &dyn LoomDb, limit: usize) -> Result<Vec<(String, i64)>
 
 /// Top intents by degree centrality (RELATES_TO edges).
 pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<IntentCentrality>> {
-    let intents = list_intents(db, None, None)?;
+    let intents = list_active_intents(db)?;
     // Bulk-load all degrees in 2 queries instead of 2×N queries.
     let degrees = all_intent_degrees(db)?;
     let mut with_degree: Vec<(Intent, i64)> = intents

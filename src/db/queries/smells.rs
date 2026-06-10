@@ -20,7 +20,7 @@ use super::codefile::list_codefiles;
 use super::governs::list_all_governs;
 use super::hierarchy::list_all_hierarchy;
 use super::implements::list_all_implements;
-use super::intent::list_intents;
+use super::intent::list_active_intents;
 use super::note::list_notes;
 use super::relates_to::list_relates_to;
 use super::rule::list_rules;
@@ -84,7 +84,7 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
 /// Compute every smell, sorted by score (descending) within insertion order of
 /// kind. Callers truncate for display.
 pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
-    let intents = list_intents(db, None, None)?;
+    let intents = list_active_intents(db)?;
     let implements = list_all_implements(db)?;
     let hierarchy = list_all_hierarchy(db)?;
     let relates = list_relates_to(db, None)?;

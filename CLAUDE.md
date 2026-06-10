@@ -177,6 +177,9 @@ The workflow engine reads `inspection_status`. The Socratic loop reads and write
 
 ```
 priority_score = degree(intent_a) + degree(intent_b)   -- centrality/impact
+                 (degree counts REAL relationships only: `independent` edges
+                  give the grid closure but add NOTHING to blast radius, and
+                  edges touching retired intents are excluded entirely)
               + urgency(inspection_status)               -- failing > needs_reverification > uninspected
               - staleness_penalty(last_inspected)        -- older = lower priority (stale but not urgent)
 ```
@@ -242,14 +245,26 @@ loom next --all
   The single operational answer to "what's left?" — no reconciling five
   commands by hand. Discovery is flagged optional (horizontal axis).
 
-loom next [--mode discovery|fix|build|validate|quality]
+loom next [--mode discovery|fix|build|validate|quality|review]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
   validate = failing/unrun/missing proofs (validator) · quality = uninspected/
   failing GOVERNS edges PLUS never-measured rule×intent pairs (synthetic
   `unmeasured` items, surfaced at the highest unmeasured altitude only — one
-  `loom rule verdict` resolves each, creating the edge with the verdict).
+  `loom rule verdict` resolves each, creating the edge with the verdict) ·
+  review = verdicts recorded with confidence < 0.7, ranked by
+  (1−confidence)×centrality — THE TIERED DOUBLE-CHECK: a low-capability scout
+  records honest uncertainty and the graph itself routes exactly those claims
+  to a stronger reviewer (independent re-inspection: form your own hypothesis
+  BEFORE reading the recorded evidence; re-record to confirm ≥0.7 or overturn).
+  Optional like discovery — review hardens closure, it never blocks complete.
+  EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
+  names how much capability the WORK needs (computed from structure; quality
+  items inherit the rule's inspection_effort). Loom never names models — the
+  harness maps effort tiers to whatever models exist. The fix queue dispatches
+  by item state: needs_reverification → analyzer/mid (re-inspection of an
+  existing criterion), failing → fixer/high (repair).
   Returns single highest-priority work item with FULL context:
   - Edge (type, inspection_status, criterion, evidence, priority_score)
   - Both intent nodes (name, description, abstraction_level, source_refs)
@@ -265,6 +280,14 @@ loom intent mark <id> --lifecycle planned|implemented|needs_change [--reason "<w
   Set the prescriptive lifecycle. needs_change = a known issue/refactor (honest,
   no faked verdict); --reason is recorded as a note. Feeds `loom next --mode build`.
 loom intent delete <id>          (remove a mistake: node + its edges + notes)
+loom intent retire <id> --reason "<why>" [--replaced-by <intent>]
+  Design that was REAL and got superseded (delete is for mistakes). Status →
+  deprecated; node/edges/notes stay as history, but the intent becomes
+  INVISIBLE TO COMPUTATION: queues, coverage axes, centrality, the N×N grid,
+  completeness, and sync ripple stop counting it. Reports the TRIGGERED WORK:
+  orphaned children (re-parent or retire), files that lost their only owner
+  (they surface as vertical gaps), proofs left dangling. The successor is
+  recorded in a decision note — lineage stays traceable.
 loom intent source add <id> <path>     (append to source_refs — docs AND code:
                                         contracts, ADRs, design notes; idempotent)
 loom intent source remove <id> <path>
@@ -320,7 +343,10 @@ loom validate <intent-id>
   command is skipped — use `loom validation mark` for those.)
   Updates Validation.last_result and VALIDATES edge inspection_status.
 
-loom rule add --name --description --severity
+loom rule add --name --description --severity [--effort low|mid|high]
+  --effort = how much capability INSPECTING this rule needs (pack rules ship
+  annotated: secrets-scan low, atomicity high, default mid). Travels into
+  quality work items as `effort`.
 loom rule list
 loom rule apply <rule-id> <intent-id>   (positional; creates GOVERNS edge, uninspected)
 loom rule check <intent-id>             (read-only: show GOVERNS edges by status)
@@ -347,11 +373,15 @@ loom batch [file|-]
   per-line results, exits non-zero if any failed. Bulk changes the ceremony,
   never the honesty.
 
-loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm]
+loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm] [--for <role>]
   Append free-text memory. kind: justification | commentary | idea | question | decision | todo.
   Attach to an intent, an edge, or leave free-floating. Append-only (never overwritten).
-  Notes surface in `loom next`, `loom intent show`, and `loom edge show`.
-loom note list [--intent <id>] [--edge <id>] [--kind <kind>]
+  --for builder|analyzer|fixer|validator|quality ADDRESSES the note to a lane —
+  the directed-handoff channel: an out-of-lane finding becomes a message the
+  owning lane sees FIRST (`loom next` sorts addressed notes to the top of the
+  item's notes). Notes surface in `loom next`, `loom intent show`, `loom edge show`.
+loom note list [--intent <id>] [--edge <id>] [--kind <kind>] [--for <role>]
+  --for <role> = the lane's inbox (only notes addressed to it).
 
 loom doctor
   Verify graph integrity against the declared schema (src/db/schema.rs):

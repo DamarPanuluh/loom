@@ -30,10 +30,10 @@ queue + one-command `rule verdict` (creates the edge) → ISO 5055 verdict →
 ripple re-flags the verdict → a validation that *invokes loom itself*
 (DB-lock regression) → a `blocked` proof (reason gated, queue silent) →
 `next --all` closeout → positional export + `--check` commit guard (fresh
-passes, drift fails) → import into a fresh graph → doctor + graph-pin (LOOM_GRAPH beats a foreign cwd). 18 checks; exits
+passes, drift fails) → import into a fresh graph → doctor + graph-pin (LOOM_GRAPH beats a foreign cwd) + review-queue\nround trip + lane-inbox notes. 20 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
-Unit/regression suite (71 tests, in-memory DB, fast):
+Unit/regression suite (75 tests, in-memory DB, fast):
 
 ```bash
 cargo test
@@ -76,6 +76,12 @@ verdict per line (ground/issue/independent/rule_verdict) — same gates per line
 the DB lock is exclusive and both pipe ends start concurrently).
 Pin a session to one repo's graph: `export LOOM_GRAPH=<path>` (or `--graph`)
 — every loom call then hits that graph regardless of cd mistakes.
+Tiered agents: every work item carries `effort: low|mid|high` (about the WORK,
+never a model); record HONEST confidence — verdicts < 0.7 feed
+`loom next --mode review` for a stronger agent's independent re-inspection.
+Superseded design: `loom intent retire <id> --reason … [--replaced-by …]`
+(invisible to computation, visible to history; fallout reported).
+Directed handoff: `loom note add --for <role>` = that lane sees it first.
 Hostile-import fuzz: `.claude/skills/run-loom/fuzz_import.sh` (corrupted
 exports rejected, no partial graphs). Porting: `loom guide --mode port`.
 Ship the graph: `loom export` (commit `loom.graph.json`, gitignore `.loom/`);

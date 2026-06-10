@@ -132,8 +132,12 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         //    triggering file, so a stale edge explains itself in `loom edge
         //    show` / `loom next`.
         let cause = format!("{} changed", cf.path);
+        // Retired intents take no ripple: their claims are history, not live
+        // design — flipping them would resurrect work nobody owns.
+        let active: std::collections::HashSet<String> =
+            crate::db::queries::list_active_intents(&db)?.into_iter().map(|i| i.id).collect();
         let intent_ids = intent_ids_implementing_codefile(&db, &cf.id)?;
-        for iid in &intent_ids {
+        for iid in intent_ids.iter().filter(|i| active.contains(*i)) {
             let nrv = flag_relates_to_for_intent(&db, iid, &cause, &now)?;
             relates_to_flagged += nrv;
             // A passing quality verdict is a claim about the old code — flip

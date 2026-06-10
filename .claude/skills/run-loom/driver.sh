@@ -117,6 +117,26 @@ BOUT="$(printf '%s\n%s\n' \
 echo "$BOUT" | grep -q "1 applied, 1 failed" || fail "batch per-line accounting wrong: $BOUT"
 ok "batch: bulk verdicts, gates per line (bad line fails, good line lands), non-zero exit"
 
+echo "── tiered driving: honest low confidence → review queue → resolved ──"
+LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground \
+  --criterion "the guard probably precedes the save but I did not trace the call path" \
+  --confidence 0.4 >/dev/null
+RQ="$("$L" next --mode review --json)"
+[ "$(echo "$RQ" | jget "['kind']")" = relates_to ] || fail "low-confidence verdict missing from review queue"
+[ "$(echo "$RQ" | jget "['effort']")" = high ] || fail "review items must carry effort=high"
+LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground \
+  --criterion "traced: the strip-guard raises before save() is reachable in def add" \
+  --confidence 0.9 >/dev/null
+[ "$("$L" next --mode review --json | jget "['status']")" = empty ] \
+  || fail "re-recording with confidence >= 0.7 must resolve the review item"
+ok "review: honest uncertainty surfaces (effort=high), confident re-inspection resolves"
+
+echo "── directed handoff: a note addressed to a lane ──"
+"$L" note add --text "locator for def add may drift after the refactor — re-ground it" \
+  --kind todo --intent "add item" --for builder >/dev/null
+"$L" note list --for builder | grep -q "re-ground it" || fail "lane inbox (--for) filter"
+ok "notes carry an audience; the lane inbox filters on it"
+
 echo "── validator: proof that invokes loom (lock regression) ──"
 export LOOM_AGENT=llm:validator
 "$L" validation add --name "loom self-read under validate" --type assertion \

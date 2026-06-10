@@ -24,7 +24,27 @@ fn node_props(lbl: &str) -> Vec<&'static str> {
         props.push(prop::IMPORTS);
         props.push(prop::CONTENT_HASH);
     }
+    if lbl == label::QUALITY_RULE {
+        props.push(prop::INSPECTION_EFFORT);
+    }
+    if lbl == label::NOTE {
+        props.push(prop::AUDIENCE);
+    }
     props
+}
+
+/// Props that are ADDITIVE (absent on exports from older binaries): the import
+/// reads them as "" instead of failing, so old committed exports keep
+/// restoring. Everything else stays strictly required — A4's loud-rejection
+/// guarantee is about corruption, not about honest schema growth.
+fn is_optional_prop(p: &str) -> bool {
+    matches!(
+        p,
+        x if x == prop::IMPORTS
+            || x == prop::CONTENT_HASH
+            || x == prop::INSPECTION_EFFORT
+            || x == prop::AUDIENCE
+    )
 }
 
 fn edge_props(etype: &str) -> Vec<&'static str> {
@@ -259,7 +279,11 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             let assigns = node_props(lbl)
                 .iter()
                 .map(|p| {
-                    let v = required_str(obj, p, &format!("nodes.{lbl}"))?;
+                    let v = if is_optional_prop(p) {
+                        obj.get(*p).and_then(J::as_str).unwrap_or("")
+                    } else {
+                        required_str(obj, p, &format!("nodes.{lbl}"))?
+                    };
                     let v = node_override(lbl, p, v).unwrap_or_else(|| v.to_string());
                     Ok(format!("{p}: '{}'", schema::esc(&v)))
                 })

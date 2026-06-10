@@ -136,6 +136,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     author:      by.clone(),
                     target_kind: "intent".to_string(),
                     target_id:   id.clone(),
+                    audience:    String::new(),
                     created_at:  now.clone(),
                 };
                 crate::db::queries::insert_note(&db, &note)?;
@@ -166,6 +167,62 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 printer.print_json(&serde_json::json!({"status": "ok", "id": id, "deleted": true}));
             } else {
                 println!("✓ Intent {} deleted (with its edges and notes).", id);
+            }
+        }
+
+        IntentCmd::Retire { id, reason, replaced_by } => {
+            gate::acting_in_lane("retire an intent", &[role::BUILDER], None)?;
+            crate::db::queries::ensure_owned(&db, "retire an intent (the design decision belongs to the graph's owners)")?;
+            gate::require_substantive("reason", &reason, "why this design was superseded")?;
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let successor = match &replaced_by {
+                Some(k) => {
+                    let sid = crate::db::queries::resolve_intent(&db, k)?;
+                    if sid == id {
+                        anyhow::bail!("--replaced-by points at the intent being retired.");
+                    }
+                    Some(sid)
+                }
+                None => None,
+            };
+            // Fallout BEFORE the flip, so the report reflects this retirement.
+            let fallout = crate::db::queries::retire_fallout(&db, &id)?;
+            let now = chrono::Utc::now().to_rfc3339();
+            if !crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)? {
+                anyhow::bail!("Intent '{}' not found.", id);
+            }
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "id": id, "retired": true,
+                    "replaced_by": successor, "fallout": fallout,
+                }));
+            } else {
+                println!("✓ Intent {id} retired (status=deprecated — history kept, computation stops counting it).");
+                if let Some(s) = &successor {
+                    println!("  replaced by: {s}");
+                }
+                let f = &fallout;
+                if f.orphaned_children.is_empty()
+                    && f.solely_grounded_files.is_empty()
+                    && f.dangling_validations.is_empty()
+                {
+                    println!("  No fallout: no children, no solely-owned files, no dangling proofs.");
+                } else {
+                    println!("  TRIGGERED WORK:");
+                    for c in &f.orphaned_children {
+                        println!("    · child '{c}' lost its parent — re-parent (`loom edge hierarchy <new-parent> …`) or retire it too");
+                    }
+                    for p in &f.solely_grounded_files {
+                        println!("    · {p} lost its only owner — it now reads UNREACHED (ground under a successor or `loom ignore`)");
+                    }
+                    for v in &f.dangling_validations {
+                        println!("    · validation '{v}' proves only retired design — re-link (`loom edge validates …`) or `loom validation delete`");
+                    }
+                }
+                if f.edges_leaving_computation > 0 {
+                    println!("  {} RELATES_TO edge(s) leave every queue/centrality computation (kept as history).", f.edges_leaving_computation);
+                }
+                println!("  → `loom status` re-checks the compass; `loom coverage` shows any new gaps.");
             }
         }
 

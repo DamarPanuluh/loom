@@ -180,6 +180,126 @@ pub fn list_intents(
     Ok(result.rows().iter().map(|row| row_to_intent(row, &cols)).collect())
 }
 
+/// Intents that participate in computation: everything except `deprecated`.
+/// THE RETIREMENT CONTRACT: a retired intent is INVISIBLE TO COMPUTATION,
+/// VISIBLE TO HISTORY — its node, edges, and notes remain (the record), but
+/// queues, coverage axes, centrality, the N×N grid, ripple, and completeness
+/// must not count it. Every consumer that means "the live design" calls this.
+pub fn list_active_intents(db: &dyn LoomDb) -> Result<Vec<Intent>> {
+    Ok(list_intents(db, None, None)?
+        .into_iter()
+        .filter(|i| i.status != "deprecated")
+        .collect())
+}
+
+/// What retiring this intent breaks — computed BEFORE the retire so the
+/// command can report the triggered work, and re-checkable any time after.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct RetireFallout {
+    /// Children whose parent is now retired — re-parent (`loom edge hierarchy`)
+    /// or retire them too; until then they read as roots.
+    pub orphaned_children: Vec<String>,
+    /// Files this intent was the ONLY active owner of — they become unreached
+    /// (vertical gap) until re-grounded under a successor or ignored.
+    pub solely_grounded_files: Vec<String>,
+    /// Validations whose only active intent was this one — dangling specs.
+    pub dangling_validations: Vec<String>,
+    /// RELATES_TO edges that leave every computation with this retirement.
+    pub edges_leaving_computation: usize,
+}
+
+pub fn retire_fallout(db: &dyn LoomDb, id: &str) -> Result<RetireFallout> {
+    let name_of: std::collections::HashMap<String, String> = list_intents(db, None, None)?
+        .into_iter()
+        .map(|i| (i.id.clone(), i.name))
+        .collect();
+    let active: std::collections::HashSet<String> = list_active_intents(db)?
+        .into_iter()
+        .filter(|i| i.id != id)
+        .map(|i| i.id)
+        .collect();
+
+    let mut orphaned_children: Vec<String> = super::hierarchy::list_all_hierarchy(db)?
+        .into_iter()
+        .filter(|(p, c)| p == id && active.contains(c))
+        .map(|(_, c)| name_of.get(&c).cloned().unwrap_or(c))
+        .collect();
+    orphaned_children.sort();
+
+    // Files where this intent is the only ACTIVE owner.
+    let mut owners: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    for im in super::implements::list_all_implements(db)? {
+        owners.entry(im.codefile_path).or_default().push(im.intent_id);
+    }
+    let mut solely_grounded_files: Vec<String> = owners
+        .into_iter()
+        .filter(|(_, os)| os.contains(&id.to_string()) && !os.iter().any(|o| active.contains(o)))
+        .map(|(p, _)| p)
+        .collect();
+    solely_grounded_files.sort();
+
+    // Validations whose every linked intent is retired once this one goes.
+    let mut linked: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut vname: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for e in super::validates::list_all_validates(db)? {
+        linked.entry(e.validation_id.clone()).or_default().push(e.intent_id);
+        vname.insert(e.validation_id, e.validation_name);
+    }
+    let mut dangling_validations: Vec<String> = linked
+        .into_iter()
+        .filter(|(_, is)| is.contains(&id.to_string()) && !is.iter().any(|i| active.contains(i)))
+        .map(|(v, _)| vname.get(&v).cloned().unwrap_or(v))
+        .collect();
+    dangling_validations.sort();
+
+    let edges_leaving_computation = super::relates_to::list_relates_to(db, None)?
+        .into_iter()
+        .filter(|e| e.from_id == id || e.to_id == id)
+        .count();
+
+    Ok(RetireFallout {
+        orphaned_children,
+        solely_grounded_files,
+        dangling_validations,
+        edges_leaving_computation,
+    })
+}
+
+/// Retire an intent: status → deprecated, with the why (and the successor, if
+/// any) recorded as notes. NOT a delete — deletion is for mistakes; retirement
+/// is for design that was real and got superseded. Returns false if missing.
+pub fn retire_intent(
+    db: &dyn LoomDb,
+    id: &str,
+    reason: &str,
+    replaced_by: Option<&str>,
+    now: &str,
+) -> Result<bool> {
+    let Some(prev) = get_intent(db, id)? else {
+        return Ok(false);
+    };
+    db.execute(&format!(
+        "MATCH (n:Intent {{id: '{}'}}) SET n.status = 'deprecated', n.updated_at = '{}'",
+        esc(id), esc(now)
+    ))?;
+    super::note::record_transition(db, "intent", id, &prev.status, "deprecated", "loom", now)?;
+    let text = match replaced_by {
+        Some(s) => format!("retired: {reason} — replaced by intent {s}"),
+        None => format!("retired: {reason}"),
+    };
+    super::note::insert_note(db, &crate::types::Note {
+        id: uuid::Uuid::new_v4().to_string(),
+        kind: "decision".into(),
+        text,
+        author: "loom".into(),
+        target_kind: "intent".into(),
+        target_id: id.to_string(),
+        audience: String::new(),
+        created_at: now.to_string(),
+    })?;
+    Ok(true)
+}
+
 pub fn confirm_intent(db: &dyn LoomDb, id: &str, updated_at: &str) -> Result<bool> {
     let check = db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)

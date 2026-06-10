@@ -200,17 +200,45 @@ pub fn pack_names() -> Vec<&'static str> {
     PACKS.iter().map(|(n, _)| *n).collect()
 }
 
+/// Inspection effort per pack rule — how much capability holding this rule
+/// against code actually needs. Annotated where the pack author KNOWS it
+/// statically: a secrets scan is near-mechanical (low); atomicity, deadlock
+/// ordering, compensation, and lifecycle-survival demand deep semantic reading
+/// (high); everything else is read-and-judge (mid, the default). This is a
+/// statement about the WORK — the harness decides which model answers.
+fn pack_rule_effort(name: &str) -> &'static str {
+    match name {
+        // Near-mechanical scans.
+        "iso5055-sec-no-hardcoded-secrets"
+        | "iso5055-main-no-dead-or-duplicate-code" => "low",
+        // Deep semantic reading.
+        "conc-atomic-multi-step"
+        | "conc-deadlock-ordering"
+        | "conc-cancellation-safe"
+        | "service-compensation-defined"
+        | "service-idempotent-handlers"
+        | "mobile-lifecycle-safe-state"
+        | "data-pii-handled" => "high",
+        _ => "mid",
+    }
+}
+
 pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        RuleCmd::Add { name, description, severity } => {
+        RuleCmd::Add { name, description, severity, effort } => {
             gate::acting_in_lane("add a quality rule", &[role::QUALITY], None)?;
             // Validate severity
             severity.parse::<crate::types::Severity>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+            if let Some(e) = &effort {
+                if !matches!(e.as_str(), "low" | "mid" | "high") {
+                    anyhow::bail!("--effort must be low, mid, or high (a statement about the inspection WORK, not about models).");
+                }
+            }
 
             let id   = Uuid::new_v4().to_string();
             let rule = QualityRule {
@@ -218,6 +246,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 name:            name.clone(),
                 description,
                 detection_logic: String::new(),
+                inspection_effort: effort.clone().unwrap_or_default(),
                 severity,
             };
             insert_rule(&db, &rule)?;
@@ -252,6 +281,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     name:            (*name).to_string(),
                     description:     (*description).to_string(),
                     detection_logic: (*detection).to_string(),
+                    inspection_effort: pack_rule_effort(name).to_string(),
                     severity:        (*severity).to_string(),
                 };
                 insert_rule(&db, &rule)?;

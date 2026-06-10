@@ -426,6 +426,12 @@ pub struct QualityRule {
     pub description: String,
     pub detection_logic: String,
     pub severity: String,
+    /// How much capability inspecting this rule needs: "low" (near-mechanical,
+    /// e.g. a secrets scan) | "mid" (read-and-judge) | "high" (deep semantic
+    /// reading, e.g. atomicity). Optional — "" reads as mid. Loom names the
+    /// WORK; which model answers is the harness's business.
+    #[serde(default)]
+    pub inspection_effort: String,
 }
 
 /// Explicit proof object that an intent is fulfilled.
@@ -464,6 +470,12 @@ pub struct Note {
     pub target_kind: String,
     /// id of the targeted intent/edge, or "" when floating
     pub target_id: String,
+    /// OPTIONAL lane this note is addressed to ("" = everyone): builder |
+    /// analyzer | fixer | validator | quality. The directed-handoff channel —
+    /// an out-of-lane finding becomes a message the owning lane will see
+    /// first in its work items.
+    #[serde(default)]
+    pub audience: String,
     pub created_at: String,
 }
 

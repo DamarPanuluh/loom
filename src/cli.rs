@@ -379,6 +379,27 @@ pub enum IntentCmd {
         id: String,
     },
 
+    /// RETIRE an intent: design that was real and got superseded (delete is
+    /// for mistakes). Status → deprecated; the node, edges, and notes remain
+    /// as history, but the intent becomes INVISIBLE TO COMPUTATION — queues,
+    /// coverage, centrality, the grid, and sync ripple stop counting it.
+    /// Reports the triggered fallout: orphaned children to re-parent or
+    /// retire, files that lost their only owner (they surface as vertical
+    /// gaps), and proofs left dangling.
+    Retire {
+        /// Intent id, name, or unique name fragment.
+        id: String,
+
+        /// Why this design was superseded (recorded as a decision note).
+        #[arg(long)]
+        reason: String,
+
+        /// The successor intent (id/name/fragment), recorded in the decision
+        /// note so the lineage is traceable.
+        #[arg(long)]
+        replaced_by: Option<String>,
+    },
+
     /// List intents, optionally filtered by status or level.
     List {
         #[arg(long)]
@@ -577,6 +598,13 @@ pub enum RuleCmd {
         /// Severity: warning | error
         #[arg(long)]
         severity: String,
+
+        /// How much capability INSPECTING this rule needs: low (near-mechanical
+        /// scan) | mid (read-and-judge, the default) | high (deep semantic
+        /// reading). Travels into quality work items as `effort` so tiered
+        /// agents route correctly — a statement about the work, never a model.
+        #[arg(long)]
+        effort: Option<String>,
     },
 
     /// List all quality rules.
@@ -674,6 +702,14 @@ pub enum NoteCmd {
         /// Defaults to $LOOM_AGENT, else "llm".
         #[arg(long)]
         author: Option<String>,
+
+        /// Address this note to a lane: builder | analyzer | fixer |
+        /// validator | quality. The directed-handoff channel — an out-of-lane
+        /// finding becomes a message the owning lane sees FIRST in its work
+        /// items (`loom next` sorts addressed notes to the top). Omit for
+        /// everyone.
+        #[arg(long = "for", value_name = "ROLE")]
+        for_role: Option<String>,
     },
 
     /// List notes, optionally filtered by target or kind.
@@ -689,6 +725,10 @@ pub enum NoteCmd {
         /// Only notes of this kind.
         #[arg(long)]
         kind: Option<String>,
+
+        /// Only notes addressed to this lane (the lane's inbox).
+        #[arg(long = "for", value_name = "ROLE")]
+        for_role: Option<String>,
     },
 }
 
