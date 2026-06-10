@@ -69,6 +69,27 @@ pub fn set_validates_status_for_validation(
     Ok(n)
 }
 
+/// Return ALL VALIDATES edges in the graph — one query for bulk operations.
+/// For per-intent lookups in a loop, prefer this + filter in Rust over
+/// calling `list_validates_for_intent` N times.
+pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
+    let q = "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent) \
+             RETURN e.id, e.inspection_status, e.notes, \
+                    v.id AS validation_id, v.name AS validation_name, \
+                    i.id AS intent_id, i.name AS intent_name";
+    let result = db.execute(q)?;
+    let cols = col_map(&result);
+    Ok(result.rows().iter().map(|row| ValidatesEdge {
+        id:                str_val(get(row, &cols, "e.id")),
+        validation_id:     str_val(get(row, &cols, "validation_id")),
+        intent_id:         str_val(get(row, &cols, "intent_id")),
+        validation_name:   str_val(get(row, &cols, "validation_name")),
+        intent_name:       str_val(get(row, &cols, "intent_name")),
+        inspection_status: str_val(get(row, &cols, "e.inspection_status")),
+        notes:             str_val(get(row, &cols, "e.notes")),
+    }).collect())
+}
+
 /// Return all VALIDATES edges pointing to an intent, with Validation details.
 pub fn list_validates_for_intent(
     db: &dyn LoomDb,

@@ -188,12 +188,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:18.016184+00:00",
         "criterion": "Graph-write handlers must expose only explicit CLI-requested graph mutations with role/custody gates on verdict-sensitive mutations",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. neither change adds exposure, resources, secrets, dead code, unbounded or redundant work relevant to this rule",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "1eb1cdd6-b7e3-4541-80f3-a63a9c58992d",
         "id": "50d3792f-5fa7-4289-8483-117e64bf888f",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.230498+00:00",
+        "last_inspected": "2026-06-10T16:50:48.271953+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -318,12 +318,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:23.144618+00:00",
         "criterion": "Endpoint-matched edge query modules must escape all runtime ids and text before interpolating them into executable GQL.",
-        "evidence": "Scanned implements, validates, hierarchy, governs, and relates_to query modules: inserted or matched intent/rule/codefile/validation ids, criteria, evidence, notes, locators, timestamps, and inspector fields are passed through schema::esc before db.execute. Numeric confidence fields are not string-interpolated as untrusted text.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "dd90d9e7-89fb-44df-842c-fc95f7336bf3",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T13:52:50.513168+00:00",
+        "last_inspected": "2026-06-10T16:50:48.275153+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -370,12 +370,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:24.392616+00:00",
         "criterion": "Priority/scoring queue code must escape runtime values interpolated into GQL and keep display formatting or error context out of executable queries.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.446227+00:00",
+        "last_inspected": "2026-06-10T16:56:29.170123+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -461,12 +461,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:25.055861+00:00",
         "criterion": "Health/completeness GQL must not embed untrusted runtime data unescaped; dynamic labels/properties must come only from declared schema vocabulary.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "c63fed65-ea10-4aa6-946c-6f264efd4d5f",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.447377+00:00",
+        "last_inspected": "2026-06-10T16:50:48.277900+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -487,12 +487,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:26.030290+00:00",
         "criterion": "Discovery-pair scoring must not interpolate untrusted runtime strings into executable GQL; dynamic output/evidence strings must remain diagnostic only.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.449188+00:00",
+        "last_inspected": "2026-06-10T16:56:29.172071+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -578,12 +578,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:20.270006+00:00",
         "criterion": "Endpoint-matched edge query modules must not embed credentials, API keys, tokens, private keys, passwords, or connection strings.",
-        "evidence": "Reviewed implements, validates, hierarchy, governs, and relates_to query modules: literals are graph query templates, status values, diagnostics, and edge metadata labels. The component stores graph ids/criteria/evidence/notes/timestamps and contains no credential, token, key, password, or connection-string material.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "dc14707f-331c-4175-b053-6f311bbe4329",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T13:53:42.256896+00:00",
+        "last_inspected": "2026-06-10T16:50:48.280227+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -630,12 +630,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:21.193935+00:00",
         "criterion": "Priority/scoring queue code must not embed credentials, API keys, tokens, private keys, passwords, or service connection strings.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.451827+00:00",
+        "last_inspected": "2026-06-10T16:56:29.173235+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -708,12 +708,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:20.729665+00:00",
         "criterion": "Graph-write command handlers must not embed credentials, tokens, private keys, API keys, or service connection strings",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. neither change adds exposure, resources, secrets, dead code, unbounded or redundant work relevant to this rule",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "1156048d-5ea1-4d18-aeb4-26b2973a8ec2",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.335496+00:00",
+        "last_inspected": "2026-06-10T16:50:48.282488+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -721,12 +721,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:21.660593+00:00",
         "criterion": "Health/completeness and integrity checking code must not embed credentials, tokens, private keys, API keys, passwords, bearer strings, or service connection strings.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "90d33950-2522-4bbc-abe8-0cafeec7cf95",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.453935+00:00",
+        "last_inspected": "2026-06-10T16:50:48.283618+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -747,12 +747,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:22.450808+00:00",
         "criterion": "Discovery-pair scoring must not embed credentials, API keys, tokens, private keys, passwords, or connection strings.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.454971+00:00",
+        "last_inspected": "2026-06-10T16:56:29.174337+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -1095,15 +1095,15 @@
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
-        "confidence": 0.95,
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:24:57.660852+00:00",
         "criterion": "Verdict-bearing edges (RELATES_TO/GOVERNS/VALIDATES) are inserted with inspection_status=uninspected; green is earned via a later verdict, never asserted at insert.",
-        "evidence": "grep of insert sites: relates_to.rs:78, governs.rs:38, validates.rs:36 all INSERT with inspection_status: 'uninspected'. Only implements.rs:47 starts 'passing' — and IMPLEMENTS is a structural author assertion (grounding the file), not an inspected claim. So no verdict-bearing edge is born green.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
         "id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:27:59.153798+00:00",
+        "last_inspected": "2026-06-10T16:50:48.285872+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -1342,15 +1342,15 @@
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
-        "confidence": 0.88,
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:25:03.078466+00:00",
         "criterion": "Edge-query iteration is bounded by graph size — loops range over MATCH result rows (registered intents/edges/files), never unbounded external data.",
-        "evidence": "src/db/queries/validates.rs loops iterate over rows from endpoint-matched MATCH queries (list_validates_for_intent) or intent_ids_implementing_codefile — all graph-bounded. invalidate_validations_for_codefile is bounded by implementing intents × their VALIDATES edges. Same single-scan, endpoint-matched pattern in implements/hierarchy/governs/relates_to. No loop driven by external/unbounded input.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "a2b499eb-5b0e-4626-ac95-e96985760894",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:24:36.970783+00:00",
+        "last_inspected": "2026-06-10T16:50:48.287395+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -1397,12 +1397,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:03.766872+00:00",
         "criterion": "Priority/scored queue iteration must be bounded by graph/repo-sized collections and avoid unbounded external data or retry loops.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.458447+00:00",
+        "last_inspected": "2026-06-10T16:56:29.175466+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -1488,12 +1488,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:04.115857+00:00",
         "criterion": "Completeness, integrity, and health reporting loops must be bounded by local graph size, registered repo file count, declared schema vocabulary, or explicit user limits.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "dd77d7f8-8137-4bea-a31c-defd1bc4f26d",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.459488+00:00",
+        "last_inspected": "2026-06-10T16:50:48.289870+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -1514,12 +1514,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:04.701863+00:00",
         "criterion": "All iteration is bounded by graph size (intents/edges/codefiles), never by unbounded external input.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "ab3a82b1-0011-4da4-835e-d70703870e1d",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.460794+00:00",
+        "last_inspected": "2026-06-10T16:56:29.176553+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -1748,12 +1748,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:07.923031+00:00",
         "criterion": "Graph-write handlers must validate CLI and file inputs through typed parsers, resolvers, gates, and explicit error branches before mutating the graph",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. boundary validation IMPROVED: edge validates now rejects unknown/ambiguous validation keys instead of inserting a dangling reference",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.488009+00:00",
+        "last_inspected": "2026-06-10T16:50:48.292171+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -1878,12 +1878,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:59.276031+00:00",
         "criterion": "No unreachable or duplicated code across the edge query modules: zero dead-code warnings, no #[allow(dead_code)], shared logic centralized.",
-        "evidence": "cargo build emits zero warnings; no allow(dead_code) across validates/implements/hierarchy/governs/relates_to.rs. All five reuse schema::esc, row::col_map/get/str_val and a uniform endpoint-matched MATCH pattern — the shared logic lives once, not copied per module.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "8b2d5ec5-a60a-4bca-b044-041a13516f2b",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:27:15.070368+00:00",
+        "last_inspected": "2026-06-10T16:50:48.293300+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -1930,12 +1930,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:59.865769+00:00",
         "criterion": "Priority queue code must not contain unreachable production code or duplicate implementations of the same queue/scoring behavior.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "81d6535c-34f1-4610-bad3-d62ac793cca0",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.464235+00:00",
+        "last_inspected": "2026-06-10T16:56:29.177683+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -2008,12 +2008,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:59.567991+00:00",
         "criterion": "Graph-write handlers should avoid unreachable command code and duplicated implementations of shared validation, resolution, and DB-write concerns",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. neither change adds exposure, resources, secrets, dead code, unbounded or redundant work relevant to this rule",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "f5829115-5548-4cd4-94fd-feba8d374b91",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.574846+00:00",
+        "last_inspected": "2026-06-10T16:50:48.295581+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -2021,12 +2021,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:00.170041+00:00",
         "criterion": "Health/completeness code must not contain unreachable production code, dead-code suppressions, or duplicated implementations of the same graph health calculation.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "a03f88c7-390b-41be-a8e2-64b2f59c3869",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.466868+00:00",
+        "last_inspected": "2026-06-10T16:50:48.296730+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -2047,12 +2047,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:00.683850+00:00",
         "criterion": "No unreachable or duplicated code: cargo build emits zero dead-code warnings, no #[allow(dead_code)], shared logic centralized.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.467999+00:00",
+        "last_inspected": "2026-06-10T16:56:29.178786+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -2122,15 +2122,15 @@
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
-        "confidence": 0.85,
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:25:01.111936+00:00",
         "criterion": "Each edge query module owns exactly one edge type's CRUD, all matched by endpoint nodes (the grafeo 0.5.x reliability rule) — module boundaries match the responsibility.",
-        "evidence": "src/db/queries/ splits one file per edge type: relates_to.rs, hierarchy.rs, implements.rs, governs.rs, validates.rs. validates.rs holds only VALIDATES edge ops (the Validation node lives in validation.rs, explicitly delegated at line 1-2). All edge writes match (a {id})-[r]->(b {id}) by endpoint, never by r.id. No scatter/tangle smell on this component.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "836f3927-b98d-42e9-b949-44188a8a4cd6",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:26:00.008542+00:00",
+        "last_inspected": "2026-06-10T16:50:48.299145+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -2177,12 +2177,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:01.757510+00:00",
         "criterion": "Priority-scored work queue code should keep one coherent responsibility: compute, rank, and present loom work queues with context.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "2d7cd452-67d5-4188-8a94-d36271ebd8ca",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.471521+00:00",
+        "last_inspected": "2026-06-10T16:56:29.179882+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -2255,12 +2255,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:01.441660+00:00",
         "criterion": "Graph-write command handlers form one coherent CLI mutation component, with each file owning a specific graph-write subcommand family",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. neither change adds exposure, resources, secrets, dead code, unbounded or redundant work relevant to this rule",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "4a124739-d3fb-4c27-8aec-d9dde0352cf9",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.648235+00:00",
+        "last_inspected": "2026-06-10T16:50:48.301378+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -2268,12 +2268,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:02.082360+00:00",
         "criterion": "Health modules must keep completeness, schema/provenance integrity, aggregate stats, and command rendering separated without mixing unrelated graph mutation or query ownership.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "e2daa5e1-be68-4262-b2e5-ff171c127fd4",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.473848+00:00",
+        "last_inspected": "2026-06-10T16:50:48.302479+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -2294,12 +2294,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:02.631178+00:00",
         "criterion": "The ranking unit owns one coherent responsibility (score unexplored RELATES_TO pairs by suspicion) and lives in the scoring module that matches that boundary.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.474901+00:00",
+        "last_inspected": "2026-06-10T16:56:29.181010+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -2372,12 +2372,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:11.493763+00:00",
         "criterion": "All fallible edge-query operations propagate via anyhow Result; no naked unwrap/expect in non-test code across the five edge query modules.",
-        "evidence": "grep for unwrap()/expect() across relates_to/hierarchy/implements/governs/validates.rs (excluding tests) returned zero matches. All public query fns return Result (grafeo session.run errors propagate with '?'). The recent validates.rs change preserved Result-returning signatures.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "6f46e338-2810-41af-9123-cc7b07214484",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:20:43.256816+00:00",
+        "last_inspected": "2026-06-10T16:50:48.304661+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -2424,12 +2424,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:13.358341+00:00",
         "criterion": "Priority/scored queue code must propagate malformed stored graph evidence instead of silently substituting defaults that change queue decisions.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "0b2d94cf-042b-4709-8972-1d08663c6701",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.478019+00:00",
+        "last_inspected": "2026-06-10T16:56:29.182335+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -2502,12 +2502,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:12.496476+00:00",
         "criterion": "Graph-write handlers must propagate filesystem, parse, validation, and DB failures or render them explicitly without silently defaulting failures in mutation paths",
-        "evidence": "re-inspected after the only two changes since the verdict: edge.rs Validates arm now resolves the validation key via resolve_validation (a Result-propagating query fn), and validate.rs set_validates_edge_status mirrors one executed run result to ALL VALIDATES edges of that validation via a node-anchored, esc()-escaped SET. neither change adds exposure, resources, secrets, dead code, unbounded or redundant work relevant to this rule",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "662014be-b67b-4310-91de-b3da67af3f81",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:45:27.720600+00:00",
+        "last_inspected": "2026-06-10T16:50:48.306822+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
       },
@@ -2528,12 +2528,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:13.763473+00:00",
         "criterion": "Health/completeness checks must propagate DB, filesystem, and serialization errors through Result; defaults must be limited to absent count/status buckets or internal invariants.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "b21618e2-d55c-44ad-b86f-fe95e71eabca",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.480083+00:00",
+        "last_inspected": "2026-06-10T16:50:48.308103+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -2554,12 +2554,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:14.435162+00:00",
         "criterion": "Discovery-pair scoring must propagate malformed stored graph evidence instead of silently changing suspicion ranking.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.481158+00:00",
+        "last_inspected": "2026-06-10T16:56:29.183441+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -2629,15 +2629,15 @@
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
-        "confidence": 0.88,
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:25:05.174104+00:00",
         "criterion": "Edge query functions run each MATCH once per invocation; loop bodies iterate already-fetched lists with no repeated identical query/lister per element.",
-        "evidence": "src/db/queries/validates.rs: list_validates_for_intent runs one MATCH; validations_for_intent and invalidate_validations_for_codefile loop over pre-fetched edge lists calling get_validation once per distinct validation (lookup, not redundant work). set_validates_status_for_validation does one count + one SET. Same endpoint-matched, single-scan pattern in implements/hierarchy/governs/relates_to. No nested re-scans of the same set.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:23:14.310006+00:00",
+        "last_inspected": "2026-06-10T16:50:48.310427+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -2684,12 +2684,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:05.968328+00:00",
         "criterion": "Priority/scored queue builders must avoid repeated identical DB list work within one queue computation and reuse cached result sets where loops need the same data.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.484886+00:00",
+        "last_inspected": "2026-06-10T16:56:29.184547+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -2775,12 +2775,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:07:11.978358+00:00",
         "criterion": "Health status/report paths must not perform duplicate expensive enumeration when bounded aggregates or cached sets are sufficient.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.485921+00:00",
+        "last_inspected": "2026-06-10T16:50:48.312799+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -2801,12 +2801,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:06.913025+00:00",
         "criterion": "Suspicion inputs (file sets, tokens, import links) are computed once before the pair loop; degree lookups are memoized — no repeated identical work in the ranking hot path.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "23726d89-7b7d-4544-a2ac-0de5d6c5855b",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.486956+00:00",
+        "last_inspected": "2026-06-10T16:56:29.185640+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -2889,15 +2889,15 @@
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
-        "confidence": 0.95,
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:24:56.213894+00:00",
         "criterion": "No edge query matches/filters a relationship by its own property: every write is MATCH (a {id})-[r]->(b {id}) SET ..., reads are full traversals filtered in Rust.",
-        "evidence": "grep across relates_to/hierarchy/implements/governs/validates.rs: the only r.* usages are SET r.inspection_status after an endpoint-matched MATCH (a:Intent {id})-[r:RELATES_TO]->(b:Intent {id}) (relates_to.rs:158-159 etc) — writes on the already-matched edge, not WHERE r.id/r.inspection_status filters. No inline {id: X} on a relationship pattern. Confirms the grafeo 0.5.x reliability rule holds across all five modules.",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:29:47.798603+00:00",
+        "last_inspected": "2026-06-10T16:50:48.315007+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
       },
@@ -2944,12 +2944,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T19:30:23.707365+00:00",
         "criterion": "Priority queue code must avoid ad hoc relationship-property matching and keep relationship access node-anchored or delegated to existing query helpers.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.489008+00:00",
+        "last_inspected": "2026-06-10T16:56:29.186748+00:00",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
       },
@@ -3035,12 +3035,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:56.914456+00:00",
         "criterion": "Health checks must not identify relationships by relationship-property equality; edge property reads are allowed only as full scans, aggregates, or documented presence audits.",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "Re-inspected after scale optimization (scoring.rs/stats.rs/validates.rs): new functions all_intent_degrees and list_all_validates are additive bulk-query helpers following the same endpoint-matched-edge pattern; validate_selection refactored to avoid N per-intent queries while preserving all contracts; no dead code, no redundant abstraction, no unbounded loops, no unsafe patterns introduced. Previous verdict criterion still holds.",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "507bcec0-229a-4d36-903a-cf2bae7eba2f",
-        "inspected_by": "llm",
+        "inspected_by": "llm:quality",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.490248+00:00",
+        "last_inspected": "2026-06-10T16:50:48.317297+00:00",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
       },
@@ -3061,12 +3061,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:57.276942+00:00",
         "criterion": "All authored GQL is node-anchored: edges matched/counted via endpoint node id/label, never filtered by their own r.id or r.inspection_status (grafeo 0.5.x reliability rule).",
-        "evidence": "re-inspected after the coherence/batch changeset: compass now consumes the queues own selection functions (no second derivation to drift), batch.rs applies the SAME lane/evidence/confidence gates per JSONL line and records transition notes via the same query fns; no new unchecked failure paths (all ?-propagated), no new interpolation (esc on every value), no secrets, no unbounded or redundant work; responsibilities unchanged",
+        "evidence": "re-inspected after removing the now-dead per-intent intent_degree fn (every caller uses the bulk all_intent_degrees — 2 queries total) and its unused esc import from scoring.rs: pure deletion, no new code paths, callers unchanged, 70 tests + 17 driver checks green",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.491302+00:00",
+        "last_inspected": "2026-06-10T16:56:29.187847+00:00",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
@@ -3926,6 +3926,76 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-10T16:48:06.347032+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "3d099fb3-6865-403f-99dd-be8d6b5576a0",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "main",
+        "notes": "",
+        "to": "28325c5f-a116-440a-8d77-8b29a1e96bb5"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T16:48:06.303802+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "35464471-388d-4e53-b482-aac50e1e1ef3",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "bench_cmd",
+        "notes": "",
+        "to": "60b91c97-5a75-4e1a-9619-e78dd47e317a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T16:48:14.948082+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "f8c6896e-ca45-4fed-8688-5465ecaf0413",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "list_all_validates",
+        "notes": "",
+        "to": "7631b4fd-0a35-4ae7-94f4-ed32865e67f0"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T16:48:14.862052+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "0e47997a-8a82-454e-8246-f2a222f920cb",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "all_intent_degrees",
+        "notes": "",
+        "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T16:48:14.904176+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "bda3e838-67fb-4ea5-97cd-28e6d5e861e5",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "top_intents_by_centrality",
+        "notes": "",
+        "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:57:05.003408+00:00",
         "criterion": "",
         "evidence": "",
@@ -4157,9 +4227,9 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.417231+00:00",
+        "last_inspected": "2026-06-10T16:49:36.524077+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -4213,9 +4283,9 @@
         "evidence": "",
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "4d0f8265-0b79-4c2d-8572-c86839930ee6",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:44:03.696006+00:00",
+        "last_inspected": "2026-06-10T16:49:36.527982+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
@@ -4269,9 +4339,9 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "c51c92a2-d6fc-4c21-b972-3051388c24a3",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:44:03.771395+00:00",
+        "last_inspected": "2026-06-10T16:49:36.528954+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
@@ -4311,12 +4381,26 @@
         "evidence": "",
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T14:31:35.232715+00:00",
+        "last_inspected": "2026-06-10T16:49:36.529829+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-10T16:57:49.813868+00:00",
+        "criterion": "list_all_validates in validates.rs follows the endpoint-anchored bulk-fetch pattern (like list_all_governs) — scale's bulk reads obey the same relationship-matching reliability rules",
+        "evidence": "",
+        "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
+        "id": "617c4cf5-37f6-442f-8e14-b28b6403c3e3",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-10T16:57:49.813868+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
       },
       {
         "confidence": 0.9,
@@ -4325,9 +4409,9 @@
         "evidence": "",
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.421326+00:00",
+        "last_inspected": "2026-06-10T16:49:36.530657+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4367,9 +4451,9 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.423201+00:00",
+        "last_inspected": "2026-06-10T16:49:36.531481+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -4481,7 +4565,7 @@
         "id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.426391+00:00",
+        "last_inspected": "2026-06-10T16:56:29.162604+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
@@ -4495,7 +4579,7 @@
         "id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.427136+00:00",
+        "last_inspected": "2026-06-10T16:56:29.164786+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -4509,7 +4593,7 @@
         "id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.427889+00:00",
+        "last_inspected": "2026-06-10T16:56:29.165758+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -4523,7 +4607,7 @@
         "id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.428631+00:00",
+        "last_inspected": "2026-06-10T16:56:29.166639+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -4537,7 +4621,7 @@
         "id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.429497+00:00",
+        "last_inspected": "2026-06-10T16:56:29.167582+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4605,9 +4689,9 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "1f478578-34de-4569-8f8f-490894be373b",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.432919+00:00",
+        "last_inspected": "2026-06-10T16:49:36.536892+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
@@ -4619,9 +4703,9 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.433670+00:00",
+        "last_inspected": "2026-06-10T16:49:36.537853+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -4689,9 +4773,9 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:44:03.927741+00:00",
+        "last_inspected": "2026-06-10T16:49:36.538738+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
@@ -4703,12 +4787,26 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.436668+00:00",
+        "last_inspected": "2026-06-10T16:49:36.539723+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-10T16:57:49.800507+00:00",
+        "criterion": "the scale optimizations (all_intent_degrees, list_all_validates) issue their bulk GQL through the same long-lived Session and schema vocabulary; the 2-query degree aggregation works only because group-by node queries are on the reliable path",
+        "evidence": "",
+        "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "id": "06c0540a-a0c3-4c55-8c8a-a4f85e5a0539",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-10T16:57:49.800507+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
       },
       {
         "confidence": 0.9,
@@ -4719,7 +4817,7 @@
         "id": "802faa28-2975-43c0-84c6-2697d1a73efe",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.437429+00:00",
+        "last_inspected": "2026-06-10T16:56:29.168430+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
@@ -4801,9 +4899,9 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "id": "aa161385-ad00-4372-a189-fdea343907b5",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T15:44:04.001594+00:00",
+        "last_inspected": "2026-06-10T16:49:36.542227+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -4815,9 +4913,9 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "id": "cadf93fb-af58-47be-92d4-66771b0f9491",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.441093+00:00",
+        "last_inspected": "2026-06-10T16:49:36.543195+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4829,9 +4927,9 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.441851+00:00",
+        "last_inspected": "2026-06-10T16:49:36.544013+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -4843,12 +4941,26 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.442582+00:00",
+        "last_inspected": "2026-06-10T16:49:36.544837+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-10T16:57:49.811379+00:00",
+        "criterion": "stats.rs hosts both the coverage/centrality computations and their bounded forms — top_intents_by_centrality consumes all_intent_degrees so hotspots stays under the 2s budget",
+        "evidence": "",
+        "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
+        "id": "ab509485-6f1b-41c1-854a-3c8b53257af4",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-10T16:57:49.811379+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
       },
       {
         "confidence": 0.9,
@@ -4857,9 +4969,9 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
-        "inspected_by": "llm",
+        "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.443319+00:00",
+        "last_inspected": "2026-06-10T16:49:36.545851+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4908,6 +5020,34 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-10T16:57:49.809950+00:00",
+        "criterion": "the bulk loaders live inside the query layer and replace per-node lister loops on hot paths; queries/mod.rs wires scoring/stats/validates so the scale work is reachable wherever the listers were",
+        "evidence": "",
+        "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "id": "6d338b5f-85f0-4006-9429-7c3f750f22ca",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-10T16:57:49.809950+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-10T16:57:49.812696+00:00",
+        "criterion": "unexplored_pairs_scored consumes the prebuilt degree map — discovery ranking is one of the O(N^2) hot paths the 2s budget binds",
+        "evidence": "",
+        "from": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
+        "id": "998d3e32-f2f6-402d-a3fa-de7eea67669c",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-10T16:57:49.812696+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-09T20:27:42.408033+00:00",
         "criterion": "scoring.rs unexplored_pairs_scored calls list_intents, list_relates_to, list_all_implements and uses super::row helpers; discovery ranking is built on node/annotation query fns",
         "evidence": "",
@@ -4915,7 +5055,7 @@
         "id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T16:24:11.444782+00:00",
+        "last_inspected": "2026-06-10T16:56:29.169272+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5095,6 +5235,14 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
+        "created_at": "2026-06-10T16:48:24.229940+00:00",
+        "from": "f6a2110b-0894-40ef-ae1d-4a0d65bb7861",
+        "id": "180a4889-252c-4032-b245-43934db22609",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
       }
     ]
   },
@@ -5150,6 +5298,14 @@
         "language": "rust",
         "last_modified": "2026-06-09T20:11:55.888434460+00:00",
         "path": "src/db/queries/implements.rs"
+      },
+      {
+        "content_hash": "32b3bca24fa2e8c0",
+        "id": "28325c5f-a116-440a-8d77-8b29a1e96bb5",
+        "imports": "[]",
+        "language": "python",
+        "last_modified": "2026-06-10T16:36:40.897782721+00:00",
+        "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/gen_synth_graph.py"
       },
       {
         "content_hash": "979a81f62ccbb6f2",
@@ -5240,6 +5396,14 @@
         "path": "src/agent.rs"
       },
       {
+        "content_hash": "d352a8dcb06133f3",
+        "id": "60b91c97-5a75-4e1a-9619-e78dd47e317a",
+        "imports": "[]",
+        "language": "shell",
+        "last_modified": "2026-06-10T16:37:06.316173095+00:00",
+        "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/bench.sh"
+      },
+      {
         "content_hash": "305ea69cbcd93f93",
         "id": "61d1f5b0-4942-4ebf-8846-2815eb302286",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
@@ -5272,11 +5436,11 @@
         "path": "src/commands/import.rs"
       },
       {
-        "content_hash": "8eb18929314e7c0e",
+        "content_hash": "06eb9d2b63955549",
         "id": "7631b4fd-0a35-4ae7-94f4-ed32865e67f0",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:23:23.806476743+00:00",
+        "last_modified": "2026-06-10T16:42:11.081475215+00:00",
         "path": "src/db/queries/validates.rs"
       },
       {
@@ -5384,19 +5548,19 @@
         "path": "src/commands/doctor.rs"
       },
       {
-        "content_hash": "4dee3df91f049426",
+        "content_hash": "7b94f78592a0837c",
         "id": "acf86b95-edbb-4d21-9e76-90e61c2aba72",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T16:15:51.765283851+00:00",
+        "last_modified": "2026-06-10T16:23:32.281469399+00:00",
         "path": "src/commands/batch.rs"
       },
       {
-        "content_hash": "2f6fd799cf736d42",
+        "content_hash": "8099f7a2bb8d1ccb",
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
-        "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
+        "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T16:08:59.140351020+00:00",
+        "last_modified": "2026-06-10T16:55:13.638925413+00:00",
         "path": "src/db/queries/scoring.rs"
       },
       {
@@ -5456,11 +5620,11 @@
         "path": "src/db/queries/integrity.rs"
       },
       {
-        "content_hash": "6f800b1cf27d42c0",
+        "content_hash": "a009a223e6b0d04a",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T16:10:05.377651170+00:00",
+        "last_modified": "2026-06-10T16:40:15.970249667+00:00",
         "path": "src/db/queries/stats.rs"
       },
       {
@@ -5837,11 +6001,11 @@
         "description": "On a synthetic graph of >=500 intents and >=1000 edges, loom status / next / smells / next --all each complete in under 2 seconds; the O(N^2) paths (discovery pair enumeration, twin/overlap smells) are bounded or restructured; proven by a benchmark validation against the synthetic graph",
         "domain": "unknown",
         "id": "c3cc2a54-cf7f-4b47-9f19-677839166343",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "scale: hot commands bounded on large graphs",
         "source_refs": "[\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\"]",
         "status": "proposed",
-        "updated_at": "2026-06-10T16:25:44.617281+00:00"
+        "updated_at": "2026-06-10T16:48:39.270861+00:00"
       },
       {
         "abstraction_level": "feature",
@@ -6118,6 +6282,15 @@
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "03b6e2d2-9c1d-4a3c-914e-e8bb0b14321d",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:36:29.856951+00:00",
         "id": "03dcf4af-f898-42ac-906d-d86b6de2b187",
@@ -6134,6 +6307,15 @@
         "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "03f67cf7-f1be-43df-8457-272bc28c4422",
+        "kind": "transition",
+        "target_id": "23726d89-7b7d-4544-a2ac-0de5d6c5855b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -6188,6 +6370,33 @@
         "target_id": "b5af69c1-a5e2-4f53-8dbe-e91e4bf352c8",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "051b5cc9-d1e0-41c1-885c-8a46108c5692",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "055bcc83-e414-457d-abbd-d6165963528b",
+        "kind": "transition",
+        "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "0576cb4d-3c46-4804-8705-2ad7b86be0f9",
+        "kind": "transition",
+        "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -6298,6 +6507,24 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.312799+00:00",
+        "id": "081b1c44-a066-406a-8739-7652c27b9f03",
+        "kind": "transition",
+        "target_id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.185640+00:00",
+        "id": "08281cba-7a61-4c5c-b9cc-143afabf54db",
+        "kind": "transition",
+        "target_id": "23726d89-7b7d-4544-a2ac-0de5d6c5855b",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T14:38:01.170740+00:00",
         "id": "08d79651-1e8d-4199-8a28-4cb94d1b906e",
@@ -6307,6 +6534,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "091e48a8-f31d-4cda-ad9a-e36770d9438d",
+        "kind": "transition",
+        "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:15.644280+00:00",
         "id": "0931ab23-48c2-41ad-93f2-2ba707a30796",
@@ -6314,6 +6550,15 @@
         "target_id": "0a2ea87c-c8ee-40a4-b62e-fb470d1909ba",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.541182+00:00",
+        "id": "09430f0c-15df-44ba-b4d5-d185833b4151",
+        "kind": "transition",
+        "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -6370,6 +6615,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "0a3bbe92-f441-48ea-ae63-3bed017096a0",
+        "kind": "transition",
+        "target_id": "836f3927-b98d-42e9-b949-44188a8a4cd6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.458447+00:00",
         "id": "0ab77b19-856a-4793-8ec5-608aacc7aa99",
@@ -6413,6 +6667,15 @@
         "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "0b340a45-759d-43d8-8533-84aba948fd09",
+        "kind": "transition",
+        "target_id": "ab3a82b1-0011-4da4-835e-d70703870e1d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -6677,6 +6940,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "0fec7ede-870d-4fa3-9e4f-59926be15c77",
+        "kind": "transition",
+        "target_id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T14:17:54.757425+00:00",
         "id": "103608c0-8daa-4e0f-a140-aa6761f5566d",
         "kind": "transition",
@@ -6712,6 +6984,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "11258d08-3e1b-432f-b8dd-d6ee9ce37e25",
+        "kind": "transition",
+        "target_id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:28:47.090045+00:00",
         "id": "112a266a-0ff1-4cbe-8506-9c16009a4582",
@@ -6728,6 +7009,15 @@
         "target_id": "bd63fb3d-734f-4315-ac07-974877bcfa4b",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "112e5799-3c14-41af-af4a-b8e8c3766379",
+        "kind": "transition",
+        "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -6755,6 +7045,15 @@
         "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.178786+00:00",
+        "id": "11c78d35-038c-4cd4-acbb-9e45d3bd7004",
+        "kind": "transition",
+        "target_id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -6811,6 +7110,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "13152dba-eb0b-4459-89b5-572ffbafd94a",
+        "kind": "transition",
+        "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:08.775577+00:00",
         "id": "131a9fb4-db81-48a4-acb2-4dfcd3a84bde",
@@ -6818,6 +7126,15 @@
         "target_id": "dcc7ae71-6b4e-406c-adfa-a2f8d41581e5",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.532377+00:00",
+        "id": "1332ec76-f463-48cb-a2f6-d65a9d25ff4b",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -6928,6 +7245,15 @@
         "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "15f245a4-bcd2-49ad-a399-e3dc05ec59d1",
+        "kind": "transition",
+        "target_id": "c63fed65-ea10-4aa6-946c-6f264efd4d5f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:17:37.230738+00:00",
         "id": "16135e04-893e-436f-8e3a-5f97b8c2b751",
@@ -6998,6 +7324,15 @@
         "target_id": "23f4b25f-a6b4-4473-a6c4-f064fcc2acbc",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "174467a3-02c7-4237-818a-8f10d8697e20",
+        "kind": "transition",
+        "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -7108,6 +7443,15 @@
         "text": "passing → needs_reverification (sync: src/db/schema.rs changed)"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.302479+00:00",
+        "id": "1989d369-17c6-4bc0-94e6-c4f9b4d0b021",
+        "kind": "transition",
+        "target_id": "e2daa5e1-be68-4262-b2e5-ff171c127fd4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T15:52:21.542279+00:00",
         "id": "19aa0edf-dfec-4a5d-8b04-714324e337db",
@@ -7203,6 +7547,15 @@
         "id": "1b84ecf9-ed21-4e7d-8f85-1dfa8ef5c19a",
         "kind": "transition",
         "target_id": "d5867ca7-e64f-4120-b348-8804ad331b42",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.287395+00:00",
+        "id": "1b9f9787-5e02-4f04-a305-9d98d4c9555e",
+        "kind": "transition",
+        "target_id": "a2b499eb-5b0e-4626-ac95-e96985760894",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -7432,6 +7785,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "20f643e2-5508-4185-8514-ffc83fd42c89",
+        "kind": "transition",
+        "target_id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:56.259805+00:00",
         "id": "2115d634-33b5-4dfb-9b8b-df629a106c22",
@@ -7468,6 +7830,15 @@
         "text": "passing → needs_reverification (sync: src/commands/rule.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.166639+00:00",
+        "id": "21a7804f-c469-4002-959b-40522a7f4fca",
+        "kind": "transition",
+        "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:27:41.843104+00:00",
         "id": "21bc4c8c-fcd6-4e8a-923a-4fcc64c1e0ba",
@@ -7495,6 +7866,24 @@
         "text": "passing → needs_reverification (sync: src/db/queries/governs.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.170123+00:00",
+        "id": "21dd08e3-e981-4a3d-b757-e79622c07f49",
+        "kind": "transition",
+        "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "21fb2c4e-ec83-4cd0-bb64-a7f4b7866cec",
+        "kind": "transition",
+        "target_id": "2d7cd452-67d5-4188-8a94-d36271ebd8ca",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:13.025308+00:00",
         "id": "221b6dfb-10a5-42c4-b09c-9150f3eaff33",
@@ -7502,6 +7891,15 @@
         "target_id": "0f1a9a26-00ef-4514-beb1-248d41554e27",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.524077+00:00",
+        "id": "22287f89-eb9b-43f1-9f46-a8902370917c",
+        "kind": "transition",
+        "target_id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm",
@@ -7612,6 +8010,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "235b5742-68bf-45b8-908b-9160bb8b9f63",
+        "kind": "transition",
+        "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:19.112631+00:00",
         "id": "235e5904-8f1c-41a2-bb88-d74902976eaa",
@@ -7712,6 +8119,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "25176c73-8f60-4904-ad68-7928e4ef4c9b",
+        "kind": "transition",
+        "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "25331a76-18f2-4aaf-bfac-7a01488e68ef",
         "kind": "transition",
@@ -7734,6 +8150,15 @@
         "id": "25b52484-fbad-4f8f-b5b0-fe438d80ecbc",
         "kind": "transition",
         "target_id": "a2b499eb-5b0e-4626-ac95-e96985760894",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.537853+00:00",
+        "id": "25c46a70-045d-4d28-a2c0-47c669b6ef32",
+        "kind": "transition",
+        "target_id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -7817,6 +8242,15 @@
         "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.276615+00:00",
+        "id": "288b1d0d-3cd7-450b-879c-de42eb90bee4",
+        "kind": "transition",
+        "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -7909,6 +8343,15 @@
         "text": "passing → needs_reverification (sync: src/commands/codefile.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "2b2b408e-1ea6-44ea-8ef1-b68ffd24785a",
+        "kind": "transition",
+        "target_id": "0b2d94cf-042b-4709-8972-1d08663c6701",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:27:42.692537+00:00",
         "id": "2b3658c9-5fb7-4c36-a524-cb292d39f4a4",
@@ -7945,6 +8388,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/codefile.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.175466+00:00",
+        "id": "2c8d1602-f217-43fd-968f-b044673c8a39",
+        "kind": "transition",
+        "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:18.667498+00:00",
         "id": "2ca2ad8e-8406-437e-b273-e0ea0d6f48bb",
@@ -7973,6 +8425,24 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "2da0f441-1985-4cee-9b58-c47d2fdec2c6",
+        "kind": "transition",
+        "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "2e32b619-f642-480e-a6ab-e3c5bb07f2a1",
+        "kind": "transition",
+        "target_id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "2e38f53a-c20a-4b6a-afa8-71b66ff26830",
         "kind": "transition",
@@ -7991,6 +8461,24 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.275153+00:00",
+        "id": "2e6552fa-16ba-4dd7-b538-7ae5e708a6d4",
+        "kind": "transition",
+        "target_id": "dd90d9e7-89fb-44df-842c-fc95f7336bf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "2e7c6893-000f-48fa-90f6-193aa57be479",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-09T20:25:22.697293+00:00",
         "id": "2eb42977-addc-4e02-b0fe-ae6a9d49fa70",
         "kind": "transition",
@@ -8000,12 +8488,30 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "2ebde072-fa66-46b8-8683-d8560a548331",
+        "kind": "transition",
+        "target_id": "507bcec0-229a-4d36-903a-cf2bae7eba2f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T15:51:29.260042+00:00",
         "id": "2ebfc226-78f1-423b-82e0-eeb4d121ceb0",
         "kind": "transition",
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.294432+00:00",
+        "id": "2ee59904-3f85-482e-8862-67cf8486d54a",
+        "kind": "transition",
+        "target_id": "81d6535c-34f1-4610-bad3-d62ac793cca0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -8126,6 +8632,15 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.305752+00:00",
+        "id": "325a58b3-bc63-4bec-bfe9-4813f05928d7",
+        "kind": "transition",
+        "target_id": "0b2d94cf-042b-4709-8972-1d08663c6701",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-10T13:01:20.608199+00:00",
         "id": "326c5d99-1001-419c-8e11-944e2714dc29",
         "kind": "transition",
@@ -8186,6 +8701,15 @@
         "target_id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.539723+00:00",
+        "id": "3376ec88-06d0-4887-861d-3c50f1ba0e61",
+        "kind": "transition",
+        "target_id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -8306,6 +8830,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "36a76d2a-a457-40a7-ab03-6e148b1c58c4",
+        "kind": "transition",
+        "target_id": "b21618e2-d55c-44ad-b86f-fe95e71eabca",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "36a87a7b-1b5c-4f4d-884d-4cc7b37ba626",
         "kind": "transition",
@@ -8323,11 +8856,29 @@
         "text": "uninspected → independent"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.533270+00:00",
+        "id": "378dbb19-41a5-4ee5-9e34-56323334f6f0",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:33:56.670184+00:00",
         "id": "37949ec3-80bc-41cf-9f8b-a50e426c24c7",
         "kind": "transition",
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.536027+00:00",
+        "id": "37bd51a3-66d7-4d29-b766-4897384eb277",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -8386,6 +8937,33 @@
         "text": "needs_change → implemented"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.271953+00:00",
+        "id": "39251c9a-f35a-41f1-8f09-ace271b3b60a",
+        "kind": "transition",
+        "target_id": "50d3792f-5fa7-4289-8483-117e64bf888f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "3929767c-3e06-4ea6-b9e8-693a7062e05d",
+        "kind": "transition",
+        "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "39869d5a-a4c8-4f51-991a-29d2727cef01",
+        "kind": "transition",
+        "target_id": "0b2d94cf-042b-4709-8972-1d08663c6701",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.441093+00:00",
         "id": "3986b435-4eb8-4d53-930e-ae31026d4bb6",
@@ -8405,12 +8983,39 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-10T16:56:29.183441+00:00",
+        "id": "39d5a521-04d1-4a28-afb3-3d0f3a07bdfa",
+        "kind": "transition",
+        "target_id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.184547+00:00",
+        "id": "39f7a9bb-6d5a-4b2b-a5bf-300132741284",
+        "kind": "transition",
+        "target_id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-10T16:24:11.441851+00:00",
         "id": "3a12e8fe-3583-4e6d-9c5b-a76984571b03",
         "kind": "transition",
         "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:57:49.800507+00:00",
+        "id": "3ae4ad6f-687c-41ab-a1b7-d09645418977",
+        "kind": "transition",
+        "target_id": "06c0540a-a0c3-4c55-8c8a-a4f85e5a0539",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "author": "llm:quality",
@@ -8503,6 +9108,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "3d3f0d83-3059-4eb6-a99e-27e389c406e5",
+        "kind": "transition",
+        "target_id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T15:44:03.951833+00:00",
         "id": "3d92b6a3-e93c-447b-ad2d-d90fd70ae1f7",
@@ -8528,6 +9142,15 @@
         "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.277900+00:00",
+        "id": "3dd89a4f-80c3-4582-b135-50ee484ec0cf",
+        "kind": "transition",
+        "target_id": "c63fed65-ea10-4aa6-946c-6f264efd4d5f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -8603,6 +9226,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "3fcbb511-3a44-4745-883f-cb55bf28b1d0",
+        "kind": "transition",
+        "target_id": "c51c92a2-d6fc-4c21-b972-3051388c24a3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "3fcc1e10-e7c0-4433-9190-43baeeee1ea3",
         "kind": "transition",
@@ -8645,6 +9277,15 @@
         "target_id": "7408dd78-1140-4031-9ea1-dc3375193233",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "406da698-4dc2-4642-bfaf-c00aa4682ffd",
+        "kind": "transition",
+        "target_id": "e2daa5e1-be68-4262-b2e5-ff171c127fd4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -8908,6 +9549,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.303575+00:00",
+        "id": "4548b4c2-00e0-4bb0-9d90-2b3ba8f6fdf2",
+        "kind": "transition",
+        "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:fixer",
         "created_at": "2026-06-10T13:32:07.897831+00:00",
         "id": "456921be-84a8-4213-b409-f573f0c52416",
@@ -8960,6 +9610,15 @@
         "target_id": "c53ff35f-4b1e-41b9-b932-21e71bfc2de2",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.179882+00:00",
+        "id": "47702ed5-013a-42ef-b563-55b756c4f580",
+        "kind": "transition",
+        "target_id": "2d7cd452-67d5-4188-8a94-d36271ebd8ca",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -9016,6 +9675,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "490d5399-004e-4d3e-96bc-4d6e23327b2e",
+        "kind": "transition",
+        "target_id": "6f46e338-2810-41af-9123-cc7b07214484",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:02.795807+00:00",
         "id": "49232fbd-9943-4316-a33d-3de0dea99cf0",
@@ -9023,6 +9691,15 @@
         "target_id": "273868d4-7fc9-4ab1-a805-b38a34a6f71f",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.544013+00:00",
+        "id": "49391a14-24ea-472c-93f9-1f751b50a197",
+        "kind": "transition",
+        "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -9214,6 +9891,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.311669+00:00",
+        "id": "4e19358c-a4a4-4740-ac10-de5d309b6322",
+        "kind": "transition",
+        "target_id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "4e2c1e2f-206b-4af4-aede-496dc4f03396",
@@ -9221,6 +9907,15 @@
         "target_id": "4d0f8265-0b79-4c2d-8572-c86839930ee6",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/codefile.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "4e5c6f46-ab10-4e6c-bef0-b3e556ded545",
+        "kind": "transition",
+        "target_id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -9439,6 +10134,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.306822+00:00",
+        "id": "52ba075d-db49-4827-b37f-6a8e9dc8eba1",
+        "kind": "transition",
+        "target_id": "662014be-b67b-4310-91de-b3da67af3f81",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.454971+00:00",
         "id": "52de5419-9a7a-4944-b7a5-4e48d9b9c12a",
@@ -9482,6 +10186,15 @@
         "target_id": "60b665b5-4a84-4d31-a02e-ee71ed36e8ef",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.283618+00:00",
+        "id": "53cbdfb0-0a62-4778-a9d6-053cd90e336e",
+        "kind": "transition",
+        "target_id": "90d33950-2522-4bbc-abe8-0cafeec7cf95",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -9584,12 +10297,30 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "57393f13-71c9-4f01-911d-d939df5b2a93",
+        "kind": "transition",
+        "target_id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "58040129-97a2-4d63-88d6-4731cbb74412",
         "kind": "transition",
         "target_id": "c0faee8d-1585-41f5-94cf-89d231fc73d9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.536892+00:00",
+        "id": "58cb675b-27c0-4651-b015-5158255fb976",
+        "kind": "transition",
+        "target_id": "1f478578-34de-4569-8f8f-490894be373b",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -9692,6 +10423,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "5b10dd9c-c4e9-4914-98c5-d317bdcb02c7",
+        "kind": "transition",
+        "target_id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T13:24:38.434803+00:00",
         "id": "5b409a16-d716-48e6-8b1d-39c9fa797784",
         "kind": "transition",
@@ -9790,6 +10530,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.527982+00:00",
+        "id": "5d335440-dd19-447a-a366-633947a44fa0",
+        "kind": "transition",
+        "target_id": "4d0f8265-0b79-4c2d-8572-c86839930ee6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "5dca58d7-340b-4268-ae36-82347e7bd8d7",
@@ -9835,6 +10584,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "5eba4ab7-094c-4b1b-9d21-478d822d3a77",
+        "kind": "transition",
+        "target_id": "662014be-b67b-4310-91de-b3da67af3f81",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:33:44.618362+00:00",
         "id": "5eeb1c45-63e8-4c19-be56-4dac7dfbc760",
@@ -9842,6 +10600,24 @@
         "target_id": "5784abc8-b8cc-462d-818f-b9779bc0bc7c",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.309263+00:00",
+        "id": "5eeb6f2e-e1c2-4b2b-ae5a-6ee77f1d4767",
+        "kind": "transition",
+        "target_id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:48:39.270861+00:00",
+        "id": "5f19194f-656f-447b-a262-9ac91683bb14",
+        "kind": "transition",
+        "target_id": "c3cc2a54-cf7f-4b47-9f19-677839166343",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "author": "loom",
@@ -10051,6 +10827,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:57:49.809950+00:00",
+        "id": "633bda53-bfbb-4c4a-95db-aad6cee9072c",
+        "kind": "transition",
+        "target_id": "6d338b5f-85f0-4006-9429-7c3f750f22ca",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T15:31:30.756992+00:00",
         "id": "63448597-e65b-48b7-b7eb-6cc6c2159875",
@@ -10204,6 +10989,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.528954+00:00",
+        "id": "66682d79-b524-484f-9a78-c0dc74a4c7f7",
+        "kind": "transition",
+        "target_id": "c51c92a2-d6fc-4c21-b972-3051388c24a3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "66a02b01-4e44-4d96-aaf7-394c84b4cecd",
@@ -10238,6 +11032,15 @@
         "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.187847+00:00",
+        "id": "67fd63bb-32be-48ee-bd80-da2acb3ce95c",
+        "kind": "transition",
+        "target_id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:fixer",
@@ -10286,12 +11089,39 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.285872+00:00",
+        "id": "68e626b2-ec74-4379-83eb-b967ffb9d2d8",
+        "kind": "transition",
+        "target_id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "694f4d6f-3c70-497c-acdd-2b3c1274818b",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-09T20:25:06.545305+00:00",
         "id": "69848bc1-ef68-4711-8fb4-d77f06062f72",
         "kind": "transition",
         "target_id": "eab22294-d306-44b1-bf43-1d770c63db26",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.304661+00:00",
+        "id": "698d8e9b-823c-4b72-8c32-b03bc097df98",
+        "kind": "transition",
+        "target_id": "6f46e338-2810-41af-9123-cc7b07214484",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm",
@@ -10403,6 +11233,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "6c54a55a-cb99-4f04-ba43-83c0790e949b",
+        "kind": "transition",
+        "target_id": "dd90d9e7-89fb-44df-842c-fc95f7336bf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "6c60928b-26d6-44d3-b48d-65cd088dfac0",
         "kind": "transition",
@@ -10463,6 +11302,15 @@
         "target_id": "f37f7ba4-4f20-417a-8e51-017f433aabde",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.545851+00:00",
+        "id": "6e018a24-e451-4e30-9b40-788cc3374161",
+        "kind": "transition",
+        "target_id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm",
@@ -10555,6 +11403,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "6f713a6b-e263-4730-8ea8-429476ea0289",
+        "kind": "transition",
+        "target_id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:13.287469+00:00",
         "id": "70071d38-d592-4f96-9e6a-2fa19a2ae577",
@@ -10618,6 +11475,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "71895201-4346-47b1-b448-31191ead478a",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T14:39:00.211362+00:00",
         "id": "719dfbd9-7727-4aba-9cd3-2976cc3bc96f",
@@ -10659,6 +11525,15 @@
         "id": "728e4933-5207-4089-9ee6-3067a92ff4a9",
         "kind": "transition",
         "target_id": "50d3792f-5fa7-4289-8483-117e64bf888f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.300246+00:00",
+        "id": "72ba6abd-2833-4a22-a99b-8f6b71d1f7cd",
+        "kind": "transition",
+        "target_id": "2d7cd452-67d5-4188-8a94-d36271ebd8ca",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -10726,6 +11601,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.296730+00:00",
+        "id": "747293df-96fc-4307-8d5b-d21c40a03707",
+        "kind": "transition",
+        "target_id": "a03f88c7-390b-41be-a8e2-64b2f59c3869",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:fixer",
         "created_at": "2026-06-09T20:28:35.873417+00:00",
         "id": "74948ffc-9bed-4e0b-9207-176381bae444",
@@ -10771,6 +11655,15 @@
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "750d1cfe-aa7a-463e-ac32-0708d3a3fbc6",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:09.553740+00:00",
         "id": "753e8b71-c547-449b-b58f-99be11e69cb6",
@@ -10814,6 +11707,24 @@
         "target_id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "766edca7-f216-4b9c-965a-2befd98d1a9d",
+        "kind": "transition",
+        "target_id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "76913a28-193d-4329-af86-6c32a2b1a965",
+        "kind": "transition",
+        "target_id": "a2b499eb-5b0e-4626-ac95-e96985760894",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
       },
       {
         "author": "loom",
@@ -10888,6 +11799,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.543195+00:00",
+        "id": "77fa25a9-e6d0-448b-af43-f13ad5e3e1c5",
+        "kind": "transition",
+        "target_id": "cadf93fb-af58-47be-92d4-66771b0f9491",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.479050+00:00",
         "id": "782e289b-96f8-4075-a8bb-3a549c796607",
@@ -10902,6 +11822,15 @@
         "id": "78f0ac88-0ad4-4c01-8007-3ee5562dea06",
         "kind": "transition",
         "target_id": "75572477-44cb-4aed-bbea-6e4e943a3c39",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.530657+00:00",
+        "id": "79145608-bc01-446b-b5dc-28b570f4f0c4",
+        "kind": "transition",
+        "target_id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -10958,6 +11887,24 @@
         "target_id": "614b2240-b5f3-43bb-9808-e2db2ad47629",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "7a8aaff4-192b-43ab-97ba-07e480e44f22",
+        "kind": "transition",
+        "target_id": "4a124739-d3fb-4c27-8aec-d9dde0352cf9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "7a9d566c-4d75-4d3b-9a0c-8e5af9753e17",
+        "kind": "transition",
+        "target_id": "a03f88c7-390b-41be-a8e2-64b2f59c3869",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
       },
       {
         "author": "llm",
@@ -11032,6 +11979,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "7ca0e284-f186-485b-8b73-049123169220",
+        "kind": "transition",
+        "target_id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:07.325339+00:00",
         "id": "7cb49b78-2894-4fd9-8898-ef13f286fa89",
@@ -11064,6 +12020,24 @@
         "id": "7d540312-e12a-4a0f-b9e8-188a3a4e267b",
         "kind": "transition",
         "target_id": "b36f144c-393f-40fe-84af-5dc16f2a2bdd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.162604+00:00",
+        "id": "7d9667f8-370a-45c0-964b-76fcf156dc62",
+        "kind": "transition",
+        "target_id": "0fc3f16b-9080-45b5-beba-9b9ebdc10d1a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.280227+00:00",
+        "id": "7ddcb1e7-4606-4adf-879c-0b5b72fe5bac",
+        "kind": "transition",
+        "target_id": "dc14707f-331c-4175-b053-6f311bbe4329",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -11111,6 +12085,24 @@
         "target_id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "7f3df1ed-5230-421c-bb96-480f830eaf4e",
+        "kind": "transition",
+        "target_id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.293300+00:00",
+        "id": "7f3fd782-8bf6-428f-8328-ec573f443455",
+        "kind": "transition",
+        "target_id": "8b2d5ec5-a60a-4bca-b044-041a13516f2b",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -11185,6 +12177,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.186748+00:00",
+        "id": "808ca5f7-026d-40db-ab27-4e6360068e4a",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:10:35.804367+00:00",
         "id": "809cb23f-a14b-414a-8279-7856eefd7ab7",
@@ -11222,10 +12223,37 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-10T16:56:29.182335+00:00",
+        "id": "80e23327-fedd-4c14-9260-e33ad19c8f58",
+        "kind": "transition",
+        "target_id": "0b2d94cf-042b-4709-8972-1d08663c6701",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-10T16:24:11.484886+00:00",
         "id": "80f53e2b-025a-4ffa-9f1f-52942cf87bf0",
         "kind": "transition",
         "target_id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.546756+00:00",
+        "id": "80fafc92-e70c-450c-982a-dc99959df5e5",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.169272+00:00",
+        "id": "8115641f-3509-4a12-99e5-45d06fda3cfe",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -11318,6 +12346,15 @@
         "target_id": "1156048d-5ea1-4d18-aeb4-26b2973a8ec2",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "831c289e-3a0a-4a20-8e2c-17fabfd5cb3f",
+        "kind": "transition",
+        "target_id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
       },
       {
         "author": "llm",
@@ -11426,6 +12463,15 @@
         "target_id": "e218a576-612a-41d5-b9af-af2660c59668",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "8590d418-3dc6-4b3a-a44e-4eaa3d8c7665",
+        "kind": "transition",
+        "target_id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
       },
       {
         "author": "llm",
@@ -11599,6 +12645,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "89fda07c-8f5b-4f99-986a-efea1c23ecec",
+        "kind": "transition",
+        "target_id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T15:45:27.673318+00:00",
         "id": "8a1c3c43-5993-453d-ada5-ee7a89692bd4",
@@ -11627,10 +12682,28 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-10T16:56:29.173235+00:00",
+        "id": "8aa2f26a-b1dc-4d9c-bad6-a7490a2cd0bc",
+        "kind": "transition",
+        "target_id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-10T14:30:26.357055+00:00",
         "id": "8ad0180c-f375-4ba8-bbcf-ba7ef87840b4",
         "kind": "transition",
         "target_id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.282488+00:00",
+        "id": "8b31fcd2-3b84-436a-a76d-9e8452673828",
+        "kind": "transition",
+        "target_id": "1156048d-5ea1-4d18-aeb4-26b2973a8ec2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -11642,6 +12715,15 @@
         "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "8b77f4ef-2def-4e6d-9133-9991c5412cbc",
+        "kind": "transition",
+        "target_id": "1f478578-34de-4569-8f8f-490894be373b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -11816,6 +12898,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "905600c8-9e46-4410-af2a-a3c91d8257a5",
+        "kind": "transition",
+        "target_id": "50d3792f-5fa7-4289-8483-117e64bf888f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "90c070a2-9fdd-4e05-8fb7-f144e4899538",
         "kind": "transition",
@@ -11843,12 +12934,30 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "91dee63e-b1b9-433d-ae46-b520af86a09e",
+        "kind": "transition",
+        "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T14:17:54.757425+00:00",
         "id": "91e86651-8e90-4643-9e1f-82076c33dd16",
         "kind": "transition",
         "target_id": "068d057a-a887-4c6a-bcd4-3c06faee3143",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.534167+00:00",
+        "id": "92066d2e-bf3d-4509-a71b-c3b7fe5531ea",
+        "kind": "transition",
+        "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -11860,6 +12969,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.318465+00:00",
+        "id": "92da623c-c92a-4a50-bd91-d4084be99924",
+        "kind": "transition",
+        "target_id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "932f1ac2-c0b4-43c5-84b0-b1cf6f6c6869",
@@ -11867,6 +12985,15 @@
         "target_id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "934c5071-ff1e-4745-b568-893b11177fe8",
+        "kind": "transition",
+        "target_id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -11912,6 +13039,15 @@
         "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "94251eee-59b2-497f-ba5d-da07e98abdea",
+        "kind": "transition",
+        "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
       },
       {
         "author": "loom",
@@ -12068,6 +13204,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "967aa0f7-1917-4dc5-8237-3d681133006e",
+        "kind": "transition",
+        "target_id": "dd77d7f8-8137-4bea-a31c-defd1bc4f26d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T13:20:59.497715+00:00",
         "id": "96ad3165-2096-42ee-ad11-6745b50c408b",
         "kind": "transition",
@@ -12211,6 +13356,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.529829+00:00",
+        "id": "9a1e828e-7960-4158-a8de-facccd34787f",
+        "kind": "transition",
+        "target_id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T15:45:27.648235+00:00",
         "id": "9a436fb1-a31f-4ae5-a2ee-6caab3f3dad3",
@@ -12218,6 +13372,15 @@
         "target_id": "4a124739-d3fb-4c27-8aec-d9dde0352cf9",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "9a518589-a41d-431d-a23d-874b20535920",
+        "kind": "transition",
+        "target_id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm",
@@ -12292,6 +13455,15 @@
         "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "9bc6b374-672b-402b-9667-cf32f3bd75dc",
+        "kind": "transition",
+        "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:24.926438+00:00",
         "id": "9cb3d63b-979b-4931-92d3-db4c7c743ab9",
@@ -12317,6 +13489,15 @@
         "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.313901+00:00",
+        "id": "9cef3b80-9b35-43c1-b150-b6187cb5db29",
+        "kind": "transition",
+        "target_id": "23726d89-7b7d-4544-a2ac-0de5d6c5855b",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -12371,6 +13552,15 @@
         "target_id": "7f902393-8ead-4b9f-a047-b3dd3f7068a0",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.284743+00:00",
+        "id": "9f2f2b2e-0af3-4864-ac0d-25a3d90c3cee",
+        "kind": "transition",
+        "target_id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm",
@@ -12481,6 +13671,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.281361+00:00",
+        "id": "a126b39a-b15a-45f4-8c9f-b649578c84aa",
+        "kind": "transition",
+        "target_id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "a190efe4-4271-45fb-af22-4fd2ef7d9b0a",
@@ -12517,6 +13716,15 @@
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "a229ae46-6e05-4585-9a27-1ee49764ce5b",
+        "kind": "transition",
+        "target_id": "5489636b-16cf-4d17-9a36-fdb939f5a4e0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:08.440782+00:00",
         "id": "a27a8c39-b8cc-4c26-b2ea-88306f215442",
@@ -12527,12 +13735,30 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.288688+00:00",
+        "id": "a293152e-c47a-40ee-8268-b26836874225",
+        "kind": "transition",
+        "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-10T13:47:34.291100+00:00",
         "id": "a2c30a1c-bcaa-4734-90d5-d43d1c710fc4",
         "kind": "transition",
         "target_id": "22179fbe-bfbc-47d8-a2a0-fde1b632c93e",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "a301e006-5d92-462e-aeee-bb737ce98039",
+        "kind": "transition",
+        "target_id": "81d6535c-34f1-4610-bad3-d62ac793cca0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -12562,6 +13788,24 @@
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.164786+00:00",
+        "id": "a3d3a468-67fc-4f29-8745-8137e6cc24bf",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "a40b6664-6f34-4750-9e59-38e98f829fe8",
+        "kind": "transition",
+        "target_id": "dc14707f-331c-4175-b053-6f311bbe4329",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "a44113f2-e664-47e6-889c-7194d99ec5c3",
@@ -12587,6 +13831,15 @@
         "target_id": "67564ae4-89f0-4802-af81-a647a4f41d37",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "a4f40f85-1f8e-4131-b777-953badbb5938",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -12689,6 +13942,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "a63bcfdb-ab96-4662-bd05-65f185a3b232",
+        "kind": "transition",
+        "target_id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T15:51:29.260042+00:00",
         "id": "a63f3e2c-7acc-40a1-aa85-a4f7e90dfcea",
         "kind": "transition",
@@ -12779,6 +14041,15 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.298030+00:00",
+        "id": "a7f14408-1178-4a5a-a7ab-c7da365e8d45",
+        "kind": "transition",
+        "target_id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-10T13:22:51.391509+00:00",
         "id": "a809fb48-d6bb-47c3-8fb3-e3de4c5fffbf",
         "kind": "transition",
@@ -12830,6 +14101,15 @@
         "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "a8ef6323-4c2d-44a1-a3c1-3c662a5c563e",
+        "kind": "transition",
+        "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -12902,6 +14182,15 @@
         "target_id": "c78d727f-55ae-484b-9236-aea8d23c355b",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "aa0226a5-1536-4b45-9ac7-fc6fbde0c141",
+        "kind": "transition",
+        "target_id": "23726d89-7b7d-4544-a2ac-0de5d6c5855b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -13183,6 +14472,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.531481+00:00",
+        "id": "b11d11a9-6f04-4c43-bb9f-eadbcbeb9b0b",
+        "kind": "transition",
+        "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T15:51:29.260042+00:00",
         "id": "b12fcc94-8bd0-4bce-9c4b-b944582c33a2",
@@ -13201,6 +14499,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "b1ad6338-9b2e-4324-aed0-788e16569b3a",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:56.870747+00:00",
         "id": "b1dc460e-fb9e-4d15-89b5-c6eafb1dba3a",
@@ -13217,6 +14524,15 @@
         "target_id": "28dc9cc2-8169-4b22-b13a-3337c48d78ca",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "b1fa48f6-cffa-415e-a3d5-bc43e254e8d4",
+        "kind": "transition",
+        "target_id": "cadf93fb-af58-47be-92d4-66771b0f9491",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -13265,6 +14581,15 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.292171+00:00",
+        "id": "b37b330b-0ef1-4ea9-9f5c-8a3916a819d1",
+        "kind": "transition",
+        "target_id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-10T13:35:18.157987+00:00",
         "id": "b39232c6-da43-486a-b3d8-a9690afb41ef",
         "kind": "transition",
@@ -13289,6 +14614,15 @@
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/codefile.rs changed)"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.538738+00:00",
+        "id": "b40bcc65-bf0e-46e7-bc14-50a9c70ee438",
+        "kind": "transition",
+        "target_id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -13363,6 +14697,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.542227+00:00",
+        "id": "b5211f95-3538-44ad-b693-3ba73cc1fce2",
+        "kind": "transition",
+        "target_id": "aa161385-ad00-4372-a189-fdea343907b5",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T15:52:21.043254+00:00",
         "id": "b527c8b1-406c-4221-a122-9554572e15af",
@@ -13370,6 +14713,24 @@
         "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "b5314bfd-d9c1-46fe-bd25-c79ddf5f584a",
+        "kind": "transition",
+        "target_id": "81d6535c-34f1-4610-bad3-d62ac793cca0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "b546f666-6d72-465a-8990-e94f0de2b9b7",
+        "kind": "transition",
+        "target_id": "ab3a82b1-0011-4da4-835e-d70703870e1d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -13516,6 +14877,15 @@
         "text": "passing → needs_reverification (sync: src/commands/doctor.rs changed)"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.279066+00:00",
+        "id": "b95b6e57-f7dd-4116-a048-3a633ae4fa95",
+        "kind": "transition",
+        "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T14:55:37.707664+00:00",
         "id": "b9854220-bc8c-4022-9853-b789b450251e",
@@ -13589,6 +14959,15 @@
       },
       {
         "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.301378+00:00",
+        "id": "bbc1c491-d648-4a8b-9c8a-c46b55130179",
+        "kind": "transition",
+        "target_id": "4a124739-d3fb-4c27-8aec-d9dde0352cf9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm:quality",
         "created_at": "2026-06-10T13:34:35.960993+00:00",
         "id": "bbe9de52-c3ef-4ad9-b4e5-c7d68941dc4d",
         "kind": "transition",
@@ -13631,6 +15010,15 @@
         "target_id": "8a8d346a-3691-48c2-b7ae-1dd51d5a3ff5",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "bd61286e-12da-4ecd-8a18-e48900ed0fb1",
+        "kind": "transition",
+        "target_id": "f5829115-5548-4cd4-94fd-feba8d374b91",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
       },
       {
         "author": "loom",
@@ -13867,6 +15255,24 @@
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.289870+00:00",
+        "id": "c37014e5-cbe1-4eb1-bcfe-d12de313ad79",
+        "kind": "transition",
+        "target_id": "dd77d7f8-8137-4bea-a31c-defd1bc4f26d",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "c39e4212-3663-4847-9afa-70fedc984c3a",
+        "kind": "transition",
+        "target_id": "f7797751-9e90-4e77-b69f-e9c5f8da2ce0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm",
         "created_at": "2026-06-10T14:50:28.452701+00:00",
         "id": "c3bbc391-886d-4fd4-8eef-0b72af9265ea",
@@ -13892,6 +15298,15 @@
         "target_id": "28dc9cc2-8169-4b22-b13a-3337c48d78ca",
         "target_kind": "edge",
         "text": "needs_reverification → failing"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.544837+00:00",
+        "id": "c410e55d-d6fa-4f56-acd7-5c75d349fa2e",
+        "kind": "transition",
+        "target_id": "59ea8858-8fb3-4f3b-94f4-9900745e6cf6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -13928,6 +15343,33 @@
         "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "c4c4bb34-14b1-4372-b374-69bd5ab78390",
+        "kind": "transition",
+        "target_id": "4d0f8265-0b79-4c2d-8572-c86839930ee6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "c505a7f9-694b-4f6b-8fd1-5cbd956c7a37",
+        "kind": "transition",
+        "target_id": "1156048d-5ea1-4d18-aeb4-26b2973a8ec2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "c516e56c-6e70-4b9a-b3c9-afdc103db3ac",
+        "kind": "transition",
+        "target_id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
       },
       {
         "author": "llm",
@@ -13973,6 +15415,15 @@
         "target_id": "d9e94a6e-4826-4cf5-9d3e-fc7ac1f32962",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "llm:analyzer",
+        "created_at": "2026-06-10T16:49:36.535130+00:00",
+        "id": "c5b37730-5e3e-4cd6-a741-c2ff8ba5e43f",
+        "kind": "transition",
+        "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -14074,6 +15525,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "c7464310-3722-42d7-859c-32060f390f35",
+        "kind": "transition",
+        "target_id": "aa161385-ad00-4372-a189-fdea343907b5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:19:35.159592+00:00",
         "id": "c751e9b9-1641-45d6-8537-76d981f96299",
@@ -14164,6 +15624,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:57:49.813868+00:00",
+        "id": "c85390a4-5f20-4800-8c48-1f5b41a8ffcc",
+        "kind": "transition",
+        "target_id": "617c4cf5-37f6-442f-8e14-b28b6403c3e3",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "c89495c7-6508-4a7f-8fbe-c876393fa5f5",
@@ -14200,6 +15669,24 @@
         "text": "passing → needs_reverification (sync: src/commands/codefile.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.176553+00:00",
+        "id": "ca2c2f06-2922-4911-ac25-605ccb76e30a",
+        "kind": "transition",
+        "target_id": "ab3a82b1-0011-4da4-835e-d70703870e1d",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.165758+00:00",
+        "id": "ca70e403-6498-415f-97c5-8f1d8f796d72",
+        "kind": "transition",
+        "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "caa7ba48-b7fc-49c0-9d1d-bc4b28be45b8",
@@ -14207,6 +15694,15 @@
         "target_id": "26b290f1-09ab-48fe-a92e-fc88d215f3b9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.295581+00:00",
+        "id": "cacbfdee-71a5-4039-a1ff-80dad6cff836",
+        "kind": "transition",
+        "target_id": "f5829115-5548-4cd4-94fd-feba8d374b91",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:analyzer",
@@ -14362,6 +15858,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.317297+00:00",
+        "id": "cf49e955-c331-4e1e-a90d-c9ea700af029",
+        "kind": "transition",
+        "target_id": "507bcec0-229a-4d36-903a-cf2bae7eba2f",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T13:32:41.627227+00:00",
         "id": "cf556225-db53-462d-86f7-0f79abbcc290",
@@ -14426,6 +15931,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "d014ed85-e450-4126-a5b4-5383995877ef",
+        "kind": "transition",
+        "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "d01770bf-6e4f-4dde-b390-93b74e793a8c",
         "kind": "transition",
@@ -14459,6 +15973,15 @@
         "target_id": "95dfd04f-6114-4832-99c3-1bf16c0bd338",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.308103+00:00",
+        "id": "d0977020-4ef5-4deb-ab44-dc51748eb231",
+        "kind": "transition",
+        "target_id": "b21618e2-d55c-44ad-b86f-fe95e71eabca",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -14641,6 +16164,15 @@
         "text": "passing → needs_reverification (sync: src/commands/doctor.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "d371387c-a996-4185-90b6-de04b4d9d661",
+        "kind": "transition",
+        "target_id": "23687230-597d-407b-aaa5-f2bc75f9bc7f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:07:24.074207+00:00",
         "id": "d38f7718-22a7-4ced-affc-f5a8707b18f8",
@@ -14650,6 +16182,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "d3e57d72-6760-407f-b393-71812a285a67",
+        "kind": "transition",
+        "target_id": "8b2d5ec5-a60a-4bca-b044-041a13516f2b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:26.123499+00:00",
         "id": "d45cd9fb-b4a2-463d-babb-b873b4e6f599",
@@ -14657,6 +16198,15 @@
         "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.291023+00:00",
+        "id": "d4768677-0860-45af-9b44-bd3fc576340c",
+        "kind": "transition",
+        "target_id": "ab3a82b1-0011-4da4-835e-d70703870e1d",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm:quality",
@@ -14702,6 +16252,15 @@
         "target_id": "50d3792f-5fa7-4289-8483-117e64bf888f",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "d73ee0d2-42b0-48d9-a280-7e0c30b276dd",
+        "kind": "transition",
+        "target_id": "90d33950-2522-4bbc-abe8-0cafeec7cf95",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/stats.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -14765,6 +16324,15 @@
         "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "intent",
         "text": "lifecycle → implemented: decomposed into 3 cohesive children (definitions+dispatch, write handlers, proof+bootstrap); groundings moved down"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.316095+00:00",
+        "id": "d8642e06-b196-449b-a24b-1f1a34f1626d",
+        "kind": "transition",
+        "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "loom",
@@ -14893,6 +16461,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.172071+00:00",
+        "id": "db17de80-1a8f-414b-a724-0e3055973f25",
+        "kind": "transition",
+        "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T13:25:22.340038+00:00",
         "id": "dbd54596-46bd-4422-ba43-6437ada01ef0",
@@ -14981,6 +16558,24 @@
         "target_id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.174337+00:00",
+        "id": "ddd5b193-362b-450c-ab54-da1c15f06a22",
+        "kind": "transition",
+        "target_id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "ddff7171-0614-4fe1-a4d2-ad37f54b47e4",
+        "kind": "transition",
+        "target_id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -15190,6 +16785,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "e1ce911d-1fa7-44c5-ae7a-31bcbf43850e",
+        "kind": "transition",
+        "target_id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:17.651945+00:00",
         "id": "e1ed05d1-c35d-4fbc-bcd6-66b0756c6d56",
@@ -15307,6 +16911,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.299145+00:00",
+        "id": "e3d63d01-4f13-4221-8f0c-ca7b22ceddb3",
+        "kind": "transition",
+        "target_id": "836f3927-b98d-42e9-b949-44188a8a4cd6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T15:51:29.260042+00:00",
         "id": "e46a95ae-6c6c-4ee2-a5e3-030abe707e5a",
@@ -15330,6 +16943,15 @@
         "id": "e4d438e6-c646-458c-a1d3-ffe37a5580ce",
         "kind": "transition",
         "target_id": "8fab1b4a-ba70-4da4-984d-cccf1f2f11cc",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.181010+00:00",
+        "id": "e4ec4002-a284-4d10-b521-373c942615d6",
+        "kind": "transition",
+        "target_id": "8eff8e6f-4025-4d09-a069-3e3a6d876bd7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -15541,6 +17163,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.177683+00:00",
+        "id": "ea24b8c4-c065-4a03-9c20-7dce1f36ae80",
+        "kind": "transition",
+        "target_id": "81d6535c-34f1-4610-bad3-d62ac793cca0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:29:13.013060+00:00",
         "id": "ea43d481-b8e7-4ed1-8ace-e5c183d94f6b",
@@ -15694,6 +17325,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/codefile.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.167582+00:00",
+        "id": "ec969a98-7b7b-4609-a14c-d0debb8e6421",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "ecaeea53-b2e5-42ab-b11a-7b5707c17b18",
@@ -15708,6 +17348,15 @@
         "id": "ecbaa0dc-c066-4688-aa2e-56bd5a88c2a9",
         "kind": "transition",
         "target_id": "3716a503-c7ea-48ce-a6f4-2aab0ed11951",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "ecf02b34-3b0e-44bd-851d-77d618717968",
+        "kind": "transition",
+        "target_id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
@@ -15773,6 +17422,15 @@
         "target_id": "50d3792f-5fa7-4289-8483-117e64bf888f",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.315007+00:00",
+        "id": "eec1f71a-4957-48db-9a49-daf7ef87fae6",
+        "kind": "transition",
+        "target_id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "author": "llm",
@@ -15910,6 +17568,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:57:49.811379+00:00",
+        "id": "f0d4988c-f251-4446-9bc5-596b2eaf5c61",
+        "kind": "transition",
+        "target_id": "ab509485-6f1b-41c1-854a-3c8b53257af4",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-10T13:59:38.623362+00:00",
         "id": "f0e2d2bc-5fa0-45ad-9ec8-d21c2a6d16e2",
@@ -15946,6 +17613,15 @@
         "text": "uninspected → independent"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:57:49.812696+00:00",
+        "id": "f1ec2e48-a551-4a41-86b8-e4d48b9ae416",
+        "kind": "transition",
+        "target_id": "998d3e32-f2f6-402d-a3fa-de7eea67669c",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
         "author": "llm:fixer",
         "created_at": "2026-06-10T13:28:07.869303+00:00",
         "id": "f21232ed-8e29-4f97-8df4-3dd002eac912",
@@ -15953,6 +17629,15 @@
         "target_id": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: build_candidates repeats the same list_intents query within one queue computation instead of reusing the intents vector it already fetched."
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "f217c2ec-a0e1-429b-b0cb-fad717ef8e78",
+        "kind": "transition",
+        "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -16162,6 +17847,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm:quality",
+        "created_at": "2026-06-10T16:50:48.310427+00:00",
+        "id": "f4f0543c-60e2-4a82-8023-bb67b0b7a8b7",
+        "kind": "transition",
+        "target_id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "f528064c-bd0e-4a85-af28-671b3da65cc2",
@@ -16226,6 +17920,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "f7023143-4b71-436e-b168-5490afb12ac9",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "f70bb713-ce9e-4ef9-8288-e1c8faaaeaf1",
         "kind": "transition",
@@ -16268,6 +17971,15 @@
         "target_id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:47:54.149805+00:00",
+        "id": "f7b59994-8877-491f-9751-3e7eb1bdf184",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -16423,6 +18135,15 @@
         "text": "needs_reverification → passing"
       },
       {
+        "author": "llm",
+        "created_at": "2026-06-10T16:56:29.168430+00:00",
+        "id": "f9e3360b-3dbd-4358-8a80-cad75f1c0921",
+        "kind": "transition",
+        "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:05.114028+00:00",
         "id": "fa232bc0-c6c6-4ad9-a623-e9dd15cbdbc3",
@@ -16520,6 +18241,15 @@
         "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T16:56:08.037199+00:00",
+        "id": "fc512fb9-7976-4d35-a947-472fab438ef3",
+        "kind": "transition",
+        "target_id": "2d7cd452-67d5-4188-8a94-d36271ebd8ca",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
       },
       {
         "author": "loom",
@@ -16922,7 +18652,7 @@
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
         "last_result": "passed",
-        "last_run": "2026-06-10T16:24:26.386471+00:00",
+        "last_run": "2026-06-10T16:56:29.728162+00:00",
         "name": "query-layer regression suite",
         "validation_type": "test"
       },
@@ -16931,7 +18661,7 @@
         "description": "",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
         "last_result": "passed",
-        "last_run": "2026-06-10T16:25:06.466374+00:00",
+        "last_run": "2026-06-10T16:51:47.283973+00:00",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },
@@ -16940,7 +18670,7 @@
         "description": "",
         "id": "4bb6ef5a-46a2-4aac-ac17-8807468c996f",
         "last_result": "passed",
-        "last_run": "2026-06-10T16:24:37.403754+00:00",
+        "last_run": "2026-06-10T16:56:29.249178+00:00",
         "name": "build-altitude and queue tests",
         "validation_type": "test"
       },
@@ -16949,7 +18679,7 @@
         "description": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
         "last_result": "passed",
-        "last_run": "2026-06-10T16:24:37.316027+00:00",
+        "last_run": "2026-06-10T16:56:30.300663+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
       },
@@ -16997,6 +18727,15 @@
         "last_run": "2026-06-10T15:32:56.065840+00:00",
         "name": "status --json carries the graph_state pulse",
         "validation_type": "assertion"
+      },
+      {
+        "command": "bash /Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/bench.sh 500 1000 2",
+        "description": "Generates a synthetic graph of 500 intents / 1000 edges, imports it, and times loom status / next / smells / next --all; exits non-zero if any command exceeds 2 seconds",
+        "id": "f6a2110b-0894-40ef-ae1d-4a0d65bb7861",
+        "last_result": "passed",
+        "last_run": "2026-06-10T16:56:08.126947+00:00",
+        "name": "scale benchmark: hot commands under 2s at 500 intents",
+        "validation_type": "benchmark"
       }
     ]
   },

@@ -3,9 +3,8 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 
-use crate::db::schema::esc;
 use crate::db::LoomDb;
-use crate::types::{Governs, InspectionStatus, Intent, QualityRule, RelatesTo};
+use crate::types::{Governs, InspectionStatus, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation};
 
 use super::governs::list_all_governs;
 use super::hierarchy::list_all_hierarchy;
@@ -13,31 +12,62 @@ use super::intent::list_intents;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
 use super::rule::list_rules;
-use super::validates::{list_validates_for_intent, validations_for_intent};
+use super::validates::list_all_validates;
+use super::validation::list_validations;
 
-/// Degree of an intent = total RELATES_TO edges touching it (in + out).
-pub fn intent_degree(db: &dyn LoomDb, intent_id: &str) -> Result<i64> {
-    let out_q = format!(
-        "MATCH (n:Intent {{id: '{}'}})-[r:RELATES_TO]->() RETURN count(r) AS c",
-        esc(intent_id)
-    );
-    let in_q = format!(
-        "MATCH ()-[r:RELATES_TO]->(n:Intent {{id: '{}'}}) RETURN count(r) AS c",
-        esc(intent_id)
-    );
-    let out_res = db.execute(&out_q)?;
-    let in_res  = db.execute(&in_q)?;
-    let out_deg = out_res.rows().first().map(|r| i64_val(&r[0])).unwrap_or(0);
-    let in_deg  = in_res.rows().first().map(|r| i64_val(&r[0])).unwrap_or(0);
-    Ok(out_deg + in_deg)
+/// Compute RELATES_TO degree for EVERY intent in TWO queries (out + in),
+/// merging the counts in Rust. Use this instead of calling `intent_degree`
+/// in a loop — N intents cost 2 queries total instead of 2×N.
+pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
+    let mut degrees: HashMap<String, i64> = HashMap::new();
+
+    // Out-degree: for each intent that is the source of a RELATES_TO edge.
+    let out_r = db.execute(
+        "MATCH (a:Intent)-[r:RELATES_TO]->(:Intent) RETURN a.id AS id, count(r) AS c",
+    )?;
+    let out_cols = col_map(&out_r);
+    for row in out_r.rows() {
+        let id = str_val(get(row, &out_cols, "id"));
+        let c  = i64_val(get(row, &out_cols, "c"));
+        if !id.is_empty() {
+            *degrees.entry(id).or_insert(0) += c;
+        }
+    }
+
+    // In-degree: for each intent that is the target of a RELATES_TO edge.
+    let in_r = db.execute(
+        "MATCH (:Intent)-[r:RELATES_TO]->(b:Intent) RETURN b.id AS id, count(r) AS c",
+    )?;
+    let in_cols = col_map(&in_r);
+    for row in in_r.rows() {
+        let id = str_val(get(row, &in_cols, "id"));
+        let c  = i64_val(get(row, &in_cols, "c"));
+        if !id.is_empty() {
+            *degrees.entry(id).or_insert(0) += c;
+        }
+    }
+
+    Ok(degrees)
 }
 
 /// Compute priority scores for all candidate RELATES_TO edges and return sorted.
 /// Formula: degree(a) + degree(b) + urgency(status) - age_penalty(last_inspected)
 /// mode: "discovery" (uninspected) | "fix" (failing + needs_reverification)
+///
+/// `degrees` is an optional pre-built degree map (from `all_intent_degrees`); pass
+/// `None` and it is built here. Callers that already have the map (e.g. `run_all`)
+/// should pass it in to avoid a redundant pair of queries.
 pub fn scored_candidates(
     db: &dyn LoomDb,
     mode: &str,
+) -> Result<Vec<(RelatesTo, f64)>> {
+    scored_candidates_with_degrees(db, mode, None)
+}
+
+pub fn scored_candidates_with_degrees(
+    db: &dyn LoomDb,
+    mode: &str,
+    prebuilt_degrees: Option<&HashMap<String, i64>>,
 ) -> Result<Vec<(RelatesTo, f64)>> {
     let mut candidates = match mode {
         "fix" => {
@@ -52,25 +82,25 @@ pub fn scored_candidates(
     let mut seen = std::collections::HashSet::new();
     candidates.retain(|e| seen.insert(e.id.clone()));
 
+    if candidates.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Build degrees once for all candidates rather than 2 queries per unique endpoint.
+    let owned;
+    let degrees: &HashMap<String, i64> = if let Some(d) = prebuilt_degrees {
+        d
+    } else {
+        owned = all_intent_degrees(db)?;
+        &owned
+    };
+
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
     let now = chrono::Utc::now();
-    let mut degree_cache: HashMap<String, i64> = HashMap::new();
 
     for edge in candidates {
-        let deg_a = if let Some(&d) = degree_cache.get(&edge.from_id) {
-            d
-        } else {
-            let d = intent_degree(db, &edge.from_id)?;
-            degree_cache.insert(edge.from_id.clone(), d);
-            d
-        };
-        let deg_b = if let Some(&d) = degree_cache.get(&edge.to_id) {
-            d
-        } else {
-            let d = intent_degree(db, &edge.to_id)?;
-            degree_cache.insert(edge.to_id.clone(), d);
-            d
-        };
+        let deg_a = *degrees.get(&edge.from_id).unwrap_or(&0);
+        let deg_b = *degrees.get(&edge.to_id).unwrap_or(&0);
 
         let status: InspectionStatus = edge
             .inspection_status
@@ -127,7 +157,9 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
         children.entry(p).or_default().push(c);
     }
 
-    let mut scored: Vec<BuildCandidate> = Vec::new();
+    // Collect the build candidates BEFORE degree lookup so we only bulk-load
+    // degrees when there is actually work to score.
+    let mut pending: Vec<(&Intent, f64, bool)> = Vec::new();
     for i in &intents {
         let urgency = match i.lifecycle.as_str() {
             "needs_change" => 4.0,
@@ -138,18 +170,32 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
         let mut rollup = false;
         if i.lifecycle == "planned" {
             if let Some(kids) = kids {
-                let pending = kids.iter().any(|c| {
+                let p = kids.iter().any(|c| {
                     matches!(lifecycle_of.get(c.as_str()), Some(&"planned") | Some(&"needs_change"))
                 });
-                if pending {
-                    continue; // children first — they are already in the queue
+                if p {
+                    continue;
                 }
                 rollup = true;
             }
         }
-        let score = intent_degree(db, &i.id)? as f64 + urgency;
-        scored.push(BuildCandidate { intent: i.clone(), score, rollup });
+        pending.push((i, urgency, rollup));
     }
+
+    if pending.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // One bulk degree query instead of 2×N per-intent queries.
+    let degrees = all_intent_degrees(db)?;
+
+    let mut scored: Vec<BuildCandidate> = pending
+        .into_iter()
+        .map(|(i, urgency, rollup)| {
+            let deg = *degrees.get(&i.id).unwrap_or(&0) as f64;
+            BuildCandidate { intent: i.clone(), score: deg + urgency, rollup }
+        })
+        .collect();
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
 }
@@ -258,7 +304,10 @@ pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
 /// verdict` creates the edge with the verdict (independent = measured, doesn't
 /// apply; a verdict at component altitude covers descendants).
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
-    let mut degree_cache: HashMap<String, i64> = HashMap::new();
+    // Bulk-load all degrees once; both the GOVERNS loop and the normative-coverage
+    // queue need degrees, so this replaces up to 2×(governs + queue) queries.
+    let degrees = all_intent_degrees(db)?;
+
     let mut scored: Vec<(Governs, f64)> = Vec::new();
     for g in list_all_governs(db)? {
         let urgency = match g.inspection_status.as_str() {
@@ -267,23 +316,11 @@ pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
             "uninspected" => 2.0,
             _ => continue,
         };
-        let deg = if let Some(&d) = degree_cache.get(&g.intent_id) {
-            d
-        } else {
-            let d = intent_degree(db, &g.intent_id)?;
-            degree_cache.insert(g.intent_id.clone(), d);
-            d
-        };
+        let deg = *degrees.get(&g.intent_id).unwrap_or(&0);
         scored.push((g, deg as f64 + urgency));
     }
     for (rule, intent) in normative_coverage(db)?.queue {
-        let deg = if let Some(&d) = degree_cache.get(&intent.id) {
-            d
-        } else {
-            let d = intent_degree(db, &intent.id)?;
-            degree_cache.insert(intent.id.clone(), d);
-            d
-        };
+        let deg = *degrees.get(&intent.id).unwrap_or(&0);
         scored.push((
             Governs {
                 id: String::new(), // no edge yet — `loom rule verdict` creates it
@@ -334,9 +371,22 @@ pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>>
     let is_parent: std::collections::HashSet<String> =
         list_all_hierarchy(db)?.into_iter().map(|(p, _)| p).collect();
 
+    // Bulk load: all VALIDATES edges + all Validation nodes — avoid N per-intent queries.
+    let all_edges = list_all_validates(db)?;
+    let all_validations = list_validations(db)?;
+
+    // Index: intent_id → Vec<ValidatesEdge>
+    let mut edges_by_intent: HashMap<&str, Vec<&ValidatesEdge>> = HashMap::new();
+    for e in &all_edges {
+        edges_by_intent.entry(e.intent_id.as_str()).or_default().push(e);
+    }
+    // Index: validation_id → Validation
+    let val_by_id: HashMap<&str, &Validation> =
+        all_validations.iter().map(|v| (v.id.as_str(), v)).collect();
+
     let mut selected: Vec<(Intent, f64, String)> = Vec::new();
     for i in intents {
-        let edges = list_validates_for_intent(db, &i.id)?;
+        let edges = edges_by_intent.get(i.id.as_str()).map(|v| v.as_slice()).unwrap_or(&[]);
         let (urgency, reason) = if edges.is_empty() {
             if i.lifecycle == "implemented" && !is_parent.contains(&i.id) {
                 (3.0, "no proof: this implemented leaf intent has no validations".to_string())
@@ -344,7 +394,11 @@ pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>>
                 continue;
             }
         } else {
-            let validations = validations_for_intent(db, &i.id)?;
+            // Resolve validation objects from the pre-loaded map.
+            let validations: Vec<&Validation> = edges
+                .iter()
+                .filter_map(|e| val_by_id.get(e.validation_id.as_str()).copied())
+                .collect();
             if validations.iter().any(|v| v.last_result == "failed")
                 || edges.iter().any(|e| e.inspection_status == "failing")
             {
@@ -371,11 +425,19 @@ pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>>
 /// worklist for `loom next --mode validate`. Selection logic lives in
 /// `validate_selection` (shared with the compass).
 pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
-    let mut scored: Vec<ValidateCandidate> = Vec::new();
-    for (intent, urgency, reason) in validate_selection(db)? {
-        let score = intent_degree(db, &intent.id)? as f64 + urgency;
-        scored.push(ValidateCandidate { intent, score, reason });
+    let selected = validate_selection(db)?;
+    if selected.is_empty() {
+        return Ok(Vec::new());
     }
+    // One bulk degree query instead of 2×N per-intent queries.
+    let degrees = all_intent_degrees(db)?;
+    let mut scored: Vec<ValidateCandidate> = selected
+        .into_iter()
+        .map(|(intent, urgency, reason)| {
+            let deg = *degrees.get(&intent.id).unwrap_or(&0) as f64;
+            ValidateCandidate { score: deg + urgency, intent, reason }
+        })
+        .collect();
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
 }
@@ -454,15 +516,8 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
         linked.insert((c, p));
     }
 
-    let mut degree_cache: HashMap<String, i64> = HashMap::new();
-    let mut degree_of = |db: &dyn LoomDb, id: &str| -> Result<i64> {
-        if let Some(&d) = degree_cache.get(id) {
-            return Ok(d);
-        }
-        let d = intent_degree(db, id)?;
-        degree_cache.insert(id.to_string(), d);
-        Ok(d)
-    };
+    // Bulk-load all degrees once — N intents costs 2 queries, not 2×N.
+    let degrees = all_intent_degrees(db)?;
 
     let base_urgency = InspectionStatus::Uninspected.urgency();
     let empty_files = std::collections::HashSet::new();
@@ -504,8 +559,8 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
                 + 4.0 * sim
                 + if same_domain { 1.0 } else { 0.0 };
 
-            let score = degree_of(db, &a.id)? as f64
-                + degree_of(db, &b.id)? as f64
+            let score = *degrees.get(&a.id).unwrap_or(&0) as f64
+                + *degrees.get(&b.id).unwrap_or(&0) as f64
                 + base_urgency
                 + suspicion;
             scored.push((

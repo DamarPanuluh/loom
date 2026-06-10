@@ -15,7 +15,7 @@ use super::meta::get_meta;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
 use super::rule::list_rules;
-use super::scoring::{count_unexplored_pairs, intent_degree, normative_coverage, validate_selection};
+use super::scoring::{all_intent_degrees, count_unexplored_pairs, normative_coverage, validate_selection};
 
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
@@ -486,11 +486,15 @@ pub fn tangled_files(db: &dyn LoomDb, limit: usize) -> Result<Vec<(String, i64)>
 /// Top intents by degree centrality (RELATES_TO edges).
 pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<IntentCentrality>> {
     let intents = list_intents(db, None, None)?;
-    let mut with_degree: Vec<(Intent, i64)> = Vec::new();
-    for intent in intents {
-        let deg = intent_degree(db, &intent.id)?;
-        with_degree.push((intent, deg));
-    }
+    // Bulk-load all degrees in 2 queries instead of 2×N queries.
+    let degrees = all_intent_degrees(db)?;
+    let mut with_degree: Vec<(Intent, i64)> = intents
+        .into_iter()
+        .map(|i| {
+            let deg = *degrees.get(&i.id).unwrap_or(&0);
+            (i, deg)
+        })
+        .collect();
     with_degree.sort_by(|a, b| b.1.cmp(&a.1));
     with_degree.truncate(limit);
     Ok(with_degree.into_iter().map(|(intent, degree)| IntentCentrality { intent, degree }).collect())
