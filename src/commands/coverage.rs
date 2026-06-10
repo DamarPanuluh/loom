@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::collections::HashSet;
 use std::env;
 
-use crate::db::queries::{grounded_paths, list_codefiles, list_ignores};
+use crate::db::queries::{grounded_paths, list_codefiles, list_delegations, list_ignores};
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
@@ -23,13 +23,28 @@ pub fn run(printer: &Printer) -> Result<()> {
         .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
         .collect();
     let is_ignored = |p: &str| patterns.iter().any(|pat| pat.matches(p));
+    // Delegated subtrees: covered by a CHILD graph (federation), verified
+    // against its committed export rather than blanket-excluded.
+    let delegations = list_delegations(&db)?;
+    let delegation_pats: Vec<(glob::Pattern, &str)> = delegations
+        .iter()
+        .filter_map(|d| glob::Pattern::new(&d.pattern).ok().map(|p| (p, d.target.as_str())))
+        .collect();
+    let is_delegated = |p: &str| delegation_pats.iter().any(|(pat, _)| pat.matches(p));
+    let missing_targets: Vec<&str> = delegations
+        .iter()
+        .filter(|d| !cwd.join(&d.target).exists())
+        .map(|d| d.target.as_str())
+        .collect();
 
-    let (mut grounded_n, mut excluded_n) = (0usize, 0usize);
+    let (mut grounded_n, mut excluded_n, mut delegated_n) = (0usize, 0usize, 0usize);
     let mut ungrounded: Vec<String> = Vec::new();
     let mut unaccounted: Vec<String> = Vec::new();
     for f in &disk {
         if grounded.contains(f) {
             grounded_n += 1;
+        } else if is_delegated(f) {
+            delegated_n += 1;
         } else if is_ignored(f) {
             excluded_n += 1;
         } else if registered.contains(f) {
@@ -39,27 +54,35 @@ pub fn run(printer: &Printer) -> Result<()> {
         }
     }
     let total = disk.len();
-    let covered = grounded_n + excluded_n;
+    let covered = grounded_n + excluded_n + delegated_n;
     let pct = if total == 0 { 100.0 } else { covered as f64 / total as f64 * 100.0 };
 
     if printer.json {
         printer.print_json(&serde_json::json!({
             "total_files":           total,
             "grounded":              grounded_n,
+            "delegated":             delegated_n,
             "excluded":              excluded_n,
             "registered_ungrounded": ungrounded.len(),
             "unaccounted":           unaccounted.len(),
             "coverage_pct":          (pct * 10.0).round() / 10.0,
             "ungrounded_files":      ungrounded,
             "unaccounted_files":     unaccounted,
+            "delegation_targets_missing": missing_targets,
         }));
         return Ok(());
     }
 
     println!("── loom coverage ────────────────────────────────────────────────────");
     println!(
-        "  {covered}/{total} files covered ({pct:.1}%)   [grounded {grounded_n} + excluded {excluded_n}]"
+        "  {covered}/{total} files covered ({pct:.1}%)   [grounded {grounded_n} + delegated {delegated_n} + excluded {excluded_n}]"
     );
+    if !missing_targets.is_empty() {
+        println!("  ⚠ delegation target(s) MISSING — the child graph must `loom export`:");
+        for t in &missing_targets {
+            println!("      - {}", t);
+        }
+    }
     println!("  unexplained (registered, no intent): {}", ungrounded.len());
     println!("  unaccounted (not mapped, not excluded): {}", unaccounted.len());
 

@@ -485,6 +485,25 @@ pub struct Ignore {
 }
 
 // ---------------------------------------------------------------------------
+// Delegation — a subtree owned by ANOTHER loom graph (monorepo/federation)
+// ---------------------------------------------------------------------------
+
+/// A glob pattern marking files as covered by a CHILD graph rather than this
+/// one — the federation primitive for monorepos. `loom coverage` buckets
+/// matching files as `delegated` (covered, not gaps), and the `target` names
+/// the child's committed export so the boundary is a verifiable artifact, not
+/// a blanket ignore.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Delegation {
+    pub id: String,
+    pub pattern: String,
+    /// Path to the child graph's committed export (e.g. services/grid/loom.graph.json).
+    pub target: String,
+    pub author: String,
+    pub created_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Edge types (5 total)
 // ---------------------------------------------------------------------------
 

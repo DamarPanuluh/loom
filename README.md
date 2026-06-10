@@ -81,6 +81,19 @@ A few states exist specifically so the graph never lies by omission:
 - `blocked` — a proof that *can't* run yet (live target down, missing credential), recorded with a reason; out of the work queue but visible in `loom report`, and a code change doesn't quietly reset it
 - `loom ignore add <glob> --reason` — coverage exclusions live *in the graph*, with a recorded why
 
+## Monorepos & federation
+
+Graphs compose. Every graph has an identity (`loom init --name grid`; the id travels in its export), and a root graph can **delegate** service subtrees to their own looms:
+
+```bash
+# at the monorepo root
+loom delegate add 'services/grid/**' --to services/grid/loom.graph.json
+```
+
+Root-level `loom coverage` then buckets those files as *delegated* — covered by the child, verified against its committed export (a missing export is flagged, never silently trusted). Ground the root's *seam* intents (service↔service contracts) in the children's exports and `loom sync` ripples cross-service automatically: when a child re-exports, every seam claim grounded in it goes stale. Data flows **up only** — children export, the parent observes; a parent never writes into a child's graph.
+
+For code you *don't* own (a vendor SDK, an upstream dependency, another team's service), map it with `loom init --observed`: discovery, quality measurement, and validations all work, but the **custody gate** disables build/fix lanes — an observer records findings, never fixes — and its export is marked as observer testimony.
+
 ## Building from source
 
 ```bash

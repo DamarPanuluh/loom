@@ -1,4 +1,5 @@
 {
+  "custody": "owned",
   "edges": {
     "GOVERNS": [
       {
@@ -529,7 +530,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "2b277a55-74c7-41c7-99fe-efeb1b64318c",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:22.363983+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -698,7 +699,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "3f29f2c0-5ab8-4e8a-b76b-0d2f9521f99c",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:21.890290+00:00",
         "notes": "",
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -1283,7 +1284,7 @@
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "27de2ecb-340c-4c1a-bb12-755fbbeeeb8e",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:04.641731+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -1530,7 +1531,7 @@
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "id": "c4cc5d09-1059-4875-ba4b-fb070490441b",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:09.553740+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -1777,7 +1778,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "c78d727f-55ae-484b-9236-aea8d23c355b",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:00.631979+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -1946,7 +1947,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "305562cc-81be-4851-8840-0876c6bee91f",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:00.323564+00:00",
         "notes": "",
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -2024,7 +2025,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "df480f2d-7f5c-4d9d-b542-112211fcc68e",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:02.572994+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -2193,7 +2194,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "7f1eae0d-11a0-4541-a860-9279dba9967e",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:02.241624+00:00",
         "notes": "",
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -2271,7 +2272,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "fdb1edbc-ca37-417e-98e4-9018920b79b2",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:14.363918+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -2453,7 +2454,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "1a044afc-4911-4cb8-a13a-662df4368450",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:13.961997+00:00",
         "notes": "",
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -2531,7 +2532,7 @@
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "3c32bb1c-9087-4b32-8705-f4e7ccf4634f",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:06.837533+00:00",
         "notes": "",
         "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
@@ -4025,7 +4026,7 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "92af5219-bfc2-4e86-83e4-3dbfc99a4bbd",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:27:41.938216+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4137,7 +4138,7 @@
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "95b38298-3b47-413e-bba9-c849a0818d64",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:27:42.502299+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4725,7 +4726,7 @@
         "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "id": "c65a3245-1fd7-4995-832a-d5e85c0d711f",
         "inspected_by": "llm:fixer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:03:36.062455+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4951,6 +4952,8 @@
       }
     ]
   },
+  "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
+  "graph_name": "loom",
   "loom_export": 1,
   "nodes": {
     "CodeFile": [
@@ -4979,19 +4982,19 @@
         "path": "src/db/queries/validation.rs"
       },
       {
-        "content_hash": "b9b4b73b5dff08a4",
+        "content_hash": "df77f9c08ba9ea5d",
         "id": "1118c655-b551-4fa8-9d65-5debeb1f1dfb",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T20:13:12.431709819+00:00",
+        "last_modified": "2026-06-10T08:44:45.836606238+00:00",
         "path": "src/commands/edge.rs"
       },
       {
-        "content_hash": "de73228769ada475",
+        "content_hash": "a696b4b17c2cc9c8",
         "id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:22:16.798097815+00:00",
+        "last_modified": "2026-06-10T08:40:27.321269830+00:00",
         "path": "src/db/schema.rs"
       },
       {
@@ -5003,11 +5006,11 @@
         "path": "src/db/queries/implements.rs"
       },
       {
-        "content_hash": "605e59750ab64d75",
+        "content_hash": "11a04a3c44cd4f60",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": "[\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T06:44:12.661378176+00:00",
+        "last_modified": "2026-06-10T08:47:21.400444838+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -5035,11 +5038,11 @@
         "path": "src/db/queries/codefile.rs"
       },
       {
-        "content_hash": "b8d68e2d796b830c",
+        "content_hash": "660b7251c34773c3",
         "id": "3c8c2717-79e3-40b2-80bd-cd913fcac285",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:22:19.369166702+00:00",
+        "last_modified": "2026-06-10T08:41:34.389635384+00:00",
         "path": "src/db/queries/portability.rs"
       },
       {
@@ -5051,11 +5054,11 @@
         "path": "src/db/queries/intent.rs"
       },
       {
-        "content_hash": "40a2737b0a0614fa",
+        "content_hash": "ba7070219fab00aa",
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
-        "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/delegation.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T06:40:44.603883500+00:00",
+        "last_modified": "2026-06-10T08:46:45.858836928+00:00",
         "path": "src/db/queries/mod.rs"
       },
       {
@@ -5067,19 +5070,19 @@
         "path": "src/db/queries/rule.rs"
       },
       {
-        "content_hash": "9d7b7f7275627e96",
+        "content_hash": "fd351076c3df76b8",
         "id": "59586001-f497-4255-a7bc-75fd8a2f486a",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:28:46.832820984+00:00",
+        "last_modified": "2026-06-10T08:44:15.023613030+00:00",
         "path": "src/commands/intent.rs"
       },
       {
-        "content_hash": "54d4231689ae8bad",
+        "content_hash": "323a6d43d1cae7ca",
         "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-09T16:45:00.495091482+00:00",
+        "last_modified": "2026-06-10T08:47:16.384385231+00:00",
         "path": "src/output.rs"
       },
       {
@@ -5099,11 +5102,11 @@
         "path": "src/commands/ignore.rs"
       },
       {
-        "content_hash": "6d333cdf46a373da",
+        "content_hash": "272b96a0f32ad659",
         "id": "62532fce-0993-4eb2-94cd-f9c069a6e502",
-        "imports": "[\"src/cli.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
+        "imports": "[\"src/cli.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/delegate.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T05:33:22.924894439+00:00",
+        "last_modified": "2026-06-10T08:43:29.348501552+00:00",
         "path": "src/commands/mod.rs"
       },
       {
@@ -5163,19 +5166,19 @@
         "path": "src/commands/cluster.rs"
       },
       {
-        "content_hash": "f3995f7d9f51a908",
+        "content_hash": "3aeb5cfb50166f7b",
         "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:22:06.861683172+00:00",
+        "last_modified": "2026-06-10T08:41:05.493147502+00:00",
         "path": "src/types.rs"
       },
       {
-        "content_hash": "40b28363934b8d26",
+        "content_hash": "a19482189957c516",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:31:55.686161114+00:00",
+        "last_modified": "2026-06-10T08:44:19.662367038+00:00",
         "path": "src/commands/next.rs"
       },
       {
@@ -5211,19 +5214,19 @@
         "path": "src/commands/validation.rs"
       },
       {
-        "content_hash": "5aaa9261a85c1e1f",
+        "content_hash": "9d8ad7c982cceefd",
         "id": "a81af48d-72ad-4b70-8da4-813de7f8b7dd",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T12:31:24.527306232+00:00",
+        "last_modified": "2026-06-10T08:40:54.225959690+00:00",
         "path": "src/db/queries/meta.rs"
       },
       {
-        "content_hash": "ea880d6a47344d21",
+        "content_hash": "592aa33bde9dd4c5",
         "id": "aaff5296-2082-46f5-8d48-6203c07352df",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T13:36:28.796802190+00:00",
+        "last_modified": "2026-06-10T08:43:58.152846891+00:00",
         "path": "src/commands/coverage.rs"
       },
       {
@@ -5259,11 +5262,11 @@
         "path": "src/commands/hotspots.rs"
       },
       {
-        "content_hash": "43ef7fa217bf80f0",
+        "content_hash": "7a15d5d485585119",
         "id": "b88058a0-287e-4cd1-85d0-d02caa0b996a",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T12:51:10.995404421+00:00",
+        "last_modified": "2026-06-10T08:41:49.962358487+00:00",
         "path": "src/commands/init.rs"
       },
       {
@@ -5291,27 +5294,27 @@
         "path": "src/commands/status.rs"
       },
       {
-        "content_hash": "2941fb478d5ff0c0",
+        "content_hash": "ba492ae875e3a0e2",
         "id": "bec5a791-c098-48e4-8444-bd7de2b7c465",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:25:15.554885003+00:00",
+        "last_modified": "2026-06-10T08:45:14.079665378+00:00",
         "path": "src/db/queries/integrity.rs"
       },
       {
-        "content_hash": "4e8bca8dc70bda18",
+        "content_hash": "e5f247f947552a82",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T07:01:51.356959326+00:00",
+        "last_modified": "2026-06-10T08:44:52.007451854+00:00",
         "path": "src/db/queries/stats.rs"
       },
       {
-        "content_hash": "332165ea0c8afcd0",
+        "content_hash": "2802f4e110176a5f",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-10T06:44:15.506634506+00:00",
+        "last_modified": "2026-06-10T08:43:12.376088292+00:00",
         "path": "src/cli.rs"
       },
       {
@@ -5387,6 +5390,7 @@
         "path": "src/commands/sync.rs"
       }
     ],
+    "Delegation": [],
     "Ignore": [
       {
         "author": "llm:builder",
@@ -6196,6 +6200,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/smells.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "178f3fc3-4da4-4113-a79b-8ca29f230157",
+        "kind": "transition",
+        "target_id": "3c32bb1c-9087-4b32-8705-f4e7ccf4634f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
         "author": "llm:builder",
         "created_at": "2026-06-09T19:31:07.825735+00:00",
         "id": "182068a9-d8e2-41e2-b5e5-b8434c91fb3b",
@@ -6284,6 +6297,15 @@
         "target_id": "71a399ec-ab03-4523-9146-e2c712b60463",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "1e4df370-b639-442a-b0ea-037fc26d5ef3",
+        "kind": "transition",
+        "target_id": "95b38298-3b47-413e-bba9-c849a0818d64",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
       },
       {
         "author": "loom",
@@ -6422,6 +6444,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "22e5fde6-ac48-4edd-ad5e-365a4b68d7ce",
+        "kind": "transition",
+        "target_id": "3f29f2c0-5ab8-4e8a-b76b-0d2f9521f99c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/output.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-09T19:57:05.034661+00:00",
         "id": "22ef0c08-d6ee-411e-a5bd-f8adbe5f1ea5",
         "kind": "transition",
@@ -6509,6 +6540,15 @@
         "target_id": "d9616d9c-75e3-42b4-b3fe-f73d8da934da",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "27a2b1df-a87e-453c-b501-c276264f556e",
+        "kind": "transition",
+        "target_id": "2b277a55-74c7-41c7-99fe-efeb1b64318c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
       },
       {
         "author": "loom",
@@ -7060,6 +7100,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "4a498024-a383-449c-b4f4-b457efa7999a",
+        "kind": "transition",
+        "target_id": "7f1eae0d-11a0-4541-a860-9279dba9967e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/output.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:18.231427+00:00",
         "id": "4af96766-ee22-4f03-87ae-d68230fb5ba2",
@@ -7103,6 +7152,15 @@
         "target_id": "4d0f8265-0b79-4c2d-8572-c86839930ee6",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/codefile.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "4e70065a-1c7d-4b10-86ce-37d9a20b3a41",
+        "kind": "transition",
+        "target_id": "c78d727f-55ae-484b-9236-aea8d23c355b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
       },
       {
         "author": "loom",
@@ -7465,6 +7523,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "61f1421e-50d0-4c4c-bf4c-33569034c87b",
+        "kind": "transition",
+        "target_id": "fdb1edbc-ca37-417e-98e4-9018920b79b2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:03.244044+00:00",
         "id": "621df88c-1c31-424c-b244-94006553ebb7",
@@ -7607,6 +7674,15 @@
         "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "6ad3550b-435c-491c-ac4c-7aaf4f06b8ff",
+        "kind": "transition",
+        "target_id": "1a044afc-4911-4cb8-a13a-662df4368450",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/output.rs changed)"
       },
       {
         "author": "llm:fixer",
@@ -8311,6 +8387,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "987f996f-3383-4ac5-8050-3298705c17f9",
+        "kind": "transition",
+        "target_id": "27de2ecb-340c-4c1a-bb12-755fbbeeeb8e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:04.756985+00:00",
         "id": "98f95228-75d3-4fd7-8afd-b8fd1deb9f6f",
@@ -8327,6 +8412,15 @@
         "target_id": "d375b57b-1b67-413d-8cad-3c5e43230b79",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "9970948e-ff77-4832-8875-c968d2815abf",
+        "kind": "transition",
+        "target_id": "c4cc5d09-1059-4875-ba4b-fb070490441b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
       },
       {
         "author": "llm:quality",
@@ -8689,6 +8783,15 @@
         "text": "uninspected → passing"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "aca6e0b5-943d-455a-82ed-bd2231e3b3db",
+        "kind": "transition",
+        "target_id": "305562cc-81be-4851-8840-0876c6bee91f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/output.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:57.424312+00:00",
         "id": "ad3b16fd-13b3-4139-9955-aa5b53e858b9",
@@ -8968,6 +9071,15 @@
         "text": "passing → needs_reverification (sync: src/db/queries/governs.rs changed)"
       },
       {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "bf9c2452-d368-4e63-8297-52205ca3a826",
+        "kind": "transition",
+        "target_id": "df480f2d-7f5c-4d9d-b542-112211fcc68e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:03.357799+00:00",
         "id": "c02fc357-b638-4641-8abf-5516aa9ed787",
@@ -9191,6 +9303,15 @@
         "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/codefile.rs changed)"
+      },
+      {
+        "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "ceabfd34-4982-466b-9ff9-2bbac122285e",
+        "kind": "transition",
+        "target_id": "c65a3245-1fd7-4995-832a-d5e85c0d711f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/output.rs changed)"
       },
       {
         "author": "loom",
@@ -10130,6 +10251,15 @@
       },
       {
         "author": "loom",
+        "created_at": "2026-06-10T08:49:05.223929+00:00",
+        "id": "f8c607a7-888b-41d0-b111-c58cad637a3a",
+        "kind": "transition",
+        "target_id": "92af5219-bfc2-4e86-83e4-3dbfc99a4bbd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "f8efd851-a4f3-4fbb-b47a-ebb8004e862d",
         "kind": "transition",
@@ -10490,7 +10620,7 @@
         "command": "./target/debug/loom status --json | python3 -c 'import sys,json; gs=json.load(sys.stdin)[\"graph_state\"]; assert gs[\"phase\"]'",
         "description": "",
         "id": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-09T19:11:27.493522+00:00",
         "name": "status --json carries the graph_state pulse",
         "validation_type": "assertion"

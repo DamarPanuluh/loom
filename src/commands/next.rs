@@ -413,6 +413,9 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+    crate::db::queries::ensure_owned(
+        db, "work the build queue (there is nothing to build in someone else's repo)",
+    )?;
     let candidates = build_candidates(db)?;
     let gs = graph_state(db)?;
 

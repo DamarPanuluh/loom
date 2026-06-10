@@ -108,9 +108,19 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
         edges.insert(etype.to_string(), J::Array(items));
     }
 
+    // The graph's identity travels with it — other looms reference this
+    // (graph_id) and readers know whose testimony the export is (custody).
+    let meta = super::meta::get_meta(db)?;
+    let (gid, gname, custody) = meta
+        .map(|m| (m.graph_id, m.graph_name, m.custody))
+        .unwrap_or_default();
+
     Ok(json!({
         "loom_export": 1,
         "schema_version": schema::SCHEMA_VERSION,
+        "graph_id": gid,
+        "graph_name": gname,
+        "custody": custody,
         "nodes": nodes,
         "edges": edges,
     }))
@@ -144,6 +154,19 @@ pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
                 "Graph already contains {lbl} nodes — import only restores into a fresh `loom init`."
             );
         }
+    }
+
+    // A restore IS the exported graph — adopt its identity + custody (the
+    // fresh init's identity was a placeholder). Older exports without one
+    // keep the fresh identity.
+    let gid = data.get("graph_id").and_then(J::as_str).unwrap_or("");
+    if !gid.is_empty() {
+        super::meta::set_identity(
+            db,
+            gid,
+            data.get("graph_name").and_then(J::as_str).unwrap_or(""),
+            data.get("custody").and_then(J::as_str).unwrap_or("owned"),
+        )?;
     }
 
     let mut report = ImportReport::default();

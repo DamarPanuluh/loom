@@ -88,6 +88,23 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         ));
     }
 
+    // Identity + custody on the meta sentinel (federation).
+    if let Some(m) = super::meta::get_meta(db)? {
+        if !m.custody.is_empty() && !matches!(m.custody.as_str(), "owned" | "observed") {
+            issues.push(format!(
+                "LoomMeta has invalid custody '{}' (valid: owned, observed)",
+                m.custody
+            ));
+        }
+        if m.graph_id.is_empty() {
+            hints.push(
+                "this graph has no identity (pre-federation) — run `loom init .` to backfill \
+                 graph_id/graph_name so other looms can reference it"
+                    .to_string(),
+            );
+        }
+    }
+
     // 2. Node counts + required-property presence.
     let mut node_counts = Vec::new();
     for &lbl in NODE_LABELS {

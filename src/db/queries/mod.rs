@@ -14,6 +14,7 @@ mod row;
 
 pub mod codefile;
 pub mod completeness;
+pub mod delegation;
 pub mod governs;
 pub mod hierarchy;
 pub mod ignore;
@@ -36,6 +37,7 @@ pub mod validation;
 // its helpers (via `super::row`).
 pub use codefile::*;
 pub use completeness::*;
+pub use delegation::*;
 pub use governs::*;
 pub use hierarchy::*;
 pub use ignore::*;
@@ -225,7 +227,7 @@ mod tests {
     /// Init helper that also writes the LoomMeta sentinel doctor expects.
     fn db_inited(n: usize) -> (GrafeoDb, Vec<String>) {
         let (db, ids) = db_with_intents(n);
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t"))
+        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned"))
             .unwrap();
         (db, ids)
     }
@@ -335,7 +337,7 @@ mod tests {
     #[test]
     fn implements_defaults_passing() {
         let (db, ids) = db_with_intents(1);
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t")).unwrap();
+        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned")).unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
         let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
@@ -423,7 +425,7 @@ mod tests {
         let all = list_all_hierarchy(&db).unwrap();
         assert_eq!(all.len(), 2, "only the two valid edges should exist: {all:?}");
         // Tree is well-formed → doctor sees no hierarchy issues.
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t")).unwrap();
+        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned")).unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(!rep.issues.iter().any(|i| i.contains("HIERARCHY") || i.contains("parent")), "{:?}", rep.issues);
     }
@@ -761,6 +763,69 @@ mod tests {
         assert!(!rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
     }
 
+    /// Federation: a graph has an identity that travels with its export, and a
+    /// restore ADOPTS it (the imported graph IS that graph, not a new one).
+    #[test]
+    fn graph_identity_travels_through_export_import() {
+        let (db, _) = db_with_intents(1);
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-grid", "grid", "observed",
+        )).unwrap();
+        let m = get_meta(&db).unwrap().unwrap();
+        assert_eq!((m.graph_id.as_str(), m.graph_name.as_str(), m.custody.as_str()),
+                   ("g-grid", "grid", "observed"));
+        assert!(m.observed());
+
+        let export = export_graph(&db).unwrap();
+        assert_eq!(export["graph_id"], "g-grid");
+        assert_eq!(export["graph_name"], "grid");
+        assert_eq!(export["custody"], "observed");
+
+        // Fresh init elsewhere gets a placeholder identity; import adopts.
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-fresh", "fresh", "owned",
+        )).unwrap();
+        import_graph(&db2, &export).unwrap();
+        let m2 = get_meta(&db2).unwrap().unwrap();
+        assert_eq!(m2.graph_id, "g-grid", "restore adopts the exported identity");
+        assert_eq!(m2.custody, "observed");
+    }
+
+    /// The custody gate: an observed graph (someone else's code) rejects
+    /// actions that claim building/fixing; an owned graph passes.
+    #[test]
+    fn custody_gate_blocks_observed_graphs() {
+        let (db, _) = db_with_intents(0);
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-x", "vendor-sdk", "observed",
+        )).unwrap();
+        let err = ensure_owned(&db, "mark an edge fixed").unwrap_err().to_string();
+        assert!(err.contains("OBSERVES"), "{err}");
+        assert!(err.contains("vendor-sdk"), "names the graph: {err}");
+
+        let (db2, _) = db_inited(0); // owned
+        assert!(ensure_owned(&db2, "anything").is_ok());
+    }
+
+    /// Delegations round-trip and travel with the export (they're a node label).
+    #[test]
+    fn delegation_roundtrip() {
+        use crate::types::Delegation;
+        let (db, _) = db_inited(0);
+        insert_delegation(&db, &Delegation {
+            id: "d0".into(), pattern: "services/grid/**".into(),
+            target: "services/grid/loom.graph.json".into(),
+            author: "llm:builder".into(), created_at: "t".into(),
+        }).unwrap();
+        let ds = list_delegations(&db).unwrap();
+        assert_eq!(ds.len(), 1);
+        assert_eq!(ds[0].pattern, "services/grid/**");
+        assert_eq!(ds[0].target, "services/grid/loom.graph.json");
+        let export = export_graph(&db).unwrap();
+        assert_eq!(export["nodes"]["Delegation"].as_array().unwrap().len(), 1);
+    }
+
     /// A GOVERNS verdict inherits DOWN the hierarchy: a rule held against a
     /// component covers its coded descendants in the unmeasured-intents smell,
     /// so measuring at the honest altitude clears the smell instead of leaving
@@ -852,7 +917,7 @@ mod tests {
     #[test]
     fn doctor_flags_version_mismatch() {
         let (db, _) = db_with_intents(0);
-        db.execute(&crate::db::schema::insert_meta("999", "t")).unwrap();
+        db.execute(&crate::db::schema::insert_meta("999", "t", "g-test", "testgraph", "owned")).unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(!rep.version_ok, "expected version mismatch");
         assert!(!rep.healthy());

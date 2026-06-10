@@ -23,6 +23,11 @@
 /// v3: every field now declares its owning agent role (see `role`); HIERARCHY
 /// dropped its vestigial `inspection_status` (the tree is enforced at insert, not
 /// inspected); GOVERNS gained `confidence` to match the other inspectable edges.
+///
+/// Still v3 after the federation additions (graph identity + custody on the
+/// meta sentinel, the Delegation label, CodeFile.content_hash): all additive —
+/// older graphs stay consistent (identity backfills on `loom init`, missing
+/// labels/props simply read empty) and older exports still import.
 pub const SCHEMA_VERSION: &str = "3";
 
 // ---------------------------------------------------------------------------
@@ -37,7 +42,11 @@ pub mod label {
     pub const NOTE: &str = "Note";
     /// A coverage exclusion pattern (the escape hatch) — recorded with a reason.
     pub const IGNORE: &str = "Ignore";
-    /// Sentinel node marking an initialised graph (carries the schema version).
+    /// A subtree delegated to ANOTHER loom graph (monorepo/federation):
+    /// coverage treats matching files as covered-by-child, not gaps.
+    pub const DELEGATION: &str = "Delegation";
+    /// Sentinel node marking an initialised graph (carries the schema version,
+    /// the graph's identity, and its custody).
     pub const META: &str = "LoomMeta";
 }
 
@@ -49,6 +58,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::VALIDATION,
     label::NOTE,
     label::IGNORE,
+    label::DELEGATION,
 ];
 
 // ---------------------------------------------------------------------------
@@ -177,6 +187,17 @@ pub mod prop {
     // Ignore (coverage escape hatch)
     pub const PATTERN: &str = "pattern";
     pub const REASON: &str = "reason";
+    // Delegation (federation: subtree owned by another graph)
+    /// Delegation: path to the child graph's committed export (loom.graph.json).
+    pub const TARGET: &str = "target";
+    // LoomMeta identity + custody (federation; backfilled on `loom init`)
+    /// Stable identity of THIS graph (uuid) — what other looms reference.
+    pub const GRAPH_ID: &str = "graph_id";
+    /// Human name of this graph (defaults to the repo directory name).
+    pub const GRAPH_NAME: &str = "graph_name";
+    /// "owned" (we can change this code) | "observed" (mapping someone else's
+    /// code: build/fix lanes are disabled — findings, not fixes).
+    pub const CUSTODY: &str = "custody";
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +240,10 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
         ],
         self::label::IGNORE => &[
             (ID, LOOM), (PATTERN, BUILDER), (REASON, BUILDER),
+            (AUTHOR, ANY), (CREATED_AT, LOOM),
+        ],
+        self::label::DELEGATION => &[
+            (ID, LOOM), (PATTERN, BUILDER), (TARGET, BUILDER),
             (AUTHOR, ANY), (CREATED_AT, LOOM),
         ],
         _ => &[],
@@ -268,17 +293,30 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
 pub const CHECK_INITIALIZED: &str = "MATCH (m:LoomMeta) RETURN m.version LIMIT 1";
 
 /// Insert the `LoomMeta` sentinel node that marks a graph as initialised.
-/// `last_synced` starts empty (never synced).
-pub fn insert_meta(version: &str, created_at: &str) -> String {
+/// `last_synced` starts empty (never synced). Identity (graph_id/name) and
+/// custody are stamped at init so other looms can reference this graph.
+pub fn insert_meta(
+    version: &str,
+    created_at: &str,
+    graph_id: &str,
+    graph_name: &str,
+    custody: &str,
+) -> String {
     format!(
         "INSERT (:{meta} {{{version_k}: '{version}', {created_k}: '{created}', \
-         {synced_k}: ''}})",
+         {synced_k}: '', {gid_k}: '{gid}', {gname_k}: '{gname}', {custody_k}: '{custody}'}})",
         meta = label::META,
         version_k = prop::VERSION,
         created_k = prop::CREATED_AT,
         synced_k = prop::LAST_SYNCED,
+        gid_k = prop::GRAPH_ID,
+        gname_k = prop::GRAPH_NAME,
+        custody_k = prop::CUSTODY,
         version = esc(version),
         created = esc(created_at),
+        gid = esc(graph_id),
+        gname = esc(graph_name),
+        custody = esc(custody),
     )
 }
 

@@ -16,14 +16,6 @@ impl Printer {
                 .unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e))
         );
     }
-
-    pub fn success(&self, msg: &str) {
-        if self.json {
-            println!("{}", serde_json::json!({"status": "ok", "message": msg}));
-        } else {
-            println!("✓ {}", msg);
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -67,9 +59,16 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     // Two completeness axes: vertical is binding (the spine), horizontal optional.
     let vert = if s.vertically_complete { "✓" } else { "✗" };
     let horiz = if s.horizontally_explored { "✓" } else { "○" };
+    let ident = if s.graph_name.is_empty() {
+        "graph".to_string()
+    } else if s.custody == "observed" {
+        format!("graph '{}' (observed)", s.graph_name)
+    } else {
+        format!("graph '{}'", s.graph_name)
+    };
     format!(
-        "graph: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}",
-        s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase
+        "{}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}",
+        ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase
     )
 }
 

@@ -35,11 +35,25 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Initialise a .loom/ directory and its embedded graph database.
+    /// Initialise a .loom/ directory and its embedded graph database. Stamps
+    /// the graph's identity (graph_id + name) — re-running is safe and
+    /// backfills identity on older graphs.
     Init {
         /// Directory to initialise (default: current directory).
         #[arg(default_value = ".")]
         path: String,
+
+        /// Human name for this graph (default: the directory name). Other
+        /// looms reference this graph by name/id in a federation.
+        #[arg(long)]
+        name: Option<String>,
+
+        /// This graph OBSERVES a repo its drivers don't own (vendor SDK,
+        /// upstream dep, another team's service): mapping, measuring, and
+        /// proving all work; build/fix lanes are disabled — findings, not
+        /// fixes. Verdicts export as observer testimony.
+        #[arg(long)]
+        observed: bool,
     },
 
     /// Show graph health: intent count, edge coverage, open issues.
@@ -174,6 +188,14 @@ pub enum Command {
         subcommand: IgnoreCmd,
     },
 
+    /// Delegate a subtree to ANOTHER loom graph (monorepo/federation):
+    /// `loom coverage` treats matching files as covered-by-child — a verified
+    /// boundary (the child's committed export must exist), not a blanket ignore.
+    Delegate {
+        #[command(subcommand)]
+        subcommand: DelegateCmd,
+    },
+
     /// Export the graph as deterministic JSON — commit it so the graph travels
     /// with the repo (and graph changes become diffable in PRs).
     #[command(after_help = "EXAMPLES:\n  \
@@ -228,6 +250,34 @@ pub enum IgnoreCmd {
     },
 
     /// List all coverage exclusion patterns and their reasons.
+    List,
+}
+
+// ---------------------------------------------------------------------------
+// Delegate subcommands (federation: a subtree owned by another graph)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum DelegateCmd {
+    /// Delegate files matching a glob to a child graph's committed export.
+    #[command(after_help = "EXAMPLE (monorepo root):\n  \
+        loom delegate add 'services/grid/**' --to services/grid/loom.graph.json")]
+    Add {
+        /// Glob pattern for the delegated subtree (quote it).
+        pattern: String,
+
+        /// Path to the child graph's committed export (loom.graph.json) —
+        /// the verifiable boundary artifact.
+        #[arg(long = "to")]
+        target: String,
+
+        /// Who decided — role-aware (e.g. llm:builder, human). Defaults to
+        /// $LOOM_AGENT, else "llm".
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// List all delegations (and whether each child export exists).
     List,
 }
 

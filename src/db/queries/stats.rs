@@ -79,6 +79,11 @@ pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphState {
     pub version: String,
+    /// This graph's identity (uuid + human name) — what other looms reference.
+    pub graph_id: String,
+    pub graph_name: String,
+    /// "owned" | "observed" ("" = owned, pre-identity graph).
+    pub custody: String,
     pub intents: i64,
     pub relates_to_edges: i64,
     pub implements_edges: i64,
@@ -243,6 +248,9 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let meta = get_meta(db)?;
     Ok(GraphState {
         version: meta.as_ref().map(|m| m.version.clone()).unwrap_or_default(),
+        graph_id: meta.as_ref().map(|m| m.graph_id.clone()).unwrap_or_default(),
+        graph_name: meta.as_ref().map(|m| m.graph_name.clone()).unwrap_or_default(),
+        custody: meta.as_ref().map(|m| m.custody.clone()).unwrap_or_default(),
         intents,
         relates_to_edges,
         implements_edges,

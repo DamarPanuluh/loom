@@ -427,6 +427,9 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         EdgeCmd::Fix { edge_id, description } => {
             let by = gate::acting_in_lane("mark a failing edge fixed", &[role::FIXER], None)?;
+            crate::db::queries::ensure_owned(
+                &db, "mark an edge fixed (a claim that you changed the code)",
+            )?;
             gate::require_substantive(
                 "description", &description,
                 "what was changed in the code to resolve the violation",

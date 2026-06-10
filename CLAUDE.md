@@ -212,9 +212,15 @@ The graph structure IS the impact analysis. No custom algorithm — just edge tr
 ## Commands reference
 
 ```
-loom init [path]
-  Creates .loom/ directory, initializes Grafeo DB with full schema.
-  Idempotent — safe to run twice.
+loom init [path] [--name <graph-name>] [--observed]
+  Creates .loom/ directory, initializes Grafeo DB with full schema, and stamps
+  the graph's IDENTITY (graph_id uuid + human name, default = dir name) — what
+  other looms reference in a federation; it travels in the export.
+  --observed = this graph maps code its drivers DON'T own (vendor SDK, another
+  team's service): discovery/quality/validation all work, but build/fix lanes
+  are disabled (custody gate) — findings, not fixes. Idempotent — re-running is
+  safe and backfills identity on older graphs (also the way to set --name/
+  --observed later).
 
 loom status
   Graph stats: intent count, edge counts by inspection_status, open issues.
@@ -404,9 +410,10 @@ recurrence memory, read by the recurrent_trouble smell.
 
 loom coverage
   Reconcile files on disk (respecting .gitignore) against the graph. Buckets each
-  file: grounded (≥1 IMPLEMENTS) / excluded (matches an ignore pattern) /
-  registered-but-ungrounded (unexplained code) / unaccounted (gap). Ensures nothing
-  is silently missed. Done = no unaccounted.
+  file: grounded (≥1 IMPLEMENTS) / delegated (owned by a child graph — federation) /
+  excluded (matches an ignore pattern) / registered-but-ungrounded (unexplained
+  code) / unaccounted (gap). Ensures nothing is silently missed. Done = no
+  unaccounted (missing delegation targets are flagged).
 
 loom detect
   Programmable repo introspection: stack (from manifests), source presence, top
@@ -416,6 +423,15 @@ loom ignore add <glob> --reason <why> [--author human|llm]
   The coverage escape hatch, stored IN the graph (not a .loomignore file) as a
   recorded, doctor-checkable decision. `.gitignore` is honored separately.
 loom ignore list
+
+loom delegate add <glob> --to <child-export-path>
+loom delegate list
+  FEDERATION (monorepo): a subtree owned by ANOTHER loom graph. `loom coverage`
+  buckets matching files as `delegated` — covered by the child, verified against
+  its committed export (a missing target is reported, never silently trusted).
+  The root grounds seam intents in the children's exports; content-hash sync
+  then ripples cross-service automatically. Data flows UP only (children
+  export, parent observes) — a parent never writes into a child's graph.
 
 (Discoverability extras: bare `loom` prints an orientation; `loom intent add` takes
  `--aspect happy|sad|fallback|…`; `loom edge implement … --locator "fn run"` grounds

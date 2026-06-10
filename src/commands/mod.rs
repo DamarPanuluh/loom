@@ -5,6 +5,7 @@ use crate::output::Printer;
 pub mod cluster;
 pub mod codefile;
 pub mod coverage;
+pub mod delegate;
 pub mod detect;
 pub mod doctor;
 pub mod export;
@@ -33,7 +34,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         None => return orient(&printer),
     };
     match command {
-        Command::Init        { path }       => init::run(&path, &printer),
+        Command::Init        { path, name, observed } =>
+            init::run(&path, name.as_deref(), observed, &printer),
         Command::Status                     => status::run(&printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
@@ -54,6 +56,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Coverage                   => coverage::run(&printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
+        Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
         Command::Export      { path, out, check } => {
             let out = path.or(out).unwrap_or_else(|| "loom.graph.json".to_string());
             export::run(&out, check, &printer)

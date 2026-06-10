@@ -27,6 +27,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             lifecycle.parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+            // planned/needs_change promise code changes — meaningless on a
+            // repo this graph merely observes.
+            if lifecycle != "implemented" {
+                crate::db::queries::ensure_owned(
+                    &db, &format!("declare a '{lifecycle}' intent (a promise to change the code)"),
+                )?;
+            }
 
             let source_refs = serde_json::to_string(&sources)?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -106,6 +113,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 "set an intent lifecycle",
                 &[role::BUILDER, role::FIXER],
                 None,
+            )?;
+            crate::db::queries::ensure_owned(
+                &db, "change an intent's lifecycle (a claim about building/changing the code)",
             )?;
             lifecycle.parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
