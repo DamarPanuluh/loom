@@ -32,7 +32,7 @@ NOTHING; a real change flags + notes the cause on the edge) → ISO 5055 verdict
 passes, drift fails) → import into a fresh graph → doctor. 13 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
-Unit/regression suite (56 tests, in-memory DB, fast):
+Unit/regression suite (58 tests, in-memory DB, fast):
 
 ```bash
 cargo test

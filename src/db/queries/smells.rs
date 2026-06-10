@@ -258,17 +258,44 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //    someone thought to apply a rule. Surface every rule × intent-with-code
     //    pairing that was never considered (no GOVERNS edge of ANY state —
     //    `independent` records "considered, doesn't apply" and silences this).
+    //
+    //    HIERARCHY-AWARE: a verdict INHERITS DOWN the tree. A rule held against
+    //    a component covers that component's descendants (a child can still get
+    //    its own, more specific edge). Measuring at the highest altitude where
+    //    the evidence is honest is the *encouraged* strategy — without
+    //    inheritance this smell punished it by re-flagging every leaf, inviting
+    //    a busywork sweep of vacuous per-leaf verdicts.
     let considered: HashSet<(String, String)> = governs
         .iter()
         .map(|g| (g.rule_id.clone(), g.intent_id.clone()))
         .collect();
+    let parent_of: HashMap<&str, &str> = hierarchy
+        .iter()
+        .map(|(p, c)| (c.as_str(), p.as_str()))
+        .collect();
+    // Considered directly OR via any ancestor's verdict on the same rule.
+    // The tree is insert-enforced acyclic; the visited set is belt-and-braces.
+    let considered_up = |rule_id: &str, intent_id: &str| -> bool {
+        let mut cur = Some(intent_id);
+        let mut visited: HashSet<&str> = HashSet::new();
+        while let Some(id) = cur {
+            if !visited.insert(id) {
+                return false;
+            }
+            if considered.contains(&(rule_id.to_string(), id.to_string())) {
+                return true;
+            }
+            cur = parent_of.get(id).copied();
+        }
+        false
+    };
     for r in &rules {
         let unmeasured: Vec<&crate::types::Intent> = intents
             .iter()
             .filter(|i| {
                 i.status != "deprecated"
                     && files_of.contains_key(i.id.as_str()) // has real code to measure
-                    && !considered.contains(&(r.id.clone(), i.id.clone()))
+                    && !considered_up(&r.id, &i.id)
             })
             .collect();
         if unmeasured.is_empty() {
@@ -283,14 +310,14 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             kind: "unmeasured_intents".into(),
             score: unmeasured.len() as f64,
             summary: format!(
-                "rule '{}' has never been held against {} intent(s) that have code",
+                "rule '{}' has never been held against {} intent(s) that have code (neither directly nor via an ancestor's verdict)",
                 r.name,
                 unmeasured.len()
             ),
             evidence: format!("e.g. {}", sample.join(" · ")),
             remedy: format!(
-                "per intent: loom rule apply {} <intent-id>, inspect, then loom rule verdict {} <intent-id> --status passing|failing|independent (independent = measured, rule doesn't apply)",
-                r.id, r.id
+                "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite",
+                r.id
             ),
         });
     }

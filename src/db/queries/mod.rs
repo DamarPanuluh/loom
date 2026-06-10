@@ -761,6 +761,71 @@ mod tests {
         assert!(!rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
     }
 
+    /// A GOVERNS verdict inherits DOWN the hierarchy: a rule held against a
+    /// component covers its coded descendants in the unmeasured-intents smell,
+    /// so measuring at the honest altitude clears the smell instead of leaving
+    /// a wall of per-leaf busywork. Uncovered siblings still flag.
+    #[test]
+    fn unmeasured_smell_respects_ancestor_verdicts() {
+        let (db, ids) = db_with_intents(3); // 0 = component, 1 = its child, 2 = uncovered
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        // All three have code (the smell only measures coded intents).
+        for (k, iid) in ids.iter().enumerate() {
+            insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
+            insert_implements(&db, &format!("im{k}"), iid, &format!("cf{k}"), "", "", "t").unwrap();
+        }
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "no-eval".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "error".into(),
+        }).unwrap();
+        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        update_governs_verdict(
+            &db, "r0", &ids[0], "passing", "no dynamic evaluation in this component",
+            "workspace clippy denial covers the whole subtree", 0.9, "llm:quality", "t",
+        ).unwrap();
+
+        let unmeasured: Vec<_> = compute_smells(&db).unwrap()
+            .into_iter()
+            .filter(|s| s.kind == "unmeasured_intents")
+            .collect();
+        assert_eq!(unmeasured.len(), 1, "one rule → one finding");
+        let f = &unmeasured[0];
+        assert!(f.summary.contains("1 intent(s)"), "child covered by ancestor: {}", f.summary);
+        assert!(f.evidence.contains("I2"), "only the uncovered sibling flags: {}", f.evidence);
+    }
+
+    /// `loom validation update`: a corrected command resets the proof (the old
+    /// result proved a different command); `loom validation delete` removes the
+    /// node + edges so the intent is provably unproven again.
+    #[test]
+    fn validation_update_resets_proof_and_delete_removes_it() {
+        use crate::types::Validation;
+        let (db, ids) = db_with_intents(1);
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "ledger write".into(), description: String::new(),
+            validation_type: "test".into(), command: "cargo test -p wrong-pkg".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        set_validates_status_for_validation(&db, "v0", "passing", "ran green").unwrap();
+
+        // The command-layer flow: definition updated, then proof reset.
+        assert!(update_validation_definition(&db, "v0", Some("cargo test -p right-pkg"), None).unwrap());
+        update_validation_result(&db, "v0", "not_run", "").unwrap();
+        set_validates_status_for_validation(&db, "v0", "uninspected", "command updated — proof must be re-run").unwrap();
+        let v = get_validation(&db, "v0").unwrap().unwrap();
+        assert_eq!(v.command, "cargo test -p right-pkg");
+        assert_eq!(v.last_result, "not_run");
+        assert_eq!(list_validates_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "uninspected");
+        // …and the intent is back on the validator queue.
+        assert!(validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+
+        assert!(delete_validation(&db, "v0").unwrap());
+        assert!(get_validation(&db, "v0").unwrap().is_none());
+        assert!(list_validates_for_intent(&db, &ids[0]).unwrap().is_empty());
+        assert!(!delete_validation(&db, "v0").unwrap(), "second delete reports not-found");
+    }
+
     /// `loom validation mark` path: a manual_check with no command can be given a
     /// verdict by hand — node last_result + the per-intent VALIDATES edge both move.
     #[test]

@@ -96,6 +96,72 @@ pub fn update_validation_result(
     Ok(true)
 }
 
+/// Fix a validation's definition — command and/or description. A changed
+/// command makes the old result a claim about a *different* proof, so the
+/// caller resets last_result/edges (see `commands::validation`). Returns false
+/// when the validation doesn't exist.
+pub fn update_validation_definition(
+    db: &dyn LoomDb,
+    id: &str,
+    command: Option<&str>,
+    description: Option<&str>,
+) -> Result<bool> {
+    let mut sets = Vec::new();
+    if let Some(c) = command {
+        sets.push(format!("v.command = '{}'", esc(c)));
+    }
+    if let Some(d) = description {
+        sets.push(format!("v.description = '{}'", esc(d)));
+    }
+    if sets.is_empty() {
+        return Ok(get_validation(db, id)?.is_some());
+    }
+    let check = db.execute(&format!(
+        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(id)
+    ))?;
+    if check.rows().is_empty() {
+        return Ok(false);
+    }
+    db.execute(&format!(
+        "MATCH (v:Validation {{id: '{}'}}) SET {}",
+        esc(id),
+        sets.join(", ")
+    ))?;
+    Ok(true)
+}
+
+/// Hard-delete a validation: the node, its VALIDATES edges, and any notes
+/// targeting those edges. For removing mistakes (the validation analogue of
+/// `intent delete`) — intents whose only proof dies become provably unproven
+/// again, which the validate queue surfaces. Returns false if not found.
+pub fn delete_validation(db: &dyn LoomDb, id: &str) -> Result<bool> {
+    let check = db.execute(&format!(
+        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(id)
+    ))?;
+    if check.rows().is_empty() {
+        return Ok(false);
+    }
+    // Prune notes targeting the VALIDATES edges that die with the node.
+    let edges = db.execute(&format!(
+        "MATCH (v:Validation {{id: '{}'}})-[e:VALIDATES]->(:Intent) RETURN e.id AS eid",
+        esc(id)
+    ))?;
+    let cols = super::row::col_map(&edges);
+    for row in edges.rows() {
+        let eid = super::row::str_val(super::row::get(row, &cols, "eid"));
+        if !eid.is_empty() {
+            db.execute(&format!(
+                "MATCH (note:Note) WHERE note.target_id = '{}' DETACH DELETE note",
+                esc(&eid)
+            ))?;
+        }
+    }
+    db.execute(&format!(
+        "MATCH (v:Validation {{id: '{}'}}) DETACH DELETE v", esc(id)
+    ))?;
+    Ok(true)
+}
+
 fn row_to_validation(row: &[Value], cols: &HashMap<&str, usize>) -> Validation {
     Validation {
         id:              str_val(get(row, cols, "v.id")),

@@ -696,6 +696,33 @@ pub enum ValidationCmd {
         reason: Option<String>,
     },
 
+    /// Fix a validation's definition — its shell command and/or description
+    /// (e.g. a wrong cargo package in --command). Changing the command resets
+    /// the proof: last_result → not_run and the VALIDATES edges → uninspected,
+    /// because the old result was about a different command.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom validation update s3-ledger-write-path --command \"cargo test -p grid-infra --test ledger\"")]
+    Update {
+        /// Validation id, name, or unique name fragment.
+        id: String,
+
+        /// The corrected shell command.
+        #[arg(long)]
+        command: Option<String>,
+
+        /// The corrected description.
+        #[arg(long)]
+        description: Option<String>,
+    },
+
+    /// Delete a validation node and its VALIDATES edges (the validation
+    /// analogue of `intent delete` — for removing mistakes). Intents whose
+    /// only proof dies become provably unproven again. Irreversible.
+    Delete {
+        /// Validation id, name, or unique name fragment.
+        id: String,
+    },
+
     /// List all validation nodes.
     List,
 

@@ -80,7 +80,7 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
         ("fix", "`loom next --mode fix` for failing/stale edges."),
         ("coverage", "`loom coverage` — map or `loom ignore` every file so nothing is missed."),
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
-        ("gate", "Encode the codebase's norms (e.g. ISO 5055-style reliability/security/maintainability): `loom rule add …`, `loom rule apply <rule> <intent>`, then earn green — `loom next --mode quality` + `loom rule verdict … --status passing|failing --criterion … --evidence …`."),
+        ("gate", "Encode the codebase's norms (e.g. ISO 5055-style reliability/security/maintainability): `loom rule add …`, `loom rule apply <rule> <intent>`, then earn green — `loom next --mode quality` + `loom rule verdict … --status passing|failing --criterion … --evidence …`. Measure at the highest HONEST altitude: a verdict on a component covers its descendants (the unmeasured smell respects this); drop to a leaf only where the rule has specific bite."),
         ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), overlapping ownership, scatter, tangles, rules never held against coded intents. Refute or confirm each via its remedy; `independent` is as valuable as a fix. Per-file ownership questions: `loom codefile show <path>`."),
         ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]

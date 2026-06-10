@@ -4971,11 +4971,11 @@
         "path": "src/gate.rs"
       },
       {
-        "content_hash": "adabce711faf2b16",
+        "content_hash": "5380f48af7228be2",
         "id": "0e7293c8-d1ce-45bd-8790-67e6e72e9d36",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T02:10:58.993087102+00:00",
+        "last_modified": "2026-06-10T06:39:54.453945677+00:00",
         "path": "src/db/queries/validation.rs"
       },
       {
@@ -5003,11 +5003,11 @@
         "path": "src/db/queries/implements.rs"
       },
       {
-        "content_hash": "f147811e6da523f3",
+        "content_hash": "2ef08513e2874fd2",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": "[\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:32:51.966751259+00:00",
+        "last_modified": "2026-06-10T06:41:15.139279895+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -5019,11 +5019,11 @@
         "path": "src/commands/detect.rs"
       },
       {
-        "content_hash": "66d21cf8c063aa12",
+        "content_hash": "deea996d57347cf7",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": "[\"src/db/mod.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:24:01.348095691+00:00",
+        "last_modified": "2026-06-10T06:39:27.055547326+00:00",
         "path": "src/db/queries/smells.rs"
       },
       {
@@ -5051,11 +5051,11 @@
         "path": "src/db/queries/intent.rs"
       },
       {
-        "content_hash": "fd084e651e1902f3",
+        "content_hash": "40a2737b0a0614fa",
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:34:05.917562179+00:00",
+        "last_modified": "2026-06-10T06:40:44.603883500+00:00",
         "path": "src/db/queries/mod.rs"
       },
       {
@@ -5203,11 +5203,11 @@
         "path": "src/db/queries/completeness.rs"
       },
       {
-        "content_hash": "4af205a8c63680cf",
+        "content_hash": "328f62d6a82efc31",
         "id": "a65ac5b7-1d28-40bd-823c-b464615a19a4",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:26:33.006037524+00:00",
+        "last_modified": "2026-06-10T06:40:20.876578543+00:00",
         "path": "src/commands/validation.rs"
       },
       {
@@ -5307,11 +5307,11 @@
         "path": "src/db/queries/stats.rs"
       },
       {
-        "content_hash": "19e0a52752675064",
+        "content_hash": "140bb7aece96488b",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-10T05:33:21.302092675+00:00",
+        "last_modified": "2026-06-10T06:40:08.567958111+00:00",
         "path": "src/cli.rs"
       },
       {

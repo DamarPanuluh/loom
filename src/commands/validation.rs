@@ -5,8 +5,9 @@ use uuid::Uuid;
 use crate::cli::ValidationCmd;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    get_validation, insert_validates, insert_validation, list_validations, resolve_validation,
-    set_validates_status_for_validation, update_validation_result,
+    delete_validation, get_validation, insert_validates, insert_validation, list_validations,
+    resolve_validation, set_validates_status_for_validation, update_validation_definition,
+    update_validation_result,
 };
 use crate::output::Printer;
 use crate::types::{Validation, ValidationResult};
@@ -136,6 +137,71 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 if n == 0 {
                     println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
                 }
+            }
+        }
+
+        ValidationCmd::Update { id, command, description } => {
+            crate::gate::acting_in_lane(
+                "update a validation definition",
+                &[crate::db::schema::role::BUILDER, crate::db::schema::role::VALIDATOR],
+                None,
+            )?;
+            if command.is_none() && description.is_none() {
+                anyhow::bail!("Nothing to update — pass --command and/or --description.");
+            }
+            let vid = resolve_validation(&db, &id)?;
+            let command_changed = match (&command, get_validation(&db, &vid)?) {
+                (Some(c), Some(v)) => *c != v.command,
+                _ => false,
+            };
+            update_validation_definition(&db, &vid, command.as_deref(), description.as_deref())?;
+            // The old result proved the OLD command — a changed command resets
+            // the proof so green is re-earned by actually running the new one.
+            let mut reset_edges = 0usize;
+            if command_changed {
+                update_validation_result(&db, &vid, "not_run", "")?;
+                reset_edges = set_validates_status_for_validation(
+                    &db, &vid, "uninspected", "command updated — proof must be re-run",
+                )?;
+            }
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "validation_id": vid,
+                    "command_changed": command_changed,
+                    "proof_reset": command_changed,
+                    "intents_reset": reset_edges,
+                }));
+            } else {
+                println!("✓ Validation {vid} updated.");
+                if command_changed {
+                    println!("  Command changed → proof reset (last_result=not_run, {reset_edges} VALIDATES edge(s) → uninspected).");
+                    println!("  → Re-run it: `loom validate <intent>` (or `loom validation mark` for manual proofs).");
+                }
+            }
+        }
+
+        ValidationCmd::Delete { id } => {
+            crate::gate::acting_in_lane(
+                "delete a validation",
+                &[crate::db::schema::role::BUILDER, crate::db::schema::role::VALIDATOR],
+                None,
+            )?;
+            let vid = resolve_validation(&db, &id)?;
+            if !delete_validation(&db, &vid)? {
+                anyhow::bail!(
+                    "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
+                    vid
+                );
+            }
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "id": vid, "deleted": true,
+                    "message": "Validation and its VALIDATES edges removed. Intents that lost \
+                                their only proof will resurface in `loom next --mode validate`.",
+                }));
+            } else {
+                println!("✓ Validation {vid} deleted (with its VALIDATES edges).");
+                println!("  Intents that lost their only proof resurface in `loom next --mode validate`.");
             }
         }
 

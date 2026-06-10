@@ -297,6 +297,14 @@ loom validation mark <id|name> --result blocked --reason "<what it is waiting on
   `blocked` = honest "can't run yet" (live target down, missing credential): leaves
   the validator queue + compass, stays visible in `loom report`, survives sync
   (a code change doesn't unblock it). Re-mark passed/failed to unblock.
+loom validation update <id|name> [--command "<cmd>"] [--description "<text>"]
+  Fix a wrong definition (e.g. a bad cargo package in --command). A changed
+  command RESETS the proof — last_result → not_run, VALIDATES edges →
+  uninspected — because the old result proved a different command.
+loom validation delete <id|name>
+  Remove a mistake (the validation analogue of `intent delete`): node +
+  VALIDATES edges + their notes. Intents that lose their only proof resurface
+  in `loom next --mode validate`.
 loom validation list [--intent <id>]
 
 loom validate <intent-id>
@@ -360,7 +368,10 @@ loom smells [--limit N]
   their intents have no edge — physical evidence vs semantic graph), recurrent
   trouble (a target whose transition history keeps returning to failing/
   needs_change — redesign, don't re-patch), unmeasured intents (a QualityRule
-  exists but was never held against an intent that has code), unused rules.
+  was never held against a coded intent — HIERARCHY-AWARE: a verdict on a
+  component covers its descendants, so measure at the highest honest altitude
+  instead of grinding per-leaf busywork; a leaf can still get its own, more
+  specific verdict), unused rules.
   Each finding carries the exact remedy command. The same suspicion signals
   (import links, shared files, description overlap, same domain) rank
   unexplored pairs in `loom next` discovery, with the why in the work item's
