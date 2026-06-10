@@ -2,6 +2,7 @@ use anyhow::Result;
 use crate::cli::{Cli, Command};
 use crate::output::Printer;
 
+pub mod batch;
 pub mod cluster;
 pub mod codefile;
 pub mod coverage;
@@ -48,6 +49,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id }  => validate::run(&intent_id, &printer),
         Command::Report                     => report::run(&printer),
+        Command::Batch       { file }       => batch::run(&file, &printer),
         Command::Doctor                     => doctor::run(&printer),
         Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),

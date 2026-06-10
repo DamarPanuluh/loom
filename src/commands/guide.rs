@@ -9,7 +9,7 @@ use crate::output::Printer;
 
 const GOLDEN_RULES: &[&str] = &[
     "Drive via `loom next` — it prioritises and tells you the exact next command.",
-    "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below.",
+    "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below. When a sync stales MANY claims at once, re-verify in bulk: read the touched code once per neighborhood, then `loom batch -` with one JSONL verdict per line (same gates as the single commands — bulk changes the ceremony, never the honesty).",
     "Per edge, work the Socratic loop: read both intents → form a hypothesis (\"I expect the code to show X\") → inspect the actual code → confirmed = ground it, code wrong = record the issue, hypothesis wrong = revise and re-inspect. Never record a verdict you didn't check.",
     "Batch by neighborhood: when you inspect an edge, `loom cluster <intent-id>` lists every other unresolved edge touching it — work those while the context is loaded.",
     "Use `--json` on every command for machine-readable output (incl. a `graph_state` pulse).",

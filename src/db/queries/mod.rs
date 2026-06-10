@@ -363,8 +363,21 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
         assert!(gs.horizontally_explored, "grid should be explored");
+        // Unproven implemented leaves route to validate first (handoff order).
+        assert_eq!(gs.phase, "validate", "unproven leaves route to validate, got '{}'", gs.phase);
+        use crate::types::Validation;
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        for (k, id) in ids.iter().enumerate() {
+            insert_validates(&db, &format!("ve{k}"), "v0", id, "", "t").unwrap();
+        }
+
         // 360°: an EMPTY normative plane blocks `complete` — coded intents with
         // zero measuring sticks route to quality (seed a pack).
+        let gs = graph_state(&db).unwrap();
         assert_eq!(gs.phase, "quality", "no rules + coded intents should route to quality, got '{}'", gs.phase);
         assert_eq!(gs.coverage.measured_pairs.total, 0, "no rules → no measuring surface");
 
@@ -383,6 +396,7 @@ mod tests {
                 "criterion text long enough", "evidence text long enough",
                 0.9, "llm:quality", "t").unwrap();
         }
+        // Measured + proven + grounded + explored → genuinely complete.
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.coverage.measured_pairs.covered, 2);
         assert_eq!(gs.phase, "complete", "compass said '{}' but next is empty", gs.phase);
@@ -519,11 +533,19 @@ mod tests {
     /// vertical spine is complete it drives phase=quality (`loom rule check`).
     #[test]
     fn governs_default_uninspected_drives_quality_phase() {
+        use crate::types::Validation;
         let (db, ids) = db_inited(1);
         // Realize the single leaf so the vertical spine is complete and the
-        // compass can advance to the quality lane.
+        // compass can advance past ground; prove it so it can advance past
+        // validate (missing proof routes there first — handoff order).
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
             detection_logic: "many concerns in one unit".into(), severity: "warning".into(),
@@ -537,6 +559,110 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
         assert_eq!(gs.phase, "quality", "uninspected quality gate should drive the quality lane");
+    }
+
+    /// THE COHERENCE INVARIANT: whenever the compass names an actionable
+    /// phase, that phase's queue is non-empty — `loom status` may never send
+    /// an agent to a `loom next` that answers "nothing to do". Walks one graph
+    /// through every phase, asserting the invariant at each step. (The two
+    /// historical coherence bugs — phase=validate with an empty validator
+    /// queue, and stale GOVERNS driving the queue but not the compass — are
+    /// both covered by the walk.)
+    #[test]
+    fn compass_phase_always_has_a_nonempty_queue() {
+        use crate::types::Validation;
+        fn assert_coherent(db: &GrafeoDb, step: &str) {
+            let gs = graph_state(db).unwrap();
+            match gs.phase.as_str() {
+                "build" => assert!(!build_candidates(db).unwrap().is_empty(),
+                    "[{step}] phase=build but build queue empty"),
+                "fix" => assert!(!scored_candidates(db, "fix").unwrap().is_empty(),
+                    "[{step}] phase=fix but fix queue empty"),
+                "validate" => assert!(!validate_candidates(db).unwrap().is_empty(),
+                    "[{step}] phase=validate but validator queue empty"),
+                "quality" => {
+                    // phase=quality with an empty queue is legal ONLY as the
+                    // "normative plane empty — seed a pack" prompt.
+                    let q = quality_candidates(db).unwrap();
+                    let rules = list_rules(db).unwrap();
+                    assert!(!q.is_empty() || rules.is_empty(),
+                        "[{step}] phase=quality, rules exist, but quality queue empty");
+                }
+                "discovery" => assert!(
+                    !scored_candidates(db, "discovery").unwrap().is_empty()
+                        || !unexplored_pairs_scored(db).unwrap().is_empty(),
+                    "[{step}] phase=discovery but nothing to discover"),
+                "complete" => {
+                    assert!(build_candidates(db).unwrap().is_empty(), "[{step}] complete with build work");
+                    assert!(scored_candidates(db, "fix").unwrap().is_empty(), "[{step}] complete with fix work");
+                    assert!(validate_candidates(db).unwrap().is_empty(), "[{step}] complete with validate work");
+                    assert!(quality_candidates(db).unwrap().is_empty(), "[{step}] complete with quality work");
+                }
+                _ => {}
+            }
+        }
+
+        let (db, ids) = db_inited(2);
+        assert_coherent(&db, "fresh graph");
+
+        // planned → build
+        set_intent_lifecycle(&db, &ids[0], "planned", "t").unwrap();
+        assert_coherent(&db, "planned intent");
+        set_intent_lifecycle(&db, &ids[0], "implemented", "t").unwrap();
+
+        // unrealized leaves → ground (structural; no queue to check) → realize
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        assert_coherent(&db, "realized, unproven");
+
+        // failing relationship → fix
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough",
+            "evidence long enough", 0.9, "llm:analyzer", "t").unwrap();
+        assert_coherent(&db, "failing edge");
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+
+        // unproven leaves → validate
+        assert_coherent(&db, "grounded, unproven");
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "ve1", "v0", &ids[1], "", "t").unwrap();
+
+        // empty normative plane → quality (seed prompt; queue legally empty)
+        assert_coherent(&db, "proven, no rules");
+
+        // unmeasured pairs → quality with a non-empty queue
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+        }).unwrap();
+        assert_coherent(&db, "unmeasured rule");
+        for id in &ids {
+            insert_governs(&db, &format!("g-{id}"), "r0", id, "", "t").unwrap();
+            update_governs_verdict(&db, "r0", id, "passing",
+                "criterion text long enough", "evidence text long enough",
+                0.9, "llm:quality", "t").unwrap();
+        }
+
+        // stale GOVERNS → quality (historically: queue had it, compass didn't)
+        let flagged = flag_governs_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
+        assert_eq!(flagged, 1);
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "quality", "stale GOVERNS green must drive the compass, got '{}'", gs.phase);
+        assert_coherent(&db, "stale GOVERNS");
+        update_governs_verdict(&db, "r0", &ids[0], "passing",
+            "criterion text long enough", "evidence text long enough",
+            0.9, "llm:quality", "t3").unwrap();
+
+        // everything addressed → complete
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "complete", "got '{}'", gs.phase);
+        assert_coherent(&db, "complete");
     }
 
     /// Recurrence memory: verdict transitions are auto-recorded as transition

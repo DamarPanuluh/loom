@@ -337,6 +337,16 @@ loom report [--format json|text]
   Full coverage: edge counts by status across all types, intents without validations,
   failing GOVERNS, validation pass rate, recent passing edges.
 
+loom batch [file|-]
+  Bulk verdicts from JSON Lines (default stdin) — THE post-sync re-verification
+  surface: a sync that stales 30 claims is one `loom batch` call, not 30
+  invocations. Ops per line: ground / issue / independent (RELATES_TO) and
+  rule_verdict (GOVERNS, creates the edge if absent). EVERY gate applies per
+  line — lanes, substantive criterion/evidence/notes, confidence — and each
+  edge still gets its transition note. Continues past failed lines, reports
+  per-line results, exits non-zero if any failed. Bulk changes the ceremony,
+  never the honesty.
+
 loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm]
   Append free-text memory. kind: justification | commentary | idea | question | decision | todo.
   Attach to an intent, an edge, or leave free-floating. Append-only (never overwritten).
@@ -516,6 +526,15 @@ Compass routing (queries/stats.rs `graph_state`) prioritises vertical gaps
 emits `phase=complete` when both axes hold. The old "all edges passing/independent"
 rule was a horizontal-only check that could hide unrealized intents and orphan
 files — the vertical spine is the airtight part.
+
+COHERENCE BY CONSTRUCTION: the compass routes each phase on the SAME selection
+the corresponding queue serves (validate routes on `validate_selection`, shared
+verbatim with `loom next --mode validate`; quality covers failing + stale +
+uninspected + unmeasured exactly as `quality_candidates` does) — `loom status`
+can never send an agent to a `loom next` that answers "nothing to do". The
+invariant is tested per phase (compass_phase_always_has_a_nonempty_queue).
+Consequences: implemented leaves WITHOUT proof route to `validate` (proven is
+part of done), and stale GOVERNS green routes to `quality`.
 
 **360° coverage vector** (`graph_state.coverage`, second line of the pulse
 footer on every orientation command): five counted axes so the driving LLM

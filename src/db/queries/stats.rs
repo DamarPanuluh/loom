@@ -15,7 +15,7 @@ use super::meta::get_meta;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
 use super::rule::list_rules;
-use super::scoring::{count_unexplored_pairs, intent_degree, normative_coverage};
+use super::scoring::{count_unexplored_pairs, intent_degree, normative_coverage, validate_selection};
 
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
@@ -189,16 +189,22 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let rt_failing = list_relates_to(db, Some("failing"))?.len() as i64;
     let rt_needs_rev = list_relates_to(db, Some("needs_reverification"))?.len() as i64;
 
-    // VALIDATES has its own loop (`loom validate`): uninspected = not yet run,
-    // failing = the proof failed. Both are actionable, so they count toward the
-    // backlog and the compass routes to them — otherwise an unrun validation
-    // would show as "uninspected: N" in status while the compass said complete.
+    // VALIDATES has its own loop (`loom validate`). The compass routes on the
+    // validator queue's OWN selection (`validate_selection` — shared verbatim
+    // with `loom next --mode validate`), never on raw edge-state counts: the
+    // two once disagreed (a multi-intent validation's passed run left sibling
+    // edges uninspected → phase=validate with an empty queue). Edge counts
+    // below feed only the `unresolved` tally.
+    let validate_backlog = validate_selection(db)?;
+    let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
+    let v_no_proof = validate_backlog.iter().filter(|(_, u, _)| *u >= 3.0 && *u < 4.0).count();
+
     let v = edge_status_counts(db, "VALIDATES")?;
     let v_failing = *v.get("failing").unwrap_or(&0);
     // `blocked` proofs are recorded decisions ("can't run yet — reason on
     // file"), not pending work: exclude their uninspected VALIDATES edges so
-    // the compass doesn't route to work nobody can do. Filtering happens in
-    // Rust (node-anchored scan) — the reliable path.
+    // the unresolved tally doesn't count work nobody can do. Filtering happens
+    // in Rust (node-anchored scan) — the reliable path.
     let blocked_uninspected = {
         let r = db.execute(
             "MATCH (v:Validation)-[e:VALIDATES]->(:Intent) \
@@ -216,14 +222,17 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let v_uninspected = (*v.get("uninspected").unwrap_or(&0) - blocked_uninspected).max(0);
 
     // GOVERNS is the green gate: an uninspected gate is an unchecked quality
-    // claim; failing is a violation. Both are quality work — surfaced by
-    // `loom next --mode quality`, resolved with `loom rule verdict`.
+    // claim; failing is a violation; needs_reverification is green that must
+    // be re-earned after a code change. ALL THREE are quality work — exactly
+    // what `loom next --mode quality` serves (stale GOVERNS once drove the
+    // queue but not the compass or the unresolved tally — a coherence bug).
     let g = edge_status_counts(db, "GOVERNS")?;
     let g_uninspected = *g.get("uninspected").unwrap_or(&0);
     let g_failing = *g.get("failing").unwrap_or(&0);
+    let g_needs_rev = *g.get("needs_reverification").unwrap_or(&0);
 
-    let unresolved_edges =
-        rt_uninspected + rt_failing + rt_needs_rev + v_uninspected + v_failing + g_uninspected + g_failing;
+    let unresolved_edges = rt_uninspected + rt_failing + rt_needs_rev
+        + v_uninspected + v_failing + g_uninspected + g_failing + g_needs_rev;
 
     let relates_to_edges = count_edges_of_type(db, "RELATES_TO")?;
     let implements_edges = count_edges_of_type(db, "IMPLEMENTS")?;
@@ -339,12 +348,18 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
             "{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.",
             vc.unreached_codefiles.len()
         ))
-    } else if v_failing > 0 {
+    } else if v_failing_in_backlog {
         ("validate", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string())
-    } else if v_uninspected > 0 {
-        ("validate", "Run pending validations: `loom next --mode validate`.".to_string())
+    } else if !validate_backlog.is_empty() {
+        ("validate", if v_no_proof > 0 {
+            format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validate_backlog.len())
+        } else {
+            "Run pending validations: `loom next --mode validate`.".to_string()
+        })
     } else if g_failing > 0 {
         ("quality", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
+    } else if g_needs_rev > 0 {
+        ("quality", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string())
     } else if g_uninspected > 0 {
         ("quality", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
     } else if unmeasured_queue > 0 {

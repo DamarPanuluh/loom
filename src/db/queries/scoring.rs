@@ -315,20 +315,26 @@ pub struct ValidateCandidate {
     pub reason: String,
 }
 
-/// Intents with weak or absent proof — the worklist for
-/// `loom next --mode validate`:
+/// The validator's SELECTION — which intents need attention, with urgency and
+/// why, before any centrality scoring:
 /// - a linked validation failed (urgency 4)
 /// - an implemented LEAF intent has no VALIDATES edge at all (urgency 3 —
 ///   "intents without validations are risky"; non-leaves are proven by their
 ///   children, planned intents have nothing to prove yet)
 /// - linked validations exist but were never run / were invalidated by sync
 ///   (urgency 2)
-pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
+///
+/// COHERENCE BY CONSTRUCTION: this one function is consumed verbatim by BOTH
+/// the queue (`validate_candidates` adds degree scoring) and the compass
+/// (`graph_state` routes phase=validate on its emptiness) — the two can never
+/// disagree the way edge-state counts and last_result-based selection once
+/// did (phase=validate with an empty validator queue).
+pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>> {
     let intents = list_intents(db, None, None)?;
     let is_parent: std::collections::HashSet<String> =
         list_all_hierarchy(db)?.into_iter().map(|(p, _)| p).collect();
 
-    let mut scored: Vec<ValidateCandidate> = Vec::new();
+    let mut selected: Vec<(Intent, f64, String)> = Vec::new();
     for i in intents {
         let edges = list_validates_for_intent(db, &i.id)?;
         let (urgency, reason) = if edges.is_empty() {
@@ -356,8 +362,19 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
                 continue;
             }
         };
-        let score = intent_degree(db, &i.id)? as f64 + urgency;
-        scored.push(ValidateCandidate { intent: i, score, reason });
+        selected.push((i, urgency, reason));
+    }
+    Ok(selected)
+}
+
+/// Intents with weak or absent proof, scored by centrality + urgency — the
+/// worklist for `loom next --mode validate`. Selection logic lives in
+/// `validate_selection` (shared with the compass).
+pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
+    let mut scored: Vec<ValidateCandidate> = Vec::new();
+    for (intent, urgency, reason) in validate_selection(db)? {
+        let score = intent_degree(db, &intent.id)? as f64 + urgency;
+        scored.push(ValidateCandidate { intent, score, reason });
     }
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)

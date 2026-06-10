@@ -139,6 +139,20 @@ pub enum Command {
     /// Print a full coverage and quality report.
     Report,
 
+    /// Apply many verdicts in ONE call — JSON Lines from a file or stdin ("-").
+    /// The bulk path for post-sync re-verification (dozens of stale claims =
+    /// dozens of single calls otherwise). One JSON object per line:
+    /// {"op":"ground","a":"<intent>","b":"<intent>","criterion":"…","confidence":0.9} ·
+    /// {"op":"issue",…,"evidence":"…"} · {"op":"independent",…,"notes":"…"} ·
+    /// {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent","criterion":"…","evidence":"…","confidence":0.9}.
+    /// Every gate (lanes, substantive evidence, confidence) applies per line;
+    /// continues past failures, exits non-zero if any line failed.
+    Batch {
+        /// JSONL file path, or "-" to read stdin.
+        #[arg(default_value = "-")]
+        file: String,
+    },
+
     /// Verify graph integrity against the declared schema: version, required
     /// properties, valid field values, and dangling references.
     Doctor,

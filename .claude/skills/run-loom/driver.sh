@@ -109,6 +109,14 @@ printf '# touched again\n' >> app.py
 [ "$("$L" sync --json | jget "['governs_edges_flagged']")" = 1 ] || fail "governs ripple"
 ok "passing GOVERNS goes stale when its code changes"
 
+echo "── batch: bulk verdicts, per-line gates, partial failure → non-zero ──"
+BOUT="$(printf '%s\n%s\n' \
+  '{"op":"rule_verdict","rule":"iso5055-sec-no-hardcoded-secrets","intent":"reject empty","status":"independent","criterion":"no secret material can exist on this validation-only code path","evidence":"def add handles a text string and a file append; no credentials, tokens, or keys anywhere","confidence":0.9}' \
+  '{"op":"ground","a":"add item","b":"reject empty","criterion":"todo","confidence":0.9}' \
+  | "$L" batch - 2>&1)" && fail "batch with a bad line exited 0" || true
+echo "$BOUT" | grep -q "1 applied, 1 failed" || fail "batch per-line accounting wrong: $BOUT"
+ok "batch: bulk verdicts, gates per line (bad line fails, good line lands), non-zero exit"
+
 echo "── validator: proof that invokes loom (lock regression) ──"
 export LOOM_AGENT=llm:validator
 "$L" validation add --name "loom self-read under validate" --type assertion \

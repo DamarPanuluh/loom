@@ -30,7 +30,7 @@ queue + one-command `rule verdict` (creates the edge) → ISO 5055 verdict →
 ripple re-flags the verdict → a validation that *invokes loom itself*
 (DB-lock regression) → a `blocked` proof (reason gated, queue silent) →
 `next --all` closeout → positional export + `--check` commit guard (fresh
-passes, drift fails) → import into a fresh graph → doctor. 16 checks; exits
+passes, drift fails) → import into a fresh graph → doctor. 17 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
 Unit/regression suite (64 tests, in-memory DB, fast):
@@ -70,6 +70,8 @@ descendants; `independent` = measured, doesn't apply).
 Derived problems: `loom smells`; per-file ownership: `loom codefile show`.
 Proofs that can't run yet: `loom validation mark <id> --result blocked
 --reason "…"` (honest, out of the queue, visible in `loom report`).
+Bulk re-verification after a big sync: `loom batch -` with one JSONL verdict
+per line (ground/issue/independent/rule_verdict) — same gates per line.
 Ship the graph: `loom export` (commit `loom.graph.json`, gitignore `.loom/`);
 guard freshness with `loom export --check` (non-zero on drift — pre-commit/CI).
 
