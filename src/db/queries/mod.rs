@@ -363,6 +363,28 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
         assert!(gs.horizontally_explored, "grid should be explored");
+        // 360°: an EMPTY normative plane blocks `complete` — coded intents with
+        // zero measuring sticks route to quality (seed a pack).
+        assert_eq!(gs.phase, "quality", "no rules + coded intents should route to quality, got '{}'", gs.phase);
+        assert_eq!(gs.coverage.measured_pairs.total, 0, "no rules → no measuring surface");
+
+        // Seed one rule and measure BOTH coded intents (verdict creates the
+        // edge — the one-command path) → now genuinely complete.
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(),
+        }).unwrap();
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "quality", "unmeasured pairs should route to quality");
+        assert_eq!(gs.coverage.measured_pairs.total, 2);
+        for id in &ids {
+            insert_governs(&db, &format!("g-{id}"), "r0", id, "", "t").unwrap();
+            update_governs_verdict(&db, "r0", id, "passing",
+                "criterion text long enough", "evidence text long enough",
+                0.9, "llm:quality", "t").unwrap();
+        }
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.coverage.measured_pairs.covered, 2);
         assert_eq!(gs.phase, "complete", "compass said '{}' but next is empty", gs.phase);
     }
 
@@ -962,6 +984,108 @@ mod tests {
 
         // Green earned → off the quality queue.
         assert!(quality_candidates(&db).unwrap().is_empty());
+    }
+
+    /// 360° normative queue: a rule × intent-with-code pair nobody considered
+    /// is quality work (synthetic `unmeasured`, no edge yet), surfaced at the
+    /// HIGHEST altitude only — an unmeasured child under an unmeasured parent
+    /// is shadowed (one verdict up there covers it). A verdict on the parent
+    /// silences the whole subtree; intents with no code are never nagged.
+    #[test]
+    fn unmeasured_pairs_feed_quality_queue_at_highest_altitude() {
+        let (db, ids) = db_inited(3); // 0: parent, 1: child (both coded); 2: no code
+        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "what to look for".into(), severity: "warning".into(),
+        }).unwrap();
+
+        let qc = quality_candidates(&db).unwrap();
+        let unmeasured: Vec<_> =
+            qc.iter().filter(|(g, _)| g.inspection_status == "unmeasured").collect();
+        assert_eq!(unmeasured.len(), 1, "only the subtree top surfaces: {:?}",
+            qc.iter().map(|(g, _)| (g.intent_id.clone(), g.inspection_status.clone())).collect::<Vec<_>>());
+        assert_eq!(unmeasured[0].0.intent_id, ids[0]);
+        assert!(unmeasured[0].0.id.is_empty(), "no edge yet — the verdict creates it");
+        assert!(unmeasured[0].0.notes.contains("what to look for"), "detection logic travels with the item");
+
+        let nc = normative_coverage(&db).unwrap();
+        assert_eq!(nc.intents_with_code, 2);
+        assert_eq!((nc.measured_pairs, nc.total_pairs), (0, 2));
+
+        // A verdict at the parent covers the child by inheritance → queue dry.
+        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        update_governs_verdict(&db, "r0", &ids[0], "passing",
+            "criterion text long enough", "evidence text long enough",
+            0.9, "llm:quality", "t").unwrap();
+        assert!(quality_candidates(&db).unwrap().is_empty(), "component verdict covers descendants");
+        assert_eq!(normative_coverage(&db).unwrap().measured_pairs, 2);
+    }
+
+    /// The behavioral vantage point: a parent whose children declare a happy
+    /// aspect but no sad/fallback sibling is a happy_path_only smell; adding
+    /// the missing aspect children clears it.
+    #[test]
+    fn happy_path_only_smell_flags_and_clears() {
+        let (db, ids) = db_inited(1);
+        let mut happy = intent("happy-child", "login succeeds");
+        happy.aspect = "happy".into();
+        insert_intent(&db, &happy).unwrap();
+        insert_hierarchy(&db, "h0", &ids[0], "happy-child", "", "t").unwrap();
+
+        let smells = compute_smells(&db).unwrap();
+        let found = smells.iter().find(|s| s.kind == "happy_path_only");
+        assert!(found.is_some(), "{smells:?}");
+        assert!(found.unwrap().summary.contains("sad/fallback"), "{:?}", found.unwrap().summary);
+
+        let mut sad = intent("sad-child", "login fails cleanly");
+        sad.aspect = "sad".into();
+        insert_intent(&db, &sad).unwrap();
+        insert_hierarchy(&db, "h1", &ids[0], "sad-child", "", "t").unwrap();
+        let mut fb = intent("fb-child", "login degrades gracefully");
+        fb.aspect = "fallback".into();
+        insert_intent(&db, &fb).unwrap();
+        insert_hierarchy(&db, "h2", &ids[0], "fb-child", "", "t").unwrap();
+        let smells = compute_smells(&db).unwrap();
+        assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
+    }
+
+    /// The 360° coverage vector counts every axis honestly: an axis with no
+    /// surface is total=0 (rendered "—", never a vacuous 100%); proven counts
+    /// only PASSED validations on implemented leaves.
+    #[test]
+    fn coverage_vector_counts_every_axis() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(2);
+        insert_codefile(&db, &codefile("cf0", "src/x.rs")).unwrap();
+        insert_codefile(&db, &codefile("cf1", "src/y.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[0], "cf0", "fn x", "", "t").unwrap();
+
+        let c = graph_state(&db).unwrap().coverage;
+        assert_eq!((c.grounded_files.covered, c.grounded_files.total), (1, 2));
+        assert_eq!((c.realized_leaves.covered, c.realized_leaves.total), (1, 2));
+        assert_eq!((c.explored_pairs.covered, c.explored_pairs.total), (0, 1));
+        assert_eq!(c.measured_pairs.total, 0, "no rules → no measuring surface");
+        assert_eq!((c.proven_leaves.covered, c.proven_leaves.total), (0, 2));
+
+        // Explore the pair, prove one leaf — the axes move.
+        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "smoke".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        update_validation_result(&db, "v0", "passed", "t1").unwrap();
+
+        let c = graph_state(&db).unwrap().coverage;
+        assert_eq!((c.explored_pairs.covered, c.explored_pairs.total), (1, 1));
+        assert!(c.explored_pairs.done());
+        assert_eq!((c.proven_leaves.covered, c.proven_leaves.total), (1, 2));
     }
 
     /// The validator queue: an implemented leaf with no proof surfaces (a parent

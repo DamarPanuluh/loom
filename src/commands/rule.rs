@@ -53,6 +53,125 @@ const ISO5055_PACK: &[(&str, &str, &str, &str)] = &[
      "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files."),
 ];
 
+/// Mobile vantage point: lifecycle, offline, permissions, the main thread,
+/// battery, platform divergence, externally-triggered entry points.
+const MOBILE_PACK: &[(&str, &str, &str, &str)] = &[
+    ("mobile-lifecycle-safe-state", "error",
+     "Mobile: user-visible state survives backgrounding and process death — nothing critical lives only in memory across a lifecycle boundary.",
+     "Trace each screen's state to its save/restore path (saved-state handles, persisted stores). Look for in-flight work assumed to finish after the app is backgrounded without an OS-sanctioned mechanism."),
+    ("mobile-offline-behavior-defined", "error",
+     "Mobile: every network-dependent feature defines its offline behavior — cached, queued, or an explicit user-facing error. Never an indefinite spinner or a crash.",
+     "For each network call reachable from UI: what renders when the request can't start or times out? Look for fetches with no offline/error branch."),
+    ("mobile-permission-in-context", "error",
+     "Mobile: each platform permission is requested in the context of the feature that needs it, and denial leaves the app functional (degraded, not broken).",
+     "List the manifest/Info.plist permissions; trace each to the feature using it, where it's requested, and the denial path."),
+    ("mobile-main-thread-clear", "error",
+     "Mobile: no blocking I/O, parsing, or heavy compute on the UI thread — frame budget is ~16ms.",
+     "Look for synchronous file/DB/network access, large JSON decoding, or image work on the main thread/dispatcher."),
+    ("mobile-battery-respect", "warning",
+     "Mobile: no unbounded polling, wake locks, or sensor/location subscriptions without lifecycle-bound teardown.",
+     "Find timers, location/sensor listeners, and sockets; check each is released when the screen/app stops."),
+    ("mobile-platform-divergence-explicit", "warning",
+     "Mobile: platform-specific behavior (iOS vs Android, OS-version gates) is isolated and named, not scattered through feature logic as inline conditionals.",
+     "Grep platform checks (Platform.OS, Build.VERSION, #available); flag feature files mixing both platforms' branches inline."),
+    ("mobile-external-entry-validated", "error",
+     "Mobile (CWE-20/939): externally-triggered entry points — deep links, intents/universal links, push payloads — validate their input before navigation or action.",
+     "Trace each deep-link/push handler: is the payload parsed and validated with a rejection path before it drives navigation, auth, or writes?"),
+];
+
+/// Web-UI vantage point: view states, accessibility, XSS, responsiveness,
+/// feedback, client-side trust, URL-recoverable state.
+const WEBUI_PACK: &[(&str, &str, &str, &str)] = &[
+    ("webui-view-states-complete", "error",
+     "Web UI: every data-driven view defines loading, empty, and error states — not just the populated happy state.",
+     "For each component that renders fetched data: what shows while pending, when the result is empty, and when the request fails? A missing branch is a violation."),
+    ("webui-accessible-interactive", "error",
+     "Web UI (WCAG): interactive elements are keyboard-reachable and carry accessible names — real buttons/links, not bare clickable divs; focus is managed on dialogs/route changes.",
+     "Look for onClick on non-interactive elements, icon buttons without labels, custom widgets without key handlers, and focus traps/restores on modals."),
+    ("webui-no-unescaped-render", "error",
+     "Web UI (CWE-79): user-controlled content never reaches innerHTML / dangerouslySetInnerHTML / raw template interpolation without sanitization.",
+     "Trace user-originated strings to every raw-HTML sink; check the sanitizer (or its absence) at each."),
+    ("webui-no-client-side-trust", "error",
+     "Web UI (CWE-602): no secrets in the client bundle, and no authorization decision enforced only in the client — the server re-checks everything the UI hides.",
+     "Scan client code/env for key-like literals; for each hidden/disabled privileged control, verify the corresponding server endpoint enforces the same rule."),
+    ("webui-feedback-on-action", "warning",
+     "Web UI: user actions give immediate feedback — pending/disabled/optimistic states; no silent in-flight gaps or double-submit windows.",
+     "For each mutating action: what changes on screen between click and response? Look for submit buttons that stay active mid-flight."),
+    ("webui-responsive-declared", "warning",
+     "Web UI: layouts define behavior at small and large viewports — breakpoints are deliberate, content never becomes unreachable.",
+     "Check key views at narrow widths: fixed widths, overflow without scroll, controls pushed off-canvas with no alternative."),
+    ("webui-url-state-recoverable", "warning",
+     "Web UI: state needed to recreate a view travels in the URL — refresh, back, and shared links land where the user expects.",
+     "For each stateful view: refresh it. If the result differs from what was on screen (lost filters/selection/page), the state isn't URL-recoverable."),
+];
+
+/// Service/integration vantage point: contracts, idempotency, timeouts,
+/// compensation (sagas), boundary auth, observability, degradation, compat.
+const SERVICE_PACK: &[(&str, &str, &str, &str)] = &[
+    ("service-contract-artifact", "error",
+     "Service: every exposed interface has a committed, versioned contract artifact (schema/IDL/OpenAPI) that consumers can ground against — the seam's single shared truth.",
+     "For each endpoint/event/queue the service exposes: where is the contract file, is it in the repo, and does the implementation actually match it?"),
+    ("service-idempotent-handlers", "error",
+     "Service: handlers for retriable inputs — webhooks, queue messages, payments — are idempotent; replaying the same message yields no duplicate effect.",
+     "For each handler: what happens on exact redelivery? Look for inserts without dedup keys, counters without idempotency tokens, side effects before the dedup check."),
+    ("service-timeout-retry-explicit", "error",
+     "Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.",
+     "Find each HTTP/DB/queue client call: is a timeout set (not the library's infinite default)? Is retry bounded with backoff and jitter?"),
+    ("service-compensation-defined", "warning",
+     "Service (sagas): multi-step workflows define compensation or abort for partial failure — no half-completed state without a recovery path an operator or the code can take.",
+     "For each workflow spanning >1 service or transaction: enumerate the failure point after each step and name the compensating action. A missing one is the violation."),
+    ("service-auth-at-boundary", "error",
+     "Service (CWE-306/862): every externally reachable endpoint authenticates and authorizes before side effects — including 'internal' endpoints reachable from outside the trust zone.",
+     "Enumerate reachable routes; for each, find the auth check and confirm it runs before any write or privileged read."),
+    ("service-observable-failures", "warning",
+     "Service: failures are logged/metric'd with enough context (ids, cause, upstream) to diagnose without reproducing.",
+     "Pick the main failure paths: what exactly lands in logs/metrics? Catch-and-ignore blocks and bare 500s with no context are violations."),
+    ("service-graceful-degradation", "warning",
+     "Service: a dependency outage degrades the service (fallback, partial answer, fast error) — it never cascades into hangs or crash loops.",
+     "For each hard dependency: trace what happens when it's down. Look for unguarded startup dependencies and synchronous calls on the hot path with no circuit/fallback."),
+    ("service-compatible-evolution", "error",
+     "Service: contract changes are additive or versioned — removing/renaming fields or changing semantics requires a version consumers can pin; old versions get a deprecation path.",
+     "Diff the contract's history (or its change discipline): were fields ever removed/renamed in place? Is there a versioning convention at all?"),
+];
+
+/// Data vantage point: migrations, ingest validation, loss accounting,
+/// PII handling, rerun safety, lineage.
+const DATA_PACK: &[(&str, &str, &str, &str)] = &[
+    ("data-migration-reversible", "error",
+     "Data: schema migrations are ordered and repeatable, with a tested rollback — or an explicitly documented point of no return.",
+     "Check the migration set: do down-migrations exist and run? For irreversible ones, is the irreversibility stated where the operator will see it?"),
+    ("data-validated-at-ingest", "error",
+     "Data (CWE-20): data entering storage is validated at the boundary, and invariants live in the schema (constraints, types, NOT NULL) — not only in application code.",
+     "Trace each write path to storage: what rejects bad data? Look for app-side-only checks the schema doesn't enforce, and ingestion that bypasses the validated path."),
+    ("data-no-silent-loss", "error",
+     "Data: pipelines account for every record — rejects go to a dead-letter/quarantine with a cause, never dropped silently; counts in vs out reconcile.",
+     "Find each filter/catch/skip in the pipeline: where do the excluded records go, and is the count surfaced anywhere a human looks?"),
+    ("data-pii-handled", "error",
+     "Data (CWE-359): personal/sensitive fields are identified, and access, retention, and deletion paths exist — a deletion request can actually be fulfilled.",
+     "List fields holding personal data (and copies in logs/derived tables). For each: who can read it, how long it lives, and what a delete actually removes."),
+    ("data-idempotent-reruns", "warning",
+     "Data: pipeline stages re-run without duplicating or corrupting output — upsert/partition-overwrite semantics, not blind append.",
+     "For each stage: run it twice on the same input (mentally or actually). Appends without keys and non-deterministic transforms are violations."),
+    ("data-lineage-traceable", "warning",
+     "Data: derived datasets name their sources — a consumer can trace a value back to its origin and know when it was computed.",
+     "Pick a derived table/report: can you find what produced it, from what inputs, when? Untraceable derived data is the violation."),
+];
+
+/// All seedable packs, by name. `iso5055` is the baseline (applies to any code);
+/// the rest are repo-kind vantage points — `loom detect` recommends which fit.
+const PACKS: &[(&str, &[(&str, &str, &str, &str)])] = &[
+    ("iso5055", ISO5055_PACK),
+    ("mobile", MOBILE_PACK),
+    ("web-ui", WEBUI_PACK),
+    ("service", SERVICE_PACK),
+    ("data", DATA_PACK),
+];
+
+/// Names of all seedable packs (for help/errors/`loom detect`).
+pub fn pack_names() -> Vec<&'static str> {
+    PACKS.iter().map(|(n, _)| *n).collect()
+}
+
 pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let cwd = env::current_dir()?;
     let db_file = ensure_initialized(&cwd)?;
@@ -84,14 +203,18 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
 
         RuleCmd::Seed { pack } => {
             gate::acting_in_lane("seed a rule pack", &[role::QUALITY], None)?;
-            if pack != "iso5055" {
-                anyhow::bail!("Unknown pack '{}'. Available: iso5055", pack);
-            }
+            let Some((_, rules)) = PACKS.iter().find(|(n, _)| *n == pack) else {
+                anyhow::bail!(
+                    "Unknown pack '{}'. Available: {} — `loom detect` recommends which fit this repo.",
+                    pack,
+                    pack_names().join(", ")
+                );
+            };
             let existing: std::collections::HashSet<String> =
                 list_rules(&db)?.into_iter().map(|r| r.name).collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
-            for (name, severity, description, detection) in ISO5055_PACK {
+            for (name, severity, description, detection) in *rules {
                 if existing.contains(*name) {
                     skipped += 1;
                     continue;
@@ -110,16 +233,18 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "pack": pack,
                     "created": created, "skipped_existing": skipped,
-                    "next": "loom smells will flag every coded intent these rules were never held against; \
-                             resolve each with loom rule apply + loom rule verdict (passing|failing|independent).",
+                    "next": "loom next --mode quality now serves every coded intent these rules were never \
+                             held against; one command resolves each — loom rule verdict (creates the edge \
+                             with the verdict; passing|failing|independent, component altitude covers descendants).",
                 }));
             } else {
                 println!("✓ Seeded pack '{}': {} rule(s) created, {} already present.", pack, created.len(), skipped);
                 for r in &created {
                     println!("  + [{}] {}", r.severity, r.name);
                 }
-                println!("  → `loom smells` now flags every coded intent these were never held against;");
-                println!("    measure with `loom rule apply` + `loom rule verdict` (independent = doesn't apply).");
+                println!("  → `loom next --mode quality` now serves every coded intent these were never held against;");
+                println!("    one command resolves each: `loom rule verdict` (independent = measured, doesn't apply;");
+                println!("    a verdict at component altitude covers its descendants).");
             }
         }
 
@@ -249,15 +374,26 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             gate::require_confidence(confidence)?;
 
             let now = chrono::Utc::now().to_rfc3339();
-            let found = update_governs_verdict(
+            let mut found = update_governs_verdict(
                 &db, &rule_id, &intent_id, &status, &criterion, &evidence,
                 confidence, &by, &now,
             )?;
+            let mut edge_created = false;
+            if !found {
+                // A verdict IS a measurement — no separate `apply` step needed.
+                // Create the edge and record the verdict in one motion, so the
+                // unmeasured queue resolves with a single command.
+                insert_governs(&db, &Uuid::new_v4().to_string(), &rule_id, &intent_id, &criterion, &now)?;
+                found = update_governs_verdict(
+                    &db, &rule_id, &intent_id, &status, &criterion, &evidence,
+                    confidence, &by, &now,
+                )?;
+                edge_created = true;
+            }
             if !found {
                 anyhow::bail!(
-                    "No GOVERNS edge between rule '{}' and intent '{}'. \
-                     Apply the rule first: loom rule apply {} {}",
-                    rule_id, intent_id, rule_id, intent_id
+                    "Could not record the GOVERNS verdict between rule '{}' and intent '{}'.",
+                    rule_id, intent_id
                 );
             }
             if printer.json {
@@ -271,6 +407,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "confidence":        confidence,
                     "inspected_by":      by,
                     "last_inspected":    now,
+                    "edge_created":      edge_created,
                 }));
             } else {
                 let mark = match status.as_str() {
@@ -278,7 +415,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "independent" => "◦",
                     _ => "✗",
                 };
-                println!("{} GOVERNS verdict recorded: {}", mark, status);
+                println!("{} GOVERNS verdict recorded: {}{}", mark, status,
+                    if edge_created { "  (edge created — the verdict is the measurement)" } else { "" });
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
                 if status == "failing" {

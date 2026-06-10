@@ -45,7 +45,8 @@ pub const TANGLE_INTENTS: usize = 3;
 #[derive(Debug, Clone, Serialize)]
 pub struct Smell {
     /// twin_intents | overlapping_ownership | scattered_intent | tangled_file
-    /// | unmeasured_intents | unused_rule
+    /// | unmeasured_intents | undeclared_coupling | recurrent_trouble
+    /// | unused_rule | happy_path_only
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -416,7 +417,60 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
         }
     }
 
-    // 8. Unused rule — a measuring stick connected to nothing at all.
+    // 8. Happy path only — the behavioral vantage point: a feature group that
+    //    declared its sunny-day intent (aspect=happy) but never said what
+    //    failure or degradation look like. Aspect-tagged siblings are the
+    //    mechanical signal; the LLM decides whether sad/fallback are real
+    //    requirements here or honestly N/A (record that as a decision note).
+    {
+        let mut child_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
+        let aspect_of: HashMap<&str, &str> =
+            intents.iter().map(|i| (i.id.as_str(), i.aspect.as_str())).collect();
+        for (p, c) in &hierarchy {
+            if let Some(a) = aspect_of.get(c.as_str()) {
+                if !a.is_empty() {
+                    child_aspects.entry(p.as_str()).or_default().insert(a);
+                }
+            }
+        }
+        for (parent_id, aspects) in &child_aspects {
+            if !aspects.contains("happy") {
+                continue;
+            }
+            let missing: Vec<&str> = ["sad", "fallback"]
+                .iter()
+                .filter(|a| !aspects.contains(*a))
+                .copied()
+                .collect();
+            if missing.is_empty() {
+                continue;
+            }
+            let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
+            smells.push(Smell {
+                kind: "happy_path_only".into(),
+                score: 2.0 + 2.0 * missing.len() as f64,
+                summary: format!(
+                    "'{}' declares a happy path but no {} behavior",
+                    pname,
+                    missing.join("/")
+                ),
+                evidence: format!(
+                    "children carry aspects {{{}}} — failure/degradation behavior is undeclared, so nothing verifies it",
+                    {
+                        let mut v: Vec<&str> = aspects.iter().copied().collect();
+                        v.sort();
+                        v.join(", ")
+                    }
+                ),
+                remedy: format!(
+                    "declare the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child> and ground it; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\"",
+                    m = missing.join("/")
+                ),
+            });
+        }
+    }
+
+    // 9. Unused rule — a measuring stick connected to nothing at all.
     let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
     for r in &rules {
         if !used.contains(r.id.as_str()) {

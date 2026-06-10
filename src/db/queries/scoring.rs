@@ -5,13 +5,14 @@ use std::collections::HashMap;
 
 use crate::db::schema::esc;
 use crate::db::LoomDb;
-use crate::types::{Governs, InspectionStatus, Intent, RelatesTo};
+use crate::types::{Governs, InspectionStatus, Intent, QualityRule, RelatesTo};
 
 use super::governs::list_all_governs;
 use super::hierarchy::list_all_hierarchy;
 use super::intent::list_intents;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
+use super::rule::list_rules;
 use super::validates::{list_validates_for_intent, validations_for_intent};
 
 /// Degree of an intent = total RELATES_TO edges touching it (in + out).
@@ -153,10 +154,109 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
     Ok(scored)
 }
 
+/// Normative-plane coverage: how much of the rule × intent-with-code grid has
+/// actually been measured. HIERARCHY-AWARE like the `unmeasured_intents` smell —
+/// a verdict on a component covers its descendants (measuring at the highest
+/// honest altitude is the encouraged strategy, never punished).
+pub struct NormativeCoverage {
+    /// Non-deprecated intents that have real code (≥1 IMPLEMENTS).
+    pub intents_with_code: i64,
+    /// rules × intents_with_code — the full measuring grid.
+    pub total_pairs: i64,
+    /// Pairs considered: a GOVERNS edge of ANY state, directly or on an ancestor.
+    pub measured_pairs: i64,
+    /// Unmeasured pairs at the HIGHEST altitude only — the actual work queue.
+    /// (An unmeasured intent whose ancestor is also unmeasured is omitted: one
+    /// verdict up there covers it. Bounded by #rules × #top-level branches.)
+    pub queue: Vec<(QualityRule, Intent)>,
+}
+
+pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
+    let intents = list_intents(db, None, None)?;
+    let rules = list_rules(db)?;
+    let governs = list_all_governs(db)?;
+    let hierarchy = list_all_hierarchy(db)?;
+
+    let with_code: std::collections::HashSet<String> =
+        super::implements::intents_with_implements(db)?;
+    let candidates: Vec<&Intent> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated" && with_code.contains(&i.id))
+        .collect();
+
+    let considered: std::collections::HashSet<(String, String)> = governs
+        .iter()
+        .map(|g| (g.rule_id.clone(), g.intent_id.clone()))
+        .collect();
+    let parent_of: HashMap<&str, &str> =
+        hierarchy.iter().map(|(p, c)| (c.as_str(), p.as_str())).collect();
+    // Considered directly OR via any ancestor's verdict on the same rule.
+    let considered_up = |rule_id: &str, intent_id: &str| -> bool {
+        let mut cur = Some(intent_id);
+        let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        while let Some(id) = cur {
+            if !visited.insert(id) {
+                return false;
+            }
+            if considered.contains(&(rule_id.to_string(), id.to_string())) {
+                return true;
+            }
+            cur = parent_of.get(id).copied();
+        }
+        false
+    };
+
+    let total_pairs = rules.len() as i64 * candidates.len() as i64;
+    let mut measured_pairs = 0i64;
+    let mut queue: Vec<(QualityRule, Intent)> = Vec::new();
+    for r in &rules {
+        let unmeasured: std::collections::HashSet<&str> = candidates
+            .iter()
+            .filter(|i| !considered_up(&r.id, &i.id))
+            .map(|i| i.id.as_str())
+            .collect();
+        measured_pairs += candidates.len() as i64 - unmeasured.len() as i64;
+        // Queue only the TOPS of unmeasured subtrees: if any ancestor is also
+        // unmeasured-with-code, a verdict there covers this one — skip it.
+        for i in &candidates {
+            if !unmeasured.contains(i.id.as_str()) {
+                continue;
+            }
+            let mut cur = parent_of.get(i.id.as_str()).copied();
+            let mut shadowed = false;
+            let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
+            while let Some(id) = cur {
+                if !visited.insert(id) {
+                    break;
+                }
+                if unmeasured.contains(id) {
+                    shadowed = true;
+                    break;
+                }
+                cur = parent_of.get(id).copied();
+            }
+            if !shadowed {
+                queue.push(((*r).clone(), (*i).clone()));
+            }
+        }
+    }
+    Ok(NormativeCoverage {
+        intents_with_code: candidates.len() as i64,
+        total_pairs,
+        measured_pairs,
+        queue,
+    })
+}
+
 /// GOVERNS edges needing the quality agent's attention — uninspected (applied
-/// but compliance never earned), failing (violation open), or stale. The
-/// worklist for `loom next --mode quality`, scored by intent centrality +
-/// urgency so high-blast-radius violations surface first.
+/// but compliance never earned), failing (violation open), or stale — PLUS
+/// synthetic `unmeasured` items: rule × intent-with-code pairs no one ever
+/// considered (no GOVERNS edge here or on any ancestor). The worklist for
+/// `loom next --mode quality`, scored by intent centrality + urgency so
+/// high-blast-radius violations surface first; unmeasured pairs rank below
+/// every real edge (urgency 1.0) and resolve in ONE command — `loom rule
+/// verdict` creates the edge with the verdict (independent = measured, doesn't
+/// apply; a verdict at component altitude covers descendants).
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
     let mut degree_cache: HashMap<String, i64> = HashMap::new();
     let mut scored: Vec<(Governs, f64)> = Vec::new();
@@ -175,6 +275,32 @@ pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
             d
         };
         scored.push((g, deg as f64 + urgency));
+    }
+    for (rule, intent) in normative_coverage(db)?.queue {
+        let deg = if let Some(&d) = degree_cache.get(&intent.id) {
+            d
+        } else {
+            let d = intent_degree(db, &intent.id)?;
+            degree_cache.insert(intent.id.clone(), d);
+            d
+        };
+        scored.push((
+            Governs {
+                id: String::new(), // no edge yet — `loom rule verdict` creates it
+                rule_id: rule.id,
+                intent_id: intent.id.clone(),
+                rule_name: rule.name,
+                intent_name: intent.name.clone(),
+                inspection_status: "unmeasured".to_string(),
+                criterion: String::new(),
+                confidence: 0.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                notes: format!("detection: {}", rule.detection_logic),
+            },
+            deg as f64 + 1.0,
+        ));
     }
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)

@@ -33,6 +33,13 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("  top languages:  {}", langs.join(", "));
     }
     println!("  suggested mode: {}", d.suggested_mode);
+    if !d.recommended_packs.is_empty() {
+        println!();
+        println!("  quality packs for this repo kind (`loom rule seed <pack>`):");
+        for p in &d.recommended_packs {
+            println!("    {:<8} — {}", p.pack, p.reason);
+        }
+    }
     println!();
     if d.has_source {
         println!("  → Existing code found — brownfield: map it (`loom guide`, then `loom next`).");

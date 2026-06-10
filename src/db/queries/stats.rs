@@ -14,7 +14,8 @@ use super::intent::{intents_without_validations, list_intents};
 use super::meta::get_meta;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
-use super::scoring::{count_unexplored_pairs, intent_degree};
+use super::rule::list_rules;
+use super::scoring::{count_unexplored_pairs, intent_degree, normative_coverage};
 
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
@@ -73,6 +74,40 @@ pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
     Ok(gaps)
 }
 
+/// One axis of the 360° coverage vector: covered/total along one dimension of
+/// understanding. `total == 0` means the axis has no surface yet (e.g. no
+/// quality rules seeded) — rendered as "—", never as a vacuous 100%.
+#[derive(Debug, Clone, Serialize)]
+pub struct CoverageAxis {
+    pub covered: i64,
+    pub total: i64,
+}
+
+impl CoverageAxis {
+    pub fn done(&self) -> bool {
+        self.total > 0 && self.covered >= self.total
+    }
+}
+
+/// The 360° coverage vector — every dimension of "do we understand this repo",
+/// each as a counted fraction so the driving LLM always sees which vantage
+/// point is weakest. Surfaced on the pulse footer (every orientation command)
+/// and in `graph_state` JSON; the compass routes to the weakest binding axis.
+#[derive(Debug, Clone, Serialize)]
+pub struct Coverage360 {
+    /// Physical: CodeFiles reached by ≥1 IMPLEMENTS / all registered CodeFiles.
+    pub grounded_files: CoverageAxis,
+    /// Semantic→physical join: implemented leaf intents with code / implemented leaves.
+    pub realized_leaves: CoverageAxis,
+    /// Horizontal grid: intent pairs with an inspected RELATES_TO / candidate pairs.
+    pub explored_pairs: CoverageAxis,
+    /// Normative: rule × intent-with-code pairs measured (verdict here or on an
+    /// ancestor — independent counts: "measured, doesn't apply") / full grid.
+    pub measured_pairs: CoverageAxis,
+    /// Proof: implemented leaf intents with a passed validation / implemented leaves.
+    pub proven_leaves: CoverageAxis,
+}
+
 /// Compact "pulse" of the graph — cheap situational awareness + a recommended
 /// next action (the compass). Returned in `--json` and rendered as a one-line
 /// footer by the orientation commands.
@@ -105,6 +140,8 @@ pub struct GraphState {
     /// empty | build | fix | incomplete | ground | validate | quality | discovery | complete
     pub phase: String,
     pub next_action: String,
+    /// The 360° coverage vector — every dimension counted, weakest first to fix.
+    pub coverage: Coverage360,
 }
 
 fn count_edges_of_type(db: &dyn LoomDb, etype: &str) -> Result<i64> {
@@ -209,6 +246,79 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let vc = vertical_completeness(db)?;
     let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
 
+    // --- The 360° coverage vector ---------------------------------------
+    let nc = normative_coverage(db)?;
+    let rules_count = list_rules(db)?.len() as i64;
+
+    let hierarchy = super::hierarchy::list_all_hierarchy(db)?;
+    let is_parent: std::collections::HashSet<&str> =
+        hierarchy.iter().map(|(p, _)| p.as_str()).collect();
+    let with_code = super::implements::intents_with_implements(db)?;
+    let implemented_leaves: Vec<&Intent> = all_intents
+        .iter()
+        .filter(|i| i.lifecycle == "implemented" && !is_parent.contains(i.id.as_str()))
+        .collect();
+    let realized_leaves = CoverageAxis {
+        covered: implemented_leaves.iter().filter(|i| with_code.contains(&i.id)).count() as i64,
+        total: implemented_leaves.len() as i64,
+    };
+
+    let grounded_files = CoverageAxis {
+        covered: grounded_paths(db)?.len() as i64,
+        total: codefiles,
+    };
+
+    // Explored = inspected RELATES_TO pairs over the candidate grid (C(n,2)
+    // minus HIERARCHY-linked pairs — containment isn't a grid cell). Set ops
+    // run over EDGES only; the denominator stays arithmetic (no O(N²) walk).
+    let pair_key = |a: &str, b: &str| {
+        if a < b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
+    };
+    let hier_pairs: std::collections::HashSet<(String, String)> =
+        hierarchy.iter().map(|(p, c)| pair_key(p, c)).collect();
+    let mut inspected_pairs: std::collections::HashSet<(String, String)> =
+        std::collections::HashSet::new();
+    for e in list_relates_to(db, None)? {
+        if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent") {
+            let k = pair_key(&e.from_id, &e.to_id);
+            if !hier_pairs.contains(&k) {
+                inspected_pairs.insert(k);
+            }
+        }
+    }
+    let explored_pairs = CoverageAxis {
+        covered: inspected_pairs.len() as i64,
+        total: (intents * (intents - 1) / 2 - hier_pairs.len() as i64).max(0),
+    };
+
+    // Proven = implemented leaves whose proof actually PASSED (blocked/not_run
+    // are visible elsewhere; this axis counts earned proof only).
+    let proven_ids: std::collections::HashSet<String> = {
+        let r = db.execute(
+            "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent) \
+             RETURN v.last_result AS lr, i.id AS iid",
+        )?;
+        let cols = col_map(&r);
+        r.rows()
+            .iter()
+            .filter(|row| str_val(get(row, &cols, "lr")) == "passed")
+            .map(|row| str_val(get(row, &cols, "iid")))
+            .collect()
+    };
+    let proven_leaves = CoverageAxis {
+        covered: implemented_leaves.iter().filter(|i| proven_ids.contains(&i.id)).count() as i64,
+        total: implemented_leaves.len() as i64,
+    };
+
+    let coverage = Coverage360 {
+        grounded_files,
+        realized_leaves,
+        explored_pairs,
+        measured_pairs: CoverageAxis { covered: nc.measured_pairs, total: nc.total_pairs },
+        proven_leaves,
+    };
+    let unmeasured_queue = nc.queue.len();
+
     let (phase, next_action) = if intents == 0 {
         ("empty", "Seed intents: `loom intent add --level system …`  (or run `loom guide`).".to_string())
     } else if needs_change > 0 {
@@ -237,6 +347,12 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         ("quality", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
     } else if g_uninspected > 0 {
         ("quality", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
+    } else if unmeasured_queue > 0 {
+        ("quality", format!(
+            "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a verdict at component altitude covers descendants; independent = measured, doesn't apply)."
+        ))
+    } else if rules_count == 0 && nc.intents_with_code > 0 {
+        ("quality", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
     } else if rt_uninspected > 0 || unexplored_pairs > 0 {
         ("discovery", format!(
             "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
@@ -265,6 +381,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         horizontally_explored,
         phase: phase.to_string(),
         next_action,
+        coverage,
     })
 }
 

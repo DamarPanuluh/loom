@@ -2,9 +2,10 @@
 # Full-lifecycle smoke for the loom binary: builds it, then drives one complete
 # brownfield session in a throwaway repo — map → ground → content-hash sync
 # ripple (touch-only flags nothing; real change flags + notes the cause) →
-# quality verdict → smells → proofs (incl. blocked) → closeout → export/import
-# round trip + commit guard — asserting graph state at each step. Exits
-# non-zero on the first broken link.
+# quality verdict (incl. 360° unmeasured queue + one-command verdict) → smells
+# → proofs (incl. blocked) → closeout → export/import round trip + commit
+# guard — asserting graph state at each step. Exits non-zero on the first
+# broken link.
 #
 # Usage:  .claude/skills/run-loom/driver.sh          (from the repo root)
 #         LOOM_BIN=/path/to/loom driver.sh           (skip the build)
@@ -39,8 +40,10 @@ EOF
 
 echo "── detect / init ──"
 [ "$("$L" detect --json | jget "['suggested_mode']")" = brownfield ] || fail detect
+[ "$("$L" detect --json | jget "['recommended_packs'][0]['pack']")" = iso5055 ] \
+  || fail "detect should recommend the iso5055 baseline pack"
 "$L" init . >/dev/null && "$L" init . >/dev/null   # idempotent
-ok "detect + idempotent init"
+ok "detect (incl. pack recommendation) + idempotent init"
 
 echo "── builder maps (lanes enforced, names resolve) ──"
 export LOOM_AGENT=llm:builder
@@ -84,6 +87,20 @@ ok "code change → edge stale (cause noted on the edge) → re-grounded"
 echo "── quality: stick → verdict → green re-earned after change ──"
 export LOOM_AGENT=llm:quality
 "$L" rule seed iso5055 >/dev/null
+"$L" rule seed bogus 2>/dev/null && fail "unknown pack accepted" || true
+Q="$("$L" next --mode quality --json)"
+[ "$(echo "$Q" | jget "['governs']['inspection_status']")" = unmeasured ] \
+  || fail "never-measured rule×intent pair should top the quality queue"
+echo "$Q" | jget "['governs']['notes']" | grep -q "detection:" \
+  || fail "detection logic should travel with the unmeasured item"
+ok "360°: quality queue serves never-measured pairs (detection logic attached)"
+"$L" rule verdict iso5055-perf-bounded-work "reject empty" --status independent \
+  --criterion "no iteration over external-sized data exists anywhere in this path" \
+  --evidence "def add validates a single string and persists once; there is no loop or recursion" >/dev/null
+[ "$("$L" status --json | jget "['graph_state']['coverage']['measured_pairs']['covered']")" -ge 1 ] \
+  || fail "one-command verdict did not count as measured"
+"$L" status | grep -q "360°:" || fail "360° coverage line missing from the pulse"
+ok "360°: one-command verdict (no apply) creates the edge; coverage counts it"
 "$L" rule apply iso5055-rel-boundary-validation "add item" >/dev/null
 "$L" rule verdict iso5055-rel-boundary-validation "add item" --status passing \
   --criterion "blank input raises before any write happens" \

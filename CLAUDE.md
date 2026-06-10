@@ -247,7 +247,9 @@ loom next [--mode discovery|fix|build|validate|quality]
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
   validate = failing/unrun/missing proofs (validator) · quality = uninspected/
-  failing GOVERNS edges (quality).
+  failing GOVERNS edges PLUS never-measured rule×intent pairs (synthetic
+  `unmeasured` items, surfaced at the highest unmeasured altitude only — one
+  `loom rule verdict` resolves each, creating the edge with the verdict).
   Returns single highest-priority work item with FULL context:
   - Edge (type, inspection_status, criterion, evidence, priority_score)
   - Both intent nodes (name, description, abstraction_level, source_refs)
@@ -322,11 +324,14 @@ loom rule add --name --description --severity
 loom rule list
 loom rule apply <rule-id> <intent-id>   (positional; creates GOVERNS edge, uninspected)
 loom rule check <intent-id>             (read-only: show GOVERNS edges by status)
-loom rule verdict <rule-id> <intent-id> --status passing|failing \
+loom rule verdict <rule-id> <intent-id> --status passing|failing|independent \
     --criterion "<what compliance looks like>" --evidence "<what was found>" \
     [--confidence 0.9] [--inspected-by llm:quality]
-  THE quality write path — how GOVERNS green is earned (apply only asserts the
-  rule applies). Quality lane; criterion/evidence must be substantive.
+  THE quality write path — how GOVERNS green is earned. The verdict IS the
+  measurement: if no GOVERNS edge exists yet, it is CREATED with the verdict
+  (no separate `apply` needed — `apply` remains for pre-declaring "this rule
+  applies" without a verdict). independent = measured, rule doesn't apply.
+  Quality lane; criterion/evidence must be substantive.
 
 loom report [--format json|text]
   Full coverage: edge counts by status across all types, intents without validations,
@@ -377,18 +382,28 @@ loom smells [--limit N]
   was never held against a coded intent — HIERARCHY-AWARE: a verdict on a
   component covers its descendants, so measure at the highest honest altitude
   instead of grinding per-leaf busywork; a leaf can still get its own, more
-  specific verdict), unused rules.
+  specific verdict), unused rules, happy-path-only groups (children declare an
+  `--aspect happy` but no sad/fallback sibling — failure behavior undeclared).
   Each finding carries the exact remedy command. The same suspicion signals
   (import links, shared files, description overlap, same domain) rank
   unexplored pairs in `loom next` discovery, with the why in the work item's
   notes. `loom rule verdict --status independent` records "measured — rule
   does not apply" so unmeasured findings resolve honestly.
 
-loom rule seed iso5055
-  Seed the built-in ISO 5055 measuring sticks: 10 CWE-grounded rules across
-  Reliability / Security / Performance Efficiency / Maintainability, written
-  for LLM inspection (detection_logic says what to look for). Idempotent.
-  `loom smells` then drives normative coverage (unmeasured_intents).
+loom rule seed iso5055|mobile|web-ui|service|data
+  Seed a built-in measuring-stick pack — the repo-kind VANTAGE POINTS for 360°
+  normative coverage, each rule written for LLM inspection (detection_logic
+  says exactly what to look for). Idempotent (existing names skipped).
+  iso5055 = baseline, applies to any code (10 CWE-grounded rules across
+  Reliability/Security/Performance/Maintainability) · mobile = lifecycle,
+  offline, permissions, main thread, battery, platform divergence, deep links ·
+  web-ui = view states, a11y, XSS, client-side trust, feedback, responsive,
+  URL state · service = contract artifacts, idempotency, timeouts/retries,
+  saga compensation, boundary auth, observability, degradation, compatible
+  evolution · data = migrations, ingest validation, loss accounting, PII,
+  rerun idempotency, lineage.
+  `loom detect` recommends which packs fit this repo. After seeding,
+  `loom next --mode quality` serves every never-measured rule×intent pair.
 
 loom export [path]                    (default loom.graph.json; "-" = stdout;
                                        positional, mirroring `loom import <file>`;
@@ -417,7 +432,10 @@ loom coverage
 
 loom detect
   Programmable repo introspection: stack (from manifests), source presence, top
-  languages, suggested mode (greenfield vs brownfield). Runs even before `loom init`.
+  languages, suggested mode (greenfield vs brownfield), and RECOMMENDED QUALITY
+  PACKS for this repo kind (each with its disk evidence) — the binary suggests
+  the 360° vantage points so the agent doesn't have to remember them. Runs even
+  before `loom init`.
 
 loom ignore add <glob> --reason <why> [--author human|llm]
   The coverage escape hatch, stored IN the graph (not a .loomignore file) as a
@@ -492,6 +510,19 @@ Compass routing (queries/stats.rs `graph_state`) prioritises vertical gaps
 emits `phase=complete` when both axes hold. The old "all edges passing/independent"
 rule was a horizontal-only check that could hide unrealized intents and orphan
 files — the vertical spine is the airtight part.
+
+**360° coverage vector** (`graph_state.coverage`, second line of the pulse
+footer on every orientation command): five counted axes so the driving LLM
+always sees which vantage point is weakest — `grounded` (CodeFiles reached) ·
+`realized` (implemented leaves with code) · `explored` (the horizontal grid) ·
+`measured` (rule×coded-intent pairs with a verdict, hierarchy-inherited) ·
+`proven` (implemented leaves with a passed validation). An axis with no surface
+shows `—` (never a vacuous 100%). The `measured` axis is queue-mandatory, not
+write-mandatory: an EMPTY normative plane (no rules, coded intents) routes the
+compass to quality ("seed a pack"), and never-measured pairs feed
+`loom next --mode quality` as `unmeasured` items at the highest unmeasured
+altitude — resolved in one `loom rule verdict` (which creates the edge);
+`phase=complete` requires the measuring grid closed.
 
 ## Dogfooding setup
 

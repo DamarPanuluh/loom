@@ -75,6 +75,14 @@ pub struct LangCount {
     pub files: usize,
 }
 
+/// A quality-pack recommendation: which vantage point fits this repo, and the
+/// disk evidence behind the suggestion. Seed with `loom rule seed <pack>`.
+#[derive(Debug, Clone, Serialize)]
+pub struct PackHint {
+    pub pack: String,
+    pub reason: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Detection {
     /// Count of recognised source files (excludes docs/config/assets).
@@ -86,6 +94,10 @@ pub struct Detection {
     /// Baseline mode from disk alone: "greenfield" if no source, else
     /// "brownfield". (Refactor is graph-dependent — the guide refines this.)
     pub suggested_mode: String,
+    /// Quality packs that fit this repo's kind (`loom rule seed <pack>`) —
+    /// the vantage points for 360° normative coverage, suggested by the
+    /// binary so the agent doesn't have to remember them.
+    pub recommended_packs: Vec<PackHint>,
 }
 
 /// Detect the repo's stack and whether there's existing source to map.
@@ -130,13 +142,65 @@ pub fn detect(root: &Path) -> Detection {
     top_languages.truncate(8);
 
     let has_source = source_files > 0;
+    let recommended_packs = recommend_packs(root, &stacks, &files);
     Detection {
         source_files,
         has_source,
         stacks,
         top_languages,
         suggested_mode: if has_source { "brownfield".into() } else { "greenfield".into() },
+        recommended_packs,
     }
+}
+
+/// Map disk evidence → quality packs (the repo-kind vantage points). Each hint
+/// carries its evidence; the agent decides — seeding is never automatic.
+fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<PackHint> {
+    let mut packs = vec![PackHint {
+        pack: "iso5055".into(),
+        reason: "baseline — reliability/security/performance/maintainability apply to any code".into(),
+    }];
+
+    let ext_of = |f: &str| {
+        Path::new(f).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase()
+    };
+    let has_ext = |exts: &[&str]| files.iter().any(|f| exts.contains(&ext_of(f).as_str()));
+    let has_dir = |dirs: &[&str]| {
+        files.iter().any(|f| f.split('/').next().map(|d| dirs.contains(&d)).unwrap_or(false))
+    };
+
+    if stacks.iter().any(|s| s == "swift" || s == "java/kotlin")
+        || has_ext(&["swift", "kt"])
+        || has_dir(&["ios", "android"])
+        || files.iter().any(|f| f == "pubspec.yaml" || f.ends_with("/pubspec.yaml"))
+    {
+        packs.push(PackHint {
+            pack: "mobile".into(),
+            reason: "mobile platform code detected (swift/kotlin/flutter or ios|android dirs) — lifecycle, offline, permissions, main thread".into(),
+        });
+    }
+    if has_ext(&["tsx", "jsx", "vue", "svelte", "html", "css"]) {
+        packs.push(PackHint {
+            pack: "web-ui".into(),
+            reason: "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust".into(),
+        });
+    }
+    if stacks.iter().any(|s| matches!(s.as_str(), "rust" | "go" | "node" | "python" | "java" | "java/kotlin" | "ruby" | "php"))
+        || root.join("Dockerfile").exists()
+        || root.join("docker-compose.yml").exists()
+    {
+        packs.push(PackHint {
+            pack: "service".into(),
+            reason: "backend-capable stack detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)".into(),
+        });
+    }
+    if has_ext(&["sql"]) || files.iter().any(|f| f.split('/').any(|seg| seg == "migrations")) {
+        packs.push(PackHint {
+            pack: "data".into(),
+            reason: "SQL/migrations detected — migration safety, ingest validation, loss accounting, PII".into(),
+        });
+    }
+    packs
 }
 
 // ---------------------------------------------------------------------------

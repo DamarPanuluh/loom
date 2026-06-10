@@ -621,16 +621,33 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let (g, score) = &candidates[0];
     let intent = get_intent(db, &g.intent_id)?;
     let implements = list_implements_for_intent(db, &g.intent_id)?;
-    let notes = notes_for_target(db, &g.id)?;
-    let action = format!(
-        "Inspect intent '{name}' against rule '{rule}' and record the verdict:\n\
-         \n  loom rule verdict {rid} {iid} --status passing --criterion \"<what compliance looks like>\" --evidence \"<what you found>\"\
-         \n  loom rule verdict {rid} {iid} --status failing --criterion \"<criterion>\" --evidence \"<the violation>\"",
-        name = g.intent_name,
-        rule = g.rule_name,
-        rid = g.rule_id,
-        iid = g.intent_id,
-    );
+    let notes = if g.id.is_empty() { Vec::new() } else { notes_for_target(db, &g.id)? };
+    let action = if g.inspection_status == "unmeasured" {
+        format!(
+            "MEASURE: rule '{rule}' has never been held against intent '{name}' (no GOVERNS edge \
+             here or on any ancestor). One command records the measurement — the verdict CREATES the edge:\n\
+             \n  loom rule verdict {rid} {iid} --status passing --criterion \"<what compliance looks like>\" --evidence \"<what you found>\"\
+             \n  loom rule verdict {rid} {iid} --status failing --criterion \"<criterion>\" --evidence \"<the violation>\"\
+             \n  loom rule verdict {rid} {iid} --status independent --criterion \"<criterion>\" --evidence \"<why the rule has no surface here>\"\
+             \nPrefer the highest HONEST altitude: a verdict on a component covers its descendants \
+             (check `loom intent show {iid}` — if this rule reads the same for the whole subtree, \
+             verdict the parent instead).",
+            name = g.intent_name,
+            rule = g.rule_name,
+            rid = g.rule_id,
+            iid = g.intent_id,
+        )
+    } else {
+        format!(
+            "Inspect intent '{name}' against rule '{rule}' and record the verdict:\n\
+             \n  loom rule verdict {rid} {iid} --status passing --criterion \"<what compliance looks like>\" --evidence \"<what you found>\"\
+             \n  loom rule verdict {rid} {iid} --status failing --criterion \"<criterion>\" --evidence \"<the violation>\"",
+            name = g.intent_name,
+            rule = g.rule_name,
+            rid = g.rule_id,
+            iid = g.intent_id,
+        )
+    };
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -659,6 +676,11 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
     if !g.evidence.is_empty() {
         println!("  evidence:  {}", g.evidence);
+    }
+    if !g.notes.is_empty() {
+        // For unmeasured items this carries the rule's detection_logic —
+        // exactly what to look for during the inspection.
+        println!("  {}", g.notes);
     }
     println!();
     if let Some(ref i) = intent {

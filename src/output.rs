@@ -44,7 +44,34 @@ fn rel_time(rfc3339: &str) -> String {
     }
 }
 
+/// One axis of the 360° line: "n/m" plus a check when closed, "—" when the
+/// axis has no surface yet (never a vacuous 100%).
+fn fmt_axis(a: &crate::db::queries::CoverageAxis) -> String {
+    if a.total == 0 {
+        "—".to_string()
+    } else if a.done() {
+        format!("{}/{} ✓", a.covered, a.total)
+    } else {
+        format!("{}/{}", a.covered, a.total)
+    }
+}
+
+/// The 360° coverage vector as one line — every vantage point counted, so the
+/// driving LLM always sees which dimension is weakest without asking.
+pub fn fmt_coverage(c: &crate::db::queries::Coverage360) -> String {
+    format!(
+        "360°: grounded {} · realized {} · explored {} · measured {} · proven {}",
+        fmt_axis(&c.grounded_files),
+        fmt_axis(&c.realized_leaves),
+        fmt_axis(&c.explored_pairs),
+        fmt_axis(&c.measured_pairs),
+        fmt_axis(&c.proven_leaves),
+    )
+}
+
 /// One-line graph pulse for an LLM's quick look (shown as a footer).
+/// Returns TWO lines: the pulse + the 360° coverage vector (callers print with
+/// a two-space indent; the embedded newline carries the same indent).
 pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     let synced = if s.last_synced.is_empty() {
         "never synced".to_string()
@@ -67,8 +94,9 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
         format!("graph '{}'", s.graph_name)
     };
     format!(
-        "{}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}",
-        ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase
+        "{}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}\n  {}",
+        ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase,
+        fmt_coverage(&s.coverage)
     )
 }
 

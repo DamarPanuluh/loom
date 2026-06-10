@@ -557,11 +557,16 @@ pub enum RuleCmd {
         intent_id: String,
     },
 
-    /// Seed a built-in measuring-stick pack (e.g. iso5055: reliability,
-    /// security, performance efficiency, maintainability — CWE-grounded,
-    /// written for LLM inspection). Already-present rule names are skipped.
+    /// Seed a built-in measuring-stick pack — the repo-kind vantage points for
+    /// 360° normative coverage. `loom detect` recommends which packs fit this
+    /// repo; after seeding, `loom next --mode quality` serves every coded
+    /// intent the rules were never held against. Already-present rule names
+    /// are skipped (idempotent).
     Seed {
-        /// Pack name. Available: iso5055
+        /// Pack name. Available: iso5055 (baseline, any code), mobile
+        /// (lifecycle/offline/permissions), web-ui (view states/a11y/XSS),
+        /// service (contracts/idempotency/timeouts/sagas), data
+        /// (migrations/ingest/PII/lineage).
         pack: String,
     },
 

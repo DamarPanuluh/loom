@@ -25,14 +25,15 @@ in. First build is slow (several minutes); incremental builds are seconds.
 Builds `target/debug/loom`, then drives one complete brownfield lifecycle in a
 throwaway repo: detect → idempotent init → map intents **by name** → ground →
 lane/evidence-gate rejections → content-hash sync ripple (touch-only flags
-NOTHING; a real change flags + notes the cause on the edge) → ISO 5055 verdict
-→ ripple re-flags the verdict → a validation that *invokes loom itself*
+NOTHING; a real change flags + notes the cause on the edge) → 360° unmeasured
+queue + one-command `rule verdict` (creates the edge) → ISO 5055 verdict →
+ripple re-flags the verdict → a validation that *invokes loom itself*
 (DB-lock regression) → a `blocked` proof (reason gated, queue silent) →
 `next --all` closeout → positional export + `--check` commit guard (fresh
-passes, drift fails) → import into a fresh graph → doctor. 13 checks; exits
+passes, drift fails) → import into a fresh graph → doctor. 15 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
-Unit/regression suite (58 tests, in-memory DB, fast):
+Unit/regression suite (64 tests, in-memory DB, fast):
 
 ```bash
 cargo test
@@ -53,11 +54,18 @@ loom guide      # the full driving loop for the detected mode
 loom schema     # data model: nodes, edges, states, field owners
 ```
 
-The loop, compressed: `loom init .` → seed intents (`loom rule seed iso5055`
-early) → ground to files → then repeat **`loom status` → do what the compass
-says → `loom sync` after ANY code change**. Work queues per agent role:
+The loop, compressed: `loom init .` → seed intents → seed the quality packs
+`loom detect` recommends (`loom rule seed iso5055|mobile|web-ui|service|data` —
+the 360° vantage points; iso5055 always applies) → ground to files → then
+repeat **`loom status` → do what the compass says → `loom sync` after ANY code
+change**. Work queues per agent role:
 `loom next --mode build|discovery|fix|validate|quality`; the cross-role
 closeout is `loom next --all` (every queue + gaps + doctor in one list).
+The pulse footer's second line is the **360° coverage vector** (grounded ·
+realized · explored · measured · proven) — the compass routes to the weakest
+axis; never-measured rule×intent pairs feed the quality queue and resolve in
+ONE `loom rule verdict` (it creates the edge; component altitude covers
+descendants; `independent` = measured, doesn't apply).
 Derived problems: `loom smells`; per-file ownership: `loom codefile show`.
 Proofs that can't run yet: `loom validation mark <id> --result blocked
 --reason "…"` (honest, out of the queue, visible in `loom report`).
