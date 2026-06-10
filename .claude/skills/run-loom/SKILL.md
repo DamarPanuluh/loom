@@ -24,9 +24,12 @@ in. First build is slow (several minutes); incremental builds are seconds.
 
 Builds `target/debug/loom`, then drives one complete brownfield lifecycle in a
 throwaway repo: detect → idempotent init → map intents **by name** → ground →
-lane/evidence-gate rejections → mtime sync ripple → ISO 5055 verdict → ripple
-re-flags the verdict → a validation that *invokes loom itself* (DB-lock
-regression) → export → import into a fresh graph → doctor. 9 checks; exits
+lane/evidence-gate rejections → content-hash sync ripple (touch-only flags
+NOTHING; a real change flags + notes the cause on the edge) → ISO 5055 verdict
+→ ripple re-flags the verdict → a validation that *invokes loom itself*
+(DB-lock regression) → a `blocked` proof (reason gated, queue silent) →
+`next --all` closeout → positional export + `--check` commit guard (fresh
+passes, drift fails) → import into a fresh graph → doctor. 13 checks; exits
 non-zero on the first broken link. `LOOM_BIN=/path/to/loom` skips the build.
 
 Unit/regression suite (56 tests, in-memory DB, fast):

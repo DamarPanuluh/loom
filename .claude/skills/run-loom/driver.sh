@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Full-lifecycle smoke for the loom binary: builds it, then drives one complete
-# brownfield session in a throwaway repo — map → ground → sync ripple → quality
-# verdict → smells → proof → export/import round trip — asserting graph state
-# at each step. Exits non-zero on the first broken link.
+# brownfield session in a throwaway repo — map → ground → content-hash sync
+# ripple (touch-only flags nothing; real change flags + notes the cause) →
+# quality verdict → smells → proofs (incl. blocked) → closeout → export/import
+# round trip + commit guard — asserting graph state at each step. Exits
+# non-zero on the first broken link.
 #
 # Usage:  .claude/skills/run-loom/driver.sh          (from the repo root)
 #         LOOM_BIN=/path/to/loom driver.sh           (skip the build)
@@ -63,15 +65,21 @@ LOOM_AGENT=llm:analyzer "$L" edge explore "add item" "reject empty" ground \
   --criterion "the empty-guard runs before save, so both intents live in def add without conflict" >/dev/null
 ok "analyzer grounds with substantive criterion"
 
-echo "── sync ripple (mtime + imports + locators) ──"
-sleep 1; printf '\n# touched\n' >> app.py
+echo "── sync ripple (content-hash + imports + locators) ──"
+touch app.py store.py
+[ "$("$L" sync --json | jget "['files_changed']")" = 0 ] \
+  || fail "touch-only mtime churn flagged a change (content-hash regression)"
+ok "touch-only churn flags nothing (detection is content-based)"
+printf '\n# touched\n' >> app.py
 R="$("$L" sync --json)"
-[ "$(echo "$R" | jget "['files_changed']")" = 1 ] || fail "sync mtime"
+[ "$(echo "$R" | jget "['files_changed']")" = 1 ] || fail "sync content change"
 [ "$(echo "$R" | jget "['relates_to_edges_flagged']")" = 1 ] || fail "sync ripple"
+"$L" note list --kind transition | grep -q "(sync: app.py changed)" \
+  || fail "stale-cause transition note missing"
 "$L" smells --limit 50 --json | jget "['total']" >/dev/null
 LOOM_AGENT=llm:fixer "$L" edge explore "add item" "reject empty" ground \
   --criterion "the empty-guard runs before save, so both intents live in def add without conflict" >/dev/null
-ok "code change → edge stale → re-grounded"
+ok "code change → edge stale (cause noted on the edge) → re-grounded"
 
 echo "── quality: stick → verdict → green re-earned after change ──"
 export LOOM_AGENT=llm:quality
@@ -80,7 +88,7 @@ export LOOM_AGENT=llm:quality
 "$L" rule verdict iso5055-rel-boundary-validation "add item" --status passing \
   --criterion "blank input raises before any write happens" \
   --evidence "app.py def add: strip-check raises ValueError before save() is reached" >/dev/null
-sleep 1; printf '# touched again\n' >> app.py
+printf '# touched again\n' >> app.py
 [ "$("$L" sync --json | jget "['governs_edges_flagged']")" = 1 ] || fail "governs ripple"
 ok "passing GOVERNS goes stale when its code changes"
 
@@ -92,8 +100,28 @@ OUT="$("$L" validate "add item")"
 echo "$OUT" | grep -q "1/1 passed" || fail "validate (DB lock regression?): $OUT"
 ok "validation command may read the graph (session released during exec)"
 
-echo "── export → import round trip ──"
-"$L" export --out graph.json >/dev/null
+echo "── blocked proof: reason required, out of the queue, visible ──"
+"$L" validation add --name "external smoke" --type manual_check --intent "reject empty" >/dev/null
+"$L" validation mark "external smoke" --result blocked 2>/dev/null \
+  && fail "blocked accepted without --reason" || true
+"$L" validation mark "external smoke" --result blocked \
+  --reason "needs a live staging URL which does not exist in this sandbox" >/dev/null
+[ "$("$L" next --mode validate --json | jget "['status']")" = empty ] \
+  || fail "blocked proof still nags the validator queue"
+"$L" validation list --json | grep -q '"blocked"' || fail "blocked not visible in list"
+ok "blocked: reason gated, queue silent, state visible"
+
+echo "── closeout ──"
+[ "$("$L" next --all --json | jget "['mode']")" = all ] || fail "next --all"
+ok "closeout view answers across every lane"
+
+echo "── export (positional) → commit guard → import round trip ──"
+"$L" export graph.json >/dev/null
+"$L" export graph.json --check >/dev/null || fail "fresh export reads stale"
+LOOM_AGENT=llm:builder "$L" intent add --name "drift" \
+  --description "deliberate graph drift to trip the commit guard" --level feature >/dev/null
+"$L" export graph.json --check >/dev/null 2>&1 \
+  && fail "stale export passed --check" || ok "commit guard: fresh passes, drift fails non-zero"
 W2="$(mktemp -d)"; cp graph.json "$W2/"; cd "$W2"
 "$L" init . >/dev/null
 "$L" import graph.json >/dev/null
