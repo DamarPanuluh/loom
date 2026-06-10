@@ -227,7 +227,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     i.abstraction_level, threshold, clusters
                 ),
                 remedy: format!(
-                    "decompose along the directory clusters: add a child intent per cohesive slice, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`)",
+                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); refactoring the code is a separate decision (see tangled_file)",
                     id = i.id
                 ),
             });

@@ -248,7 +248,11 @@ pub enum IntentCmd {
         #[arg(long)]
         description: String,
 
-        /// Abstraction level: feature | component | system | cross_cutting
+        /// Abstraction level. system = 1–3 per repo (the product's purpose) |
+        /// component = 5–15 (cohesive subsystems) | feature = many, ATOMIC —
+        /// independently verifiable | cross_cutting = spans everything.
+        /// Granularity test: can you write ONE falsifiable criterion for it?
+        /// If the description needs an "and", split it into several intents.
         #[arg(long)]
         level: String,
 

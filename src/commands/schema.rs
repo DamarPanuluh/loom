@@ -78,7 +78,10 @@ pub fn run(printer: &Printer) -> Result<()> {
         .collect();
 
     let vocab = serde_json::json!({
-        "abstraction_level": ["feature", "component", "system", "cross_cutting"],
+        "abstraction_level": {
+            "values": ["feature", "component", "system", "cross_cutting"],
+            "granularity": "system: 1–3 per repo (the product's purpose) · component: 5–15 (cohesive subsystems) · feature: many, ATOMIC — independently verifiable · cross_cutting: spans everything. Test: one falsifiable criterion per intent; a description needing 'and' is several intents.",
+        },
         "lifecycle": ["planned", "implemented", "needs_change"],
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo"],
@@ -138,6 +141,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!();
     println!("Vocabularies:");
     println!("  abstraction_level: feature | component | system | cross_cutting");
+    println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
+    println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
     println!("  lifecycle:         planned | implemented | needs_change");
     println!("  note_kind:         justification | commentary | idea | question | decision | todo");
     println!("  severity:          warning | error");
