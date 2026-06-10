@@ -14,7 +14,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
-    let disk = crate::repo::walk_files(&cwd);
+    let disk = crate::repo::walk_files(&cwd)?;
     let registered: HashSet<String> =
         list_codefiles(&db)?.into_iter().map(|c| c.path).collect();
     let grounded: HashSet<String> = grounded_paths(&db)?.into_iter().collect();

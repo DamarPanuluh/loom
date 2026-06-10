@@ -62,7 +62,7 @@ Everything is addressable by id, exact name, or unique name fragment. Ambiguity 
 2. Work it Socratically: form a hypothesis, read the actual code, then record the verdict — `ground` (passing, with criterion), `issue` (failing, with evidence), or `independent` (verified *no* relationship — as valuable as a pass).
 3. After any code change: `loom sync`. Change detection is **content-hash based** (checkout/rebase mtime churn never false-flags), and every invalidated edge gets a note naming the file that staled it.
 4. `loom smells` surfaces what nobody asserted: twin intents, overlapping ownership, scattered responsibilities (clustered by directory), tangled files, undeclared coupling (imports the graph doesn't explain), recurrent trouble, happy-path-only features (no failure behavior declared). Each finding carries its exact remedy command.
-5. Seed the quality packs `loom detect` recommends — `iso5055` (baseline, any code), `mobile`, `web-ui`, `service`, `data` — and `loom next --mode quality` serves every rule × coded-intent pair never measured. One `loom rule verdict` resolves each (it creates the edge; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply).
+5. Seed the quality packs `loom detect` recommends — `iso5055` (baseline, any code), `mobile`, `web-ui`, `service`, `data`, `concurrency` — and `loom next --mode quality` serves every rule × coded-intent pair never measured. One `loom rule verdict` resolves each (it creates the edge; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply).
 6. Close out with `loom next --all`, prove intents with `loom validate`.
 
 ## Multi-agent by design

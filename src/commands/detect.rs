@@ -9,7 +9,7 @@ use crate::output::Printer;
 
 pub fn run(printer: &Printer) -> Result<()> {
     let cwd = env::current_dir()?;
-    let d = crate::repo::detect(&cwd);
+    let d = crate::repo::detect(&cwd)?;
 
     if printer.json {
         printer.print_json(&d);

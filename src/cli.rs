@@ -566,7 +566,8 @@ pub enum RuleCmd {
         /// Pack name. Available: iso5055 (baseline, any code), mobile
         /// (lifecycle/offline/permissions), web-ui (view states/a11y/XSS),
         /// service (contracts/idempotency/timeouts/sagas), data
-        /// (migrations/ingest/PII/lineage).
+        /// (migrations/ingest/PII/lineage), concurrency (sync discipline/
+        /// lock hygiene/atomicity/proven perf budgets).
         pack: String,
     },
 

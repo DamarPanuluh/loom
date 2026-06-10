@@ -585,6 +585,26 @@ mod tests {
         assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "undeclared_coupling"));
     }
 
+    #[test]
+    fn malformed_imports_are_reported_in_discovery_scoring() {
+        let (db, _) = db_inited(0);
+        insert_codefile(&db, &codefile("cf", "src/bad.rs")).unwrap();
+        update_codefile_imports(&db, "cf", "{not-json").unwrap();
+
+        let err = unexplored_pairs_scored(&db).unwrap_err().to_string();
+        assert!(err.contains("Malformed imports JSON for CodeFile 'src/bad.rs'"), "{err}");
+    }
+
+    #[test]
+    fn malformed_imports_are_reported_in_smells() {
+        let (db, _) = db_inited(0);
+        insert_codefile(&db, &codefile("cf", "src/bad.rs")).unwrap();
+        update_codefile_imports(&db, "cf", "{not-json").unwrap();
+
+        let err = compute_smells(&db).unwrap_err().to_string();
+        assert!(err.contains("Malformed imports JSON for CodeFile 'src/bad.rs'"), "{err}");
+    }
+
     /// Portability: export is deterministic, and an import into a fresh graph
     /// reproduces every node and edge with its meta intact.
     #[test]
@@ -629,6 +649,20 @@ mod tests {
         assert_eq!(cf[0].imports, "[\"src/y.rs\"]");
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export).is_err());
+    }
+
+    #[test]
+    fn import_rejects_malformed_export_shape() {
+        let db = GrafeoDb::in_memory();
+        let malformed = serde_json::json!({
+            "loom_export": 1,
+            "schema_version": crate::db::schema::SCHEMA_VERSION,
+            "nodes": {},
+            "edges": {},
+        });
+
+        let err = import_graph(&db, &malformed).unwrap_err().to_string();
+        assert!(err.contains("missing `nodes.Intent` array"), "{err}");
     }
 
     /// Name addressing: exact id → exact name → unique fragment; ambiguity and
@@ -713,6 +747,26 @@ mod tests {
         assert_eq!(remove_source_ref(&db, &ids[0], "src/main.rs", "t5").unwrap(), Some(false));
         assert_eq!(refs(&db), vec!["docs/CONTRACT.md".to_string()]);
         assert!(remove_source_ref(&db, "ghost", "x", "t6").unwrap().is_none());
+    }
+
+    #[test]
+    fn malformed_source_refs_are_reported_not_reset() {
+        let db = GrafeoDb::in_memory();
+        let mut bad = intent("bad-refs", "bad source refs");
+        bad.source_refs = "not json".to_string();
+        insert_intent(&db, &bad).unwrap();
+
+        let add_err = add_source_ref(&db, "bad-refs", "docs/CONTRACT.md", "t1")
+            .unwrap_err()
+            .to_string();
+        assert!(add_err.contains("malformed source_refs JSON"), "{add_err}");
+        assert_eq!(get_intent(&db, "bad-refs").unwrap().unwrap().source_refs, "not json");
+
+        let remove_err = remove_source_ref(&db, "bad-refs", "docs/CONTRACT.md", "t2")
+            .unwrap_err()
+            .to_string();
+        assert!(remove_err.contains("malformed source_refs JSON"), "{remove_err}");
+        assert_eq!(get_intent(&db, "bad-refs").unwrap().unwrap().source_refs, "not json");
     }
 
     /// The content fingerprint round-trips and is the sync change baseline.

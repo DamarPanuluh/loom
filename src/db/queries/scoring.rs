@@ -1,6 +1,6 @@
 //! Priority scoring and discovery-candidate selection for `loom next`.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 
 use crate::db::schema::esc;
@@ -128,7 +128,7 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
     }
 
     let mut scored: Vec<BuildCandidate> = Vec::new();
-    for i in list_intents(db, None, None)? {
+    for i in &intents {
         let urgency = match i.lifecycle.as_str() {
             "needs_change" => 4.0,
             "planned" => 2.0,
@@ -148,7 +148,7 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
             }
         }
         let score = intent_degree(db, &i.id)? as f64 + urgency;
-        scored.push(BuildCandidate { intent: i, score, rollup });
+        scored.push(BuildCandidate { intent: i.clone(), score, rollup });
     }
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
@@ -410,7 +410,8 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
     let mut import_links: std::collections::HashSet<(String, String)> =
         std::collections::HashSet::new();
     for cf in super::codefile::list_codefiles(db)? {
-        let imports: Vec<String> = serde_json::from_str(&cf.imports).unwrap_or_default();
+        let imports: Vec<String> = serde_json::from_str(&cf.imports)
+            .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
         for t in imports {
             import_links.insert((cf.path.clone(), t.clone()));
             import_links.insert((t, cf.path.clone()));

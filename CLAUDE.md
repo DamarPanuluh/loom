@@ -390,7 +390,7 @@ loom smells [--limit N]
   notes. `loom rule verdict --status independent` records "measured — rule
   does not apply" so unmeasured findings resolve honestly.
 
-loom rule seed iso5055|mobile|web-ui|service|data
+loom rule seed iso5055|mobile|web-ui|service|data|concurrency
   Seed a built-in measuring-stick pack — the repo-kind VANTAGE POINTS for 360°
   normative coverage, each rule written for LLM inspection (detection_logic
   says exactly what to look for). Idempotent (existing names skipped).
@@ -401,7 +401,11 @@ loom rule seed iso5055|mobile|web-ui|service|data
   URL state · service = contract artifacts, idempotency, timeouts/retries,
   saga compensation, boundary auth, observability, degradation, compatible
   evolution · data = migrations, ingest validation, loss accounting, PII,
-  rerun idempotency, lineage.
+  rerun idempotency, lineage · concurrency = sync discipline, no lock across
+  I/O/await, atomic multi-step, deadlock ordering, cancellation safety,
+  bounded concurrency, plus perf-budget-proven (hot-path intents must state a
+  budget in their criterion AND carry a passing benchmark validation — the
+  normative plane demanding proof in the validation plane).
   `loom detect` recommends which packs fit this repo. After seeding,
   `loom next --mode quality` serves every never-measured rule×intent pair.
 

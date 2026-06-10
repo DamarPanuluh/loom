@@ -105,12 +105,10 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
 // ---------------------------------------------------------------------------
 
 pub fn fmt_intent(i: &crate::types::Intent) -> String {
-    let refs: Vec<String> = serde_json::from_str::<Vec<String>>(&i.source_refs)
-        .unwrap_or_default();
-    let refs_str = if refs.is_empty() {
-        "(none)".to_string()
-    } else {
-        refs.join(", ")
+    let refs_str = match serde_json::from_str::<Vec<String>>(&i.source_refs) {
+        Ok(refs) if refs.is_empty() => "(none)".to_string(),
+        Ok(refs) => refs.join(", "),
+        Err(e) => format!("(invalid source_refs JSON: {e})"),
     };
     let aspect_line = if i.aspect.is_empty() {
         String::new()
@@ -210,4 +208,29 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
         no_val      = s.intents_without_validations,
         pass        = pass_pct,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fmt_intent_reports_malformed_source_refs() {
+        let intent = crate::types::Intent {
+            id: "i".to_string(),
+            name: "intent".to_string(),
+            description: "description".to_string(),
+            abstraction_level: "feature".to_string(),
+            domain: "test".to_string(),
+            source_refs: "not json".to_string(),
+            status: "proposed".to_string(),
+            aspect: String::new(),
+            lifecycle: "implemented".to_string(),
+            created_at: "t0".to_string(),
+            updated_at: "t0".to_string(),
+        };
+
+        let rendered = fmt_intent(&intent);
+        assert!(rendered.contains("invalid source_refs JSON"), "{rendered}");
+    }
 }

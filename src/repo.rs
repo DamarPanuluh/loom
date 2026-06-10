@@ -3,6 +3,7 @@
 //! `loom detect`, and the basis for guide mode-detection (greenfield vs
 //! brownfield).
 
+use anyhow::{Context, Result};
 use ignore::WalkBuilder;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -19,15 +20,13 @@ const DEFAULT_SKIP_DIRS: &[&str] = &[
 
 /// Relative file paths under `root`, respecting `.gitignore`/`.ignore`, skipping
 /// hidden entries and well-known build/dependency dirs. Directories excluded.
-pub fn walk_files(root: &Path) -> Vec<String> {
+pub fn walk_files(root: &Path) -> Result<Vec<String>> {
     let mut files = Vec::new();
     // require_git(false): honor .gitignore/.ignore even when this isn't a git
     // repo (or we're in a subdir), so coverage's denominator is meaningful.
     for result in WalkBuilder::new(root).hidden(true).require_git(false).build() {
-        let entry = match result {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
+        let entry = result
+            .with_context(|| format!("Failed while walking repo '{}'", root.display()))?;
         if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
             continue;
         }
@@ -43,7 +42,7 @@ pub fn walk_files(root: &Path) -> Vec<String> {
             files.push(s);
         }
     }
-    files
+    Ok(files)
 }
 
 /// The file's modification time as an RFC3339 string, or `None` if it can't be
@@ -101,8 +100,8 @@ pub struct Detection {
 }
 
 /// Detect the repo's stack and whether there's existing source to map.
-pub fn detect(root: &Path) -> Detection {
-    let files = walk_files(root);
+pub fn detect(root: &Path) -> Result<Detection> {
+    let files = walk_files(root)?;
 
     let manifests: &[(&str, &str)] = &[
         ("Cargo.toml", "rust"),
@@ -143,14 +142,14 @@ pub fn detect(root: &Path) -> Detection {
 
     let has_source = source_files > 0;
     let recommended_packs = recommend_packs(root, &stacks, &files);
-    Detection {
+    Ok(Detection {
         source_files,
         has_source,
         stacks,
         top_languages,
         suggested_mode: if has_source { "brownfield".into() } else { "greenfield".into() },
         recommended_packs,
-    }
+    })
 }
 
 /// Map disk evidence → quality packs (the repo-kind vantage points). Each hint
@@ -192,6 +191,10 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
         packs.push(PackHint {
             pack: "service".into(),
             reason: "backend-capable stack detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)".into(),
+        });
+        packs.push(PackHint {
+            pack: "concurrency".into(),
+            reason: "backend-capable stack detected — applies where this code shares state across threads/tasks or has hot paths worth a proven budget (sync discipline, lock hygiene, benchmarks)".into(),
         });
     }
     if has_ext(&["sql"]) || files.iter().any(|f| f.split('/').any(|seg| seg == "migrations")) {

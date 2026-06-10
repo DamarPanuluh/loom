@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -34,6 +35,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut validations_invalidated = 0usize;
     let mut changes: Vec<SyncChange> = Vec::new();
     let mut missing_files: Vec<String> = Vec::new();
+    let mut text_contents: HashMap<String, String> = HashMap::new();
+    let mut non_utf8_files: HashSet<String> = HashSet::new();
 
     for cf in &codefiles {
         // Resolve path relative to the loom project root if not absolute
@@ -68,22 +71,32 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // mtime alone false-flags after a checkout/rebase (timestamps churn,
         // content doesn't) — that would reset half the graph for nothing. The
         // mtime comparison remains only as the fallback when no fingerprint is
-        // stored yet (pre-upgrade graph / unreadable file).
-        let new_hash = fs::read(&abs_path).ok().map(|b| crate::repo::content_hash(&b));
-        let changed = match &new_hash {
-            Some(h) if !cf.content_hash.is_empty() => *h != cf.content_hash,
-            _ => {
-                if cf.last_modified.is_empty() {
-                    true // never synced
-                } else {
-                    match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
-                        Ok(stored) => {
-                            let stored_utc = stored.with_timezone(&chrono::Utc);
-                            let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
-                            disk_utc > stored_utc
-                        }
-                        Err(_) => true, // malformed timestamp → treat as changed
+        // stored yet (pre-upgrade graph).
+        let bytes = fs::read(&abs_path).map_err(|e| {
+            anyhow::anyhow!("Cannot read bytes for {}: {}", abs_path.display(), e)
+        })?;
+        let new_hash = crate::repo::content_hash(&bytes);
+        match String::from_utf8(bytes) {
+            Ok(content) => {
+                text_contents.insert(cf.path.clone(), content);
+            }
+            Err(_) => {
+                non_utf8_files.insert(cf.path.clone());
+            }
+        }
+        let changed = if !cf.content_hash.is_empty() {
+            new_hash != cf.content_hash
+        } else {
+            if cf.last_modified.is_empty() {
+                true // never synced
+            } else {
+                match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
+                    Ok(stored) => {
+                        let stored_utc = stored.with_timezone(&chrono::Utc);
+                        let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
+                        disk_utc > stored_utc
                     }
+                    Err(_) => true, // malformed timestamp → treat as changed
                 }
             }
         };
@@ -91,10 +104,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // Keep the stored fingerprint + mtime current even when nothing
         // propagates (first hash on an upgraded graph, checkout-only churn) —
         // quiet upkeep, not a change.
-        if let Some(h) = &new_hash {
-            if *h != cf.content_hash {
-                update_codefile_hash(&db, &cf.id, h)?;
-            }
+        if new_hash != cf.content_hash {
+            update_codefile_hash(&db, &cf.id, &new_hash)?;
         }
         if !changed {
             if mtime_str != cf.last_modified {
@@ -144,40 +155,30 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     //       a renamed symbol must not leave a grounding silently pointing
     //       at nothing.
     let mut locators_stale: Vec<String> = Vec::new();
-    let mut contents: std::collections::HashMap<&str, String> = std::collections::HashMap::new();
+    let all_implements = list_all_implements(&db)?;
     for cf in &codefiles {
-        let abs = if Path::new(&cf.path).is_absolute() {
-            Path::new(&cf.path).to_path_buf()
-        } else {
-            base.join(&cf.path)
-        };
-        match fs::read_to_string(&abs) {
-            Ok(content) => {
-                let imports = crate::repo::extract_imports(&base, &cf.path, &content);
-                let imports_json = serde_json::to_string(&imports)?;
-                if imports_json != cf.imports {
-                    update_codefile_imports(&db, &cf.id, &imports_json)?;
-                }
-                contents.insert(cf.path.as_str(), content);
+        if let Some(content) = text_contents.get(&cf.path) {
+            let imports = crate::repo::extract_imports(&base, &cf.path, content);
+            let imports_json = serde_json::to_string(&imports)?;
+            if imports_json != cf.imports {
+                update_codefile_imports(&db, &cf.id, &imports_json)?;
             }
-            Err(_) if abs.exists() => {
-                // Present but unreadable as text (binary/non-UTF8). Never skip
-                // silently: any non-empty locator on such a file cannot be
-                // verified — surface it instead of letting it rot.
-                for im in list_all_implements(&db)? {
-                    if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
-                        locators_stale.push(format!(
-                            "{} @ '{}' (intent '{}') — file is not readable as text; locator unverifiable",
-                            im.codefile_path, im.locator, im.intent_name
-                        ));
-                    }
+        } else if non_utf8_files.contains(&cf.path) {
+            // Present but unreadable as text (binary/non-UTF8). Never skip
+            // silently: any non-empty locator on such a file cannot be
+            // verified — surface it instead of letting it rot.
+            for im in &all_implements {
+                if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
+                    locators_stale.push(format!(
+                        "{} @ '{}' (intent '{}') — file is not readable as text; locator unverifiable",
+                        im.codefile_path, im.locator, im.intent_name
+                    ));
                 }
             }
-            Err(_) => {} // missing on disk — already reported above
         }
     }
-    for im in list_all_implements(&db)? {
-        let Some(content) = contents.get(im.codefile_path.as_str()) else {
+    for im in &all_implements {
+        let Some(content) = text_contents.get(&im.codefile_path) else {
             continue; // missing or unreadable — reported above
         };
         if !crate::repo::locator_present(content, &im.locator) {

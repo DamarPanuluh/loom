@@ -54,6 +54,15 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     skipped += 1;
                     continue;
                 }
+                let abs_path = cwd.join(&p);
+                let last_modified = crate::repo::mtime_rfc3339(&abs_path).ok_or_else(|| {
+                    anyhow::anyhow!("Cannot read mtime for {}", abs_path.display())
+                })?;
+                let content_hash = std::fs::read(&abs_path)
+                    .map(|b| crate::repo::content_hash(&b))
+                    .map_err(|e| {
+                        anyhow::anyhow!("Cannot read bytes for {}: {}", abs_path.display(), e)
+                    })?;
                 let cf = CodeFile {
                     id:            Uuid::new_v4().to_string(),
                     path:          p.clone(),
@@ -61,11 +70,9 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     // Stamp the current mtime + content fingerprint so the first
                     // `loom sync` is a no-op and only genuine later edits ripple
                     // needs_reverification.
-                    last_modified: crate::repo::mtime_rfc3339(&cwd.join(&p)).unwrap_or_default(),
+                    last_modified,
                     imports:       "[]".to_string(), // populated by `loom sync`
-                    content_hash:  std::fs::read(cwd.join(&p))
-                        .map(|b| crate::repo::content_hash(&b))
-                        .unwrap_or_default(),
+                    content_hash,
                 };
                 insert_codefile(&db, &cf)?;
                 added.push(cf);
@@ -137,7 +144,10 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     }
                 }
             }
-            let imports: Vec<String> = serde_json::from_str(&cf.imports).unwrap_or_default();
+            let imports: Vec<String> = match serde_json::from_str(&cf.imports) {
+                Ok(imports) => imports,
+                Err(e) => vec![format!("(invalid imports JSON: {e})")],
+            };
             let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
 
             if printer.json {

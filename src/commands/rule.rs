@@ -157,6 +157,34 @@ const DATA_PACK: &[(&str, &str, &str, &str)] = &[
      "Pick a derived table/report: can you find what produced it, from what inputs, when? Untraceable derived data is the violation."),
 ];
 
+/// Concurrency & measured-performance vantage point: synchronization
+/// discipline, lock hygiene, atomicity, deadlock ordering, cancellation,
+/// backpressure — plus the bridge rule that demands hot paths carry a
+/// PROVEN budget (a benchmark validation), not a vibe.
+const CONCURRENCY_PACK: &[(&str, &str, &str, &str)] = &[
+    ("conc-sync-discipline", "error",
+     "Concurrency (CWE-362/366): every piece of shared mutable state names its synchronization discipline — a lock, a single-writer thread/actor, atomics, or message passing. No ad-hoc unsynchronized access.",
+     "Inventory state reachable from more than one thread/task; for each, name the discipline that guards it. State you cannot name a discipline for is the violation."),
+    ("conc-no-lock-across-io", "error",
+     "Concurrency (CWE-667): no lock is held across I/O, network calls, or await points — contention windows stay bounded by computation, not by external latency.",
+     "Find each lock acquisition; trace what runs before release. File/DB/network access or an .await/blocking call inside the critical section is the violation."),
+    ("conc-atomic-multi-step", "error",
+     "Concurrency (CWE-362/367): multi-step state transitions (check-then-act, read-modify-write, exists-then-create) are atomic — one lock/transaction span — or explicitly designed to tolerate interleaving.",
+     "Find check-then-act sequences on shared state (or storage): can another actor run between the steps? If yes and nothing tolerates that, it's a TOCTOU violation."),
+    ("conc-deadlock-ordering", "error",
+     "Concurrency (CWE-833): when more than one lock can be held at once, acquisition follows a single documented global order.",
+     "List sites holding ≥2 locks; check the acquisition order is consistent everywhere and written down. Two sites taking A→B and B→A is the violation."),
+    ("conc-cancellation-safe", "warning",
+     "Concurrency: tasks/threads are cancellation-safe — interruption (timeout, shutdown, dropped future) leaves no half-written state and releases resources.",
+     "For each spawned task: what happens if it's killed between its side effects? Look for multi-step writes without cleanup/transactions and resources freed only on the happy exit."),
+    ("conc-bounded-concurrency", "warning",
+     "Concurrency (CWE-400/770): spawns, queues, and in-flight work have explicit limits and backpressure — load sheds or blocks, it never grows unbounded.",
+     "Find each spawn/enqueue driven by external input; name its bound (pool size, channel capacity, semaphore). An unbounded channel or per-request spawn with no cap is the violation."),
+    ("perf-budget-proven", "error",
+     "Measured performance: hot-path intents declare a performance budget in their criterion (e.g. 'p99 < 50ms at 10k entries') AND carry a benchmark validation proving it — fast is a claim, proven-fast is a state.",
+     "Cross-check `loom hotspots`: for each high-centrality intent on a hot path, does its criterion state a number, and does a `benchmark`-type validation exist and pass? A budget without a benchmark (or vice versa) is the violation."),
+];
+
 /// All seedable packs, by name. `iso5055` is the baseline (applies to any code);
 /// the rest are repo-kind vantage points — `loom detect` recommends which fit.
 const PACKS: &[(&str, &[(&str, &str, &str, &str)])] = &[
@@ -165,6 +193,7 @@ const PACKS: &[(&str, &[(&str, &str, &str, &str)])] = &[
     ("web-ui", WEBUI_PACK),
     ("service", SERVICE_PACK),
     ("data", DATA_PACK),
+    ("concurrency", CONCURRENCY_PACK),
 ];
 
 /// Names of all seedable packs (for help/errors/`loom detect`).

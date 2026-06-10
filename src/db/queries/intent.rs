@@ -1,6 +1,6 @@
 //! Intent node queries.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use grafeo::Value;
 use std::collections::HashMap;
 
@@ -75,7 +75,7 @@ pub fn add_source_ref(db: &dyn LoomDb, id: &str, path: &str, updated_at: &str) -
     let Some(intent) = get_intent(db, id)? else {
         return Ok(false);
     };
-    let mut refs: Vec<String> = serde_json::from_str(&intent.source_refs).unwrap_or_default();
+    let mut refs = parse_source_refs(&intent)?;
     if !refs.iter().any(|r| r == path) {
         refs.push(path.to_string());
         set_source_refs(db, id, &refs, updated_at)?;
@@ -94,7 +94,7 @@ pub fn remove_source_ref(
     let Some(intent) = get_intent(db, id)? else {
         return Ok(None);
     };
-    let mut refs: Vec<String> = serde_json::from_str(&intent.source_refs).unwrap_or_default();
+    let mut refs = parse_source_refs(&intent)?;
     let before = refs.len();
     refs.retain(|r| r != path);
     if refs.len() == before {
@@ -112,6 +112,11 @@ fn set_source_refs(db: &dyn LoomDb, id: &str, refs: &[String], updated_at: &str)
         esc(updated_at)
     ))?;
     Ok(())
+}
+
+fn parse_source_refs(intent: &Intent) -> Result<Vec<String>> {
+    serde_json::from_str(&intent.source_refs)
+        .with_context(|| format!("Intent '{}' has malformed source_refs JSON", intent.id))
 }
 
 /// Set an intent's lifecycle (planned | implemented | needs_change).

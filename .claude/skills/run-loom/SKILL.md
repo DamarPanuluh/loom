@@ -55,8 +55,9 @@ loom schema     # data model: nodes, edges, states, field owners
 ```
 
 The loop, compressed: `loom init .` → seed intents → seed the quality packs
-`loom detect` recommends (`loom rule seed iso5055|mobile|web-ui|service|data` —
-the 360° vantage points; iso5055 always applies) → ground to files → then
+`loom detect` recommends (`loom rule seed
+iso5055|mobile|web-ui|service|data|concurrency` — the 360° vantage points;
+iso5055 always applies) → ground to files → then
 repeat **`loom status` → do what the compass says → `loom sync` after ANY code
 change**. Work queues per agent role:
 `loom next --mode build|discovery|fix|validate|quality`; the cross-role

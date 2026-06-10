@@ -6,7 +6,7 @@
 //! with `loom import`. Schema-driven: the property lists come from
 //! `db::schema`, so export/import can't drift from the vocabulary.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde_json::{json, Map, Value as J};
 
 use crate::db::schema::{self, edge, label, prop, EDGE_TYPES, NODE_LABELS};
@@ -53,6 +53,43 @@ fn grafeo_to_json(v: &grafeo::Value, numeric: bool) -> J {
     } else {
         json!(super::row::str_val(v))
     }
+}
+
+fn object_field<'a>(data: &'a J, field: &str) -> Result<&'a Map<String, J>> {
+    data.get(field)
+        .with_context(|| format!("Export is missing `{field}` object"))?
+        .as_object()
+        .with_context(|| format!("Export `{field}` is not an object"))
+}
+
+fn array_in_object<'a>(
+    obj: &'a Map<String, J>,
+    section: &str,
+    key: &str,
+) -> Result<&'a Vec<J>> {
+    obj.get(key)
+        .with_context(|| format!("Export is missing `{section}.{key}` array"))?
+        .as_array()
+        .with_context(|| format!("Export `{section}.{key}` is not an array"))
+}
+
+fn item_object<'a>(item: &'a J, ctx: &str) -> Result<&'a Map<String, J>> {
+    item.as_object()
+        .with_context(|| format!("Export `{ctx}` item is not an object"))
+}
+
+fn required_str<'a>(obj: &'a Map<String, J>, key: &str, ctx: &str) -> Result<&'a str> {
+    obj.get(key)
+        .with_context(|| format!("Export `{ctx}` is missing string field `{key}`"))?
+        .as_str()
+        .with_context(|| format!("Export `{ctx}.{key}` is not a string"))
+}
+
+fn required_f64(obj: &Map<String, J>, key: &str, ctx: &str) -> Result<f64> {
+    obj.get(key)
+        .with_context(|| format!("Export `{ctx}` is missing numeric field `{key}`"))?
+        .as_f64()
+        .with_context(|| format!("Export `{ctx}.{key}` is not a number"))
 }
 
 /// Export the whole graph as deterministic JSON (arrays sorted by id; map keys
@@ -170,20 +207,21 @@ pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
     }
 
     let mut report = ImportReport::default();
-    let empty = Map::new();
+    let nodes = object_field(data, "nodes")?;
+    let edges = object_field(data, "edges")?;
 
     // Nodes first.
     for &lbl in NODE_LABELS {
-        let items = data["nodes"].get(lbl).and_then(J::as_array).cloned().unwrap_or_default();
+        let items = array_in_object(nodes, "nodes", lbl)?;
         for item in items {
-            let obj = item.as_object().unwrap_or(&empty);
+            let obj = item_object(item, &format!("nodes.{lbl}"))?;
             let assigns = node_props(lbl)
                 .iter()
                 .map(|p| {
-                    let v = obj.get(*p).and_then(J::as_str).unwrap_or("");
-                    format!("{p}: '{}'", schema::esc(v))
+                    let v = required_str(obj, p, &format!("nodes.{lbl}"))?;
+                    Ok(format!("{p}: '{}'", schema::esc(v)))
                 })
-                .collect::<Vec<_>>()
+                .collect::<Result<Vec<_>>>()?
                 .join(", ");
             db.execute(&format!("INSERT (:{lbl} {{{assigns}}})"))?;
             report.nodes += 1;
@@ -193,22 +231,23 @@ pub fn import_graph(db: &dyn LoomDb, data: &J) -> Result<ImportReport> {
     // Then edges, endpoint-matched.
     for &etype in EDGE_TYPES {
         let (la, lb) = endpoints(etype);
-        let items = data["edges"].get(etype).and_then(J::as_array).cloned().unwrap_or_default();
+        let items = array_in_object(edges, "edges", etype)?;
         for item in items {
-            let obj = item.as_object().unwrap_or(&empty);
-            let from = obj.get("from").and_then(J::as_str).unwrap_or("");
-            let to = obj.get("to").and_then(J::as_str).unwrap_or("");
+            let obj = item_object(item, &format!("edges.{etype}"))?;
+            let from = required_str(obj, "from", &format!("edges.{etype}"))?;
+            let to = required_str(obj, "to", &format!("edges.{etype}"))?;
             let assigns = edge_props(etype)
                 .iter()
                 .map(|p| {
                     if is_numeric(p) {
-                        format!("{p}: {}", obj.get(*p).and_then(J::as_f64).unwrap_or(0.0))
+                        let v = required_f64(obj, p, &format!("edges.{etype}"))?;
+                        Ok(format!("{p}: {v}"))
                     } else {
-                        let v = obj.get(*p).and_then(J::as_str).unwrap_or("");
-                        format!("{p}: '{}'", schema::esc(v))
+                        let v = required_str(obj, p, &format!("edges.{etype}"))?;
+                        Ok(format!("{p}: '{}'", schema::esc(v)))
                     }
                 })
-                .collect::<Vec<_>>()
+                .collect::<Result<Vec<_>>>()?
                 .join(", ");
             db.execute(&format!(
                 "MATCH (a:{la} {{id: '{from}'}}), (b:{lb} {{id: '{to}'}}) \
