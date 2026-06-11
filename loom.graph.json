@@ -4998,7 +4998,7 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "7b5749b3-9d5e-4c4e-a0d2-14e386db5182",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.146225+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5054,7 +5054,7 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "323efcd2-38be-43c9-a4ae-aa9c7a681ede",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.152450+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5068,11 +5068,123 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "d55cfe99-9da3-47d9-ad17-63d60aad32e2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.153843+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.972631+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'graph targeting pin' but no relationship is recorded. imports: src/commands/saga.rs → src/db/mod.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "18895cea-1067-4e26-9d71-31003adb4b80",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.972631+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "3080764f-7486-409e-87f7-75d5b6c08f31"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.963176+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'command definitions and dispatch' but no relationship is recorded. imports: src/commands/mod.rs → src/commands/saga.rs, src/commands/saga.rs → src/cli.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "889b67d7-d46b-4a89-8d3b-f243339432ec",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.963176+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.960036+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'schema vocabulary and session' but no relationship is recorded. imports: src/commands/saga.rs → src/db/mod.rs, src/commands/saga.rs → src/db/schema.rs, src/commands/saga.rs → src/types.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "994dea1a-3e8a-423e-bd63-c863668a5f3d",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.960036+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.965087+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'hypothesis node and TARGETS edge' but no relationship is recorded. imports: src/commands/saga.rs → src/db/schema.rs, src/commands/saga.rs → src/types.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "93b2750d-24b3-4fda-9790-29ed25b275c7",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.965087+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.970741+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'dual-mode output' but no relationship is recorded. imports: src/commands/saga.rs → src/output.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "94acf2f0-9a13-4029-93ce-cfe9d68f5b08",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.970741+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.976460+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'hypothesis lifecycle commands' but no relationship is recorded. imports: src/commands/saga.rs → src/cli.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "81e78167-fc1f-4756-bbb1-80d105610cb3",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.976460+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "d7d485d7-c342-4c44-a57f-d08f7cf31941"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.974537+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'node and annotation queries' but no relationship is recorded. imports: src/commands/saga.rs → src/db/queries/mod.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "bcd8a550-9b12-4f41-9cb4-25a9558492d3",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.974537+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.966983+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'saga spec with first-class intent binding' but no relationship is recorded. imports: src/commands/saga.rs → src/saga/spec.rs",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "96238cdd-b39b-4eb4-83df-d1e5e78cb365",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.966983+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb"
       },
       {
         "confidence": 0.9,
@@ -5754,7 +5866,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "3d1ce14f-de81-4516-ae22-e51fa54f444c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.163676+00:00",
         "notes": "module-hub import via db/mod.rs only: resolve_root decides WHICH graph before any session opens; this feature's semantics are identical whichever graph is targeted — no contract",
         "priority_score": 0.0,
@@ -6006,7 +6118,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.598786+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6342,7 +6454,7 @@
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "id": "323cb517-f3b0-4caa-bd89-b4e01af38574",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.173375+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6503,6 +6615,20 @@
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
       {
+        "confidence": 0.84,
+        "created_at": "2026-06-11T09:05:18.968871+00:00",
+        "criterion": "Related by code-level dependency: code of 'saga consumer plane' imports code of 'command definitions and dispatch' but no relationship is recorded. imports: src/main.rs → src/saga/mod.rs",
+        "evidence": "",
+        "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "id": "6e888a6b-0111-486d-a933-9baf2dfeac64",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T09:05:18.968871+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
+      },
+      {
         "confidence": 0.85,
         "created_at": "2026-06-10T19:18:04.693823+00:00",
         "criterion": "hostile-import hardening IS the import half of the travel format: the two-phase validate-then-write lives inside import_graph, so every restore (and every federation read of an export) inherits the no-partial-graph guarantee",
@@ -6580,7 +6706,7 @@
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "id": "1d305157-b4b1-4596-b625-58493fc8af55",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.604465+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6636,7 +6762,7 @@
         "from": "51bfa653-0b3a-46db-a3a1-c52f1609ff9c",
         "id": "2f30e4d8-8717-4792-a902-e1da69741565",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.605888+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6664,7 +6790,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "c8efcba4-2592-4726-be3f-6e4788d0f88f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.187684+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6720,7 +6846,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "eadabcec-422f-412f-82de-7f7b25cb38fc",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.193847+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6734,7 +6860,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "0774ba77-c26b-4ac1-a1fe-f25facf1ac8b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.195248+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7854,7 +7980,7 @@
         "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "id": "16926218-0ca1-45ea-8ff0-e23536029da4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.616455+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7896,7 +8022,7 @@
         "from": "c3cc2a54-cf7f-4b47-9f19-677839166343",
         "id": "58f96ecd-4a98-4fbd-aeb0-ef83222f0038",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.214048+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7980,7 +8106,7 @@
         "from": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
         "id": "240ef7e0-68c3-42be-a58d-83b4f9f8b8a6",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.218162+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -8078,7 +8204,7 @@
         "from": "e287ac20-f7af-44bf-ba45-078a282b8535",
         "id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.619240+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -8777,11 +8903,11 @@
         "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/gen_synth_graph.py"
       },
       {
-        "content_hash": "9d8bd962335d94ba",
+        "content_hash": "806274c09766549b",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": "[\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-11T07:58:44.370856480+00:00",
+        "last_modified": "2026-06-11T09:07:21.468197838+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -8993,11 +9119,11 @@
         "path": "src/types.rs"
       },
       {
-        "content_hash": "70f7f1f831ebc754",
+        "content_hash": "abe9182a6feacf78",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-11T07:48:58.651728159+00:00",
+        "last_modified": "2026-06-11T09:07:36.247591363+00:00",
         "path": "src/commands/next.rs"
       },
       {
@@ -12324,6 +12450,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T09:05:18.968871+00:00",
+        "id": "0dbdaab2-440c-4ffa-96a7-dd45ffa46a33",
+        "kind": "transition",
+        "target_id": "6e888a6b-0111-486d-a933-9baf2dfeac64",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.451753+00:00",
         "id": "0dd70d35-067a-4e0c-a8a3-ca128ee611ca",
         "kind": "transition",
@@ -12670,6 +12806,16 @@
         "target_id": "7f84d503-22fe-46a3-87c6-8c21d946e8fd",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "0fdc32fb-ff0e-4fb5-81f6-ba1ec68548a6",
+        "kind": "transition",
+        "target_id": "3d1ce14f-de81-4516-ae22-e51fa54f444c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -19893,6 +20039,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.960036+00:00",
+        "id": "3dbbb969-7c52-49ae-b3cc-b2630c412c70",
+        "kind": "transition",
+        "target_id": "994dea1a-3e8a-423e-bd63-c863668a5f3d",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "3dbda9d6-bd55-4aa6-b0c2-d9a95cb4d7e1",
@@ -24023,6 +24179,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "59ccaaaf-eb63-441a-9025-491f7bb36339",
+        "kind": "transition",
+        "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.381859+00:00",
         "id": "59d4ca80-0bed-4387-a0a8-164c7da8a726",
@@ -25320,6 +25486,16 @@
         "target_id": "ac503cbb-0de1-496b-87e6-b0de766b0fa9",
         "target_kind": "hypothesis",
         "text": "supported → adopted"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.966983+00:00",
+        "id": "62d3cc82-6fb6-45b3-af02-bc101a0b926e",
+        "kind": "transition",
+        "target_id": "96238cdd-b39b-4eb4-83df-d1e5e78cb365",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -28663,6 +28839,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "782b25d0-3566-4b0f-85d5-2933a4b6019b",
+        "kind": "transition",
+        "target_id": "323cb517-f3b0-4caa-bd89-b4e01af38574",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.479050+00:00",
         "id": "782e289b-96f8-4075-a8bb-3a549c796607",
@@ -30824,6 +31010,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T09:05:18.963176+00:00",
+        "id": "84611259-f41c-4cc4-9503-8ab708136d4a",
+        "kind": "transition",
+        "target_id": "889b67d7-d46b-4a89-8d3b-f243339432ec",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-11T02:03:02.965645+00:00",
         "id": "846b5741-e3a2-4547-935c-47c1dc60a092",
         "kind": "transition",
@@ -31053,6 +31249,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.970741+00:00",
+        "id": "858b85da-8546-4af6-a723-ad2a7b48e2fc",
+        "kind": "transition",
+        "target_id": "94acf2f0-9a13-4029-93ce-cfe9d68f5b08",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T16:47:54.149805+00:00",
         "id": "8590d418-3dc6-4b3a-a44e-4eaa3d8c7665",
@@ -31190,6 +31396,16 @@
         "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "864750af-7aee-4df9-9a24-8b7a009cfe64",
+        "kind": "transition",
+        "target_id": "d55cfe99-9da3-47d9-ad17-63d60aad32e2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -31490,6 +31706,16 @@
         "target_id": "6faefd10-4842-490d-9d8d-488bbe593d2d",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "88b85f13-3f59-4943-911c-eb4dc3e2f03a",
+        "kind": "transition",
+        "target_id": "1d305157-b4b1-4596-b625-58493fc8af55",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -31874,6 +32100,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "8a71d366-149d-4c25-89e6-999cb5d9ebdd",
+        "kind": "transition",
+        "target_id": "58f96ecd-4a98-4fbd-aeb0-ef83222f0038",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T23:58:31.092454+00:00",
         "id": "8a75183b-2445-46d0-8998-02b9399d8bd7",
         "kind": "transition",
@@ -32210,6 +32446,16 @@
         "target_id": "3406eeba-ed7b-473d-a2f2-03f2deb60594",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.965087+00:00",
+        "id": "8c49a96f-9f0d-44a1-9f74-5275388fa16d",
+        "kind": "transition",
+        "target_id": "93b2750d-24b3-4fda-9790-29ed25b275c7",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -33114,6 +33360,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "92bab8b6-248f-4806-bd80-96f5fda528b7",
+        "kind": "transition",
+        "target_id": "240ef7e0-68c3-42be-a58d-83b4f9f8b8a6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T08:43:06.976124+00:00",
         "id": "92c279c5-52c7-40d0-aae5-9da0d8a596d4",
         "kind": "transition",
@@ -33250,6 +33506,16 @@
         "target_id": "b21618e2-d55c-44ad-b86f-fe95e71eabca",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/completeness.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.976460+00:00",
+        "id": "93753b0a-f2b4-4a55-8238-8a358ff35af4",
+        "kind": "transition",
+        "target_id": "81e78167-fc1f-4756-bbb1-80d105610cb3",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -34770,6 +35036,16 @@
         "target_id": "d01a3fde-613f-4520-9605-8331de4113db",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "9d33e697-0eed-4a45-b7e6-1820ed66e56b",
+        "kind": "transition",
+        "target_id": "7b5749b3-9d5e-4c4e-a0d2-14e386db5182",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -36773,6 +37049,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.972631+00:00",
+        "id": "a9600168-cbcf-43dc-aa77-5b05d3888f9e",
+        "kind": "transition",
+        "target_id": "18895cea-1067-4e26-9d71-31003adb4b80",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:21:18.806396+00:00",
         "id": "a9641785-1245-4ac0-8396-eb41868e9ae9",
@@ -37210,6 +37496,16 @@
         "target_id": "8a8d346a-3691-48c2-b7ae-1dd51d5a3ff5",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "abd2929c-a98b-48b4-9324-f176b6db4a74",
+        "kind": "transition",
+        "target_id": "eadabcec-422f-412f-82de-7f7b25cb38fc",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -39884,6 +40180,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "bd4eaa6e-bf48-4b6a-846b-c8864d742908",
+        "kind": "transition",
+        "target_id": "2f30e4d8-8717-4792-a902-e1da69741565",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:47:54.149805+00:00",
         "id": "bd61286e-12da-4ecd-8a18-e48900ed0fb1",
         "kind": "transition",
@@ -40113,6 +40419,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "be8c955f-6d19-436a-a9f7-0db4257646e0",
+        "kind": "transition",
+        "target_id": "0774ba77-c26b-4ac1-a1fe-f25facf1ac8b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T07:32:21.081735+00:00",
         "id": "bebd9e13-0e71-49b5-a0db-a3e73f59c921",
@@ -40240,6 +40556,16 @@
         "target_id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/governs.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "bf7c990d-3929-452b-86ef-5751300e1c04",
+        "kind": "transition",
+        "target_id": "16926218-0ca1-45ea-8ff0-e23536029da4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -41220,6 +41546,16 @@
         "target_id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/validates.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "c542ef89-a33a-44ba-a012-b5ae4018c8c0",
+        "kind": "transition",
+        "target_id": "c8efcba4-2592-4726-be3f-6e4788d0f88f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -45094,6 +45430,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "de99c5c3-c225-4879-8d54-0b219bfa2501",
+        "kind": "transition",
+        "target_id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "deb26475-43e6-47e6-875f-b98a49af937f",
         "kind": "transition",
@@ -45830,6 +46176,16 @@
         "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T09:08:21.572392+00:00",
+        "id": "e31e141e-2c58-476b-987c-a22ea4a99aca",
+        "kind": "transition",
+        "target_id": "323efcd2-38be-43c9-a4ae-aa9c7a681ede",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
       },
       {
         "audience": "",
@@ -49623,6 +49979,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T09:05:18.974537+00:00",
+        "id": "fba65d05-565b-4df2-9e21-b80f50523263",
+        "kind": "transition",
+        "target_id": "bcd8a550-9b12-4f41-9cb4-25a9558492d3",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "fbb5a5c6-48fd-4b9a-9371-fc35ffdcb834",
@@ -50765,7 +51131,7 @@
         "command": "cargo test triage",
         "description": "triage_candidates serves only proposed hypotheses, ranks by combined target-intent centrality, unranked surface last, proven leave the queue",
         "id": "67f86545-5d9a-4b4c-8b23-7ff804e96155",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:55:13.474253+00:00",
         "name": "triage queue ranking",
         "validation_type": "test"
@@ -50882,7 +51248,7 @@
         "command": "cargo test import_as_planned",
         "description": "",
         "id": "d8b77fd8-110d-4603-9291-1692db66add3",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:59:33.871786+00:00",
         "name": "port adopts the semantic plane only",
         "validation_type": "test"
@@ -50909,7 +51275,7 @@
         "command": "cargo test low_confidence_verdicts_feed_the_review_queue",
         "description": "",
         "id": "f9daf553-2d1c-4e2d-bd1a-58556b5c9ecd",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:55:15.465164+00:00",
         "name": "review queue lifecycle",
         "validation_type": "test"

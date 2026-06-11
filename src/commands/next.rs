@@ -585,17 +585,27 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let action = if validations.is_empty() {
         format!(
             "PROVE this intent — it has no validations:\n\
-             1. Decide how it can be proven (test | assertion | benchmark | manual_check).\n  \
+             1. Decide how it can be proven (test | assertion | benchmark | manual_check —\n     \
+                or, if it's part of an endpoint-reachable journey, a consumer saga:\n     \
+                `loom saga add <spec.yaml>` proves the whole chain by executing it).\n  \
              2. loom validation add --name \"…\" --type test --command \"…\" --intent {id}\n  \
              3. loom validate {id}",
             id = c.intent.id,
         )
     } else {
+        let saga_hint = validations
+            .iter()
+            .find(|v| v.validation_type == "saga")
+            .map(|v| format!(
+                "\nA saga proof is linked — run it directly for step-level output: loom saga run {}",
+                v.name
+            ))
+            .unwrap_or_default();
         format!(
             "Run this intent's validations and record the verdicts:\n\
              \n  loom validate {id}\n\
              \nIf one fails, the intent is not fulfilled — flag it: \
-             loom intent mark {id} --lifecycle needs_change --reason \"<validation failure>\"",
+             loom intent mark {id} --lifecycle needs_change --reason \"<validation failure>\"{saga_hint}",
             id = c.intent.id,
         )
     };

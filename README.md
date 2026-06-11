@@ -16,17 +16,17 @@ LLM agents are good at local reasoning and terrible at remembering what they ver
 
 ## The mental model
 
-The graph spans three planes, connected by edges:
+The graph spans five planes, connected by edges:
 
 | Plane | Node | Meaning |
 |---|---|---|
 | Semantic | `Intent` | what the system is *supposed* to do (system → component → feature) |
 | Physical | `CodeFile` | what actually exists on disk |
 | Normative | `QualityRule` | what *good* looks like (e.g. the bundled ISO 5055 pack) |
+| Proof | `Validation` | runnable evidence an intent is fulfilled (tests, benchmarks, manual checks, consumer sagas) |
+| Pre-decision | `Hypothesis` | improvement proposals — proven against the code *before* they become work |
 
-Plus `Validation` nodes — runnable proof objects (tests, benchmarks, manual checks) attached to intents.
-
-Five edge types: `HIERARCHY` (the intent tree), `IMPLEMENTS` (intent → file, with a symbol-level locator), `RELATES_TO` (intent ↔ intent, the inspectable grid), `GOVERNS` (rule → intent, the quality gate), `VALIDATES` (proof → intent).
+Six edge types: `HIERARCHY` (the intent tree), `IMPLEMENTS` (intent → file, with a symbol-level locator), `RELATES_TO` (intent ↔ intent, the inspectable grid), `GOVERNS` (rule → intent, the quality gate), `VALIDATES` (proof → intent), `TARGETS` (hypothesis → the intents it would touch).
 
 **Done** is mechanical, not felt: the *vertical spine* must hold — the hierarchy is a well-formed tree, every implemented leaf intent is grounded in code, every file is reached by an intent, and `loom coverage` reports nothing unaccounted. Closing the horizontal intent×intent grid is optional deep-understanding work.
 
@@ -61,13 +61,40 @@ Everything is addressable by id, exact name, or unique name fragment. Ambiguity 
 1. `loom next` hands you one edge with both intents, the code locations, prior notes, and a suggested action.
 2. Work it Socratically: form a hypothesis, read the actual code, then record the verdict — `ground` (passing, with criterion), `issue` (failing, with evidence), or `independent` (verified *no* relationship — as valuable as a pass).
 3. After any code change: `loom sync`. Change detection is **content-hash based** (checkout/rebase mtime churn never false-flags), and every invalidated edge gets a note naming the file that staled it.
-4. `loom smells` surfaces what nobody asserted: twin intents, overlapping ownership, scattered responsibilities (clustered by directory), tangled files, undeclared coupling (imports the graph doesn't explain), recurrent trouble, happy-path-only features (no failure behavior declared). Each finding carries its exact remedy command.
+4. `loom smells` surfaces what nobody asserted: twin intents, overlapping ownership, scattered responsibilities (clustered by directory), tangled files, undeclared coupling (imports the graph doesn't explain), recurrent trouble, happy-path-only features (no failure behavior declared). Each finding carries its exact remedy command — and the redesign-shaped ones emit a `loom hypothesis add`, so a redesign gets *proven* before it becomes work.
 5. Seed the quality packs `loom detect` recommends — `iso5055` (baseline, any code), `mobile`, `web-ui`, `service`, `data`, `concurrency` — and `loom next --mode quality` serves every rule × coded-intent pair never measured. One `loom rule verdict` resolves each (it creates the edge; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply).
 6. Close out with `loom next --all`, prove intents with `loom validate`.
+
+## Prove it from the outside: consumer sagas
+
+Everything above grounds claims by *reading* code. A **saga** proves intents compose by *executing* them — an ordered chain of endpoint invocations that consumes the system the way a real consumer will, with values captured from one response threading into the next request. The engine is built in and pure Rust (reqwest on rustls — no libcurl, loom stays one static binary):
+
+```yaml
+saga: checkout-flow
+base: "{{ env.BASE_URL }}"
+steps:
+  - name: create cart
+    intent: cart-creation              # every step names the intent it proves
+    request: { method: POST, url: /carts, json: { items: [] } }
+    expect:  { status: 201 }
+    capture: { cart_id: "$.id" }       # JSONPath → variable for later steps
+  - name: capture payment
+    intent: payment-capture
+    request: { method: POST, url: "/carts/{{ cart_id }}/payment" }
+    expect:  { status: 200, body: { "$.state": paid } }
+```
+
+`loom saga add checkout.saga.yaml` declares the proof; `loom saga run checkout-flow` executes it and stamps the result into the graph with honest failure semantics: consecutive passing steps mark their `RELATES_TO` edge **passing with runtime evidence**; the boundary into a failing step goes **failing with the exact broken expectation** (`expected 200, got 502`) and lands in the fix queue; steps after the failure stay untouched — *never reached* is not *failing*. `loom sync` re-queues the saga whenever code behind a step intent changes, and the spec travels verbatim across a port — it speaks HTTP, not the implementation language.
+
+## Ideas are not work: the hypothesis plane
+
+An improvement idea must survive contact with the code before it costs anything. `loom hypothesis add` records a falsifiable **claim** (what's wrong *now*), a **proposal**, and a **predicted outcome**; a *different* agent proves or refutes the claim against the code (`loom next --mode triage` ranks proposals by blast radius); only then does a builder **adopt** it into planned intents — and the predicted outcome becomes a real validation, so every adopted improvement is later checked for whether it actually *delivered* (`confirmed`). Unproven ideas die honestly (`rejected`) instead of becoming speculative refactors. Hypotheses are invisible to coverage and completeness until adopted — speculation never counts as the state of the world.
 
 ## Multi-agent by design
 
 Every schema field declares its owning **role** — builder, analyzer, fixer, validator, quality — and each role has its own `loom next --mode …` queue. Declare a role (`LOOM_AGENT=llm:analyzer`) and loom **enforces the lane**: a builder cannot green-light its own work; verdicts recorded out-of-lane are hard errors, and `loom doctor` audits provenance after the fact. Bare `llm` is solo mode — one agent drives every lane, all gates still apply.
+
+Capability is tiered, honestly: every work item carries `effort: low|mid|high` — a statement about the *work* (loom never names models; the harness maps tiers). Cheap agents drive the bulk and record honest confidence; any verdict below 0.7 automatically feeds `loom next --mode review`, where a stronger agent independently re-inspects (own hypothesis first, then the recorded evidence) and confirms or overturns. Confidence is the coordination channel between tiers — no agent ever messages another.
 
 Topology is yours: one agent switching hats, sequential handoffs, or parallel agents per lane. Handoff happens **through the graph**, not through chat.
 
