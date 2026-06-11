@@ -872,6 +872,12 @@ pub enum SagaCmd {
     /// boundary goes failing with the broken expectation, steps after it are
     /// untouched (never reached ≠ failing). Exits non-zero on failure, so it
     /// also works as the command behind `loom validate`.
+    ///
+    /// `{{ env.X }}` values (the LIVE target's url, tokens, …) are passed at
+    /// invocation: `BASE_URL=http://localhost:3000 loom saga run <name>` —
+    /// never stored in the graph. Missing values refuse to run (nothing is
+    /// stamped) and the error names every var plus the exact invocation;
+    /// `loom saga list` shows each saga's `run with:` line.
     Run {
         /// Saga name (the registered validation) or a spec file path.
         saga: String,

@@ -211,6 +211,61 @@ pub fn interpolate(template: &str, vars: &BTreeMap<String, String>) -> Result<St
     Ok(out)
 }
 
+/// Every `{{ env.NAME }}` reference in one template string.
+fn env_refs_in(template: &str, out: &mut Vec<String>) {
+    let mut rest = template;
+    while let Some(start) = rest.find("{{") {
+        let after = &rest[start + 2..];
+        let Some(end) = after.find("}}") else { return };
+        if let Some(name) = after[..end].trim().strip_prefix("env.") {
+            if !out.iter().any(|n| n == name) {
+                out.push(name.to_string());
+            }
+        }
+        rest = &after[end + 2..];
+    }
+}
+
+fn env_refs_in_json(value: &serde_json::Value, out: &mut Vec<String>) {
+    use serde_json::Value;
+    match value {
+        Value::String(s) => env_refs_in(s, out),
+        Value::Array(items) => items.iter().for_each(|v| env_refs_in_json(v, out)),
+        Value::Object(map) => map.values().for_each(|v| env_refs_in_json(v, out)),
+        _ => {}
+    }
+}
+
+/// Every environment variable a spec references (`{{ env.NAME }}` anywhere a
+/// template is interpolated: base, urls, headers, bodies). This is the saga's
+/// declared dependency on the OUTSIDE world — values are passed at invocation
+/// (`BASE_URL=… loom saga run …`), never stored in the graph.
+pub fn required_env(spec: &SagaSpec) -> Vec<String> {
+    let mut out = Vec::new();
+    env_refs_in(&spec.base, &mut out);
+    for step in &spec.steps {
+        env_refs_in(&step.request.url, &mut out);
+        for v in step.request.headers.values() {
+            env_refs_in(v, &mut out);
+        }
+        if let Some(json) = &step.request.json {
+            env_refs_in_json(json, &mut out);
+        }
+        if let Some(body) = &step.request.body {
+            env_refs_in(body, &mut out);
+        }
+    }
+    out
+}
+
+/// The subset of `required_env` not set in this process's environment.
+pub fn missing_env(spec: &SagaSpec) -> Vec<String> {
+    required_env(spec)
+        .into_iter()
+        .filter(|name| std::env::var(name).is_err())
+        .collect()
+}
+
 /// Interpolate every string leaf of a JSON value (for `request.json` bodies).
 pub fn interpolate_json(
     value: &serde_json::Value,
@@ -326,6 +381,20 @@ steps:
         assert!(err.contains("no such variable") && err.contains("cart_id"), "got: {err}");
         // Unclosed braces are an error, not silent passthrough.
         assert!(interpolate("{{ oops", &vars).is_err());
+    }
+
+    #[test]
+    fn required_env_finds_every_reference_once() {
+        let spec = load_spec(GOOD, "test").unwrap();
+        assert_eq!(required_env(&spec), vec!["BASE_URL"]);
+
+        let multi = GOOD
+            .replace(
+                "request: { method: POST, url: /carts, json: { owner: \"{{ user }}\" } }",
+                "request: { method: POST, url: /carts, headers: { X-Auth: \"{{ env.API_TOKEN }}\" }, json: { owner: \"{{ env.OWNER }}\", base: \"{{ env.BASE_URL }}\" } }",
+            );
+        let spec = load_spec(&multi, "test").unwrap();
+        assert_eq!(required_env(&spec), vec!["BASE_URL", "API_TOKEN", "OWNER"]);
     }
 
     #[test]

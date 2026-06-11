@@ -243,6 +243,9 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
         }
 
         ValidationCmd::Show { id } => {
+            // Same addressing as every other subcommand: id, exact name, or
+            // unique name fragment.
+            let id = resolve_validation(&db, &id).unwrap_or(id);
             match get_validation(&db, &id)? {
                 None => anyhow::bail!(
                     "Validation '{}' not found.\nRun `loom validation list` to see available validations.",

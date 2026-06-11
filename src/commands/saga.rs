@@ -68,8 +68,17 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
         .into_iter()
         .find(|v| v.name == spec.saga);
     let command = format!("loom saga run {rel}");
+    let required_env = crate::saga::spec::required_env(&spec);
+    let env_line = if required_env.is_empty() {
+        String::new()
+    } else {
+        // Travels in the node so list/show/next surface the dependency without
+        // re-parsing the spec: a saga consumes a LIVE target, and the values
+        // are passed at invocation, never stored in the graph.
+        format!("\nrequires env: {}", required_env.join(", "))
+    };
     let description = format!(
-        "{}{}Consumer saga proof — {} step(s), run by the built-in engine.\nspec:{rel}",
+        "{}{}Consumer saga proof — {} step(s), run by the built-in engine.\nspec:{rel}{env_line}",
         spec.description.trim(),
         if spec.description.trim().is_empty() { "" } else { "\n" },
         spec.steps.len(),
@@ -164,7 +173,8 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
             "validates_linked": linked,
             "path_edges_ensured": path_edges,
             "spec_registered_as_codefile": registered_spec,
-            "next_steps": [format!("Run it: `loom saga run {}`.", spec.saga)],
+            "requires_env": required_env,
+            "next_steps": [format!("Run it: `{}`.", run_invocation(&spec.saga, &required_env))],
         }));
     } else {
         println!(
@@ -180,7 +190,13 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
         if registered_spec {
             println!("  Spec registered as a CodeFile — ground it under a consumer-journeys intent when you have one.");
         }
-        println!("  → Run it: `loom saga run {}`", spec.saga);
+        if !required_env.is_empty() {
+            println!(
+                "  Requires env at invocation (the live target — never stored in the graph): {}",
+                required_env.join(", ")
+            );
+        }
+        println!("  → Run it: `{}`", run_invocation(&spec.saga, &required_env));
     }
     Ok(())
 }
@@ -227,6 +243,26 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
             spec.saga
         ))?;
     let step_intents = resolve_step_intents(&db, &spec)?;
+
+    // Pre-flight: a saga consumes a LIVE target, and its `{{ env.X }}` values
+    // arrive at invocation. Missing values are an ENVIRONMENT problem, not a
+    // failed proof — refuse to run (nothing is stamped) and say exactly how to
+    // invoke, instead of failing on the first reference mid-chain.
+    let missing = crate::saga::spec::missing_env(&spec);
+    if !missing.is_empty() {
+        anyhow::bail!(
+            "Saga '{name}' needs environment value(s) this invocation didn't set: {missing}.\n\
+             The spec references them as {{{{ env.<NAME> }}}} — pass them on the command line:\n\
+             \n  {invocation}\n\
+             \n(The values point at the LIVE target the consumer talks to; loom never stores them \
+             in the graph.) Nothing was run or recorded. If the target cannot run yet at all, \
+             record that honestly instead:\n\
+             \n  loom validation mark {name} --result blocked --reason \"waiting on <what>\"",
+            name = spec.saga,
+            missing = missing.join(", "),
+            invocation = run_invocation(&spec.saga, &missing),
+        );
+    }
 
     // Phase 2 (DB CLOSED): consume the live surface. HTTP can be slow and the
     // graph lock must not be held across it (same discipline as `loom validate`).
@@ -366,6 +402,8 @@ fn list(printer: &Printer) -> Result<()> {
             "id": v.id,
             "name": v.name,
             "spec": spec_path_of(v),
+            "requires_env": required_env_of(v),
+            "run_with": run_invocation(&v.name, &required_env_of(v)),
             "last_result": v.last_result,
             "last_run": v.last_run,
         })).collect();
@@ -383,6 +421,10 @@ fn list(printer: &Printer) -> Result<()> {
                 spec_path_of(v).unwrap_or_else(|| "?".to_string()),
                 if v.last_run.is_empty() { "(never)" } else { &v.last_run },
             );
+            let env = required_env_of(v);
+            if !env.is_empty() {
+                println!("              run with: {}", run_invocation(&v.name, &env));
+            }
         }
     }
     Ok(())
@@ -415,12 +457,29 @@ fn resolve_step_intents(
     Ok(out)
 }
 
+/// The exact command line to run a saga, with required env vars as
+/// placeholders to fill: `BASE_URL=<value> loom saga run checkout-flow`.
+fn run_invocation(saga_name: &str, env_vars: &[String]) -> String {
+    let prefix: String = env_vars.iter().map(|v| format!("{v}=<value> ")).collect();
+    format!("{prefix}loom saga run {saga_name}")
+}
+
 /// The spec path recorded in a saga validation's description (`spec:<path>`).
-fn spec_path_of(v: &Validation) -> Option<String> {
+pub fn spec_path_of(v: &Validation) -> Option<String> {
     v.description
         .lines()
         .find_map(|l| l.strip_prefix("spec:"))
         .map(|s| s.trim().to_string())
+}
+
+/// The env vars recorded in a saga validation's description
+/// (`requires env: A, B`) — readable without re-parsing the spec file.
+pub fn required_env_of(v: &Validation) -> Vec<String> {
+    v.description
+        .lines()
+        .find_map(|l| l.strip_prefix("requires env:"))
+        .map(|s| s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect())
+        .unwrap_or_default()
 }
 
 /// Normalize a user-supplied path to the graph root (how CodeFiles are keyed).

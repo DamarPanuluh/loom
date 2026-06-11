@@ -440,6 +440,12 @@ loom saga list
   `loom validate` and in CI. Validator lane (`add` is builder|validator).
   Sync ripple already covers re-validation: code behind a step intent changes
   → its VALIDATES edges → not_run → the saga resurfaces in the validate queue.
+  ENV VALUES: `{{ env.X }}` = passed AT INVOCATION (`BASE_URL=… loom saga run
+  <name>`), never stored in the graph — they point at a LIVE target (start the
+  system under test first). `saga add`/`list` report what's required (`run
+  with: BASE_URL=<value> …`); a missing value REFUSES to run with the exact
+  invocation in the error and nothing stamped — and `loom validate` records it
+  as `blocked` (environment-not-ready), never as a failed proof.
 
 loom rule add --name --description --severity [--effort low|mid|high]
   --effort = how much capability INSPECTING this rule needs (pack rules ship

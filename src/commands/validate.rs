@@ -70,6 +70,7 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     let mut results: Vec<serde_json::Value> = Vec::new();
     let mut outcomes: Vec<(String, String)> = Vec::new(); // (validation_id, result)
+    let mut blocked_notes: Vec<(String, String)> = Vec::new(); // (validation_id, edge note)
     let mut passed = 0usize;
     let mut failed = 0usize;
 
@@ -100,6 +101,37 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
                     validation.name, validation.id);
             }
             continue;
+        }
+
+        // A saga consumes a LIVE target via `{{ env.X }}` values passed at
+        // invocation. If they're missing here, the proof CANNOT run — that is
+        // `blocked` (environment not ready), not `failed` (code wrong). Running
+        // the command anyway would record a dishonest failure and send the
+        // driver chasing a phantom code bug.
+        if validation.validation_type == "saga" {
+            if let Some(missing) = saga_missing_env(&cwd, validation) {
+                let invocation: String = missing
+                    .iter()
+                    .map(|v| format!("{v}=<value> "))
+                    .chain([format!("loom saga run {}", validation.name)])
+                    .collect();
+                let reason = format!(
+                    "missing env value(s): {} — run `{}` (or re-mark when the target is available)",
+                    missing.join(", "), invocation
+                );
+                outcomes.push((validation.id.clone(), "blocked".to_string()));
+                blocked_notes.push((validation.id.clone(), format!("blocked: {reason}")));
+                results.push(serde_json::json!({
+                    "validation_id": validation.id,
+                    "name":          validation.name,
+                    "result":        "blocked",
+                    "reason":        reason,
+                }));
+                if !printer.json {
+                    println!("  ⊘ {} [blocked — {}]", validation.name, reason);
+                }
+                continue;
+            }
         }
 
         // Run the command via sh -c so shell features work (e.g. cargo test --test foo)
@@ -152,6 +184,12 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         update_validation_result(&db, vid, new_result, &now)?;
         set_validates_edge_status(&db, vid, new_result)?;
     }
+    // Blocked proofs also record WHY on their VALIDATES edges (mirrors
+    // `loom validation mark --result blocked`): out of the queue, never
+    // looking forgotten, and a code change won't quietly reset them.
+    for (vid, note) in &blocked_notes {
+        crate::db::queries::set_validates_status_for_validation(&db, vid, "uninspected", note)?;
+    }
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -166,6 +204,23 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Private: saga env pre-flight
+// ---------------------------------------------------------------------------
+
+/// For a saga validation: the env vars its spec needs that this process
+/// doesn't have, or None when there's nothing missing / the spec can't be
+/// read (then the command runs and fails loudly on its own).
+fn saga_missing_env(
+    root: &std::path::Path,
+    v: &crate::types::Validation,
+) -> Option<Vec<String>> {
+    let rel = crate::commands::saga::spec_path_of(v)?;
+    let spec = crate::saga::spec::load_spec_file(&root.join(rel)).ok()?;
+    let missing = crate::saga::spec::missing_env(&spec);
+    if missing.is_empty() { None } else { Some(missing) }
 }
 
 // ---------------------------------------------------------------------------
