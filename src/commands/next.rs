@@ -3,7 +3,7 @@ use anyhow::Result;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     build_candidates, build_candidates_from_snapshot, check_graph, compute_smells_from, get_intent,
-    graph_state, list_implements_for_intent, notes_for_target, quality_candidates,
+    graph_state, list_implements_for_intent, notes_for_target, parse_sync_cause, quality_candidates,
     quality_candidates_from_snapshot, review_candidates_from_snapshot, scored_candidates,
     scored_candidates_from_snapshot, unexplored_pairs_scored, validate_candidates,
     validate_candidates_from_snapshot, validations_for_intent, vertical_completeness,
@@ -12,7 +12,7 @@ use crate::db::queries::{
 use crate::output::{fmt_edge_detail, fmt_intent, fmt_pulse, more_marker, Printer, SECTION_CAP};
 use crate::types::{CodeFile, EdgeType, WorkItem};
 
-pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
+pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> {
     if all {
         let cwd = crate::db::resolve_root()?;
         let db_file = ensure_initialized(&cwd)?;
@@ -30,6 +30,14 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
              re-recording with confidence ≥ 0.7 or overturning) · \
              triage = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional).",
             mode
+        );
+    }
+
+    if take > 0 && !matches!(mode, "discovery" | "fix") {
+        anyhow::bail!(
+            "--take is a bulk read of the discovery/fix queues (the post-sync drain path). \
+             The other modes already resolve one command per item — use `loom next --mode {mode}` \
+             and `loom batch` for bulk rule verdicts."
         );
     }
 
@@ -75,6 +83,11 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
             println!("  → Next: {}", gs.next_action);
         }
         return Ok(());
+    }
+
+    // The bulk-read path: N compact items, one shared anchor.
+    if take > 0 {
+        return run_take(&db, mode, &candidates, take, &gs, printer);
     }
 
     let (top_edge, score) = &candidates[0];
@@ -250,6 +263,133 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
     println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// `--take N` — the bulk-read half of the batch loop
+//
+// `loom batch` (bulk WRITE) exists because post-sync re-verification floods:
+// touching a few central files stales dozens of claims. But the read side had
+// the same flood: one rich item per call (intents + groundings + validations
+// + notes + a full anchor each) and the same hot file re-read once per claim.
+// A take is ONE call: compact items GROUPED BY THE FILE THAT STALED THEM
+// (parsed from the sync transition notes), a prefilled `loom batch` template,
+// and a single anchor — read each hot file once, verdict its whole group.
+// ---------------------------------------------------------------------------
+
+fn run_take(
+    db: &GrafeoDb,
+    mode: &str,
+    candidates: &[(crate::types::RelatesTo, f64)],
+    take: usize,
+    gs: &crate::db::queries::GraphState,
+    printer: &Printer,
+) -> Result<()> {
+    // BOUNDED: the take is itself a section — clamp hard so this call can't
+    // recreate the flood it exists to prevent.
+    const TAKE_CAP: usize = 50;
+    let n = take.min(TAKE_CAP).min(candidates.len());
+    let queue_total = candidates.len();
+
+    // Group by staling file: the latest sync-flip note per edge names the
+    // changed file; "" = no sync cause on record (fresh pairs, manual flips).
+    let mut groups: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
+    let mut batch_lines: Vec<String> = Vec::new();
+    for (edge, score) in candidates.iter().take(n) {
+        let staled_by = if edge.id.is_empty() {
+            String::new()
+        } else {
+            notes_for_target(db, &edge.id)?
+                .iter()
+                .rev() // newest last → scan backwards for the latest flip
+                .find_map(|nt| parse_sync_cause(&nt.text).map(str::to_string))
+                .unwrap_or_default()
+        };
+        // Re-inspection usually re-affirms the existing criterion — prefill
+        // it; the agent rewrites the line to issue/independent on breakage.
+        batch_lines.push(
+            serde_json::json!({
+                "op": "ground",
+                "a": edge.from_id,
+                "b": edge.to_id,
+                "criterion": if edge.criterion.is_empty() { "<criterion>" } else { edge.criterion.as_str() },
+                "confidence": 0.9,
+            })
+            .to_string(),
+        );
+        let item = serde_json::json!({
+            "edge_id": edge.id,
+            "a": { "id": edge.from_id, "name": edge.from_name },
+            "b": { "id": edge.to_id, "name": edge.to_name },
+            "inspection_status": edge.inspection_status,
+            "criterion": edge.criterion,
+            "priority_score": score,
+            "staled_by": staled_by,
+        });
+        match groups.iter_mut().find(|(f, _)| *f == staled_by) {
+            Some((_, items)) => items.push(item),
+            None => groups.push((staled_by, vec![item])),
+        }
+    }
+    // Biggest file-group first (one read pays for the most verdicts);
+    // ungrouped ("") last.
+    groups.sort_by(|a, b| {
+        (a.0.is_empty(), std::cmp::Reverse(a.1.len()), &a.0)
+            .cmp(&(b.0.is_empty(), std::cmp::Reverse(b.1.len()), &b.0))
+    });
+
+    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: save the edited template and `loom batch <file>` (or pipe to `loom batch -`). Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "mode": mode,
+            "taken": n,
+            "queue_total": queue_total,
+            "groups": groups
+                .iter()
+                .map(|(f, items)| serde_json::json!({ "staled_by": f, "items": items }))
+                .collect::<Vec<_>>(),
+            "batch_template": batch_lines,
+            "guidance": guidance,
+            "dispatch": { "role": "analyzer", "effort": "mid" },
+            "graph_state": gs,
+        }));
+        return Ok(());
+    }
+
+    println!(
+        "── Next: {n} of {queue_total}  [mode={mode}] — bulk read, grouped by staling file ────",
+    );
+    for (file, items) in &groups {
+        println!();
+        if file.is_empty() {
+            println!("  (no sync cause on record)");
+        } else {
+            println!("  {} ({} claim(s) staled by this file)", file, items.len());
+        }
+        for it in items {
+            println!(
+                "    [{:<21} {:>5.2}]  {} × {}  ({})",
+                it["inspection_status"].as_str().unwrap_or(""),
+                it["priority_score"].as_f64().unwrap_or(0.0),
+                it["a"]["name"].as_str().unwrap_or(""),
+                it["b"]["name"].as_str().unwrap_or(""),
+                if it["edge_id"].as_str().unwrap_or("").is_empty() { "no edge yet" } else { it["edge_id"].as_str().unwrap_or("") },
+            );
+        }
+    }
+    println!();
+    println!("── Batch template (edit per finding, then `loom batch <file>`) ─────");
+    for l in &batch_lines {
+        println!("  {l}");
+    }
+    println!();
+    println!("  {guidance}");
+    println!();
+    println!("  Dispatch — analyzer  [effort: mid]");
+    println!("  {}", fmt_pulse(gs));
     Ok(())
 }
 

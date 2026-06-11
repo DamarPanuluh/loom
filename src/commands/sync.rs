@@ -301,7 +301,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         "`loom status` (or `loom next --all` for closeout)".to_string()
     } else {
         format!(
-            "`loom next --mode fix` to re-inspect flagged edges{}",
+            "`loom next --mode fix{}` to re-inspect flagged edges{}",
+            // A big flagged queue is exactly what the bulk read exists for:
+            // grouped by staling file + one `loom batch` per group.
+            if report.relates_to_edges_flagged > 10 { " --take 20" } else { "" },
             if report.governs_edges_flagged > 0 {
                 ", and `loom next --mode quality` to re-earn flagged quality green."
             } else {

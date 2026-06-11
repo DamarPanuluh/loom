@@ -242,6 +242,21 @@ mod tests {
         assert_eq!(on_i1[0].text, "t");
     }
 
+    /// `parse_sync_cause` is the read side of `record_sync_flip`'s text
+    /// contract — if the formats drift apart, `loom next --take` silently
+    /// loses its by-file grouping, so the round-trip is pinned here.
+    #[test]
+    fn sync_flip_cause_round_trips() {
+        let db = GrafeoDb::in_memory();
+        record_sync_flip(&db, "edge", "e1", "passing", "needs_reverification",
+            "src/db/mod.rs changed", "t1").unwrap();
+        let n = &notes_for_target(&db, "e1").unwrap()[0];
+        assert_eq!(parse_sync_cause(&n.text), Some("src/db/mod.rs"));
+        // Verdict transitions and free-form causes are NOT file groups.
+        assert_eq!(parse_sync_cause("passing → failing"), None);
+        assert_eq!(parse_sync_cause("? → needs_reverification (sync: locator missing)"), None);
+    }
+
     // --- doctor / integrity ---
 
     /// Init helper that also writes the LoomMeta sentinel doctor expects.

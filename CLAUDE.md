@@ -343,7 +343,7 @@ loom next --all
   The single operational answer to "what's left?" — no reconciling five
   commands by hand. Discovery is flagged optional (horizontal axis).
 
-loom next [--mode discovery|fix|build|validate|quality|review|triage]
+loom next [--mode discovery|fix|build|validate|quality|review|triage] [--take N]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -364,6 +364,12 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage]
   refute; re-proving re-stamps the edges). The work item carries the claim,
   targets, their groundings, and the prove command. Optional like
   discovery/review — speculation never blocks complete.
+  --take N (discovery/fix, capped 50) = the bulk READ half of the batch loop:
+  N COMPACT items in ONE call — grouped by the file that staled them (parsed
+  from the sync transition notes), with a prefilled `loom batch` template and
+  a single anchor — instead of one rich item + anchor per call. The token-
+  bounded post-sync drain: read each hot file once, verdict its whole group
+  via `loom batch`. Sync suggests `--take 20` when it flags >10 edges.
   EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
   names how much capability the WORK needs (computed from structure; quality
   items inherit the rule's inspection_effort). Loom never names models — the
@@ -526,7 +532,8 @@ loom report [--format json|text]
 loom batch [file|-]
   Bulk verdicts from JSON Lines (default stdin) — THE post-sync re-verification
   surface: a sync that stales 30 claims is one `loom batch` call, not 30
-  invocations. Ops per line: ground / issue / independent (RELATES_TO) and
+  invocations (pair with the bulk read: `loom next --mode fix --take 20`).
+  Ops per line: ground / issue / independent (RELATES_TO) and
   rule_verdict (GOVERNS, creates the edge if absent). EVERY gate applies per
   line — lanes, substantive criterion/evidence/notes, confidence — and each
   edge still gets its transition note. Continues past failed lines, reports

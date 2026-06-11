@@ -99,6 +99,18 @@ pub fn record_sync_flip(
     })
 }
 
+/// Extract the staling file from a sync-flip transition note ("… → <status>
+/// (sync: <path> changed)") — the inverse of `record_sync_flip`'s text format.
+/// `loom next --take` uses it to group a post-sync fix queue by hot file, so
+/// an agent reads each changed file once instead of once per stale claim.
+/// Returns None for verdict transitions and non-"<path> changed" causes.
+pub fn parse_sync_cause(text: &str) -> Option<&str> {
+    text.rsplit_once("(sync: ")?
+        .1
+        .strip_suffix(')')?
+        .strip_suffix(" changed")
+}
+
 /// All notes, newest last, optionally filtered (in Rust) by target id and/or
 /// kind. Scanning + filtering in Rust keeps this on the reliable query path.
 pub fn list_notes(

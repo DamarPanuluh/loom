@@ -78,7 +78,8 @@ pub enum Command {
         subcommand: EdgeCmd,
     },
 
-    /// Return the single highest-priority work item with full LLM context.
+    /// Return the single highest-priority work item with full LLM context —
+    /// or, with --take N, a compact bulk read of the queue for batch draining.
     Next {
         /// Work mode — one queue per agent role: discovery (analyzer: inspect
         /// relationships) | fix (fixer: resolve failures/stale) | build
@@ -94,6 +95,15 @@ pub enum Command {
         /// prioritized list. The single operational answer to "what's left?".
         #[arg(long, conflicts_with = "mode")]
         all: bool,
+
+        /// Bulk-read: up to N COMPACT items from this mode's queue in ONE
+        /// call — grouped by the file that staled them, with a prefilled
+        /// `loom batch` template — instead of one rich item per call. The
+        /// token-bounded way to drain a large post-sync queue: read each hot
+        /// file once, then verdict its whole group in one `loom batch`.
+        /// Supported for discovery and fix (capped at 50).
+        #[arg(long, default_value_t = 0, conflicts_with = "all")]
+        take: usize,
     },
 
     /// Return all unresolved edges touching a given intent — batch a
