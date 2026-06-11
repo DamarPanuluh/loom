@@ -1332,6 +1332,43 @@ mod tests {
         assert_eq!(list_hypotheses(&db, Some("proposed")).unwrap().len(), 0);
     }
 
+    /// The triage queue serves only PROPOSED hypotheses, highest combined
+    /// target-centrality (blast radius) first; proven/decided ones leave the
+    /// queue. An untargeted proposal still surfaces, last.
+    #[test]
+    fn triage_ranks_proposed_hypotheses_by_target_centrality() {
+        let (db, ids) = db_with_intents(4);
+        // Make intent 0 central: real RELATES_TO edges to the other three.
+        for j in 1..4 {
+            get_or_create_relates_to(&db, &format!("e{j}"), &ids[0], &ids[j], "t").unwrap();
+            update_relates_to_ground(
+                &db, &ids[0], &ids[j],
+                "they cooperate via a stable contract", 0.9, "llm", "t",
+            ).unwrap();
+        }
+        let mut h_central = hypothesis("h-central", "touches the hub");
+        h_central.created_at = "t2".into();
+        insert_hypothesis(&db, &h_central).unwrap();
+        insert_targets(&db, "th0", "h-central", &ids[0], "t").unwrap();
+        let mut h_leaf = hypothesis("h-leaf", "touches a leaf");
+        h_leaf.created_at = "t1".into();
+        insert_hypothesis(&db, &h_leaf).unwrap();
+        insert_targets(&db, "th1", "h-leaf", &ids[3], "t").unwrap();
+        insert_hypothesis(&db, &hypothesis("h-untargeted", "floats free")).unwrap();
+
+        let q = triage_candidates(&db).unwrap();
+        assert_eq!(q.len(), 3);
+        assert_eq!(q[0].0.id, "h-central", "hub-targeting proposal first: {q:?}");
+        assert!(q[0].1 > q[1].1);
+        assert_eq!(q[2].0.id, "h-untargeted", "untargeted still surfaces, last");
+
+        // A proven hypothesis leaves the triage queue.
+        update_hypothesis_verdict(&db, "h-central", "supported", "checked: the hub is real", "llm:analyzer", "t3").unwrap();
+        let q = triage_candidates(&db).unwrap();
+        assert_eq!(q.len(), 2);
+        assert!(q.iter().all(|(h, _)| h.status == "proposed"));
+    }
+
     /// The hypothesis plane travels with the export, and exports from OLDER
     /// binaries (no Hypothesis/TARGETS sections at all) still import — the
     /// sections are additive, same contract as optional props.

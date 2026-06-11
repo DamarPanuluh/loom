@@ -83,7 +83,9 @@ pub enum Command {
         /// Work mode — one queue per agent role: discovery (analyzer: inspect
         /// relationships) | fix (fixer: resolve failures/stale) | build
         /// (builder: realize planned/needs_change intents) | validate
-        /// (validator: run/repair proofs) | quality (quality: earn GOVERNS green).
+        /// (validator: run/repair proofs) | quality (quality: earn GOVERNS green)
+        /// | review (re-inspect low-confidence verdicts) | triage (analyzer:
+        /// prove proposed hypotheses — the pre-decision plane, optional).
         #[arg(long, default_value = "discovery")]
         mode: String,
 

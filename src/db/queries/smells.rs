@@ -143,8 +143,8 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                         sim, a.abstraction_level
                     ),
                     remedy: format!(
-                        "loom edge explore {} {}  → ground a real relationship, mark independent with why, or deprecate one (loom intent delete / merge their criteria)",
-                        a.id, b.id
+                        "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
+                        a = a.id, b = b.id
                     ),
                 });
             }
@@ -228,7 +228,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     i.abstraction_level, threshold, clusters
                 ),
                 remedy: format!(
-                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); refactoring the code is a separate decision (see tangled_file)",
+                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`",
                     id = i.id
                 ),
             });
@@ -248,8 +248,8 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                 summary: format!("{} serves {} distinct intents", path, distinct.len()),
                 evidence: format!("intents: {}", names.join(" · ")),
                 remedy: format!(
-                    "consider splitting {} along intent lines, or mark the owning intent needs_change with the split as the criterion",
-                    path
+                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent",
+                    n = distinct.len(),
                 ),
             });
         }
@@ -440,7 +440,11 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     label, count
                 ),
                 evidence: "see its transition notes (`loom note list --kind transition`)".into(),
-                remedy: "recurring breakage means the criterion or the design is wrong — redesign the intent (decompose, re-specify the criterion) instead of patching again; once addressed, record it: `loom note add --intent <id> --kind decision --text \"<what was redesigned and why it won't recur>\"` (a decision newer than the last regression resolves this finding; history stays intact)".into(),
+                remedy: format!(
+                    "recurring breakage means the criterion or the design is wrong — propose the redesign instead of patching again: `loom hypothesis add --name \"…\" --claim \"<what keeps regressing and the structural why>\" --proposal \"<the redesign>\" --predicted-outcome \"<no failing/needs_change transition after the next N syncs>\"{target}` (proven → adopted → planned intents); once addressed, `loom note add{nt} --kind decision --text \"<what was redesigned and why it won't recur>\"` resolves this finding (a decision newer than the last regression; history stays intact)",
+                    target = if kind == "intent" { format!(" --target {id}") } else { String::new() },
+                    nt = if kind == "intent" { format!(" --intent {id}") } else { format!(" --edge {id}") },
+                ),
             });
         }
     }

@@ -276,7 +276,7 @@ loom next --all
   The single operational answer to "what's left?" — no reconciling five
   commands by hand. Discovery is flagged optional (horizontal axis).
 
-loom next [--mode discovery|fix|build|validate|quality|review]
+loom next [--mode discovery|fix|build|validate|quality|review|triage]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -290,6 +290,10 @@ loom next [--mode discovery|fix|build|validate|quality|review]
   to a stronger reviewer (independent re-inspection: form your own hypothesis
   BEFORE reading the recorded evidence; re-record to confirm ≥0.7 or overturn).
   Optional like discovery — review hardens closure, it never blocks complete.
+  triage = proposed hypotheses awaiting their proof (analyzer, effort high),
+  ranked by combined target-intent centrality (blast radius); the work item
+  carries the claim, targets, their groundings, and the prove command. Optional
+  like discovery/review — speculation never blocks complete.
   EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
   names how much capability the WORK needs (computed from structure; quality
   items inherit the rule's inspection_effort). Loom never names models — the
@@ -491,7 +495,10 @@ loom smells [--limit N]
   instead of grinding per-leaf busywork; a leaf can still get its own, more
   specific verdict), unused rules, happy-path-only groups (children declare an
   `--aspect happy` but no sad/fallback sibling — failure behavior undeclared).
-  Each finding carries the exact remedy command. The same suspicion signals
+  Each finding carries the exact remedy command — and the redesign-shaped ones
+  (recurrent trouble, tangled files, twin merges, code-level scatter) emit
+  `loom hypothesis add` so a redesign gets PROVEN before it becomes work,
+  instead of dying in a note. The same suspicion signals
   (import links, shared files, description overlap, same domain) rank
   unexplored pairs in `loom next` discovery, with the why in the work item's
   notes. `loom rule verdict --status independent` records "measured — rule

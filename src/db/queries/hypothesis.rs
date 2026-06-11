@@ -104,6 +104,34 @@ pub fn list_hypotheses(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Hypo
     Ok(hs)
 }
 
+/// `loom next --mode triage`: proposed hypotheses awaiting their proof,
+/// ranked by the combined centrality of their target intents — the blast
+/// radius of the proposal. An untargeted hypothesis still surfaces (base
+/// score 1.0), just last. Optional work like discovery/review: triage never
+/// blocks `phase=complete`.
+pub fn triage_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
+    let proposed = list_hypotheses(db, Some("proposed"))?;
+    if proposed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let degrees = super::scoring::all_intent_degrees(db)?;
+    let mut out: Vec<(Hypothesis, f64)> = Vec::new();
+    for h in proposed {
+        let reach: i64 = super::targets::list_targets_for_hypothesis(db, &h.id)?
+            .iter()
+            .map(|t| degrees.get(&t.intent_id).copied().unwrap_or(0))
+            .sum();
+        out.push((h, 1.0 + reach as f64));
+    }
+    // Highest blast radius first; oldest proposal breaks ties (nothing rots).
+    out.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.created_at.cmp(&b.0.created_at))
+    });
+    Ok(out)
+}
+
 /// Record the proof verdict (supported | refuted) with its evidence and
 /// provenance. Writes the transition note (the recurrence memory). Returns
 /// false when the hypothesis doesn't exist.

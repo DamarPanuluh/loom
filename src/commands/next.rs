@@ -17,15 +17,16 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         let db = GrafeoDb::open(&db_file)?;
         return run_all(&db, printer);
     }
-    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "quality" | "review") {
+    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "quality" | "review" | "triage") {
         anyhow::bail!(
-            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, quality, review
+            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, quality, review, triage
 \
              discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \
              build = realize planned/needs_change intents (builder) · \
              validate = run/repair proofs (validator) · quality = earn GOVERNS green (quality) · \
              review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \
-             re-recording with confidence ≥ 0.7 or overturning).",
+             re-recording with confidence ≥ 0.7 or overturning) · \
+             triage = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional).",
             mode
         );
     }
@@ -39,6 +40,7 @@ pub fn run(mode: &str, all: bool, printer: &Printer) -> Result<()> {
         "validate" => return run_validate(&db, printer),
         "quality" => return run_quality(&db, printer),
         "review" => return run_review(&db, printer),
+        "triage" => return run_triage(&db, printer),
         _ => {}
     }
 
@@ -369,6 +371,15 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "queue": "review", "role": "reviewer", "optional": true, "effort": "high",
             "count": review.len(), "command": "loom next --mode review",
             "top": "low-confidence verdicts × centrality — the tiered double-check",
+        }));
+    }
+    let triage = crate::db::queries::triage_candidates(db)?;
+    if !triage.is_empty() {
+        let (h, _) = &triage[0];
+        queues.push(serde_json::json!({
+            "queue": "triage", "role": "analyzer", "optional": true, "effort": "high",
+            "count": triage.len(), "command": "loom next --mode triage",
+            "top": format!("hypothesis '{}' awaits its proof", h.name),
         }));
     }
     let discovery_backlog = discovery.len() as i64 + gs.unexplored_pairs;
@@ -898,6 +909,110 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             println!("  {}", fmt_pulse(&gs));
         }
     }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Triage mode: the pre-decision plane's queue — proposed hypotheses awaiting
+// their proof, highest target-centrality (blast radius) first. Analyzer work;
+// optional like discovery/review (speculation never blocks complete).
+// ---------------------------------------------------------------------------
+
+fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+    let candidates = crate::db::queries::triage_candidates(db)?;
+    let gs = graph_state(db)?;
+
+    if candidates.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "empty", "mode": "triage",
+                "message": "No proposed hypotheses — the pre-decision plane is clear.",
+                "graph_state": gs,
+            }));
+        } else {
+            println!("✓ No proposed hypotheses — the pre-decision plane is clear.");
+            println!();
+            println!("  {}", fmt_pulse(&gs));
+            println!("  → Next: {}", gs.next_action);
+        }
+        return Ok(());
+    }
+
+    let (h, score) = &candidates[0];
+    let targets = crate::db::queries::list_targets_for_hypothesis(db, &h.id)?;
+    // The proof reads the targeted intents' code — surface their groundings.
+    let mut implements = Vec::new();
+    for t in &targets {
+        implements.extend(list_implements_for_intent(db, &t.intent_id)?);
+    }
+    let mut notes = notes_for_target(db, &h.id)?;
+    sort_notes_for_role(&mut notes, "analyzer");
+    let action = format!(
+        "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\n\
+         Read the targeted intents' groundings, check the claim, record what you found:\n\
+         \n  loom hypothesis prove {id} --verdict supported --evidence \"<what you found>\"\
+         \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<why the claim doesn't hold>\"\
+         \nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \
+         A supported verdict hands the adopt/reject decision to the builder lane.",
+        id = h.id,
+        author = h.author,
+    );
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "mode":             "triage",
+            "priority_score":   score,
+            "hypothesis":       h,
+            "targets":          targets,
+            "implements":       implements,
+            "notes":            notes,
+            "suggested_action": action,
+            "owner_role":       "analyzer",
+            "effort":           "high",
+            "dispatch":         dispatch_line("analyzer"),
+            "graph_state":      gs,
+        }));
+        return Ok(());
+    }
+
+    println!(
+        "── Next Triage Item  [proposed  priority={:.2}] ────────────────────────",
+        score
+    );
+    println!();
+    println!("  hypothesis:        {}  ({})", h.name, h.id);
+    println!("  claim:             {}", h.claim);
+    println!("  proposal:          {}", h.proposal);
+    println!("  predicted_outcome: {}", h.predicted_outcome);
+    println!("  proposed by:       {}", h.author);
+    println!();
+    if !targets.is_empty() {
+        println!("── Targets ({}) ─────────────────────────────────────────────────────", targets.len());
+        for t in &targets {
+            println!("  → {}  ({})", t.intent_name, t.intent_id);
+        }
+        println!();
+    }
+    if !implements.is_empty() {
+        println!("── Targeted code ───────────────────────────────────────────────────");
+        for im in &implements {
+            let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
+            println!("  {}{}", im.codefile_path, loc);
+        }
+        println!();
+    }
+    if !notes.is_empty() {
+        println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
+        for n in &notes {
+            println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+        }
+        println!();
+    }
+    println!("── Suggested Action ────────────────────────────────────────────────");
+    println!("{action}");
+    println!();
+    println!("  Dispatch — {}  [effort: high]", dispatch_line("analyzer"));
+    println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
 
