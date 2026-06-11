@@ -177,6 +177,18 @@ pub enum Command {
     /// state machine, and the valid value vocabularies.
     Schema,
 
+    /// Ask the map: keyword search (BM25) over intent names and descriptions.
+    /// Each hit carries its place in the hierarchy, code groundings with
+    /// locators, and a freshness warning if claims went stale — the semantic
+    /// entry point when you don't know an intent's name yet.
+    Find {
+        /// What you're looking for, in your own words (e.g. "where is retry handled").
+        query: String,
+        /// How many hits to return.
+        #[arg(long, default_value_t = 5)]
+        limit: usize,
+    },
+
     /// Structural hot spots: most-central intents and most-tangled files
     /// (importance by graph centrality, not runtime profiling).
     Hotspots {

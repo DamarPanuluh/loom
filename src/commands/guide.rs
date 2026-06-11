@@ -11,6 +11,7 @@ const GOLDEN_RULES: &[&str] = &[
     "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below. When a sync stales MANY claims at once, re-verify in bulk: read the touched code once per neighborhood, then `loom batch -` with one JSONL verdict per line (same gates as the single commands — bulk changes the ceremony, never the honesty).",
     "Per edge, work the Socratic loop: read both intents → form a hypothesis (\"I expect the code to show X\") → inspect the actual code → confirmed = ground it, code wrong = record the issue, hypothesis wrong = revise and re-inspect. Never record a verdict you didn't check.",
     "Batch by neighborhood: when you inspect an edge, `loom cluster <intent-id>` lists every other unresolved edge touching it — work those while the context is loaded.",
+    "ASK THE MAP: `loom find \"<what you're looking for>\"` — keyword search over intent names/descriptions when you don't know the intent's name yet. Hits carry hierarchy position, code groundings with locators, and a staleness warning (claims about since-changed code). No fuzzy matching — a miss means reformulate in the map's vocabulary, or the area isn't mapped (`loom coverage`).",
     "Use `--json` on every command for machine-readable output (incl. a `graph_state` pulse).",
     "Every command has `--help`. `loom schema` = data model; `loom status` = where you are; `loom doctor` = integrity.",
     "Prescriptive intents (planned/needs_change) still need a falsifiable criterion — that's what makes the design a test.",

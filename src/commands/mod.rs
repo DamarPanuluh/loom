@@ -10,6 +10,7 @@ pub mod delegate;
 pub mod detect;
 pub mod doctor;
 pub mod export;
+pub mod find;
 pub mod guide;
 pub mod import;
 pub mod hotspots;
@@ -56,6 +57,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Doctor                     => doctor::run(&printer),
         Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
+        Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
         Command::Smells      { limit }      => smells::run(limit, &printer),
         Command::Coverage                   => coverage::run(&printer),
@@ -83,6 +85,7 @@ fn orient(printer: &Printer) -> Result<()> {
                 "loom status     — where the graph is now + the recommended next action",
                 "loom next       — get the next thing to inspect",
                 "loom next --all — the closeout view: every role queue + gaps in one list",
+                "loom find <q>   — ask the map: keyword search over intents (with groundings)",
                 "loom sync       — run after ANY code change (flags stale edges/verdicts/proofs)",
                 "loom export --check — fail if the committed graph export went stale",
             ],
@@ -97,6 +100,7 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("  loom status      where am I? what next?");
         println!("  loom next        get the next thing to inspect");
         println!("  loom next --all  closeout: every role queue + gaps in one list");
+        println!("  loom find <q>    ask the map: keyword search over intents");
         println!("  loom sync        run after ANY code change");
         println!();
         println!("Every command has --help; add --json for machine-readable output.");

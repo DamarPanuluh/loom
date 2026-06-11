@@ -137,6 +137,16 @@ echo "── directed handoff: a note addressed to a lane ──"
 "$L" note list --for builder | grep -q "re-ground it" || fail "lane inbox (--for) filter"
 ok "notes carry an audience; the lane inbox filters on it"
 
+echo "── find: ask the map (BM25 over the semantic plane) ──"
+F="$("$L" find "blank text raises without writing" --json)"
+[ "$(echo "$F" | jget "['hits'][0]['name']")" = "reject empty" ] || fail "find: wrong top hit"
+[ "$(echo "$F" | jget "['hits'][0]['parent_chain'][0]")" = "todo app" ] || fail "find: parent chain missing"
+echo "$F" | jget "['hits'][0]['groundings'][0]['path']" | grep -q "app.py" || fail "find: groundings missing"
+[ "$("$L" find "zzz qqq nonexistent" --json | jget "['total']")" = 0 ] || fail "find: miss should return 0 hits"
+"$L" find "zzz qqq nonexistent" | grep -q "loom coverage" \
+  || fail "find: a miss must distinguish 'not mapped' from 'doesn't exist'"
+ok "find: ranked hit carries chain + groundings; a miss points at coverage"
+
 echo "── validator: proof that invokes loom (lock regression) ──"
 export LOOM_AGENT=llm:validator
 "$L" validation add --name "loom self-read under validate" --type assertion \

@@ -405,6 +405,17 @@ loom schema
   The data model — node/edge types + properties, the inspection state machine,
   and the valid value vocabularies. Generated from the schema vocabulary (drift-proof).
 
+loom find <query> [--limit N]
+  ASK THE MAP — codebase intelligence entry point: BM25 keyword search over
+  active intent names + descriptions (+domain), ranked. Each hit carries its
+  hierarchy chain, IMPLEMENTS groundings with locators, and a stale-edge count
+  (the freshness warning: claims about since-changed code). Scoring runs in
+  Rust, NOT grafeo's text index — `CALL grafeo.search.text` returns internal
+  node ids that can't be joined back to properties through GQL (probed; the
+  trailing MATCH parses and is silently dropped). Deterministic; no fuzzy/
+  stemming by design — the calling LLM reformulates. A miss distinguishes
+  "not mapped" (points at `loom coverage`) from "doesn't exist".
+
 loom hotspots [--limit N]
   Structural importance (graph centrality, NOT runtime profiling): most-central
   intents (blast radius) and most-tangled files (most intents in one file).
@@ -649,6 +660,7 @@ src/
 │       ├── governs.rs      GOVERNS edge
 │       ├── validates.rs    VALIDATES edge
 │       ├── scoring.rs      priority scoring + discovery candidates (loom next)
+│       ├── find.rs         BM25 keyword search over intents (loom find)
 │       ├── stats.rs        counts / centrality / graph_state pulse / completeness gaps
 │       └── integrity.rs    graph integrity checks (loom doctor)
 └── commands/
@@ -668,6 +680,7 @@ src/
     ├── doctor.rs         loom doctor
     ├── guide.rs          loom guide
     ├── schema.rs         loom schema
+    ├── find.rs           loom find (ask the map)
     ├── hotspots.rs       loom hotspots
     ├── coverage.rs       loom coverage
     ├── detect.rs         loom detect

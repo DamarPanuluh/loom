@@ -15,6 +15,7 @@ mod row;
 pub mod codefile;
 pub mod completeness;
 pub mod delegation;
+pub mod find;
 pub mod governs;
 pub mod hierarchy;
 pub mod ignore;
@@ -38,6 +39,7 @@ pub mod validation;
 pub use codefile::*;
 pub use completeness::*;
 pub use delegation::*;
+pub use find::*;
 pub use governs::*;
 pub use hierarchy::*;
 pub use ignore::*;
@@ -1770,6 +1772,47 @@ mod tests {
         assert!(rep.issues.iter().any(|i| i.contains("outside [0.0, 1.0]")), "{:?}", rep.issues);
         assert!(rep.issues.iter().any(|i| i.contains("records no why")), "{:?}", rep.issues);
         assert!(!rep.healthy());
+    }
+
+    /// `loom find` is the ask-the-map entry point: BM25 over names +
+    /// descriptions, deprecated intents invisible, each hit hydrated with
+    /// parent chain, groundings, and a freshness count — and a miss is an
+    /// empty result, never an error.
+    #[test]
+    fn find_ranks_by_relevance_and_skips_deprecated() {
+        let db = GrafeoDb::in_memory();
+        let mk = |id: &str, name: &str, desc: &str| {
+            let mut i = intent(id, name);
+            i.description = desc.to_string();
+            i
+        };
+        insert_intent(&db, &mk("root", "loom core", "the whole system")).unwrap();
+        insert_intent(&db, &mk("sync", "sync ripple engine",
+            "detects content changes and propagates staleness to neighbor edges")).unwrap();
+        insert_intent(&db, &mk("queue", "priority work queue",
+            "returns the highest priority work item with full context")).unwrap();
+        insert_intent(&db, &mk("old", "legacy ripple walker",
+            "ripple ripple ripple — superseded design")).unwrap();
+        retire_intent(&db, "old", "superseded by the sync ripple engine", Some("sync"), "t1").unwrap();
+        insert_hierarchy(&db, "h1", "root", "sync", "", "t0").unwrap();
+        insert_codefile(&db, &codefile("cf", "src/sync.rs")).unwrap();
+        insert_implements(&db, "im", "sync", "cf", "fn run", "", "t0").unwrap();
+        get_or_create_relates_to(&db, "e1", "sync", "queue", "t0").unwrap();
+        db.execute(
+            "MATCH (a:Intent {id: 'sync'})-[r:RELATES_TO]->(b:Intent {id: 'queue'}) \
+             SET r.inspection_status = 'needs_reverification'",
+        ).unwrap();
+
+        let hits = find_intents(&db, "ripple staleness", 5).unwrap();
+        assert_eq!(hits[0].intent.id, "sync", "most relevant intent must rank first");
+        assert!(hits.iter().all(|h| h.intent.id != "old"),
+            "deprecated intents must be invisible to find");
+        let top = &hits[0];
+        assert_eq!(top.parent_chain, vec!["loom core".to_string()]);
+        assert_eq!(top.groundings, vec![("src/sync.rs".to_string(), "fn run".to_string())]);
+        assert_eq!(top.stale_edges, 1, "freshness must count the stale claim");
+        assert!(find_intents(&db, "qwertyuiop zxcvbn", 5).unwrap().is_empty(),
+            "a miss is an empty result, not an error");
     }
 }
 

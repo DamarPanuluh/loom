@@ -513,12 +513,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:22.962245+00:00",
         "criterion": "Every stored or caller-provided value embedded in node/annotation GQL literals must pass through schema::esc before db.execute.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "71a399ec-ab03-4523-9146-e2c712b60463",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.379281+00:00",
+        "last_inspected": "2026-06-11T00:09:22.200736+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -656,12 +656,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:20.577078+00:00",
         "criterion": "CLI dispatch files must not embed secrets, credentials, tokens, or API keys as literals",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: cli.rs gained one typed clap variant Find{query, limit: default 5} and commands/mod.rs one dispatch arm (find::run propagates Result) plus two orientation lines; purely additive, no secrets, no unreachable code, parsing/dispatch responsibility unchanged",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.385465+00:00",
+        "last_inspected": "2026-06-11T00:09:21.982574+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
       },
@@ -773,12 +773,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:20.120983+00:00",
         "criterion": "Node and annotation query source must not contain embedded credentials, API keys, tokens, private keys, passwords, bearer strings, or service connection strings.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "b5af69c1-a5e2-4f53-8dbe-e91e4bf352c8",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.392468+00:00",
+        "last_inspected": "2026-06-11T00:09:22.222984+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -786,12 +786,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:22.135720+00:00",
         "criterion": "guide/schema source embeds protocol prose only — no credential, key, token, password, bearer, private-key, or connection-string literal.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: guide.rs gained one ASK-THE-MAP golden-rule string (prose only, no code path); schema.rs untouched; render paths unchanged",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.393675+00:00",
+        "last_inspected": "2026-06-11T00:09:22.108336+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -1540,12 +1540,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:02.965773+00:00",
         "criterion": "Node and annotation query loops must be bounded by local graph row counts, stored JSON list sizes, or in-memory test data rather than unbounded external streams or retry loops.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.406405+00:00",
+        "last_inspected": "2026-06-11T00:09:22.245113+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -1696,12 +1696,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:07.790981+00:00",
         "criterion": "External CLI input must be parsed into typed command structures and validated through explicit resolver, enum, or gate checks before driving graph mutation",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: cli.rs gained one typed clap variant Find{query, limit: default 5} and commands/mod.rs one dispatch arm (find::run propagates Result) plus two orientation lines; purely additive, no secrets, no unreachable code, parsing/dispatch responsibility unchanged",
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.411028+00:00",
+        "last_inspected": "2026-06-11T00:09:22.014866+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
       },
@@ -1956,12 +1956,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:59.471236+00:00",
         "criterion": "CLI dispatch files (cli.rs, commands/mod.rs, main.rs) must not contain unreachable production code, dead-code suppressions, or duplicated routing logic",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: cli.rs gained one typed clap variant Find{query, limit: default 5} and commands/mod.rs one dispatch arm (find::run propagates Result) plus two orientation lines; purely additive, no secrets, no unreachable code, parsing/dispatch responsibility unchanged",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.418016+00:00",
+        "last_inspected": "2026-06-11T00:09:22.037573+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
       },
@@ -2073,12 +2073,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:59.178479+00:00",
         "criterion": "Node and annotation query code must not contain unreachable production code, dead-code suppressions, or duplicate implementations of the same query behavior.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "5784abc8-b8cc-462d-818f-b9779bc0bc7c",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.424666+00:00",
+        "last_inspected": "2026-06-11T00:09:22.267286+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -2086,12 +2086,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:00.478051+00:00",
         "criterion": "guide.rs and schema.rs must not contain unreachable or duplicated content-rendering logic",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: guide.rs gained one ASK-THE-MAP golden-rule string (prose only, no code path); schema.rs untouched; render paths unchanged",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.425937+00:00",
+        "last_inspected": "2026-06-11T00:09:22.131993+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2203,12 +2203,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:01.326337+00:00",
         "criterion": "CLI command definition and dispatch files must stay limited to entrypoint parsing, command schema declaration, and handler routing - not business logic",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: cli.rs gained one typed clap variant Find{query, limit: default 5} and commands/mod.rs one dispatch arm (find::run propagates Result) plus two orientation lines; purely additive, no secrets, no unreachable code, parsing/dispatch responsibility unchanged",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "68bd20b9-5254-4617-bfe7-7d2da5a04312",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.432221+00:00",
+        "last_inspected": "2026-06-11T00:09:22.060490+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
       },
@@ -2320,12 +2320,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:01.004684+00:00",
         "criterion": "Each node and annotation query module must own one coherent graph node/annotation concern, with shared row extraction and tests factored separately.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.439340+00:00",
+        "last_inspected": "2026-06-11T00:09:22.289292+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -2333,12 +2333,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:02.406624+00:00",
         "criterion": "Self-teaching surface modules should keep coherent responsibilities for driving guidance and schema output without mixing unrelated graph mutation or detection",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: guide.rs gained one ASK-THE-MAP golden-rule string (prose only, no code path); schema.rs untouched; render paths unchanged",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.440439+00:00",
+        "last_inspected": "2026-06-11T00:09:22.154931+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2450,12 +2450,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:12.096895+00:00",
         "criterion": "CLI dispatch code must propagate fallible handler errors through Result and not use unwrap/expect/panic for recoverable failures",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: cli.rs gained one typed clap variant Find{query, limit: default 5} and commands/mod.rs one dispatch arm (find::run propagates Result) plus two orientation lines; purely additive, no secrets, no unreachable code, parsing/dispatch responsibility unchanged",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.446110+00:00",
+        "last_inspected": "2026-06-11T00:09:22.083211+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
       },
@@ -2580,12 +2580,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:11.151257+00:00",
         "criterion": "Fallible parsing and DB operations in node/annotation query code must propagate corruption/errors through Result instead of silently replacing stored data.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "8fab1b4a-ba70-4da4-984d-cccf1f2f11cc",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.452841+00:00",
+        "last_inspected": "2026-06-11T00:09:22.310976+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -2593,12 +2593,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:14.167354+00:00",
         "criterion": "guide/schema production paths propagate fallible mode-detection/render via Result, with no panic unwrap/expect.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: guide.rs gained one ASK-THE-MAP golden-rule string (prose only, no code path); schema.rs untouched; render paths unchanged",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.453946+00:00",
+        "last_inspected": "2026-06-11T00:09:22.177978+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2827,12 +2827,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:05.054760+00:00",
         "criterion": "Node and annotation query paths must avoid repeated identical scans or duplicate DB work in normal command paths while preserving distinct resolver/not-found checks.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.463127+00:00",
+        "last_inspected": "2026-06-11T00:09:22.333903+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -3087,12 +3087,12 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:24:56.125369+00:00",
         "criterion": "Node and annotation query code must not match or filter relationships by relationship-owned properties; relationship access must be endpoint-node anchored or handled through node/list traversal.",
-        "evidence": "re-inspected after the tiered-driving changeset: review queue (confidence < 0.7 ranked uncertain x centrality, resolved through the existing write paths so every gate applies), effort low|mid|high on all work items (about the work, never models), fix-queue dispatch split (needs_reverification -> analyzer, failing -> fixer), intent retirement (deprecated = invisible to computation/visible to history, all consumers filter via list_active_intents), degree now excludes independent edges and retired endpoints, notes carry an optional audience lane, rules carry inspection_effort. All additive; structural claims (who routes/calls/escapes what, lanes, printer) unchanged; no new unchecked failure paths (all ?-propagated), no new interpolation (esc everywhere), no unbounded work (single bulk scans); 75 tests + 20 driver checks green",
+        "evidence": "re-inspected after the loom-find changeset: queries/mod.rs gained module wiring (mod find + pub use) and one regression test; the new find.rs is a read-only module that builds NO GQL strings (zero injection surface), never matches relationships by their own properties (delegates to existing endpoint-matched list functions), and scores a corpus-bounded scan with per-term document frequency precomputed once (the O(N^2) redundant-scan shape was caught and removed before this verdict)",
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.471242+00:00",
+        "last_inspected": "2026-06-11T00:09:22.356396+00:00",
         "notes": "",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -3319,6 +3319,13 @@
         "id": "977a1edd-3e73-4c03-ad36-b804c0d9768b",
         "notes": "",
         "to": "9baf3a4e-51af-40c1-8c80-a5f745588092"
+      },
+      {
+        "created_at": "2026-06-10T23:58:10.629043+00:00",
+        "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "id": "1ecc845b-e279-49dc-b25a-f21fd1989f2a",
+        "notes": "",
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       }
     ],
     "IMPLEMENTS": [
@@ -4357,6 +4364,34 @@
         "locator": "",
         "notes": "",
         "to": "f856fe8e-8a54-421e-a2e9-10734aabd732"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T23:58:11.318899+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b",
+        "id": "bec9b670-6a4f-44d5-9695-55ee1aee64af",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "537ef2e3-6976-42ff-aa96-80d7d60390aa"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-10T23:58:11.007308+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b",
+        "id": "bd184d2f-f300-45e9-8b1c-a6b6cb109bc4",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn find_intents",
+        "notes": "",
+        "to": "66970ecc-6db7-45d1-b3ff-642b6613a0a6"
       }
     ],
     "RELATES_TO": [
@@ -4425,7 +4460,7 @@
         "id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.290079+00:00",
+        "last_inspected": "2026-06-10T23:59:29.240165+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -4481,7 +4516,7 @@
         "id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.293018+00:00",
+        "last_inspected": "2026-06-10T23:59:29.264714+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -4537,7 +4572,7 @@
         "id": "f92782c5-a3d0-4ee8-93c5-08fe066679db",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.296129+00:00",
+        "last_inspected": "2026-06-10T23:59:29.283575+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4579,7 +4614,7 @@
         "id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.298184+00:00",
+        "last_inspected": "2026-06-10T23:59:29.301422+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4593,7 +4628,7 @@
         "id": "4b032e8a-fbc9-4328-8354-ddd705030383",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.300328+00:00",
+        "last_inspected": "2026-06-10T23:59:29.319285+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -4649,7 +4684,7 @@
         "id": "35d55005-4a1f-47d7-bd2a-a0d7bf03b439",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.304325+00:00",
+        "last_inspected": "2026-06-10T23:59:29.337082+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -4789,7 +4824,7 @@
         "id": "591479d9-05ee-424c-9db6-66903fa00084",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.355421+00:00",
+        "last_inspected": "2026-06-10T23:59:29.862303+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -4943,7 +4978,7 @@
         "id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.362770+00:00",
+        "last_inspected": "2026-06-10T23:59:29.900262+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -4957,8 +4992,8 @@
         "id": "0f0350c1-4ed7-4909-a071-3e5444b16559",
         "inspected_by": "llm",
         "inspection_status": "independent",
-        "last_inspected": "2026-06-10T20:34:18.736127+00:00",
-        "notes": "re-verified after the tiered-driving changeset: the import edge remains db/mod.rs as module hub — resolve_root decides WHICH graph before any session opens, while this intent is query/gate-layer semantics identical whichever graph is targeted; none of this changeset touches that seam. No behavioral contract.",
+        "last_inspected": "2026-06-10T23:59:29.970421+00:00",
+        "notes": "re-verified after the loom-find changeset: queries/find.rs is a new read-only query module; it never resolves roots (commands/find.rs uses resolve_root like every command), so the pin-vs-query-layer seam is untouched. Still no behavioral contract.",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
@@ -4971,10 +5006,24 @@
         "id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.356419+00:00",
+        "last_inspected": "2026-06-10T23:59:29.881415+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-11T00:12:49.252349+00:00",
+        "criterion": "commands/find.rs resolves its graph via crate::db::resolve_root() like every command, so --graph/LOOM_GRAPH pinning governs which graph is searched",
+        "evidence": "",
+        "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
+        "id": "01fba344-5ae8-4774-a635-8ca78a216f6a",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T00:12:49.252349+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       },
       {
         "confidence": 0.0,
@@ -4999,7 +5048,7 @@
         "id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.305302+00:00",
+        "last_inspected": "2026-06-10T23:59:29.354728+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -5055,7 +5104,7 @@
         "id": "75572477-44cb-4aed-bbea-6e4e943a3c39",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.307150+00:00",
+        "last_inspected": "2026-06-10T23:59:29.372477+00:00",
         "notes": "the resolver lives in the same files but is an independent capability: it adds key resolution on top of listers without altering any query semantics — shared file, distinct responsibility, no behavioral contract between them",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5083,7 +5132,7 @@
         "id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.309916+00:00",
+        "last_inspected": "2026-06-10T23:59:29.389313+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -5125,7 +5174,7 @@
         "id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.313012+00:00",
+        "last_inspected": "2026-06-10T23:59:29.406967+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5167,7 +5216,7 @@
         "id": "1d305157-b4b1-4596-b625-58493fc8af55",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.316969+00:00",
+        "last_inspected": "2026-06-10T23:59:29.442700+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5181,7 +5230,7 @@
         "id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.315058+00:00",
+        "last_inspected": "2026-06-10T23:59:29.424338+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5209,7 +5258,7 @@
         "id": "2f30e4d8-8717-4792-a902-e1da69741565",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.351649+00:00",
+        "last_inspected": "2026-06-10T23:59:29.811728+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5223,7 +5272,7 @@
         "id": "2aa5684f-3ea1-45e7-a8a3-52db006af5cc",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.350705+00:00",
+        "last_inspected": "2026-06-10T23:59:29.794783+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5237,7 +5286,7 @@
         "id": "06a829e0-69eb-4de8-bd7c-5dbcbfec8d2a",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:35:34.582889+00:00",
+        "last_inspected": "2026-06-10T23:59:29.936401+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -5279,7 +5328,7 @@
         "id": "0774ba77-c26b-4ac1-a1fe-f25facf1ac8b",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:35:34.578753+00:00",
+        "last_inspected": "2026-06-10T23:59:29.919043+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5293,7 +5342,7 @@
         "id": "6717b3f1-3361-4ecc-bd19-75fc841d2a9a",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.317925+00:00",
+        "last_inspected": "2026-06-10T23:59:29.460508+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -5307,7 +5356,7 @@
         "id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.318871+00:00",
+        "last_inspected": "2026-06-10T23:59:29.478401+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "62a58a72-21d1-4509-81cb-538b757d21c2"
@@ -5321,7 +5370,7 @@
         "id": "1f478578-34de-4569-8f8f-490894be373b",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.319817+00:00",
+        "last_inspected": "2026-06-10T23:59:29.496002+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
@@ -5335,7 +5384,7 @@
         "id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.320739+00:00",
+        "last_inspected": "2026-06-10T23:59:29.514048+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
@@ -5349,7 +5398,7 @@
         "id": "82a36489-a1c2-46fc-9dd3-ecab9cb0e1f6",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.321650+00:00",
+        "last_inspected": "2026-06-10T23:59:29.531823+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
@@ -5363,7 +5412,7 @@
         "id": "b4f1ecd2-b14c-48d1-9183-24014f62452c",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.322595+00:00",
+        "last_inspected": "2026-06-10T23:59:29.549266+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e1506d82-8210-4ce8-bee5-322025d7c906"
@@ -5377,7 +5426,7 @@
         "id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.324529+00:00",
+        "last_inspected": "2026-06-10T23:59:29.585005+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5391,10 +5440,24 @@
         "id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.323563+00:00",
+        "last_inspected": "2026-06-10T23:59:29.566980+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-11T00:12:49.278871+00:00",
+        "criterion": "cli.rs declares the typed Find{query, limit} variant and commands/mod.rs routes it to find::run, propagating its Result like every other arm",
+        "evidence": "",
+        "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
+        "id": "2b3c9984-5e4d-489f-ba96-8f48daacce5d",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T00:12:49.278871+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       },
       {
         "confidence": 0.9,
@@ -5531,7 +5594,7 @@
         "id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.334479+00:00",
+        "last_inspected": "2026-06-10T23:59:29.639501+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5545,7 +5608,7 @@
         "id": "bf4d7835-58b8-4136-b7bb-540663f78402",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.330509+00:00",
+        "last_inspected": "2026-06-10T23:59:29.602860+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5559,10 +5622,24 @@
         "id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.331501+00:00",
+        "last_inspected": "2026-06-10T23:59:29.621277+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-11T00:12:49.191740+00:00",
+        "criterion": "find executes through the shared long-lived Session via LoomDb and builds no GQL of its own; if the session layer changes its execute contract, find_intents' delegated reads change with it",
+        "evidence": "",
+        "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "id": "1893e077-4863-407b-afb8-907716ee8091",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T00:12:49.191740+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       },
       {
         "confidence": 0.9,
@@ -5587,7 +5664,7 @@
         "id": "4fa9b114-0f73-40f2-af66-f10b52619ae6",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.335743+00:00",
+        "last_inspected": "2026-06-10T23:59:29.657498+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5629,7 +5706,7 @@
         "id": "0498d72c-83a7-41e8-af1f-d7d3d43da3c0",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:35:34.581686+00:00",
+        "last_inspected": "2026-06-10T23:59:29.953578+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5657,7 +5734,7 @@
         "id": "cadf93fb-af58-47be-92d4-66771b0f9491",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.338099+00:00",
+        "last_inspected": "2026-06-10T23:59:29.674410+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5713,7 +5790,7 @@
         "id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.341212+00:00",
+        "last_inspected": "2026-06-10T23:59:29.691720+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5755,7 +5832,7 @@
         "id": "16926218-0ca1-45ea-8ff0-e23536029da4",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.344884+00:00",
+        "last_inspected": "2026-06-10T23:59:29.726156+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5769,10 +5846,24 @@
         "id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.343982+00:00",
+        "last_inspected": "2026-06-10T23:59:29.708596+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-11T00:12:49.302951+00:00",
+        "criterion": "find renders through Printer: --json emits the hits payload (query/total/hits/note), human mode prints the ranked list; a miss carries the coverage pointer in BOTH modes",
+        "evidence": "",
+        "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "id": "aa86acb0-2300-4b9c-af32-7e41829b3f63",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T00:12:49.302951+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       },
       {
         "confidence": 0.9,
@@ -5797,7 +5888,7 @@
         "id": "6d338b5f-85f0-4006-9429-7c3f750f22ca",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.348651+00:00",
+        "last_inspected": "2026-06-10T23:59:29.778078+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5839,7 +5930,7 @@
         "id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.345917+00:00",
+        "last_inspected": "2026-06-10T23:59:29.743974+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5853,7 +5944,7 @@
         "id": "d5867ca7-e64f-4120-b348-8804ad331b42",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.347734+00:00",
+        "last_inspected": "2026-06-10T23:59:29.761475+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5867,7 +5958,7 @@
         "id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.352557+00:00",
+        "last_inspected": "2026-06-10T23:59:29.828256+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -5881,10 +5972,24 @@
         "id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-10T20:33:46.353492+00:00",
+        "last_inspected": "2026-06-10T23:59:29.844782+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-11T00:12:49.228854+00:00",
+        "criterion": "find_intents takes its corpus from list_active_intents (deprecated invisible) and hydrates hits through the existing endpoint-matched list functions (implements/hierarchy/relates_to/governs/validates) — it owns ranking only, never its own node or edge queries",
+        "evidence": "",
+        "from": "e2d64ed4-b10f-48fd-995b-f533a6250a18",
+        "id": "21ce0a11-5501-42ff-bdbc-89d02a8921a1",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-11T00:12:49.228854+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       }
     ],
     "VALIDATES": [
@@ -5943,6 +6048,14 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "8a538909-a622-45bd-803b-1d96f4ffd40a"
+      },
+      {
+        "created_at": "2026-06-10T23:58:20.066175+00:00",
+        "from": "2653b402-4ed3-4a68-a3e8-61f53f87049e",
+        "id": "69056160-952d-483f-aabd-9decd71efd2f",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
       },
       {
         "created_at": "2026-06-09T19:08:50.220644+00:00",
@@ -6176,11 +6289,11 @@
         "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/gen_synth_graph.py"
       },
       {
-        "content_hash": "fe40c8a54fd2c311",
+        "content_hash": "766ffdb63413870b",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": "[\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T20:32:17.270827028+00:00",
+        "last_modified": "2026-06-10T23:47:48.855245570+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -6224,11 +6337,11 @@
         "path": "src/db/queries/intent.rs"
       },
       {
-        "content_hash": "ac198c511085c59b",
+        "content_hash": "7db34b0d68a08678",
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
-        "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/delegation.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/codefile.rs\",\"src/db/queries/completeness.rs\",\"src/db/queries/delegation.rs\",\"src/db/queries/find.rs\",\"src/db/queries/governs.rs\",\"src/db/queries/hierarchy.rs\",\"src/db/queries/ignore.rs\",\"src/db/queries/implements.rs\",\"src/db/queries/integrity.rs\",\"src/db/queries/intent.rs\",\"src/db/queries/meta.rs\",\"src/db/queries/note.rs\",\"src/db/queries/portability.rs\",\"src/db/queries/relates_to.rs\",\"src/db/queries/row.rs\",\"src/db/queries/rule.rs\",\"src/db/queries/scoring.rs\",\"src/db/queries/smells.rs\",\"src/db/queries/stats.rs\",\"src/db/queries/validates.rs\",\"src/db/queries/validation.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T20:30:32.956378479+00:00",
+        "last_modified": "2026-06-10T23:46:37.837216668+00:00",
         "path": "src/db/queries/mod.rs"
       },
       {
@@ -6238,6 +6351,14 @@
         "language": "rust",
         "last_modified": "2026-06-10T20:17:31.649485581+00:00",
         "path": "src/db/queries/rule.rs"
+      },
+      {
+        "content_hash": "2f93984cb9134c94",
+        "id": "537ef2e3-6976-42ff-aa96-80d7d60390aa",
+        "imports": "[\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-10T23:37:14.441519910+00:00",
+        "path": "src/commands/find.rs"
       },
       {
         "content_hash": "71345aeeaf30aa4f",
@@ -6280,12 +6401,20 @@
         "path": "src/commands/ignore.rs"
       },
       {
-        "content_hash": "0d2fd4f006899a9a",
+        "content_hash": "3f6fac3039adc608",
         "id": "62532fce-0993-4eb2-94cd-f9c069a6e502",
-        "imports": "[\"src/cli.rs\",\"src/commands/batch.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/delegate.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
+        "imports": "[\"src/cli.rs\",\"src/commands/batch.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/delegate.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/find.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T19:06:11.888622770+00:00",
+        "last_modified": "2026-06-10T23:47:21.917055337+00:00",
         "path": "src/commands/mod.rs"
+      },
+      {
+        "content_hash": "7a228fa84fac69eb",
+        "id": "66970ecc-6db7-45d1-b3ff-642b6613a0a6",
+        "imports": "[\"src/db/mod.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-11T00:08:14.710715567+00:00",
+        "path": "src/db/queries/find.rs"
       },
       {
         "content_hash": "14533f5e978f88a9",
@@ -6504,11 +6633,11 @@
         "path": "src/db/queries/stats.rs"
       },
       {
-        "content_hash": "4346132c15d99552",
+        "content_hash": "c5ba5c27d2d220a3",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-10T20:20:46.844077473+00:00",
+        "last_modified": "2026-06-10T23:38:01.179780890+00:00",
         "path": "src/cli.rs"
       },
       {
@@ -6999,6 +7128,19 @@
         "source_refs": "[]",
         "status": "confirmed",
         "updated_at": "2026-06-09T19:09:12.785780+00:00"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-10T23:58:10.326298+00:00",
+        "description": "loom find: BM25 keyword search over active intent names+descriptions, ranked; hits carry hierarchy chain, IMPLEMENTS groundings with locators, and a stale-edge freshness count; scoring runs in Rust because grafeo's text-index CALL returns internal node ids unjoinable to properties through GQL; a miss points at loom coverage to distinguish unmapped from nonexistent",
+        "domain": "navigation",
+        "id": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b",
+        "lifecycle": "implemented",
+        "name": "ask-the-map keyword search",
+        "source_refs": "[\"src/db/queries/find.rs\",\"src/commands/find.rs\"]",
+        "status": "confirmed",
+        "updated_at": "2026-06-11T00:11:06.481130+00:00"
       }
     ],
     "Note": [
@@ -7039,6 +7181,16 @@
         "id": "002cf938-0a30-4561-8769-f87a4677de93",
         "kind": "transition",
         "target_id": "35d55005-4a1f-47d7-bd2a-a0d7bf03b439",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.566980+00:00",
+        "id": "002dbb39-ca3e-46b3-90d2-f5eb5fd6f811",
+        "kind": "transition",
+        "target_id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -7131,6 +7283,16 @@
         "target_id": "4264bc8a-ddcf-4ed0-be31-f3e8d1bfa5f0",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "00be8f1b-a33b-4a74-bc13-7f6c8e969f5a",
+        "kind": "transition",
+        "target_id": "0498d72c-83a7-41e8-af1f-d7d3d43da3c0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -7341,6 +7503,16 @@
         "target_id": "acf05017-c416-4577-ae25-b0861e54cfb3",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "04692018-2abe-4134-b404-b19e6749b65e",
+        "kind": "transition",
+        "target_id": "f92782c5-a3d0-4ee8-93c5-08fe066679db",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -7585,6 +7757,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "07086a07-2d70-4c45-b627-e427de022845",
+        "kind": "transition",
+        "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "073394a2-7d20-4d41-8dd9-3d316cce5002",
         "kind": "transition",
@@ -7765,6 +7947,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "09817c04-d5f5-48a8-ac61-217369ba27f3",
+        "kind": "transition",
+        "target_id": "b5af69c1-a5e2-4f53-8dbe-e91e4bf352c8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "098d9d4f-9aed-4328-ab8f-a504c04caf05",
         "kind": "transition",
@@ -7851,6 +8043,16 @@
         "target_id": "b027e70e-f70b-49ce-b7d7-33f2b8a4eb01",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.037573+00:00",
+        "id": "0aa77c0e-4794-4265-8872-5f6294dc9658",
+        "kind": "transition",
+        "target_id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -8315,6 +8517,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "0f1334ea-1e70-40ba-9e2b-8da503a0e5ef",
+        "kind": "transition",
+        "target_id": "0774ba77-c26b-4ac1-a1fe-f25facf1ac8b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "0f2835e1-ec63-4fc1-b2c1-a4b30e248ebd",
         "kind": "transition",
@@ -8774,6 +8986,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "144a52c5-622b-4eca-b22a-7c2b1853019b",
+        "kind": "transition",
+        "target_id": "4fa9b114-0f73-40f2-af66-f10b52619ae6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:26:51.161695+00:00",
         "id": "1456cc24-7c5a-4a07-b874-5309ece02390",
@@ -8781,6 +9003,16 @@
         "target_id": "e287ac20-f7af-44bf-ba45-078a282b8535",
         "target_kind": "intent",
         "text": "Hardening campaign C7: porting = the semantic plane travels, the physical plane is rebuilt — criteria written for the old code become the acceptance contract for the new; do after A-items"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.549266+00:00",
+        "id": "14660829-99b5-42ad-aa45-8a81544f04b2",
+        "kind": "transition",
+        "target_id": "b4f1ecd2-b14c-48d1-9183-24014f62452c",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -8814,11 +9046,41 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "14b21e0c-3710-409e-9475-6177ecc6baa2",
+        "kind": "transition",
+        "target_id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.708596+00:00",
+        "id": "14cdb946-0eb8-49e0-906d-fed55849759a",
+        "kind": "transition",
+        "target_id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:fixer",
         "created_at": "2026-06-09T20:28:36.241563+00:00",
         "id": "14ee60fd-7032-40d6-afb3-42b19b488d1d",
         "kind": "transition",
         "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.014866+00:00",
+        "id": "14fbf26c-d564-48b0-8df2-bc3d8da4deb3",
+        "kind": "transition",
+        "target_id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -8844,6 +9106,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.691720+00:00",
+        "id": "15133df8-cb8b-43e1-9b12-78250710e4d2",
+        "kind": "transition",
+        "target_id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:27:41.938216+00:00",
         "id": "154f561b-2ed4-4630-8f81-713014217cc6",
@@ -8861,6 +9133,16 @@
         "target_id": "4b032e8a-fbc9-4328-8354-ddd705030383",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "15761883-c5ab-4fa2-8e80-f1383281d8b9",
+        "kind": "transition",
+        "target_id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -9145,6 +9427,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "1929911e-3296-423a-97c4-005cf89cfd23",
+        "kind": "transition",
+        "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "193ae3d9-c3ee-4e91-ab42-5d688634fdac",
         "kind": "transition",
@@ -9314,6 +9606,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.657498+00:00",
+        "id": "1b21c335-3f96-4473-90cd-48e373ff3b10",
+        "kind": "transition",
+        "target_id": "4fa9b114-0f73-40f2-af66-f10b52619ae6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "1b31aca4-a4f0-4f79-81fa-b9a1ccb71927",
@@ -9339,6 +9641,16 @@
         "id": "1b5ec940-09ee-49ae-a3d8-6ae6fd90a6ea",
         "kind": "transition",
         "target_id": "60b665b5-4a84-4d31-a02e-ee71ed36e8ef",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.496002+00:00",
+        "id": "1b6fc2b0-e0c6-4899-a1b9-d4e37d625a1a",
+        "kind": "transition",
+        "target_id": "1f478578-34de-4569-8f8f-490894be373b",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -9441,6 +9753,16 @@
         "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:12:49.278871+00:00",
+        "id": "1ccf37bf-2302-4ea8-88ac-b30072f60eb7",
+        "kind": "transition",
+        "target_id": "2b3c9984-5e4d-489f-ba96-8f48daacce5d",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -9814,6 +10136,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "218f51a6-8517-402b-abd3-1dd1857396bd",
+        "kind": "transition",
+        "target_id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:56:29.166639+00:00",
         "id": "21a7804f-c469-4002-959b-40522a7f4fca",
@@ -9821,6 +10153,16 @@
         "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "21a93a71-3c5f-4107-bbb1-341873d836be",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -9915,6 +10257,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "223403dd-92f4-4812-8d2e-dbe06137d357",
+        "kind": "transition",
+        "target_id": "2aa5684f-3ea1-45e7-a8a3-52db006af5cc",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "227ce9e6-082f-41ae-9364-2523d4fc4ce1",
         "kind": "transition",
@@ -9941,6 +10293,16 @@
         "target_id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "229ecfc9-ac71-4205-a502-00597e91541e",
+        "kind": "transition",
+        "target_id": "5784abc8-b8cc-462d-818f-b9779bc0bc7c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -10151,6 +10513,16 @@
         "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "246f139b-e639-44ee-83e5-24455d362716",
+        "kind": "transition",
+        "target_id": "82a36489-a1c2-46fc-9dd3-ecab9cb0e1f6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -10434,6 +10806,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.514048+00:00",
+        "id": "284ff8d5-2108-4e6a-a70c-19113e259d20",
+        "kind": "transition",
+        "target_id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "285d1f00-85b1-4fe9-8118-c3c0c3f23597",
@@ -10634,6 +11016,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.460508+00:00",
+        "id": "2bacc1cd-3295-4ecd-931b-02e0695c00b1",
+        "kind": "transition",
+        "target_id": "6717b3f1-3361-4ecc-bd19-75fc841d2a9a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "2baffe9c-7952-411c-ba6b-8fa95991fe84",
@@ -10761,6 +11153,16 @@
         "target_id": "02fecc81-d597-4b87-97de-c8c19ea60b09",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "2d685c7a-c4c9-40b2-bd29-abf8bdaf7236",
+        "kind": "transition",
+        "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -11115,6 +11517,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T00:09:22.289292+00:00",
+        "id": "32800f4d-3c28-44b9-af32-d7f420971418",
+        "kind": "transition",
+        "target_id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T15:52:20.864186+00:00",
         "id": "32b08c7a-7d4c-4450-8f92-b766eadbd8d0",
         "kind": "transition",
@@ -11311,6 +11723,36 @@
         "target_id": "3c32bb1c-9087-4b32-8705-f4e7ccf4634f",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "3480d12b-6aed-4b99-93af-feebd0ba4851",
+        "kind": "transition",
+        "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "34868a06-d2a3-4964-9492-e22319360f8c",
+        "kind": "transition",
+        "target_id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.337082+00:00",
+        "id": "349d7ac5-4c26-4914-8232-6c4968aca60f",
+        "kind": "transition",
+        "target_id": "35d55005-4a1f-47d7-bd2a-a0d7bf03b439",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -11824,6 +12266,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.060490+00:00",
+        "id": "3bf59322-d0ab-4563-8794-c3123d9273b2",
+        "kind": "transition",
+        "target_id": "68bd20b9-5254-4617-bfe7-7d2da5a04312",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T19:10:40.941339+00:00",
         "id": "3c01a9f1-429e-4e67-83fe-6d205cac7905",
@@ -11831,6 +12283,16 @@
         "target_id": "f3d13aa1-a5f6-4f4c-b9a6-bf0d63160ec3",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "3c0b1f20-d81a-4562-b940-9d0b44a4e55a",
+        "kind": "transition",
+        "target_id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -11851,6 +12313,16 @@
         "target_id": "e9ec4e37-5717-43b5-b515-4add7439f5b7",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.264714+00:00",
+        "id": "3c214b4e-341e-4199-9806-afd6cc6b033f",
+        "kind": "transition",
+        "target_id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -12124,6 +12596,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.424338+00:00",
+        "id": "3f5f14be-97fb-41aa-b2ca-b51b55bd60ff",
+        "kind": "transition",
+        "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T15:51:29.260042+00:00",
         "id": "3face69b-a95c-41c2-983a-340cb9fada7c",
@@ -12171,6 +12653,16 @@
         "target_id": "08eb7008-624d-46fd-ba52-5f0fdddc95e9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.406967+00:00",
+        "id": "3fe4adce-6bfb-48b6-abb2-62f6a113efe1",
+        "kind": "transition",
+        "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -12325,6 +12817,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "417c83b7-9cbe-47bf-8264-af9449f58ac6",
+        "kind": "transition",
+        "target_id": "1d305157-b4b1-4596-b625-58493fc8af55",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T19:10:40.941339+00:00",
         "id": "41cb6b0a-037b-436d-b6ec-7c723047d1c0",
         "kind": "transition",
@@ -12414,6 +12916,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "42545775-deeb-4a3e-b1b1-6b4152a164b2",
+        "kind": "transition",
+        "target_id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:03.132096+00:00",
         "id": "4258f989-3dec-4ef7-9257-34c5ca9d4a9d",
@@ -12431,6 +12943,16 @@
         "target_id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "42b9818c-030d-4177-b2ab-8c177374efc6",
+        "kind": "transition",
+        "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -12494,6 +13016,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "439e53bd-7e63-4d0a-8f44-d876ff6f214f",
+        "kind": "transition",
+        "target_id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T14:26:41.599069+00:00",
         "id": "43ae4bd9-1e2b-4efa-ba79-8bdbe274bf10",
@@ -12511,6 +13043,16 @@
         "target_id": "8fc114e1-af5a-42e8-b0e7-3157cade4e6e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/smells.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "43b8d60b-940b-4bba-a2d8-1e092abb6901",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -12541,6 +13083,16 @@
         "target_id": "02fecc81-d597-4b87-97de-c8c19ea60b09",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.131993+00:00",
+        "id": "442496ba-c902-467f-a9bb-5f9fc2277f4f",
+        "kind": "transition",
+        "target_id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -12581,6 +13133,16 @@
         "target_id": "27de2ecb-340c-4c1a-bb12-755fbbeeeb8e",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.442700+00:00",
+        "id": "44a36814-7673-4a2d-aa8e-46b2d476f4f7",
+        "kind": "transition",
+        "target_id": "1d305157-b4b1-4596-b625-58493fc8af55",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -12874,6 +13436,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.356396+00:00",
+        "id": "49e16ed1-e035-4856-81a9-0343bcda4483",
+        "kind": "transition",
+        "target_id": "e53a47c7-bd09-4f93-985a-f03357c6d28e",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:59.914433+00:00",
         "id": "49ee4345-887e-40af-93e1-43c500ce9bcb",
@@ -12899,6 +13471,16 @@
         "id": "4a112cce-4609-4894-a038-4f20b8baa4ac",
         "kind": "transition",
         "target_id": "b027e70e-f70b-49ce-b7d7-33f2b8a4eb01",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.354728+00:00",
+        "id": "4a1bed48-ae4e-40e5-a55e-5707cba6d94f",
+        "kind": "transition",
+        "target_id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -13031,6 +13613,16 @@
         "target_id": "f5829115-5548-4cd4-94fd-feba8d374b91",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "4bb2a0e9-58d6-4e08-b47c-76ea34168fe7",
+        "kind": "transition",
+        "target_id": "8fab1b4a-ba70-4da4-984d-cccf1f2f11cc",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -13885,6 +14477,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.478401+00:00",
+        "id": "567c6fb6-5b58-4e1c-8c12-e032b80f0d98",
+        "kind": "transition",
+        "target_id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.448465+00:00",
         "id": "56a3904c-ae64-408e-94f8-7289f612c580",
         "kind": "transition",
@@ -13965,6 +14567,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.301422+00:00",
+        "id": "579d62d5-038b-4f60-aacd-ceb3b46c0e48",
+        "kind": "transition",
+        "target_id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.334479+00:00",
         "id": "57e132b3-634f-4dec-a230-d7f18425e7a4",
         "kind": "transition",
@@ -13981,6 +14593,16 @@
         "target_id": "c0faee8d-1585-41f5-94cf-89d231fc73d9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "583e7698-48ef-4e37-b6c1-671bee601f5f",
+        "kind": "transition",
+        "target_id": "6717b3f1-3361-4ecc-bd19-75fc841d2a9a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -14324,6 +14946,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.674410+00:00",
+        "id": "5cf3622d-9532-41fb-b0dc-a770b687b3bc",
+        "kind": "transition",
+        "target_id": "cadf93fb-af58-47be-92d4-66771b0f9491",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:26:08.054305+00:00",
         "id": "5cf8ae19-124a-4f7a-9d70-9763c381232a",
@@ -14395,6 +15027,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.778078+00:00",
+        "id": "5d40ef94-521c-4baf-96b5-20ff5a2bf705",
+        "kind": "transition",
+        "target_id": "6d338b5f-85f0-4006-9429-7c3f750f22ca",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T19:18:04.688993+00:00",
         "id": "5d7fafcf-c5ab-47fb-aab7-1725066c5f1e",
         "kind": "transition",
@@ -14445,6 +15087,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T00:09:22.108336+00:00",
+        "id": "5dffeacf-b066-4132-88df-3257459225a8",
+        "kind": "transition",
+        "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.293987+00:00",
         "id": "5e3b3903-c178-4648-b9bb-06ac9932fa7e",
         "kind": "transition",
@@ -14481,6 +15133,16 @@
         "target_id": "08fb7426-99c3-491b-a229-5c0a196d5ed2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "5e497409-a371-4742-88d8-3bd53f43e785",
+        "kind": "transition",
+        "target_id": "591479d9-05ee-424c-9db6-66903fa00084",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -14844,6 +15506,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:12:49.191740+00:00",
+        "id": "62a22300-a421-441f-8d5e-70f5f45266d6",
+        "kind": "transition",
+        "target_id": "1893e077-4863-407b-afb8-907716ee8091",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:16.490487+00:00",
         "id": "62cc58a1-a304-4c5b-a3dd-56fee9ab3d14",
@@ -14971,6 +15643,16 @@
         "target_id": "d6c37fde-b598-41b4-9096-d1b2f22799d2",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.333903+00:00",
+        "id": "63fa5f83-2307-4039-aeef-f261cde26199",
+        "kind": "transition",
+        "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -15315,6 +15997,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "6882dd49-d2d0-4a59-9b49-e55d2c6a1e9b",
+        "kind": "transition",
+        "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "6886bdf7-fc23-4a65-9eef-12d8b02372cf",
         "kind": "transition",
@@ -15475,6 +16167,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "6a107845-c009-452e-ba61-2fc10a25468c",
+        "kind": "transition",
+        "target_id": "75572477-44cb-4aed-bbea-6e4e943a3c39",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T13:20:02.212790+00:00",
         "id": "6a360cae-0c7a-4ec4-b15e-2e7eec430ac8",
         "kind": "transition",
@@ -15491,6 +16193,16 @@
         "target_id": "0ad43c98-1d42-417c-bee2-dd987a60f9a4",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "6a83b314-3acf-440b-9e74-42fc8085f669",
+        "kind": "transition",
+        "target_id": "71a399ec-ab03-4523-9146-e2c712b60463",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -15955,6 +16667,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "6f26f8f1-f8dd-4548-b5b3-2390a5048c3d",
+        "kind": "transition",
+        "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "6f37b415-2a1d-4817-b03d-a59e9d81b8ea",
         "kind": "transition",
@@ -16011,6 +16733,16 @@
         "target_id": "c13cf258-e1e8-481b-895c-76942c65cea5",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.310976+00:00",
+        "id": "6fb929b1-9a44-4bdc-aee3-4118ed91b338",
+        "kind": "transition",
+        "target_id": "8fab1b4a-ba70-4da4-984d-cccf1f2f11cc",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -16334,6 +17066,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.245113+00:00",
+        "id": "7410ee08-24ef-4699-bccd-c379976d3d5a",
+        "kind": "transition",
+        "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T16:50:48.296730+00:00",
         "id": "747293df-96fc-4307-8d5b-d21c40a03707",
@@ -16481,6 +17223,16 @@
         "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.639501+00:00",
+        "id": "75e0fe7d-5320-4dc2-adbc-8a9463e2e199",
+        "kind": "transition",
+        "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -16964,6 +17716,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.222984+00:00",
+        "id": "7c62386e-487c-4d3b-b5a0-7028a1a0cdd0",
+        "kind": "transition",
+        "target_id": "b5af69c1-a5e2-4f53-8dbe-e91e4bf352c8",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:45:16.114904+00:00",
         "id": "7c81b930-f1bc-4b5c-80bd-d98b2b6380b2",
@@ -16971,6 +17733,16 @@
         "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "7c9803c0-697d-4f8d-a3d1-5d51a992a24b",
+        "kind": "transition",
+        "target_id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -17444,6 +18216,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.319285+00:00",
+        "id": "81731c01-50fe-4dea-8522-5baf10f121f0",
+        "kind": "transition",
+        "target_id": "4b032e8a-fbc9-4328-8354-ddd705030383",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "817cc4a3-b0d7-4253-babf-a48a6146f637",
@@ -17521,6 +18303,16 @@
         "target_id": "614b2240-b5f3-43bb-9808-e2db2ad47629",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.811728+00:00",
+        "id": "829606d7-95ee-4e6b-ab07-1a1563a58d84",
+        "kind": "transition",
+        "target_id": "2f30e4d8-8717-4792-a902-e1da69741565",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -17615,12 +18407,32 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.936401+00:00",
+        "id": "83a7fe40-36ef-4d10-b6f8-d5b665d07080",
+        "kind": "transition",
+        "target_id": "06a829e0-69eb-4de8-bd7c-5dbcbfec8d2a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T15:45:27.743660+00:00",
         "id": "83c6803d-9172-4544-94bc-5ad8fd648d0e",
         "kind": "transition",
         "target_id": "3c32bb1c-9087-4b32-8705-f4e7ccf4634f",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "83d61cea-ed4f-4b8a-bae8-f337a8b90c21",
+        "kind": "transition",
+        "target_id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -17651,6 +18463,16 @@
         "target_id": "47b069e6-e728-4f9c-a999-90a1c400aa82",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "841d1a4a-9fab-41bd-b760-45bfaad23f24",
+        "kind": "transition",
+        "target_id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -17734,6 +18556,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.881415+00:00",
+        "id": "85515f5b-ead4-40b9-b898-508a6a8796bf",
+        "kind": "transition",
+        "target_id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:20.648243+00:00",
         "id": "8555e321-a737-4e0e-9252-ea61847ebbc9",
@@ -17741,6 +18573,16 @@
         "target_id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.970421+00:00",
+        "id": "855a7ece-2380-4d54-8b6f-3897770bdbc2",
+        "kind": "transition",
+        "target_id": "0f0350c1-4ed7-4909-a071-3e5444b16559",
+        "target_kind": "edge",
+        "text": "needs_reverification → independent"
       },
       {
         "audience": "",
@@ -17851,6 +18693,16 @@
         "target_id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/edge.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "868dbcb7-43d0-473a-b11d-d1a0d49f8b97",
+        "kind": "transition",
+        "target_id": "b4f1ecd2-b14c-48d1-9183-24014f62452c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -18024,6 +18876,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.177978+00:00",
+        "id": "88ec8399-874f-4bee-a5bb-621cfedb1d6b",
+        "kind": "transition",
+        "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "88f0b4ae-c232-44d3-9646-57b11dccc1b5",
@@ -18174,6 +19036,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "8a75183b-2445-46d0-8998-02b9399d8bd7",
+        "kind": "transition",
+        "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.290079+00:00",
         "id": "8a799d33-d5da-4835-80e7-378d37f57968",
@@ -18191,6 +19063,16 @@
         "target_id": "95d4c5d4-6599-4efb-8674-1c994de08ce6",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "8ac1028f-21cf-4e94-be70-3150b716fac4",
+        "kind": "transition",
+        "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -18271,6 +19153,16 @@
         "target_id": "bbb52b86-bfd7-45d2-a9a7-868d3f16bc37",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "8be5b11f-2d9d-469a-a214-a70abb62f6d9",
+        "kind": "transition",
+        "target_id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -18551,6 +19443,16 @@
         "target_id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.267286+00:00",
+        "id": "8ec39f5c-2445-48ae-b32c-1af9c87a549e",
+        "kind": "transition",
+        "target_id": "5784abc8-b8cc-462d-818f-b9779bc0bc7c",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -19844,6 +20746,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.953578+00:00",
+        "id": "9fe20aa6-a4b6-4146-b079-d593f239559e",
+        "kind": "transition",
+        "target_id": "0498d72c-83a7-41e8-af1f-d7d3d43da3c0",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:47:20.832713+00:00",
         "id": "9fe2c31a-78b5-4d8d-b5c2-8ddb93221b79",
@@ -19931,6 +20843,16 @@
         "target_id": "37f22072-5904-4d99-b5f8-79790fb7c13e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/smells.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "a0a0e363-4e4a-4feb-8617-22ceab1d4b72",
+        "kind": "transition",
+        "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -20165,6 +21087,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "a4281b80-6306-4031-b301-4c7e37117978",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "a44113f2-e664-47e6-889c-7194d99ec5c3",
         "kind": "transition",
@@ -20309,6 +21241,16 @@
         "id": "a5c3725b-eca7-47e2-9748-55e23d3274f8",
         "kind": "transition",
         "target_id": "c53ff35f-4b1e-41b9-b932-21e71bfc2de2",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.900262+00:00",
+        "id": "a5d2b185-970c-49ee-b874-d06919a23103",
+        "kind": "transition",
+        "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -20504,6 +21446,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.862303+00:00",
+        "id": "a773f671-bb1f-40f3-a430-f09281f50380",
+        "kind": "transition",
+        "target_id": "591479d9-05ee-424c-9db6-66903fa00084",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T19:10:26.454277+00:00",
         "id": "a7a59b64-888a-4cd4-8a52-95486e88a44b",
@@ -20631,6 +21583,16 @@
         "target_id": "361ff3da-9334-475e-9e58-b8ccb47a486e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "a866516f-87b1-4e98-a39e-2232ed151393",
+        "kind": "transition",
+        "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -21175,6 +22137,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "afb9c0f4-c483-4982-89b7-5275958398d1",
+        "kind": "transition",
+        "target_id": "06a829e0-69eb-4de8-bd7c-5dbcbfec8d2a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "afc2867c-e5a0-44e1-8795-53bea539a0e4",
         "kind": "transition",
@@ -21211,6 +22183,16 @@
         "target_id": "2da222de-839e-4534-8cc2-6c15917db8e8",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "b064d546-c19d-4e82-b147-9da81e7ee3db",
+        "kind": "transition",
+        "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -21445,6 +22427,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "b2860b61-06e3-4b30-a76d-47c7a0b98617",
+        "kind": "transition",
+        "target_id": "d5867ca7-e64f-4120-b348-8804ad331b42",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T19:10:40.941339+00:00",
         "id": "b29428e7-9c29-4a47-a837-5c24d4995c7e",
         "kind": "transition",
@@ -21461,6 +22453,16 @@
         "target_id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "b2c5c71a-4f43-47a3-9fd6-2a97b6bfbfba",
+        "kind": "transition",
+        "target_id": "0f0350c1-4ed7-4909-a071-3e5444b16559",
+        "target_kind": "edge",
+        "text": "independent → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -21484,6 +22486,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "b2fcee54-7a80-46b7-aada-dedc2909d651",
+        "kind": "transition",
+        "target_id": "2f30e4d8-8717-4792-a902-e1da69741565",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.465303+00:00",
         "id": "b30029ff-9bb0-4a81-9080-52166c6cb419",
@@ -21501,6 +22513,16 @@
         "target_id": "6602d534-d56c-427d-a8fd-8f857d11e83e",
         "target_kind": "edge",
         "text": "independent → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.200736+00:00",
+        "id": "b30ed857-5402-444f-84f2-7d9ee65afd9b",
+        "kind": "transition",
+        "target_id": "71a399ec-ab03-4523-9146-e2c712b60463",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -21675,6 +22697,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.389313+00:00",
+        "id": "b4e94fb4-a98a-4207-b09c-283c77f03576",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T16:24:11.429497+00:00",
         "id": "b4fcd773-4b1c-4cbe-886d-f8e631498ec7",
         "kind": "transition",
@@ -21751,6 +22783,16 @@
         "target_id": "a03f88c7-390b-41be-a8e2-64b2f59c3869",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/doctor.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.602860+00:00",
+        "id": "b59db55d-d922-4858-b503-b3b37c585498",
+        "kind": "transition",
+        "target_id": "bf4d7835-58b8-4136-b7bb-540663f78402",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -21839,6 +22881,16 @@
         "id": "b6c968f2-15af-4f07-b55a-99ff8c95e5ca",
         "kind": "transition",
         "target_id": "617c4cf5-37f6-442f-8e14-b28b6403c3e3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:21.982574+00:00",
+        "id": "b72830c5-722e-41b6-ae61-307b9c2cfea3",
+        "kind": "transition",
+        "target_id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -22084,6 +23136,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.828256+00:00",
+        "id": "bb1166f3-0f32-4714-b2c5-d17621fd6b26",
+        "kind": "transition",
+        "target_id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:27:40.532439+00:00",
         "id": "bb1c02f2-848a-4ef6-b02e-068d66fe8d72",
@@ -22151,6 +23213,16 @@
         "target_id": "28dc9cc2-8169-4b22-b13a-3337c48d78ca",
         "target_kind": "edge",
         "text": "failing → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "bbebfb3e-51bc-410d-9a59-f217223524c9",
+        "kind": "transition",
+        "target_id": "6d338b5f-85f0-4006-9429-7c3f750f22ca",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -22655,6 +23727,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "c24bb4cf-7897-400a-a55f-08c886e74719",
+        "kind": "transition",
+        "target_id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T19:10:40.941339+00:00",
         "id": "c2510406-6232-4dde-ae09-3b90d994c030",
         "kind": "transition",
@@ -22671,6 +23753,16 @@
         "target_id": "b027e70e-f70b-49ce-b7d7-33f2b8a4eb01",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:09:22.083211+00:00",
+        "id": "c290dcb4-3639-4dd1-9cde-cec79910faf8",
+        "kind": "transition",
+        "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -23105,6 +24197,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.283575+00:00",
+        "id": "c79a6e6d-e9d5-4b15-8534-522feaa72e36",
+        "kind": "transition",
+        "target_id": "f92782c5-a3d0-4ee8-93c5-08fe066679db",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T15:44:03.976279+00:00",
         "id": "c7a4ff77-a768-4a89-91a8-8f4747aa261f",
         "kind": "transition",
@@ -23129,6 +24231,16 @@
         "id": "c7d38bf0-903d-4c69-961c-782533d36b79",
         "kind": "transition",
         "target_id": "26b290f1-09ab-48fe-a92e-fc88d215f3b9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.585005+00:00",
+        "id": "c7feb763-89fe-40eb-a562-5582907e905d",
+        "kind": "transition",
+        "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -23454,6 +24566,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:12:49.252349+00:00",
+        "id": "cce74124-6773-4639-a1d9-0cdf4c3619d2",
+        "kind": "transition",
+        "target_id": "01fba344-5ae8-4774-a635-8ca78a216f6a",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T19:10:40.941339+00:00",
         "id": "ccec0359-7c0d-4b34-b256-0dc1ae3e9b2e",
@@ -23729,6 +24851,16 @@
         "id": "cfdf0fd3-6889-4298-acb2-447b45f7eb43",
         "kind": "transition",
         "target_id": "1156048d-5ea1-4d18-aeb4-26b2973a8ec2",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.240165+00:00",
+        "id": "cfe30447-419a-485e-8ee7-4a8d0162c757",
+        "kind": "transition",
+        "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -24075,6 +25207,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T00:09:22.154931+00:00",
+        "id": "d30c15b4-1592-43a0-a957-247562a5b976",
+        "kind": "transition",
+        "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.457524+00:00",
         "id": "d30de3dc-bdfb-4507-85b2-bfe712ce2087",
         "kind": "transition",
@@ -24185,6 +25327,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.794783+00:00",
+        "id": "d492d853-f63b-4ce1-b9ff-c797e8280a8f",
+        "kind": "transition",
+        "target_id": "2aa5684f-3ea1-45e7-a8a3-52db006af5cc",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.291063+00:00",
         "id": "d49851c8-1b37-4c37-a186-9fa32cbf4700",
         "kind": "transition",
@@ -24261,6 +25413,16 @@
         "target_id": "ec407e95-9822-4f1d-a1cf-6701175f4658",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "d5b0aefe-acbd-4b27-9d44-ba1bc944cff6",
+        "kind": "transition",
+        "target_id": "1f478578-34de-4569-8f8f-490894be373b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -24655,6 +25817,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.531823+00:00",
+        "id": "db196dec-92bb-46d0-9c2e-5dc7c88b9e08",
+        "kind": "transition",
+        "target_id": "82a36489-a1c2-46fc-9dd3-ecab9cb0e1f6",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T19:11:11.798263+00:00",
         "id": "db27b0a4-1189-42c7-9e4f-45352bb6fb0e",
         "kind": "transition",
@@ -24761,6 +25933,16 @@
         "target_id": "8fab1b4a-ba70-4da4-984d-cccf1f2f11cc",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.372477+00:00",
+        "id": "dd32d00a-7c26-4d0a-b4fc-0a4b2a818470",
+        "kind": "transition",
+        "target_id": "75572477-44cb-4aed-bbea-6e4e943a3c39",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -25004,6 +26186,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "df77b34b-06d2-4625-8beb-f0fdcda30a88",
+        "kind": "transition",
+        "target_id": "35d55005-4a1f-47d7-bd2a-a0d7bf03b439",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.405213+00:00",
         "id": "df78fab1-f75a-45a0-8cf5-58184606370f",
@@ -25054,6 +26246,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.621277+00:00",
+        "id": "dffe4af1-2f7c-4a6c-965e-b9035a2d4568",
+        "kind": "transition",
+        "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "e00031a0-75b1-41ee-b8c0-213fe5a2fe2d",
@@ -25095,6 +26297,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.919043+00:00",
+        "id": "e0788c66-8d7c-4e42-abc6-56dc312af046",
+        "kind": "transition",
+        "target_id": "0774ba77-c26b-4ac1-a1fe-f25facf1ac8b",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T15:45:27.285571+00:00",
         "id": "e07ae6bd-ca2a-49e6-b277-ffed5e7ed6e2",
         "kind": "transition",
@@ -25109,6 +26321,16 @@
         "id": "e1015020-f0b7-428a-94ea-6cd41752ec81",
         "kind": "transition",
         "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "e110b0c0-d0e0-499a-9a8d-104e46ab8a15",
+        "kind": "transition",
+        "target_id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
@@ -25155,6 +26377,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "e13a73e4-75af-4064-8186-52d6e909958a",
+        "kind": "transition",
+        "target_id": "68bd20b9-5254-4617-bfe7-7d2da5a04312",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "e13ee6d1-4b8a-4809-af19-ad9b48201864",
         "kind": "transition",
@@ -25181,6 +26413,16 @@
         "target_id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "e18447a3-b9a6-4568-90c5-1b177cb53dc4",
+        "kind": "transition",
+        "target_id": "cadf93fb-af58-47be-92d4-66771b0f9491",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -25764,6 +27006,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "e8b0a420-fd0c-4f44-8cd2-d1d8062a5aa3",
+        "kind": "transition",
+        "target_id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:11:11.760151+00:00",
         "id": "e8b1d3a2-f389-43af-9353-58da11342f7f",
@@ -25901,6 +27153,16 @@
         "target_id": "14d25251-2dd7-44a3-8d8e-d087d5f4f989",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:12:49.228854+00:00",
+        "id": "ea88e701-f6b4-49db-b91c-9e9a1b249916",
+        "kind": "transition",
+        "target_id": "21ce0a11-5501-42ff-bdbc-89d02a8921a1",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -26094,6 +27356,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "ebcb4d61-ca49-4e35-bae9-e397769a0eb4",
+        "kind": "transition",
+        "target_id": "16926218-0ca1-45ea-8ff0-e23536029da4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-09T19:54:22.137915+00:00",
         "id": "ec248457-2258-4b49-b805-2d0dd4acddfd",
@@ -26221,6 +27493,16 @@
         "target_id": "75572477-44cb-4aed-bbea-6e4e943a3c39",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "ee24b3b7-8bba-4622-adba-354d796bd0f0",
+        "kind": "transition",
+        "target_id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
       },
       {
         "audience": "",
@@ -26505,6 +27787,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.726156+00:00",
+        "id": "f13c7c12-257f-480e-9ff5-de2af59235c0",
+        "kind": "transition",
+        "target_id": "16926218-0ca1-45ea-8ff0-e23536029da4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T16:24:11.462071+00:00",
         "id": "f1423f7d-6a28-4c6e-af45-54b3778b2e4d",
         "kind": "transition",
@@ -26755,6 +28047,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "f4118458-ffb0-4ca7-be46-48fdecb365f0",
+        "kind": "transition",
+        "target_id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "f411ffb4-29ad-4884-bb39-fc3f61106478",
         "kind": "transition",
@@ -26864,11 +28166,31 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "f57b5435-2ebb-4532-8072-a4c2ae50dddf",
+        "kind": "transition",
+        "target_id": "bf4d7835-58b8-4136-b7bb-540663f78402",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.313012+00:00",
         "id": "f5ce38c8-8776-4ee9-8b23-20e5869d9896",
         "kind": "transition",
         "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.844782+00:00",
+        "id": "f5f833c9-0b5f-41fe-94de-a80deae02a45",
+        "kind": "transition",
+        "target_id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -27385,6 +28707,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "fb43fc6f-a359-4c93-9c6d-02a05f019006",
+        "kind": "transition",
+        "target_id": "ed8d55eb-b69a-49ee-ac4b-638424aeaa83",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "fbb5a5c6-48fd-4b9a-9371-fc35ffdcb834",
         "kind": "transition",
@@ -27454,6 +28786,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T00:12:49.302951+00:00",
+        "id": "fc786d99-d547-4f30-bcca-4f205b9a5f57",
+        "kind": "transition",
+        "target_id": "aa86acb0-2300-4b9c-af32-7e41829b3f63",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "fc7df676-6855-4459-aed1-259142f8557f",
@@ -27469,6 +28811,16 @@
         "id": "fc7e15f4-8adb-403a-b45d-900afef4ad72",
         "kind": "transition",
         "target_id": "2e2af7aa-7682-42b5-97db-c6619d2144b3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-10T23:59:29.743974+00:00",
+        "id": "fcb0c53e-bd98-49b4-8039-3255c4eba495",
+        "kind": "transition",
+        "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -27611,6 +28963,16 @@
         "target_id": "c1ae5736-90f6-4606-a773-c05caddc95a6",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-10T23:58:31.092454+00:00",
+        "id": "fdb66897-62f6-4283-869a-ac3015bfcb3a",
+        "kind": "transition",
+        "target_id": "4b032e8a-fbc9-4328-8354-ddd705030383",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -27845,6 +29207,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-10T23:59:29.761475+00:00",
+        "id": "fff6de5f-5d17-4e32-b68d-0755e77cd7f9",
+        "kind": "transition",
+        "target_id": "d5867ca7-e64f-4120-b348-8804ad331b42",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T20:33:46.348651+00:00",
         "id": "fff72d89-e7d5-4f44-9a11-2a80b4407c87",
         "kind": "transition",
@@ -28041,7 +29413,7 @@
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
         "last_result": "passed",
-        "last_run": "2026-06-10T20:34:18.917084+00:00",
+        "last_run": "2026-06-11T00:10:49.322119+00:00",
         "name": "query-layer regression suite",
         "validation_type": "test"
       },
@@ -28052,6 +29424,15 @@
         "last_result": "passed",
         "last_run": "2026-06-10T20:34:33.031778+00:00",
         "name": "retirement contract proven",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --quiet find_ranks_by_relevance_and_skips_deprecated",
+        "description": "BM25 ranking puts the most relevant intent first, deprecated intents are invisible, hits carry chain/groundings/staleness, a miss is empty not an error",
+        "id": "2653b402-4ed3-4a68-a3e8-61f53f87049e",
+        "last_result": "passed",
+        "last_run": "2026-06-11T00:09:07.701829+00:00",
+        "name": "find ranks and excludes deprecated",
         "validation_type": "test"
       },
       {
@@ -28095,7 +29476,7 @@
         "description": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
         "last_result": "passed",
-        "last_run": "2026-06-10T20:34:22.662678+00:00",
+        "last_run": "2026-06-11T00:10:51.811298+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
       },
@@ -28140,7 +29521,7 @@
         "description": "",
         "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
         "last_result": "passed",
-        "last_run": "2026-06-10T20:34:30.359277+00:00",
+        "last_run": "2026-06-11T00:10:55.448890+00:00",
         "name": "orientation + guide + schema emit valid JSON",
         "validation_type": "assertion"
       },
@@ -28158,7 +29539,7 @@
         "description": "",
         "id": "d8b77fd8-110d-4603-9291-1692db66add3",
         "last_result": "passed",
-        "last_run": "2026-06-10T20:34:24.276660+00:00",
+        "last_run": "2026-06-11T00:10:53.565480+00:00",
         "name": "port adopts the semantic plane only",
         "validation_type": "test"
       },
