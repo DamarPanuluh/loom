@@ -472,3 +472,22 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
     }
     Ok(report)
 }
+
+/// Freshness of the committed travel format next to the graph root:
+/// `Some(true)` = loom.graph.json exists and DRIFTED from the live graph,
+/// `Some(false)` = exists and matches byte-for-byte, `None` = not committed.
+/// Costs a full export build — call it from orientation commands (status,
+/// next --all, doctor), never from per-mutation anchors.
+pub fn committed_export_stale(
+    db: &dyn LoomDb,
+    root: &std::path::Path,
+) -> Result<Option<bool>> {
+    let path = root.join("loom.graph.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let live = serde_json::to_string_pretty(&export_graph(db)?)?;
+    Ok(Some(
+        std::fs::read_to_string(&path).ok().as_deref() != Some(live.as_str()),
+    ))
+}

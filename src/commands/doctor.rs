@@ -15,16 +15,13 @@ pub fn run(printer: &Printer) -> Result<()> {
     // --check`): when a travel-format file exists next to the graph, a doctor
     // run is a natural moment to notice it drifted.
     let mut hints = report.hints.clone();
-    let export_path = cwd.join("loom.graph.json");
-    if export_path.exists() {
-        let live = serde_json::to_string_pretty(&crate::db::queries::export_graph(&db)?)?;
-        if std::fs::read_to_string(&export_path).ok().as_deref() != Some(live.as_str()) {
-            hints.push(
-                "loom.graph.json is STALE vs the live graph — run `loom export` and commit it \
-                 (gate it mechanically with `loom export --check` in a pre-commit hook/CI)"
-                    .to_string(),
-            );
-        }
+    if crate::db::queries::committed_export_stale(&db, &cwd)? == Some(true) {
+        hints.push(
+            "loom.graph.json is STALE vs the live graph — run `loom export` and commit it \
+             alongside the code (verify any time with `loom export --check`; CI wiring is \
+             optional extra hardening)"
+                .to_string(),
+        );
     }
 
     if printer.json {

@@ -574,6 +574,14 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         }));
     }
 
+    // The closeout is where work wraps up — the moment the agent decides
+    // what to commit, so committed-export drift belongs in THIS view.
+    let export_freshness = match crate::db::queries::committed_export_stale(db, &crate::db::resolve_root()?)? {
+        Some(true) => "stale",
+        Some(false) => "fresh",
+        None => "absent",
+    };
+
     if printer.json {
         let unrealized_leaves_total = vc.unrealized_leaves.len();
         let unreached_codefiles_total = vc.unreached_codefiles.len();
@@ -582,6 +590,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         printer.print_json(&serde_json::json!({
             "mode": "all",
             "doctor": { "healthy": doctor.healthy(), "issues": doctor.issues, "hints": doctor.hints },
+            "committed_export": export_freshness,
             "queues": queues,
             "vertical_gaps": {
                 "unrealized_leaves": vc.unrealized_leaves,
@@ -600,6 +609,9 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!();
     if !doctor.healthy() {
         println!("  0. [integrity] {} issue(s) — fix these first: `loom doctor`", doctor.issues.len());
+    }
+    if export_freshness == "stale" {
+        println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
     }
     if queues.is_empty() && doctor.healthy() {
         println!("  ✓ Nothing left in any queue — every lane is clear.");

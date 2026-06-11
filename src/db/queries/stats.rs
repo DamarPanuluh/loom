@@ -405,7 +405,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
             ))
         } else {
-            ("complete", "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: wire `loom export --check` into pre-commit/CI so a code change can't merge with a stale committed graph, and keep running `loom sync` after changes (maintenance mode).".to_string())
+            ("complete", "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string())
         }
     };
 

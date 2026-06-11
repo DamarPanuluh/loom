@@ -44,18 +44,36 @@ pub fn run(printer: &Printer) -> Result<()> {
     };
 
     let gs = graph_state(&db)?;
+    // The travel format must move WITH graph changes — surface drift in-band
+    // (status is an orientation command; the agent reads this, no repo
+    // plumbing required). "fresh" | "stale" | "absent".
+    let export_freshness = match crate::db::queries::committed_export_stale(&db, &cwd)? {
+        Some(true) => "stale",
+        Some(false) => "fresh",
+        None => "absent",
+    };
 
     if printer.json {
         // Keep the StatusReport fields flat, add the graph_state pulse.
         let mut v = serde_json::to_value(&report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            obj.insert("committed_export".to_string(), serde_json::json!(export_freshness));
+            if export_freshness == "stale" {
+                obj.insert(
+                    "committed_export_action".to_string(),
+                    serde_json::json!("loom export   (the committed loom.graph.json drifted from the live graph — refresh it before committing code)"),
+                );
+            }
         }
         printer.print_json(&v);
     } else {
         println!("{}", fmt_status(&report));
         println!();
         println!("  {}", fmt_pulse(&gs));
+        if export_freshness == "stale" {
+            println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
+        }
         println!("  → Next: {}", gs.next_action);
     }
     Ok(())
