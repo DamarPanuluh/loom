@@ -18,7 +18,7 @@ The graph spans three planes:
 
 Edges connect planes. The graph is only useful when all three planes are populated and connected.
 
-## Node types (4)
+## Node types (5)
 
 ### Intent
 The core node. Everything orbits this.
@@ -79,7 +79,33 @@ last_result      STRING  -- "passed" | "failed" | "not_run" | "blocked"
                              sticky across sync — code changes don't unblock)
 ```
 
-## Edge types (5)
+### Hypothesis
+The PRE-DECISION plane: an improvement proposal that must be proven before it
+becomes work. Invisible to coverage/completeness/queues until adopted —
+speculation never counts as state of the world.
+```
+id                 STRING (uuid)
+name               STRING
+claim              STRING  -- what's wrong NOW (falsifiable, provable against code)
+proposal           STRING  -- the proposed change
+predicted_outcome  STRING  -- measurable result if adopted (the post-implementation
+                              acceptance contract)
+status             STRING  -- "proposed" | "supported" | "refuted" | "adopted" | "rejected"
+author             STRING  -- proposer provenance
+evidence           STRING  -- what the prover found ("" until proven)
+inspected_by       STRING  -- prover provenance (must differ from author when
+                              both declare roles — proposer ≠ prover)
+last_inspected     STRING
+created_at / updated_at
+```
+State machine: `proposed → supported | refuted → adopted | rejected`. Anyone
+proposes (evidence-gated); the ANALYZER lane proves; the BUILDER lane decides.
+Adoption is pure conversion: link spawned `planned` intents — lineage decision
+notes travel both ways and the predicted outcome lands on each spawned intent
+as its acceptance contract — then the ordinary build/validate machinery owns
+the work. Additive in schema v3 (older graphs/exports keep working).
+
+## Edge types (6)
 
 Design principle: edge **type** describes the nature of the relationship (structural, stable). Edge **state** describes what we know about it (epistemological, mutable).
 
@@ -97,6 +123,11 @@ A quality rule applies to this intent — the **green gate**. Replaces both the 
 
 ### VALIDATES (Validation → Intent)
 A validation proves that this intent is fulfilled. Intents with no VALIDATES edges have no proof of correctness.
+
+### TARGETS (Hypothesis → Intent)
+Which intents an improvement hypothesis would touch. Carries the full
+inspectable-edge meta (criterion/confidence/evidence/…), defaults `uninspected`
+— per-target grounding and sync staleness are the v3 slice of the plane.
 
 ## State machine (on the INSPECTABLE edges)
 
@@ -372,6 +403,27 @@ loom batch [file|-]
   edge still gets its transition note. Continues past failed lines, reports
   per-line results, exits non-zero if any failed. Bulk changes the ceremony,
   never the honesty.
+
+loom hypothesis add --name <n> --claim <c> --proposal <p> --predicted-outcome <o> \
+    [--target <intent>]... [--author <agent>]
+  Propose an improvement (status=proposed) — THE PRE-DECISION PLANE, the
+  structured upgrade of `note --kind idea`. Any lane proposes; evidence gates
+  reject vacuous claim/proposal/outcome. --target creates TARGETS edges.
+loom hypothesis target <hypothesis> <intent>   (link another affected intent)
+loom hypothesis prove <id> --verdict supported|refuted --evidence "<found>" \
+    [--inspected-by llm:analyzer]
+  The proof step: did the claimed problem turn out to be real in the code as it
+  is NOW? Analyzer lane; the prover must differ from the proposer (when both
+  declare roles — solo mode passes, as everywhere). Decided (adopted/rejected)
+  hypotheses cannot be re-proven.
+loom hypothesis adopt <id> [--spawned <intent>]... [--reason "<how it converts>"]
+  THE CONVERSION POINT (builder lane, owned custody, requires status=supported):
+  link the planned intents spawned from it — lineage decision notes both ways,
+  and predicted_outcome lands on each spawned intent as its acceptance contract.
+  Requires --spawned or --reason; from here `loom next --mode build` owns the work.
+loom hypothesis reject <id> --reason "<why>"   (any state except adopted)
+loom hypothesis list [--status proposed|supported|refuted|adopted|rejected]
+loom hypothesis show <id>                      (fields + TARGETS + notes)
 
 loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm] [--for <role>]
   Append free-text memory. kind: justification | commentary | idea | question | decision | todo.
@@ -650,6 +702,7 @@ src/
 │       ├── codefile.rs     CodeFile node queries
 │       ├── rule.rs         QualityRule node queries
 │       ├── validation.rs   Validation node queries
+│       ├── hypothesis.rs   Hypothesis node queries (the pre-decision plane)
 │       ├── note.rs         Note annotation queries (append-only memory)
 │       ├── ignore.rs       Ignore patterns (coverage escape hatch, with reasons)
 │       ├── meta.rs         LoomMeta sentinel: version + last_synced freshness
@@ -658,6 +711,7 @@ src/
 │       ├── hierarchy.rs    HIERARCHY edge (structural tree, enforced at insert)
 │       ├── implements.rs   IMPLEMENTS edge (carries `locator`)
 │       ├── governs.rs      GOVERNS edge
+│       ├── targets.rs      TARGETS edge (hypothesis → affected intents)
 │       ├── validates.rs    VALIDATES edge
 │       ├── scoring.rs      priority scoring + discovery candidates (loom next)
 │       ├── find.rs         BM25 keyword search over intents (loom find)
@@ -674,6 +728,7 @@ src/
     ├── validate.rs       loom validate
     ├── codefile.rs       loom codefile * (glob-aware add)
     ├── validation.rs     loom validation *
+    ├── hypothesis.rs     loom hypothesis * (propose/prove/adopt/reject)
     ├── note.rs           loom note *
     ├── rule.rs           loom rule *
     ├── report.rs         loom report (+ completeness gaps)

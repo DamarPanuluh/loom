@@ -28,6 +28,10 @@
 /// meta sentinel, the Delegation label, CodeFile.content_hash): all additive —
 /// older graphs stay consistent (identity backfills on `loom init`, missing
 /// labels/props simply read empty) and older exports still import.
+///
+/// Still v3 after the hypothesis plane (the Hypothesis label + TARGETS edge):
+/// additive again — older graphs simply have no hypotheses, and older exports
+/// without the sections import as empty (see `portability::is_additive_*`).
 pub const SCHEMA_VERSION: &str = "3";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +49,12 @@ pub mod label {
     /// A subtree delegated to ANOTHER loom graph (monorepo/federation):
     /// coverage treats matching files as covered-by-child, not gaps.
     pub const DELEGATION: &str = "Delegation";
+    /// An improvement hypothesis — the PRE-DECISION plane: a falsifiable claim
+    /// that something is wrong/suboptimal plus a proposed change and a
+    /// predicted outcome. Proven against code BEFORE adoption; adoption
+    /// converts it into planned intents. Invisible to coverage/completeness
+    /// until then — speculation never dilutes the done-condition.
+    pub const HYPOTHESIS: &str = "Hypothesis";
     /// Sentinel node marking an initialised graph (carries the schema version,
     /// the graph's identity, and its custody).
     pub const META: &str = "LoomMeta";
@@ -59,6 +69,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::NOTE,
     label::IGNORE,
     label::DELEGATION,
+    label::HYPOTHESIS,
 ];
 
 // ---------------------------------------------------------------------------
@@ -71,6 +82,10 @@ pub mod edge {
     pub const IMPLEMENTS: &str = "IMPLEMENTS";
     pub const GOVERNS: &str = "GOVERNS";
     pub const VALIDATES: &str = "VALIDATES";
+    /// Hypothesis → Intent: which intents an improvement hypothesis would
+    /// touch. Carries the full inspectable meta so per-target grounding and
+    /// sync staleness work like every other claim about code.
+    pub const TARGETS: &str = "TARGETS";
 }
 
 pub const EDGE_TYPES: &[&str] = &[
@@ -79,6 +94,7 @@ pub const EDGE_TYPES: &[&str] = &[
     edge::IMPLEMENTS,
     edge::GOVERNS,
     edge::VALIDATES,
+    edge::TARGETS,
 ];
 
 // ---------------------------------------------------------------------------
@@ -200,6 +216,15 @@ pub mod prop {
     // Delegation (federation: subtree owned by another graph)
     /// Delegation: path to the child graph's committed export (loom.graph.json).
     pub const TARGET: &str = "target";
+    // Hypothesis (the pre-decision plane)
+    /// Hypothesis: what is wrong/suboptimal — falsifiable, provable against
+    /// the code as it is NOW.
+    pub const CLAIM: &str = "claim";
+    /// Hypothesis: the proposed change.
+    pub const PROPOSAL: &str = "proposal";
+    /// Hypothesis: the measurable result if adopted — the acceptance contract
+    /// a post-implementation validation will be written from.
+    pub const PREDICTED_OUTCOME: &str = "predicted_outcome";
     // LoomMeta identity + custody (federation; backfilled on `loom init`)
     /// Stable identity of THIS graph (uuid) — what other looms reference.
     pub const GRAPH_ID: &str = "graph_id";
@@ -259,6 +284,15 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (ID, LOOM), (PATTERN, BUILDER), (TARGET, BUILDER),
             (AUTHOR, ANY), (CREATED_AT, LOOM),
         ],
+        // Anyone may PROPOSE (claim/proposal/predicted_outcome are `any`);
+        // the proof verdict (status + evidence + provenance) is analyzer work,
+        // and the prover may not be the proposer (enforced at the command).
+        self::label::HYPOTHESIS => &[
+            (ID, LOOM), (NAME, ANY), (CLAIM, ANY), (PROPOSAL, ANY),
+            (PREDICTED_OUTCOME, ANY), (STATUS, ANALYZER), (AUTHOR, ANY),
+            (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER), (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+        ],
         _ => &[],
     }
 }
@@ -293,6 +327,12 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
         // a node is reusable across intents). Owned by the validator.
         self::edge::VALIDATES => &[
             (ID, LOOM), (INSPECTION_STATUS, VALIDATOR), (NOTES, ANY), (CREATED_AT, LOOM),
+        ],
+        // TARGETS mirrors GOVERNS: a claim about code, inspectable + sync-stale-able.
+        self::edge::TARGETS => &[
+            (ID, LOOM), (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
         ],
         _ => &[],
     }

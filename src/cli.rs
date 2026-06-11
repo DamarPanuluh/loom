@@ -119,6 +119,15 @@ pub enum Command {
         subcommand: ValidationCmd,
     },
 
+    /// Manage improvement hypotheses — the PRE-DECISION plane. Any lane
+    /// proposes (claim + proposal + predicted outcome), an analyzer proves the
+    /// claim against the code, a builder adopts (converting it into planned
+    /// intents) or rejects. Invisible to coverage/completeness until adopted.
+    Hypothesis {
+        #[command(subcommand)]
+        subcommand: HypothesisCmd,
+    },
+
     /// Append free-text memory — justification, commentary, idea, question, etc.
     Note {
         #[command(subcommand)]
@@ -683,6 +692,135 @@ pub enum RuleCmd {
         /// $LOOM_AGENT, else "llm".
         #[arg(long)]
         inspected_by: Option<String>,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Hypothesis subcommands (the pre-decision plane)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum HypothesisCmd {
+    /// Propose an improvement hypothesis (status = proposed). Any lane may
+    /// propose — the structured upgrade of `loom note add --kind idea`.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom hypothesis add --name \"split the scoring module\" \\\n    \
+          --claim \"scoring.rs serves 4 unrelated intents (660 lines) — every queue change rebuilds all of them\" \\\n    \
+          --proposal \"extract discovery-candidate ranking into its own module\" \\\n    \
+          --predicted-outcome \"scoring.rs under 300 lines and the tangled-file smell on it disappears\" \\\n    \
+          --target \"priority-scored work queues\"")]
+    Add {
+        /// Short handle (addressable later by name or fragment).
+        #[arg(long)]
+        name: String,
+
+        /// What is wrong/suboptimal NOW — falsifiable, provable against the
+        /// current code (substantive; the prover will check exactly this).
+        #[arg(long)]
+        claim: String,
+
+        /// The proposed change.
+        #[arg(long)]
+        proposal: String,
+
+        /// The measurable result if adopted — the acceptance contract a
+        /// post-implementation validation will be written from (substantive).
+        #[arg(long = "predicted-outcome")]
+        predicted_outcome: String,
+
+        /// Intent(s) this hypothesis would touch (id/name/fragment; may be
+        /// repeated). Creates TARGETS edges; add more later with
+        /// `loom hypothesis target`.
+        #[arg(long = "target", num_args = 0..)]
+        targets: Vec<String>,
+
+        /// Who proposes — role-aware (e.g. llm:quality, human). Defaults to
+        /// $LOOM_AGENT, else "llm". The prover must be someone else.
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// Link an existing hypothesis to another intent it would touch (TARGETS).
+    Target {
+        /// Hypothesis id, name, or unique fragment.
+        hypothesis: String,
+
+        /// Intent id, name, or unique fragment.
+        intent: String,
+    },
+
+    /// Record the proof verdict: did the claimed problem turn out to be real?
+    /// Analyzer lane; the prover must differ from the proposer (when both
+    /// declare roles). Only a not-yet-decided hypothesis can be proven.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom hypothesis prove split-the-scoring \\\n    \
+          --verdict supported \\\n    \
+          --evidence \"read scoring.rs: discovery ranking (L312-660) shares no types with priority scoring; 4 intents ground here\"")]
+    Prove {
+        /// Hypothesis id, name, or unique fragment.
+        id: String,
+
+        /// supported (the claimed problem is real in the code as it is now) |
+        /// refuted (looked — it is not).
+        #[arg(long)]
+        verdict: String,
+
+        /// What you actually found while checking the claim (substantive).
+        #[arg(long)]
+        evidence: String,
+
+        /// Who proved it — role-aware (e.g. llm:analyzer). Defaults to
+        /// $LOOM_AGENT, else "llm".
+        #[arg(long)]
+        inspected_by: Option<String>,
+    },
+
+    /// ADOPT a supported hypothesis: the conversion point. Link the planned
+    /// intents you spawned from it (lineage travels as decision notes, and the
+    /// predicted outcome lands on each spawned intent as its acceptance
+    /// contract). Builder lane; the hypothesis itself never enters any queue.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent add --name \"discovery ranking module\" --level feature --lifecycle planned …\n  \
+        loom hypothesis adopt split-the-scoring --spawned \"discovery ranking module\" \\\n    \
+          --reason \"verified split point at the type boundary; one new module\"")]
+    Adopt {
+        /// Hypothesis id, name, or unique fragment (must be `supported`).
+        id: String,
+
+        /// Planned intent(s) spawned from this hypothesis (id/name/fragment;
+        /// may be repeated). Create them first with `loom intent add
+        /// --lifecycle planned` (or mark targets needs_change instead).
+        #[arg(long = "spawned", num_args = 0..)]
+        spawned: Vec<String>,
+
+        /// How the adoption converts into work (required when no --spawned
+        /// intent is given — e.g. "targets marked needs_change instead").
+        #[arg(long)]
+        reason: Option<String>,
+    },
+
+    /// REJECT a hypothesis with a recorded why (not pursuing it). Valid from
+    /// any state except adopted. Refuted hypotheses usually end here.
+    Reject {
+        /// Hypothesis id, name, or unique fragment.
+        id: String,
+
+        /// Why this is not being pursued (substantive; recorded as a decision note).
+        #[arg(long)]
+        reason: String,
+    },
+
+    /// List hypotheses, optionally filtered by status.
+    List {
+        /// proposed | supported | refuted | adopted | rejected
+        #[arg(long)]
+        status: Option<String>,
+    },
+
+    /// Show one hypothesis in full: fields, TARGETS edges, and notes.
+    Show {
+        /// Hypothesis id, name, or unique fragment.
+        id: String,
     },
 }
 

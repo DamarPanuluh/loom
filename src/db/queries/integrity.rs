@@ -11,13 +11,13 @@ use anyhow::Result;
 use crate::db::schema::{self, prop, EDGE_TYPES, NODE_LABELS};
 use crate::db::LoomDb;
 use crate::types::{
-    AbstractionLevel, IntentStatus, NoteKind, Severity, ValidationResult,
+    AbstractionLevel, HypothesisStatus, IntentStatus, NoteKind, Severity, ValidationResult,
 };
 
 use super::row::i64_val;
 use super::{
-    list_all_governs, list_all_implements, list_intents, list_notes, list_relates_to,
-    list_rules, list_validates_for_intent, list_validations,
+    list_all_governs, list_all_implements, list_all_targets, list_hypotheses, list_intents,
+    list_notes, list_relates_to, list_rules, list_validates_for_intent, list_validations,
 };
 
 /// Outcome of a full integrity scan.
@@ -157,10 +157,46 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
             ));
         }
     }
+    // Hypothesis plane: status vocabulary + the evidence audit behind every
+    // proof verdict, and the proposer≠prover contract (when roles are declared).
+    for h in list_hypotheses(db, None)? {
+        if h.status.parse::<HypothesisStatus>().is_err() {
+            issues.push(format!("Hypothesis {} has invalid status '{}'", h.id, h.status));
+            continue;
+        }
+        if matches!(h.status.as_str(), "supported" | "refuted") {
+            if crate::gate::is_vacuous(&h.evidence) {
+                issues.push(format!(
+                    "Hypothesis '{}' is '{}' but its evidence is empty/vacuous ('{}')",
+                    h.name, h.status, h.evidence.trim()
+                ));
+            }
+            if h.last_inspected.trim().is_empty() {
+                issues.push(format!(
+                    "Hypothesis '{}' is '{}' but last_inspected is empty — \
+                     the verdict has no inspection timestamp",
+                    h.name, h.status
+                ));
+            }
+        }
+        if h.status != "proposed"
+            && crate::gate::role_of(&h.author).is_some()
+            && crate::gate::role_of(&h.inspected_by).is_some()
+            && h.author == h.inspected_by
+        {
+            issues.push(format!(
+                "Hypothesis '{}' was proposed AND proven by '{}' — \
+                 separation of duties is broken (proposer must not be the prover)",
+                h.name, h.author
+            ));
+        }
+    }
 
     // 5. Note validity + referential integrity (dangling targets).
     let intent_ids: std::collections::HashSet<String> =
         list_intents(db, None, None)?.into_iter().map(|i| i.id).collect();
+    let hypothesis_ids: std::collections::HashSet<String> =
+        list_hypotheses(db, None)?.into_iter().map(|h| h.id).collect();
     for n in list_notes(db, None, None)? {
         if n.kind.parse::<NoteKind>().is_err() {
             issues.push(format!("Note {} has invalid kind '{}'", n.id, n.kind));
@@ -168,6 +204,12 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         if n.target_kind == "intent" && !intent_ids.contains(&n.target_id) {
             issues.push(format!(
                 "Note {} targets missing intent '{}'",
+                n.id, n.target_id
+            ));
+        }
+        if n.target_kind == "hypothesis" && !hypothesis_ids.contains(&n.target_id) {
+            issues.push(format!(
+                "Note {} targets missing hypothesis '{}'",
                 n.id, n.target_id
             ));
         }
@@ -277,6 +319,19 @@ fn audit_inspectable_edges(
             inspected_by: e.inspected_by,
         });
     }
+    for e in list_all_targets(db)? {
+        claims.push(EdgeClaim {
+            etype: schema::edge::TARGETS,
+            label: format!("{} → {}", e.hypothesis_name, e.intent_name),
+            status: e.inspection_status,
+            criterion: e.criterion,
+            confidence: e.confidence,
+            evidence: e.evidence,
+            last_inspected: e.last_inspected,
+            notes: e.notes,
+            inspected_by: e.inspected_by,
+        });
+    }
     // VALIDATES carries only a status — audit its vocabulary too.
     for i in list_intents(db, None, None)? {
         for e in list_validates_for_intent(db, &i.id)? {
@@ -310,10 +365,15 @@ fn audit_inspectable_edges(
     }
 
     for c in claims {
-        // `independent` is valid on RELATES_TO (confirmed unrelated) and on
-        // GOVERNS (measured — the rule does not apply to this intent).
-        let independent_ok =
-            c.etype == schema::edge::RELATES_TO || c.etype == schema::edge::GOVERNS;
+        // `independent` is valid on RELATES_TO (confirmed unrelated), on
+        // GOVERNS (measured — the rule does not apply to this intent), and on
+        // TARGETS (checked — this intent turns out not to be affected).
+        let independent_ok = matches!(
+            c.etype,
+            x if x == schema::edge::RELATES_TO
+                || x == schema::edge::GOVERNS
+                || x == schema::edge::TARGETS
+        );
         let valid_status = matches!(
             c.status.as_str(),
             "uninspected" | "passing" | "failing" | "needs_reverification"

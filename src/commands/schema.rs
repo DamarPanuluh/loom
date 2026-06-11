@@ -27,6 +27,7 @@ fn node_desc(label: &str) -> &'static str {
         "QualityRule" => "A named anti-pattern / norm (the normative plane).",
         "Validation" => "A runnable proof that an intent is fulfilled.",
         "Note" => "Append-only free-text memory (justification, idea, question, …).",
+        "Hypothesis" => "An improvement proposal (the pre-decision plane): claim + proposal + predicted outcome. proposed → supported|refuted (proven by a DIFFERENT agent) → adopted|rejected. Invisible to coverage/completeness until adopted.",
         _ => "",
     }
 }
@@ -38,6 +39,7 @@ fn edge_desc(etype: &str) -> &'static str {
         "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`).",
         "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent.",
         "VALIDATES" => "Validation → Intent — a proof object attached to an intent.",
+        "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
         _ => "",
     }
 }
@@ -88,6 +90,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         "severity": ["warning", "error"],
         "validation_type": ["test", "assertion", "benchmark", "manual_check"],
         "validation_result": ["passed", "failed", "not_run", "blocked"],
+        "hypothesis_status": ["proposed", "supported", "refuted", "adopted", "rejected"],
         "aspect": {"open": true, "suggested": ["happy", "sad", "fallback", "edge_case", "lifecycle", "security", "performance"]},
     });
 

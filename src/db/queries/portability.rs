@@ -57,8 +57,20 @@ fn endpoints(etype: &str) -> (&'static str, &'static str) {
         edge::IMPLEMENTS => (label::INTENT, label::CODE_FILE),
         edge::GOVERNS => (label::QUALITY_RULE, label::INTENT),
         edge::VALIDATES => (label::VALIDATION, label::INTENT),
+        edge::TARGETS => (label::HYPOTHESIS, label::INTENT),
         _ => (label::INTENT, label::INTENT), // RELATES_TO, HIERARCHY
     }
+}
+
+/// Sections ADDITIVE to schema v3 (the hypothesis plane): exports from older
+/// binaries don't have them, so import reads a missing section as empty —
+/// same growth contract as `is_optional_prop`, at section granularity.
+fn is_additive_node_section(lbl: &str) -> bool {
+    lbl == label::HYPOTHESIS
+}
+
+fn is_additive_edge_section(etype: &str) -> bool {
+    etype == edge::TARGETS
 }
 
 /// Numeric edge properties (everything else is a string).
@@ -247,11 +259,19 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
         if !as_planned {
             return None;
         }
-        let _ = v;
         match (lbl, prop) {
             (label::INTENT, "lifecycle") => Some("planned".into()),
             (label::VALIDATION, "last_result") => Some("not_run".into()),
             (label::VALIDATION, "last_run") => Some(String::new()),
+            // Hypotheses travel (they are design lineage), but a supported/
+            // refuted verdict was earned against the OLD code — re-prove in
+            // the new repo. Adopted/rejected are decisions and stay history.
+            (label::HYPOTHESIS, "status") if matches!(v, "supported" | "refuted") => {
+                Some("proposed".into())
+            }
+            (label::HYPOTHESIS, "evidence" | "inspected_by" | "last_inspected") => {
+                Some(String::new())
+            }
             _ => None,
         }
     };
@@ -269,6 +289,9 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
 
     // Phase 1a: nodes.
     for &lbl in NODE_LABELS {
+        if is_additive_node_section(lbl) && !nodes.contains_key(lbl) {
+            continue; // older export — the section simply doesn't exist yet
+        }
         let items = array_in_object(nodes, "nodes", lbl)?;
         if skip_label(lbl) {
             report.skipped_nodes += items.len();
@@ -296,6 +319,9 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
 
     // Phase 1b: edges, endpoint-matched.
     for &etype in EDGE_TYPES {
+        if is_additive_edge_section(etype) && !edges.contains_key(etype) {
+            continue;
+        }
         let (la, lb) = endpoints(etype);
         let items = array_in_object(edges, "edges", etype)?;
         if skip_edge(etype) {

@@ -12,6 +12,7 @@ pub mod doctor;
 pub mod export;
 pub mod find;
 pub mod guide;
+pub mod hypothesis;
 pub mod import;
 pub mod hotspots;
 pub mod ignore;
@@ -49,6 +50,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
         Command::Validation  { subcommand } => validation::run(subcommand, &printer),
+        Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id }  => validate::run(&intent_id, &printer),

@@ -18,6 +18,7 @@ pub mod delegation;
 pub mod find;
 pub mod governs;
 pub mod hierarchy;
+pub mod hypothesis;
 pub mod ignore;
 pub mod implements;
 pub mod integrity;
@@ -30,6 +31,7 @@ pub mod rule;
 pub mod scoring;
 pub mod smells;
 pub mod stats;
+pub mod targets;
 pub mod validates;
 pub mod validation;
 
@@ -42,6 +44,7 @@ pub use delegation::*;
 pub use find::*;
 pub use governs::*;
 pub use hierarchy::*;
+pub use hypothesis::*;
 pub use ignore::*;
 pub use implements::*;
 pub use integrity::*;
@@ -54,6 +57,7 @@ pub use rule::*;
 pub use scoring::*;
 pub use smells::*;
 pub use stats::*;
+pub use targets::*;
 pub use validates::*;
 pub use validation::*;
 
@@ -1265,6 +1269,132 @@ mod tests {
         assert_eq!(ds[0].target, "services/grid/loom.graph.json");
         let export = export_graph(&db).unwrap();
         assert_eq!(export["nodes"]["Delegation"].as_array().unwrap().len(), 1);
+    }
+
+    fn hypothesis(id: &str, name: &str) -> crate::types::Hypothesis {
+        crate::types::Hypothesis {
+            id: id.into(), name: name.into(),
+            claim: "scoring.rs serves four unrelated intents".into(),
+            proposal: "extract discovery ranking into its own module".into(),
+            predicted_outcome: "scoring.rs under 300 lines, tangled-file smell gone".into(),
+            status: "proposed".into(), author: "llm:quality".into(),
+            evidence: String::new(), inspected_by: String::new(),
+            last_inspected: String::new(),
+            created_at: "t0".into(), updated_at: "t0".into(),
+        }
+    }
+
+    /// Hypothesis round trip + the state machine writes: a proof verdict stamps
+    /// status/evidence/provenance and records a transition note; a decision
+    /// stamps status and records a transition note. TARGETS edges resolve by
+    /// endpoints (the reliable key).
+    #[test]
+    fn hypothesis_roundtrip_and_state_machine() {
+        let (db, ids) = db_with_intents(2);
+        insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
+
+        // Retrievable by id, by exact name, by unique fragment.
+        assert!(get_hypothesis(&db, "h0").unwrap().is_some());
+        assert_eq!(resolve_hypothesis(&db, "split the scoring module").unwrap(), "h0");
+        assert_eq!(resolve_hypothesis(&db, "scoring").unwrap(), "h0");
+
+        // TARGETS edges, endpoint-matched.
+        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+        insert_targets(&db, "e1", "h0", &ids[1], "t").unwrap();
+        let ts = list_targets_for_hypothesis(&db, "h0").unwrap();
+        assert_eq!(ts.len(), 2);
+        assert!(ts.iter().all(|t| t.inspection_status == "uninspected"));
+        assert!(get_targets_between(&db, "h0", &ids[0]).unwrap().is_some());
+
+        // Proof verdict: status + evidence + provenance + transition note.
+        update_hypothesis_verdict(
+            &db, "h0", "supported",
+            "read scoring.rs: ranking shares no types with priority scoring",
+            "llm:analyzer", "t1",
+        ).unwrap();
+        let h = get_hypothesis(&db, "h0").unwrap().unwrap();
+        assert_eq!(h.status, "supported");
+        assert_eq!(h.inspected_by, "llm:analyzer");
+        assert_eq!(h.last_inspected, "t1");
+        assert!(!h.evidence.is_empty());
+
+        // Decision: adopted, with its own transition note.
+        set_hypothesis_status(&db, "h0", "adopted", "llm:builder", "t2").unwrap();
+        assert_eq!(get_hypothesis(&db, "h0").unwrap().unwrap().status, "adopted");
+        let notes = notes_for_target(&db, "h0").unwrap();
+        let transitions: Vec<_> = notes.iter().filter(|n| n.kind == "transition").collect();
+        assert_eq!(transitions.len(), 2, "{notes:?}");
+        assert!(transitions.iter().any(|n| n.text.contains("proposed → supported")));
+        assert!(transitions.iter().any(|n| n.text.contains("supported → adopted")));
+
+        // Status filter.
+        assert_eq!(list_hypotheses(&db, Some("adopted")).unwrap().len(), 1);
+        assert_eq!(list_hypotheses(&db, Some("proposed")).unwrap().len(), 0);
+    }
+
+    /// The hypothesis plane travels with the export, and exports from OLDER
+    /// binaries (no Hypothesis/TARGETS sections at all) still import — the
+    /// sections are additive, same contract as optional props.
+    #[test]
+    fn hypothesis_travels_and_old_exports_still_import() {
+        let (db, ids) = db_inited(1);
+        insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
+        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+
+        let export = export_graph(&db).unwrap();
+        assert_eq!(export["nodes"]["Hypothesis"].as_array().unwrap().len(), 1);
+        assert_eq!(export["edges"]["TARGETS"].as_array().unwrap().len(), 1);
+
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, false).unwrap();
+        let h = get_hypothesis(&db2, "h0").unwrap().unwrap();
+        assert_eq!(h.claim, "scoring.rs serves four unrelated intents");
+        assert_eq!(list_targets_for_hypothesis(&db2, "h0").unwrap().len(), 1);
+
+        // An older export has NO hypothesis sections — import reads them empty.
+        let mut old = export.clone();
+        old["nodes"].as_object_mut().unwrap().remove("Hypothesis");
+        old["edges"].as_object_mut().unwrap().remove("TARGETS");
+        let db3 = GrafeoDb::in_memory();
+        db3.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
+        )).unwrap();
+        import_graph(&db3, &old, false).unwrap();
+        assert!(list_hypotheses(&db3, None).unwrap().is_empty());
+    }
+
+    /// PORTING: a hypothesis travels as design lineage, but a supported/refuted
+    /// proof was earned against the OLD code — it arrives `proposed` with the
+    /// proof meta cleared. Decisions (adopted/rejected) stay history.
+    #[test]
+    fn import_as_planned_resets_hypothesis_proofs() {
+        let (db, ids) = db_inited(1);
+        insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
+        update_hypothesis_verdict(&db, "h0", "supported", "checked against old repo", "llm:analyzer", "t1").unwrap();
+        insert_hypothesis(&db, &hypothesis("h1", "kill the cd fallback")).unwrap();
+        set_hypothesis_status(&db, "h1", "rejected", "llm:builder", "t1").unwrap();
+        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+
+        let export = export_graph(&db).unwrap();
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "port", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, true).unwrap();
+
+        let h0 = get_hypothesis(&db2, "h0").unwrap().unwrap();
+        assert_eq!(h0.status, "proposed", "earned proof must not travel");
+        assert_eq!(h0.evidence, "");
+        assert_eq!(h0.last_inspected, "");
+        let h1 = get_hypothesis(&db2, "h1").unwrap().unwrap();
+        assert_eq!(h1.status, "rejected", "decisions are lineage and stay");
+        // TARGETS edges travel (intents travel) but arrive uninspected.
+        let ts = list_targets_for_hypothesis(&db2, "h0").unwrap();
+        assert_eq!(ts.len(), 1);
+        assert_eq!(ts[0].inspection_status, "uninspected");
     }
 
     /// A GOVERNS verdict inherits DOWN the hierarchy: a rule held against a

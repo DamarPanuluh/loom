@@ -1,0 +1,104 @@
+//! TARGETS edge queries (Hypothesis → Intent) — which intents an improvement
+//! hypothesis would touch. Mirrors `governs.rs`: endpoint-matched, full
+//! inspectable meta, default uninspected.
+
+use anyhow::Result;
+use grafeo::Value;
+use std::collections::HashMap;
+
+use crate::db::schema::esc;
+use crate::db::LoomDb;
+use crate::types::TargetsEdge;
+
+use super::row::{col_map, f64_val, get, str_val};
+
+pub fn insert_targets(
+    db: &dyn LoomDb,
+    edge_id: &str,
+    hypothesis_id: &str,
+    intent_id: &str,
+    now: &str,
+) -> Result<()> {
+    let check_h = db.execute(&format!(
+        "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id", esc(hypothesis_id)
+    ))?;
+    if check_h.rows().is_empty() {
+        anyhow::bail!("Hypothesis '{}' not found", hypothesis_id);
+    }
+    let check_i = db.execute(&format!(
+        "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
+    ))?;
+    if check_i.rows().is_empty() {
+        anyhow::bail!("Intent '{}' not found", intent_id);
+    }
+    db.execute(&format!(
+        "MATCH (h:Hypothesis {{id: '{hid}'}}), (i:Intent {{id: '{iid}'}}) \
+         INSERT (h)-[:TARGETS {{id: '{eid}', inspection_status: 'uninspected', \
+           criterion: '', confidence: 0.0, evidence: '', last_inspected: '', \
+           inspected_by: '', notes: '', created_at: '{now}'}}]->(i)",
+        hid = esc(hypothesis_id),
+        iid = esc(intent_id),
+        eid = esc(edge_id),
+        now = esc(now),
+    ))?;
+    Ok(())
+}
+
+/// Resolve a TARGETS edge by its endpoints — the reliable key (at most one
+/// TARGETS edge per (hypothesis, intent) pair).
+pub fn get_targets_between(
+    db: &dyn LoomDb,
+    hypothesis_id: &str,
+    intent_id: &str,
+) -> Result<Option<TargetsEdge>> {
+    Ok(list_targets_for_hypothesis(db, hypothesis_id)?
+        .into_iter()
+        .find(|t| t.intent_id == intent_id))
+}
+
+pub fn list_targets_for_hypothesis(
+    db: &dyn LoomDb,
+    hypothesis_id: &str,
+) -> Result<Vec<TargetsEdge>> {
+    let q = format!(
+        "MATCH (h:Hypothesis {{id: '{id}'}})-[e:TARGETS]->(i:Intent) \
+         RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+                e.last_inspected, e.inspected_by, e.notes, \
+                h.id AS hypothesis_id, h.name AS hypothesis_name, \
+                i.id AS intent_id, i.name AS intent_name",
+        id = esc(hypothesis_id)
+    );
+    let result = db.execute(&q)?;
+    let cols = col_map(&result);
+    Ok(result.rows().iter().map(|row| row_to_targets(row, &cols)).collect())
+}
+
+/// Scan every TARGETS edge (doctor audit; status filtering happens in Rust —
+/// relationship-property filtering is unreliable in grafeo 0.5.x).
+pub fn list_all_targets(db: &dyn LoomDb) -> Result<Vec<TargetsEdge>> {
+    let q = "MATCH (h:Hypothesis)-[e:TARGETS]->(i:Intent) \
+             RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+                    e.last_inspected, e.inspected_by, e.notes, \
+                    h.id AS hypothesis_id, h.name AS hypothesis_name, \
+                    i.id AS intent_id, i.name AS intent_name";
+    let result = db.execute(q)?;
+    let cols = col_map(&result);
+    Ok(result.rows().iter().map(|row| row_to_targets(row, &cols)).collect())
+}
+
+fn row_to_targets(row: &[Value], cols: &HashMap<&str, usize>) -> TargetsEdge {
+    TargetsEdge {
+        id:                str_val(get(row, cols, "e.id")),
+        hypothesis_id:     str_val(get(row, cols, "hypothesis_id")),
+        intent_id:         str_val(get(row, cols, "intent_id")),
+        hypothesis_name:   str_val(get(row, cols, "hypothesis_name")),
+        intent_name:       str_val(get(row, cols, "intent_name")),
+        inspection_status: str_val(get(row, cols, "e.inspection_status")),
+        criterion:         str_val(get(row, cols, "e.criterion")),
+        confidence:        f64_val(get(row, cols, "e.confidence")),
+        evidence:          str_val(get(row, cols, "e.evidence")),
+        last_inspected:    str_val(get(row, cols, "e.last_inspected")),
+        inspected_by:      str_val(get(row, cols, "e.inspected_by")),
+        notes:             str_val(get(row, cols, "e.notes")),
+    }
+}

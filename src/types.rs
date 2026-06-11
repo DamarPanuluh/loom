@@ -376,6 +376,56 @@ impl std::str::FromStr for LifecycleState {
 }
 
 // ---------------------------------------------------------------------------
+// HypothesisStatus — the state machine on the pre-decision plane
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum HypothesisStatus {
+    /// Declared, not yet proven against the code (the only state `add` creates).
+    Proposed,
+    /// An analyzer confirmed the claimed problem exists in the code as it is now.
+    Supported,
+    /// An analyzer looked and the claimed problem is not real.
+    Refuted,
+    /// Decision: converted into planned intents / needs_change marks. Terminal —
+    /// from here the ordinary intent machinery owns the work.
+    Adopted,
+    /// Decision: not pursuing it (with a recorded why). Terminal.
+    Rejected,
+}
+
+impl std::fmt::Display for HypothesisStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Proposed  => "proposed",
+            Self::Supported => "supported",
+            Self::Refuted   => "refuted",
+            Self::Adopted   => "adopted",
+            Self::Rejected  => "rejected",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl std::str::FromStr for HypothesisStatus {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        match s {
+            "proposed"  => Ok(Self::Proposed),
+            "supported" => Ok(Self::Supported),
+            "refuted"   => Ok(Self::Refuted),
+            "adopted"   => Ok(Self::Adopted),
+            "rejected"  => Ok(Self::Rejected),
+            other => anyhow::bail!(
+                "Unknown hypothesis status '{}'. Valid: proposed, supported, refuted, adopted, rejected",
+                other
+            ),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Node types (4 total)
 // ---------------------------------------------------------------------------
 
@@ -516,6 +566,41 @@ pub struct Delegation {
 }
 
 // ---------------------------------------------------------------------------
+// Hypothesis — the pre-decision plane (improvement proposals, proven twice)
+// ---------------------------------------------------------------------------
+
+/// A falsifiable improvement proposal: claim (what's wrong NOW), proposal
+/// (what to change), predicted_outcome (the measurable result if adopted —
+/// the post-implementation acceptance contract). State machine:
+/// proposed → supported | refuted → adopted | rejected. Invisible to coverage,
+/// completeness, and every queue until adoption converts it into planned
+/// intents — speculation never counts as state of the world.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hypothesis {
+    pub id: String,
+    pub name: String,
+    /// What is wrong/suboptimal — provable against the code as it is now.
+    pub claim: String,
+    /// The proposed change.
+    pub proposal: String,
+    /// The measurable result if adopted (falsifiable).
+    pub predicted_outcome: String,
+    /// proposed | supported | refuted | adopted | rejected
+    pub status: String,
+    /// Who proposed it — role-aware provenance. The prover must differ
+    /// (proposer ≠ prover when both declare roles).
+    pub author: String,
+    /// What the prover found ("" until proven).
+    pub evidence: String,
+    /// Who proved it ("" until proven).
+    pub inspected_by: String,
+    /// When it was proven ("" until proven).
+    pub last_inspected: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Edge types (5 total)
 // ---------------------------------------------------------------------------
 
@@ -585,6 +670,27 @@ pub struct Governs {
     pub rule_id: String,
     pub intent_id: String,
     pub rule_name: String,
+    pub intent_name: String,
+    // --- State ---
+    pub inspection_status: String,
+    // --- Meta ---
+    pub criterion: String,
+    pub confidence: f64,
+    pub evidence: String,
+    pub last_inspected: String,
+    pub inspected_by: String,
+    pub notes: String,
+}
+
+/// TARGETS: Hypothesis → Intent — which intents an improvement hypothesis
+/// would touch. Mirrors GOVERNS: full inspectable meta, so per-target
+/// grounding and sync staleness work like every other claim about code.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TargetsEdge {
+    pub id: String,
+    pub hypothesis_id: String,
+    pub intent_id: String,
+    pub hypothesis_name: String,
     pub intent_name: String,
     // --- State ---
     pub inspection_status: String,
