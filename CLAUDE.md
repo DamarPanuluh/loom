@@ -70,7 +70,10 @@ Explicit proof object that an intent is fulfilled. Intents without validations a
 id               STRING (uuid)
 name             STRING
 description      STRING
-validation_type  STRING  -- "test" | "assertion" | "benchmark" | "manual_check"
+validation_type  STRING  -- "test" | "assertion" | "benchmark" | "manual_check" |
+                            "saga" (consumer-plane chain run by the built-in
+                             engine — see `loom saga`; the spec path lives in a
+                             `spec:<path>` line of the description)
 command          STRING  -- e.g. "cargo test --test foo"
 last_run         STRING  -- timestamp
 last_result      STRING  -- "passed" | "failed" | "not_run" | "blocked"
@@ -392,6 +395,51 @@ loom validate <intent-id>
   Runs command on all VALIDATES edges for this intent. (manual_check without a
   command is skipped — use `loom validation mark` for those.)
   Updates Validation.last_result and VALIDATES edge inspection_status.
+
+loom saga add <spec.yaml>
+loom saga run <name|spec.yaml>
+loom saga list
+  THE CONSUMER PLANE: an external-consumer proof — an ordered chain of endpoint
+  invocations that consumes the system the way a real consumer will (values
+  captured from one response thread into the next request). Runtime complement
+  to read-evidence: RELATES_TO edges are normally grounded by READING code; a
+  saga stamps the edges along its intent path with EXECUTION evidence.
+  Engine is built in and pure Rust (reqwest/rustls + RFC 9535 JSONPath — no
+  libcurl); deliberately a saga executor, NOT a general HTTP test tool
+  (anything fancier = an ordinary command-based Validation).
+  Spec (YAML, the graph binding is first-class — every step names the intent
+  it proves):
+    saga: checkout-flow
+    base: "{{ env.BASE_URL }}"        # {{ var }} / {{ env.X }} interpolation
+    steps:
+      - name: create cart
+        intent: cart-creation          # id, exact name, or unique fragment
+        request: { method: POST, url: /carts, json: { items: [] } }
+        expect:  { status: 201, body: { "$.id": { exists: true } } }
+        capture: { cart_id: "$.id" }   # JSONPath → var for later steps
+      - name: capture payment
+        intent: payment-capture
+        request: { method: POST, url: "/carts/{{ cart_id }}/payment" }
+        expect:  { status: 200, body: { "$.state": paid } }
+  expect.body values: bare value = equals · {exists: bool} · {contains: "…"};
+  expect.status omitted = any 2xx; expect.headers = substring match.
+  `add` declares the proof: Validation node (type=saga, command =
+  `loom saga run <spec>`) + VALIDATES edges to every step intent + the
+  RELATES_TO path edges between consecutive step intents (uninspected — green
+  is earned by running) + the spec registered as a CodeFile (it travels in the
+  export, counts in coverage). Idempotent; re-add after editing reconciles.
+  `run` executes (DB closed while HTTP runs, same lock discipline as
+  `loom validate`) and translates outcomes into graph verdicts — the failure
+  semantics: consecutive steps that BOTH passed → their RELATES_TO edge goes
+  passing with runtime evidence; the boundary into the failing step → failing
+  with the exact broken expectation ("expected 200, got 502"); steps after the
+  failure are UNTOUCHED (never reached ≠ failing); the Validation + all its
+  VALIDATES edges carry the run verdict. Existing non-empty edge criteria are
+  preserved (execution refines the analyzer's contract, never overwrites it).
+  Exits non-zero on failure, so the stored command also works under
+  `loom validate` and in CI. Validator lane (`add` is builder|validator).
+  Sync ripple already covers re-validation: code behind a step intent changes
+  → its VALIDATES edges → not_run → the saga resurfaces in the validate queue.
 
 loom rule add --name --description --severity [--effort low|mid|high]
   --effort = how much capability INSPECTING this rule needs (pack rules ship
@@ -716,6 +764,10 @@ src/
 ├── output.rs             dual-mode rendering (human / --json) + graph pulse
 ├── repo.rs               filesystem introspection: gitignore-aware walk + stack detection
 ├── agent.rs              acting-agent resolution for provenance (--by / $LOOM_AGENT / "llm")
+├── saga/                 the consumer plane's engine (pure Rust: reqwest/rustls)
+│   ├── mod.rs            module wiring + design rationale
+│   ├── spec.rs           YAML spec format, load-time validation, {{ }} interpolation
+│   └── runner.rs         sequential executor: captures, asserts, halt-on-failure outcomes
 ├── gate.rs               the enforcement layer: role lanes (declared role held to its
 │                         lane; solo mode passes) + evidence gates (substantive
 │                         criterion/evidence/notes, confidence ∈ [0,1])
@@ -759,6 +811,7 @@ src/
     ├── hypothesis.rs     loom hypothesis * (propose/prove/adopt/reject)
     ├── note.rs           loom note *
     ├── rule.rs           loom rule *
+    ├── saga.rs           loom saga * (consumer-plane proofs: declare, run, stamp the path)
     ├── report.rs         loom report (+ completeness gaps)
     ├── doctor.rs         loom doctor
     ├── guide.rs          loom guide

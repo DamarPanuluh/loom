@@ -147,6 +147,10 @@ pub enum ValidationType {
     Assertion,
     Benchmark,
     ManualCheck,
+    /// A consumer-plane proof: an ordered chain of endpoint invocations run by
+    /// the built-in saga engine (`loom saga run`). The command re-derives all
+    /// detail from the spec file named in the description's `spec:` line.
+    Saga,
 }
 
 impl std::fmt::Display for ValidationType {
@@ -156,6 +160,7 @@ impl std::fmt::Display for ValidationType {
             Self::Assertion   => write!(f, "assertion"),
             Self::Benchmark   => write!(f, "benchmark"),
             Self::ManualCheck => write!(f, "manual_check"),
+            Self::Saga        => write!(f, "saga"),
         }
     }
 }
@@ -168,8 +173,9 @@ impl std::str::FromStr for ValidationType {
             "assertion"    => Ok(Self::Assertion),
             "benchmark"    => Ok(Self::Benchmark),
             "manual_check" => Ok(Self::ManualCheck),
+            "saga"         => Ok(Self::Saga),
             other => anyhow::bail!(
-                "Unknown validation type '{}'. Valid: test, assertion, benchmark, manual_check",
+                "Unknown validation type '{}'. Valid: test, assertion, benchmark, manual_check, saga",
                 other
             ),
         }

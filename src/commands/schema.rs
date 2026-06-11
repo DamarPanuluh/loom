@@ -88,7 +88,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo"],
         "severity": ["warning", "error"],
-        "validation_type": ["test", "assertion", "benchmark", "manual_check"],
+        "validation_type": ["test", "assertion", "benchmark", "manual_check", "saga"],
         "validation_result": ["passed", "failed", "not_run", "blocked"],
         "hypothesis_status": ["proposed", "supported", "refuted", "adopted", "confirmed", "rejected"],
         "aspect": {"open": true, "suggested": ["happy", "sad", "fallback", "edge_case", "lifecycle", "security", "performance"]},
@@ -149,7 +149,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  lifecycle:         planned | implemented | needs_change");
     println!("  note_kind:         justification | commentary | idea | question | decision | todo");
     println!("  severity:          warning | error");
-    println!("  validation_type:   test | assertion | benchmark | manual_check");
+    println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");
     println!("  validation_result: passed | failed | not_run | blocked (recorded \"can't run yet\" + reason)");
     println!("  aspect (open):     happy | sad | fallback | edge_case | lifecycle | security | performance | …");
     Ok(())

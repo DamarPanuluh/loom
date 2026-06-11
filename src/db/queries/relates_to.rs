@@ -227,6 +227,50 @@ pub fn update_relates_to_independent(
     Ok(true)
 }
 
+/// Stamp a RELATES_TO edge with RUNTIME evidence from a saga run (the
+/// consumer plane): `status` is passing (both steps of the pair executed and
+/// passed) or failing (the boundary where the chain broke). An existing
+/// non-empty criterion is PRESERVED — execution evidence refines the
+/// analyzer's contract, it does not overwrite it; `default_criterion` only
+/// fills a blank. Evidence always carries the run detail, so a green edge can
+/// say "proven by execution", not just "read and believed".
+pub fn stamp_relates_to_runtime(
+    db: &dyn LoomDb,
+    from_id: &str,
+    to_id: &str,
+    status: &str,
+    default_criterion: &str,
+    evidence: &str,
+    confidence: f64,
+    inspected_by: &str,
+    now: &str,
+) -> Result<bool> {
+    let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
+        return Ok(false);
+    };
+    let criterion = if prev.criterion.trim().is_empty() {
+        default_criterion
+    } else {
+        &prev.criterion
+    };
+    db.execute(&format!(
+        "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
+         SET r.inspection_status = '{status}', r.criterion = '{crit}', \
+             r.evidence = '{ev}', r.confidence = {conf}, r.inspected_by = '{by}', \
+             r.last_inspected = '{now}'",
+        from   = esc(from_id),
+        to     = esc(to_id),
+        status = esc(status),
+        crit   = esc(criterion),
+        ev     = esc(evidence),
+        conf   = confidence,
+        by     = esc(inspected_by),
+        now    = esc(now),
+    ))?;
+    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, status, inspected_by, now)?;
+    Ok(true)
+}
+
 /// Fix a failing edge: set inspection_status = passing and propagate
 /// needs_reverification to currently-passing neighbours.
 pub fn fix_edge(

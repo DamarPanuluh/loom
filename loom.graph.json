@@ -322,7 +322,7 @@
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "dd90d9e7-89fb-44df-842c-fc95f7336bf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.522934+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -413,7 +413,7 @@
         "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "id": "018547b4-a5c3-44bc-84f5-fa418e1664ff",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.512777+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -582,7 +582,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "dc14707f-331c-4175-b053-6f311bbe4329",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.532119+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -660,7 +660,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.521988+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -673,7 +673,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "1949781d-87c2-49b0-85c6-733556586f01",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.523259+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -699,7 +699,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "3486af65-2f1c-4177-a14d-6947bcafd93b",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:19.890735+00:00",
         "notes": "",
         "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
@@ -790,7 +790,7 @@
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.622285+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -933,7 +933,7 @@
         "from": "40432472-8004-405c-95b9-428c5087179f",
         "id": "f3d13aa1-a5f6-4f4c-b9a6-bf0d63160ec3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.532196+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -1102,7 +1102,7 @@
         "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
         "id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.543692+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -1349,7 +1349,7 @@
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "id": "a2b499eb-5b0e-4626-ac95-e96985760894",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.545106+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -1700,7 +1700,7 @@
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.543651+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -1882,7 +1882,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "8b2d5ec5-a60a-4bca-b044-041a13516f2b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.556928+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -1960,7 +1960,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.550484+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -1973,7 +1973,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "6863b136-a8f4-45d4-9d1e-de3d471b2dfb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.551835+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -1999,7 +1999,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "9c2e5830-1bc8-4553-944e-6e7e35779750",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:24:59.028459+00:00",
         "notes": "",
         "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
@@ -2090,7 +2090,7 @@
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.624191+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -2129,7 +2129,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "836f3927-b98d-42e9-b949-44188a8a4cd6",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.567202+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -2207,7 +2207,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "68bd20b9-5254-4617-bfe7-7d2da5a04312",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.563739+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -2220,7 +2220,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "0cabd24c-c34d-4a1c-b988-a348d9e39322",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.565016+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -2246,7 +2246,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "3fe24798-4f84-44d6-b936-91daa2fcde45",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:00.838185+00:00",
         "notes": "",
         "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
@@ -2337,7 +2337,7 @@
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.625760+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -2376,7 +2376,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "6f46e338-2810-41af-9123-cc7b07214484",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.577150+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -2454,7 +2454,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.576806+00:00",
         "notes": "",
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -2467,7 +2467,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "cf207408-fd81-4efa-b4cf-03015fe5951a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.578164+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -2493,7 +2493,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "4e9ccd6a-aa8f-4ba5-9931-b3a994d77649",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-09T20:25:09.903412+00:00",
         "notes": "",
         "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
@@ -2597,7 +2597,7 @@
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.627229+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -2636,7 +2636,7 @@
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.587278+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -2896,7 +2896,7 @@
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.597078+00:00",
         "notes": "",
         "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
@@ -2987,7 +2987,7 @@
         "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
         "id": "74b0f997-3a3c-4bfa-a8b6-694229aa857e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.597707+00:00",
         "notes": "",
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -3251,6 +3251,27 @@
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
       {
+        "created_at": "2026-06-11T08:42:27.762456+00:00",
+        "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "id": "fef28ae8-74a5-4601-8179-1d6a670cb3cc",
+        "notes": "",
+        "to": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb"
+      },
+      {
+        "created_at": "2026-06-11T08:42:27.174417+00:00",
+        "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "id": "04e580c7-8a15-45a2-88a5-d4889fbcc778",
+        "notes": "",
+        "to": "3d856e36-aeff-4766-9a32-770e58e24672"
+      },
+      {
+        "created_at": "2026-06-11T08:42:26.458574+00:00",
+        "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "id": "7158c810-9dd2-4876-86a0-fbf68f0bfa23",
+        "notes": "",
+        "to": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb"
+      },
+      {
         "created_at": "2026-06-09T19:07:33.714803+00:00",
         "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
         "id": "9933dc66-2282-4479-ba4e-69d66a591fe8",
@@ -3291,6 +3312,13 @@
         "id": "0ac47b54-fea2-415c-af95-598ae86e5eb2",
         "notes": "",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
+      },
+      {
+        "created_at": "2026-06-11T08:42:25.847348+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "id": "f5e8c66d-693a-4628-af1e-89ff66e3e5e1",
+        "notes": "",
+        "to": "4c752ad2-e332-4148-87e2-88340991e2a5"
       },
       {
         "created_at": "2026-06-09T19:07:33.695835+00:00",
@@ -3506,6 +3534,20 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-11T08:42:30.208610+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "id": "b833fac6-d07f-460e-b5f0-1e1cd242fd94",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "fn execute",
+        "notes": "",
+        "to": "df64c556-9304-45b7-bd23-f23e757ee613"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:11.292556+00:00",
         "criterion": "",
         "evidence": "",
@@ -3716,6 +3758,20 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-11T08:42:29.610270+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3d856e36-aeff-4766-9a32-770e58e24672",
+        "id": "ae85c957-3618-4a39-9dfe-5f520f85f1bf",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn run_saga",
+        "notes": "",
+        "to": "d1f45015-7e97-4a3e-a92c-e3fb65bcbc4a"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:10.473509+00:00",
         "criterion": "",
         "evidence": "",
@@ -3727,6 +3783,20 @@
         "locator": "",
         "notes": "",
         "to": "8f3a56f9-9b2b-4cbc-b3fa-1bad25b2abed"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-11T08:42:28.396489+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "id": "50ad8a12-6fa9-4a26-bcd6-e45bca2d9682",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub mod",
+        "notes": "",
+        "to": "fda0454d-3bd4-4b03-8592-47a7fded1ddf"
       },
       {
         "confidence": 0.0,
@@ -4598,6 +4668,20 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-11T08:42:29.005422+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb",
+        "id": "e58e1429-c0de-4ba9-ab63-09d33b436021",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn load_spec",
+        "notes": "",
+        "to": "3ce9a847-4eee-4a36-81a9-050f56cb1e55"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:10.588230+00:00",
         "criterion": "",
         "evidence": "",
@@ -4676,7 +4760,7 @@
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "id": "7569c6be-1c67-4237-a7e8-545467e9bcb2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.383328+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4690,7 +4774,7 @@
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "id": "88784a23-8f63-4a56-b96a-72e36ab19b3d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.971116+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4704,7 +4788,7 @@
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "id": "ec4b1de0-a927-4d84-b3bb-236b58d6b71f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.991625+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4732,7 +4816,7 @@
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "id": "2432d51f-2231-4d54-a4c1-c71e0c5d2817",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.118904+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4844,7 +4928,7 @@
         "from": "0961299d-781d-4860-9064-128c6aa60bd0",
         "id": "607b04ea-6c34-41ea-8025-7b0e538924b2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.982471+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4858,7 +4942,7 @@
         "from": "0961299d-781d-4860-9064-128c6aa60bd0",
         "id": "f58bd575-4727-48c6-a31e-45f77edcf12c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.054304+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4928,7 +5012,7 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "bdc37810-5fba-472e-ac63-317941d243cb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.147764+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4942,7 +5026,7 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "4a58b389-d1e9-4937-a57c-99a6f45dde5a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.149419+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -4956,7 +5040,7 @@
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "id": "13697e97-03b5-463e-bdf3-5e3c1ae6472e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.151053+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5026,7 +5110,7 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.389684+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5040,7 +5124,7 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "361ff3da-9334-475e-9e58-b8ccb47a486e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.390933+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5054,7 +5138,7 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "6451331d-059d-4fab-975a-3deb4c7e1935",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.109290+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5138,7 +5222,7 @@
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "id": "342435bd-a371-4cfb-bbe3-21a0d8203139",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.094980+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5152,7 +5236,7 @@
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.393384+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5166,7 +5250,7 @@
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "ce07cf53-53dc-4844-b1db-0aafc25bed3d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.394801+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5180,7 +5264,7 @@
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "fdf05886-d9a9-45e2-9ee2-795616978af5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.035829+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5222,7 +5306,7 @@
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "id": "807dc24f-2713-4c24-aa1c-790c45f5befe",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.098538+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5264,7 +5348,7 @@
         "from": "246d039f-08d0-4b01-b194-5917bb3a3a25",
         "id": "9a881105-c682-420f-9511-ec189ae1e3a9",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.093076+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5292,7 +5376,7 @@
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.444614+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5306,7 +5390,7 @@
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "a91031d8-d8f2-491e-b14e-5e5338798952",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.950720+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5320,7 +5404,7 @@
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "617c4cf5-37f6-442f-8e14-b28b6403c3e3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.446074+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5334,7 +5418,7 @@
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.158065+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5348,7 +5432,7 @@
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "id": "4b032e8a-fbc9-4328-8354-ddd705030383",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.449455+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5362,7 +5446,7 @@
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "id": "08fb7426-99c3-491b-a229-5c0a196d5ed2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.450955+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5376,7 +5460,7 @@
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "id": "ba63d7ed-d548-4738-8083-97b6c7b12e56",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.028507+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5460,7 +5544,7 @@
         "from": "2ddcf18d-9c6c-4205-bf98-81cf7fa7fad6",
         "id": "0fe6fe8a-6546-42fc-85c1-767349ad166b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.000544+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5474,7 +5558,7 @@
         "from": "2ddcf18d-9c6c-4205-bf98-81cf7fa7fad6",
         "id": "e9640661-eabf-4230-b207-166c34578cd7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.068550+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5544,7 +5628,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "374fe76b-376b-4825-b2a9-7763d9ec4769",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.457124+00:00",
         "notes": "the import edge is db/mod.rs acting as module hub: resolve_root decides WHICH graph before any session opens, while this intent's behavior is query/gate-layer semantics that are identical whichever graph is targeted — no behavioral contract between them",
         "priority_score": 0.0,
@@ -5684,7 +5768,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "591479d9-05ee-424c-9db6-66903fa00084",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.415706+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5698,7 +5782,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "6faefd10-4842-490d-9d8d-488bbe593d2d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.417034+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5726,7 +5810,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "736d92b8-9b5d-4aff-a91a-f7b932975df3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.967338+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5894,7 +5978,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "d7a0d584-ea29-4353-b133-adc3cdde40f5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.073914+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5950,7 +6034,7 @@
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.602868+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5978,7 +6062,7 @@
         "from": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "id": "004b47d0-fbde-4876-b618-c6fbb9f2fb84",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.061413+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -5992,7 +6076,7 @@
         "from": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "id": "da798fef-ceeb-4fdf-b334-a7c3c8d9bc6a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.998767+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6034,7 +6118,7 @@
         "from": "344b406f-c0db-466f-b987-e30bf44322ab",
         "id": "841b30c3-262e-4317-a84a-72226cd602e0",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.139913+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6048,7 +6132,7 @@
         "from": "344b406f-c0db-466f-b987-e30bf44322ab",
         "id": "3372c5a7-fa86-484b-87c5-0492ddb700d5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.126671+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6062,7 +6146,7 @@
         "from": "344b406f-c0db-466f-b987-e30bf44322ab",
         "id": "95f1d4ab-5315-4f23-941a-c3a2c51a4c8a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.962039+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6076,7 +6160,7 @@
         "from": "344b406f-c0db-466f-b987-e30bf44322ab",
         "id": "877ec85a-d48e-47a7-9706-eae8216cd412",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.976735+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6160,7 +6244,7 @@
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.427898+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6188,7 +6272,7 @@
         "from": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
         "id": "43f2804c-9302-4d28-9120-16fbdba48090",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.429162+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6202,7 +6286,7 @@
         "from": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
         "id": "045c429a-48c4-4afc-a69b-295f47b428f9",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.980699+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6272,7 +6356,7 @@
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.474735+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6286,7 +6370,7 @@
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.476193+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6300,7 +6384,7 @@
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "id": "73a01855-57c7-47e5-a0ed-4de8a20cabba",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.130320+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6356,7 +6440,7 @@
         "from": "4c656525-4851-4f2f-bdcd-25a3c08522d4",
         "id": "c840281e-f6de-42db-af22-351a9f01ed34",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.958206+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6370,7 +6454,7 @@
         "from": "4c656525-4851-4f2f-bdcd-25a3c08522d4",
         "id": "b00c9b17-8edc-43df-b719-ced0159aa2ec",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.005829+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6440,7 +6524,7 @@
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "id": "c8eebfab-98f3-42ba-917c-6111b705c5e8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.439174+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6454,7 +6538,7 @@
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "id": "0fb1763d-405d-4173-8374-bfbc1fa42523",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.440442+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6524,7 +6608,7 @@
         "from": "51bfa653-0b3a-46db-a3a1-c52f1609ff9c",
         "id": "6f38cb32-8ea2-403f-bd7a-8ffc14fbafcd",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.182192+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6538,7 +6622,7 @@
         "from": "51bfa653-0b3a-46db-a3a1-c52f1609ff9c",
         "id": "6f5b02b0-2888-429a-8075-37c59ff70838",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.183569+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6594,7 +6678,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "06a829e0-69eb-4de8-bd7c-5dbcbfec8d2a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.189286+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6608,7 +6692,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "2c146cb5-acdb-44e9-8a2e-f92821a3df0d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.191035+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6622,7 +6706,7 @@
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "id": "72ce4b7f-b3e3-400b-b9ac-f5556085953f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.192422+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6664,7 +6748,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "6717b3f1-3361-4ecc-bd19-75fc841d2a9a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.454054+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6678,7 +6762,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.455518+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6692,7 +6776,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "3c98d947-5789-420a-bbe8-d90e07369ab1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.085790+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6706,7 +6790,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "be34a193-25b3-482d-9207-22bcf4aacd85",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.985914+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6720,7 +6804,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "84cdb8cf-ccf8-477b-8740-a3a9211313a9",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.128520+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6734,7 +6818,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "c053094e-4984-41e0-a21c-0ced09d1fe89",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.456799+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6748,7 +6832,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "1f478578-34de-4569-8f8f-490894be373b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.458040+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6762,7 +6846,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.489734+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6776,7 +6860,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "82a36489-a1c2-46fc-9dd3-ecab9cb0e1f6",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.460543+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6790,7 +6874,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "4d23120d-6a81-43f0-be49-4851b40fe1d1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.064891+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6804,7 +6888,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "cd6093c4-5e86-4db3-9def-ab93772c4a5f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.978504+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6818,7 +6902,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "b4f1ecd2-b14c-48d1-9183-24014f62452c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.491231+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6832,7 +6916,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.607282+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6846,7 +6930,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.608821+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6860,7 +6944,7 @@
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "id": "2b3c9984-5e4d-489f-ba96-8f48daacce5d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.465710+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6874,7 +6958,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "c53ff35f-4b1e-41b9-b932-21e71bfc2de2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.467021+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6888,7 +6972,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "cabfd98f-d452-41f6-a6c1-6f1d01e9b532",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.948730+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6902,7 +6986,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "9998943c-8677-42f9-b16b-f8e132d1c0cf",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.972821+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6916,7 +7000,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "26eab4bf-1b0f-46cf-a557-e99ba31e6e23",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.963797+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6930,7 +7014,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "db73fa8d-1761-413f-8b24-8a71c6bea4f7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.468300+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6944,7 +7028,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "4dce6d96-f5ac-4765-8e16-41cd062235ce",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.469666+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6958,7 +7042,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.470936+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6972,7 +7056,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "40739e8c-61ca-49c7-8883-3b770aeaf936",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.472234+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -6986,7 +7070,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.492727+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7000,7 +7084,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "c96a037b-d495-4f6b-992c-84cbee20b876",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.954231+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7014,7 +7098,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "06c0540a-a0c3-4c55-8c8a-a4f85e5a0539",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.494179+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7028,7 +7112,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "4a8fb9ac-78a1-4638-856d-7a8083890f6c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.995259+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7042,7 +7126,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "802faa28-2975-43c0-84c6-2697d1a73efe",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.495642+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7056,7 +7140,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "c717ced4-b33f-4b08-9f5e-2ceed8b51abf",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.002260+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7070,7 +7154,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "37f22072-5904-4d99-b5f8-79790fb7c13e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:24:58.497113+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7084,7 +7168,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.610300+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7098,7 +7182,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "bf4d7835-58b8-4136-b7bb-540663f78402",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.199769+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7112,7 +7196,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.612045+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7126,7 +7210,7 @@
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "id": "1893e077-4863-407b-afb8-907716ee8091",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T05:03:22.482531+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7140,7 +7224,7 @@
         "from": "62a58a72-21d1-4509-81cb-538b757d21c2",
         "id": "e45f9241-3180-44d0-ba63-7aea54cd9b02",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.997047+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7182,7 +7266,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "06b330e8-3189-4085-825e-23b906a0c83f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.009483+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7196,7 +7280,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "fa17d195-0768-485b-8c9c-df5e147f13ee",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.989682+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7210,7 +7294,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "bbca319c-4b5b-47b9-b73f-6fa8b02709ce",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.020806+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7224,7 +7308,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "d0bf4407-bfb3-4f7d-9e34-2323ed00024e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.039383+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7238,7 +7322,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "b38f7a33-387e-4415-880c-5457edbf7924",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.952500+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7252,7 +7336,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "d228c8e5-0b5f-4b10-901b-a067d019b33e",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.030307+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7266,7 +7350,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "0d28450b-71e8-4b6c-a267-4a427c3249e3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.956173+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7280,7 +7364,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "30eaa6b3-aa3e-4ef2-9b86-faaf703a57ea",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.969182+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7294,7 +7378,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "9f8d2167-3db6-4b3c-9f24-5c77f8922ac5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.984186+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7308,7 +7392,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "3f6e1ee8-d90a-449a-9818-3d7fe17fed14",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.050507+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7322,7 +7406,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "1609729a-dc17-4e6f-b03d-477bc52221ae",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.089364+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7336,7 +7420,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "6498c40f-76b2-4b8e-a845-f844c3a146ca",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.041254+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7350,7 +7434,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "e7672be8-98c5-40f7-8653-88804732f887",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.613570+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7364,7 +7448,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "910801ac-f054-46a6-96d9-1889f92a5676",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.204100+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7378,7 +7462,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "f23abc8c-a4f6-49fa-8cb8-c9f9729232f4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.615019+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7392,7 +7476,7 @@
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "id": "24279b18-6824-45d9-a674-9422e95a027d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.083797+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7448,7 +7532,7 @@
         "from": "809761fa-9de9-4b00-b3e4-eda65efb65ab",
         "id": "5fbaf974-6075-4f20-a20b-a85e9cfd041d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.063134+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7560,7 +7644,7 @@
         "from": "8a538909-a622-45bd-803b-1d96f4ffd40a",
         "id": "2b55c110-f37c-46a2-bd5c-894e349f47ff",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.075952+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7602,7 +7686,7 @@
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "id": "7b929f62-0630-4f2e-a227-9d1430e79105",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:20.960265+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7742,7 +7826,7 @@
         "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "id": "41d98a48-44c9-4c5d-9b3f-de0de60f1904",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.116862+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7784,7 +7868,7 @@
         "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.617847+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7854,7 +7938,7 @@
         "from": "ce30778a-2b20-4144-af37-51df5085c4cd",
         "id": "c6311f1c-e341-46c7-ba4a-9aa0a55511d4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:32:21.096840+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -7952,7 +8036,7 @@
         "from": "d7d485d7-c342-4c44-a57f-d08f7cf31941",
         "id": "5c32bdb1-9e30-4f92-bd09-5fb389ce35eb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:55:05.221387+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -8008,7 +8092,7 @@
         "from": "e287ac20-f7af-44bf-ba45-078a282b8535",
         "id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-11T07:59:23.620600+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -8454,6 +8538,30 @@
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
       },
       {
+        "created_at": "2026-06-11T08:42:53.762745+00:00",
+        "from": "66ff43c8-f3cb-4b4d-9936-fecc8cb694fa",
+        "id": "5b05eedf-97c4-4da8-b9ba-e41176f935ac",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb"
+      },
+      {
+        "created_at": "2026-06-11T08:42:53.152676+00:00",
+        "from": "66ff43c8-f3cb-4b4d-9936-fecc8cb694fa",
+        "id": "20d78450-3b65-4119-8822-0f3eeca30f87",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "3d856e36-aeff-4766-9a32-770e58e24672"
+      },
+      {
+        "created_at": "2026-06-11T08:42:40.611180+00:00",
+        "from": "66ff43c8-f3cb-4b4d-9936-fecc8cb694fa",
+        "id": "49d37320-94ee-4cb8-b8ce-631dcaab79f9",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb"
+      },
+      {
         "created_at": "2026-06-11T03:16:16.495044+00:00",
         "from": "67f86545-5d9a-4b4c-8b23-7ff804e96155",
         "id": "c666e96d-a2a3-44c4-ac3b-acfb016bb472",
@@ -8717,6 +8825,14 @@
         "path": "src/db/queries/intent.rs"
       },
       {
+        "content_hash": "569e5f3caffabb2d",
+        "id": "3ce9a847-4eee-4a36-81a9-050f56cb1e55",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-11T08:29:05.702982358+00:00",
+        "path": "src/saga/spec.rs"
+      },
+      {
         "content_hash": "6491573a7ac1e446",
         "id": "3f32cd0f-9a87-464f-b131-d74ba13b0e66",
         "imports": "[]",
@@ -8789,11 +8905,11 @@
         "path": "src/commands/ignore.rs"
       },
       {
-        "content_hash": "12d57b16408cb8bc",
+        "content_hash": "801193c33bba9d8a",
         "id": "62532fce-0993-4eb2-94cd-f9c069a6e502",
-        "imports": "[\"src/cli.rs\",\"src/commands/batch.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/delegate.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/find.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/hypothesis.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
+        "imports": "[\"src/cli.rs\",\"src/commands/batch.rs\",\"src/commands/cluster.rs\",\"src/commands/codefile.rs\",\"src/commands/coverage.rs\",\"src/commands/delegate.rs\",\"src/commands/detect.rs\",\"src/commands/doctor.rs\",\"src/commands/edge.rs\",\"src/commands/export.rs\",\"src/commands/find.rs\",\"src/commands/guide.rs\",\"src/commands/hotspots.rs\",\"src/commands/hypothesis.rs\",\"src/commands/ignore.rs\",\"src/commands/import.rs\",\"src/commands/init.rs\",\"src/commands/intent.rs\",\"src/commands/next.rs\",\"src/commands/note.rs\",\"src/commands/report.rs\",\"src/commands/rule.rs\",\"src/commands/saga.rs\",\"src/commands/schema.rs\",\"src/commands/smells.rs\",\"src/commands/status.rs\",\"src/commands/sync.rs\",\"src/commands/validate.rs\",\"src/commands/validation.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-11T01:56:14.265210158+00:00",
+        "last_modified": "2026-06-11T08:35:58.326979421+00:00",
         "path": "src/commands/mod.rs"
       },
       {
@@ -8805,11 +8921,11 @@
         "path": "src/db/queries/find.rs"
       },
       {
-        "content_hash": "14533f5e978f88a9",
+        "content_hash": "0c048d021efaa6f2",
         "id": "6e45d28c-4921-4452-8e9b-188f9e088169",
         "imports": "[]",
         "language": "unknown",
-        "last_modified": "2026-06-09T13:33:28.657883518+00:00",
+        "last_modified": "2026-06-11T08:27:54.879820561+00:00",
         "path": "Cargo.toml"
       },
       {
@@ -8869,11 +8985,11 @@
         "path": "src/commands/cluster.rs"
       },
       {
-        "content_hash": "cdb7cb4bc4dcc13a",
+        "content_hash": "77f911ef0463ad99",
         "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-11T04:37:56.394632253+00:00",
+        "last_modified": "2026-06-11T08:31:11.816799681+00:00",
         "path": "src/types.rs"
       },
       {
@@ -8885,11 +9001,11 @@
         "path": "src/commands/next.rs"
       },
       {
-        "content_hash": "16320fbd31e93a7c",
+        "content_hash": "26d4edfd3f94e227",
         "id": "966a7e34-2119-4aa8-8e06-d222e9f66ed2",
-        "imports": "[\"src/agent.rs\",\"src/cli.rs\",\"src/commands/mod.rs\",\"src/db/mod.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/repo.rs\",\"src/types.rs\"]",
+        "imports": "[\"src/agent.rs\",\"src/cli.rs\",\"src/commands/mod.rs\",\"src/db/mod.rs\",\"src/gate.rs\",\"src/output.rs\",\"src/repo.rs\",\"src/saga/mod.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-10T04:40:26.533120210+00:00",
+        "last_modified": "2026-06-11T08:30:57.241185144+00:00",
         "path": "src/main.rs"
       },
       {
@@ -9053,6 +9169,14 @@
         "path": "src/db/queries/stats.rs"
       },
       {
+        "content_hash": "b6e45daf258da410",
+        "id": "d1f45015-7e97-4a3e-a92c-e3fb65bcbc4a",
+        "imports": "[]",
+        "language": "rust",
+        "last_modified": "2026-06-11T08:36:59.621847795+00:00",
+        "path": "src/saga/runner.rs"
+      },
+      {
         "content_hash": "215e167aa39d7847",
         "id": "d2fcae34-c827-451b-9d8b-ffb04930db6c",
         "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/output.rs\",\"src/types.rs\"]",
@@ -9061,12 +9185,20 @@
         "path": "src/commands/delegate.rs"
       },
       {
-        "content_hash": "e17330e0f335fd9c",
+        "content_hash": "a897520517b2304e",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": "[]",
         "language": "rust",
-        "last_modified": "2026-06-11T04:49:07.853921356+00:00",
+        "last_modified": "2026-06-11T08:34:10.386215872+00:00",
         "path": "src/cli.rs"
+      },
+      {
+        "content_hash": "5c255cfe7761f9da",
+        "id": "df64c556-9304-45b7-bd23-f23e757ee613",
+        "imports": "[\"src/cli.rs\",\"src/db/mod.rs\",\"src/db/queries/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\",\"src/saga/mod.rs\",\"src/saga/spec.rs\",\"src/types.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-11T08:39:00.879970056+00:00",
+        "path": "src/commands/saga.rs"
       },
       {
         "content_hash": "02c0eb5710ec77c2",
@@ -9085,11 +9217,11 @@
         "path": "src/db/queries/governs.rs"
       },
       {
-        "content_hash": "6edec039d49f4f2f",
+        "content_hash": "79ff744726eabfbc",
         "id": "ecd4abeb-80b1-4d15-bf77-c355062c451f",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/types.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-09T19:47:09.798558136+00:00",
+        "last_modified": "2026-06-11T08:33:43.577518036+00:00",
         "path": "src/db/queries/relates_to.rs"
       },
       {
@@ -9125,11 +9257,11 @@
         "path": "src/commands/smells.rs"
       },
       {
-        "content_hash": "a0f7c940c2fc04c7",
+        "content_hash": "57fdd90fdaa957e5",
         "id": "f856fe8e-8a54-421e-a2e9-10734aabd732",
         "imports": "[\"src/db/mod.rs\",\"src/db/schema.rs\",\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-11T04:56:25.798533611+00:00",
+        "last_modified": "2026-06-11T08:36:13.838254745+00:00",
         "path": "src/commands/schema.rs"
       },
       {
@@ -9139,6 +9271,14 @@
         "language": "rust",
         "last_modified": "2026-06-11T07:00:20.205886776+00:00",
         "path": "src/commands/sync.rs"
+      },
+      {
+        "content_hash": "cd0d43a8ab0e6108",
+        "id": "fda0454d-3bd4-4b03-8592-47a7fded1ddf",
+        "imports": "[\"src/saga/runner.rs\",\"src/saga/spec.rs\"]",
+        "language": "rust",
+        "last_modified": "2026-06-11T08:36:31.237717750+00:00",
+        "path": "src/saga/mod.rs"
       }
     ],
     "Delegation": [],
@@ -9305,6 +9445,19 @@
         "updated_at": "2026-06-11T03:16:16.420938+00:00"
       },
       {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-11T08:42:25.250438+00:00",
+        "description": "loom saga add declares the proof (Validation type=saga + VALIDATES edges + uninspected RELATES_TO path + spec as CodeFile); loom saga run translates outcomes into verdicts: passed consecutive pairs stamp passing RELATES_TO with runtime evidence, the failing boundary stamps failing with the broken expectation, unreached pairs stay untouched, and existing edge criteria are preserved. Exits non-zero on failure so loom validate/CI read it.",
+        "domain": "validation",
+        "id": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "lifecycle": "implemented",
+        "name": "saga run stamps the graph",
+        "source_refs": "[\"src/commands/saga.rs\"]",
+        "status": "proposed",
+        "updated_at": "2026-06-11T08:42:25.250438+00:00"
+      },
+      {
         "abstraction_level": "component",
         "aspect": "",
         "created_at": "2026-06-09T19:07:33.175497+00:00",
@@ -9448,6 +9601,19 @@
         "updated_at": "2026-06-09T20:03:14.765638+00:00"
       },
       {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-11T08:42:24.660431+00:00",
+        "description": "The executor runs steps eagerly and in order, halts at the first failure, and reports honest per-step outcomes: steps before the failure passed, the failing step carries every broken expectation, steps after it produce NO outcome (never reached is not failing). All target-observed failures (refusal, timeout, bad JSON, empty capture) are outcomes, not process errors.",
+        "domain": "validation",
+        "id": "3d856e36-aeff-4766-9a32-770e58e24672",
+        "lifecycle": "implemented",
+        "name": "saga runner halt-on-failure semantics",
+        "source_refs": "[\"src/saga/runner.rs\"]",
+        "status": "proposed",
+        "updated_at": "2026-06-11T08:42:24.660431+00:00"
+      },
+      {
         "abstraction_level": "component",
         "aspect": "",
         "created_at": "2026-06-09T19:07:32.943972+00:00",
@@ -9472,6 +9638,19 @@
         "source_refs": "[\"src/db/queries/stats.rs\",\"src/db/queries/scoring.rs\"]",
         "status": "deprecated",
         "updated_at": "2026-06-11T07:36:23.328300+00:00"
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "created_at": "2026-06-11T08:42:05.587701+00:00",
+        "description": "External-consumer proofs: a saga is an ordered chain of endpoint invocations (captures thread one response into the next request) whose run stamps RUNTIME evidence into the graph — the execution complement to read-evidence grounding.",
+        "domain": "validation",
+        "id": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "lifecycle": "implemented",
+        "name": "saga consumer plane",
+        "source_refs": "[\"src/saga/mod.rs\"]",
+        "status": "proposed",
+        "updated_at": "2026-06-11T08:42:05.587701+00:00"
       },
       {
         "abstraction_level": "feature",
@@ -9812,6 +9991,19 @@
         "updated_at": "2026-06-10T13:03:25.432585+00:00"
       },
       {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "created_at": "2026-06-11T08:42:24.061202+00:00",
+        "description": "The YAML saga format: every step names the intent it proves; specs are validated at load (method/JSONPath/json-xor-body) and {{ var }}/{{ env.X }} interpolation resolves vars from initial vars and earlier captures, failing hard on unknown names.",
+        "domain": "validation",
+        "id": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb",
+        "lifecycle": "implemented",
+        "name": "saga spec with first-class intent binding",
+        "source_refs": "[\"src/saga/spec.rs\"]",
+        "status": "proposed",
+        "updated_at": "2026-06-11T08:42:24.061202+00:00"
+      },
+      {
         "abstraction_level": "component",
         "aspect": "",
         "created_at": "2026-06-09T19:07:33.589765+00:00",
@@ -9888,6 +10080,16 @@
         "target_id": "35d55005-4a1f-47d7-bd2a-a0d7bf03b439",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "002db890-f9df-452e-bc45-46037caad454",
+        "kind": "transition",
+        "target_id": "9f8d2167-3db6-4b3c-9f24-5c77f8922ac5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -10491,6 +10693,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "047453ca-82e9-4379-ad2c-90ed1151a162",
+        "kind": "transition",
+        "target_id": "2432d51f-2231-4d54-a4c1-c71e0c5d2817",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T05:03:22.450418+00:00",
         "id": "047a33a0-dc62-4c27-bcb6-f2d77aeeb076",
@@ -10528,6 +10740,16 @@
         "target_id": "639535fd-c8be-443e-a639-678eb7920814",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "04c5c15a-4606-47c8-a672-6c6da401e1d5",
+        "kind": "transition",
+        "target_id": "1893e077-4863-407b-afb8-907716ee8091",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -10608,6 +10830,16 @@
         "target_id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "05157ae3-64fa-477c-87b1-7488777c25c4",
+        "kind": "transition",
+        "target_id": "4b032e8a-fbc9-4328-8354-ddd705030383",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -10802,6 +11034,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "0623977f-5bdb-48ff-a1a8-3a5d92cc0fa3",
+        "kind": "transition",
+        "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T13:15:03.327230+00:00",
         "id": "06392807-2a25-4b0f-a9a6-83e100211760",
         "kind": "transition",
@@ -10938,6 +11180,16 @@
         "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "0711b1b3-0200-46f3-9608-1ab4d7188f46",
+        "kind": "transition",
+        "target_id": "40739e8c-61ca-49c7-8883-3b770aeaf936",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -11128,6 +11380,16 @@
         "target_id": "4d3ca8c3-5f9d-4e40-970b-80a32543f7a3",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "086ca33b-76b4-4cbc-a1e8-13f1c5c9dc73",
+        "kind": "transition",
+        "target_id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -11711,6 +11973,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "0c4e2d67-fb92-423e-a1fd-9d9da435d45c",
+        "kind": "transition",
+        "target_id": "7b929f62-0630-4f2e-a227-9d1430e79105",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:55:05.263287+00:00",
         "id": "0c4e94e1-886f-42c3-927f-53025a5622f0",
@@ -12178,6 +12450,16 @@
         "target_id": "d21f64fe-676f-47b9-9d48-2a62787c5155",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "0eb85905-ca37-4fcb-9eb8-19a0c0bdde63",
+        "kind": "transition",
+        "target_id": "503e5845-5adf-4399-9e85-2aef3f15dc13",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -12891,6 +13173,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "135e0f13-a1c9-430d-a61a-0da4454985c4",
+        "kind": "transition",
+        "target_id": "607b04ea-6c34-41ea-8025-7b0e538924b2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:42:24.462656+00:00",
         "id": "13867e4e-9260-400f-ac55-bc160a0f58f8",
@@ -12962,6 +13254,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "141bbab6-f6ad-4040-8c89-27daf64771b4",
+        "kind": "transition",
+        "target_id": "045c429a-48c4-4afc-a69b-295f47b428f9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T23:58:31.092454+00:00",
         "id": "144a52c5-622b-4eca-b22a-7c2b1853019b",
         "kind": "transition",
@@ -13022,12 +13324,32 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "147006c5-8542-4084-b544-d81663340871",
+        "kind": "transition",
+        "target_id": "3486af65-2f1c-4177-a14d-6947bcafd93b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: Cargo.toml changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "147a76f9-aa7e-43ab-80eb-fcb3c5b472ac",
         "kind": "transition",
         "target_id": "1f478578-34de-4569-8f8f-490894be373b",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "148f7bfe-d7f2-4333-a96a-4ffa38724c5b",
+        "kind": "transition",
+        "target_id": "f3d13aa1-a5f6-4f4c-b9a6-bf0d63160ec3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -13162,6 +13484,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "15344466-2582-411b-93e4-6e3fba4bcfbf",
+        "kind": "transition",
+        "target_id": "841b30c3-262e-4317-a84a-72226cd602e0",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T02:02:04.260214+00:00",
         "id": "153c5387-3914-471d-903e-3aa71a635b0c",
         "kind": "transition",
@@ -13198,6 +13530,16 @@
         "target_id": "92af5219-bfc2-4e86-83e4-3dbfc99a4bbd",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "15568bd4-a7e9-41ad-b7e7-4337f7818fd3",
+        "kind": "transition",
+        "target_id": "95f1d4ab-5315-4f23-941a-c3a2c51a4c8a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -13618,6 +13960,16 @@
         "target_id": "db73fa8d-1761-413f-8b24-8a71c6bea4f7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "18403d97-7682-4434-86da-09b2db5e9032",
+        "kind": "transition",
+        "target_id": "4d23120d-6a81-43f0-be49-4851b40fe1d1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -14182,6 +14534,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "1b4fd9c9-a374-45e9-a85c-e597e01e5bcf",
+        "kind": "transition",
+        "target_id": "e45f9241-3180-44d0-ba63-7aea54cd9b02",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T14:17:54.757425+00:00",
         "id": "1b545d96-4933-44fc-a56b-eb628fda9f4f",
         "kind": "transition",
@@ -14198,6 +14560,16 @@
         "target_id": "60b665b5-4a84-4d31-a02e-ee71ed36e8ef",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "1b683a97-c64b-41e6-b4cc-86976163149a",
+        "kind": "transition",
+        "target_id": "dd90d9e7-89fb-44df-842c-fc95f7336bf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -14731,6 +15103,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "1e52efe5-b2ee-4f79-9d28-4447ba6e69e9",
+        "kind": "transition",
+        "target_id": "6f46e338-2810-41af-9123-cc7b07214484",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.480083+00:00",
         "id": "1e6de255-0b86-4e32-a425-75ad61539c00",
@@ -15002,6 +15384,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "205dfcd0-c37b-4c01-80ec-01fee773f626",
+        "kind": "transition",
+        "target_id": "f58bd575-4727-48c6-a31e-45f77edcf12c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T04:50:37.070885+00:00",
         "id": "206f668e-c845-4482-87b8-71df897274c1",
         "kind": "transition",
@@ -15038,6 +15430,16 @@
         "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "20a19ae7-6e1f-4acd-8076-41ed4c19834c",
+        "kind": "transition",
+        "target_id": "43f2804c-9302-4d28-9120-16fbdba48090",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -15138,6 +15540,16 @@
         "target_id": "46795299-bfd0-4f2e-9155-a6ee6566ad74",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/rule.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "217c3a78-cf1b-44b1-8999-c91d2e824b70",
+        "kind": "transition",
+        "target_id": "e7672be8-98c5-40f7-8653-88804732f887",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -15901,6 +16313,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "265d3744-b19c-4963-9726-f90dea67b30c",
+        "kind": "transition",
+        "target_id": "74b0f997-3a3c-4bfa-a8b6-694229aa857e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:28:02.851845+00:00",
         "id": "265f99c3-07d0-4e3d-b43c-32b6d9e4c2e9",
@@ -15981,6 +16403,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "2700d8ed-9742-453b-b0b0-8c4401b51551",
+        "kind": "transition",
+        "target_id": "c053094e-4984-41e0-a21c-0ced09d1fe89",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:16:42.009849+00:00",
         "id": "2707b3a9-6902-4da0-b225-3bc81df2c961",
@@ -16018,6 +16450,16 @@
         "target_id": "0961299d-781d-4860-9064-128c6aa60bd0",
         "target_kind": "intent",
         "text": "planned → implemented"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "277c32fc-32aa-4973-bc0d-2cffd7d506ba",
+        "kind": "transition",
+        "target_id": "b4f1ecd2-b14c-48d1-9183-24014f62452c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -16108,6 +16550,16 @@
         "target_id": "374fe76b-376b-4825-b2a9-7763d9ec4769",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/governs.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "282e83b5-6271-458f-9915-10fe15351433",
+        "kind": "transition",
+        "target_id": "bf4d7835-58b8-4136-b7bb-540663f78402",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -16348,6 +16800,16 @@
         "target_id": "865b6d41-7f65-4b85-868e-a2ad02b0fc72",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "2a640285-e3e4-4794-8d49-61f11b5a9acc",
+        "kind": "transition",
+        "target_id": "82a36489-a1c2-46fc-9dd3-ecab9cb0e1f6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -16652,6 +17114,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "2bf00c50-0430-4dcf-ba0f-7c52e3b8fde5",
+        "kind": "transition",
+        "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "2bf1a6c8-42af-4cba-91f6-0c213e326ddd",
         "kind": "transition",
@@ -16848,6 +17320,16 @@
         "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "2d6aef41-9a00-4a3a-bd36-6333f9f1a5b3",
+        "kind": "transition",
+        "target_id": "4dce6d96-f5ac-4765-8e16-41cd062235ce",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -17972,6 +18454,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "3529a6fb-4ac8-492c-b470-a0c9c3473cce",
+        "kind": "transition",
+        "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T07:09:14.961126+00:00",
         "id": "353a1493-e793-497c-933e-3523a685e54e",
         "kind": "transition",
@@ -18102,6 +18594,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "360eb1ff-c949-4161-a8d9-56e03e931555",
+        "kind": "transition",
+        "target_id": "68bd20b9-5254-4617-bfe7-7d2da5a04312",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T04:50:37.070885+00:00",
         "id": "361773b4-206e-4091-9e04-2e0cebd8ce11",
         "kind": "transition",
@@ -18118,6 +18620,16 @@
         "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "36258ac3-23d0-4a17-aeb4-264c4e37f378",
+        "kind": "transition",
+        "target_id": "6b175a8d-d604-4e43-b5d3-240aebefd77e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -18391,6 +18903,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "37aebf98-3ab5-491a-8741-1094b05393ad",
+        "kind": "transition",
+        "target_id": "0cabd24c-c34d-4a1c-b988-a348d9e39322",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-10T16:49:36.536027+00:00",
         "id": "37bd51a3-66d7-4d29-b766-4897384eb277",
@@ -18468,6 +18990,16 @@
         "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "38434de8-806d-43d2-a1a1-79424f9da2b5",
+        "kind": "transition",
+        "target_id": "0d28450b-71e8-4b6c-a267-4a427c3249e3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -19131,6 +19663,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "3c834b65-69f8-4ce2-98ac-59ec6440cd7e",
+        "kind": "transition",
+        "target_id": "d2970f0e-b703-441a-b7d2-07bf195476ac",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:06:05.774896+00:00",
         "id": "3c8e0044-1ec0-495f-9fe9-812e39c202c4",
@@ -19461,6 +20003,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "3e824553-82e1-4adf-b852-6f84b2273fff",
+        "kind": "transition",
+        "target_id": "e9640661-eabf-4230-b207-166c34578cd7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:57.707686+00:00",
         "id": "3eb0dc44-11a7-4891-a807-26d1dc617161",
@@ -19598,6 +20150,16 @@
         "target_id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "3f6abf90-bbb1-421c-8e1b-48f13311c5b7",
+        "kind": "transition",
+        "target_id": "c840281e-f6de-42db-af22-351a9f01ed34",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -20251,6 +20813,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "4374ccb8-1fc7-4689-8d34-2b73d52cea51",
+        "kind": "transition",
+        "target_id": "6863b136-a8f4-45d4-9d1e-de3d471b2dfb",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:55:05.354741+00:00",
         "id": "43759d10-198c-431d-b2ae-b432bf412e0e",
@@ -20812,6 +21384,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "47e6e1de-2ac1-4d15-9f62-daebe433af58",
+        "kind": "transition",
+        "target_id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T02:02:04.260214+00:00",
         "id": "47f24a45-490c-4f0d-8c29-2a09759dc11e",
         "kind": "transition",
@@ -21068,6 +21650,16 @@
         "target_id": "30f5ee0b-6bb7-4b2f-b1e6-153ea3f2f0ad",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "49aafe9a-4447-42a0-b8fd-cff52e9d6785",
+        "kind": "transition",
+        "target_id": "f7e2fe2f-de0e-44fc-b7b7-9025737ec85e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -21492,6 +22084,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "4c586ab2-604d-4c60-8f5f-6d44ad44fd6f",
+        "kind": "transition",
+        "target_id": "807dc24f-2713-4c24-aa1c-790c45f5befe",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "4c60bde6-e72b-4ed2-8123-7e02b08a4615",
         "kind": "transition",
@@ -21558,6 +22160,16 @@
         "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "4d375f00-8553-4db4-b644-7febd629b221",
+        "kind": "transition",
+        "target_id": "374fe76b-376b-4825-b2a9-7763d9ec4769",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -21628,6 +22240,16 @@
         "target_id": "c1ee4dde-f6ed-429f-980d-427dd21d24b5",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "4df51ec2-2e2e-4a8e-932d-d41a4853ee41",
+        "kind": "transition",
+        "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
       },
       {
         "audience": "",
@@ -21858,6 +22480,16 @@
         "target_id": "4b032e8a-fbc9-4328-8354-ddd705030383",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "4f70dc20-da19-4cd0-9f5f-715d525f9e85",
+        "kind": "transition",
+        "target_id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
       },
       {
         "audience": "",
@@ -22261,6 +22893,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "51de4807-c269-460f-8675-ca0f6957fc0e",
+        "kind": "transition",
+        "target_id": "3fe24798-4f84-44d6-b936-91daa2fcde45",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: Cargo.toml changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:26:38.266122+00:00",
         "id": "51ebf927-2f61-4404-af92-ab6ce7c9889c",
@@ -22511,6 +23153,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "53b961a2-8dd0-4b8c-bbca-de1bede32aa2",
+        "kind": "transition",
+        "target_id": "13697e97-03b5-463e-bdf3-5e3c1ae6472e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T16:50:48.283618+00:00",
         "id": "53cbdfb0-0a62-4778-a9d6-053cd90e336e",
@@ -22538,6 +23190,16 @@
         "target_id": "6d7b034d-8fea-4663-bf46-34cb2e23ac20",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/validate.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "53f0b799-5225-4872-b629-327e0f8590b6",
+        "kind": "transition",
+        "target_id": "e208ab4f-8854-4db8-9f77-15bd7ac44997",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -22812,6 +23474,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5658f91a-4213-4285-963b-dc8e3c864e1e",
+        "kind": "transition",
+        "target_id": "5c32bdb1-9e30-4f92-bd09-5fb389ce35eb",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T03:16:16.457096+00:00",
         "id": "5660870f-e1f0-4fa0-a88f-6fcbd09bb28d",
         "kind": "transition",
@@ -22928,6 +23600,16 @@
         "target_id": "b8235104-d14b-4d86-9063-4034cec77299",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "57018229-533a-44e1-9f38-ef027c23c115",
+        "kind": "transition",
+        "target_id": "b00c9b17-8edc-43df-b719-ced0159aa2ec",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -23251,6 +23933,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "597f8ea8-83f8-4b8e-b216-d94ee21cf826",
+        "kind": "transition",
+        "target_id": "d228c8e5-0b5f-4b10-901b-a067d019b33e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:07:11.866936+00:00",
         "id": "598f8b17-a2db-4c21-bc48-515571718d43",
@@ -23428,6 +24120,16 @@
         "target_id": "5c32bdb1-9e30-4f92-bd09-5fb389ce35eb",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5a9e9393-0314-4708-b426-4403af7a0326",
+        "kind": "transition",
+        "target_id": "c6311f1c-e341-46c7-ba4a-9aa0a55511d4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -23821,6 +24523,26 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5d76cd7c-3e0c-4924-815d-e559fe2b64be",
+        "kind": "transition",
+        "target_id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5d772855-91af-4323-99eb-7df6683910f1",
+        "kind": "transition",
+        "target_id": "ce07cf53-53dc-4844-b1db-0aafc25bed3d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:18:04.688993+00:00",
         "id": "5d7fafcf-c5ab-47fb-aab7-1725066c5f1e",
@@ -23838,6 +24560,16 @@
         "target_id": "b37bf276-0dfb-471b-8968-b60ba40ed2f5",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5da8209e-e988-4042-b9e1-eb64a1f4cdf1",
+        "kind": "transition",
+        "target_id": "3c98d947-5789-420a-bbe8-d90e07369ab1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -23931,6 +24663,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5e3d623e-0231-49bf-8226-d7372b648966",
+        "kind": "transition",
+        "target_id": "e5a54bca-fa29-4b63-abd1-0b100b836d5b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.326434+00:00",
         "id": "5e3e768f-76ac-48e0-9f7f-b3495cec92ec",
@@ -24012,6 +24754,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5ea08d96-ba50-4ef0-ae43-53360f008835",
+        "kind": "transition",
+        "target_id": "cf207408-fd81-4efa-b4cf-03015fe5951a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:47:54.149805+00:00",
         "id": "5eba4ab7-094c-4b1b-9d21-478d822d3a77",
         "kind": "transition",
@@ -24028,6 +24780,16 @@
         "target_id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "5edf1533-6b61-4274-85cc-a3b902cd71c0",
+        "kind": "transition",
+        "target_id": "08fb7426-99c3-491b-a229-5c0a196d5ed2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -24711,6 +25473,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "63cb93da-bea4-43ec-b5fb-d6b9581ca64c",
+        "kind": "transition",
+        "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T13:14:10.347271+00:00",
         "id": "63cee6c7-2ca0-4f0a-8dfc-1e05ed83853f",
@@ -24738,6 +25510,16 @@
         "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6402dd71-f904-48ba-af8a-d8e7feaf19de",
+        "kind": "transition",
+        "target_id": "1f478578-34de-4569-8f8f-490894be373b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -25058,6 +25840,26 @@
         "target_id": "800ae438-2e65-44f0-a0db-1d22eb0cb9eb",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6625957a-ff61-4381-b0db-b52c1ca4cc0a",
+        "kind": "transition",
+        "target_id": "4e9ccd6a-aa8f-4ba5-9931-b3a994d77649",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: Cargo.toml changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6632f143-bbc9-4797-87e1-4191f1647b8c",
+        "kind": "transition",
+        "target_id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
       },
       {
         "audience": "",
@@ -25561,6 +26363,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "69c4dc93-2f38-4c16-b67f-da2f2fb15b9b",
+        "kind": "transition",
+        "target_id": "c96a037b-d495-4f6b-992c-84cbee20b876",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:09.395516+00:00",
         "id": "69c86d19-d2aa-422f-a4b0-5642d756d497",
@@ -25712,6 +26524,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6a599c05-63c3-44e4-9deb-11ee99018810",
+        "kind": "transition",
+        "target_id": "910801ac-f054-46a6-96d9-1889f92a5676",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T07:36:23.328300+00:00",
         "id": "6a64d53b-2c78-4e2d-b494-e522f23949f0",
         "kind": "transition",
@@ -25768,6 +26590,16 @@
         "target_id": "eadabcec-422f-412f-82de-7f7b25cb38fc",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6abdd159-84ef-489c-9983-abe551e827a1",
+        "kind": "transition",
+        "target_id": "836f3927-b98d-42e9-b949-44188a8a4cd6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -25978,6 +26810,16 @@
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6c1c32f2-3792-4113-96b5-dba6c1556abf",
+        "kind": "transition",
+        "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -26301,6 +27143,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "6e350223-3ec5-4e47-aa7e-a9215ba89f06",
+        "kind": "transition",
+        "target_id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:55:05.312637+00:00",
         "id": "6e5768d5-9c1f-4084-88ee-d20a02cec018",
@@ -26621,6 +27473,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "70839ffa-7fbf-4891-9e3c-3453a9dd33e9",
+        "kind": "transition",
+        "target_id": "0fe6fe8a-6546-42fc-85c1-767349ad166b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:18:04.683875+00:00",
         "id": "70981415-7ff0-4fa9-af70-99e3befd1692",
@@ -26872,6 +27734,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "720e56ed-426e-4cf5-ad3f-2dacf6ab791b",
+        "kind": "transition",
+        "target_id": "06a829e0-69eb-4de8-bd7c-5dbcbfec8d2a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T07:54:37.440667+00:00",
         "id": "721741f3-86c2-451a-8c0d-e4d4f4cb8a27",
         "kind": "transition",
@@ -26888,6 +27760,16 @@
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "722c02bf-997a-47d5-b65f-810beef43f2e",
+        "kind": "transition",
+        "target_id": "591479d9-05ee-424c-9db6-66903fa00084",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -27232,6 +28114,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "74cf6fee-2203-4158-af31-9f4758df5944",
+        "kind": "transition",
+        "target_id": "f23abc8c-a4f6-49fa-8cb8-c9f9729232f4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T14:17:54.757425+00:00",
         "id": "74f2e626-efae-4791-aee3-9b006300678a",
         "kind": "transition",
@@ -27381,6 +28273,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "75b5e45d-e0ca-4fae-8139-a42abc7ae41e",
+        "kind": "transition",
+        "target_id": "bdc37810-5fba-472e-ac63-317941d243cb",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T07:24:58.555395+00:00",
         "id": "75cc1916-c8c3-4009-b28d-3facbae90d93",
@@ -27408,6 +28310,16 @@
         "target_id": "b4d474e7-4a79-4405-ba43-ebd8d1c1ee1f",
         "target_kind": "hypothesis",
         "text": "proposed → supported"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "760eca51-7547-4453-ad49-09ead8f5c6c3",
+        "kind": "transition",
+        "target_id": "73a01855-57c7-47e5-a0ed-4de8a20cabba",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -27982,6 +28894,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "79a1c39c-ff3b-48e3-aa2a-261dc1c886e1",
+        "kind": "transition",
+        "target_id": "9a881105-c682-420f-9511-ec189ae1e3a9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T03:53:45.613111+00:00",
         "id": "79a3f9f7-fa05-4674-89aa-45dd86f09fc3",
         "kind": "transition",
@@ -27992,12 +28914,32 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "79bba027-6c8a-459f-b92f-7894c80e056e",
+        "kind": "transition",
+        "target_id": "84cdb8cf-ccf8-477b-8740-a3a9211313a9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T13:25:22.340038+00:00",
         "id": "79bd2b42-f0c3-4c2c-8d37-7fd240b2997f",
         "kind": "transition",
         "target_id": "5784abc8-b8cc-462d-818f-b9779bc0bc7c",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "79c668d7-0ac5-4e58-84f2-c274d5adc0b8",
+        "kind": "transition",
+        "target_id": "da798fef-ceeb-4fdf-b334-a7c3c8d9bc6a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -28641,6 +29583,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "7d75d1e6-2293-467b-ae56-319076042f10",
+        "kind": "transition",
+        "target_id": "736d92b8-9b5d-4aff-a91a-f7b932975df3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:11:11.765860+00:00",
         "id": "7d7b6afd-c97a-4771-bad6-2db785e67c4a",
@@ -29242,6 +30194,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "80e6a658-84c8-4d91-9db5-dfdd6a2bb0ef",
+        "kind": "transition",
+        "target_id": "dc14707f-331c-4175-b053-6f311bbe4329",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T04:50:37.070885+00:00",
         "id": "80eb0595-5d54-4d8c-b2fb-ac83d0386261",
         "kind": "transition",
@@ -29588,6 +30550,16 @@
         "target_id": "2aa5684f-3ea1-45e7-a8a3-52db006af5cc",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "8387f882-6d42-4212-b106-87a9aa8dfde8",
+        "kind": "transition",
+        "target_id": "c8eebfab-98f3-42ba-917c-6111b705c5e8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -30132,6 +31104,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "85d7ddf0-ce05-4d4c-a2b3-969f568f698c",
+        "kind": "transition",
+        "target_id": "0fb1763d-405d-4173-8374-bfbc1fa42523",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T04:50:37.070885+00:00",
         "id": "85f29a6e-659e-4e26-bd3d-e27f844ddb6c",
         "kind": "transition",
@@ -30391,6 +31373,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "87837b35-d3a3-49a4-aebf-137af5a7f523",
+        "kind": "transition",
+        "target_id": "fdf05886-d9a9-45e2-9ee2-795616978af5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:18:04.655187+00:00",
         "id": "879fb2c1-0763-4415-8ce6-2511fc25ec2a",
@@ -30508,6 +31500,16 @@
         "target_id": "61dfe8b5-6602-4ce8-bea5-2f654e1a951e",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "88c1a641-401f-4474-b04e-0a2dc6238e17",
+        "kind": "transition",
+        "target_id": "be34a193-25b3-482d-9207-22bcf4aacd85",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -30791,6 +31793,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "89f12207-12ff-4b37-aedc-bfff1f4d0006",
+        "kind": "transition",
+        "target_id": "018547b4-a5c3-44bc-84f5-fa418e1664ff",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:11.374680+00:00",
         "id": "89f65590-8ab9-4449-af46-a6e8228f5c43",
@@ -31018,6 +32030,16 @@
         "target_id": "1f478578-34de-4569-8f8f-490894be373b",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/batch.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "8b78df2b-63a2-460c-80c5-12832237446a",
+        "kind": "transition",
+        "target_id": "88784a23-8f63-4a56-b96a-72e36ab19b3d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -31411,6 +32433,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "8dc61cbc-e6c9-4d75-8ec9-b7d8ab1359fb",
+        "kind": "transition",
+        "target_id": "6faefd10-4842-490d-9d8d-488bbe593d2d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T07:32:21.064891+00:00",
         "id": "8dd989ae-dca7-4c29-900d-e0053c7f8a35",
@@ -31771,6 +32803,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "9023dc57-7cd8-433a-b55d-6cf46c1a0ffb",
+        "kind": "transition",
+        "target_id": "377136bd-1f0d-4f8a-9549-0852bc0104b8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-09T20:27:40.624374+00:00",
         "id": "90427fce-ce8d-410f-9641-7cbc95b31963",
@@ -31818,6 +32860,16 @@
         "target_id": "f1802556-06ff-4651-9150-196a8f5b7d74",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "909948a5-bbc8-4f5f-b43a-74cfc74badd3",
+        "kind": "transition",
+        "target_id": "3372c5a7-fa86-484b-87c5-0492ddb700d5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -32058,6 +33110,16 @@
         "target_id": "3c86717a-ced0-4916-8e5d-700565fe4eb9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/cluster.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "92c279c5-52c7-40d0-aae5-9da0d8a596d4",
+        "kind": "transition",
+        "target_id": "004b47d0-fbde-4876-b618-c6fbb9f2fb84",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -32302,6 +33364,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "93f30b9d-19a0-45b7-a988-89a91cec95de",
+        "kind": "transition",
+        "target_id": "c53ff35f-4b1e-41b9-b932-21e71bfc2de2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T20:32:49.836066+00:00",
         "id": "93f865e5-dd65-455c-8c2c-d831fc736e20",
         "kind": "transition",
@@ -32328,6 +33400,16 @@
         "target_id": "662014be-b67b-4310-91de-b3da67af3f81",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "941dc2b8-7edd-4cef-89c9-ff691fc2d093",
+        "kind": "transition",
+        "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -32452,6 +33534,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "94bd6a76-f618-40e9-94a0-b5c997233549",
+        "kind": "transition",
+        "target_id": "4a8fb9ac-78a1-4638-856d-7a8083890f6c",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "94c722f2-28df-4742-a1dd-7bddd2e88e81",
         "kind": "transition",
@@ -32568,6 +33660,16 @@
         "target_id": "245a976c-1f8c-4703-889f-f4a38a0d8984",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "95b1a5cd-6114-4f08-9cad-8f1ced40973a",
+        "kind": "transition",
+        "target_id": "4a58b389-d1e9-4937-a57c-99a6f45dde5a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -32848,6 +33950,16 @@
         "target_id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "97dc37a6-2ddb-4223-baef-99c3522092da",
+        "kind": "transition",
+        "target_id": "9c2e5830-1bc8-4553-944e-6e7e35779750",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: Cargo.toml changed)"
       },
       {
         "audience": "",
@@ -33221,6 +34333,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "9a126d19-4f97-4bac-becf-7a98f0ce3f4d",
+        "kind": "transition",
+        "target_id": "06b330e8-3189-4085-825e-23b906a0c83f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-10T16:49:36.529829+00:00",
         "id": "9a1e828e-7960-4158-a8de-facccd34787f",
@@ -33402,6 +34524,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "9afea401-1240-447f-b22f-9377bd37d311",
+        "kind": "transition",
+        "target_id": "c717ced4-b33f-4b08-9f5e-2ceed8b51abf",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T07:36:23.247261+00:00",
         "id": "9b02cbae-6dba-4eb7-aea6-dd980aa4df18",
         "kind": "decision",
@@ -33558,6 +34690,16 @@
         "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "9c89b3cf-3fb9-4de4-8664-c9e1498219a0",
+        "kind": "transition",
+        "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
       },
       {
         "audience": "",
@@ -33838,6 +34980,16 @@
         "target_id": "0a8ac2a6-e3e7-4c7f-9c92-945ae17095ee",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "9ec83c51-d1cd-495d-84a7-2114db63f7bb",
+        "kind": "transition",
+        "target_id": "3f6e1ee8-d90a-449a-9818-3d7fe17fed14",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -34341,6 +35493,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a2475623-08bc-4a51-8987-cf27e2d4e2fe",
+        "kind": "transition",
+        "target_id": "30eaa6b3-aa3e-4ef2-9b86-faaf703a57ea",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:16:41.992785+00:00",
         "id": "a2598a75-0e71-40bf-aaf2-b8e18fff5c2b",
@@ -34478,6 +35640,16 @@
         "target_id": "107a2dbd-84a0-40ee-9497-ba4cd53ff397",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a3688111-6e95-467a-8fc5-78be3306c5bf",
+        "kind": "transition",
+        "target_id": "361ff3da-9334-475e-9e58-b8ccb47a486e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -34642,6 +35814,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a4a7118c-bd3f-4e93-8032-f57c5e1b1945",
+        "kind": "transition",
+        "target_id": "cd6093c4-5e86-4db3-9def-ab93772c4a5f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T13:41:14.886616+00:00",
         "id": "a4b34910-3cc4-4a25-861c-195845776470",
         "kind": "transition",
@@ -34778,6 +35960,16 @@
         "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a55df96b-c9b0-4b4b-8e9f-c33ca792b5ae",
+        "kind": "transition",
+        "target_id": "9998943c-8677-42f9-b16b-f8e132d1c0cf",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -34991,6 +36183,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a68409c0-0ad7-4275-895b-b2f8507a4b24",
+        "kind": "transition",
+        "target_id": "2b3c9984-5e4d-489f-ba96-8f48daacce5d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.483838+00:00",
         "id": "a6903fa2-be71-4ad6-bc56-b8e7d9aa6d1e",
@@ -35068,6 +36270,16 @@
         "target_id": "4fa9b114-0f73-40f2-af66-f10b52619ae6",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a6fd6085-d261-4865-b283-48fa42e86446",
+        "kind": "transition",
+        "target_id": "41d98a48-44c9-4c5d-9b3f-de0de60f1904",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -35601,6 +36813,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "a9c13070-b959-41e5-a384-95f0771bf00f",
+        "kind": "transition",
+        "target_id": "6498c40f-76b2-4b8e-a845-f844c3a146ca",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-10T15:27:15.070368+00:00",
         "id": "a9ca306f-44a1-4323-a493-475bfec26768",
@@ -35701,6 +36923,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "aa3e6967-66ad-4d7f-9127-22c9d000ab48",
+        "kind": "transition",
+        "target_id": "3b529110-7b68-45dd-b832-ca7419bf29a6",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T04:23:59.222882+00:00",
         "id": "aa62c2b4-d776-4a7f-b885-3c122962cadc",
@@ -35788,6 +37020,16 @@
         "target_id": "9ed90641-8cd5-458e-9d77-030b51e84d63",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "aad327bd-cad1-4ab8-b0fe-5ab9ff87f300",
+        "kind": "transition",
+        "target_id": "7569c6be-1c67-4237-a7e8-545467e9bcb2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -35888,6 +37130,16 @@
         "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "ab7a8588-fb2c-45e0-9c2c-cd6496c6e7ad",
+        "kind": "transition",
+        "target_id": "1949781d-87c2-49b0-85c6-733556586f01",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -36401,6 +37653,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "af42f3ff-a7f0-4c67-88fe-2a3f4ef9fe80",
+        "kind": "transition",
+        "target_id": "2b55c110-f37c-46a2-bd5c-894e349f47ff",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T15:44:03.820250+00:00",
         "id": "af5cbfc8-0a82-402d-bf3e-6655a8c8338c",
@@ -36498,6 +37760,16 @@
         "target_id": "c75554c9-d30b-4739-a7c4-4dfeb0c5cde4",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "aff8710d-5b5c-445a-89c5-ce30e490f80b",
+        "kind": "transition",
+        "target_id": "26eab4bf-1b0f-46cf-a557-e99ba31e6e23",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -37052,6 +38324,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "b2904a26-88ae-4006-a1c6-f0428a41a4a7",
+        "kind": "transition",
+        "target_id": "d7a0d584-ea29-4353-b133-adc3cdde40f5",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T03:53:45.613111+00:00",
         "id": "b292db61-bbea-46b4-974f-14bcaea1ca2b",
         "kind": "transition",
@@ -37521,6 +38803,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "b51240ff-f36c-4c3b-9bd3-e4b8004020fd",
+        "kind": "transition",
+        "target_id": "fa17d195-0768-485b-8c9c-df5e147f13ee",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-10T16:49:36.542227+00:00",
         "id": "b5211f95-3538-44ad-b693-3ba73cc1fce2",
@@ -37808,6 +39100,16 @@
         "target_id": "06c86cd2-7d47-479f-b5a8-0e3927efabc4",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "b732d76e-dbd5-4cf6-9c44-e61fb8b30584",
+        "kind": "transition",
+        "target_id": "ba63d7ed-d548-4738-8083-97b6c7b12e56",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -38208,6 +39510,16 @@
         "target_id": "ce07cf53-53dc-4844-b1db-0aafc25bed3d",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "ba3a6022-ac6e-4ee6-ae7d-8327a5c4cc94",
+        "kind": "transition",
+        "target_id": "24279b18-6824-45d9-a674-9422e95a027d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -39051,6 +40363,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c00be41c-c2d6-4a9b-a246-431369cd3a60",
+        "kind": "transition",
+        "target_id": "1bbeeaf6-211f-46cf-8dae-b00d9e283f35",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:55:05.334778+00:00",
         "id": "c00e4a1d-21ac-4c37-a7c1-c9a32688a69b",
@@ -39292,6 +40614,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c19caa59-7f08-426b-b3dc-26686762ee1e",
+        "kind": "transition",
+        "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T07:09:14.961126+00:00",
         "id": "c1b0479d-ff63-440c-8c85-a5f8650bc4fd",
         "kind": "transition",
@@ -39381,6 +40713,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c22d73c5-3384-4a2d-995e-41e90c074ae2",
+        "kind": "transition",
+        "target_id": "72ce4b7f-b3e3-400b-b9ac-f5556085953f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:11:11.852923+00:00",
         "id": "c2441f02-a05e-48c3-8a2d-ed162ca8bbf0",
@@ -39448,6 +40790,16 @@
         "target_id": "6c38b43d-7df8-4e26-8d3e-0145e0368591",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c2926e8e-c3bf-4db1-986e-217d5266b420",
+        "kind": "transition",
+        "target_id": "1163ec7a-1c31-4c2d-9bc2-ba541777f5a8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -39648,6 +41000,16 @@
         "target_id": "362b76dd-1060-4ad7-ab10-24f4de04df52",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c40d0bbd-d357-472b-840c-14c0964ee149",
+        "kind": "transition",
+        "target_id": "06c0540a-a0c3-4c55-8c8a-a4f85e5a0539",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -40008,6 +41370,16 @@
         "target_id": "7b8a3a4e-8521-4bd2-bb9c-99b12f181dbe",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c629bbed-dbe6-42c7-98b7-9842f1f87b87",
+        "kind": "transition",
+        "target_id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
       },
       {
         "audience": "",
@@ -40392,6 +41764,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c88465e4-5b49-4633-8fea-5a60b0fe8079",
+        "kind": "transition",
+        "target_id": "06d1a7a1-3e57-4be3-b1d3-5c6cedca8e57",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "c89495c7-6508-4a7f-8fbe-c876393fa5f5",
         "kind": "transition",
@@ -40418,6 +41800,16 @@
         "target_id": "8809764e-6987-4363-bb49-bed40ebbe2f1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "c924575d-b604-4c4d-8744-ca55e6199d09",
+        "kind": "transition",
+        "target_id": "37f22072-5904-4d99-b5f8-79790fb7c13e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -41192,6 +42584,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "cead6c76-bc30-4279-984f-8b3f971a503b",
+        "kind": "transition",
+        "target_id": "6717b3f1-3361-4ecc-bd19-75fc841d2a9a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "cec4d08b-b757-4110-833c-999f4e1bd931",
         "kind": "transition",
@@ -41881,6 +43283,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "d285f7c2-1691-4594-8d27-b87ec281df32",
+        "kind": "transition",
+        "target_id": "db73fa8d-1761-413f-8b24-8a71c6bea4f7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:25:14.231552+00:00",
         "id": "d298bc62-1d64-4a54-ba9a-bbb82a8fff0c",
@@ -42158,6 +43570,16 @@
         "target_id": "361ff3da-9334-475e-9e58-b8ccb47a486e",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "d4990bd0-f9c3-42e0-a7a2-beae72cb655b",
+        "kind": "transition",
+        "target_id": "e29ec5a6-f60c-41c3-b3e8-fc6f4b774800",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -42468,6 +43890,16 @@
         "target_id": "4dce6d96-f5ac-4765-8e16-41cd062235ce",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "d6c50a25-3940-4268-96b9-0a8465bd3d10",
+        "kind": "transition",
+        "target_id": "6f5b02b0-2888-429a-8075-37c59ff70838",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -42891,6 +44323,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "da33a233-ac63-4492-9e71-a80cfa2569fc",
+        "kind": "transition",
+        "target_id": "8b2d5ec5-a60a-4bca-b044-041a13516f2b",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:59.127724+00:00",
         "id": "da3cc644-2505-4320-b42a-5e44a28ffa38",
@@ -42958,6 +44400,16 @@
         "target_id": "2113d1d3-03b7-4cb7-ac1c-eccaf900edc5",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "dac66674-4881-4704-aa8e-484c72314950",
+        "kind": "transition",
+        "target_id": "877ec85a-d48e-47a7-9706-eae8216cd412",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -43578,6 +45030,16 @@
         "target_id": "2f8a5886-0266-481a-81c4-3f8d1991a26e",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "de4cb28e-ee16-4438-8b5a-f8c3bc2afd01",
+        "kind": "transition",
+        "target_id": "d0bf4407-bfb3-4f7d-9e34-2323ed00024e",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -44361,6 +45823,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "e31d6d8e-7a8e-4b96-befc-0e6281b2ca7d",
+        "kind": "transition",
+        "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T19:11:11.872620+00:00",
         "id": "e324ec7a-1cf6-4075-904d-fd6af0933d3e",
@@ -44731,6 +46203,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "e536e3bf-4de0-40cc-ac53-2d983513b068",
+        "kind": "transition",
+        "target_id": "a2b499eb-5b0e-4626-ac95-e96985760894",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T05:03:22.431585+00:00",
         "id": "e5388d30-03da-43e1-8a58-406d2aaa450b",
@@ -44948,6 +46430,16 @@
         "target_id": "4c656525-4851-4f2f-bdcd-25a3c08522d4",
         "target_kind": "intent",
         "text": "spawned from hypothesis 'thread graph-state snapshots' (b4d474e7-4a79-4405-ba43-ebd8d1c1ee1f) — predicted outcome (acceptance contract): status/next/report load each bulk graph slice once per command and the 2000-intent orientation benchmark improves without changing output semantics."
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "e710b8bc-76de-4190-af0b-7afc646f5302",
+        "kind": "transition",
+        "target_id": "bbca319c-4b5b-47b9-b73f-6fa8b02709ce",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -45188,6 +46680,16 @@
         "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "e88d82c3-f8ee-46f1-9472-686d377ee07b",
+        "kind": "transition",
+        "target_id": "342435bd-a371-4cfb-bbe3-21a0d8203139",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
       },
       {
         "audience": "",
@@ -45952,6 +47454,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "ed2d2097-4d7f-40dc-af04-0a6f1c7b514b",
+        "kind": "transition",
+        "target_id": "cabfd98f-d452-41f6-a6c1-6f1d01e9b532",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "ed3869cc-8688-40e9-94cd-7f539ab848bd",
         "kind": "transition",
@@ -46068,6 +47580,16 @@
         "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "ee683916-313b-48b2-857e-b51b01bea3be",
+        "kind": "transition",
+        "target_id": "b38f7a33-387e-4415-880c-5457edbf7924",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -46761,6 +48283,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f2db5714-4ef4-4a0d-b564-010400e2c0be",
+        "kind": "transition",
+        "target_id": "2c146cb5-acdb-44e9-8a2e-f92821a3df0d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:55:05.333478+00:00",
         "id": "f2e25f54-680a-4077-aa37-537ca0ef52bd",
@@ -47102,6 +48634,26 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f50b0d82-cb79-4759-944d-86e53c5dc834",
+        "kind": "transition",
+        "target_id": "1609729a-dc17-4e6f-b03d-477bc52221ae",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f521dbf4-c4f8-4bc5-b501-91e399dd3d4a",
+        "kind": "transition",
+        "target_id": "6451331d-059d-4fab-975a-3deb4c7e1935",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T15:43:04.920715+00:00",
         "id": "f528064c-bd0e-4a85-af28-671b3da65cc2",
         "kind": "transition",
@@ -47271,6 +48823,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f6d225f9-2d6c-49b9-874f-0efea734d841",
+        "kind": "transition",
+        "target_id": "5fbaf974-6075-4f20-a20b-a85e9cfd041d",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.315058+00:00",
         "id": "f6d8ae48-5b87-48ed-8eb9-fbebe2e1cd7d",
@@ -47348,6 +48910,16 @@
         "target_id": "3409348a-b9c2-4821-bd85-7e1141eb9149",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f798c80f-fc01-41a5-a932-ea6c6aa8d9d4",
+        "kind": "transition",
+        "target_id": "ec4b1de0-a927-4d84-b3bb-236b58d6b71f",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -47611,6 +49183,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f8e27096-6dcc-457f-a025-c5d8c75dee6f",
+        "kind": "transition",
+        "target_id": "6f38cb32-8ea2-403f-bd7a-8ffc14fbafcd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.395995+00:00",
         "id": "f8edbbdc-389c-4db2-a7a0-a2297d7e367e",
@@ -47818,6 +49400,16 @@
         "target_id": "802faa28-2975-43c0-84c6-2697d1a73efe",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "f9e49ae9-5468-4cf1-86e9-e7affdaf6ff5",
+        "kind": "transition",
+        "target_id": "8085b7de-6987-42c5-a55f-f4834874d7f3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -48651,6 +50243,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "feedd17a-ba0c-45af-b1da-cf03e9ca1537",
+        "kind": "transition",
+        "target_id": "617c4cf5-37f6-442f-8e14-b28b6403c3e3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T16:24:11.444053+00:00",
         "id": "ff03bbf8-dc1b-4e04-977f-f7733c72cca8",
@@ -48798,6 +50400,16 @@
         "target_id": "9897c6dd-bcee-418f-8196-736a2fa08f19",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T08:43:06.976124+00:00",
+        "id": "ffebbf67-a75d-4c33-bd08-beafe4fa2b2f",
+        "kind": "transition",
+        "target_id": "a91031d8-d8f2-491e-b14e-5e5338798952",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/db/queries/relates_to.rs changed)"
       },
       {
         "audience": "",
@@ -49027,7 +50639,7 @@
         "command": "cargo test db::queries 2>/dev/null",
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:55:12.537159+00:00",
         "name": "query-layer regression suite",
         "validation_type": "test"
@@ -49036,7 +50648,7 @@
         "command": "",
         "description": "End-to-end smoke of the hypothesis lifecycle command gates: vacuous claim rejected, out-of-lane prove rejected, proposer=prover rejected, wrong-verdict vocabulary rejected, decided hypotheses cannot be re-proven",
         "id": "0245cfb4-eefe-42da-a7db-9f4cf2648a29",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T05:01:10.656343+00:00",
         "name": "hypothesis command gates smoke",
         "validation_type": "manual_check"
@@ -49117,7 +50729,7 @@
         "command": "./target/debug/loom --help > /dev/null",
         "description": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:24:47.545338+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
@@ -49138,6 +50750,15 @@
         "last_result": "passed",
         "last_run": "2026-06-11T07:24:47.689884+00:00",
         "name": "governs ripple test",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --bin loom saga",
+        "description": "Spec parsing/validation, interpolation, and runner semantics (capture threading, halt-on-failure, all-broken-expectations detail, connection-refused-as-outcome) against a scripted in-process HTTP server.",
+        "id": "66ff43c8-f3cb-4b4d-9936-fecc8cb694fa",
+        "last_result": "passed",
+        "last_run": "2026-06-11T08:42:54.552624+00:00",
+        "name": "saga engine unit tests",
         "validation_type": "test"
       },
       {
@@ -49216,7 +50837,7 @@
         "command": "./target/debug/loom --json > /dev/null && ./target/debug/loom guide --json | python3 -m json.tool > /dev/null && ./target/debug/loom schema --json | python3 -m json.tool > /dev/null",
         "description": "",
         "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:59:34.388904+00:00",
         "name": "orientation + guide + schema emit valid JSON",
         "validation_type": "assertion"
@@ -49252,7 +50873,7 @@
         "command": "cargo test hypothesis",
         "description": "query-layer regression: hypothesis state machine writes, TARGETS endpoint matching, export/import round trip incl. older exports and --as-planned proof reset",
         "id": "d7cb683e-456e-4b90-a453-30dbbe92b31c",
-        "last_result": "passed",
+        "last_result": "not_run",
         "last_run": "2026-06-11T07:24:48.017105+00:00",
         "name": "hypothesis plane round trip",
         "validation_type": "test"

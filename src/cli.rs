@@ -121,6 +121,17 @@ pub enum Command {
         subcommand: ValidationCmd,
     },
 
+    /// Consumer-plane proofs: run an ordered chain of endpoint invocations the
+    /// way a real consumer would (values captured from one response thread
+    /// into the next request) and stamp the result into the graph — passing
+    /// steps become RUNTIME evidence on the RELATES_TO path between their
+    /// intents; a failing step lands as a failing edge naming exactly which
+    /// boundary broke. The built-in engine is pure Rust (reqwest/rustls).
+    Saga {
+        #[command(subcommand)]
+        subcommand: SagaCmd,
+    },
+
     /// Manage improvement hypotheses — the PRE-DECISION plane. Any lane
     /// proposes (claim + proposal + predicted outcome), an analyzer proves the
     /// claim against the code, a builder adopts (converting it into planned
@@ -824,6 +835,50 @@ pub enum HypothesisCmd {
         /// Hypothesis id, name, or unique fragment.
         id: String,
     },
+}
+
+// ---------------------------------------------------------------------------
+// Saga subcommands (the consumer plane)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum SagaCmd {
+    /// Register a saga spec (YAML): creates the Validation node (type=saga),
+    /// VALIDATES edges to every step's intent, the RELATES_TO path edges
+    /// between consecutive step intents (uninspected until a run earns them),
+    /// and registers the spec file itself as a CodeFile. Idempotent —
+    /// re-running after editing the spec reconciles the links.
+    #[command(after_help = "SPEC FORMAT (YAML):\n  \
+        saga: checkout-flow\n  \
+        base: \"{{ env.BASE_URL }}\"\n  \
+        steps:\n    \
+          - name: create cart\n      \
+            intent: cart-creation          # id, exact name, or unique fragment\n      \
+            request: { method: POST, url: /carts, json: { items: [] } }\n      \
+            expect:  { status: 201 }\n      \
+            capture: { cart_id: \"$.id\" }\n    \
+          - name: capture payment\n      \
+            intent: payment-capture\n      \
+            request: { method: POST, url: \"/carts/{{ cart_id }}/payment\" }\n      \
+            expect:  { status: 200, body: { \"$.state\": paid } }")]
+    Add {
+        /// Path to the saga spec file.
+        file: String,
+    },
+
+    /// Execute a saga and stamp the run into the graph: the Validation's
+    /// result, every linked intent's VALIDATES verdict, and the RELATES_TO
+    /// path — steps before a failure are runtime-passing evidence, the failing
+    /// boundary goes failing with the broken expectation, steps after it are
+    /// untouched (never reached ≠ failing). Exits non-zero on failure, so it
+    /// also works as the command behind `loom validate`.
+    Run {
+        /// Saga name (the registered validation) or a spec file path.
+        saga: String,
+    },
+
+    /// List registered sagas (validations of type=saga) with their last result.
+    List,
 }
 
 // ---------------------------------------------------------------------------

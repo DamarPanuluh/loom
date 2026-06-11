@@ -23,6 +23,7 @@ pub mod next;
 pub mod note;
 pub mod report;
 pub mod rule;
+pub mod saga;
 pub mod schema;
 pub mod smells;
 pub mod status;
@@ -50,6 +51,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
         Command::Validation  { subcommand } => validation::run(subcommand, &printer),
+        Command::Saga        { subcommand } => saga::run(subcommand, &printer),
         Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),

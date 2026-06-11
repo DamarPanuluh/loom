@@ -8,6 +8,7 @@ mod db;
 mod gate;
 mod output;
 mod repo;
+mod saga;
 mod types;
 
 fn main() -> Result<()> {

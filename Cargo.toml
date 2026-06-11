@@ -18,3 +18,8 @@ uuid = { version = "1", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 glob = "0.3"
 ignore = "0.4"
+# Saga engine (consumer-plane proofs) — pure Rust by design: reqwest on rustls
+# (no libcurl/native-tls), RFC 9535 JSONPath. See `src/saga/`.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde_yaml = "0.9"
+serde_json_path = "0.7"
