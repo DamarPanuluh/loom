@@ -64,7 +64,7 @@ pub fn list_implements_for_intent(
     let q = format!(
         "MATCH (i:Intent {{id: '{id}'}})-[e:IMPLEMENTS]->(cf:CodeFile) \
          RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
-                e.last_inspected, e.inspected_by, e.locator, e.notes, \
+                e.last_inspected, e.inspected_by, e.locator, e.notes, e.created_at, \
                 i.id AS intent_id, i.name AS intent_name, \
                 cf.id AS codefile_id, cf.path AS codefile_path",
         id = esc(intent_id)
@@ -99,7 +99,7 @@ pub fn delete_implements(db: &dyn LoomDb, intent_id: &str, codefile_id: &str) ->
 pub fn list_all_implements(db: &dyn LoomDb) -> Result<Vec<Implements>> {
     let q = "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) \
              RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
-                    e.last_inspected, e.inspected_by, e.locator, e.notes, \
+                    e.last_inspected, e.inspected_by, e.locator, e.notes, e.created_at, \
                     i.id AS intent_id, i.name AS intent_name, \
                     cf.id AS codefile_id, cf.path AS codefile_path";
     let result = db.execute(q)?;
@@ -149,5 +149,6 @@ fn row_to_implements(row: &[Value], cols: &HashMap<&str, usize>) -> Implements {
         inspected_by:      str_val(get(row, cols, "e.inspected_by")),
         locator:           str_val(get(row, cols, "e.locator")),
         notes:             str_val(get(row, cols, "e.notes")),
+        created_at:        str_val(get(row, cols, "e.created_at")),
     }
 }

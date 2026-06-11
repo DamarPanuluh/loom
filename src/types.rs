@@ -518,9 +518,10 @@ pub struct Validation {
 // Note — append-only free-text memory (justification, idea, question, …)
 // ---------------------------------------------------------------------------
 
-/// A timestamped annotation. Optionally scoped to a target (an intent or an
-/// edge) via `target_kind` + `target_id`; a note with `target_kind = "none"`
-/// floats free (e.g. a standalone idea not yet tied to anything). Append-only:
+/// A timestamped annotation. Optionally scoped to a target (an intent, an
+/// edge, or a code file) via `target_kind` + `target_id`; a note with
+/// `target_kind = "none"` floats free (e.g. a standalone idea not yet tied to
+/// anything). Append-only:
 /// notes accumulate, they are never overwritten — that is the richer memory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Note {
@@ -530,9 +531,9 @@ pub struct Note {
     pub text: String,
     /// "human" | "llm"
     pub author: String,
-    /// "intent" | "edge" | "none"
+    /// "intent" | "edge" | "codefile" | "none"
     pub target_kind: String,
-    /// id of the targeted intent/edge, or "" when floating
+    /// id of the targeted intent/edge/codefile, or "" when floating
     pub target_id: String,
     /// OPTIONAL lane this note is addressed to ("" = everyone): builder |
     /// analyzer | fixer | validator | quality. The directed-handoff channel —
@@ -695,6 +696,11 @@ pub struct Implements {
     /// Finer-than-file anchor inside the CodeFile (symbol/region), or "".
     pub locator: String,
     pub notes: String,
+    /// When the grounding was made — the staleness anchor for smell
+    /// adjudication (a decision note older than the newest grounding no
+    /// longer speaks for the structure). "" on edges from pre-v3 graphs.
+    #[serde(default)]
+    pub created_at: String,
 }
 
 /// GOVERNS: QualityRule → Intent — this rule applies to this intent.

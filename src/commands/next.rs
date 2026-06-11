@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    build_candidates, build_candidates_from_snapshot, check_graph, compute_smells, get_intent,
+    build_candidates, build_candidates_from_snapshot, check_graph, compute_smells_from, get_intent,
     graph_state, list_implements_for_intent, notes_for_target, quality_candidates,
     quality_candidates_from_snapshot, review_candidates_from_snapshot, scored_candidates,
     scored_candidates_from_snapshot, unexplored_pairs_scored, validate_candidates,
@@ -348,7 +348,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         snapshot.relates.iter().filter(|e| e.inspection_status == "uninspected").count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
-    let all_smells = compute_smells(db)?;
+    let all_smells = compute_smells_from(db, &snapshot)?;
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
 

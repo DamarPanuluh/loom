@@ -6,9 +6,15 @@
 //! ownership, fragmentation, files doing too much, and normative-plane gaps
 //! (a QualityRule exists but was never held against an intent that has real
 //! code — the measuring stick lying unused next to the thing it should
-//! measure). Pure graph computation — no LLM judgment in the *flagging*; the
-//! verdict on each finding stays with the inspecting agent, via the exact
-//! remedy command each smell carries.
+//! measure). Pure graph computation — no LLM judgment in the *flagging*.
+//!
+//! `loom smells` returns suspicions, but they are not free-floating advice:
+//! OPEN findings gate green (`graph_state` routes phase=audit until zero
+//! remain). The escape from a false positive is never gaming a threshold —
+//! each kind has an explicit adjudication path (an `independent` verdict, a
+//! merge, a decision note newer than the structure it judges), so the verdict
+//! on each finding stays with the inspecting agent, via the exact remedy
+//! command each smell carries.
 
 use anyhow::{Context, Result};
 use serde::Serialize;
@@ -66,17 +72,30 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     inter / union
 }
 
-/// Compute every smell, sorted by score (descending) within insertion order of
-/// kind. Callers truncate for display.
+/// Compute every OPEN smell, sorted by score (descending) within insertion
+/// order of kind. Callers truncate for display.
+///
+/// "Open" is the operative word: a finding that was adjudicated — structurally
+/// resolved, or refuted through its remedy (an `independent` verdict, a vocab
+/// merge, a decision note newer than the structure it judges) — is not
+/// returned. That is what lets `graph_state` gate phase=complete on zero
+/// findings without inviting threshold-gaming: green means every suspicion
+/// was ANSWERED, not that every heuristic is happy.
 pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     let snapshot = QuerySnapshot::load(db)?;
-    let discovery = DiscoverySnapshot::from_query(&snapshot)?;
-    let intents = snapshot.intents.clone();
-    let implements = snapshot.implements.clone();
-    let hierarchy = snapshot.hierarchy.clone();
-    let relates = snapshot.relates.clone();
-    let rules = snapshot.rules.clone();
-    let governs = snapshot.governs.clone();
+    compute_smells_from(db, &snapshot)
+}
+
+/// Snapshot-reusing form for callers that already hold one (`graph_state`,
+/// `loom next --all`). `db` is still needed for notes and the vocab registry.
+pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<Vec<Smell>> {
+    let discovery = DiscoverySnapshot::from_query(snapshot)?;
+    let intents = &snapshot.intents;
+    let implements = &snapshot.implements;
+    let hierarchy = &snapshot.hierarchy;
+    let relates = &snapshot.relates;
+    let rules = &snapshot.rules;
+    let governs = &snapshot.governs;
 
     // Lookup structures.
     let linked: HashSet<(&str, &str)> = discovery
@@ -90,7 +109,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
         .iter()
         .map(|(path, ids)| (path.as_str(), ids.iter().map(|id| id.as_str()).collect()))
         .collect();
-    for im in &implements {
+    for im in implements {
         files_of.entry(im.intent_id.as_str()).or_default().insert(im.codefile_path.as_str());
     }
     let name_of: HashMap<&str, &str> =
@@ -100,6 +119,44 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
         .iter()
         .map(|(id, toks)| (id.as_str(), toks.clone()))
         .collect();
+
+    // The adjudication ledger: every note, loaded once. `last_decision` maps a
+    // target id to its newest kind=decision note — the recorded "looked at it,
+    // here's the call" that resolves a structural finding until the structure
+    // changes again underneath it (recurrent_trouble set the pattern).
+    let all_notes = list_notes(db, None, None)?;
+    let mut last_decision: HashMap<&str, &str> = HashMap::new();
+    for n in &all_notes {
+        if n.kind == "decision" && !n.target_id.is_empty() {
+            let e = last_decision.entry(n.target_id.as_str()).or_default();
+            if n.created_at.as_str() > *e {
+                *e = &n.created_at;
+            }
+        }
+    }
+    // Staleness anchors for those decisions: the newest grounding per intent
+    // and per file. A decision older than the newest grounding judged a
+    // different structure — the finding re-opens. ("" on pre-v3 edges sorts
+    // before any timestamp, so old graphs are grandfathered until regrounded.)
+    let mut newest_grounding: HashMap<&str, &str> = HashMap::new();
+    let mut newest_claim: HashMap<&str, &str> = HashMap::new();
+    for im in implements {
+        let g = newest_grounding.entry(im.intent_id.as_str()).or_default();
+        if im.created_at.as_str() > *g {
+            *g = &im.created_at;
+        }
+        let c = newest_claim.entry(im.codefile_path.as_str()).or_default();
+        if im.created_at.as_str() > *c {
+            *c = &im.created_at;
+        }
+    }
+    let cf_id_of: HashMap<&str, &str> =
+        snapshot.codefiles.iter().map(|cf| (cf.path.as_str(), cf.id.as_str())).collect();
+    // Adjudicated: a decision on `target` newer than the structure's newest
+    // change at `anchor` ("" = no structural timestamp recorded).
+    let adjudicated = |target: &str, anchor: &str| -> bool {
+        last_decision.get(target).is_some_and(|d| *d > anchor)
+    };
 
     let mut smells: Vec<Smell> = Vec::new();
 
@@ -242,7 +299,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
 
     // 3. Scattered intent — one responsibility smeared across many files
     //    (threshold scales with abstraction level).
-    for i in &intents {
+    for i in intents {
         let (Some(files), Some(threshold)) = (
             files_of.get(i.id.as_str()),
             scatter_threshold(&i.abstraction_level),
@@ -250,6 +307,12 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             continue;
         };
         if files.len() >= threshold {
+            // Adjudicated: a decision note on the intent newer than its newest
+            // grounding says the spread is deliberate. A grounding added after
+            // the decision re-opens the question.
+            if adjudicated(i.id.as_str(), newest_grounding.get(i.id.as_str()).copied().unwrap_or("")) {
+                continue;
+            }
             // Group the grounded files by directory — the mechanical clustering
             // evidence for a split. The flagging stays judgment-free: loom shows
             // where the files cluster; the driving LLM names the child intents.
@@ -282,7 +345,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     i.abstraction_level, threshold, clusters
                 ),
                 remedy: format!(
-                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`",
+                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --intent {id} --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
                     id = i.id
                 ),
             });
@@ -294,6 +357,15 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     for (path, iids) in &intents_on_file {
         let distinct: HashSet<&&str> = iids.iter().collect();
         if distinct.len() >= TANGLE_INTENTS {
+            // Adjudicated: a decision note on the FILE newer than its newest
+            // claim ("loom note add --file … --kind decision") says the
+            // cohabitation is deliberate. A new claim re-opens it.
+            if adjudicated(
+                cf_id_of.get(path).copied().unwrap_or(""),
+                newest_claim.get(path).copied().unwrap_or(""),
+            ) {
+                continue;
+            }
             let mut names: Vec<&str> = distinct.iter().filter_map(|id| name_of.get(**id).copied()).collect();
             names.sort();
             smells.push(Smell {
@@ -302,7 +374,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                 summary: format!("{} serves {} distinct intents", path, distinct.len()),
                 evidence: format!("intents: {}", names.join(" · ")),
                 remedy: format!(
-                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent",
+                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; if the cohabitation is DELIBERATE, record it: `loom note add --file {path} --kind decision --text \"<why these intents share a home>\"` resolves this finding (a new claim re-opens it)",
                     n = distinct.len(),
                 ),
             });
@@ -344,7 +416,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
         }
         false
     };
-    for r in &rules {
+    for r in rules {
         let unmeasured: Vec<&crate::types::Intent> = intents
             .iter()
             .filter(|i| {
@@ -441,30 +513,24 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     {
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
         let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
-        let mut last_decision: HashMap<(String, String), String> = HashMap::new();
-        for n in list_notes(db, None, None)? {
-            let key = (n.target_kind.clone(), n.target_id.clone());
+        for n in &all_notes {
             if n.kind == "transition"
                 && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
             {
+                let key = (n.target_kind.clone(), n.target_id.clone());
                 *trouble.entry(key.clone()).or_insert(0) += 1;
                 let e = last_trouble.entry(key).or_default();
                 if n.created_at > *e {
-                    *e = n.created_at;
-                }
-            } else if n.kind == "decision" {
-                let e = last_decision.entry(key).or_default();
-                if n.created_at > *e {
-                    *e = n.created_at;
+                    *e = n.created_at.clone();
                 }
             }
         }
         let edge_label: HashMap<&str, String> = {
             let mut m: HashMap<&str, String> = HashMap::new();
-            for e in &relates {
+            for e in relates {
                 m.insert(e.id.as_str(), format!("{} × {}", e.from_name, e.to_name));
             }
-            for g in &governs {
+            for g in governs {
                 m.insert(g.id.as_str(), format!("{} → {}", g.rule_name, g.intent_name));
             }
             m
@@ -474,11 +540,11 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                 continue;
             }
             // Addressed: a decision note recorded after the last regression.
-            if let Some(d) = last_decision.get(&(kind.clone(), id.clone())) {
-                if let Some(t) = last_trouble.get(&(kind.clone(), id.clone())) {
-                    if d > t {
-                        continue;
-                    }
+            if let (Some(d), Some(t)) =
+                (last_decision.get(id.as_str()), last_trouble.get(&(kind.clone(), id.clone())))
+            {
+                if *d > t.as_str() {
+                    continue;
                 }
             }
             let label = if kind == "intent" {
@@ -510,13 +576,18 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //    requirements here or honestly N/A (record that as a decision note).
     {
         let mut child_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
-        let aspect_of: HashMap<&str, &str> =
-            intents.iter().map(|i| (i.id.as_str(), i.aspect.as_str())).collect();
-        for (p, c) in &hierarchy {
-            if let Some(a) = aspect_of.get(c.as_str()) {
-                if !a.is_empty() {
-                    child_aspects.entry(p.as_str()).or_default().insert(a);
-                }
+        let mut newest_aspect_child: HashMap<&str, &str> = HashMap::new();
+        let by_id: HashMap<&str, &crate::types::Intent> =
+            intents.iter().map(|i| (i.id.as_str(), i)).collect();
+        for (p, c) in hierarchy {
+            let Some(child) = by_id.get(c.as_str()) else { continue };
+            if child.aspect.is_empty() {
+                continue;
+            }
+            child_aspects.entry(p.as_str()).or_default().insert(child.aspect.as_str());
+            let e = newest_aspect_child.entry(p.as_str()).or_default();
+            if child.created_at.as_str() > *e {
+                *e = &child.created_at;
             }
         }
         for (parent_id, aspects) in &child_aspects {
@@ -529,6 +600,12 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                 .copied()
                 .collect();
             if missing.is_empty() {
+                continue;
+            }
+            // Adjudicated: a decision note on the parent newer than its newest
+            // aspect-carrying child records why the missing path is N/A. A new
+            // aspect-tagged child re-opens the question.
+            if adjudicated(parent_id, newest_aspect_child.get(parent_id).copied().unwrap_or("")) {
                 continue;
             }
             let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
@@ -549,7 +626,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     }
                 ),
                 remedy: format!(
-                    "declare the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child> and ground it; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\"",
+                    "declare the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child> and ground it; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
                     m = missing.join("/")
                 ),
             });
@@ -558,7 +635,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
 
     // 9. Unused rule — a measuring stick connected to nothing at all.
     let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
-    for r in &rules {
+    for r in rules {
         if !used.contains(r.id.as_str()) {
             smells.push(Smell {
                 kind: "unused_rule".into(),
@@ -580,7 +657,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //     designed governance — never a closed list.
     {
         let terms = super::vocab::list_vocab_terms(db)?;
-        let counts = super::vocab::tag_counts(&intents)?;
+        let counts = super::vocab::tag_counts(intents)?;
         for i in 0..terms.len() {
             for j in (i + 1)..terms.len() {
                 let (a, b) = (&terms[i], &terms[j]);
@@ -605,7 +682,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                         a.name, ua, b.name, ub
                     ),
                     remedy: format!(
-                        "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely different concepts, sharpen both descriptions instead so the next agent can tell them apart",
+                        "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely distinct concepts the NAMES must stop reading alike — register a sharper term (`loom vocab add`), retag its intents (`loom intent tag`), then merge the look-alike away",
                         drop.name, keep.name, drop.name
                     ),
                 });

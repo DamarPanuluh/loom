@@ -232,7 +232,8 @@ pub enum Command {
     /// Derived problem signals computed from the graph — split-brain twins,
     /// overlapping ownership, scattered intents, tangled files, and quality
     /// rules never held against intents that have code. Each finding carries
-    /// the exact remedy command.
+    /// the exact remedy command; OPEN findings gate green (phase=audit until
+    /// each is resolved or refuted via its remedy).
     Smells {
         /// How many findings to show.
         #[arg(long, default_value_t = 15)]
@@ -1000,7 +1001,8 @@ pub enum SagaCmd {
 
 #[derive(Subcommand)]
 pub enum NoteCmd {
-    /// Add a note. Attach it to an intent or an edge, or leave it free-floating.
+    /// Add a note. Attach it to an intent, an edge, or a code file, or leave
+    /// it free-floating.
     Add {
         /// The note text.
         #[arg(long)]
@@ -1010,13 +1012,18 @@ pub enum NoteCmd {
         #[arg(long, default_value = "commentary")]
         kind: String,
 
-        /// Attach to this intent id (mutually exclusive with --edge).
+        /// Attach to this intent id (mutually exclusive with --edge/--file).
         #[arg(long)]
         intent: Option<String>,
 
-        /// Attach to this edge id (mutually exclusive with --intent).
+        /// Attach to this edge id (mutually exclusive with --intent/--file).
         #[arg(long)]
         edge: Option<String>,
+
+        /// Attach to this CodeFile (id or registered path) — e.g. the
+        /// `--kind decision` note that adjudicates a tangled_file finding.
+        #[arg(long)]
+        file: Option<String>,
 
         /// Who wrote it — role-aware (e.g. llm:analyzer, human:reviewer).
         /// Defaults to $LOOM_AGENT, else "llm".
@@ -1041,6 +1048,10 @@ pub enum NoteCmd {
         /// Only notes attached to this edge id.
         #[arg(long)]
         edge: Option<String>,
+
+        /// Only notes attached to this CodeFile (id or registered path).
+        #[arg(long)]
+        file: Option<String>,
 
         /// Only notes of this kind.
         #[arg(long)]

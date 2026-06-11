@@ -560,14 +560,16 @@ loom hypothesis reject <id> --reason "<why>"   (any state except adopted/confirm
 loom hypothesis list [--status proposed|supported|refuted|adopted|confirmed|rejected] [--limit N]
 loom hypothesis show <id>                      (fields + TARGETS + notes)
 
-loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm] [--for <role>]
+loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id> | --file <path|id>] [--author human|llm] [--for <role>]
   Append free-text memory. kind: justification | commentary | idea | question | decision | todo.
-  Attach to an intent, an edge, or leave free-floating. Append-only (never overwritten).
+  Attach to an intent, an edge, or a code file (id or registered path), or leave
+  free-floating. Append-only (never overwritten). A kind=decision note is the
+  adjudication record smells honor (scatter/tangle/happy-path/recurrence).
   --for builder|analyzer|fixer|validator|quality ADDRESSES the note to a lane —
   the directed-handoff channel: an out-of-lane finding becomes a message the
   owning lane sees FIRST (`loom next` sorts addressed notes to the top of the
   item's notes). Notes surface in `loom next`, `loom intent show`, `loom edge show`.
-loom note list [--intent <id>] [--edge <id>] [--kind <kind>] [--for <role>] [--limit N]
+loom note list [--intent <id>] [--edge <id>] [--file <path|id>] [--kind <kind>] [--for <role>] [--limit N]
   --for <role> = the lane's inbox (only notes addressed to it). --limit keeps
   the NEWEST rows (append-only memory; the tail is the live context).
 
@@ -631,8 +633,12 @@ loom smells [--limit N]
   claim the same file, no edge), scattered intents (level-aware thresholds;
   the evidence GROUPS the grounded files BY DIRECTORY — the mechanical
   clustering for a decompose: loom shows where the files cluster, the LLM
-  names the children), tangled files (≥3 intents — per-file detail via
-  `loom codefile show`), undeclared coupling (file A imports file B but
+  names the children; a kind=decision note on the intent NEWER than its newest
+  grounding records "the spread is deliberate" and resolves the finding, a
+  later grounding re-flags it), tangled files (≥3 intents — per-file detail via
+  `loom codefile show`; a kind=decision note on the FILE — `loom note add
+  --file <path> --kind decision` — newer than its newest claim resolves it,
+  a later claim re-flags), undeclared coupling (file A imports file B but
   their intents have no edge — physical evidence vs semantic graph), recurrent
   trouble (a target whose transition history keeps returning to failing/
   needs_change — redesign, don't re-patch; a kind=decision note NEWER than the
@@ -642,13 +648,19 @@ loom smells [--limit N]
   component covers its descendants, so measure at the highest honest altitude
   instead of grinding per-leaf busywork; a leaf can still get its own, more
   specific verdict), unused rules, happy-path-only groups (children declare an
-  `--aspect happy` but no sad/fallback sibling — failure behavior undeclared),
+  `--aspect happy` but no sad/fallback sibling — failure behavior undeclared;
+  a kind=decision note on the parent newer than its newest aspect-tagged child
+  records "N/A here" and resolves it, a new aspect child re-flags),
   duplicated responsibility (two same-level intents whose REGISTERED tags
   collide rarity-weighted, grounded in DISJOINT files with no import between
   them — the case every physical detector misses: same responsibility
   implemented twice in unrelated code; untagged intents never fire it), and
   vocab drift (two registered terms that read like the same word — remedy is
   the exact `loom vocab merge`).
+  OPEN FINDINGS GATE GREEN: once every queue is dry, `graph_state` routes
+  phase=audit until `loom smells` returns zero — green means every suspicion
+  was ANSWERED (structurally fixed, or refuted via its adjudication path
+  above), never that the heuristics went quiet on their own.
   Each finding carries the exact remedy command — and the redesign-shaped ones
   (recurrent trouble, tangled files, twin merges, code-level scatter) emit
   `loom hypothesis add` so a redesign gets PROVEN before it becomes work,
@@ -794,11 +806,13 @@ VERTICAL (binding):
 HORIZONTAL (optional closure — understanding/cleanup, NOT required for done):
   - Every intent pair has an inspected RELATES_TO edge
     (none uninspected / stale / unexplored).
-  → surfaced as `horizontally_explored`; phase=complete means both axes done.
+  → surfaced as `horizontally_explored`; phase=complete additionally requires
+    the AUDIT gate: zero open `loom smells` findings (phase=audit until every
+    suspicion is resolved or refuted via its remedy).
 ```
 Compass routing (queries/stats.rs `graph_state`) prioritises vertical gaps
-(`ground`/`incomplete` phases) ahead of optional horizontal `discovery`, and only
-emits `phase=complete` when both axes hold. The old "all edges passing/independent"
+(`ground`/`incomplete` phases) ahead of optional horizontal `discovery`, then
+gates `phase=complete` behind `audit` (open findings). The old "all edges passing/independent"
 rule was a horizontal-only check that could hide unrealized intents and orphan
 files — the vertical spine is the airtight part.
 

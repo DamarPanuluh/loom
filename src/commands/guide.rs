@@ -75,7 +75,8 @@ const ORCHESTRATION: &[&str] = &[
     "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
     "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
     "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
-    "  fields per item) → repeat until vertical ✓ (and green, if you want the quality bar).",
+    "  fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and the AUDIT gate",
+    "  (zero open `loom smells` findings — every suspicion resolved or refuted via its remedy).",
 ];
 
 fn brownfield() -> Vec<(&'static str, &'static str)> {
@@ -89,7 +90,7 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
         ("prove from outside", "If the system exposes endpoints, prove the COMPOSITION from the consumer's vantage: write a saga spec (ordered chain, each step bound to its intent) and `loom saga add` + `loom saga run` — passing runs stamp runtime evidence along the intent path; a failure lands as a failing edge naming the broken boundary."),
         ("gate", "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite."),
-        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code), overlapping ownership, scatter, tangles, undeclared coupling, vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). Refute or confirm each via its remedy; `independent` is as valuable as a fix. Per-file ownership questions: `loom codefile show <path>`."),
+        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code), overlapping ownership, scatter, tangles, undeclared coupling, vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings GATE GREEN: once every queue is dry the compass routes phase=audit until `loom smells` returns zero. Refute or confirm each via its remedy; `independent`/a decision note is as valuable as a fix (scatter/tangle/happy-path adjudicate via `loom note add --intent|--file … --kind decision`; a later structural change re-opens the question). Per-file ownership questions: `loom codefile show <path>`."),
         ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]
 }
@@ -197,7 +198,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "contract": "Identical in every shape: declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo); stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane; hand off through the GRAPH (status/next/notes), not chat.",
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
                 "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
-                "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until vertical ✓ (and green if wanted).",
+                "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and zero open `loom smells` findings (the audit gate).",
             },
             "consumer_plane": {
                 "what": "Runtime proof of COMPOSITION: a saga is an ordered chain of endpoint invocations run the way a real consumer will (captures thread one response into the next request). Everything else grounds claims by reading code; a saga stamps the RELATES_TO path between its step intents with EXECUTION evidence.",

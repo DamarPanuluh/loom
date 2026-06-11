@@ -13,16 +13,23 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        NoteCmd::Add { text, kind, intent, edge, author, for_role } => {
+        NoteCmd::Add { text, kind, intent, edge, file, author, for_role } => {
             // Validate the kind against the vocabulary.
             kind.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
-            if intent.is_some() && edge.is_some() {
-                anyhow::bail!("A note targets an intent OR an edge, not both.");
+            if [intent.is_some(), edge.is_some(), file.is_some()].iter().filter(|b| **b).count() > 1 {
+                anyhow::bail!("A note targets an intent OR an edge OR a code file, not several.");
             }
-            let (target_kind, target_id) = match (intent, edge) {
-                (Some(i), _) => ("intent".to_string(), crate::db::queries::resolve_intent(&db, &i)?),
-                (_, Some(e)) => ("edge".to_string(), e),
-                _            => ("none".to_string(), String::new()),
+            let (target_kind, target_id) = match (intent, edge, file) {
+                (Some(i), _, _) => ("intent".to_string(), crate::db::queries::resolve_intent(&db, &i)?),
+                (_, Some(e), _) => ("edge".to_string(), e),
+                (_, _, Some(f)) => {
+                    let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
+                        .ok_or_else(|| anyhow::anyhow!(
+                            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
+                        ))?;
+                    ("codefile".to_string(), cf.id)
+                }
+                _ => ("none".to_string(), String::new()),
             };
 
             let audience = match &for_role {
@@ -63,7 +70,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        NoteCmd::List { intent, edge, kind, for_role, limit } => {
+        NoteCmd::List { intent, edge, file, kind, for_role, limit } => {
             if let Some(ref k) = kind {
                 k.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
@@ -71,7 +78,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 Some(i) => Some(crate::db::queries::resolve_intent(&db, &i)?),
                 None => None,
             };
-            let target = intent.or(edge);
+            let file = match file {
+                Some(f) => Some(
+                    crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
+                        .ok_or_else(|| anyhow::anyhow!(
+                            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
+                        ))?
+                        .id,
+                ),
+                None => None,
+            };
+            let target = intent.or(edge).or(file);
             let mut notes = list_notes(&db, target.as_deref(), kind.as_deref())?;
             // The lane's inbox: only notes explicitly addressed to this role.
             if let Some(r) = &for_role {

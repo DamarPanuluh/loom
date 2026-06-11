@@ -17,6 +17,7 @@ use super::scoring::{
     all_intent_degrees, count_unexplored_pairs_from, normative_coverage_from_snapshot,
     validate_selection_from_snapshot,
 };
+use super::smells::compute_smells_from;
 use super::snapshot::QuerySnapshot;
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
@@ -142,7 +143,8 @@ pub struct GraphState {
     /// The optional axis: every intent pair has an inspected RELATES_TO edge
     /// (none uninspected, stale, or unexplored). Reported, never gates `complete`.
     pub horizontally_explored: bool,
-    /// empty | build | fix | incomplete | ground | validate | quality | discovery | complete
+    /// empty | build | fix | incomplete | ground | validate | quality |
+    /// discovery | audit | complete
     pub phase: String,
     pub next_action: String,
     /// The 360° coverage vector — every dimension counted, weakest first to fix.
@@ -390,7 +392,21 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
             "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
         ))
     } else {
-        ("complete", "Vertically complete ✓ and horizontally explored ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: wire `loom export --check` into pre-commit/CI so a code change can't merge with a stale committed graph, and keep running `loom sync` after changes (maintenance mode).".to_string())
+        // The audit gate — the last gate before green. Open smells are
+        // unadjudicated suspicions; green means every one was ANSWERED
+        // (structurally fixed, or refuted via its remedy — an `independent`
+        // verdict / vocab merge / decision note counts exactly as much as a
+        // fix). Computed lazily: only graphs that cleared every other gate
+        // pay for the O(N²) scan, and at this point every pair is linked, so
+        // the pairwise detectors short-circuit.
+        let open_findings = compute_smells_from(db, &snapshot)?.len();
+        if open_findings > 0 {
+            ("audit", format!(
+                "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
+            ))
+        } else {
+            ("complete", "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: wire `loom export --check` into pre-commit/CI so a code change can't merge with a stale committed graph, and keep running `loom sync` after changes (maintenance mode).".to_string())
+        }
     };
 
     let meta = get_meta(db)?;

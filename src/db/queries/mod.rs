@@ -218,6 +218,14 @@ mod tests {
         }
     }
 
+    /// `note()` with an explicit timestamp — adjudication tests compare a
+    /// decision's created_at against the structure's newest change.
+    fn note_at(id: &str, kind: &str, tk: &str, tid: &str, at: &str) -> Note {
+        let mut n = note(id, kind, tk, tid);
+        n.created_at = at.to_string();
+        n
+    }
+
     #[test]
     fn notes_round_trip_and_filter() {
         let db = GrafeoDb::in_memory();
@@ -604,11 +612,14 @@ mod tests {
                     !scored_candidates(db, "discovery").unwrap().is_empty()
                         || !unexplored_pairs_scored(db).unwrap().is_empty(),
                     "[{step}] phase=discovery but nothing to discover"),
+                "audit" => assert!(!compute_smells(db).unwrap().is_empty(),
+                    "[{step}] phase=audit but no open findings"),
                 "complete" => {
                     assert!(build_candidates(db).unwrap().is_empty(), "[{step}] complete with build work");
                     assert!(scored_candidates(db, "fix").unwrap().is_empty(), "[{step}] complete with fix work");
                     assert!(validate_candidates(db).unwrap().is_empty(), "[{step}] complete with validate work");
                     assert!(quality_candidates(db).unwrap().is_empty(), "[{step}] complete with quality work");
+                    assert!(compute_smells(db).unwrap().is_empty(), "[{step}] complete with open findings");
                 }
                 _ => {}
             }
@@ -675,6 +686,31 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.phase, "complete", "got '{}'", gs.phase);
         assert_coherent(&db, "complete");
+
+        // a third intent on the same file (tangle threshold) → audit: green is
+        // gated on zero OPEN findings, not just on empty queues.
+        let id2 = "intent-2";
+        insert_intent(&db, &intent(id2, "I2")).unwrap();
+        get_or_create_relates_to(&db, "e1", &ids[0], id2, "t4").unwrap();
+        update_relates_to_ground(&db, &ids[0], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
+        get_or_create_relates_to(&db, "e2", &ids[1], id2, "t4").unwrap();
+        update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
+        insert_implements(&db, "im2", id2, "cf", "fn z", "", "t4").unwrap();
+        insert_validates(&db, "ve2", "v0", id2, "", "t4").unwrap();
+        insert_governs(&db, "g-i2", "r0", id2, "", "t4").unwrap();
+        update_governs_verdict(&db, "r0", id2, "passing",
+            "criterion text long enough", "evidence text long enough",
+            0.9, "llm:quality", "t4").unwrap();
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "audit", "an open finding must gate green, got '{}'", gs.phase);
+        assert_coherent(&db, "open finding");
+
+        // Adjudicate it: a decision note on the FILE, newer than its newest
+        // claim — refuting a suspicion is as valuable as fixing it.
+        insert_note(&db, &note_at("nd0", "decision", "codefile", "cf", "t9")).unwrap();
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "complete", "adjudicated finding must clear the gate, got '{}'", gs.phase);
+        assert_coherent(&db, "adjudicated complete");
     }
 
     /// Recurrence memory: verdict transitions are auto-recorded as transition
@@ -1686,6 +1722,71 @@ mod tests {
         insert_hierarchy(&db, "h2", &ids[0], "fb-child", "", "t").unwrap();
         let smells = compute_smells(&db).unwrap();
         assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
+    }
+
+    /// Adjudication terminal state for tangled_file: a decision note on the
+    /// FILE newer than its newest claim resolves the finding; a claim added
+    /// after the decision re-opens it.
+    #[test]
+    fn tangled_file_decision_note_resolves_and_reflags() {
+        let (db, ids) = db_inited(4);
+        insert_codefile(&db, &codefile("cf", "src/hub.rs")).unwrap();
+        for (k, id) in ids.iter().take(3).enumerate() {
+            insert_implements(&db, &format!("im{k}"), id, "cf", "fn f", "", "t1").unwrap();
+        }
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+
+        // Decision newer than every claim → adjudicated, finding closed.
+        insert_note(&db, &note_at("nd", "decision", "codefile", "cf", "t2")).unwrap();
+        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+
+        // A NEW claim after the decision re-opens the question.
+        insert_implements(&db, "im3", &ids[3], "cf", "fn g", "", "t3").unwrap();
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+    }
+
+    /// Adjudication terminal state for scattered_intent: a decision note on
+    /// the intent newer than its newest grounding resolves it; a grounding
+    /// added after the decision re-opens it.
+    #[test]
+    fn scattered_intent_decision_note_resolves_and_reflags() {
+        let (db, ids) = db_inited(1);
+        for k in 0..4 {
+            insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
+            insert_implements(&db, &format!("im{k}"), &ids[0], &format!("cf{k}"), "fn f", "", "t1").unwrap();
+        }
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+
+        insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
+        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+
+        insert_codefile(&db, &codefile("cf4", "src/f4.rs")).unwrap();
+        insert_implements(&db, "im4", &ids[0], "cf4", "fn f", "", "t3").unwrap();
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+    }
+
+    /// Adjudication terminal state for happy_path_only: a decision note on
+    /// the parent newer than its newest aspect-tagged child records why the
+    /// missing path is N/A; a new aspect-tagged child re-opens the question.
+    #[test]
+    fn happy_path_decision_note_resolves_and_reflags() {
+        let (db, ids) = db_inited(1);
+        let mut happy = intent("happy-child", "login succeeds");
+        happy.aspect = "happy".into();
+        happy.created_at = "t1".into();
+        insert_intent(&db, &happy).unwrap();
+        insert_hierarchy(&db, "h0", &ids[0], "happy-child", "", "t").unwrap();
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
+
+        insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
+        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
+
+        let mut edge_case = intent("edge-child", "login rejects malformed input");
+        edge_case.aspect = "edge_case".into();
+        edge_case.created_at = "t3".into();
+        insert_intent(&db, &edge_case).unwrap();
+        insert_hierarchy(&db, "h1", &ids[0], "edge-child", "", "t").unwrap();
+        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
     }
 
     /// The 360° coverage vector counts every axis honestly: an axis with no

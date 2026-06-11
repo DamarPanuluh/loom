@@ -171,6 +171,9 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 Err(e) => vec![format!("(invalid imports JSON: {e})")],
             };
             let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
+            // Notes targeting the file itself — where a tangled_file
+            // adjudication (`loom note add --file … --kind decision`) lives.
+            let notes = crate::db::queries::notes_for_target(&db, &cf.id)?;
             // Sections inside show are bounded (SECTION_CAP) in human mode;
             // the full view is one command away.
             let fetch = format!("`loom codefile show {} --json`", cf.path);
@@ -187,6 +190,8 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     "governing_rules_total": rules.len(),
                     "imports": imports,
                     "imports_total": imports.len(),
+                    "notes": notes,
+                    "notes_total": notes.len(),
                 }));
             } else {
                 println!("── CodeFile ───────────────────────────────────────────────────────");
@@ -212,8 +217,9 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     }
                 }
                 if tangled {
-                    println!("  ⚠ {} intents in one file (threshold {}) — consider splitting along intent lines.",
+                    println!("  ⚠ {} intents in one file (threshold {}) — split along intent lines, or record why the",
                         claims.len(), crate::db::queries::smells::TANGLE_INTENTS);
+                    println!("    cohabitation is deliberate: `loom note add --file {} --kind decision --text \"…\"`", cf.path);
                 }
                 println!();
                 println!("── Governing rules (via owners) ────────────────────────────────────");
@@ -237,6 +243,16 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                         println!("  → {}", i);
                     }
                     if let Some(m) = crate::output::more_marker(imports.len(), imports.len().min(cap), &fetch) {
+                        println!("  {m}");
+                    }
+                }
+                if !notes.is_empty() {
+                    println!();
+                    println!("── Notes ({}) ───────────────────────────────────────────────────────", notes.len());
+                    for n in notes.iter().rev().take(cap) {
+                        println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+                    }
+                    if let Some(m) = crate::output::more_marker(notes.len(), notes.len().min(cap), &fetch) {
                         println!("  {m}");
                     }
                 }
