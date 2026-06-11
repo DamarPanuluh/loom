@@ -15,10 +15,8 @@ use crate::types::{
 };
 
 use super::row::i64_val;
-use super::{
-    list_all_governs, list_all_implements, list_all_targets, list_hypotheses, list_intents,
-    list_notes, list_relates_to, list_rules, list_validates_for_intent, list_validations,
-};
+use super::snapshot::QuerySnapshot;
+use super::{list_all_targets, list_hypotheses, list_intents, list_notes};
 
 /// Outcome of a full integrity scan.
 #[derive(Debug)]
@@ -129,8 +127,13 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         }
     }
 
+    let intents = list_intents(db, None, None)?;
+    let hypotheses = list_hypotheses(db, None)?;
+
+    let query_snapshot = QuerySnapshot::load(db)?;
+
     // 4. Value validity for constrained fields (reliable full scans).
-    for i in list_intents(db, None, None)? {
+    for i in &intents {
         if i.id.is_empty() {
             issues.push(format!("Intent '{}' has an empty id", i.name));
         }
@@ -144,12 +147,12 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
             ));
         }
     }
-    for r in list_rules(db)? {
+    for r in &query_snapshot.rules {
         if r.severity.parse::<Severity>().is_err() {
             issues.push(format!("QualityRule {} has invalid severity '{}'", r.id, r.severity));
         }
     }
-    for v in list_validations(db)? {
+    for v in &query_snapshot.validations {
         if !v.last_result.is_empty() && v.last_result.parse::<ValidationResult>().is_err() {
             issues.push(format!(
                 "Validation {} has invalid last_result '{}'",
@@ -159,7 +162,7 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     }
     // Hypothesis plane: status vocabulary + the evidence audit behind every
     // proof verdict, and the proposer≠prover contract (when roles are declared).
-    for h in list_hypotheses(db, None)? {
+    for h in &hypotheses {
         if h.status.parse::<HypothesisStatus>().is_err() {
             issues.push(format!("Hypothesis {} has invalid status '{}'", h.id, h.status));
             continue;
@@ -194,9 +197,10 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
 
     // 5. Note validity + referential integrity (dangling targets).
     let intent_ids: std::collections::HashSet<String> =
-        list_intents(db, None, None)?.into_iter().map(|i| i.id).collect();
+        intents.iter().map(|i| i.id.clone()).collect();
     let hypothesis_ids: std::collections::HashSet<String> =
-        list_hypotheses(db, None)?.into_iter().map(|h| h.id).collect();
+        hypotheses.iter().map(|h| h.id.clone()).collect();
+    let edge_ids = collect_edge_ids(db)?;
     for n in list_notes(db, None, None)? {
         if n.kind.parse::<NoteKind>().is_err() {
             issues.push(format!("Note {} has invalid kind '{}'", n.id, n.kind));
@@ -213,16 +217,15 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
                 n.id, n.target_id
             ));
         }
-        if n.target_kind == "edge" && edge_id_missing(db, &n.target_id)? {
+        if n.target_kind == "edge" && !edge_ids.contains(&n.target_id) {
             issues.push(format!("Note {} targets missing edge '{}'", n.id, n.target_id));
         }
     }
 
-    // 6. Inspectable-edge audit: status vocabulary, confidence bounds, vacuous
+    audit_inspectable_edges(db, &query_snapshot, &mut issues, &mut hints)?;
     // evidence behind a verdict, and provenance lanes (a verdict recorded by an
     // out-of-lane role is a separation-of-duties breach — the whole point of
     // the role system is that no agent green-lights its own work).
-    audit_inspectable_edges(db, &mut issues, &mut hints)?;
 
     // 7. HIERARCHY tree well-formedness. These are *structural* violations (the
     // spine isn't a tree), not progress — so they belong in doctor. The other
@@ -274,49 +277,50 @@ struct EdgeClaim {
 /// (`inspected_by` role must be the owning role for that edge type).
 fn audit_inspectable_edges(
     db: &dyn LoomDb,
+    snapshot: &QuerySnapshot,
     issues: &mut Vec<String>,
     hints: &mut Vec<String>,
 ) -> Result<()> {
     use crate::db::schema::role;
 
     let mut claims: Vec<EdgeClaim> = Vec::new();
-    for e in list_relates_to(db, None)? {
+    for e in &snapshot.relates {
         claims.push(EdgeClaim {
             etype: schema::edge::RELATES_TO,
             label: format!("{} → {}", e.from_name, e.to_name),
-            status: e.inspection_status,
-            criterion: e.criterion,
+            status: e.inspection_status.clone(),
+            criterion: e.criterion.clone(),
             confidence: e.confidence,
-            evidence: e.evidence,
-            last_inspected: e.last_inspected,
-            notes: e.notes,
-            inspected_by: e.inspected_by,
+            evidence: e.evidence.clone(),
+            last_inspected: e.last_inspected.clone(),
+            notes: e.notes.clone(),
+            inspected_by: e.inspected_by.clone(),
         });
     }
-    for e in list_all_implements(db)? {
+    for e in &snapshot.implements {
         claims.push(EdgeClaim {
             etype: schema::edge::IMPLEMENTS,
             label: format!("{} → {}", e.intent_name, e.codefile_path),
-            status: e.inspection_status,
-            criterion: e.criterion,
+            status: e.inspection_status.clone(),
+            criterion: e.criterion.clone(),
             confidence: e.confidence,
-            evidence: e.evidence,
-            last_inspected: e.last_inspected,
-            notes: e.notes,
-            inspected_by: e.inspected_by,
+            evidence: e.evidence.clone(),
+            last_inspected: e.last_inspected.clone(),
+            notes: e.notes.clone(),
+            inspected_by: e.inspected_by.clone(),
         });
     }
-    for e in list_all_governs(db)? {
+    for e in &snapshot.governs {
         claims.push(EdgeClaim {
             etype: schema::edge::GOVERNS,
             label: format!("{} → {}", e.rule_name, e.intent_name),
-            status: e.inspection_status,
-            criterion: e.criterion,
+            status: e.inspection_status.clone(),
+            criterion: e.criterion.clone(),
             confidence: e.confidence,
-            evidence: e.evidence,
-            last_inspected: e.last_inspected,
-            notes: e.notes,
-            inspected_by: e.inspected_by,
+            evidence: e.evidence.clone(),
+            last_inspected: e.last_inspected.clone(),
+            notes: e.notes.clone(),
+            inspected_by: e.inspected_by.clone(),
         });
     }
     for e in list_all_targets(db)? {
@@ -333,17 +337,15 @@ fn audit_inspectable_edges(
         });
     }
     // VALIDATES carries only a status — audit its vocabulary too.
-    for i in list_intents(db, None, None)? {
-        for e in list_validates_for_intent(db, &i.id)? {
-            if !matches!(
-                e.inspection_status.as_str(),
-                "uninspected" | "passing" | "failing" | "needs_reverification"
-            ) {
-                issues.push(format!(
-                    "VALIDATES edge {} → {} has invalid inspection_status '{}'",
-                    e.validation_name, e.intent_name, e.inspection_status
-                ));
-            }
+    for e in &snapshot.validates {
+        if !matches!(
+            e.inspection_status.as_str(),
+            "uninspected" | "passing" | "failing" | "needs_reverification"
+        ) {
+            issues.push(format!(
+                "VALIDATES edge {} → {} has invalid inspection_status '{}'",
+                e.validation_name, e.intent_name, e.inspection_status
+            ));
         }
     }
 
@@ -462,17 +464,19 @@ fn audit_inspectable_edges(
     Ok(())
 }
 
-/// True when no edge of any tracked type carries this id. Uses a full
-/// traversal + Rust comparison (reliable), not relationship equality matching.
-fn edge_id_missing(db: &dyn LoomDb, edge_id: &str) -> Result<bool> {
+/// Collect every tracked edge id once for note referential-integrity checks.
+/// The old per-note check rescanned every edge type for each edge-targeted
+/// note; large histories made `loom doctor` and `loom next --all` feel heavy.
+fn collect_edge_ids(db: &dyn LoomDb) -> Result<std::collections::HashSet<String>> {
+    let mut ids = std::collections::HashSet::new();
     for &etype in EDGE_TYPES {
         let r = db.execute(&format!(
             "MATCH ()-[r:{etype}]->() RETURN r.{id} AS x",
             id = prop::ID
         ))?;
-        if r.rows().iter().any(|row| super::row::str_val(&row[0]) == edge_id) {
-            return Ok(false);
+        for row in r.rows() {
+            ids.insert(super::row::str_val(&row[0]));
         }
     }
-    Ok(true)
+    Ok(ids)
 }

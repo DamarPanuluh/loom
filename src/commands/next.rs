@@ -2,10 +2,12 @@ use anyhow::Result;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    build_candidates, check_graph, compute_smells, get_intent, graph_state,
-    list_implements_for_intent, notes_for_target, quality_candidates, scored_candidates,
-    unexplored_pairs_scored, validate_candidates, validations_for_intent,
-    vertical_completeness,
+    build_candidates, build_candidates_from_snapshot, check_graph, compute_smells, get_intent,
+    graph_state, list_implements_for_intent, notes_for_target, quality_candidates,
+    quality_candidates_from_snapshot, review_candidates_from_snapshot, scored_candidates,
+    scored_candidates_from_snapshot, unexplored_pairs_scored, validate_candidates,
+    validate_candidates_from_snapshot, validations_for_intent, vertical_completeness,
+    QuerySnapshot,
 };
 use crate::output::{fmt_edge_detail, fmt_intent, fmt_pulse, Printer};
 use crate::types::{CodeFile, EdgeType, WorkItem};
@@ -308,11 +310,13 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let gs = graph_state(db)?;
     let doctor = check_graph(db)?;
     let vc = vertical_completeness(db)?;
-    let build = build_candidates(db)?;
-    let fix = scored_candidates(db, "fix")?;
-    let discovery = scored_candidates(db, "discovery")?;
-    let validate = validate_candidates(db)?;
-    let quality = quality_candidates(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let build = build_candidates_from_snapshot(&snapshot);
+    let fix = scored_candidates_from_snapshot(&snapshot, "fix");
+    let discovery_uninspected =
+        snapshot.relates.iter().filter(|e| e.inspection_status == "uninspected").count() as i64;
+    let validate = validate_candidates_from_snapshot(&snapshot);
+    let quality = quality_candidates_from_snapshot(&snapshot);
     let all_smells = compute_smells(db)?;
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
@@ -365,7 +369,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "top": format!("rule '{}' → '{}' [{}]", g.rule_name, g.intent_name, g.inspection_status),
         }));
     }
-    let review = crate::db::queries::review_candidates(db)?;
+    let review = review_candidates_from_snapshot(&snapshot);
     if !review.is_empty() {
         queues.push(serde_json::json!({
             "queue": "review", "role": "reviewer", "optional": true, "effort": "high",
@@ -382,7 +386,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "top": format!("hypothesis '{}' awaits its proof", h.name),
         }));
     }
-    let discovery_backlog = discovery.len() as i64 + gs.unexplored_pairs;
+    let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
             "queue": "discovery", "role": "analyzer", "optional": true,

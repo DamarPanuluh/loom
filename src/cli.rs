@@ -814,7 +814,7 @@ pub enum HypothesisCmd {
 
     /// List hypotheses, optionally filtered by status.
     List {
-        /// proposed | supported | refuted | adopted | rejected
+        /// proposed | supported | refuted | adopted | confirmed | rejected
         #[arg(long)]
         status: Option<String>,
     },

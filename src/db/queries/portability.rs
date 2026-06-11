@@ -130,19 +130,22 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
     let mut nodes = Map::new();
     for &lbl in NODE_LABELS {
         let props = node_props(lbl);
-        let select = props.iter().map(|p| format!("n.{p}")).collect::<Vec<_>>().join(", ");
+        let prop_cols = props.iter().map(|p| format!("n.{p}")).collect::<Vec<_>>();
+        let select = prop_cols.join(", ");
         let result = db.execute(&format!("MATCH (n:{lbl}) RETURN {select}"))?;
         let cols = col_map(&result);
         let mut items: Vec<J> = Vec::new();
         for row in result.rows() {
             let mut obj = Map::new();
-            for p in &props {
-                let v = super::row::get(row, &cols, &format!("n.{p}"));
+            for (p, col) in props.iter().zip(prop_cols.iter()) {
+                let v = super::row::get(row, &cols, col);
                 obj.insert((*p).to_string(), grafeo_to_json(v, false));
             }
             items.push(J::Object(obj));
         }
-        items.sort_by_key(|i| i["id"].as_str().unwrap_or_default().to_string());
+        items.sort_by(|a, b| {
+            a["id"].as_str().unwrap_or_default().cmp(b["id"].as_str().unwrap_or_default())
+        });
         nodes.insert(lbl.to_string(), J::Array(items));
     }
 
@@ -150,7 +153,8 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
     for &etype in EDGE_TYPES {
         let props = edge_props(etype);
         let (la, lb) = endpoints(etype);
-        let select = props.iter().map(|p| format!("r.{p}")).collect::<Vec<_>>().join(", ");
+        let prop_cols = props.iter().map(|p| format!("r.{p}")).collect::<Vec<_>>();
+        let select = prop_cols.join(", ");
         let result = db.execute(&format!(
             "MATCH (a:{la})-[r:{etype}]->(b:{lb}) RETURN a.id AS __from, b.id AS __to, {select}"
         ))?;
@@ -160,19 +164,24 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
             let mut obj = Map::new();
             obj.insert("from".into(), grafeo_to_json(super::row::get(row, &cols, "__from"), false));
             obj.insert("to".into(), grafeo_to_json(super::row::get(row, &cols, "__to"), false));
-            for p in &props {
-                let v = super::row::get(row, &cols, &format!("r.{p}"));
+            for (p, col) in props.iter().zip(prop_cols.iter()) {
+                let v = super::row::get(row, &cols, col);
                 obj.insert((*p).to_string(), grafeo_to_json(v, is_numeric(p)));
             }
             items.push(J::Object(obj));
         }
-        items.sort_by_key(|i| {
-            format!(
-                "{}|{}|{}",
-                i["from"].as_str().unwrap_or_default(),
-                i["to"].as_str().unwrap_or_default(),
-                i["id"].as_str().unwrap_or_default()
-            )
+        items.sort_by(|a, b| {
+            let ak = (
+                a["from"].as_str().unwrap_or_default(),
+                a["to"].as_str().unwrap_or_default(),
+                a["id"].as_str().unwrap_or_default(),
+            );
+            let bk = (
+                b["from"].as_str().unwrap_or_default(),
+                b["to"].as_str().unwrap_or_default(),
+                b["id"].as_str().unwrap_or_default(),
+            );
+            ak.cmp(&bk)
         });
         edges.insert(etype.to_string(), J::Array(items));
     }

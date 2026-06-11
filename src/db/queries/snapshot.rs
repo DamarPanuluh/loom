@@ -1,0 +1,152 @@
+use anyhow::{Context, Result};
+use std::collections::{HashMap, HashSet};
+
+use crate::db::LoomDb;
+use crate::types::{CodeFile, Governs, Implements, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation};
+
+use super::{
+    list_active_intents, list_all_governs, list_all_hierarchy, list_all_implements,
+    list_all_validates, list_codefiles, list_relates_to, list_rules, list_validations,
+};
+
+#[derive(Debug, Clone)]
+pub struct QuerySnapshot {
+    pub intents: Vec<Intent>,
+    pub hierarchy: Vec<(String, String)>,
+    pub relates: Vec<RelatesTo>,
+    pub governs: Vec<Governs>,
+    pub rules: Vec<QualityRule>,
+    pub validates: Vec<ValidatesEdge>,
+    pub validations: Vec<Validation>,
+    pub implements: Vec<Implements>,
+    pub codefiles: Vec<CodeFile>,
+    pub with_code: HashSet<String>,
+    pub degrees: HashMap<String, i64>,
+}
+
+impl QuerySnapshot {
+    pub fn load(db: &dyn LoomDb) -> Result<Self> {
+        let intents = list_active_intents(db)?;
+        let hierarchy = list_all_hierarchy(db)?;
+        let relates = list_relates_to(db, None)?;
+        let governs = list_all_governs(db)?;
+        let rules = list_rules(db)?;
+        let validates = list_all_validates(db)?;
+        let validations = list_validations(db)?;
+        let implements = list_all_implements(db)?;
+        let codefiles = list_codefiles(db)?;
+
+        let with_code: HashSet<String> = implements.iter().map(|im| im.intent_id.clone()).collect();
+        let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
+        let mut degrees: HashMap<String, i64> = HashMap::new();
+        for edge in &relates {
+            if edge.inspection_status == "independent"
+                || !active_ids.contains(edge.from_id.as_str())
+                || !active_ids.contains(edge.to_id.as_str())
+            {
+                continue;
+            }
+            *degrees.entry(edge.from_id.clone()).or_insert(0) += 1;
+            *degrees.entry(edge.to_id.clone()).or_insert(0) += 1;
+        }
+
+        Ok(Self {
+            intents,
+            hierarchy,
+            relates,
+            governs,
+            rules,
+            validates,
+            validations,
+            implements,
+            codefiles,
+            with_code,
+            degrees,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscoverySnapshot {
+    pub linked: HashSet<(String, String)>,
+    pub files_of: HashMap<String, HashSet<usize>>,
+    pub intents_on_file: HashMap<String, Vec<String>>,
+    pub tokens_by_intent: HashMap<String, HashSet<String>>,
+    pub import_links: HashSet<(usize, usize)>,
+}
+
+impl DiscoverySnapshot {
+    pub fn from_query(snapshot: &QuerySnapshot) -> Result<Self> {
+        let mut linked: HashSet<(String, String)> = HashSet::new();
+        for edge in &snapshot.relates {
+            linked.insert((edge.from_id.clone(), edge.to_id.clone()));
+            linked.insert((edge.to_id.clone(), edge.from_id.clone()));
+        }
+        for (parent, child) in &snapshot.hierarchy {
+            linked.insert((parent.clone(), child.clone()));
+            linked.insert((child.clone(), parent.clone()));
+        }
+
+        let path_index: HashMap<&str, usize> = snapshot
+            .codefiles
+            .iter()
+            .enumerate()
+            .map(|(idx, cf)| (cf.path.as_str(), idx))
+            .collect();
+
+        let mut files_of: HashMap<String, HashSet<usize>> = HashMap::new();
+        let mut intents_on_file: HashMap<String, Vec<String>> = HashMap::new();
+        for im in &snapshot.implements {
+            if let Some(&idx) = path_index.get(im.codefile_path.as_str()) {
+                files_of.entry(im.intent_id.clone()).or_default().insert(idx);
+            }
+            intents_on_file
+                .entry(im.codefile_path.clone())
+                .or_default()
+                .push(im.intent_id.clone());
+        }
+
+        let tokens_by_intent: HashMap<String, HashSet<String>> = snapshot
+            .intents
+            .iter()
+            .map(|intent| {
+                (
+                    intent.id.clone(),
+                    tokenize(&format!("{} {}", intent.name, intent.description)),
+                )
+            })
+            .collect();
+
+        let mut import_links: HashSet<(usize, usize)> = HashSet::new();
+        for (from_idx, cf) in snapshot.codefiles.iter().enumerate() {
+            let imports: Vec<String> = serde_json::from_str(&cf.imports)
+                .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
+            for target in imports {
+                if let Some(&to_idx) = path_index.get(target.as_str()) {
+                    import_links.insert((from_idx, to_idx));
+                    import_links.insert((to_idx, from_idx));
+                }
+            }
+        }
+
+        Ok(Self {
+            linked,
+            files_of,
+            intents_on_file,
+            tokens_by_intent,
+            import_links,
+        })
+    }
+}
+
+fn tokenize(text: &str) -> HashSet<String> {
+    const STOP: &[&str] = &[
+        "the", "and", "via", "with", "for", "that", "this", "from", "into",
+        "are", "its", "all", "one", "not", "has", "have", "can", "per",
+    ];
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.len() >= 3 && !STOP.contains(w))
+        .map(str::to_string)
+        .collect()
+}

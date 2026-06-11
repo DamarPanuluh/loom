@@ -35,6 +35,7 @@ const GOLDEN_RULES: &[&str] = &[
 const RIPPLE: &[&str] = &[
     "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`; the edge's transition note names the changed file)",
     "passing GOVERNS verdicts on those intents → needs_reverification (quality green is re-earned via `loom next --mode quality` + `loom rule verdict`)",
+    "passing TARGETS evidence on hypotheses aimed at those intents → needs_reverification (hypothesis support must be re-earned against the changed target code)",
     "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`)",
     "IMPLEMENTS locators that no longer occur in their file (renamed symbol) → needs_reverification, and reported — re-ground with a fresh locator",
     "files registered in the graph but missing on disk are reported — drop phantoms with `loom codefile remove <path>` or restore the file",

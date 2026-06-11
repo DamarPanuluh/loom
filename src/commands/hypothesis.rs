@@ -11,15 +11,16 @@ use uuid::Uuid;
 
 use crate::cli::HypothesisCmd;
 use crate::db::queries::{
-    get_hypothesis, insert_hypothesis, insert_note, insert_targets, list_hypotheses,
-    list_targets_for_hypothesis, notes_for_target, resolve_hypothesis, resolve_intent,
-    set_hypothesis_status, update_hypothesis_verdict,
+    get_hypothesis, insert_hypothesis, insert_note, insert_targets, insert_validates,
+    insert_validation, list_hypotheses, list_targets_for_hypothesis, notes_for_target,
+    resolve_hypothesis, resolve_intent, set_hypothesis_status, set_targets_status_for_hypothesis,
+    update_hypothesis_verdict,
 };
 use crate::db::schema::role;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::Printer;
-use crate::types::{Hypothesis, HypothesisStatus, Note};
+use crate::types::{Hypothesis, HypothesisStatus, Note, Validation};
 
 pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
@@ -126,7 +127,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
                 .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
-            if matches!(h.status.as_str(), "adopted" | "rejected") {
+            if matches!(h.status.as_str(), "adopted" | "confirmed" | "rejected") {
                 anyhow::bail!(
                     "Hypothesis '{}' is already decided ({}) — the decision is recorded; \
                      propose a new hypothesis instead of re-litigating this one.",
@@ -148,6 +149,16 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
             let now = chrono::Utc::now().to_rfc3339();
             update_hypothesis_verdict(&db, &hid, &verdict, &evidence, &prover, &now)?;
+            let target_status = if verdict == "supported" { "passing" } else { "independent" };
+            set_targets_status_for_hypothesis(
+                &db,
+                &hid,
+                target_status,
+                "hypothesis proof establishes whether this target is affected",
+                &evidence,
+                &prover,
+                &now,
+            )?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": hid, "verdict": verdict,
@@ -247,6 +258,32 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 audience: String::new(),
                 created_at: now.clone(),
             })?;
+            if !spawned_ids.is_empty() {
+                let validation_id = Uuid::new_v4().to_string();
+                insert_validation(&db, &Validation {
+                    id: validation_id.clone(),
+                    name: format!("hypothesis outcome: {}", h.name),
+                    description: format!(
+                        "hypothesis:{}\nPredicted outcome to verify after adoption: {}",
+                        hid, h.predicted_outcome
+                    ),
+                    validation_type: "manual_check".to_string(),
+                    command: String::new(),
+                    last_run: String::new(),
+                    last_result: "not_run".to_string(),
+                })?;
+                for iid in &spawned_ids {
+                    insert_validates(
+                        &db,
+                        &Uuid::new_v4().to_string(),
+                        &validation_id,
+                        iid,
+                        "hypothesis outcome proof",
+                        &now,
+                    )?;
+                }
+            }
+
             for iid in &spawned_ids {
                 insert_note(&db, &Note {
                     id: Uuid::new_v4().to_string(),
@@ -284,7 +321,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
                 .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
-            if h.status == "adopted" {
+            if matches!(h.status.as_str(), "adopted" | "confirmed") {
                 anyhow::bail!(
                     "Hypothesis '{}' was adopted — its spawned intents are real work now. \
                      Retire/delete those intents if the direction is wrong; the hypothesis \

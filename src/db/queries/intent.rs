@@ -8,7 +8,7 @@ use crate::db::schema::esc;
 use crate::db::LoomDb;
 use crate::types::Intent;
 
-use super::row::{col_map, get, i64_val, str_val};
+use super::row::{col_map, get, str_val};
 
 pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
     let q = format!(
@@ -336,20 +336,14 @@ pub fn delete_intent(db: &dyn LoomDb, id: &str) -> Result<bool> {
 
 /// Return all intents that have zero VALIDATES edges pointing to them.
 pub fn intents_without_validations(db: &dyn LoomDb) -> Result<Vec<Intent>> {
-    let all = list_intents(db, None, None)?;
-    let mut result = Vec::new();
-    for intent in all {
-        let q = format!(
-            "MATCH ()-[e:VALIDATES]->(i:Intent {{id: '{}'}}) RETURN count(e) AS c",
-            esc(&intent.id)
-        );
-        let r = db.execute(&q)?;
-        let c = r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0);
-        if c == 0 {
-            result.push(intent);
-        }
-    }
-    Ok(result)
+    let validated: std::collections::HashSet<String> = super::validates::list_all_validates(db)?
+        .into_iter()
+        .map(|e| e.intent_id)
+        .collect();
+    Ok(list_intents(db, None, None)?
+        .into_iter()
+        .filter(|intent| !validated.contains(&intent.id))
+        .collect())
 }
 
 fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {

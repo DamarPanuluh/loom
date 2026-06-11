@@ -3,10 +3,12 @@
 
 use anyhow::Result;
 
+use std::collections::{HashMap, HashSet};
 use crate::db::schema::esc;
 use crate::db::LoomDb;
 use crate::types::{ValidatesEdge, Validation};
 
+#[cfg(test)]
 use super::implements::intent_ids_implementing_codefile;
 use super::row::{col_map, get, str_val};
 use super::validation::get_validation;
@@ -129,13 +131,59 @@ pub fn validations_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<Va
 
 /// Mark all Validations linked to intents that implement a CodeFile as not_run.
 /// Returns count of validations invalidated.
+#[cfg(test)]
 pub fn invalidate_validations_for_codefile(
     db: &dyn LoomDb,
     codefile_id: &str,
 ) -> Result<usize> {
     let intent_ids = intent_ids_implementing_codefile(db, codefile_id)?;
+    invalidate_validations_for_intents(db, &intent_ids)
+}
+
+pub fn invalidate_validations_for_intents_with_indexes(
+    db: &dyn LoomDb,
+    intent_ids: &[String],
+    edges_by_intent: &HashMap<&str, Vec<&ValidatesEdge>>,
+    val_by_id: &HashMap<&str, &Validation>,
+    already_invalidated: &mut HashSet<String>,
+) -> Result<usize> {
     let mut count = 0usize;
-    for iid in &intent_ids {
+    for iid in intent_ids {
+        let Some(edges) = edges_by_intent.get(iid.as_str()) else {
+            continue;
+        };
+        for edge in edges {
+            // Skip already-not_run (nothing to invalidate) and `blocked` — a
+            // blocked proof is waiting on something external; a code change
+            // doesn't unblock it, and flipping it to not_run would erase the
+            // recorded reason it can't run.
+            if let Some(v) = val_by_id.get(edge.validation_id.as_str()) {
+                if v.last_result != "not_run"
+                    && v.last_result != "blocked"
+                    && already_invalidated.insert(v.id.clone())
+                {
+                    db.execute(&format!(
+                        "MATCH (v:Validation {{id: '{}'}}) SET v.last_result = 'not_run'",
+                        esc(&v.id)
+                    ))?;
+                    count += 1;
+                }
+            }
+        }
+    }
+    Ok(count)
+}
+
+/// Mark all Validations linked to the given implementing intents as not_run.
+/// Callers that already resolved CodeFile → Intent ownership use this to avoid
+/// repeating that lookup for every changed file.
+#[cfg(test)]
+pub fn invalidate_validations_for_intents(
+    db: &dyn LoomDb,
+    intent_ids: &[String],
+) -> Result<usize> {
+    let mut count = 0usize;
+    for iid in intent_ids {
         let edges = list_validates_for_intent(db, iid)?;
         for edge in &edges {
             // Skip already-not_run (nothing to invalidate) and `blocked` — a

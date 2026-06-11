@@ -119,6 +119,7 @@ pub fn intents_with_implements(db: &dyn LoomDb) -> Result<std::collections::Hash
 }
 
 /// Return the IDs of all Intents that IMPLEMENT a given CodeFile.
+#[cfg(test)]
 pub fn intent_ids_implementing_codefile(
     db: &dyn LoomDb,
     codefile_id: &str,

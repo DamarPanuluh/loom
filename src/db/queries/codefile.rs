@@ -46,6 +46,23 @@ pub fn update_codefile_hash(db: &dyn LoomDb, id: &str, hash: &str) -> Result<()>
     Ok(())
 }
 
+/// Store the content fingerprint and filesystem mtime in one CodeFile write.
+/// `loom sync` already owns the CodeFile row from `list_codefiles`, so there is
+/// no extra existence probe on this hot path.
+pub fn update_codefile_hash_and_mtime(
+    db: &dyn LoomDb,
+    id: &str,
+    hash: &str,
+    mtime: &str,
+) -> Result<()> {
+    db.execute(&format!(
+        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{h} = '{}', cf.last_modified = '{}'",
+        esc(id), esc(hash), esc(mtime),
+        h = crate::db::schema::prop::CONTENT_HASH,
+    ))?;
+    Ok(())
+}
+
 /// Store the statically-extracted import list (JSON array of repo-relative
 /// paths) on a CodeFile — written by `loom sync`, read by smells/discovery.
 pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports_json: &str) -> Result<()> {
@@ -57,18 +74,12 @@ pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports_json: &str) ->
     Ok(())
 }
 
-pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<bool> {
-    let check = db.execute(&format!(
-        "MATCH (cf:CodeFile {{id: '{}'}}) RETURN cf.id", esc(id)
-    ))?;
-    if check.rows().is_empty() {
-        return Ok(false);
-    }
+pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<()> {
     db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.last_modified = '{}'",
         esc(id), esc(mtime)
     ))?;
-    Ok(true)
+    Ok(())
 }
 
 /// Resolve a CodeFile by id or by exact path (paths are unique — `codefile add`

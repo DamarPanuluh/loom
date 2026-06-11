@@ -52,14 +52,6 @@ pub fn run(printer: &Printer) -> Result<()> {
     let failing_governs = list_all_failing_governs(&db)?;
     let recent         = recent_passing(&db, 10)?;
 
-    let report = FullReport {
-        status:                      status.clone(),
-        top_intents_by_centrality:   top_intents.clone(),
-        intents_without_validations: intents_no_val.clone(),
-        failing_governs:             failing_governs.clone(),
-        recent_passing:              recent.clone(),
-        edge_counts_by_status:       by_status.clone(),
-    };
 
     let gaps = completeness_gaps(&db)?;
     let vc = vertical_completeness(&db)?;
@@ -71,6 +63,14 @@ pub fn run(printer: &Printer) -> Result<()> {
         .collect();
 
     if printer.json {
+        let report = FullReport {
+            status,
+            top_intents_by_centrality:   top_intents,
+            intents_without_validations: intents_no_val,
+            failing_governs,
+            recent_passing:              recent,
+            edge_counts_by_status:       by_status,
+        };
         let mut v = serde_json::to_value(&report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("completeness_gaps".to_string(), serde_json::to_value(&gaps)?);

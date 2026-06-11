@@ -16,15 +16,8 @@ use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
 
-use super::codefile::list_codefiles;
-use super::governs::list_all_governs;
-use super::hierarchy::list_all_hierarchy;
-use super::implements::list_all_implements;
-use super::intent::list_active_intents;
 use super::note::list_notes;
-use super::relates_to::list_relates_to;
-use super::rule::list_rules;
-
+use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
 pub const TWIN_SIMILARITY: f64 = 0.4;
@@ -58,19 +51,6 @@ pub struct Smell {
     pub remedy: String,
 }
 
-/// Tokenize a name+description into a normalized word set for overlap checks.
-pub fn tokens(text: &str) -> HashSet<String> {
-    const STOP: &[&str] = &[
-        "the", "and", "via", "with", "for", "that", "this", "from", "into",
-        "are", "its", "all", "one", "not", "has", "have", "can", "per",
-    ];
-    text.to_lowercase()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| w.len() >= 3 && !STOP.contains(w))
-        .map(str::to_string)
-        .collect()
-}
-
 /// Jaccard similarity of two token sets (0.0 when either is empty).
 pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     if a.is_empty() || b.is_empty() {
@@ -84,34 +64,36 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
 /// Compute every smell, sorted by score (descending) within insertion order of
 /// kind. Callers truncate for display.
 pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
-    let intents = list_active_intents(db)?;
-    let implements = list_all_implements(db)?;
-    let hierarchy = list_all_hierarchy(db)?;
-    let relates = list_relates_to(db, None)?;
-    let rules = list_rules(db)?;
-    let governs = list_all_governs(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let discovery = DiscoverySnapshot::from_query(&snapshot)?;
+    let intents = snapshot.intents.clone();
+    let implements = snapshot.implements.clone();
+    let hierarchy = snapshot.hierarchy.clone();
+    let relates = snapshot.relates.clone();
+    let rules = snapshot.rules.clone();
+    let governs = snapshot.governs.clone();
 
     // Lookup structures.
-    let mut linked: HashSet<(String, String)> = HashSet::new();
-    for e in &relates {
-        linked.insert((e.from_id.clone(), e.to_id.clone()));
-        linked.insert((e.to_id.clone(), e.from_id.clone()));
-    }
-    for (p, c) in &hierarchy {
-        linked.insert((p.clone(), c.clone()));
-        linked.insert((c.clone(), p.clone()));
-    }
+    let linked: HashSet<(&str, &str)> = discovery
+        .linked
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
     let mut files_of: HashMap<&str, HashSet<&str>> = HashMap::new();
-    let mut intents_on_file: HashMap<&str, Vec<&str>> = HashMap::new();
+    let intents_on_file: HashMap<&str, Vec<&str>> = discovery
+        .intents_on_file
+        .iter()
+        .map(|(path, ids)| (path.as_str(), ids.iter().map(|id| id.as_str()).collect()))
+        .collect();
     for im in &implements {
         files_of.entry(im.intent_id.as_str()).or_default().insert(im.codefile_path.as_str());
-        intents_on_file.entry(im.codefile_path.as_str()).or_default().push(im.intent_id.as_str());
     }
     let name_of: HashMap<&str, &str> =
         intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
-    let toks: HashMap<&str, HashSet<String>> = intents
+    let toks: HashMap<&str, HashSet<String>> = discovery
+        .tokens_by_intent
         .iter()
-        .map(|i| (i.id.as_str(), tokens(&format!("{} {}", i.name, i.description))))
+        .map(|(id, toks)| (id.as_str(), toks.clone()))
         .collect();
 
     let mut smells: Vec<Smell> = Vec::new();
@@ -125,7 +107,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             if a.abstraction_level != b.abstraction_level
                 || a.status == "deprecated"
                 || b.status == "deprecated"
-                || linked.contains(&(a.id.clone(), b.id.clone()))
+                || linked.contains(&(a.id.as_str(), b.id.as_str()))
             {
                 continue;
             }
@@ -158,7 +140,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     for i in 0..intents.len() {
         for j in (i + 1)..intents.len() {
             let (a, b) = (&intents[i], &intents[j]);
-            if linked.contains(&(a.id.clone(), b.id.clone())) {
+            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
                 continue;
             }
             let (Some(fa), Some(fb)) = (files_of.get(a.id.as_str()), files_of.get(b.id.as_str()))
@@ -266,9 +248,9 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //    the evidence is honest is the *encouraged* strategy — without
     //    inheritance this smell punished it by re-flagging every leaf, inviting
     //    a busywork sweep of vacuous per-leaf verdicts.
-    let considered: HashSet<(String, String)> = governs
+    let considered: HashSet<(&str, &str)> = governs
         .iter()
-        .map(|g| (g.rule_id.clone(), g.intent_id.clone()))
+        .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
     let parent_of: HashMap<&str, &str> = hierarchy
         .iter()
@@ -283,7 +265,7 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
             if !visited.insert(id) {
                 return false;
             }
-            if considered.contains(&(rule_id.to_string(), id.to_string())) {
+            if considered.contains(&(rule_id, id)) {
                 return true;
             }
             cur = parent_of.get(id).copied();
@@ -329,15 +311,15 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     //    because it is grounded in the code itself, not in testimony.
     {
         let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
-        for cf in list_codefiles(db)? {
+        for cf in &snapshot.codefiles {
+            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
             let imports: Vec<String> = serde_json::from_str(&cf.imports)
                 .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
-            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
             for target in &imports {
                 let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
                 for a in owners_a {
                     for b in owners_b {
-                        if a == b || linked.contains(&(a.to_string(), b.to_string())) {
+                        if a == b || linked.contains(&(*a, *b)) {
                             continue;
                         }
                         let key = if a < b {
@@ -387,22 +369,22 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
     {
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
         let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
-        for n in list_notes(db, None, Some("transition"))? {
-            if n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change") {
-                let key = (n.target_kind.clone(), n.target_id.clone());
+        let mut last_decision: HashMap<(String, String), String> = HashMap::new();
+        for n in list_notes(db, None, None)? {
+            let key = (n.target_kind.clone(), n.target_id.clone());
+            if n.kind == "transition"
+                && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
+            {
                 *trouble.entry(key.clone()).or_insert(0) += 1;
                 let e = last_trouble.entry(key).or_default();
                 if n.created_at > *e {
-                    *e = n.created_at.clone();
+                    *e = n.created_at;
                 }
-            }
-        }
-        let mut last_decision: HashMap<(String, String), String> = HashMap::new();
-        for n in list_notes(db, None, Some("decision"))? {
-            let key = (n.target_kind.clone(), n.target_id.clone());
-            let e = last_decision.entry(key).or_default();
-            if n.created_at > *e {
-                *e = n.created_at.clone();
+            } else if n.kind == "decision" {
+                let e = last_decision.entry(key).or_default();
+                if n.created_at > *e {
+                    *e = n.created_at;
+                }
             }
         }
         let edge_label: HashMap<&str, String> = {

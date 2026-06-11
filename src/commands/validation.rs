@@ -5,8 +5,8 @@ use crate::cli::ValidationCmd;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     delete_validation, get_validation, insert_validates, insert_validation, list_validations,
-    resolve_validation, set_validates_status_for_validation, update_validation_definition,
-    update_validation_result,
+    resolve_validation, set_hypothesis_status, set_validates_status_for_validation,
+    update_validation_definition, update_validation_result,
 };
 use crate::output::Printer;
 use crate::types::{Validation, ValidationResult};
@@ -82,7 +82,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
         }
 
         ValidationCmd::Mark { id, result, evidence, reason } => {
-            crate::gate::acting_in_lane(
+            let marker = crate::gate::acting_in_lane(
                 "mark a validation result",
                 &[crate::db::schema::role::VALIDATOR],
                 None,
@@ -111,6 +111,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 ev.to_string()
             };
             let vid = resolve_validation(&db, &id)?;
+            let validation = get_validation(&db, &vid)?;
             let now = chrono::Utc::now().to_rfc3339();
             update_validation_result(&db, &vid, &res.to_string(), &now)?;
             // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
@@ -123,6 +124,17 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 _ => "uninspected",
             };
             let n = set_validates_status_for_validation(&db, &vid, status, &edge_note)?;
+            if res == ValidationResult::Passed {
+                if let Some(v) = &validation {
+                    if let Some(hid) = v
+                        .description
+                        .lines()
+                        .find_map(|line| line.strip_prefix("hypothesis:"))
+                    {
+                        set_hypothesis_status(&db, hid.trim(), "confirmed", &marker, &now)?;
+                    }
+                }
+            }
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "validation_id": vid, "result": res.to_string(),

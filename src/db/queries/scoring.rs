@@ -1,6 +1,6 @@
 //! Priority scoring and discovery-candidate selection for `loom next`.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashMap;
 
 use crate::db::LoomDb;
@@ -11,10 +11,7 @@ use super::hierarchy::list_all_hierarchy;
 use super::intent::list_active_intents;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, str_val};
-use super::rule::list_rules;
-use super::validates::list_all_validates;
-use super::validation::list_validations;
-
+use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 /// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan
 /// plus one node scan, merged in Rust. Two deliberate exclusions:
 /// - `independent` edges: a VERIFIED ABSENCE of relationship gives closure to
@@ -137,6 +134,60 @@ pub fn scored_candidates_with_degrees(
 
 /// A build work item: the intent, its priority, and whether it is a non-leaf
 /// whose children are all implemented (a roll-up, not a code-writing task).
+
+pub fn scored_candidates_from_snapshot(
+    snapshot: &QuerySnapshot,
+    mode: &str,
+) -> Vec<(RelatesTo, f64)> {
+    let mut candidates: Vec<RelatesTo> = snapshot
+        .relates
+        .iter()
+        .filter(|edge| match mode {
+            "fix" => matches!(edge.inspection_status.as_str(), "failing" | "needs_reverification"),
+            _ => edge.inspection_status == "uninspected",
+        })
+        .cloned()
+        .collect();
+
+    let mut seen = std::collections::HashSet::new();
+    candidates.retain(|e| seen.insert(e.id.clone()));
+
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    candidates.retain(|e| active.contains(e.from_id.as_str()) && active.contains(e.to_id.as_str()));
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+
+    let now = chrono::Utc::now();
+    let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
+    for edge in candidates {
+        let deg_a = *snapshot.degrees.get(&edge.from_id).unwrap_or(&0);
+        let deg_b = *snapshot.degrees.get(&edge.to_id).unwrap_or(&0);
+        let status: InspectionStatus = edge
+            .inspection_status
+            .parse()
+            .unwrap_or(InspectionStatus::Uninspected);
+        let urgency = status.urgency();
+        let age_penalty = if edge.last_inspected.is_empty() {
+            0.0
+        } else if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&edge.last_inspected) {
+            let parsed_utc = parsed.with_timezone(&chrono::Utc);
+            let days = now.signed_duration_since(parsed_utc).num_days() as f64;
+            days * 0.05
+        } else {
+            0.0
+        };
+        let score = deg_a as f64 + deg_b as f64 + urgency - age_penalty;
+        scored.push((edge, score));
+    }
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    scored
+}
 #[derive(Debug, Clone)]
 pub struct BuildCandidate {
     pub intent: Intent,
@@ -156,6 +207,13 @@ pub struct BuildCandidate {
 /// parent surfaces as a roll-up. `needs_change` intents always surface
 /// (component-level refactors are legitimate work at any altitude).
 pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
+    build_candidates_with_degrees(db, None)
+}
+
+pub fn build_candidates_with_degrees(
+    db: &dyn LoomDb,
+    prebuilt_degrees: Option<&HashMap<String, i64>>,
+) -> Result<Vec<BuildCandidate>> {
     let intents = list_active_intents(db)?;
     let lifecycle_of: HashMap<&str, &str> = intents
         .iter()
@@ -196,7 +254,13 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
     }
 
     // One bulk degree query instead of 2×N per-intent queries.
-    let degrees = all_intent_degrees(db)?;
+    let owned;
+    let degrees = if let Some(d) = prebuilt_degrees {
+        d
+    } else {
+        owned = all_intent_degrees(db)?;
+        &owned
+    };
 
     let mut scored: Vec<BuildCandidate> = pending
         .into_iter()
@@ -211,6 +275,50 @@ pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
 
 /// Normative-plane coverage: how much of the rule × intent-with-code grid has
 /// actually been measured. HIERARCHY-AWARE like the `unmeasured_intents` smell —
+
+pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCandidate> {
+    let lifecycle_of: HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
+        .collect();
+    let mut children: HashMap<String, Vec<String>> = HashMap::new();
+    for (p, c) in &snapshot.hierarchy {
+        children.entry(p.clone()).or_default().push(c.clone());
+    }
+    let mut pending: Vec<(&Intent, f64, bool)> = Vec::new();
+    for intent in &snapshot.intents {
+        let urgency = match intent.lifecycle.as_str() {
+            "needs_change" => 4.0,
+            "planned" => 2.0,
+            _ => continue,
+        };
+        let kids = children.get(&intent.id);
+        let mut rollup = false;
+        if intent.lifecycle == "planned" {
+            if let Some(kids) = kids {
+                let pending_child = kids.iter().any(|c| {
+                    matches!(lifecycle_of.get(c.as_str()), Some(&"planned") | Some(&"needs_change"))
+                });
+                if pending_child {
+                    continue;
+                }
+                rollup = true;
+            }
+        }
+        pending.push((intent, urgency, rollup));
+    }
+    let mut scored: Vec<BuildCandidate> = pending
+        .into_iter()
+        .map(|(intent, urgency, rollup)| BuildCandidate {
+            intent: intent.clone(),
+            score: *snapshot.degrees.get(&intent.id).unwrap_or(&0) as f64 + urgency,
+            rollup,
+        })
+        .collect();
+    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored
+}
 /// a verdict on a component covers its descendants (measuring at the highest
 /// honest altitude is the encouraged strategy, never punished).
 pub struct NormativeCoverage {
@@ -245,9 +353,22 @@ pub enum ReviewCandidate {
 }
 
 pub fn review_candidates(db: &dyn LoomDb) -> Result<Vec<(ReviewCandidate, f64)>> {
+    review_candidates_with_degrees(db, None)
+}
+
+pub fn review_candidates_with_degrees(
+    db: &dyn LoomDb,
+    prebuilt_degrees: Option<&HashMap<String, i64>>,
+) -> Result<Vec<(ReviewCandidate, f64)>> {
     let active: std::collections::HashSet<String> =
         list_active_intents(db)?.into_iter().map(|i| i.id).collect();
-    let degrees = all_intent_degrees(db)?;
+    let owned;
+    let degrees = if let Some(d) = prebuilt_degrees {
+        d
+    } else {
+        owned = all_intent_degrees(db)?;
+        &owned
+    };
     let needs_review = |status: &str, confidence: f64| {
         matches!(status, "passing" | "failing" | "independent")
             && confidence > 0.0
@@ -280,25 +401,62 @@ pub fn review_candidates(db: &dyn LoomDb) -> Result<Vec<(ReviewCandidate, f64)>>
 }
 
 pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
-    let intents = list_active_intents(db)?;
-    let rules = list_rules(db)?;
-    let governs = list_all_governs(db)?;
-    let hierarchy = list_all_hierarchy(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    Ok(normative_coverage_from_snapshot(&snapshot))
+}
 
-    let with_code: std::collections::HashSet<String> =
-        super::implements::intents_with_implements(db)?;
-    let candidates: Vec<&Intent> = intents
+pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewCandidate, f64)> {
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let needs_review = |status: &str, confidence: f64| {
+        matches!(status, "passing" | "failing" | "independent")
+            && confidence > 0.0
+            && confidence < REVIEW_CONFIDENCE
+    };
+    let mut scored: Vec<(ReviewCandidate, f64)> = Vec::new();
+    for edge in &snapshot.relates {
+        if !needs_review(&edge.inspection_status, edge.confidence)
+            || !active.contains(edge.from_id.as_str())
+            || !active.contains(edge.to_id.as_str())
+        {
+            continue;
+        }
+        let deg = (*snapshot.degrees.get(&edge.from_id).unwrap_or(&0)
+            + *snapshot.degrees.get(&edge.to_id).unwrap_or(&0)) as f64;
+        let score = (1.0 - edge.confidence) * (deg + 1.0);
+        scored.push((ReviewCandidate::RelatesTo(edge.clone()), score));
+    }
+    for edge in &snapshot.governs {
+        if !needs_review(&edge.inspection_status, edge.confidence)
+            || !active.contains(edge.intent_id.as_str())
+        {
+            continue;
+        }
+        let deg = *snapshot.degrees.get(&edge.intent_id).unwrap_or(&0) as f64;
+        let score = (1.0 - edge.confidence) * (deg + 1.0);
+        scored.push((ReviewCandidate::Governs(edge.clone()), score));
+    }
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    scored
+}
+
+pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCoverage {
+    let candidates: Vec<&Intent> = snapshot
+        .intents
         .iter()
-        .filter(|i| i.status != "deprecated" && with_code.contains(&i.id))
+        .filter(|i| i.status != "deprecated" && snapshot.with_code.contains(&i.id))
         .collect();
 
-    let considered: std::collections::HashSet<(String, String)> = governs
+    let considered: std::collections::HashSet<(&str, &str)> = snapshot
+        .governs
         .iter()
-        .map(|g| (g.rule_id.clone(), g.intent_id.clone()))
+        .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
-    let parent_of: HashMap<&str, &str> =
-        hierarchy.iter().map(|(p, c)| (c.as_str(), p.as_str())).collect();
-    // Considered directly OR via any ancestor's verdict on the same rule.
+    let parent_of: HashMap<&str, &str> = snapshot
+        .hierarchy
+        .iter()
+        .map(|(p, c)| (c.as_str(), p.as_str()))
+        .collect();
     let considered_up = |rule_id: &str, intent_id: &str| -> bool {
         let mut cur = Some(intent_id);
         let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -306,7 +464,7 @@ pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
             if !visited.insert(id) {
                 return false;
             }
-            if considered.contains(&(rule_id.to_string(), id.to_string())) {
+            if considered.contains(&(rule_id, id)) {
                 return true;
             }
             cur = parent_of.get(id).copied();
@@ -314,23 +472,21 @@ pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
         false
     };
 
-    let total_pairs = rules.len() as i64 * candidates.len() as i64;
+    let total_pairs = snapshot.rules.len() as i64 * candidates.len() as i64;
     let mut measured_pairs = 0i64;
     let mut queue: Vec<(QualityRule, Intent)> = Vec::new();
-    for r in &rules {
+    for rule in &snapshot.rules {
         let unmeasured: std::collections::HashSet<&str> = candidates
             .iter()
-            .filter(|i| !considered_up(&r.id, &i.id))
+            .filter(|i| !considered_up(&rule.id, &i.id))
             .map(|i| i.id.as_str())
             .collect();
         measured_pairs += candidates.len() as i64 - unmeasured.len() as i64;
-        // Queue only the TOPS of unmeasured subtrees: if any ancestor is also
-        // unmeasured-with-code, a verdict there covers this one — skip it.
-        for i in &candidates {
-            if !unmeasured.contains(i.id.as_str()) {
+        for intent in &candidates {
+            if !unmeasured.contains(intent.id.as_str()) {
                 continue;
             }
-            let mut cur = parent_of.get(i.id.as_str()).copied();
+            let mut cur = parent_of.get(intent.id.as_str()).copied();
             let mut shadowed = false;
             let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
             while let Some(id) = cur {
@@ -344,16 +500,16 @@ pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
                 cur = parent_of.get(id).copied();
             }
             if !shadowed {
-                queue.push(((*r).clone(), (*i).clone()));
+                queue.push((rule.clone(), (*intent).clone()));
             }
         }
     }
-    Ok(NormativeCoverage {
+    NormativeCoverage {
         intents_with_code: candidates.len() as i64,
         total_pairs,
         measured_pairs,
         queue,
-    })
+    }
 }
 
 /// GOVERNS edges needing the quality agent's attention — uninspected (applied
@@ -366,9 +522,22 @@ pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
 /// verdict` creates the edge with the verdict (independent = measured, doesn't
 /// apply; a verdict at component altitude covers descendants).
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
+    quality_candidates_with_degrees(db, None)
+}
+
+pub fn quality_candidates_with_degrees(
+    db: &dyn LoomDb,
+    prebuilt_degrees: Option<&HashMap<String, i64>>,
+) -> Result<Vec<(Governs, f64)>> {
     // Bulk-load all degrees once; both the GOVERNS loop and the normative-coverage
     // queue need degrees, so this replaces up to 2×(governs + queue) queries.
-    let degrees = all_intent_degrees(db)?;
+    let owned;
+    let degrees = if let Some(d) = prebuilt_degrees {
+        d
+    } else {
+        owned = all_intent_degrees(db)?;
+        &owned
+    };
     let active: std::collections::HashSet<String> =
         list_active_intents(db)?.into_iter().map(|i| i.id).collect();
 
@@ -420,6 +589,47 @@ pub struct ValidateCandidate {
     pub reason: String,
 }
 
+pub fn quality_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Governs, f64)> {
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let mut scored: Vec<(Governs, f64)> = Vec::new();
+    for edge in &snapshot.governs {
+        if !active.contains(edge.intent_id.as_str()) {
+            continue;
+        }
+        let urgency = match edge.inspection_status.as_str() {
+            "failing" => 4.0,
+            "needs_reverification" => 3.0,
+            "uninspected" => 2.0,
+            _ => continue,
+        };
+        let deg = *snapshot.degrees.get(&edge.intent_id).unwrap_or(&0);
+        scored.push((edge.clone(), deg as f64 + urgency));
+    }
+    for (rule, intent) in normative_coverage_from_snapshot(snapshot).queue {
+        let deg = *snapshot.degrees.get(&intent.id).unwrap_or(&0);
+        scored.push((
+            Governs {
+                id: String::new(),
+                rule_id: rule.id,
+                intent_id: intent.id.clone(),
+                rule_name: rule.name,
+                intent_name: intent.name.clone(),
+                inspection_status: "unmeasured".to_string(),
+                criterion: String::new(),
+                confidence: 0.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                notes: format!("detection: {}", rule.detection_logic),
+            },
+            deg as f64 + 1.0,
+        ));
+    }
+    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    scored
+}
+
 /// The validator's SELECTION — which intents need attention, with urgency and
 /// why, before any centrality scoring:
 /// - a linked validation failed (urgency 4)
@@ -435,34 +645,34 @@ pub struct ValidateCandidate {
 /// disagree the way edge-state counts and last_result-based selection once
 /// did (phase=validate with an empty validator queue).
 pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>> {
-    let intents = list_active_intents(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    Ok(validate_selection_from_snapshot(&snapshot))
+}
+
+pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent, f64, String)> {
     let is_parent: std::collections::HashSet<String> =
-        list_all_hierarchy(db)?.into_iter().map(|(p, _)| p).collect();
+        snapshot.hierarchy.iter().map(|(p, _)| p.clone()).collect();
 
-    // Bulk load: all VALIDATES edges + all Validation nodes — avoid N per-intent queries.
-    let all_edges = list_all_validates(db)?;
-    let all_validations = list_validations(db)?;
-
-    // Index: intent_id → Vec<ValidatesEdge>
     let mut edges_by_intent: HashMap<&str, Vec<&ValidatesEdge>> = HashMap::new();
-    for e in &all_edges {
-        edges_by_intent.entry(e.intent_id.as_str()).or_default().push(e);
+    for edge in &snapshot.validates {
+        edges_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
     }
-    // Index: validation_id → Validation
     let val_by_id: HashMap<&str, &Validation> =
-        all_validations.iter().map(|v| (v.id.as_str(), v)).collect();
+        snapshot.validations.iter().map(|v| (v.id.as_str(), v)).collect();
 
     let mut selected: Vec<(Intent, f64, String)> = Vec::new();
-    for i in intents {
-        let edges = edges_by_intent.get(i.id.as_str()).map(|v| v.as_slice()).unwrap_or(&[]);
+    for intent in &snapshot.intents {
+        let edges = edges_by_intent
+            .get(intent.id.as_str())
+            .map(|v| v.as_slice())
+            .unwrap_or(&[]);
         let (urgency, reason) = if edges.is_empty() {
-            if i.lifecycle == "implemented" && !is_parent.contains(&i.id) {
+            if intent.lifecycle == "implemented" && !is_parent.contains(&intent.id) {
                 (3.0, "no proof: this implemented leaf intent has no validations".to_string())
             } else {
                 continue;
             }
         } else {
-            // Resolve validation objects from the pre-loaded map.
             let validations: Vec<&Validation> = edges
                 .iter()
                 .filter_map(|e| val_by_id.get(e.validation_id.as_str()).copied())
@@ -477,28 +687,37 @@ pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>>
             {
                 (2.0, "linked validations have not been run (or were invalidated by a code change)".to_string())
             } else {
-                // All proofs green — or `blocked`, which is deliberately NOT
-                // queue work: it's a recorded "can't run yet" with a reason
-                // (visible in `loom validation list` / `loom report`), and
-                // surfacing it here would nag about work nobody can do.
                 continue;
             }
         };
-        selected.push((i, urgency, reason));
+        selected.push((intent.clone(), urgency, reason));
     }
-    Ok(selected)
+    selected
 }
 
 /// Intents with weak or absent proof, scored by centrality + urgency — the
 /// worklist for `loom next --mode validate`. Selection logic lives in
 /// `validate_selection` (shared with the compass).
 pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
+    validate_candidates_with_degrees(db, None)
+}
+
+pub fn validate_candidates_with_degrees(
+    db: &dyn LoomDb,
+    prebuilt_degrees: Option<&HashMap<String, i64>>,
+) -> Result<Vec<ValidateCandidate>> {
     let selected = validate_selection(db)?;
     if selected.is_empty() {
         return Ok(Vec::new());
     }
     // One bulk degree query instead of 2×N per-intent queries.
-    let degrees = all_intent_degrees(db)?;
+    let owned;
+    let degrees = if let Some(d) = prebuilt_degrees {
+        d
+    } else {
+        owned = all_intent_degrees(db)?;
+        &owned
+    };
     let mut scored: Vec<ValidateCandidate> = selected
         .into_iter()
         .map(|(intent, urgency, reason)| {
@@ -510,24 +729,50 @@ pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
     Ok(scored)
 }
 
+
+pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<ValidateCandidate> {
+    let selected = validate_selection_from_snapshot(snapshot);
+    let mut scored: Vec<ValidateCandidate> = selected
+        .into_iter()
+        .map(|(intent, urgency, reason)| ValidateCandidate {
+            score: *snapshot.degrees.get(&intent.id).unwrap_or(&0) as f64 + urgency,
+            intent,
+            reason,
+        })
+        .collect();
+    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored
+}
+
 /// Count of intent pairs with no RELATES_TO edge (and no HIERARCHY link) —
 /// arithmetic, not enumerative: C(n,2) minus linked unordered pairs. This is
 /// what `graph_state` needs on every pulse; building the full scored O(N²)
 /// list just to .len() it was an iso5055-perf-no-redundant-work violation
 /// found by loom measuring itself.
+#[cfg(test)]
 pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
-    let n = list_active_intents(db)?.len() as i64;
-    let mut linked: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
-    let key = |a: &str, b: &str| {
-        if a < b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
-    };
-    for e in list_relates_to(db, None)? {
+    let intents = list_active_intents(db)?;
+    let relates = list_relates_to(db, None)?;
+    let hierarchy = list_all_hierarchy(db)?;
+    Ok(count_unexplored_pairs_from(intents.len() as i64, &relates, &hierarchy))
+}
+
+pub fn count_unexplored_pairs_from(
+    intent_count: i64,
+    relates: &[RelatesTo],
+    hierarchy: &[(String, String)],
+) -> i64 {
+    let mut linked: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
+    fn key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
+        if a < b { (a, b) } else { (b, a) }
+    }
+    for e in relates {
         linked.insert(key(&e.from_id, &e.to_id));
     }
-    for (p, c) in list_all_hierarchy(db)? {
-        linked.insert(key(&p, &c));
+    for (p, c) in hierarchy {
+        linked.insert(key(p, c));
     }
-    Ok((n * (n - 1) / 2 - linked.len() as i64).max(0))
+    (intent_count * (intent_count - 1) / 2 - linked.len() as i64).max(0)
 }
 
 /// Intent pairs that have NO RELATES_TO edge between them yet, returned as
@@ -538,76 +783,31 @@ pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
 /// grinding a flat N×N grid. The why travels in the synthetic edge's `notes`
 /// so `loom next` can display it.
 pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>> {
-    use super::smells::{jaccard, tokens};
+    use super::smells::jaccard;
 
-    let intents = list_active_intents(db)?;
-    let edges = list_relates_to(db, None)?;
-
-    // Suspicion inputs, computed once per intent.
-    let mut files_of: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
-    for im in super::implements::list_all_implements(db)? {
-        files_of.entry(im.intent_id).or_default().insert(im.codefile_path);
-    }
-    let toks: HashMap<&str, std::collections::HashSet<String>> = intents
-        .iter()
-        .map(|i| (i.id.as_str(), tokens(&format!("{} {}", i.name, i.description))))
-        .collect();
-    // file → file static import links (extracted by `loom sync`): the physical
-    // evidence that two intents' code actually touches.
-    let mut import_links: std::collections::HashSet<(String, String)> =
-        std::collections::HashSet::new();
-    for cf in super::codefile::list_codefiles(db)? {
-        let imports: Vec<String> = serde_json::from_str(&cf.imports)
-            .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
-        for t in imports {
-            import_links.insert((cf.path.clone(), t.clone()));
-            import_links.insert((t, cf.path.clone()));
-        }
-    }
-
-    // Mark every ordered direction that already has an edge, so an existing
-    // a→b edge also suppresses the b→a pair (RELATES_TO is conceptually
-    // symmetric for discovery purposes).
-    let mut linked: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
-    for e in &edges {
-        linked.insert((e.from_id.clone(), e.to_id.clone()));
-        linked.insert((e.to_id.clone(), e.from_id.clone()));
-    }
-    // Pairs already connected by HIERARCHY are related by containment — don't
-    // surface them as "unexplored" RELATES_TO (that's redundant noise).
-    let hier = db.execute("MATCH (a:Intent)-[e:HIERARCHY]->(b:Intent) RETURN a.id AS p, b.id AS c")?;
-    let hcols = col_map(&hier);
-    for row in hier.rows() {
-        let p = str_val(get(row, &hcols, "p"));
-        let c = str_val(get(row, &hcols, "c"));
-        linked.insert((p.clone(), c.clone()));
-        linked.insert((c, p));
-    }
-
-    // Bulk-load all degrees once — N intents costs 2 queries, not 2×N.
-    let degrees = all_intent_degrees(db)?;
-
+    let snapshot = QuerySnapshot::load(db)?;
+    let discovery = DiscoverySnapshot::from_query(&snapshot)?;
     let base_urgency = InspectionStatus::Uninspected.urgency();
     let empty_files = std::collections::HashSet::new();
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
-    for i in 0..intents.len() {
-        for j in (i + 1)..intents.len() {
-            let a = &intents[i];
-            let b = &intents[j];
-            if linked.contains(&(a.id.clone(), b.id.clone())) {
+
+    for i in 0..snapshot.intents.len() {
+        for j in (i + 1)..snapshot.intents.len() {
+            let a = &snapshot.intents[i];
+            let b = &snapshot.intents[j];
+            if discovery.linked.contains(&(a.id.clone(), b.id.clone())) {
                 continue;
             }
 
-            // Suspicion bonus + human-readable why.
-            let fa = files_of.get(&a.id).unwrap_or(&empty_files);
-            let fb = files_of.get(&b.id).unwrap_or(&empty_files);
+            let fa = discovery.files_of.get(&a.id).unwrap_or(&empty_files);
+            let fb = discovery.files_of.get(&b.id).unwrap_or(&empty_files);
             let shared = fa.intersection(fb).count();
-            let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
+            let sim = jaccard(&discovery.tokens_by_intent[&a.id], &discovery.tokens_by_intent[&b.id]);
             let same_domain = !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown";
             let imports = fa
                 .iter()
-                .flat_map(|x| fb.iter().map(move |y| (x.clone(), y.clone())))
-                .filter(|p| import_links.contains(p))
+                .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+                .filter(|p| discovery.import_links.contains(p))
                 .count();
             let mut why: Vec<String> = Vec::new();
             if imports > 0 {
@@ -627,8 +827,8 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
                 + 4.0 * sim
                 + if same_domain { 1.0 } else { 0.0 };
 
-            let score = *degrees.get(&a.id).unwrap_or(&0) as f64
-                + *degrees.get(&b.id).unwrap_or(&0) as f64
+            let score = *snapshot.degrees.get(&a.id).unwrap_or(&0) as f64
+                + *snapshot.degrees.get(&b.id).unwrap_or(&0) as f64
                 + base_urgency
                 + suspicion;
             scored.push((

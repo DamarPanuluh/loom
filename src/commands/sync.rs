@@ -5,10 +5,10 @@ use std::path::Path;
 
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
-    edges_for_intent, flag_governs_for_intent, intent_ids_implementing_codefile,
-    invalidate_validations_for_codefile, list_all_implements, list_codefiles,
-    record_sync_flip, set_last_synced, update_codefile_hash, update_codefile_imports,
-    update_codefile_mtime,
+    invalidate_validations_for_intents_with_indexes, list_all_governs, list_all_implements,
+    list_all_targets, list_all_validates, list_codefiles, list_relates_to, list_validations,
+    record_sync_flip, set_last_synced, update_codefile_hash, update_codefile_hash_and_mtime,
+    update_codefile_imports, update_codefile_mtime,
 };
 use crate::db::schema::esc;
 use crate::output::Printer;
@@ -29,6 +29,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
 
     let mut files_changed = 0usize;
+    let mut targets_flagged = 0usize;
     let mut relates_to_flagged = 0usize;
     let mut governs_flagged = 0usize;
     let mut validations_invalidated = 0usize;
@@ -36,6 +37,45 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut missing_files: Vec<String> = Vec::new();
     let mut text_contents: HashMap<String, String> = HashMap::new();
     let mut non_utf8_files: HashSet<String> = HashSet::new();
+    let mut active_intents: Option<HashSet<String>> = None;
+
+    let all_implements = list_all_implements(&db)?;
+    let mut intents_by_codefile: HashMap<&str, Vec<String>> = HashMap::new();
+    for im in &all_implements {
+        intents_by_codefile
+            .entry(im.codefile_id.as_str())
+            .or_default()
+            .push(im.intent_id.clone());
+    }
+    let all_validates = list_all_validates(&db)?;
+    let all_validations = list_validations(&db)?;
+    let mut validates_by_intent: HashMap<&str, Vec<&crate::types::ValidatesEdge>> = HashMap::new();
+    for e in &all_validates {
+        validates_by_intent.entry(e.intent_id.as_str()).or_default().push(e);
+    }
+    let validation_by_id: HashMap<&str, &crate::types::Validation> =
+        all_validations.iter().map(|v| (v.id.as_str(), v)).collect();
+    let mut invalidated_validation_ids: HashSet<String> = HashSet::new();
+
+    let all_relates = list_relates_to(&db, None)?;
+    let mut relates_by_intent: HashMap<&str, Vec<&crate::types::RelatesTo>> = HashMap::new();
+    for edge in &all_relates {
+        relates_by_intent.entry(edge.from_id.as_str()).or_default().push(edge);
+        relates_by_intent.entry(edge.to_id.as_str()).or_default().push(edge);
+    }
+    let all_governs = list_all_governs(&db)?;
+    let mut governs_by_intent: HashMap<&str, Vec<&crate::types::Governs>> = HashMap::new();
+    for edge in &all_governs {
+        governs_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+    }
+    let all_targets = list_all_targets(&db)?;
+    let mut targets_by_intent: HashMap<&str, Vec<&crate::types::TargetsEdge>> = HashMap::new();
+    for edge in &all_targets {
+        targets_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+    }
+    let mut related_edges_flagged: HashSet<String> = HashSet::new();
+    let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
+    let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
 
     for cf in &codefiles {
         // Resolve path relative to the loom project root if not absolute
@@ -103,7 +143,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // Keep the stored fingerprint + mtime current even when nothing
         // propagates (first hash on an upgraded graph, checkout-only churn) —
         // quiet upkeep, not a change.
-        if new_hash != cf.content_hash {
+        let hash_updated = new_hash != cf.content_hash;
+        if hash_updated && !changed {
             update_codefile_hash(&db, &cf.id, &new_hash)?;
         }
         if !changed {
@@ -115,8 +156,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
         files_changed += 1;
 
-        // 1. Update CodeFile.last_modified
-        update_codefile_mtime(&db, &cf.id, &mtime_str)?;
+        // 1. Update CodeFile content fingerprint + last_modified
+        update_codefile_hash_and_mtime(&db, &cf.id, &new_hash, &mtime_str)?;
         changes.push(SyncChange {
             path:        cf.path.clone(),
             codefile_id: cf.id.clone(),
@@ -134,21 +175,53 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         let cause = format!("{} changed", cf.path);
         // Retired intents take no ripple: their claims are history, not live
         // design — flipping them would resurrect work nobody owns.
-        let active: std::collections::HashSet<String> =
-            crate::db::queries::list_active_intents(&db)?.into_iter().map(|i| i.id).collect();
-        let intent_ids = intent_ids_implementing_codefile(&db, &cf.id)?;
+        if active_intents.is_none() {
+            active_intents = Some(
+                crate::db::queries::list_active_intents(&db)?
+                    .into_iter()
+                    .map(|i| i.id)
+                    .collect(),
+            );
+        }
+        let active = active_intents.as_ref().expect("active intents loaded above");
+        let intent_ids = intents_by_codefile.get(cf.id.as_str()).cloned().unwrap_or_default();
         for iid in intent_ids.iter().filter(|i| active.contains(*i)) {
-            let nrv = flag_relates_to_for_intent(&db, iid, &cause, &now)?;
-            relates_to_flagged += nrv;
+            relates_to_flagged += flag_relates_to_for_intent_with_indexes(
+                &db,
+                iid,
+                &cause,
+                &now,
+                &relates_by_intent,
+                &mut related_edges_flagged,
+            )?;
             // A passing quality verdict is a claim about the old code — flip
-            // it to needs_reverification so green is re-earned
-            // (`loom next --mode quality`).
-            governs_flagged += flag_governs_for_intent(&db, iid, &cause, &now)?;
+            // it to needs_reverification so green is re-earned.
+            targets_flagged += flag_targets_for_intent_with_indexes(
+                &db,
+                iid,
+                &cause,
+                &now,
+                &targets_by_intent,
+                &mut targets_edges_flagged_ids,
+            )?;
+            governs_flagged += flag_governs_for_intent_with_indexes(
+                &db,
+                iid,
+                &cause,
+                &now,
+                &governs_by_intent,
+                &mut governs_edges_flagged_ids,
+            )?;
         }
 
         // 3. Invalidate Validation.last_result for those intents
-        let n_val = invalidate_validations_for_codefile(&db, &cf.id)?;
-        validations_invalidated += n_val;
+        validations_invalidated += invalidate_validations_for_intents_with_indexes(
+            &db,
+            &intent_ids,
+            &validates_by_intent,
+            &validation_by_id,
+            &mut invalidated_validation_ids,
+        )?;
     }
 
     // 4. Grounding-truth pass over every file present on disk:
@@ -158,7 +231,6 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     //       a renamed symbol must not leave a grounding silently pointing
     //       at nothing.
     let mut locators_stale: Vec<String> = Vec::new();
-    let all_implements = list_all_implements(&db)?;
     for cf in &codefiles {
         if let Some(content) = text_contents.get(&cf.path) {
             let imports = crate::repo::extract_imports(&base, &cf.path, content);
@@ -207,6 +279,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         files_checked,
         files_changed,
         relates_to_edges_flagged: relates_to_flagged,
+        targets_edges_flagged: targets_flagged,
         governs_edges_flagged: governs_flagged,
         validations_invalidated,
         missing_files,
@@ -222,6 +295,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         println!("  Files changed since last sync: {}", report.files_changed);
         println!("  RELATES_TO edges flagged:      {}", report.relates_to_edges_flagged);
         println!("  GOVERNS verdicts flagged:      {}", report.governs_edges_flagged);
+        println!("  TARGETS edges flagged:         {}", report.targets_edges_flagged);
         println!("  Validations invalidated:       {}", report.validations_invalidated);
         if !report.changes.is_empty() {
             println!();
@@ -263,26 +337,28 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     Ok(())
 }
 
+
 // ---------------------------------------------------------------------------
 // Helper: flag RELATES_TO edges for one intent → needs_reverification
 // Returns count of edges updated.
 // ---------------------------------------------------------------------------
 
-fn flag_relates_to_for_intent(
+fn flag_relates_to_for_intent_with_indexes(
     db: &GrafeoDb,
     intent_id: &str,
     cause: &str,
     now: &str,
+    relates_by_intent: &HashMap<&str, Vec<&crate::types::RelatesTo>>,
+    already_flagged: &mut HashSet<String>,
 ) -> Result<usize> {
-    // Read every RELATES_TO edge touching this intent (node-keyed traversal is
-    // reliable), filter to passing/independent in Rust, then flip each one to
-    // needs_reverification keyed by its endpoints. Filtering or updating a
-    // relationship by its own property in the query is unreliable in grafeo
-    // 0.5.x, so we never do that. Each flip records WHY (the changed file) as
-    // a transition note on the edge — staleness that explains itself.
     let mut count = 0usize;
-    for edge in edges_for_intent(db, intent_id)? {
-        if edge.inspection_status == "passing" || edge.inspection_status == "independent" {
+    let Some(edges) = relates_by_intent.get(intent_id) else {
+        return Ok(0);
+    };
+    for edge in edges {
+        if (edge.inspection_status == "passing" || edge.inspection_status == "independent")
+            && already_flagged.insert(edge.id.clone())
+        {
             db.execute(&format!(
                 "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
                  SET r.inspection_status = 'needs_reverification'",
@@ -293,6 +369,69 @@ fn flag_relates_to_for_intent(
                 db, "edge", &edge.id, &edge.inspection_status,
                 "needs_reverification", cause, now,
             )?;
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+fn flag_governs_for_intent_with_indexes(
+    db: &GrafeoDb,
+    intent_id: &str,
+    cause: &str,
+    now: &str,
+    governs_by_intent: &HashMap<&str, Vec<&crate::types::Governs>>,
+    already_flagged: &mut HashSet<String>,
+) -> Result<usize> {
+    let mut count = 0usize;
+    let Some(edges) = governs_by_intent.get(intent_id) else {
+        return Ok(0);
+    };
+    for edge in edges {
+        if edge.inspection_status == "passing" && already_flagged.insert(edge.id.clone()) {
+            db.execute(&format!(
+                "MATCH (r:QualityRule {{id: '{rid}'}})-[e:GOVERNS]->(i:Intent {{id: '{iid}'}}) \
+                 SET e.inspection_status = 'needs_reverification'",
+                rid = esc(&edge.rule_id),
+                iid = esc(&edge.intent_id),
+            ))?;
+            if !cause.is_empty() {
+                record_sync_flip(
+                    db, "edge", &edge.id, "passing", "needs_reverification", cause, now,
+                )?;
+            }
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
+fn flag_targets_for_intent_with_indexes(
+    db: &GrafeoDb,
+    intent_id: &str,
+    cause: &str,
+    now: &str,
+    targets_by_intent: &HashMap<&str, Vec<&crate::types::TargetsEdge>>,
+    already_flagged: &mut HashSet<String>,
+) -> Result<usize> {
+    let mut count = 0usize;
+    let Some(edges) = targets_by_intent.get(intent_id) else {
+        return Ok(0);
+    };
+    for edge in edges {
+        if edge.inspection_status == "passing" && already_flagged.insert(edge.id.clone()) {
+            db.execute(&format!(
+                "MATCH (h:Hypothesis {{id: '{hid}'}})-[e:TARGETS]->(i:Intent {{id: '{iid}'}}) \
+                 SET e.inspection_status = 'needs_reverification', e.notes = '{notes}'",
+                hid = esc(&edge.hypothesis_id),
+                iid = esc(&edge.intent_id),
+                notes = esc(&format!("stale: {cause}")),
+            ))?;
+            if !cause.is_empty() {
+                record_sync_flip(
+                    db, "edge", &edge.id, "passing", "needs_reverification", cause, now,
+                )?;
+            }
             count += 1;
         }
     }

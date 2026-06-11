@@ -8,27 +8,29 @@ use crate::db::LoomDb;
 use crate::types::{Intent, IntentCentrality};
 
 use super::completeness::vertical_completeness;
-use super::hierarchy::list_hierarchy_for_intent;
-use super::implements::list_implements_for_intent;
+use super::hierarchy::list_all_hierarchy;
+use super::implements::intents_with_implements;
 use super::intent::{intents_without_validations, list_active_intents};
 use super::meta::get_meta;
-use super::relates_to::list_relates_to;
 use super::row::{col_map, get, i64_val, str_val};
-use super::rule::list_rules;
-use super::scoring::{all_intent_degrees, count_unexplored_pairs, normative_coverage, validate_selection};
-
+use super::scoring::{
+    all_intent_degrees, count_unexplored_pairs_from, normative_coverage_from_snapshot,
+    validate_selection_from_snapshot,
+};
+use super::snapshot::QuerySnapshot;
 /// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
 /// confirmed intents, intents with no validation, and feature groups that have a
 /// happy path but no sad/fallback sibling (path-coverage via the `aspect` tag).
 pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
     let mut gaps = Vec::new();
     let intents = list_active_intents(db)?;
+    let with_code = intents_with_implements(db)?;
+    let hierarchy = list_all_hierarchy(db)?;
     let aspect_by_id: HashMap<String, String> =
         intents.iter().map(|i| (i.id.clone(), i.aspect.clone())).collect();
-
     // Confirmed intents not grounded to any code.
     for i in &intents {
-        if i.status == "confirmed" && list_implements_for_intent(db, &i.id)?.is_empty() {
+        if i.status == "confirmed" && !with_code.contains(&i.id) {
             gaps.push(format!(
                 "Intent '{}' is confirmed but not grounded to code (no IMPLEMENTS edge).",
                 i.name
@@ -41,16 +43,19 @@ pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
         gaps.push(format!("Intent '{}' has no validation (no proof it's fulfilled).", i.name));
     }
 
+    let mut children_by_parent: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (parent, child) in &hierarchy {
+        children_by_parent.entry(parent.as_str()).or_default().push(child.as_str());
+    }
+
     // Path coverage: a parent whose children include a happy path but no
     // sad/fallback sibling.
     for parent in &intents {
         let mut child_aspects: std::collections::HashSet<String> = std::collections::HashSet::new();
-        for h in list_hierarchy_for_intent(db, &parent.id)? {
-            if h.parent_id == parent.id {
-                if let Some(a) = aspect_by_id.get(&h.child_id) {
-                    if !a.is_empty() {
-                        child_aspects.insert(a.clone());
-                    }
+        for child_id in children_by_parent.get(parent.id.as_str()).into_iter().flatten() {
+            if let Some(a) = aspect_by_id.get(*child_id) {
+                if !a.is_empty() {
+                    child_aspects.insert(a.clone());
                 }
             }
         }
@@ -169,7 +174,8 @@ fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i6
 pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // Active intents only: retired (deprecated) design is invisible to every
     // computed number here — counts, pair denominators, coverage axes.
-    let all_intents = list_active_intents(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let all_intents = snapshot.intents.clone();
     let intents = all_intents.len() as i64;
     let codefiles = count_codefiles(db)?;
     let validations = count_validations(db)?;
@@ -188,9 +194,18 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // GOVERNS/HIERARCHY are structural (default passing); VALIDATES completeness
     // is surfaced by `loom report`, not the compass. (Counting all edge types
     // here would tell the user to run `loom next` for work it can't action.)
-    let rt_uninspected = list_relates_to(db, Some("uninspected"))?.len() as i64;
-    let rt_failing = list_relates_to(db, Some("failing"))?.len() as i64;
-    let rt_needs_rev = list_relates_to(db, Some("needs_reverification"))?.len() as i64;
+    let all_relates = snapshot.relates.clone();
+    let mut rt_uninspected = 0;
+    let mut rt_failing = 0;
+    let mut rt_needs_rev = 0;
+    for e in &all_relates {
+        match e.inspection_status.as_str() {
+            "uninspected" => rt_uninspected += 1,
+            "failing" => rt_failing += 1,
+            "needs_reverification" => rt_needs_rev += 1,
+            _ => {}
+        }
+    }
 
     // VALIDATES has its own loop (`loom validate`). The compass routes on the
     // validator queue's OWN selection (`validate_selection` — shared verbatim
@@ -198,7 +213,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // two once disagreed (a multi-intent validation's passed run left sibling
     // edges uninspected → phase=validate with an empty queue). Edge counts
     // below feed only the `unresolved` tally.
-    let validate_backlog = validate_selection(db)?;
+    let validate_backlog = validate_selection_from_snapshot(&snapshot);
     let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
     let v_no_proof = validate_backlog.iter().filter(|(_, u, _)| *u >= 3.0 && *u < 4.0).count();
 
@@ -245,7 +260,8 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // hierarchy-linked pairs are excluded). Authoritative, not a heuristic.
     // Arithmetic count — the full scored O(N²) enumeration lives in discovery
     // (`unexplored_pairs_scored`) where the items are actually consumed.
-    let unexplored_pairs = count_unexplored_pairs(db)?;
+    let hierarchy = snapshot.hierarchy.clone();
+    let unexplored_pairs = count_unexplored_pairs_from(intents, &all_relates, &hierarchy);
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
     let needs_change = all_intents.iter().filter(|i| i.lifecycle == "needs_change").count() as i64;
@@ -258,13 +274,12 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
-    let nc = normative_coverage(db)?;
-    let rules_count = list_rules(db)?.len() as i64;
+    let nc = normative_coverage_from_snapshot(&snapshot);
+    let rules_count = snapshot.rules.len() as i64;
 
-    let hierarchy = super::hierarchy::list_all_hierarchy(db)?;
     let is_parent: std::collections::HashSet<&str> =
         hierarchy.iter().map(|(p, _)| p.as_str()).collect();
-    let with_code = super::implements::intents_with_implements(db)?;
+    let with_code = snapshot.with_code.clone();
     let implemented_leaves: Vec<&Intent> = all_intents
         .iter()
         .filter(|i| i.lifecycle == "implemented" && !is_parent.contains(i.id.as_str()))
@@ -282,14 +297,14 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // Explored = inspected RELATES_TO pairs over the candidate grid (C(n,2)
     // minus HIERARCHY-linked pairs — containment isn't a grid cell). Set ops
     // run over EDGES only; the denominator stays arithmetic (no O(N²) walk).
-    let pair_key = |a: &str, b: &str| {
-        if a < b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
-    };
-    let hier_pairs: std::collections::HashSet<(String, String)> =
+    fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
+        if a < b { (a, b) } else { (b, a) }
+    }
+    let hier_pairs: std::collections::HashSet<(&str, &str)> =
         hierarchy.iter().map(|(p, c)| pair_key(p, c)).collect();
-    let mut inspected_pairs: std::collections::HashSet<(String, String)> =
+    let mut inspected_pairs: std::collections::HashSet<(&str, &str)> =
         std::collections::HashSet::new();
-    for e in list_relates_to(db, None)? {
+    for e in &all_relates {
         if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent") {
             let k = pair_key(&e.from_id, &e.to_id);
             if !hier_pairs.contains(&k) {

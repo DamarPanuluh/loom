@@ -117,6 +117,7 @@ pub fn list_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<G
 /// are left alone (they are already open work). A non-empty `cause` (e.g.
 /// "src/db/mod.rs changed") is recorded as a transition note on each flipped
 /// edge, so the staleness explains itself. Returns the count flagged.
+#[cfg(test)]
 pub fn flag_governs_for_intent(
     db: &dyn LoomDb,
     intent_id: &str,

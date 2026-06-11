@@ -391,6 +391,8 @@ pub enum HypothesisStatus {
     /// Decision: converted into planned intents / needs_change marks. Terminal —
     /// from here the ordinary intent machinery owns the work.
     Adopted,
+    /// Adopted work's predicted outcome was verified after implementation.
+    Confirmed,
     /// Decision: not pursuing it (with a recorded why). Terminal.
     Rejected,
 }
@@ -402,6 +404,7 @@ impl std::fmt::Display for HypothesisStatus {
             Self::Supported => "supported",
             Self::Refuted   => "refuted",
             Self::Adopted   => "adopted",
+            Self::Confirmed => "confirmed",
             Self::Rejected  => "rejected",
         };
         write!(f, "{s}")
@@ -416,9 +419,10 @@ impl std::str::FromStr for HypothesisStatus {
             "supported" => Ok(Self::Supported),
             "refuted"   => Ok(Self::Refuted),
             "adopted"   => Ok(Self::Adopted),
+            "confirmed" => Ok(Self::Confirmed),
             "rejected"  => Ok(Self::Rejected),
             other => anyhow::bail!(
-                "Unknown hypothesis status '{}'. Valid: proposed, supported, refuted, adopted, rejected",
+                "Unknown hypothesis status '{}'. Valid: proposed, supported, refuted, adopted, confirmed, rejected",
                 other
             ),
         }
@@ -797,6 +801,9 @@ pub struct SyncReport {
     /// Passing GOVERNS edges flipped to needs_reverification — quality green
     /// must be re-earned after the code it judged changes.
     pub governs_edges_flagged: usize,
+    /// Passing TARGETS edges flipped to needs_reverification — hypothesis
+    /// support must be re-earned after target code changes.
+    pub targets_edges_flagged: usize,
     pub validations_invalidated: usize,
     /// Registered CodeFiles that no longer exist on disk (deleted/renamed).
     /// Phantom files distort coverage — remove them (`loom codefile remove`)
