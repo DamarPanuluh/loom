@@ -786,12 +786,12 @@
         "confidence": 0.85,
         "created_at": "2026-06-09T20:25:22.135720+00:00",
         "criterion": "guide/schema source embeds protocol prose only — no credential, key, token, password, bearer, private-key, or connection-string literal.",
-        "evidence": "Re-inspected final code after hypothesis outcome validation, TARGETS ripple, schema/guide updates, and performance refactors. cargo test passed, release build passed, release schema/guide output is correct, and the hypothesis flow smoke plus both scale benchmarks passed.",
+        "evidence": "re-inspected after the guide teaching-surface addition (hypothesis plane golden rule, refactor playbook step, lane notes, JSON section — text-only change to guide.rs); full suite passes (81 ok)",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.529692+00:00",
+        "last_inspected": "2026-06-11T07:59:23.622285+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2086,12 +2086,12 @@
         "confidence": 0.85,
         "created_at": "2026-06-09T20:25:00.478051+00:00",
         "criterion": "guide.rs and schema.rs must not contain unreachable or duplicated content-rendering logic",
-        "evidence": "Re-inspected final code after hypothesis outcome validation, TARGETS ripple, schema/guide updates, and performance refactors. cargo test passed, release build passed, release schema/guide output is correct, and the hypothesis flow smoke plus both scale benchmarks passed.",
+        "evidence": "re-inspected after the guide teaching-surface addition (hypothesis plane golden rule, refactor playbook step, lane notes, JSON section — text-only change to guide.rs); full suite passes (81 ok)",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.558420+00:00",
+        "last_inspected": "2026-06-11T07:59:23.624191+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2333,12 +2333,12 @@
         "confidence": 0.85,
         "created_at": "2026-06-09T20:25:02.406624+00:00",
         "criterion": "Self-teaching surface modules should keep coherent responsibilities for driving guidance and schema output without mixing unrelated graph mutation or detection",
-        "evidence": "Re-inspected final code after hypothesis outcome validation, TARGETS ripple, schema/guide updates, and performance refactors. cargo test passed, release build passed, release schema/guide output is correct, and the hypothesis flow smoke plus both scale benchmarks passed.",
+        "evidence": "re-inspected after the guide teaching-surface addition (hypothesis plane golden rule, refactor playbook step, lane notes, JSON section — text-only change to guide.rs); full suite passes (81 ok)",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.571283+00:00",
+        "last_inspected": "2026-06-11T07:59:23.625760+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -2593,12 +2593,12 @@
         "confidence": 0.85,
         "created_at": "2026-06-09T20:25:14.167354+00:00",
         "criterion": "guide/schema production paths propagate fallible mode-detection/render via Result, with no panic unwrap/expect.",
-        "evidence": "Re-inspected final code after hypothesis outcome validation, TARGETS ripple, schema/guide updates, and performance refactors. cargo test passed, release build passed, release schema/guide output is correct, and the hypothesis flow smoke plus both scale benchmarks passed.",
+        "evidence": "re-inspected after the guide teaching-surface addition (hypothesis plane golden rule, refactor playbook step, lane notes, JSON section — text-only change to guide.rs); full suite passes (81 ok)",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.584771+00:00",
+        "last_inspected": "2026-06-11T07:59:23.627229+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
@@ -5923,7 +5923,7 @@
         "id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.165533+00:00",
+        "last_inspected": "2026-06-11T07:59:23.598786+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -5951,7 +5951,7 @@
         "id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.426574+00:00",
+        "last_inspected": "2026-06-11T07:59:23.602868+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -6497,7 +6497,7 @@
         "id": "1d305157-b4b1-4596-b625-58493fc8af55",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.179302+00:00",
+        "last_inspected": "2026-06-11T07:59:23.604465+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -6553,7 +6553,7 @@
         "id": "2f30e4d8-8717-4792-a902-e1da69741565",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.184934+00:00",
+        "last_inspected": "2026-06-11T07:59:23.605888+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -6833,7 +6833,7 @@
         "id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.196603+00:00",
+        "last_inspected": "2026-06-11T07:59:23.607282+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -6847,7 +6847,7 @@
         "id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.464220+00:00",
+        "last_inspected": "2026-06-11T07:59:23.608821+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -7085,7 +7085,7 @@
         "id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.198014+00:00",
+        "last_inspected": "2026-06-11T07:59:23.610300+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -7113,7 +7113,7 @@
         "id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.481293+00:00",
+        "last_inspected": "2026-06-11T07:59:23.612045+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -7351,7 +7351,7 @@
         "id": "e7672be8-98c5-40f7-8653-88804732f887",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.202685+00:00",
+        "last_inspected": "2026-06-11T07:59:23.613570+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -7371,7 +7371,7 @@
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
       },
       {
-        "confidence": 0.84,
+        "confidence": 0.85,
         "created_at": "2026-06-11T07:32:21.120815+00:00",
         "criterion": "Related by code-level dependency: code of 'hypothesis node and TARGETS edge' imports code of 'self-teaching surface' but no relationship is recorded. imports: src/commands/schema.rs → src/db/schema.rs",
         "evidence": "",
@@ -7379,7 +7379,7 @@
         "id": "f23abc8c-a4f6-49fa-8cb8-c9f9729232f4",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:32:21.120815+00:00",
+        "last_inspected": "2026-06-11T07:59:23.615019+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -7771,7 +7771,7 @@
         "id": "16926218-0ca1-45ea-8ff0-e23536029da4",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.212667+00:00",
+        "last_inspected": "2026-06-11T07:59:23.616455+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
@@ -7785,7 +7785,7 @@
         "id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T05:03:22.495074+00:00",
+        "last_inspected": "2026-06-11T07:59:23.617847+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -7995,7 +7995,7 @@
         "id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.224306+00:00",
+        "last_inspected": "2026-06-11T07:59:23.619240+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
@@ -8009,7 +8009,7 @@
         "id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-11T07:55:05.225674+00:00",
+        "last_inspected": "2026-06-11T07:59:23.620600+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
@@ -8669,11 +8669,11 @@
         "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/gen_synth_graph.py"
       },
       {
-        "content_hash": "735c51ffef84f4b0",
+        "content_hash": "9d8bd962335d94ba",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": "[\"src/output.rs\"]",
         "language": "rust",
-        "last_modified": "2026-06-11T04:59:13.883592780+00:00",
+        "last_modified": "2026-06-11T07:58:44.370856480+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -10201,6 +10201,26 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.598786+00:00",
+        "id": "0232c91b-34b7-4260-a209-edc4c805523e",
+        "kind": "transition",
+        "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "023382c3-7b09-429d-a63f-5dca053ce097",
+        "kind": "transition",
+        "target_id": "2f30e4d8-8717-4792-a902-e1da69741565",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T04:13:26.943776+00:00",
         "id": "023ddb6a-b83f-4d03-82d1-308b16dec0cb",
@@ -10218,6 +10238,16 @@
         "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "024fed1a-93ae-4d97-b380-89075e09a53d",
+        "kind": "transition",
+        "target_id": "f23abc8c-a4f6-49fa-8cb8-c9f9729232f4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -12161,6 +12191,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "0ec4b4af-2fcc-4ecf-81b3-8cd14cbe2107",
+        "kind": "transition",
+        "target_id": "e7672be8-98c5-40f7-8653-88804732f887",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T20:33:46.306225+00:00",
         "id": "0ecbc907-de32-4d5e-b908-c7c0556ebb86",
@@ -12258,6 +12298,16 @@
         "target_id": "3d568928-b825-4da3-9bbb-23fa30c7b6d9",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/governs.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "0f8bae68-6245-43f1-9bc4-bfba47afbe6a",
+        "kind": "transition",
+        "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -14571,6 +14621,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "1df77105-e383-4c5b-b1eb-6fca95991a8f",
+        "kind": "transition",
+        "target_id": "333dff95-1e0b-4778-ab17-34ef41f91ba8",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T03:16:42.032986+00:00",
         "id": "1df87f13-49fd-405e-845f-d85eadd90af7",
@@ -15861,6 +15921,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "266e8de4-a964-4c44-b774-68778d105f58",
+        "kind": "transition",
+        "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:56.692655+00:00",
         "id": "26747072-38b5-4ee9-b0bf-8217ccfcb472",
@@ -16371,6 +16441,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.620600+00:00",
+        "id": "2b08a938-a866-40ad-b829-0c9fde589817",
+        "kind": "transition",
+        "target_id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T04:41:08.038279+00:00",
         "id": "2b0a0c15-4695-4dd8-a0b8-6ee7fe764249",
@@ -16671,6 +16751,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.610300+00:00",
+        "id": "2cdcfb85-b307-4cc7-a3be-0dc79f09f5aa",
+        "kind": "transition",
+        "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T02:02:04.260214+00:00",
         "id": "2ce960a8-1781-472b-aa1b-5cc235d54bc3",
@@ -16962,6 +17052,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "2eb4b2d2-2b75-4ea6-97c1-d31abe4680a7",
+        "kind": "transition",
+        "target_id": "16926218-0ca1-45ea-8ff0-e23536029da4",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-10T16:47:54.149805+00:00",
         "id": "2ebde072-fa66-46b8-8683-d8560a548331",
         "kind": "transition",
@@ -17098,6 +17198,16 @@
         "target_id": "24279b18-6824-45d9-a674-9422e95a027d",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.615019+00:00",
+        "id": "2fb5b652-7dcf-439f-a2a1-84b5ad712575",
+        "kind": "transition",
+        "target_id": "f23abc8c-a4f6-49fa-8cb8-c9f9729232f4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -18332,6 +18442,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T07:59:23.619240+00:00",
+        "id": "37fa5c5b-9903-45ef-aa65-2688e4e4a076",
+        "kind": "transition",
+        "target_id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T19:11:11.793792+00:00",
         "id": "3816eadd-6f1c-4249-b278-c59ddd6de6c9",
         "kind": "transition",
@@ -18661,6 +18781,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.612045+00:00",
+        "id": "3a42aee1-0909-42e3-b661-dae33a19b891",
+        "kind": "transition",
+        "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T02:02:04.260214+00:00",
         "id": "3a47f844-4612-49e6-8941-ccf8a2eed7a6",
@@ -18748,6 +18878,16 @@
         "target_id": "cf4c9f22-83be-4b40-9e71-3868970daaa9",
         "target_kind": "edge",
         "text": "needs_reverification → failing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "3af33837-07cf-4fac-8ec1-422d739405eb",
+        "kind": "transition",
+        "target_id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -19468,6 +19608,16 @@
         "target_id": "0f0350c1-4ed7-4909-a071-3e5444b16559",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/codefile.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "3f9b61f1-f77d-4d79-a2eb-9811cb37d496",
+        "kind": "transition",
+        "target_id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -23492,6 +23642,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "5c6ba0a7-8746-4b4d-9fe9-09f38e972b3b",
+        "kind": "transition",
+        "target_id": "1d305157-b4b1-4596-b625-58493fc8af55",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T02:02:04.260214+00:00",
         "id": "5c7c734f-c069-4888-bdda-a0ccf7bff68c",
         "kind": "transition",
@@ -24028,6 +24188,16 @@
         "target_id": "e29370de-5c8f-470d-996a-2b06e9ca1729",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.613570+00:00",
+        "id": "5fd512ef-984e-4111-a492-e7efba0eed3c",
+        "kind": "transition",
+        "target_id": "e7672be8-98c5-40f7-8653-88804732f887",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -24678,6 +24848,16 @@
         "target_id": "27d2302e-fc79-4bd7-b1dd-69c9263347ba",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/sync.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.608821+00:00",
+        "id": "64a8afd3-bdfa-4119-8864-7ad6d5208a3c",
+        "kind": "transition",
+        "target_id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -25618,6 +25798,16 @@
         "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "6ad9e1fc-3477-47d2-a89b-589d48ccb9f9",
+        "kind": "transition",
+        "target_id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -27842,6 +28032,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "7a31bd7c-5f82-4248-a088-19bce5e3fcd8",
+        "kind": "transition",
+        "target_id": "5d170dfd-0ea5-4c6c-8c0a-4d90911627e1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-11T03:53:45.613111+00:00",
         "id": "7a3989b4-44ba-4f1b-a6c3-7515be6ab9ee",
         "kind": "transition",
@@ -27908,6 +28108,16 @@
         "target_id": "2e70ffc7-6a13-430a-8e20-744fc24f3bbd",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "7a7b8968-50de-4684-b3c3-e8f8205beda6",
+        "kind": "transition",
+        "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -29101,6 +29311,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "81384f8a-bee7-49da-9cfe-96ecd6d8efc4",
+        "kind": "transition",
+        "target_id": "ab425bcf-d255-4a6b-8a4d-793ec99603d7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-10T15:45:27.205983+00:00",
         "id": "8140e8af-4a7b-478a-863d-12ddd07790cc",
@@ -29521,6 +29741,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.616455+00:00",
+        "id": "83e89acb-1cf2-4271-aa05-75a0d1f482fa",
+        "kind": "transition",
+        "target_id": "16926218-0ca1-45ea-8ff0-e23536029da4",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T04:13:26.943776+00:00",
         "id": "83e8bcf4-0306-43ea-9fd2-3e4d585d13b1",
@@ -29828,6 +30058,16 @@
         "target_id": "e218a576-612a-41d5-b9af-af2660c59668",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.602868+00:00",
+        "id": "85712e6c-8b10-4484-8152-6f531d1691a5",
+        "kind": "transition",
+        "target_id": "53ebbfca-e0dc-42b0-8cbb-07c14c141f09",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -31831,6 +32071,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "92fc1bfd-d965-43ab-9423-a3c7035a2e01",
+        "kind": "transition",
+        "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T07:24:58.515879+00:00",
         "id": "9310c352-03db-40de-884a-259638959563",
@@ -32246,6 +32496,16 @@
         "id": "95225089-77ed-46a6-a945-d455f8f8c19b",
         "kind": "transition",
         "target_id": "2b1ed521-8495-4c4f-95ba-1f744fc1feb7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.605888+00:00",
+        "id": "95349ac3-3d46-4839-a0c8-327f0e1e93c9",
+        "kind": "transition",
+        "target_id": "2f30e4d8-8717-4792-a902-e1da69741565",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -33331,6 +33591,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.625760+00:00",
+        "id": "9cbba22b-5d10-435d-96a7-5226ce2934ab",
+        "kind": "transition",
+        "target_id": "eb67632b-1e6f-405a-8cf9-d61a993dfd41",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-10T16:21:49.108294+00:00",
         "id": "9ce324a3-f649-4593-baf7-f82e5862677e",
@@ -33916,6 +34186,16 @@
         "id": "a0ad2d93-39d6-45af-94a0-f39d9cac8b61",
         "kind": "transition",
         "target_id": "71a399ec-ab03-4523-9146-e2c712b60463",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.627229+00:00",
+        "id": "a0bdf504-4231-4a9f-bc53-588fc013e1d7",
+        "kind": "transition",
+        "target_id": "1a7b21b9-36cb-4ff1-a950-f98494aff6a2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -35601,6 +35881,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.607282+00:00",
+        "id": "ab7816b1-5a66-4053-a063-6711e879f4b3",
+        "kind": "transition",
+        "target_id": "a167d22d-efa2-4860-bf59-2ffb699b4213",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T03:53:45.613111+00:00",
         "id": "ab9b2c9d-9048-4932-bfde-e6e2a897bb23",
@@ -35938,6 +36228,16 @@
         "target_id": "92850926-b7cd-4215-a2ff-096f8888dd35",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "adf37ec8-5a66-4f4a-8de7-af1deafa1e81",
+        "kind": "transition",
+        "target_id": "f4712ad8-3df6-47b3-a01b-1c10f9d65e46",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -37086,6 +37386,16 @@
         "id": "b4762b9a-b4de-43dd-9163-bcc362670e6e",
         "kind": "transition",
         "target_id": "26b290f1-09ab-48fe-a92e-fc88d215f3b9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.622285+00:00",
+        "id": "b4847625-d233-4ba6-8dbe-b9a9b1b43b5b",
+        "kind": "transition",
+        "target_id": "3b07b265-aeb9-4e5e-abc0-e707d12e03a1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -38368,6 +38678,16 @@
         "target_id": "81c4d03a-1490-418c-a137-596fecebb793",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/portability.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "be26121e-d439-49f7-ae53-bdf2b5d213f1",
+        "kind": "transition",
+        "target_id": "a65d57ac-3805-4388-be62-46b68c2cfd9a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -41151,6 +41471,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-11T07:59:10.454797+00:00",
+        "id": "d0216e23-6ef0-4cee-ac56-21f092cdb3e8",
+        "kind": "transition",
+        "target_id": "c57d0c24-a503-4c30-b53f-03e34d42d9dd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-11T07:24:58.594203+00:00",
         "id": "d02fb4d4-6bad-436c-a175-cec2384dfcbf",
@@ -42122,6 +42452,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T07:59:23.617847+00:00",
+        "id": "d6b70794-2804-47ae-a8e1-7449ad95931f",
+        "kind": "transition",
+        "target_id": "df35baf7-f1f0-4e29-ac64-cd7f4f034317",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-11T05:03:22.469666+00:00",
         "id": "d6bfef99-9601-4f00-b3d7-286c68d28d8f",
         "kind": "transition",
@@ -43008,6 +43348,16 @@
         "target_id": "a03f88c7-390b-41be-a8e2-64b2f59c3869",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/integrity.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-11T07:59:23.604465+00:00",
+        "id": "dd4c871e-97e6-4f90-b541-417a4feef592",
+        "kind": "transition",
+        "target_id": "1d305157-b4b1-4596-b625-58493fc8af55",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -47862,6 +48212,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-11T07:59:23.624191+00:00",
+        "id": "fcdc23b5-e97a-4747-a95f-24f7549c50d5",
+        "kind": "transition",
+        "target_id": "cdea2e2f-f307-4d39-80a7-d74ad47f2cd9",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-10T15:44:03.850932+00:00",
         "id": "fceb5001-ad09-4b5e-9ca9-69f46ae23c86",
         "kind": "transition",
@@ -48857,7 +49217,7 @@
         "description": "",
         "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
         "last_result": "passed",
-        "last_run": "2026-06-11T05:01:10.740318+00:00",
+        "last_run": "2026-06-11T07:59:34.388904+00:00",
         "name": "orientation + guide + schema emit valid JSON",
         "validation_type": "assertion"
       },
@@ -48902,7 +49262,7 @@
         "description": "",
         "id": "d8b77fd8-110d-4603-9291-1692db66add3",
         "last_result": "passed",
-        "last_run": "2026-06-11T07:55:15.696099+00:00",
+        "last_run": "2026-06-11T07:59:33.871786+00:00",
         "name": "port adopts the semantic plane only",
         "validation_type": "test"
       },

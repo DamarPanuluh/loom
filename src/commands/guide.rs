@@ -24,6 +24,7 @@ const GOLDEN_RULES: &[&str] = &[
     "A proof that CANNOT run yet (live target down, missing credential) is `loom validation mark <id> --result blocked --reason \"…\"` — honest and out of the queue; never leave it looking forgotten as not_run.",
     "TIERED DRIVING: every work item carries `effort: low|mid|high` — a statement about the WORK (loom never names models; the harness maps tiers). Low-capability agents drive the bulk and record HONEST confidence: 0.5-and-true beats 0.9-and-guessed, because verdicts below 0.7 feed `loom next --mode review` — the strategic double-check, ranked uncertain×central — where a stronger agent independently re-inspects (own hypothesis FIRST, then the recorded evidence) and confirms or overturns. Confidence is the coordination channel between tiers; no agent ever messages another.",
     "DESIGN CHANGES MIDWAY: when an intent is superseded, `loom intent retire <id> --reason … [--replaced-by <successor>]` — never delete (delete is for mistakes), never leave it counting. Retired = invisible to computation, visible to history; the command reports the triggered work (orphaned children, files that lost their only owner, dangling proofs). Address handoffs: `loom note add --for <role>` puts a message at the top of that lane's next relevant work item.",
+    "THE HYPOTHESIS PLANE (pre-decision): an improvement idea is NOT work until it is proven. `loom hypothesis add --claim <what's wrong NOW> --proposal <the change> --predicted-outcome <measurable result> [--target <intent>]…` (any lane; the redesign-shaped smells emit this as their remedy). A DIFFERENT agent proves it: `loom next --mode triage` serves proposals ranked by target blast radius — `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (analyzer lane; proposer ≠ prover; the verdict stamps the TARGETS edges). Then the builder decides: `loom hypothesis adopt <id> --spawned <planned-intent>…` converts it into ordinary build work AND writes the predicted outcome as a not_run Validation on the spawned intents — when the validator later marks that proof passed, the hypothesis derives `confirmed`: every adopted improvement is checked for whether it DELIVERED. `loom sync` stales hypothesis support when target code changes (triage re-serves it as a RE-PROVE item). Speculation never counts in coverage/completeness — triage is optional, like discovery/review.",
     "Before committing: `loom export --check` — fails if the committed loom.graph.json is stale vs the live graph (hook it into pre-commit/CI so the graph always travels with the code).",
 ];
 
@@ -46,8 +47,8 @@ const RIPPLE: &[&str] = &[
 /// Declared roles (LOOM_AGENT=llm:<role>) are ENFORCED — an agent acting
 /// outside its lane gets an error. Bare `llm`/`human` = solo mode (all lanes).
 const ROLE_LANES: &[(&str, &str, &str)] = &[
-    ("builder",   "build",     "constructs the graph: intents, hierarchy, codefiles, IMPLEMENTS links, lifecycle"),
-    ("analyzer",  "discovery", "the Socratic loop: grounds RELATES_TO edges with criterion/evidence/verdict"),
+    ("builder",   "build",     "constructs the graph: intents, hierarchy, codefiles, IMPLEMENTS links, lifecycle; adopts/rejects proven hypotheses"),
+    ("analyzer",  "discovery", "the Socratic loop: grounds RELATES_TO edges with criterion/evidence/verdict; proves hypotheses (`loom next --mode triage`)"),
     ("fixer",     "fix",       "resolves failing edges (`loom edge fix`) and needs_change intents; re-grounds what it repairs"),
     ("validator", "validate",  "proves intents: runs validations, confirms intents (`loom intent confirm`)"),
     ("quality",   "quality",   "the green gate: defines rules, applies them, records GOVERNS verdicts (`loom rule verdict`)"),
@@ -105,7 +106,8 @@ fn greenfield() -> Vec<(&'static str, &'static str)> {
 fn refactor() -> Vec<(&'static str, &'static str)> {
     vec![
         ("map first if needed", "If the area isn't in the graph yet, do the brownfield steps for it."),
-        ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, and unmeasured quality rules; each finding carries its remedy command."),
+        ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, tangles, recurrent trouble, and unmeasured quality rules; each finding carries its remedy command."),
+        ("propose & prove redesigns", "Anything redesign-shaped (recurring breakage, a file split, a merge of twins) goes through the HYPOTHESIS PLANE before it becomes work: `loom hypothesis add --claim … --proposal … --predicted-outcome … --target <intent>` (the redesign smells emit this for you), then a DIFFERENT agent proves it (`loom next --mode triage` → `loom hypothesis prove`), then `loom hypothesis adopt --spawned <planned-intent>…` — the predicted outcome becomes a proof on the spawned work, and the hypothesis is `confirmed` only when that proof later passes. Unproven ideas die honestly (`loom hypothesis reject --reason …`) instead of becoming speculative refactors."),
         ("flag what must change", "`loom intent mark <id> --lifecycle needs_change --reason \"…\"`. Set/refresh the criterion to the desired end state; capture rationale (the --reason is recorded as a note). This is the honest 'known issue' state — no faking a verdict."),
         ("build", "`loom next --mode build` surfaces needs_change intents first. Make the minimal change, then `loom intent mark <id> --lifecycle implemented`."),
         ("experiment (optimization)", "Trying VARIANTS of an implementation needs no special node — use the primitives: the intent's criterion is the budget ('p99 < 50ms at 10k entries'), ONE benchmark validation (`loom validation add --type benchmark --command …`) is the yardstick reused across variants, and each variant's result goes in an append-only decision note (`loom note add --intent <id> --kind decision --text \"mutex-based: 120ms; lock-free: 45ms — chose lock-free, contention dominated\"`). The winner is what's on disk (grounded + passing benchmark); the losers live in git history; the WHY lives in the graph forever."),
@@ -194,6 +196,17 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
                 "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
                 "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until vertical ✓ (and green if wanted).",
+            },
+            "hypothesis_plane": {
+                "what": "The PRE-DECISION plane: an improvement idea is not work until proven. Hypothesis = falsifiable claim (what's wrong NOW) + proposal (the change) + predicted_outcome (measurable result). State machine: proposed → supported|refuted → adopted → confirmed | rejected.",
+                "loop": [
+                    "propose (any lane): `loom hypothesis add --name … --claim … --proposal … --predicted-outcome … [--target <intent>]…` — the redesign-shaped smells emit this as their remedy",
+                    "prove (analyzer, a DIFFERENT agent): `loom next --mode triage` ranks proposals by target blast radius → `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (stamps the TARGETS edges)",
+                    "decide (builder): `loom hypothesis adopt <id> --spawned <planned-intent>…` — converts into ordinary build work AND writes the predicted outcome as a not_run Validation on the spawned intents; or `loom hypothesis reject <id> --reason …`",
+                    "confirm (validator): when the outcome validation is marked passed, the hypothesis derives `confirmed` — adopted improvements are checked for whether they DELIVERED",
+                    "staleness: `loom sync` flips hypothesis support when target code changes; triage re-serves it as a RE-PROVE item",
+                ],
+                "honesty": "Speculation never counts in coverage/completeness — triage is optional like discovery/review; proposer ≠ prover when roles are declared.",
             },
             "completeness": {
                 "vertical": "BINDING spine, mechanically verifiable: HIERARCHY is a well-formed tree (one parent per non-root intent, no cycles); every implemented leaf intent has ≥1 IMPLEMENTS (realized); every CodeFile is reached by ≥1 IMPLEMENTS. Surfaced as `vertically_complete` in `loom status`; details in `loom report` + `loom doctor` + `loom coverage`.",
