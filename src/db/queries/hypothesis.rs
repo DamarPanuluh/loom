@@ -104,26 +104,45 @@ pub fn list_hypotheses(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Hypo
     Ok(hs)
 }
 
-/// `loom next --mode triage`: proposed hypotheses awaiting their proof,
-/// ranked by the combined centrality of their target intents — the blast
-/// radius of the proposal. An untargeted hypothesis still surfaces (base
-/// score 1.0), just last. Optional work like discovery/review: triage never
-/// blocks `phase=complete`.
+/// `loom next --mode triage`: hypotheses needing analyzer attention, ranked by
+/// the combined centrality of their target intents — the blast radius of the
+/// proposal. Two kinds of item, distinguished by the hypothesis status:
+///   proposed  → never proven: prove it.
+///   supported → its support went STALE: `loom sync` flipped ≥1 TARGETS edge
+///               to needs_reverification because target code changed — the
+///               evidence is about old code, re-prove or refute.
+/// An untargeted proposal still surfaces (base score 1.0), just last.
+/// Optional work like discovery/review: triage never blocks `phase=complete`.
 pub fn triage_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
-    let proposed = list_hypotheses(db, Some("proposed"))?;
-    if proposed.is_empty() {
+    let hs = list_hypotheses(db, None)?;
+    if hs.is_empty() {
         return Ok(Vec::new());
+    }
+    let mut targets_by_h: std::collections::HashMap<String, Vec<crate::types::TargetsEdge>> =
+        std::collections::HashMap::new();
+    for t in super::targets::list_all_targets(db)? {
+        targets_by_h.entry(t.hypothesis_id.clone()).or_default().push(t);
     }
     let degrees = super::scoring::all_intent_degrees(db)?;
     let mut out: Vec<(Hypothesis, f64)> = Vec::new();
-    for h in proposed {
-        let reach: i64 = super::targets::list_targets_for_hypothesis(db, &h.id)?
-            .iter()
-            .map(|t| degrees.get(&t.intent_id).copied().unwrap_or(0))
-            .sum();
+    for h in hs {
+        let targets = targets_by_h.get(h.id.as_str());
+        let due = match h.status.as_str() {
+            "proposed" => true,
+            "supported" => targets.is_some_and(|ts| {
+                ts.iter().any(|t| t.inspection_status == "needs_reverification")
+            }),
+            _ => false,
+        };
+        if !due {
+            continue;
+        }
+        let reach: i64 = targets
+            .map(|ts| ts.iter().map(|t| degrees.get(&t.intent_id).copied().unwrap_or(0)).sum())
+            .unwrap_or(0);
         out.push((h, 1.0 + reach as f64));
     }
-    // Highest blast radius first; oldest proposal breaks ties (nothing rots).
+    // Highest blast radius first; oldest breaks ties (nothing rots).
     out.sort_by(|a, b| {
         b.1.partial_cmp(&a.1)
             .unwrap_or(std::cmp::Ordering::Equal)

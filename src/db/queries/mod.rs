@@ -1371,6 +1371,46 @@ mod tests {
         assert!(q.iter().all(|(h, _)| h.status == "proposed"));
     }
 
+    /// The v3 staleness loop: sync flips passing TARGETS edges when target
+    /// code changes, the triage queue then serves the supported hypothesis as
+    /// a RE-PROVE item (its support was earned against old code), and
+    /// re-proving re-stamps the edges, clearing the staleness.
+    #[test]
+    fn stale_target_support_routes_back_to_triage() {
+        let (db, ids) = db_with_intents(2);
+        insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
+        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+
+        // Prove it (what `loom hypothesis prove` does): node verdict + stamp.
+        update_hypothesis_verdict(&db, "h0", "supported", "checked against the code", "llm:analyzer", "t1").unwrap();
+        set_targets_status_for_hypothesis(
+            &db, "h0", "passing",
+            "hypothesis proof establishes whether this target is affected",
+            "checked against the code", "llm:analyzer", "t1",
+        ).unwrap();
+        assert!(triage_candidates(&db).unwrap().is_empty(), "fresh support is not triage work");
+
+        // Target code changes — the ripple flips the passing TARGETS edge.
+        let flipped = targets::flag_targets_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
+        assert_eq!(flipped, 1);
+        let ts = list_targets_for_hypothesis(&db, "h0").unwrap();
+        assert_eq!(ts[0].inspection_status, "needs_reverification");
+
+        // Stale support routes back: the supported hypothesis is due again.
+        let q = triage_candidates(&db).unwrap();
+        assert_eq!(q.len(), 1);
+        assert_eq!(q[0].0.status, "supported");
+
+        // Re-proving re-stamps the edges and clears the queue.
+        update_hypothesis_verdict(&db, "h0", "supported", "still holds after the change", "llm:analyzer", "t3").unwrap();
+        set_targets_status_for_hypothesis(
+            &db, "h0", "passing",
+            "hypothesis proof establishes whether this target is affected",
+            "still holds after the change", "llm:analyzer", "t3",
+        ).unwrap();
+        assert!(triage_candidates(&db).unwrap().is_empty());
+    }
+
     /// The hypothesis plane travels with the export, and exports from OLDER
     /// binaries (no Hypothesis/TARGETS sections at all) still import — the
     /// sections are additive, same contract as optional props.
@@ -1415,6 +1455,8 @@ mod tests {
         update_hypothesis_verdict(&db, "h0", "supported", "checked against old repo", "llm:analyzer", "t1").unwrap();
         insert_hypothesis(&db, &hypothesis("h1", "kill the cd fallback")).unwrap();
         set_hypothesis_status(&db, "h1", "rejected", "llm:builder", "t1").unwrap();
+        insert_hypothesis(&db, &hypothesis("h2", "thread graph snapshots")).unwrap();
+        set_hypothesis_status(&db, "h2", "confirmed", "llm:validator", "t1").unwrap();
         insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
 
         let export = export_graph(&db).unwrap();
@@ -1430,6 +1472,8 @@ mod tests {
         assert_eq!(h0.last_inspected, "");
         let h1 = get_hypothesis(&db2, "h1").unwrap().unwrap();
         assert_eq!(h1.status, "rejected", "decisions are lineage and stay");
+        let h2 = get_hypothesis(&db2, "h2").unwrap().unwrap();
+        assert_eq!(h2.status, "adopted", "confirmed resets to adopted: the outcome was verified against OLD code");
         // TARGETS edges travel (intents travel) but arrive uninspected.
         let ts = list_targets_for_hypothesis(&db2, "h0").unwrap();
         assert_eq!(ts.len(), 1);

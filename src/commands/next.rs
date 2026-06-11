@@ -383,7 +383,11 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         queues.push(serde_json::json!({
             "queue": "triage", "role": "analyzer", "optional": true, "effort": "high",
             "count": triage.len(), "command": "loom next --mode triage",
-            "top": format!("hypothesis '{}' awaits its proof", h.name),
+            "top": if h.status == "supported" {
+                format!("hypothesis '{}' — support went stale (target code changed)", h.name)
+            } else {
+                format!("hypothesis '{}' awaits its proof", h.name)
+            },
         }));
     }
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
@@ -930,11 +934,11 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "triage",
-                "message": "No proposed hypotheses — the pre-decision plane is clear.",
+                "message": "No proposed hypotheses and no stale support — the pre-decision plane is clear.",
                 "graph_state": gs,
             }));
         } else {
-            println!("✓ No proposed hypotheses — the pre-decision plane is clear.");
+            println!("✓ No proposed hypotheses and no stale support — the pre-decision plane is clear.");
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -951,16 +955,37 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
     let mut notes = notes_for_target(db, &h.id)?;
     sort_notes_for_role(&mut notes, "analyzer");
-    let action = format!(
-        "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\n\
-         Read the targeted intents' groundings, check the claim, record what you found:\n\
-         \n  loom hypothesis prove {id} --verdict supported --evidence \"<what you found>\"\
-         \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<why the claim doesn't hold>\"\
-         \nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \
-         A supported verdict hands the adopt/reject decision to the builder lane.",
-        id = h.id,
-        author = h.author,
-    );
+    // Two item kinds share this queue: a never-proven proposal, and a
+    // supported hypothesis whose TARGETS evidence went stale under it
+    // (`loom sync` flipped them — the support was earned against old code).
+    let stale_targets: Vec<&str> = targets
+        .iter()
+        .filter(|t| t.inspection_status == "needs_reverification")
+        .map(|t| t.intent_name.as_str())
+        .collect();
+    let action = if h.status == "supported" {
+        format!(
+            "RE-PROVE this hypothesis — its support was earned against code that has since changed \
+             (stale target(s): {stale}; the TARGETS transition notes name the files).\n\
+             Re-check the claim against the code as it is NOW, then re-record:\n\
+             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what still holds>\"\
+             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<the change resolved it>\"\
+             \nRe-proving re-stamps every TARGETS edge, clearing the staleness.",
+            id = h.id,
+            stale = stale_targets.join(", "),
+        )
+    } else {
+        format!(
+            "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\n\
+             Read the targeted intents' groundings, check the claim, record what you found:\n\
+             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what you found>\"\
+             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<why the claim doesn't hold>\"\
+             \nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \
+             A supported verdict hands the adopt/reject decision to the builder lane.",
+            id = h.id,
+            author = h.author,
+        )
+    };
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -980,7 +1005,8 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     println!(
-        "── Next Triage Item  [proposed  priority={:.2}] ────────────────────────",
+        "── Next Triage Item  [{}  priority={:.2}] ────────────────────────",
+        if h.status == "supported" { "stale support" } else { "proposed" },
         score
     );
     println!();

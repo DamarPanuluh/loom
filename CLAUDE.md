@@ -90,7 +90,8 @@ claim              STRING  -- what's wrong NOW (falsifiable, provable against co
 proposal           STRING  -- the proposed change
 predicted_outcome  STRING  -- measurable result if adopted (the post-implementation
                               acceptance contract)
-status             STRING  -- "proposed" | "supported" | "refuted" | "adopted" | "rejected"
+status             STRING  -- "proposed" | "supported" | "refuted" | "adopted" |
+                              "confirmed" | "rejected"
 author             STRING  -- proposer provenance
 evidence           STRING  -- what the prover found ("" until proven)
 inspected_by       STRING  -- prover provenance (must differ from author when
@@ -98,12 +99,19 @@ inspected_by       STRING  -- prover provenance (must differ from author when
 last_inspected     STRING
 created_at / updated_at
 ```
-State machine: `proposed → supported | refuted → adopted | rejected`. Anyone
-proposes (evidence-gated); the ANALYZER lane proves; the BUILDER lane decides.
-Adoption is pure conversion: link spawned `planned` intents — lineage decision
-notes travel both ways and the predicted outcome lands on each spawned intent
-as its acceptance contract — then the ordinary build/validate machinery owns
-the work. Additive in schema v3 (older graphs/exports keep working).
+State machine: `proposed → supported | refuted → adopted → confirmed | rejected`.
+Anyone proposes (evidence-gated); the ANALYZER lane proves (the verdict also
+stamps every TARGETS edge: supported→passing, refuted→independent); the
+BUILDER lane decides. Adoption is pure conversion: link spawned `planned`
+intents — lineage decision notes travel both ways, and the predicted outcome
+is written as a not_run manual_check Validation (description carries a
+`hypothesis:<id>` line) VALIDATES-linked to each spawned intent — then the
+ordinary build/validate machinery owns the work. When the validator marks that
+outcome validation passed, the hypothesis derives `confirmed`: every adopted
+improvement gets checked for whether it actually delivered. Additive in
+schema v3 (older graphs/exports keep working); a PORT (`--as-planned`) resets
+supported/refuted→proposed and confirmed→adopted (earned evidence stays
+behind; decisions travel as lineage).
 
 ## Edge types (6)
 
@@ -231,6 +239,10 @@ loom sync detects content change (content_hash differs; mtime is only the
    via `loom next --mode quality` + `loom rule verdict`)
 → VALIDATES edges on those intents → Validation.last_result = not_run
   (blocked validations are NOT flipped — a code change doesn't unblock them)
+→ Passing TARGETS edges on hypotheses aimed at those intents → needs_reverification
+  (hypothesis support was earned against the old target code — the triage
+   queue serves the supported hypothesis as a RE-PROVE item; re-proving
+   re-stamps the edges)
 (IMPLEMENTS edges are structural assertions, used as the index — not flipped.
  Every flipped edge gets a transition note naming the changed file, so a stale
  edge explains itself: "passing → needs_reverification (sync: src/foo.rs changed)".)
@@ -290,10 +302,13 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage]
   to a stronger reviewer (independent re-inspection: form your own hypothesis
   BEFORE reading the recorded evidence; re-record to confirm ≥0.7 or overturn).
   Optional like discovery — review hardens closure, it never blocks complete.
-  triage = proposed hypotheses awaiting their proof (analyzer, effort high),
-  ranked by combined target-intent centrality (blast radius); the work item
-  carries the claim, targets, their groundings, and the prove command. Optional
-  like discovery/review — speculation never blocks complete.
+  triage = the pre-decision plane's queue (analyzer, effort high), ranked by
+  combined target-intent centrality (blast radius). Two item kinds, told apart
+  by status: proposed = never proven (prove it) · supported with stale TARGETS
+  = its support was earned against since-changed target code (re-prove or
+  refute; re-proving re-stamps the edges). The work item carries the claim,
+  targets, their groundings, and the prove command. Optional like
+  discovery/review — speculation never blocks complete.
   EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
   names how much capability the WORK needs (computed from structure; quality
   items inherit the rule's inspection_effort). Loom never names models — the
@@ -418,15 +433,21 @@ loom hypothesis prove <id> --verdict supported|refuted --evidence "<found>" \
     [--inspected-by llm:analyzer]
   The proof step: did the claimed problem turn out to be real in the code as it
   is NOW? Analyzer lane; the prover must differ from the proposer (when both
-  declare roles — solo mode passes, as everywhere). Decided (adopted/rejected)
-  hypotheses cannot be re-proven.
+  declare roles — solo mode passes, as everywhere). The verdict also stamps
+  every TARGETS edge (supported→passing, refuted→independent) — which is also
+  how stale support clears after a re-prove. Decided (adopted/confirmed/
+  rejected) hypotheses cannot be re-proven.
 loom hypothesis adopt <id> [--spawned <intent>]... [--reason "<how it converts>"]
   THE CONVERSION POINT (builder lane, owned custody, requires status=supported):
   link the planned intents spawned from it — lineage decision notes both ways,
-  and predicted_outcome lands on each spawned intent as its acceptance contract.
-  Requires --spawned or --reason; from here `loom next --mode build` owns the work.
-loom hypothesis reject <id> --reason "<why>"   (any state except adopted)
-loom hypothesis list [--status proposed|supported|refuted|adopted|rejected]
+  and predicted_outcome becomes a not_run manual_check Validation (its
+  description carries a `hypothesis:<id>` line) VALIDATES-linked to each
+  spawned intent: the acceptance contract enters the proof plane. Requires
+  --spawned or --reason; from here `loom next --mode build` owns the work.
+  When `loom validation mark <outcome-validation> --result passed` lands, the
+  hypothesis derives `confirmed` — the improvement provably delivered.
+loom hypothesis reject <id> --reason "<why>"   (any state except adopted/confirmed)
+loom hypothesis list [--status proposed|supported|refuted|adopted|confirmed|rejected]
 loom hypothesis show <id>                      (fields + TARGETS + notes)
 
 loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm] [--for <role>]

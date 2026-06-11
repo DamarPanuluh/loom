@@ -272,12 +272,15 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             (label::INTENT, "lifecycle") => Some("planned".into()),
             (label::VALIDATION, "last_result") => Some("not_run".into()),
             (label::VALIDATION, "last_run") => Some(String::new()),
-            // Hypotheses travel (they are design lineage), but a supported/
-            // refuted verdict was earned against the OLD code — re-prove in
-            // the new repo. Adopted/rejected are decisions and stay history.
+            // Hypotheses travel (they are design lineage), but what was EARNED
+            // against the OLD code resets: supported/refuted proofs arrive
+            // `proposed` (re-prove in the new repo), and `confirmed` falls back
+            // to `adopted` (the adoption decision is lineage; the outcome
+            // verification was old-code evidence). Adopted/rejected stay.
             (label::HYPOTHESIS, "status") if matches!(v, "supported" | "refuted") => {
                 Some("proposed".into())
             }
+            (label::HYPOTHESIS, "status") if v == "confirmed" => Some("adopted".into()),
             (label::HYPOTHESIS, "evidence" | "inspected_by" | "last_inspected") => {
                 Some(String::new())
             }
