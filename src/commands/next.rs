@@ -110,7 +110,7 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
             path:          imp.codefile_path.clone(),
             language:      String::new(), // path is the primary identifier
             last_modified: String::new(),
-            imports:       String::new(),
+            imports:       Vec::new(),
             content_hash:  String::new(),
         })
         .collect();
@@ -418,8 +418,12 @@ fn build_suggested_action(edge: &crate::types::RelatesTo, _score: &f64) -> Strin
             from = edge.from_id, to = edge.to_id,
         ),
         "failing" => format!(
-            "Fix the violation on this edge then mark it passing:\n\
-             \n  loom edge fix {} --description \"<what you changed>\"",
+            "Fix the violation, then record it — IN THIS ORDER (sync before fix: \
+             sync flips passing claims on changed files, so syncing after would \
+             stale the green you just earned):\n\
+             \n  1. Change the code so the criterion holds (minimal change, root cause).\
+             \n  2. loom sync   (flags everything the change touched; this edge stays failing)\
+             \n  3. loom edge fix {} --description \"<what you changed>\"",
             edge.id
         ),
         "needs_reverification" => format!(
@@ -1023,7 +1027,9 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
   \
              3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"
   \
-             4. Mark done: loom intent mark {id} --lifecycle implemented",
+             4. Mark done: loom intent mark {id} --lifecycle implemented
+  \
+             5. Baseline it: loom sync   (stamps the new files; future edits ripple correctly)",
             id = intent.id,
         ),
         "needs_change" => format!(
@@ -1031,9 +1037,11 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
 \
              1. Make the minimal change.
   \
-             2. Mark done: loom intent mark {id} --lifecycle implemented
+             2. Flag the ripple: loom sync   (stales every claim the change touched)
   \
-             3. Re-verify affected relationships: loom next --mode fix",
+             3. Mark done: loom intent mark {id} --lifecycle implemented
+  \
+             4. Re-verify what sync flagged: loom next --mode fix",
             id = intent.id,
         ),
         other => format!("Intent '{}' has lifecycle '{}' — review it.", intent.name, other),

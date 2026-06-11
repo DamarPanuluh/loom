@@ -1,6 +1,6 @@
 //! Intent node queries.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use grafeo::Value;
 use std::collections::HashMap;
 
@@ -11,25 +11,30 @@ use crate::types::Intent;
 use super::row::{col_map, get, str_val};
 
 pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
-    let q = format!(
-        "INSERT (:Intent {{id: '{id}', name: '{name}', description: '{desc}', \
-         abstraction_level: '{level}', domain: '{domain}', source_refs: '{refs}', \
-         status: '{status}', aspect: '{aspect}', tags: '{tags}', lifecycle: '{lifecycle}', \
-         created_at: '{created}', updated_at: '{updated}'}})",
-        id        = esc(&intent.id),
-        name      = esc(&intent.name),
-        desc      = esc(&intent.description),
-        level     = esc(&intent.abstraction_level),
-        domain    = esc(&intent.domain),
-        refs      = esc(&intent.source_refs),
-        status    = esc(&intent.status),
-        aspect    = esc(&intent.aspect),
-        tags      = esc(&intent.tags),
-        lifecycle = esc(&intent.lifecycle),
-        created   = esc(&intent.created_at),
-        updated   = esc(&intent.updated_at),
-    );
-    db.execute(&q)?;
+    // Param-bound: name/description/domain are agent-written free text.
+    db.execute_with_params(
+        "INSERT (:Intent {id: $id, name: $name, description: $desc, \
+         abstraction_level: $level, domain: $domain, source_refs: $refs, \
+         status: $status, aspect: $aspect, tags: $tags, lifecycle: $lifecycle, \
+         created_at: $created, updated_at: $updated})",
+        {
+            let mut p = super::row::sparams(&[
+                ("id", &intent.id),
+                ("name", &intent.name),
+                ("desc", &intent.description),
+                ("level", &intent.abstraction_level),
+                ("domain", &intent.domain),
+                ("status", &intent.status),
+                ("aspect", &intent.aspect),
+                ("lifecycle", &intent.lifecycle),
+                ("created", &intent.created_at),
+                ("updated", &intent.updated_at),
+            ]);
+            p.insert("refs".into(), super::row::list_param(&intent.source_refs));
+            p.insert("tags".into(), super::row::list_param(&intent.tags));
+            p
+        },
+    )?;
     Ok(())
 }
 
@@ -120,18 +125,19 @@ pub fn remove_source_ref(
 }
 
 fn set_source_refs(db: &dyn LoomDb, id: &str, refs: &[String], updated_at: &str) -> Result<()> {
-    db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) SET n.source_refs = '{}', n.updated_at = '{}'",
-        esc(id),
-        esc(&serde_json::to_string(refs)?),
-        esc(updated_at)
-    ))?;
+    let mut p = super::row::sparams(&[("id", id), ("updated", updated_at)]);
+    p.insert("refs".into(), super::row::list_param(refs));
+    db.execute_with_params(
+        "MATCH (n:Intent {id: $id}) SET n.source_refs = $refs, n.updated_at = $updated",
+        p,
+    )?;
     Ok(())
 }
 
 fn parse_source_refs(intent: &Intent) -> Result<Vec<String>> {
-    serde_json::from_str(&intent.source_refs)
-        .with_context(|| format!("Intent '{}' has malformed source_refs JSON", intent.id))
+    // Native list since schema v5 — kept as a function so call sites read the
+    // same; the malformed-JSON failure class is gone by construction.
+    Ok(intent.source_refs.clone())
 }
 
 /// Set an intent's lifecycle (planned | implemented | needs_change).
@@ -346,6 +352,10 @@ pub fn delete_intent(db: &dyn LoomDb, id: &str) -> Result<bool> {
     db.execute(&format!(
         "MATCH (note:Note) WHERE note.target_id = '{}' DETACH DELETE note", esc(id)
     ))?;
+    // The DETACH DELETE above also killed this intent's edges — prune the
+    // notes attached to THOSE (derived edge keys embed the intent id), or
+    // they dangle forever (the v3-era bug `loom note prune` cleans up).
+    super::note::prune_edge_notes_touching(db, id)?;
     Ok(true)
 }
 
@@ -368,12 +378,12 @@ fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {
         description:      str_val(get(row, cols, "n.description")),
         abstraction_level:str_val(get(row, cols, "n.abstraction_level")),
         domain:           str_val(get(row, cols, "n.domain")),
-        source_refs:      str_val(get(row, cols, "n.source_refs")),
+        source_refs:      super::row::list_val(get(row, cols, "n.source_refs")),
         status:           str_val(get(row, cols, "n.status")),
         aspect:           str_val(get(row, cols, "n.aspect")),
-        // Additive in v3: Null on intents from older graphs reads as ""
-        // (= untagged) — see `vocab::parse_tags`.
-        tags:             str_val(get(row, cols, "n.tags")),
+        // Additive in v3, native list in v5: Null on intents from older
+        // graphs reads as empty (= untagged); legacy JSON strings parse.
+        tags:             super::row::list_val(get(row, cols, "n.tags")),
         lifecycle:        str_val(get(row, cols, "n.lifecycle")),
         created_at:       str_val(get(row, cols, "n.created_at")),
         updated_at:       str_val(get(row, cols, "n.updated_at")),

@@ -13,6 +13,39 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
+        NoteCmd::Prune => {
+            // The remedy doctor names for dangling note targets. Pruning only
+            // removes notes that are UNREACHABLE (their target id resolves to
+            // nothing) — history on live or retired nodes is never touched.
+            let dangling = crate::db::queries::dangling_notes(&db)?;
+            for n in &dangling {
+                crate::db::queries::delete_note_by_id(&db, &n.id)?;
+            }
+            let next_step = "`loom doctor` re-checks integrity";
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok",
+                    "pruned": dangling.len(),
+                    "removed": dangling.iter().map(|n| serde_json::json!({
+                        "id": n.id, "kind": n.kind,
+                        "target_kind": n.target_kind, "target_id": n.target_id,
+                    })).collect::<Vec<_>>(),
+                    "next_step": next_step,
+                }));
+            } else if dangling.is_empty() {
+                println!("✓ No dangling notes — nothing to prune.");
+            } else {
+                println!("✓ Pruned {} dangling note(s) (targets no longer exist):", dangling.len());
+                for n in dangling.iter().take(20) {
+                    println!("    {} [{}] → missing {} '{}'", n.id, n.kind, n.target_kind, n.target_id);
+                }
+                if let Some(m) = crate::output::more_marker(dangling.len(), 20, "loom doctor --json") {
+                    println!("    {m}");
+                }
+                println!("  → Next: {next_step}");
+            }
+        }
+
         NoteCmd::Add { text, kind, intent, edge, file, author, for_role } => {
             // Validate the kind against the vocabulary.
             kind.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;

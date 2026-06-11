@@ -10,7 +10,6 @@ use super::row::{col_map, get, str_val};
 
 pub fn insert_hierarchy(
     db: &dyn LoomDb,
-    edge_id: &str,
     parent_id: &str,
     child_id: &str,
     notes: &str,
@@ -64,11 +63,10 @@ pub fn insert_hierarchy(
 
     db.execute(&format!(
         "MATCH (a:Intent {{id: '{par}'}}), (b:Intent {{id: '{chi}'}}) \
-         INSERT (a)-[:HIERARCHY {{id: '{eid}', \
+         INSERT (a)-[:HIERARCHY {{\
            notes: '{notes}', created_at: '{now}'}}]->(b)",
         par   = esc(parent_id),
         chi   = esc(child_id),
-        eid   = esc(edge_id),
         notes = esc(notes),
         now   = esc(now),
     ))?;
@@ -79,7 +77,7 @@ pub fn list_hierarchy_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
     // children
     let out_q = format!(
         "MATCH (p:Intent {{id: '{id}'}})-[e:HIERARCHY]->(c:Intent) \
-         RETURN e.id, e.notes, \
+         RETURN e.notes, \
                 p.id AS parent_id, p.name AS parent_name, \
                 c.id AS child_id, c.name AS child_name",
         id = esc(intent_id)
@@ -87,7 +85,7 @@ pub fn list_hierarchy_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
     // parents
     let in_q = format!(
         "MATCH (p:Intent)-[e:HIERARCHY]->(c:Intent {{id: '{id}'}}) \
-         RETURN e.id, e.notes, \
+         RETURN e.notes, \
                 p.id AS parent_id, p.name AS parent_name, \
                 c.id AS child_id, c.name AS child_name",
         id = esc(intent_id)
@@ -97,10 +95,12 @@ pub fn list_hierarchy_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
         let result = db.execute(q)?;
         let cols = col_map(&result);
         for row in result.rows() {
+            let parent_id = str_val(get(row, &cols, "parent_id"));
+            let child_id = str_val(get(row, &cols, "child_id"));
             edges.push(Hierarchy {
-                id:               str_val(get(row, &cols, "e.id")),
-                parent_id:        str_val(get(row, &cols, "parent_id")),
-                child_id:         str_val(get(row, &cols, "child_id")),
+                id:               crate::db::schema::edge_key(crate::db::schema::edge::HIERARCHY, &parent_id, &child_id),
+                parent_id,
+                child_id,
                 parent_name:      str_val(get(row, &cols, "parent_name")),
                 child_name:       str_val(get(row, &cols, "child_name")),
                 notes:            str_val(get(row, &cols, "e.notes")),

@@ -14,6 +14,7 @@ pub mod find;
 pub mod guide;
 pub mod hypothesis;
 pub mod import;
+pub mod migrate;
 pub mod hotspots;
 pub mod ignore;
 pub mod edge;
@@ -61,6 +62,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Report                     => report::run(&printer),
         Command::Batch       { file }       => batch::run(&file, &printer),
         Command::Doctor                     => doctor::run(&printer),
+        Command::Migrate                    => migrate::run(&printer),
         Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),

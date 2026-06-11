@@ -11,19 +11,22 @@ use crate::types::CodeFile;
 use super::row::{col_map, get, str_val};
 
 pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
-    let q = format!(
-        "INSERT (:CodeFile {{id: '{id}', path: '{path}', language: '{lang}', \
-         last_modified: '{mtime}', imports: '{imports}', content_hash: '{hash}'}})",
-        id      = esc(&cf.id),
-        path    = esc(&cf.path),
-        lang    = esc(&cf.language),
-        mtime   = esc(&cf.last_modified),
-        imports = esc(if cf.imports.is_empty() { "[]" } else { &cf.imports }),
-        hash    = esc(&cf.content_hash),
-    );
-    db.execute(&q)?;
+    let mut p = super::row::sparams(&[
+        ("id", &cf.id),
+        ("path", &cf.path),
+        ("lang", &cf.language),
+        ("mtime", &cf.last_modified),
+        ("hash", &cf.content_hash),
+    ]);
+    p.insert("imports".into(), super::row::list_param(&cf.imports));
+    db.execute_with_params(
+        "INSERT (:CodeFile {id: $id, path: $path, language: $lang, \
+         last_modified: $mtime, imports: $imports, content_hash: $hash})",
+        p,
+    )?;
     Ok(())
 }
+
 
 pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
     let q = "MATCH (cf:CodeFile) \
@@ -63,14 +66,18 @@ pub fn update_codefile_hash_and_mtime(
     Ok(())
 }
 
-/// Store the statically-extracted import list (JSON array of repo-relative
+/// Store the statically-extracted import list (native list of repo-relative
 /// paths) on a CodeFile — written by `loom sync`, read by smells/discovery.
-pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports_json: &str) -> Result<()> {
-    db.execute(&format!(
-        "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{imports} = '{}'",
-        esc(id), esc(imports_json),
-        imports = crate::db::schema::prop::IMPORTS,
-    ))?;
+pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports: &[String]) -> Result<()> {
+    let mut p = super::row::sparams(&[("id", id)]);
+    p.insert("imports".into(), super::row::list_param(imports));
+    db.execute_with_params(
+        &format!(
+            "MATCH (cf:CodeFile {{id: $id}}) SET cf.{imports} = $imports",
+            imports = crate::db::schema::prop::IMPORTS,
+        ),
+        p,
+    )?;
     Ok(())
 }
 
@@ -102,6 +109,9 @@ pub fn delete_codefile(db: &dyn LoomDb, key: &str) -> Result<Option<CodeFile>> {
         "MATCH (cf:CodeFile {{id: '{}'}}) DETACH DELETE cf",
         esc(&cf.id)
     ))?;
+    // The IMPLEMENTS edges died with the node — prune their notes too
+    // (derived edge keys embed the codefile id).
+    super::note::prune_edge_notes_touching(db, &cf.id)?;
     Ok(Some(cf))
 }
 
@@ -111,7 +121,7 @@ fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
         path:          str_val(get(row, cols, "cf.path")),
         language:      str_val(get(row, cols, "cf.language")),
         last_modified: str_val(get(row, cols, "cf.last_modified")),
-        imports:       str_val(get(row, cols, "cf.imports")),
+        imports:       super::row::list_val(get(row, cols, "cf.imports")),
         content_hash:  str_val(get(row, cols, "cf.content_hash")),
     }
 }

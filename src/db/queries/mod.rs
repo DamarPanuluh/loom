@@ -5,10 +5,12 @@
 //! for reports). `mod.rs` only wires them together and re-exports a flat API so
 //! the rest of the crate keeps importing `crate::db::queries::<fn>` unchanged.
 //!
-//! Reliability rule that shaped this layer: grafeo 0.5.x cannot reliably
-//! match/filter a relationship by its own property. Edges are matched via their
-//! endpoint nodes, or scanned and filtered in Rust. See `relates_to` and the
-//! project memory `grafeo-relationship-matching`.
+//! Reliability rules that shaped this layer (probed — tests/grafeo_probe.rs):
+//! edge identity is DERIVED from the endpoint pair (schema v4), so edges are
+//! matched via their endpoint nodes; edge-property STATUS filters live in the
+//! query (deterministic), but never `WHERE r.id` (that name resolves to the
+//! internal edge id in filter position). Free-text values go through $params.
+//! See the project memory `grafeo-relationship-matching`.
 
 mod row;
 
@@ -78,10 +80,10 @@ mod tests {
             description:       "d".to_string(),
             abstraction_level: "feature".to_string(),
             domain:            "test".to_string(),
-            source_refs:       "[]".to_string(),
+            source_refs:       Vec::new(),
             status:            "proposed".to_string(),
             aspect:            String::new(),
-            tags:              "[]".to_string(),
+            tags:              Vec::new(),
             lifecycle:         "implemented".to_string(),
             created_at:        "t0".to_string(),
             updated_at:        "t0".to_string(),
@@ -108,7 +110,7 @@ mod tests {
         let mut k = 0;
         for i in 0..ids.len() {
             for j in (i + 1)..ids.len() {
-                let e = get_or_create_relates_to(&db, &format!("e{k}"), &ids[i], &ids[j], "t").unwrap();
+                let e = get_or_create_relates_to(&db, &ids[i], &ids[j], "t").unwrap();
                 assert_eq!(e.from_id, ids[i]);
                 assert_eq!(e.to_id, ids[j]);
                 assert_eq!(e.inspection_status, "uninspected");
@@ -129,9 +131,9 @@ mod tests {
     #[test]
     fn get_or_create_is_idempotent() {
         let (db, ids) = db_with_intents(2);
-        let first = get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        let first = get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         for k in 0..10 {
-            let again = get_or_create_relates_to(&db, &format!("e{k}x"), &ids[0], &ids[1], "t").unwrap();
+            let again = get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
             assert_eq!(again.id, first.id);
         }
         assert_eq!(list_relates_to(&db, None).unwrap().len(), 1);
@@ -142,8 +144,8 @@ mod tests {
     #[test]
     fn ground_and_issue_persist() {
         let (db, ids) = db_with_intents(3);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
-        get_or_create_relates_to(&db, "e1", &ids[0], &ids[2], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
 
         assert!(update_relates_to_ground(&db, &ids[0], &ids[1], "crit", 0.9, "llm", "t").unwrap());
         let e0 = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
@@ -162,7 +164,7 @@ mod tests {
     #[test]
     fn independent_persists() {
         let (db, ids) = db_with_intents(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         assert!(update_relates_to_independent(&db, &ids[0], &ids[1], "unrelated", "llm", "t").unwrap());
         let e = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
         assert_eq!(e.inspection_status, "independent");
@@ -174,8 +176,8 @@ mod tests {
     #[test]
     fn fix_edge_ripples_to_neighbours() {
         let (db, ids) = db_with_intents(3);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
-        get_or_create_relates_to(&db, "e1", &ids[0], &ids[2], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         // e0 is passing (shares node 0 with e1); e1 is failing
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
         update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap();
@@ -198,7 +200,7 @@ mod tests {
         assert_eq!(pairs.len(), 3); // C(3,2)
         assert!(pairs.iter().all(|(e, _)| e.inspection_status == "unexplored" && e.id.is_empty()));
 
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         assert_eq!(unexplored_pairs_scored(&db).unwrap().len(), 2);
         assert_eq!(scored_candidates(&db, "discovery").unwrap().len(), 1);
     }
@@ -283,7 +285,7 @@ mod tests {
     #[test]
     fn doctor_passes_on_well_formed_graph() {
         let (db, ids) = db_inited(3);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // The criterion must be substantive — doctor audits verdicts for
         // vacuous criteria (the write-time gate enforces the same rule).
         update_relates_to_ground(
@@ -364,7 +366,7 @@ mod tests {
     }
 
     fn codefile(id: &str, path: &str) -> CodeFile {
-        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: "[]".into(), content_hash: "".into() }
+        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: Vec::new(), content_hash: "".into() }
     }
 
     /// IMPLEMENTS is a structural grounding assertion → defaults to `passing`,
@@ -374,7 +376,7 @@ mod tests {
         let (db, ids) = db_with_intents(1);
         db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned")).unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(imps[0].inspection_status, "passing");
     }
@@ -385,13 +387,13 @@ mod tests {
     #[test]
     fn compass_agrees_with_next_when_complete() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
         // Both intents are implemented leaves, so BOTH must be grounded for the
         // vertical spine to be complete (the stricter completeness model).
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
 
         assert!(scored_candidates(&db, "discovery").unwrap().is_empty(), "next has discovery work");
         assert!(unexplored_pairs_scored(&db).unwrap().is_empty(), "unexplored pairs remain");
@@ -407,7 +409,7 @@ mod tests {
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
         for (k, id) in ids.iter().enumerate() {
-            insert_validates(&db, &format!("ve{k}"), "v0", id, "", "t").unwrap();
+            insert_validates(&db, "v0", id, "", "t").unwrap();
         }
 
         // 360°: an EMPTY normative plane blocks `complete` — coded intents with
@@ -426,7 +428,7 @@ mod tests {
         assert_eq!(gs.phase, "quality", "unmeasured pairs should route to quality");
         assert_eq!(gs.coverage.measured_pairs.total, 2);
         for id in &ids {
-            insert_governs(&db, &format!("g-{id}"), "r0", id, "", "t").unwrap();
+            insert_governs(&db, "r0", id, "", "t").unwrap();
             update_governs_verdict(&db, "r0", id, "passing",
                 "criterion text long enough", "evidence text long enough",
                 0.9, "llm:quality", "t").unwrap();
@@ -443,10 +445,10 @@ mod tests {
     #[test]
     fn unrealized_leaf_blocks_vertical_completeness() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         // ids[1] is an implemented leaf with no IMPLEMENTS → unrealized.
 
         let vc = vertical_completeness(&db).unwrap();
@@ -457,7 +459,7 @@ mod tests {
         assert_eq!(gs.phase, "ground", "expected ground, got '{}'", gs.phase);
 
         // Grounding it closes the spine.
-        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
         assert!(vertical_completeness(&db).unwrap().complete);
     }
 
@@ -468,7 +470,7 @@ mod tests {
         let (db, ids) = db_inited(1);
         insert_codefile(&db, &codefile("cf0", "src/used.rs")).unwrap();
         insert_codefile(&db, &codefile("cf1", "src/orphan.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf0", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf0", "fn x", "", "t").unwrap();
 
         let vc = vertical_completeness(&db).unwrap();
         assert_eq!(vc.unreached_codefiles, vec!["src/orphan.rs".to_string()], "{vc:?}");
@@ -481,17 +483,17 @@ mod tests {
     fn hierarchy_enforces_tree_shape() {
         let (db, ids) = db_with_intents(3); // a, b, c
         // a -> b is fine.
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         // a -> b again: duplicate, rejected.
-        assert!(insert_hierarchy(&db, "h0d", &ids[0], &ids[1], "", "t").is_err());
+        assert!(insert_hierarchy(&db, &ids[0], &ids[1], "", "t").is_err());
         // c -> b: b would get a second parent, rejected.
-        assert!(insert_hierarchy(&db, "h1", &ids[2], &ids[1], "", "t").is_err());
+        assert!(insert_hierarchy(&db, &ids[2], &ids[1], "", "t").is_err());
         // b -> a: would create a cycle (a is already an ancestor of b), rejected.
-        assert!(insert_hierarchy(&db, "h2", &ids[1], &ids[0], "", "t").is_err());
+        assert!(insert_hierarchy(&db, &ids[1], &ids[0], "", "t").is_err());
         // b -> c is fine (extends the chain a -> b -> c).
-        insert_hierarchy(&db, "h3", &ids[1], &ids[2], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[1], &ids[2], "", "t").unwrap();
         // c -> a: would close the cycle a -> b -> c -> a, rejected.
-        assert!(insert_hierarchy(&db, "h4", &ids[2], &ids[0], "", "t").is_err());
+        assert!(insert_hierarchy(&db, &ids[2], &ids[0], "", "t").is_err());
 
         let all = list_all_hierarchy(&db).unwrap();
         assert_eq!(all.len(), 2, "only the two valid edges should exist: {all:?}");
@@ -506,10 +508,10 @@ mod tests {
     #[test]
     fn non_leaf_intents_need_no_direct_grounding() {
         let (db, ids) = db_inited(2); // parent, child
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         // Ground only the leaf (child); the parent is realized via the child.
-        insert_implements(&db, "im", &ids[1], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn x", "", "t").unwrap();
 
         let vc = vertical_completeness(&db).unwrap();
         assert_eq!(vc.roots, 1);
@@ -552,7 +554,7 @@ mod tests {
             last_run: String::new(), last_result: "not_run".into(),
         };
         insert_validation(&db, &v).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
 
         let linked = validations_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(linked.len(), 1);
@@ -574,18 +576,18 @@ mod tests {
         // compass can advance past ground; prove it so it can advance past
         // validate (missing proof routes there first — handoff order).
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "smoke".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
             detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[0], "no god objects", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "no god objects", "t").unwrap();
 
         let gov = list_governs_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(gov.len(), 1);
@@ -650,12 +652,12 @@ mod tests {
 
         // unrealized leaves → ground (structural; no queue to check) → realize
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
         assert_coherent(&db, "realized, unproven");
 
         // failing relationship → fix
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough",
             "evidence long enough", 0.9, "llm:analyzer", "t").unwrap();
         assert_coherent(&db, "failing edge");
@@ -668,8 +670,8 @@ mod tests {
             validation_type: "test".into(), command: "true".into(),
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
-        insert_validates(&db, "ve1", "v0", &ids[1], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         // empty normative plane → quality (seed prompt; queue legally empty)
         assert_coherent(&db, "proven, no rules");
@@ -681,7 +683,7 @@ mod tests {
         }).unwrap();
         assert_coherent(&db, "unmeasured rule");
         for id in &ids {
-            insert_governs(&db, &format!("g-{id}"), "r0", id, "", "t").unwrap();
+            insert_governs(&db, "r0", id, "", "t").unwrap();
             update_governs_verdict(&db, "r0", id, "passing",
                 "criterion text long enough", "evidence text long enough",
                 0.9, "llm:quality", "t").unwrap();
@@ -706,13 +708,13 @@ mod tests {
         // gated on zero OPEN findings, not just on empty queues.
         let id2 = "intent-2";
         insert_intent(&db, &intent(id2, "I2")).unwrap();
-        get_or_create_relates_to(&db, "e1", &ids[0], id2, "t4").unwrap();
+        get_or_create_relates_to(&db, &ids[0], id2, "t4").unwrap();
         update_relates_to_ground(&db, &ids[0], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
-        get_or_create_relates_to(&db, "e2", &ids[1], id2, "t4").unwrap();
+        get_or_create_relates_to(&db, &ids[1], id2, "t4").unwrap();
         update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
-        insert_implements(&db, "im2", id2, "cf", "fn z", "", "t4").unwrap();
-        insert_validates(&db, "ve2", "v0", id2, "", "t4").unwrap();
-        insert_governs(&db, "g-i2", "r0", id2, "", "t4").unwrap();
+        insert_implements(&db, id2, "cf", "fn z", "", "t4").unwrap();
+        insert_validates(&db, "v0", id2, "", "t4").unwrap();
+        insert_governs(&db, "r0", id2, "", "t4").unwrap();
         update_governs_verdict(&db, "r0", id2, "passing",
             "criterion text long enough", "evidence text long enough",
             0.9, "llm:quality", "t4").unwrap();
@@ -733,7 +735,7 @@ mod tests {
     #[test]
     fn transition_history_feeds_recurrent_smell() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // fail → fix → fail again: two regressions.
         update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence one", 0.9, "llm:analyzer", "t1").unwrap();
         let e = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
@@ -780,9 +782,9 @@ mod tests {
         insert_intent(&db, &intent("b", "beta surface")).unwrap();
         insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
         insert_codefile(&db, &codefile("cfb", "src/b.rs")).unwrap();
-        insert_implements(&db, "im1", "a", "cfa", "", "", "t").unwrap();
-        insert_implements(&db, "im2", "b", "cfb", "", "", "t").unwrap();
-        update_codefile_imports(&db, "cfa", "[\"src/b.rs\"]").unwrap();
+        insert_implements(&db, "a", "cfa", "", "", "t").unwrap();
+        insert_implements(&db, "b", "cfb", "", "", "t").unwrap();
+        update_codefile_imports(&db, "cfa", &["src/b.rs".to_string()]).unwrap();
 
         let smells = compute_smells(&db).unwrap();
         assert!(smells.iter().any(|s| s.kind == "undeclared_coupling"
@@ -790,30 +792,12 @@ mod tests {
         let pairs = unexplored_pairs_scored(&db).unwrap();
         assert!(pairs[0].0.notes.contains("imports each other"), "{}", pairs[0].0.notes);
 
-        get_or_create_relates_to(&db, "e0", "a", "b", "t").unwrap();
+        get_or_create_relates_to(&db, "a", "b", "t").unwrap();
         update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", 0.9, "llm:analyzer", "t").unwrap();
         assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "undeclared_coupling"));
     }
 
-    #[test]
-    fn malformed_imports_are_reported_in_discovery_scoring() {
-        let (db, _) = db_inited(0);
-        insert_codefile(&db, &codefile("cf", "src/bad.rs")).unwrap();
-        update_codefile_imports(&db, "cf", "{not-json").unwrap();
 
-        let err = unexplored_pairs_scored(&db).unwrap_err().to_string();
-        assert!(err.contains("Malformed imports JSON for CodeFile 'src/bad.rs'"), "{err}");
-    }
-
-    #[test]
-    fn malformed_imports_are_reported_in_smells() {
-        let (db, _) = db_inited(0);
-        insert_codefile(&db, &codefile("cf", "src/bad.rs")).unwrap();
-        update_codefile_imports(&db, "cf", "{not-json").unwrap();
-
-        let err = compute_smells(&db).unwrap_err().to_string();
-        assert!(err.contains("Malformed imports JSON for CodeFile 'src/bad.rs'"), "{err}");
-    }
 
     /// Portability: export is deterministic, and an import into a fresh graph
     /// reproduces every node and edge with its meta intact.
@@ -821,23 +805,23 @@ mod tests {
     fn export_import_round_trip() {
         use crate::types::Validation;
         let (db, ids) = db_inited(2);
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        update_codefile_imports(&db, "cf", "[\"src/y.rs\"]").unwrap();
-        insert_implements(&db, "im", &ids[1], "cf", "fn x", "", "t").unwrap();
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        update_codefile_imports(&db, "cf", &["src/y.rs".to_string()]).unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn x", "", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", 0.8, "llm:analyzer", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_sql".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[1], "", "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "smoke".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         let export = export_graph(&db).unwrap();
         let again = export_graph(&db).unwrap();
@@ -856,9 +840,83 @@ mod tests {
         assert_eq!(e.criterion, "parent and child coexist by design");
         assert!((e.confidence - 0.8).abs() < 1e-9);
         let cf = list_codefiles(&db2).unwrap();
-        assert_eq!(cf[0].imports, "[\"src/y.rs\"]");
+        assert_eq!(cf[0].imports, vec!["src/y.rs".to_string()]);
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export, false).is_err());
+    }
+
+    /// Hard-deleting a node prunes the notes on its edges too (derived keys
+    /// embed endpoint ids), and `dangling_notes` finds any pre-existing
+    /// orphans for `loom note prune`.
+    #[test]
+    fn delete_prunes_edge_notes_and_prune_finds_orphans() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        // Grounding records a transition note targeting the edge.
+        update_relates_to_ground(&db, &ids[0], &ids[1], "pair coexists by design here", 0.9, "llm:analyzer", "t").unwrap();
+        let key = crate::db::schema::edge_key(
+            crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
+        assert!(!notes_for_target(&db, &key).unwrap().is_empty(), "transition note exists");
+
+        // A pre-existing orphan (simulates v3-era damage).
+        insert_note(&db, &note("orphan", "question", "edge", "rt:ghost-a:ghost-b")).unwrap();
+
+        delete_intent(&db, &ids[0]).unwrap();
+        assert!(notes_for_target(&db, &key).unwrap().is_empty(),
+            "edge notes must die with the edge");
+
+        let dangling = dangling_notes(&db).unwrap();
+        assert_eq!(dangling.len(), 1, "{dangling:?}");
+        assert_eq!(dangling[0].id, "orphan");
+        delete_note_by_id(&db, "orphan").unwrap();
+        assert!(dangling_notes(&db).unwrap().is_empty());
+    }
+
+    /// A v3 export (stored edge uuids; notes referencing them) upgrades in
+    /// flight: the legacy edge id is dropped and edge-targeted notes are
+    /// remapped to the derived v4 edge key.
+    #[test]
+    fn import_upgrades_v3_export() {
+        let (db, ids) = db_inited(2);
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        insert_note(&db, &note("n-edge", "question", "edge", "PLACEHOLDER")).unwrap();
+        let mut export = export_graph(&db).unwrap();
+
+        // Rewrite the export back into v3 shape: stored uuid on the edge,
+        // note targeting that uuid, list props as JSON-encoded STRINGS.
+        export["schema_version"] = serde_json::json!("3");
+        for item in export["nodes"]["Intent"].as_array_mut().unwrap() {
+            for key in ["source_refs", "tags"] {
+                let encoded = serde_json::to_string(&item[key]).unwrap();
+                item[key] = serde_json::json!(encoded);
+            }
+        }
+        export["edges"]["RELATES_TO"][0]
+            .as_object_mut()
+            .unwrap()
+            .insert("id".into(), serde_json::json!("legacy-uuid-e0"));
+        for item in export["nodes"]["Note"].as_array_mut().unwrap() {
+            if item["target_kind"] == "edge" {
+                item["target_id"] = serde_json::json!("legacy-uuid-e0");
+            }
+        }
+
+        let db2 = GrafeoDb::in_memory();
+        import_graph(&db2, &export, false).unwrap();
+        let derived = crate::db::schema::edge_key(
+            crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
+        let notes = list_notes(&db2, None, None).unwrap();
+        let n = notes.iter().find(|n| n.target_kind == "edge").unwrap();
+        assert_eq!(n.target_id, derived, "edge-targeted note must remap to the derived key");
+        // v5 upgrade: stringified list props arrive as native lists.
+        let re_export = export_graph(&db2).unwrap();
+        assert!(re_export["nodes"]["Intent"][0]["source_refs"].is_array(),
+            "list props must re-export as real arrays after the upgrade");
+
+        // A version with no upgrade path still rejects loudly.
+        export["schema_version"] = serde_json::json!("2");
+        let db3 = GrafeoDb::in_memory();
+        assert!(import_graph(&db3, &export, false).is_err());
     }
 
     #[test]
@@ -900,10 +958,10 @@ mod tests {
         let (db, ids) = db_with_intents(5); // C(5,2) = 10 pairs
         assert_eq!(count_unexplored_pairs(&db).unwrap(), 10);
 
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Reverse direction of the same pair — must not double-count.
-        get_or_create_relates_to(&db, "e1", &ids[1], &ids[0], "t").unwrap();
-        insert_hierarchy(&db, "h0", &ids[2], &ids[3], "", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[1], &ids[0], "t").unwrap();
+        insert_hierarchy(&db, &ids[2], &ids[3], "", "t").unwrap();
 
         let counted = count_unexplored_pairs(&db).unwrap();
         let enumerated = unexplored_pairs_scored(&db).unwrap().len() as i64;
@@ -923,7 +981,7 @@ mod tests {
             validation_type: "manual_check".into(), command: String::new(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         // not_run → in the validator queue
         assert!(validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
 
@@ -935,7 +993,7 @@ mod tests {
 
         // a code change doesn't unblock it (and doesn't erase the state)
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf", "", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "", "", "t").unwrap();
         let n = invalidate_validations_for_codefile(&db, "cf").unwrap();
         assert_eq!(n, 0, "blocked proofs are not flipped to not_run");
         assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "blocked");
@@ -947,7 +1005,7 @@ mod tests {
     fn source_refs_add_remove_roundtrip() {
         let (db, ids) = db_with_intents(1);
         let refs = |db: &GrafeoDb| -> Vec<String> {
-            serde_json::from_str(&get_intent(db, &ids[0]).unwrap().unwrap().source_refs).unwrap()
+            get_intent(db, &ids[0]).unwrap().unwrap().source_refs
         };
         assert!(add_source_ref(&db, &ids[0], "docs/CONTRACT.md", "t1").unwrap());
         assert!(add_source_ref(&db, &ids[0], "src/main.rs", "t2").unwrap());
@@ -959,25 +1017,6 @@ mod tests {
         assert!(remove_source_ref(&db, "ghost", "x", "t6").unwrap().is_none());
     }
 
-    #[test]
-    fn malformed_source_refs_are_reported_not_reset() {
-        let db = GrafeoDb::in_memory();
-        let mut bad = intent("bad-refs", "bad source refs");
-        bad.source_refs = "not json".to_string();
-        insert_intent(&db, &bad).unwrap();
-
-        let add_err = add_source_ref(&db, "bad-refs", "docs/CONTRACT.md", "t1")
-            .unwrap_err()
-            .to_string();
-        assert!(add_err.contains("malformed source_refs JSON"), "{add_err}");
-        assert_eq!(get_intent(&db, "bad-refs").unwrap().unwrap().source_refs, "not json");
-
-        let remove_err = remove_source_ref(&db, "bad-refs", "docs/CONTRACT.md", "t2")
-            .unwrap_err()
-            .to_string();
-        assert!(remove_err.contains("malformed source_refs JSON"), "{remove_err}");
-        assert_eq!(get_intent(&db, "bad-refs").unwrap().unwrap().source_refs, "not json");
-    }
 
     /// The content fingerprint round-trips and is the sync change baseline.
     #[test]
@@ -1013,7 +1052,7 @@ mod tests {
     #[test]
     fn doctor_flags_defaulted_verdicts() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Verdict recorded with the 0.0 default — query layer permits it; the
         // command-layer gate normally prevents it; doctor must catch it.
         update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
@@ -1036,7 +1075,7 @@ mod tests {
     #[test]
     fn doctor_hints_solo_mode_provenance() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
             0.9, "llm", "t1").unwrap();
         let rep = check_graph(&db).unwrap();
@@ -1086,17 +1125,17 @@ mod tests {
     fn import_as_planned_ports_the_semantic_plane() {
         use crate::types::Validation;
         let (db, ids) = db_inited(2);
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/old_lang.rs")).unwrap();
-        insert_implements(&db, "im", &ids[1], "cf", "fn old", "", "t").unwrap();
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn old", "", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1],
             "parent rolls up the child's contract", 0.9, "llm", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[1], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[1], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[1], "passing",
             "criterion text long enough", "evidence from the OLD code",
             0.9, "llm:quality", "t").unwrap();
@@ -1105,7 +1144,7 @@ mod tests {
             validation_type: "test".into(), command: "cargo test old".into(),
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         let export = export_graph(&db).unwrap();
         let db2 = GrafeoDb::in_memory();
@@ -1148,20 +1187,20 @@ mod tests {
     fn retire_is_invisible_to_computation_visible_to_history() {
         use crate::types::Validation;
         let (db, ids) = db_inited(3); // 0: parent, 1: child (to retire), 2: sibling
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
-        insert_hierarchy(&db, "h1", &ids[0], &ids[2], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[2], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf-solo", "src/only_old.rs")).unwrap();
         insert_codefile(&db, &codefile("cf-shared", "src/shared.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[1], "cf-solo", "fn old", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[1], "cf-shared", "fn a", "", "t").unwrap();
-        insert_implements(&db, "im2", &ids[2], "cf-shared", "fn b", "", "t").unwrap();
-        get_or_create_relates_to(&db, "e0", &ids[1], &ids[2], "t").unwrap();
+        insert_implements(&db, &ids[1], "cf-solo", "fn old", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf-shared", "fn a", "", "t").unwrap();
+        insert_implements(&db, &ids[2], "cf-shared", "fn b", "", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[1], &ids[2], "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "old-proof".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[1], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         // Fallout names exactly the triggered work.
         let f = retire_fallout(&db, &ids[1]).unwrap();
@@ -1199,9 +1238,9 @@ mod tests {
     #[test]
     fn degree_excludes_independent_edges() {
         let (db, ids) = db_inited(3);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
-        get_or_create_relates_to(&db, "e1", &ids[0], &ids[2], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2],
             "verified: no shared surface at all between these", "llm", "t").unwrap();
 
@@ -1218,7 +1257,7 @@ mod tests {
     #[test]
     fn low_confidence_verdicts_feed_the_review_queue() {
         let (db, ids) = db_inited(2);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // A scout grounds with HONEST uncertainty.
         update_relates_to_ground(&db, &ids[0], &ids[1],
             "names overlap but the call path was not traced", 0.45, "llm:analyzer", "t").unwrap();
@@ -1227,7 +1266,7 @@ mod tests {
             detection_logic: "dl".into(), severity: "warning".into(),
             inspection_effort: "high".into(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[0], "passing",
             "criterion text long enough", "evidence text long enough",
             0.5, "llm:quality", "t").unwrap();
@@ -1355,8 +1394,8 @@ mod tests {
         assert_eq!(resolve_hypothesis(&db, "scoring").unwrap(), "h0");
 
         // TARGETS edges, endpoint-matched.
-        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
-        insert_targets(&db, "e1", "h0", &ids[1], "t").unwrap();
+        insert_targets(&db, "h0", &ids[0], "t").unwrap();
+        insert_targets(&db, "h0", &ids[1], "t").unwrap();
         let ts = list_targets_for_hypothesis(&db, "h0").unwrap();
         assert_eq!(ts.len(), 2);
         assert!(ts.iter().all(|t| t.inspection_status == "uninspected"));
@@ -1396,7 +1435,7 @@ mod tests {
         let (db, ids) = db_with_intents(4);
         // Make intent 0 central: real RELATES_TO edges to the other three.
         for j in 1..4 {
-            get_or_create_relates_to(&db, &format!("e{j}"), &ids[0], &ids[j], "t").unwrap();
+            get_or_create_relates_to(&db, &ids[0], &ids[j], "t").unwrap();
             update_relates_to_ground(
                 &db, &ids[0], &ids[j],
                 "they cooperate via a stable contract", 0.9, "llm", "t",
@@ -1405,11 +1444,11 @@ mod tests {
         let mut h_central = hypothesis("h-central", "touches the hub");
         h_central.created_at = "t2".into();
         insert_hypothesis(&db, &h_central).unwrap();
-        insert_targets(&db, "th0", "h-central", &ids[0], "t").unwrap();
+        insert_targets(&db, "h-central", &ids[0], "t").unwrap();
         let mut h_leaf = hypothesis("h-leaf", "touches a leaf");
         h_leaf.created_at = "t1".into();
         insert_hypothesis(&db, &h_leaf).unwrap();
-        insert_targets(&db, "th1", "h-leaf", &ids[3], "t").unwrap();
+        insert_targets(&db, "h-leaf", &ids[3], "t").unwrap();
         insert_hypothesis(&db, &hypothesis("h-untargeted", "floats free")).unwrap();
 
         let q = triage_candidates(&db).unwrap();
@@ -1433,7 +1472,7 @@ mod tests {
     fn stale_target_support_routes_back_to_triage() {
         let (db, ids) = db_with_intents(2);
         insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
-        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+        insert_targets(&db, "h0", &ids[0], "t").unwrap();
 
         // Prove it (what `loom hypothesis prove` does): node verdict + stamp.
         update_hypothesis_verdict(&db, "h0", "supported", "checked against the code", "llm:analyzer", "t1").unwrap();
@@ -1472,7 +1511,7 @@ mod tests {
     fn hypothesis_travels_and_old_exports_still_import() {
         let (db, ids) = db_inited(1);
         insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
-        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+        insert_targets(&db, "h0", &ids[0], "t").unwrap();
 
         let export = export_graph(&db).unwrap();
         assert_eq!(export["nodes"]["Hypothesis"].as_array().unwrap().len(), 1);
@@ -1511,7 +1550,7 @@ mod tests {
         set_hypothesis_status(&db, "h1", "rejected", "llm:builder", "t1").unwrap();
         insert_hypothesis(&db, &hypothesis("h2", "thread graph snapshots")).unwrap();
         set_hypothesis_status(&db, "h2", "confirmed", "llm:validator", "t1").unwrap();
-        insert_targets(&db, "e0", "h0", &ids[0], "t").unwrap();
+        insert_targets(&db, "h0", &ids[0], "t").unwrap();
 
         let export = export_graph(&db).unwrap();
         let db2 = GrafeoDb::in_memory();
@@ -1541,17 +1580,17 @@ mod tests {
     #[test]
     fn unmeasured_smell_respects_ancestor_verdicts() {
         let (db, ids) = db_with_intents(3); // 0 = component, 1 = its child, 2 = uncovered
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         // All three have code (the smell only measures coded intents).
         for (k, iid) in ids.iter().enumerate() {
             insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
-            insert_implements(&db, &format!("im{k}"), iid, &format!("cf{k}"), "", "", "t").unwrap();
+            insert_implements(&db, iid, &format!("cf{k}"), "", "", "t").unwrap();
         }
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no-eval".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(
             &db, "r0", &ids[0], "passing", "no dynamic evaluation in this component",
             "workspace clippy denial covers the whole subtree", 0.9, "llm:quality", "t",
@@ -1579,7 +1618,7 @@ mod tests {
             validation_type: "test".into(), command: "cargo test -p wrong-pkg".into(),
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         set_validates_status_for_validation(&db, "v0", "passing", "ran green").unwrap();
 
         // The command-layer flow: definition updated, then proof reset.
@@ -1610,7 +1649,7 @@ mod tests {
             validation_type: "manual_check".into(), command: String::new(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
 
         update_validation_result(&db, "v0", "passed", "t").unwrap();
         let n = set_validates_status_for_validation(&db, "v0", "passing", "checked by hand").unwrap();
@@ -1641,7 +1680,7 @@ mod tests {
             id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
             detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
 
         // Uninspected GOVERNS is quality work.
         let qc = quality_candidates(&db).unwrap();
@@ -1680,10 +1719,10 @@ mod tests {
     #[test]
     fn unmeasured_pairs_feed_quality_queue_at_highest_altitude() {
         let (db, ids) = db_inited(3); // 0: parent, 1: child (both coded); 2: no code
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
             detection_logic: "what to look for".into(), severity: "warning".into(), inspection_effort: String::new(),
@@ -1703,7 +1742,7 @@ mod tests {
         assert_eq!((nc.measured_pairs, nc.total_pairs), (0, 2));
 
         // A verdict at the parent covers the child by inheritance → queue dry.
-        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[0], "passing",
             "criterion text long enough", "evidence text long enough",
             0.9, "llm:quality", "t").unwrap();
@@ -1720,7 +1759,7 @@ mod tests {
         let mut happy = intent("happy-child", "login succeeds");
         happy.aspect = "happy".into();
         insert_intent(&db, &happy).unwrap();
-        insert_hierarchy(&db, "h0", &ids[0], "happy-child", "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
 
         let smells = compute_smells(&db).unwrap();
         let found = smells.iter().find(|s| s.kind == "happy_path_only");
@@ -1730,11 +1769,11 @@ mod tests {
         let mut sad = intent("sad-child", "login fails cleanly");
         sad.aspect = "sad".into();
         insert_intent(&db, &sad).unwrap();
-        insert_hierarchy(&db, "h1", &ids[0], "sad-child", "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], "sad-child", "", "t").unwrap();
         let mut fb = intent("fb-child", "login degrades gracefully");
         fb.aspect = "fallback".into();
         insert_intent(&db, &fb).unwrap();
-        insert_hierarchy(&db, "h2", &ids[0], "fb-child", "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], "fb-child", "", "t").unwrap();
         let smells = compute_smells(&db).unwrap();
         assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
     }
@@ -1747,7 +1786,7 @@ mod tests {
         let (db, ids) = db_inited(4);
         insert_codefile(&db, &codefile("cf", "src/hub.rs")).unwrap();
         for (k, id) in ids.iter().take(3).enumerate() {
-            insert_implements(&db, &format!("im{k}"), id, "cf", "fn f", "", "t1").unwrap();
+            insert_implements(&db, id, "cf", "fn f", "", "t1").unwrap();
         }
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
 
@@ -1756,7 +1795,7 @@ mod tests {
         assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
 
         // A NEW claim after the decision re-opens the question.
-        insert_implements(&db, "im3", &ids[3], "cf", "fn g", "", "t3").unwrap();
+        insert_implements(&db, &ids[3], "cf", "fn g", "", "t3").unwrap();
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
     }
 
@@ -1768,7 +1807,7 @@ mod tests {
         let (db, ids) = db_inited(1);
         for k in 0..4 {
             insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
-            insert_implements(&db, &format!("im{k}"), &ids[0], &format!("cf{k}"), "fn f", "", "t1").unwrap();
+            insert_implements(&db, &ids[0], &format!("cf{k}"), "fn f", "", "t1").unwrap();
         }
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
 
@@ -1776,7 +1815,7 @@ mod tests {
         assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
 
         insert_codefile(&db, &codefile("cf4", "src/f4.rs")).unwrap();
-        insert_implements(&db, "im4", &ids[0], "cf4", "fn f", "", "t3").unwrap();
+        insert_implements(&db, &ids[0], "cf4", "fn f", "", "t3").unwrap();
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
     }
 
@@ -1790,7 +1829,7 @@ mod tests {
         happy.aspect = "happy".into();
         happy.created_at = "t1".into();
         insert_intent(&db, &happy).unwrap();
-        insert_hierarchy(&db, "h0", &ids[0], "happy-child", "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
 
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
@@ -1800,7 +1839,7 @@ mod tests {
         edge_case.aspect = "edge_case".into();
         edge_case.created_at = "t3".into();
         insert_intent(&db, &edge_case).unwrap();
-        insert_hierarchy(&db, "h1", &ids[0], "edge-child", "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], "edge-child", "", "t").unwrap();
         assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
     }
 
@@ -1813,7 +1852,7 @@ mod tests {
         let (db, ids) = db_inited(2);
         insert_codefile(&db, &codefile("cf0", "src/x.rs")).unwrap();
         insert_codefile(&db, &codefile("cf1", "src/y.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf0", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf0", "fn x", "", "t").unwrap();
 
         let c = graph_state(&db).unwrap().coverage;
         assert_eq!((c.grounded_files.covered, c.grounded_files.total), (1, 2));
@@ -1823,14 +1862,14 @@ mod tests {
         assert_eq!((c.proven_leaves.covered, c.proven_leaves.total), (0, 2));
 
         // Explore the pair, prove one leaf — the axes move.
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "smoke".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[0], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         update_validation_result(&db, "v0", "passed", "t1").unwrap();
 
         let c = graph_state(&db).unwrap().coverage;
@@ -1846,14 +1885,14 @@ mod tests {
     fn validate_candidates_missing_unrun_failing() {
         use crate::types::Validation;
         let (db, ids) = db_inited(3); // 0: parent, 1: leaf-no-proof, 2: leaf-with-proof
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
-        insert_hierarchy(&db, "h1", &ids[0], &ids[2], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[2], "", "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "smoke".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
-        insert_validates(&db, "ve0", "v0", &ids[2], "", "t").unwrap();
+        insert_validates(&db, "v0", &ids[2], "", "t").unwrap();
 
         let vc = validate_candidates(&db).unwrap();
         let by_id: std::collections::HashMap<&str, &ValidateCandidate> =
@@ -1881,8 +1920,8 @@ mod tests {
     #[test]
     fn build_queue_defers_planned_parents_until_children_done() {
         let (db, ids) = db_inited(3); // 0: parent, 1+2: children
-        insert_hierarchy(&db, "h0", &ids[0], &ids[1], "", "t").unwrap();
-        insert_hierarchy(&db, "h1", &ids[0], &ids[2], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[2], "", "t").unwrap();
         for id in &ids {
             set_intent_lifecycle(&db, id, "planned", "t").unwrap();
         }
@@ -1919,7 +1958,7 @@ mod tests {
                 id: rid.into(), name: name.into(), description: "d".into(),
                 detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
             }).unwrap();
-            insert_governs(&db, &format!("g-{rid}"), rid, &ids[0], "", "t").unwrap();
+            insert_governs(&db, rid, &ids[0], "", "t").unwrap();
         }
         update_governs_verdict(
             &db, "r0", &ids[0], "passing", "no dynamic evaluation anywhere",
@@ -1947,11 +1986,11 @@ mod tests {
     fn insert_implements_is_idempotent_per_pair() {
         let (db, ids) = db_inited(1);
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "cf", "fn x", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[0], "cf", "fn y", "other", "t2").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn y", "other", "t2").unwrap();
         let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(imps.len(), 1, "duplicate IMPLEMENTS must not be created");
-        assert_eq!(imps[0].id, "im0", "first grounding wins");
+        assert_eq!(imps[0].id, format!("imp:{}:cf", ids[0]), "first grounding wins");
     }
 
     /// delete_implements is the ungrounding half of insert: endpoint-matched,
@@ -1960,7 +1999,7 @@ mod tests {
     fn delete_implements_ungrounds() {
         let (db, ids) = db_inited(1);
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         assert!(vertical_completeness(&db).unwrap().complete);
         assert!(delete_implements(&db, &ids[0], "cf").unwrap());
         assert!(!delete_implements(&db, &ids[0], "cf").unwrap(), "second delete is a no-op");
@@ -1975,7 +2014,7 @@ mod tests {
     fn codefile_remove_unrealizes_intents() {
         let (db, ids) = db_inited(1);
         insert_codefile(&db, &codefile("cf", "src/gone.rs")).unwrap();
-        insert_implements(&db, "im", &ids[0], "cf", "fn x", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         assert!(vertical_completeness(&db).unwrap().complete);
 
         // By path, then by id for a missing key.
@@ -2012,8 +2051,8 @@ mod tests {
         insert_intent(&db, &intent("o1", "alpha responsibility")).unwrap();
         insert_intent(&db, &intent("o2", "beta duty")).unwrap();
         insert_codefile(&db, &codefile("cf", "src/shared.rs")).unwrap();
-        insert_implements(&db, "im1", "o1", "cf", "", "", "t").unwrap();
-        insert_implements(&db, "im2", "o2", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "o1", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "o2", "cf", "", "", "t").unwrap();
         // A rule that has never been considered against o1/o2, and an unused one.
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_panics".into(), description: "d".into(),
@@ -2028,11 +2067,11 @@ mod tests {
         assert!(kinds.contains(&"unused_rule"), "{kinds:?}");
 
         // Recording the relationships/verdicts silences the smells.
-        get_or_create_relates_to(&db, "e0", "t1", "t2", "t").unwrap();
+        get_or_create_relates_to(&db, "t1", "t2", "t").unwrap();
         update_relates_to_independent(&db, "t1", "t2", "twin in name only — verified distinct", "llm:analyzer", "t").unwrap();
-        get_or_create_relates_to(&db, "e1", "o1", "o2", "t").unwrap();
-        insert_governs(&db, "g1", "r0", "o1", "", "t").unwrap();
-        insert_governs(&db, "g2", "r0", "o2", "", "t").unwrap();
+        get_or_create_relates_to(&db, "o1", "o2", "t").unwrap();
+        insert_governs(&db, "r0", "o1", "", "t").unwrap();
+        insert_governs(&db, "r0", "o2", "", "t").unwrap();
         update_governs_verdict(&db, "r0", "o2", "independent",
             "panic-freedom criterion does not constrain beta",
             "beta duty has no execution path that can panic", 0.9, "llm:quality", "t").unwrap();
@@ -2052,8 +2091,8 @@ mod tests {
         insert_intent(&db, &intent("b", "beta rendering surface")).unwrap();
         insert_intent(&db, &intent("c", "gamma unrelated thing")).unwrap();
         insert_codefile(&db, &codefile("cf", "src/shared.rs")).unwrap();
-        insert_implements(&db, "im1", "a", "cf", "", "", "t").unwrap();
-        insert_implements(&db, "im2", "b", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "a", "cf", "", "", "t").unwrap();
+        insert_implements(&db, "b", "cf", "", "", "t").unwrap();
 
         let pairs = unexplored_pairs_scored(&db).unwrap();
         let top = &pairs[0].0;
@@ -2072,7 +2111,7 @@ mod tests {
             id: "r0".into(), name: "no_sql".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
         }).unwrap();
-        insert_governs(&db, "g0", "r0", &ids[0], "", "t").unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(&db, "r0", &ids[0], "independent",
             "criterion would be: no raw SQL strings constructed",
             "this intent touches no datastore at all — the rule has no surface here",
@@ -2090,13 +2129,13 @@ mod tests {
     #[test]
     fn doctor_flags_provenance_and_evidence_violations() {
         let (db, ids) = db_inited(3);
-        get_or_create_relates_to(&db, "e0", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Builder green-lighting its own work + absurd confidence.
         update_relates_to_ground(
             &db, &ids[0], &ids[1], "a perfectly substantive criterion", 7.3, "llm:builder", "t",
         ).unwrap();
         // Independence with no why (empty notes).
-        get_or_create_relates_to(&db, "e1", &ids[0], &ids[2], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2], "", "llm:analyzer", "t").unwrap();
 
         let rep = check_graph(&db).unwrap();
@@ -2126,10 +2165,10 @@ mod tests {
         insert_intent(&db, &mk("old", "legacy ripple walker",
             "ripple ripple ripple — superseded design")).unwrap();
         retire_intent(&db, "old", "superseded by the sync ripple engine", Some("sync"), "t1").unwrap();
-        insert_hierarchy(&db, "h1", "root", "sync", "", "t0").unwrap();
+        insert_hierarchy(&db, "root", "sync", "", "t0").unwrap();
         insert_codefile(&db, &codefile("cf", "src/sync.rs")).unwrap();
-        insert_implements(&db, "im", "sync", "cf", "fn run", "", "t0").unwrap();
-        get_or_create_relates_to(&db, "e1", "sync", "queue", "t0").unwrap();
+        insert_implements(&db, "sync", "cf", "fn run", "", "t0").unwrap();
+        get_or_create_relates_to(&db, "sync", "queue", "t0").unwrap();
         db.execute(
             "MATCH (a:Intent {id: 'sync'})-[r:RELATES_TO]->(b:Intent {id: 'queue'}) \
              SET r.inspection_status = 'needs_reverification'",
@@ -2230,8 +2269,8 @@ mod tests {
         // Disjoint groundings, no import between them.
         insert_codefile(&db, &codefile("f0", "src/fetch.rs")).unwrap();
         insert_codefile(&db, &codefile("f1", "src/jobs.rs")).unwrap();
-        insert_implements(&db, "im0", &ids[0], "f0", "", "", "t").unwrap();
-        insert_implements(&db, "im1", &ids[1], "f1", "", "", "t").unwrap();
+        insert_implements(&db, &ids[0], "f0", "", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "f1", "", "", "t").unwrap();
 
         let smells = compute_smells(&db).unwrap();
         let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
@@ -2240,15 +2279,15 @@ mod tests {
         assert!(dup[0].remedy.contains(&ids[0]) && dup[0].remedy.contains(&ids[1]));
 
         // A recorded relationship silences it — the suspicion did its job.
-        get_or_create_relates_to(&db, "e01", &ids[0], &ids[1], "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         let smells = compute_smells(&db).unwrap();
         assert!(!smells.iter().any(|s| s.kind == "duplicated_responsibility"), "{smells:?}");
 
         // A shared file belongs to overlapping_ownership, not this detector.
         tag_intent(&db, &ids[2], &["backoff"]);
         tag_intent(&db, &ids[3], &["backoff"]);
-        insert_implements(&db, "im2", &ids[2], "f0", "", "", "t").unwrap();
-        insert_implements(&db, "im3", &ids[3], "f0", "", "", "t").unwrap();
+        insert_implements(&db, &ids[2], "f0", "", "", "t").unwrap();
+        insert_implements(&db, &ids[3], "f0", "", "", "t").unwrap();
         let smells = compute_smells(&db).unwrap();
         let dup_pairs: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility"
             && s.remedy.contains(&ids[2]) && s.remedy.contains(&ids[3])).collect();
@@ -2358,8 +2397,8 @@ mod escaping {
 
     fn mk(id: &str, desc: &str) -> Intent {
         Intent { id: id.into(), name: "n".into(), description: desc.into(),
-            abstraction_level: "feature".into(), domain: "d".into(), source_refs: "[]".into(),
-            status: "proposed".into(), aspect: String::new(), tags: "[]".into(),
+            abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
+            status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }
     }
 

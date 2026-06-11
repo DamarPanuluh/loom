@@ -447,16 +447,17 @@ pub struct Intent {
     pub description: String,
     pub abstraction_level: String,
     pub domain: String,
-    /// JSON-encoded array of file path strings.
-    pub source_refs: String,
+    /// File path strings (native list in the store as of schema v5).
+    pub source_refs: Vec<String>,
     pub status: String,
     /// Behavioural facet for completeness: happy | sad | fallback | … (open
     /// vocabulary; "" = unspecified).
     pub aspect: String,
-    /// JSON-encoded array of registered vocabulary terms (≤3, sorted, deduped).
-    /// The bounded facet duplicate-responsibility detection collides on;
-    /// "[]" = untagged (honest absence — never counted as evidence).
-    pub tags: String,
+    /// Registered vocabulary terms (≤3, sorted, deduped; native list in the
+    /// store as of schema v5). The bounded facet duplicate-responsibility
+    /// detection collides on; empty = untagged (honest absence — never
+    /// counted as evidence).
+    pub tags: Vec<String>,
     /// Implementation lifecycle: planned | implemented | needs_change.
     pub lifecycle: String,
     pub created_at: String,
@@ -470,10 +471,10 @@ pub struct CodeFile {
     pub path: String,
     pub language: String,
     pub last_modified: String,
-    /// JSON array of repo-relative paths this file statically imports
-    /// (extracted by `loom sync`; empty string on never-synced graphs).
+    /// Repo-relative paths this file statically imports (extracted by
+    /// `loom sync`; native list in the store as of schema v5).
     #[serde(default)]
-    pub imports: String,
+    pub imports: Vec<String>,
     /// Content hash (FNV-1a 64, hex) of the file's bytes — `loom sync`'s change
     /// detector. mtime alone false-flags on checkout/rebase (mtime churns,
     /// content doesn't); the hash makes "changed" mean the bytes changed.

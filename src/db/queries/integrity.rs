@@ -149,12 +149,11 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
                 i.id, i.abstraction_level
             ));
         }
-        // Tags: well-formed JSON, within the cap, every term registered.
-        // Older graphs read the absent property as "" — that is valid
-        // (untagged), so this only audits what was actually written.
+        // Tags: within the cap, every term registered. Native list since v5
+        // (malformed-JSON is impossible by construction; absent reads empty).
         match super::vocab::parse_tags(i) {
             Err(_) => {
-                issues.push(format!("Intent {} has malformed tags JSON '{}'", i.id, i.tags));
+                issues.push(format!("Intent {} has unreadable tags", i.id));
             }
             Ok(tags) => {
                 if tags.len() > super::vocab::MAX_TAGS_PER_INTENT {
@@ -238,18 +237,18 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         }
         if n.target_kind == "intent" && !intent_ids.contains(&n.target_id) {
             issues.push(format!(
-                "Note {} targets missing intent '{}'",
+                "Note {} targets missing intent '{}' — `loom note prune` removes notes whose target no longer exists",
                 n.id, n.target_id
             ));
         }
         if n.target_kind == "hypothesis" && !hypothesis_ids.contains(&n.target_id) {
             issues.push(format!(
-                "Note {} targets missing hypothesis '{}'",
+                "Note {} targets missing hypothesis '{}' — `loom note prune` removes notes whose target no longer exists",
                 n.id, n.target_id
             ));
         }
         if n.target_kind == "edge" && !edge_ids.contains(&n.target_id) {
-            issues.push(format!("Note {} targets missing edge '{}'", n.id, n.target_id));
+            issues.push(format!("Note {} targets missing edge '{}' — `loom note prune` removes notes whose target no longer exists", n.id, n.target_id));
         }
     }
 
@@ -498,15 +497,21 @@ fn audit_inspectable_edges(
 /// Collect every tracked edge id once for note referential-integrity checks.
 /// The old per-note check rescanned every edge type for each edge-targeted
 /// note; large histories made `loom doctor` and `loom next --all` feel heavy.
-fn collect_edge_ids(db: &dyn LoomDb) -> Result<std::collections::HashSet<String>> {
+pub(super) fn collect_edge_ids(db: &dyn LoomDb) -> Result<std::collections::HashSet<String>> {
+    // v4: edge identity is DERIVED from the endpoints (schema::edge_key) —
+    // nothing stored on the edge. Endpoint node ids ARE the edge id.
     let mut ids = std::collections::HashSet::new();
     for &etype in EDGE_TYPES {
         let r = db.execute(&format!(
-            "MATCH ()-[r:{etype}]->() RETURN r.{id} AS x",
+            "MATCH (a)-[r:{etype}]->(b) RETURN a.{id} AS f, b.{id} AS t",
             id = prop::ID
         ))?;
         for row in r.rows() {
-            ids.insert(super::row::str_val(&row[0]));
+            ids.insert(crate::db::schema::edge_key(
+                etype,
+                &super::row::str_val(&row[0]),
+                &super::row::str_val(&row[1]),
+            ));
         }
     }
     Ok(ids)

@@ -35,6 +35,9 @@ pub fn run(printer: &Printer) -> Result<()> {
                 "found":    report.found_version,
                 "ok":       report.version_ok,
             },
+            "next_step": if report.version_ok { serde_json::Value::Null } else {
+                serde_json::json!("loom migrate")
+            },
             "node_counts": report.node_counts,
             "edge_counts": report.edge_counts,
             "issues":      report.issues,
@@ -50,6 +53,9 @@ pub fn run(printer: &Printer) -> Result<()> {
             report.expected_version,
             if report.version_ok { "✓" } else { "✗" }
         );
+        if !report.version_ok {
+            println!("    → `loom migrate` upgrades a v3 graph in place (one transaction, idempotent).");
+        }
         println!();
         println!("  Nodes:");
         for (lbl, c) in &report.node_counts {

@@ -11,6 +11,17 @@ pub mod schema;
 
 pub trait LoomDb {
     fn execute(&self, query: &str) -> Result<QueryResult>;
+    /// Parameter-bound execution (`$name` placeholders). The write path for
+    /// every FREE-TEXT field (descriptions, criteria, evidence, notes): the
+    /// value never enters the query string, so the escaping question vanishes
+    /// instead of being answered. Machine-generated values (uuids, enum
+    /// strings, timestamps) may keep the `esc()` path — they carry no
+    /// adversarial surface.
+    fn execute_with_params(
+        &self,
+        query: &str,
+        params: std::collections::HashMap<String, grafeo::Value>,
+    ) -> Result<QueryResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +87,52 @@ impl LoomDb for GrafeoDb {
                 query.chars().take(200).collect::<String>()
             )
         })
+    }
+
+    fn execute_with_params(
+        &self,
+        query: &str,
+        params: std::collections::HashMap<String, grafeo::Value>,
+    ) -> Result<QueryResult> {
+        self.session.execute_with_params(query, params).map_err(|e| {
+            anyhow::anyhow!(
+                "Query execution failed: {}\nQuery: {}",
+                e,
+                query.chars().take(200).collect::<String>()
+            )
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Transactions
+// ---------------------------------------------------------------------------
+
+/// Run `f` inside an explicit transaction: COMMIT on Ok, ROLLBACK on Err.
+///
+/// Grafeo 0.5.42 supports START TRANSACTION / COMMIT / ROLLBACK with
+/// read-your-writes inside the transaction (verified in tests/grafeo_probe.rs,
+/// `probe_transactions`). Multi-statement mutations — import, the sync ripple,
+/// a retire cascade, one batch line — use this so a failure midway leaves the
+/// graph exactly as it was, instead of half-flipped. Do not nest: grafeo has
+/// no savepoint-based nesting through this path, and loom only opens
+/// transactions at the command boundary.
+pub fn with_transaction<T>(
+    db: &dyn LoomDb,
+    f: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    db.execute("START TRANSACTION")?;
+    match f() {
+        Ok(v) => {
+            db.execute("COMMIT")?;
+            Ok(v)
+        }
+        Err(e) => {
+            // Best-effort: the error the caller needs is `e`, not a rollback
+            // failure on an already-broken session.
+            let _ = db.execute("ROLLBACK");
+            Err(e)
+        }
     }
 }
 

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::db::{db_path, loom_dir, GrafeoDb, LoomDb};
-use crate::db::schema::{CHECK_INITIALIZED, insert_meta, SCHEMA_VERSION};
+use crate::db::schema::{index_statements, CHECK_INITIALIZED, insert_meta, SCHEMA_VERSION};
 use crate::output::Printer;
 
 pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer) -> Result<()> {
@@ -28,6 +28,14 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
         .unwrap_or("unnamed")
         .to_string();
     let custody = if observed { "observed" } else { "owned" };
+
+    // Property indexes on every inline-matched key (Intent.id, CodeFile.path,
+    // …): the large-graph defense. Idempotent in grafeo, and run on the
+    // re-init path too — re-running init is the index backfill for graphs
+    // created before indexes existed.
+    for stmt in index_statements() {
+        db.execute(&stmt)?;
+    }
 
     // Idempotency check: is there already a LoomMeta node?
     let check = db.execute(CHECK_INITIALIZED)?;

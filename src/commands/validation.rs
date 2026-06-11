@@ -46,8 +46,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             let mut linked_intent: Option<String> = None;
             if let Some(iid) = intent {
                 let iid = crate::db::queries::resolve_intent(&db, &iid)?;
-                let edge_id = Uuid::new_v4().to_string();
-                insert_validates(&db, &edge_id, &id, &iid, "", &now)?;
+                insert_validates(&db, &id, &iid, "", &now)?;
                 linked_intent = Some(iid);
             }
 
@@ -179,16 +178,21 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 (Some(c), Some(v)) => *c != v.command,
                 _ => false,
             };
-            update_validation_definition(&db, &vid, command.as_deref(), description.as_deref())?;
-            // The old result proved the OLD command — a changed command resets
-            // the proof so green is re-earned by actually running the new one.
-            let mut reset_edges = 0usize;
-            if command_changed {
-                update_validation_result(&db, &vid, "not_run", "")?;
-                reset_edges = set_validates_status_for_validation(
-                    &db, &vid, "uninspected", "command updated — proof must be re-run",
-                )?;
-            }
+            // Atomic: the new definition and the proof reset land together —
+            // a new command with the OLD green still attached would be a lie.
+            let reset_edges = crate::db::with_transaction(&db, || {
+                update_validation_definition(&db, &vid, command.as_deref(), description.as_deref())?;
+                // The old result proved the OLD command — a changed command resets
+                // the proof so green is re-earned by actually running the new one.
+                let mut reset_edges = 0usize;
+                if command_changed {
+                    update_validation_result(&db, &vid, "not_run", "")?;
+                    reset_edges = set_validates_status_for_validation(
+                        &db, &vid, "uninspected", "command updated — proof must be re-run",
+                    )?;
+                }
+                Ok(reset_edges)
+            })?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "validation_id": vid,
@@ -212,7 +216,8 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 None,
             )?;
             let vid = resolve_validation(&db, &id)?;
-            if !delete_validation(&db, &vid)? {
+            // Atomic: node, VALIDATES edges, and their notes go together.
+            if !crate::db::with_transaction(&db, || delete_validation(&db, &vid))? {
                 anyhow::bail!(
                     "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
                     vid

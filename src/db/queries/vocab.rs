@@ -10,7 +10,7 @@
 //! by a closed list — a blocked agent shoehorning into a wrong term would lie
 //! silently, which is worse than an honest new term.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use grafeo::Value;
 use std::collections::HashMap;
 
@@ -50,13 +50,8 @@ pub fn normalize_term(raw: &str) -> Result<String> {
 
 pub fn insert_vocab_term(db: &dyn LoomDb, term: &VocabTerm) -> Result<()> {
     let q = format!(
-        "INSERT (:{lbl} {{{id}: '{}', {name}: '{}', {desc}: '{}', {author}: '{}', \
-         {created}: '{}'}})",
-        esc(&term.id),
-        esc(&term.name),
-        esc(&term.description),
-        esc(&term.author),
-        esc(&term.created_at),
+        "INSERT (:{lbl} {{{id}: $id, {name}: $name, {desc}: $desc, {author}: $author, \
+         {created}: $created}})",
         lbl = label::VOCAB_TERM,
         id = prop::ID,
         name = prop::NAME,
@@ -64,7 +59,10 @@ pub fn insert_vocab_term(db: &dyn LoomDb, term: &VocabTerm) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute(&q)?;
+    db.execute_with_params(&q, super::row::sparams(&[
+        ("id", &term.id), ("name", &term.name), ("desc", &term.description),
+        ("author", &term.author), ("created", &term.created_at),
+    ]))?;
     Ok(())
 }
 
@@ -125,22 +123,19 @@ fn row_to_term(row: &[Value], cols: &HashMap<&str, usize>) -> VocabTerm {
 // Intent tags
 // ---------------------------------------------------------------------------
 
-/// Decode an intent's `tags` JSON array. Older graphs read the absent property
-/// as "" — that decodes as untagged, never as an error.
+/// An intent's tags. Native list since schema v5 (the row reader already
+/// tolerates legacy JSON strings) — kept as a function so call sites and the
+/// "absent = untagged" contract read unchanged.
 pub fn parse_tags(intent: &Intent) -> Result<Vec<String>> {
-    if intent.tags.is_empty() {
-        return Ok(Vec::new());
-    }
-    serde_json::from_str(&intent.tags)
-        .with_context(|| format!("Malformed tags JSON on intent '{}'", intent.name))
+    Ok(intent.tags.clone())
 }
 
 /// Canonical storage form: sorted + deduped, so the export stays
 /// byte-deterministic and diffs stay clean.
-pub fn encode_tags(mut tags: Vec<String>) -> Result<String> {
+pub fn encode_tags(mut tags: Vec<String>) -> Result<Vec<String>> {
     tags.sort();
     tags.dedup();
-    Ok(serde_json::to_string(&tags)?)
+    Ok(tags)
 }
 
 /// Overwrite an intent's tags (canonicalised). Returns false when the intent
@@ -155,16 +150,17 @@ pub fn set_intent_tags(
         return Ok(false);
     }
     let encoded = encode_tags(tags)?;
-    let q = format!(
-        "MATCH (n:{lbl} {{id: '{}'}}) SET n.{tags} = '{}', n.{updated} = '{}'",
-        esc(id),
-        esc(&encoded),
-        esc(updated_at),
-        lbl = label::INTENT,
-        tags = prop::TAGS,
-        updated = prop::UPDATED_AT,
-    );
-    db.execute(&q)?;
+    let mut p = super::row::sparams(&[("id", id), ("updated", updated_at)]);
+    p.insert("tags".into(), super::row::list_param(&encoded));
+    db.execute_with_params(
+        &format!(
+            "MATCH (n:{lbl} {{id: $id}}) SET n.{tags} = $tags, n.{updated} = $updated",
+            lbl = label::INTENT,
+            tags = prop::TAGS,
+            updated = prop::UPDATED_AT,
+        ),
+        p,
+    )?;
     Ok(true)
 }
 

@@ -18,7 +18,10 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     let data: serde_json::Value = serde_json::from_str(&raw)
         .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
 
-    let report = import_graph(&db, &data, as_planned)?;
+    // Atomic restore: validation already rejects bad exports before writing
+    // (two-phase), and the transaction closes the remaining hole — a crash or
+    // write error midway can no longer leave a partial graph behind.
+    let report = crate::db::with_transaction(&db, || import_graph(&db, &data, as_planned))?;
     let next_step = if as_planned {
         "`loom guide --mode port` for the re-realization loop, then `loom next --mode build`."
     } else {

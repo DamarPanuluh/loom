@@ -7,24 +7,18 @@ use anyhow::Result;
 use grafeo::Value;
 use std::collections::HashMap;
 
-use crate::db::schema::{esc, label, prop};
+use crate::db::schema::{label, prop};
 use crate::db::LoomDb;
 use crate::types::Note;
 
 use super::row::{col_map, get, str_val};
 
 pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
+    // Param-bound: `text` is free prose from an agent — it never enters the
+    // query string (see LoomDb::execute_with_params).
     let q = format!(
-        "INSERT (:{lbl} {{{id}: '{}', {kind}: '{}', {text}: '{}', {author}: '{}', \
-         {tkind}: '{}', {tid}: '{}', {aud}: '{}', {created}: '{}'}})",
-        esc(&note.id),
-        esc(&note.kind),
-        esc(&note.text),
-        esc(&note.author),
-        esc(&note.target_kind),
-        esc(&note.target_id),
-        esc(&note.audience),
-        esc(&note.created_at),
+        "INSERT (:{lbl} {{{id}: $id, {kind}: $kind, {text}: $text, {author}: $author, \
+         {tkind}: $tkind, {tid}: $tid, {aud}: $aud, {created}: $created}})",
         lbl = label::NOTE,
         id = prop::ID,
         kind = prop::KIND,
@@ -35,7 +29,16 @@ pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
         aud = prop::AUDIENCE,
         created = prop::CREATED_AT,
     );
-    db.execute(&q)?;
+    db.execute_with_params(&q, super::row::sparams(&[
+        ("id", &note.id),
+        ("kind", &note.kind),
+        ("text", &note.text),
+        ("author", &note.author),
+        ("tkind", &note.target_kind),
+        ("tid", &note.target_id),
+        ("aud", &note.audience),
+        ("created", &note.created_at),
+    ]))?;
     Ok(())
 }
 
@@ -162,4 +165,52 @@ fn row_to_note(row: &[Value], cols: &HashMap<&str, usize>) -> Note {
         audience:    str_val(get(row, cols, "n.audience")),
         created_at:  str_val(get(row, cols, "n.created_at")),
     }
+}
+
+/// Delete one note by id (node-keyed — reliable).
+pub fn delete_note_by_id(db: &dyn LoomDb, note_id: &str) -> Result<()> {
+    db.execute_with_params(
+        "MATCH (n:Note {id: $id}) DETACH DELETE n",
+        super::row::sparams(&[("id", note_id)]),
+    )?;
+    Ok(())
+}
+
+/// Notes whose target no longer exists — the same three kinds `loom doctor`
+/// audits (intent / hypothesis / edge). Floating notes and file notes are
+/// never dangling by this definition.
+pub fn dangling_notes(db: &dyn LoomDb) -> Result<Vec<Note>> {
+    let intent_ids: std::collections::HashSet<String> =
+        super::intent::list_intents(db, None, None)?.into_iter().map(|i| i.id).collect();
+    let hypothesis_ids: std::collections::HashSet<String> =
+        super::hypothesis::list_hypotheses(db, None)?.into_iter().map(|h| h.id).collect();
+    let edge_ids = super::integrity::collect_edge_ids(db)?;
+    Ok(list_notes(db, None, None)?
+        .into_iter()
+        .filter(|n| match n.target_kind.as_str() {
+            "intent" => !intent_ids.contains(&n.target_id),
+            "hypothesis" => !hypothesis_ids.contains(&n.target_id),
+            "edge" => !edge_ids.contains(&n.target_id),
+            _ => false,
+        })
+        .collect())
+}
+
+/// Prune notes attached to edges that touched a just-deleted node. Derived
+/// edge keys (v4) embed both endpoint ids — `rt:<from>:<to>` — so every edge
+/// note whose key contains the deleted node's uuid is now unreachable.
+/// Called by the hard-delete paths (intent delete, codefile remove,
+/// validation delete) so DETACH DELETE can no longer orphan edge history.
+pub fn prune_edge_notes_touching(db: &dyn LoomDb, node_id: &str) -> Result<usize> {
+    if node_id.is_empty() {
+        return Ok(0);
+    }
+    let mut pruned = 0usize;
+    for n in list_notes(db, None, None)? {
+        if n.target_kind == "edge" && n.target_id.contains(node_id) {
+            delete_note_by_id(db, &n.id)?;
+            pruned += 1;
+        }
+    }
+    Ok(pruned)
 }

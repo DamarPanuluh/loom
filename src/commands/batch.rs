@@ -23,7 +23,6 @@
 
 use anyhow::Result;
 use std::io::Read;
-use uuid::Uuid;
 
 use crate::db::schema::role;
 use crate::db::{ensure_initialized, GrafeoDb};
@@ -64,7 +63,10 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
             continue;
         }
         let n = lineno + 1;
-        match apply_line(&db, line) {
+        // Per-LINE transaction (not per batch): the contract is "continue past
+        // failed lines", so the batch is never all-or-nothing — but one line's
+        // verdict and its transition note must land together or not at all.
+        match crate::db::with_transaction(&db, || apply_line(&db, line)) {
             Ok(desc) => {
                 ok += 1;
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
@@ -126,7 +128,7 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 "the falsifiable coexistence criterion this edge was checked against",
             )?;
             gate::require_confidence(confidence)?;
-            let edge = get_or_create_relates_to(db, &Uuid::new_v4().to_string(), &a, &b, &now)?;
+            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             update_relates_to_ground(db, &edge.from_id, &edge.to_id, criterion, confidence, &by, &now)?;
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
@@ -142,7 +144,7 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
-            let edge = get_or_create_relates_to(db, &Uuid::new_v4().to_string(), &a, &b, &now)?;
+            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             update_relates_to_issue(db, &edge.from_id, &edge.to_id, criterion, evidence, confidence, &by, &now)?;
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
@@ -156,7 +158,7 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             gate::require_substantive(
                 "notes", notes, "why these two intents have no meaningful relationship",
             )?;
-            let edge = get_or_create_relates_to(db, &Uuid::new_v4().to_string(), &a, &b, &now)?;
+            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             update_relates_to_independent(db, &edge.from_id, &edge.to_id, notes, &by, &now)?;
             Ok(format!("independent {} × {}", edge.from_name, edge.to_name))
         }
@@ -186,7 +188,7 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 db, &rule, &intent, status, criterion, evidence, confidence, &by, &now,
             )?;
             if !found {
-                insert_governs(db, &Uuid::new_v4().to_string(), &rule, &intent, criterion, &now)?;
+                insert_governs(db, &rule, &intent, criterion, &now)?;
                 update_governs_verdict(
                     db, &rule, &intent, status, criterion, evidence, confidence, &by, &now,
                 )?;

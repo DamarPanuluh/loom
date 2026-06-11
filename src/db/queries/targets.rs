@@ -14,33 +14,32 @@ use super::row::{col_map, f64_val, get, str_val};
 
 pub fn insert_targets(
     db: &dyn LoomDb,
-    edge_id: &str,
     hypothesis_id: &str,
     intent_id: &str,
     now: &str,
 ) -> Result<()> {
-    let check_h = db.execute(&format!(
-        "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id", esc(hypothesis_id)
-    ))?;
-    if check_h.rows().is_empty() {
-        anyhow::bail!("Hypothesis '{}' not found — `loom hypothesis list`.", hypothesis_id);
-    }
-    let check_i = db.execute(&format!(
-        "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
-    ))?;
-    if check_i.rows().is_empty() {
+    // One MERGE trip (verify + idempotent insert); see insert_implements.
+    let r = db.execute_with_params(
+        "MATCH (h:Hypothesis {id: $hid}), (i:Intent {id: $iid}) \
+         MERGE (h)-[e:TARGETS]->(i) \
+         ON CREATE SET e.inspection_status = 'uninspected', \
+           e.criterion = '', e.confidence = 0.0, e.evidence = '', \
+           e.last_inspected = '', e.inspected_by = '', e.notes = '', \
+           e.created_at = $now \
+         RETURN e.inspection_status",
+        super::row::sparams(&[
+            ("hid", hypothesis_id), ("iid", intent_id), ("now", now),
+        ]),
+    )?;
+    if r.rows().is_empty() {
+        let check_h = db.execute(&format!(
+            "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id", esc(hypothesis_id)
+        ))?;
+        if check_h.rows().is_empty() {
+            anyhow::bail!("Hypothesis '{}' not found — `loom hypothesis list`.", hypothesis_id);
+        }
         anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
-    db.execute(&format!(
-        "MATCH (h:Hypothesis {{id: '{hid}'}}), (i:Intent {{id: '{iid}'}}) \
-         INSERT (h)-[:TARGETS {{id: '{eid}', inspection_status: 'uninspected', \
-           criterion: '', confidence: 0.0, evidence: '', last_inspected: '', \
-           inspected_by: '', notes: '', created_at: '{now}'}}]->(i)",
-        hid = esc(hypothesis_id),
-        iid = esc(intent_id),
-        eid = esc(edge_id),
-        now = esc(now),
-    ))?;
     Ok(())
 }
 
@@ -62,7 +61,7 @@ pub fn list_targets_for_hypothesis(
 ) -> Result<Vec<TargetsEdge>> {
     let q = format!(
         "MATCH (h:Hypothesis {{id: '{id}'}})-[e:TARGETS]->(i:Intent) \
-         RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+         RETURN e.inspection_status, e.criterion, e.confidence, e.evidence, \
                 e.last_inspected, e.inspected_by, e.notes, \
                 h.id AS hypothesis_id, h.name AS hypothesis_name, \
                 i.id AS intent_id, i.name AS intent_name",
@@ -73,11 +72,10 @@ pub fn list_targets_for_hypothesis(
     Ok(result.rows().iter().map(|row| row_to_targets(row, &cols)).collect())
 }
 
-/// Scan every TARGETS edge (doctor audit; status filtering happens in Rust —
-/// relationship-property filtering is unreliable in grafeo 0.5.x).
+/// Scan every TARGETS edge (doctor audit + sync ripple index).
 pub fn list_all_targets(db: &dyn LoomDb) -> Result<Vec<TargetsEdge>> {
     let q = "MATCH (h:Hypothesis)-[e:TARGETS]->(i:Intent) \
-             RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+             RETURN e.inspection_status, e.criterion, e.confidence, e.evidence, \
                     e.last_inspected, e.inspected_by, e.notes, \
                     h.id AS hypothesis_id, h.name AS hypothesis_name, \
                     i.id AS intent_id, i.name AS intent_name";
@@ -148,10 +146,12 @@ pub fn flag_targets_for_intent(
 }
 
 fn row_to_targets(row: &[Value], cols: &HashMap<&str, usize>) -> TargetsEdge {
+    let hypothesis_id = str_val(get(row, cols, "hypothesis_id"));
+    let intent_id = str_val(get(row, cols, "intent_id"));
     TargetsEdge {
-        id:                str_val(get(row, cols, "e.id")),
-        hypothesis_id:     str_val(get(row, cols, "hypothesis_id")),
-        intent_id:         str_val(get(row, cols, "intent_id")),
+        id:                crate::db::schema::edge_key(crate::db::schema::edge::TARGETS, &hypothesis_id, &intent_id),
+        hypothesis_id,
+        intent_id,
         hypothesis_name:   str_val(get(row, cols, "hypothesis_name")),
         intent_name:       str_val(get(row, cols, "intent_name")),
         inspection_status: str_val(get(row, cols, "e.inspection_status")),

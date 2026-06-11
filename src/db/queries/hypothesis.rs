@@ -16,22 +16,11 @@ const SELECT: &str = "h.id, h.name, h.claim, h.proposal, h.predicted_outcome, \
                       h.last_inspected, h.created_at, h.updated_at";
 
 pub fn insert_hypothesis(db: &dyn LoomDb, h: &Hypothesis) -> Result<()> {
+    // Param-bound: claim/proposal/outcome/evidence are agent-written prose.
     let q = format!(
-        "INSERT (:{lbl} {{{id}: '{}', {name}: '{}', {claim}: '{}', {proposal}: '{}', \
-         {outcome}: '{}', {status}: '{}', {author}: '{}', {evidence}: '{}', \
-         {by}: '{}', {last}: '{}', {created}: '{}', {updated}: '{}'}})",
-        esc(&h.id),
-        esc(&h.name),
-        esc(&h.claim),
-        esc(&h.proposal),
-        esc(&h.predicted_outcome),
-        esc(&h.status),
-        esc(&h.author),
-        esc(&h.evidence),
-        esc(&h.inspected_by),
-        esc(&h.last_inspected),
-        esc(&h.created_at),
-        esc(&h.updated_at),
+        "INSERT (:{lbl} {{{id}: $id, {name}: $name, {claim}: $claim, {proposal}: $proposal, \
+         {outcome}: $outcome, {status}: $status, {author}: $author, {evidence}: $evidence, \
+         {by}: $by, {last}: $last, {created}: $created, {updated}: $updated}})",
         lbl = label::HYPOTHESIS,
         id = prop::ID,
         name = prop::NAME,
@@ -46,7 +35,13 @@ pub fn insert_hypothesis(db: &dyn LoomDb, h: &Hypothesis) -> Result<()> {
         created = prop::CREATED_AT,
         updated = prop::UPDATED_AT,
     );
-    db.execute(&q)?;
+    db.execute_with_params(&q, super::row::sparams(&[
+        ("id", &h.id), ("name", &h.name), ("claim", &h.claim),
+        ("proposal", &h.proposal), ("outcome", &h.predicted_outcome),
+        ("status", &h.status), ("author", &h.author), ("evidence", &h.evidence),
+        ("by", &h.inspected_by), ("last", &h.last_inspected),
+        ("created", &h.created_at), ("updated", &h.updated_at),
+    ]))?;
     Ok(())
 }
 
@@ -165,22 +160,23 @@ pub fn update_hypothesis_verdict(
     let Some(prev) = get_hypothesis(db, id)? else {
         return Ok(false);
     };
-    db.execute(&format!(
-        "MATCH (h:{lbl} {{id: '{id}'}}) \
-         SET h.{st} = '{status}', h.{ev} = '{evidence}', h.{by} = '{by_v}', \
-             h.{last} = '{now}', h.{upd} = '{now}'",
-        lbl = label::HYPOTHESIS,
-        id = esc(id),
-        st = prop::STATUS,
-        ev = prop::EVIDENCE,
-        by = prop::INSPECTED_BY,
-        last = prop::LAST_INSPECTED,
-        upd = prop::UPDATED_AT,
-        status = esc(status),
-        evidence = esc(evidence),
-        by_v = esc(inspected_by),
-        now = esc(now),
-    ))?;
+    db.execute_with_params(
+        &format!(
+            "MATCH (h:{lbl} {{id: $id}}) \
+             SET h.{st} = $status, h.{ev} = $evidence, h.{by} = $by, \
+                 h.{last} = $now, h.{upd} = $now",
+            lbl = label::HYPOTHESIS,
+            st = prop::STATUS,
+            ev = prop::EVIDENCE,
+            by = prop::INSPECTED_BY,
+            last = prop::LAST_INSPECTED,
+            upd = prop::UPDATED_AT,
+        ),
+        super::row::sparams(&[
+            ("id", id), ("status", status), ("evidence", evidence),
+            ("by", inspected_by), ("now", now),
+        ]),
+    )?;
     super::note::record_transition(db, "hypothesis", id, &prev.status, status, inspected_by, now)?;
     Ok(true)
 }

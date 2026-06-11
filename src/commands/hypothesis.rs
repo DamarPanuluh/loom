@@ -64,7 +64,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             let mut linked = Vec::new();
             for t in &targets {
                 let iid = resolve_intent(&db, t)?;
-                insert_targets(&db, &Uuid::new_v4().to_string(), &id, &iid, &now)?;
+                insert_targets(&db, &id, &iid, &now)?;
                 linked.push(iid);
             }
 
@@ -95,14 +95,13 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 anyhow::bail!("Hypothesis already targets that intent — `loom hypothesis show {hid}` lists current targets.");
             }
             let now = chrono::Utc::now().to_rfc3339();
-            let eid = Uuid::new_v4().to_string();
-            insert_targets(&db, &eid, &hid, &iid, &now)?;
+            insert_targets(&db, &hid, &iid, &now)?;
             let next_step = format!(
                 "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} …` when evidence is ready"
             );
             if printer.json {
                 printer.print_json(&serde_json::json!({
-                    "status": "ok", "edge_id": eid, "hypothesis_id": hid, "intent_id": iid,
+                    "status": "ok", "edge_id": crate::db::schema::edge_key(crate::db::schema::edge::TARGETS, &hid, &iid), "hypothesis_id": hid, "intent_id": iid,
                     "next_step": next_step,
                 }));
             } else {
@@ -229,6 +228,10 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
 
             let now = chrono::Utc::now().to_rfc3339();
+            // Atomic conversion: the status flip, the lineage notes (both
+            // directions), the outcome Validation, and its VALIDATES links
+            // are ONE decision — half an adoption is worse than none.
+            crate::db::with_transaction(&db, || {
             set_hypothesis_status(&db, &hid, "adopted", &by, &now)?;
 
             // Lineage, both directions. On the hypothesis: what it became. On
@@ -279,9 +282,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 })?;
                 for iid in &spawned_ids {
                     insert_validates(
-                        &db,
-                        &Uuid::new_v4().to_string(),
-                        &validation_id,
+                        &db, &validation_id,
                         iid,
                         "hypothesis outcome proof",
                         &now,
@@ -304,6 +305,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     created_at: now.clone(),
                 })?;
             }
+            Ok(())
+            })?;
 
             if printer.json {
                 printer.print_json(&serde_json::json!({

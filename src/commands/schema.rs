@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 
-use crate::db::schema::{required_edge_props, required_node_props, EDGE_TYPES, NODE_LABELS, ROLES, SCHEMA_VERSION};
+use crate::db::schema::{prop_type, required_edge_props, required_node_props, EDGE_TYPES, NODE_LABELS, ROLES, SCHEMA_VERSION};
 use crate::output::Printer;
 
 /// One-line description of what each agent role is responsible for.
@@ -55,7 +55,7 @@ const STATES: &[(&str, &str)] = &[
 
 pub fn run(printer: &Printer) -> Result<()> {
     let field_json = |(name, owner): &(&str, &str)| serde_json::json!({
-        "name": name, "populated_by": owner,
+        "name": name, "populated_by": owner, "type": prop_type(name),
     });
     let nodes: Vec<serde_json::Value> = NODE_LABELS
         .iter()
@@ -98,6 +98,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
             "schema_version": SCHEMA_VERSION,
+            "edge_identity": "Derived, never stored: <prefix>:<from-id>:<to-id> with prefixes rt (RELATES_TO), hy (HIERARCHY), imp (IMPLEMENTS), gov (GOVERNS), val (VALIDATES), tgt (TARGETS). Stable across export/import; this is the id `loom edge show` and notes reference.",
             "node_labels": nodes,
             "edge_types": edges,
             "inspection_states": states,
@@ -110,14 +111,22 @@ pub fn run(printer: &Printer) -> Result<()> {
     let fmt_fields = |specs: &[(&str, &str)]| {
         specs
             .iter()
-            .map(|(n, o)| format!("{n} [{o}]"))
+            .map(|(n, o)| match prop_type(n) {
+                "string" => format!("{n} [{o}]"),
+                ty => format!("{n}:{ty} [{o}]"),
+            })
             .collect::<Vec<_>>()
             .join(", ")
     };
 
     println!("── loom schema (v{}) ─────────────────────────────────────────────────", SCHEMA_VERSION);
     println!();
-    println!("Fields are shown as  name [owning-role]  — the role responsible for filling it.");
+    println!("Fields are shown as  name [owning-role]  — the role responsible for filling it");
+    println!("(non-string fields carry a :type — list fields read and write as real arrays).");
+    println!();
+    println!("Edge identity is DERIVED, never stored: <prefix>:<from-id>:<to-id> —");
+    println!("  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS.");
+    println!("  Stable across export/import; it is the id `loom edge show` and notes reference.");
     println!();
     println!("Nodes:");
     for &l in NODE_LABELS {

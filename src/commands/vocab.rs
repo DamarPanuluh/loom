@@ -143,7 +143,12 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 );
             }
             let now = chrono::Utc::now().to_rfc3339();
-            let retagged = merge_vocab_terms(&db, &from, &to, &now)?;
+            // Atomic: a merge that dies midway would leave the keyspace
+            // SPLIT (some intents retagged, the old term still registered) —
+            // exactly the drift the command exists to converge.
+            let retagged = crate::db::with_transaction(&db, || {
+                merge_vocab_terms(&db, &from, &to, &now)
+            })?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "from": from, "to": to, "retagged_intents": retagged,
@@ -251,8 +256,8 @@ mod tests {
         // Make usage counts visible in the inline registry.
         insert_intent(&db, &Intent {
             id: "i0".into(), name: "n".into(), description: "d".into(),
-            abstraction_level: "feature".into(), domain: "d".into(), source_refs: "[]".into(),
-            status: "proposed".into(), aspect: String::new(), tags: "[]".into(),
+            abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
+            status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into(),
         }).unwrap();
         set_intent_tags(&db, "i0", vec!["retry".into()], "t").unwrap();

@@ -1,9 +1,12 @@
 //! RELATES_TO edge queries — the main intent↔intent grid.
 //!
-//! Reliability rule: never match/filter a RELATES_TO edge by its own property
-//! (`r.id`, `r.inspection_status`) — grafeo 0.5.x does that unreliably. Match by
-//! endpoint nodes (a RELATES_TO edge is unique per ordered pair) or scan all and
-//! filter in Rust. See the project memory `grafeo-relationship-matching`.
+//! Reliability rule (revised after the grafeo 0.5.42 probes —
+//! tests/grafeo_probe.rs): edge-property filters are deterministic EXCEPT the
+//! property NAME `id`, which in filter position resolves to grafeo's internal
+//! edge id instead of the user property (`WHERE r.id = X` matches nothing,
+//! ever). So: status filters may live in the query; edge-ID lookups must match
+//! by endpoint nodes (a RELATES_TO edge is unique per ordered pair) or scan
+//! all and filter in Rust. See the project memory `grafeo-relationship-matching`.
 
 use anyhow::Result;
 use grafeo::Value;
@@ -13,14 +16,14 @@ use crate::db::schema::esc;
 use crate::db::LoomDb;
 use crate::types::RelatesTo;
 
-use super::intent::get_intent;
 use super::row::{col_map, f64_val, get, str_val};
 
 pub fn get_relates_to(db: &dyn LoomDb, id: &str) -> Result<Option<RelatesTo>> {
-    // Resolve by scanning all edges and matching the id in Rust. Filtering a
-    // relationship by its own property in the query is unreliable in grafeo
-    // 0.5.x; a full traversal is not. Prefer get_relates_to_between when the
-    // endpoints are known — it is a direct node-keyed lookup.
+    // Resolve by scanning all edges and matching the id in Rust. `WHERE r.id`
+    // is the one edge-property filter grafeo gets wrong (the name `id` resolves
+    // to the INTERNAL edge id in filter position — matches nothing, ever).
+    // Prefer get_relates_to_between when the endpoints are known — it is a
+    // direct node-keyed lookup.
     Ok(list_relates_to(db, None)?.into_iter().find(|e| e.id == id))
 }
 
@@ -31,7 +34,7 @@ pub fn get_relates_to_between(
 ) -> Result<Option<RelatesTo>> {
     let q = format!(
         "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
-         RETURN r.id, r.inspection_status, r.criterion, r.confidence, r.evidence, \
+         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
                 r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
                 a.id AS from_id, a.name AS from_name, \
                 b.id AS to_id, b.name AS to_name",
@@ -45,86 +48,70 @@ pub fn get_relates_to_between(
 
 pub fn get_or_create_relates_to(
     db: &dyn LoomDb,
-    edge_id: &str,
     from_id: &str,
     to_id: &str,
     now: &str,
 ) -> Result<RelatesTo> {
-    // Check: does an edge already exist between these two intents? Resolve it
-    // by endpoints (node-keyed lookup is reliable) rather than by edge id.
-    if let Some(existing) = get_relates_to_between(db, from_id, to_id)? {
-        return Ok(existing);
-    }
-
-    // Ensure both intent nodes exist
-    let verify_q = format!(
-        "MATCH (a:Intent {{id: '{}'}}), (b:Intent {{id: '{}'}}) RETURN a.id, b.id",
-        esc(from_id), esc(to_id)
+    // One MERGE does the whole get-or-create: match by endpoints (RELATES_TO
+    // is unique per ordered pair), create with defaults if absent, and RETURN
+    // the edge's actual properties either way — both paths verified on grafeo
+    // 0.5.42 (tests/grafeo_probe.rs, merge+return / merge-create+return).
+    // Replaces the old three-trip exists-check → verify → INSERT +
+    // construct-in-Rust dance.
+    let q = format!(
+        "MATCH (a:Intent {{id: '{from}'}}), (b:Intent {{id: '{to}'}}) \
+         MERGE (a)-[r:RELATES_TO]->(b) \
+         ON CREATE SET r.inspection_status = 'uninspected', \
+           r.criterion = '', r.confidence = 0.0, r.evidence = '', \
+           r.last_inspected = '', r.inspected_by = '', r.priority_score = 0.0, \
+           r.notes = '', r.created_at = '{now}' \
+         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
+                r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
+                a.id AS from_id, a.name AS from_name, \
+                b.id AS to_id, b.name AS to_name",
+        from = esc(from_id),
+        to   = esc(to_id),
+        now  = esc(now),
     );
-    let verify = db.execute(&verify_q)?;
-    if verify.rows().is_empty() {
-        anyhow::bail!(
+    let result = db.execute(&q)?;
+    let cols = col_map(&result);
+    match result.rows().first() {
+        Some(row) => Ok(row_to_relates_to(row, &cols)),
+        // MERGE returned nothing ⇒ the MATCH found no endpoints.
+        None => anyhow::bail!(
             "Cannot create edge: one or both intents not found.\n\
              intent-a id: {}\n\
              intent-b id: {}\n\
              Run `loom intent list` to see available intents.",
             from_id, to_id
-        );
+        ),
     }
-
-    // Create the edge
-    let insert_q = format!(
-        "MATCH (a:Intent {{id: '{from}'}}), (b:Intent {{id: '{to}'}}) \
-         INSERT (a)-[:RELATES_TO {{id: '{eid}', inspection_status: 'uninspected', \
-           criterion: '', confidence: 0.0, evidence: '', last_inspected: '', \
-           inspected_by: '', priority_score: 0.0, notes: '', created_at: '{now}'}}]->(b)",
-        from = esc(from_id),
-        to   = esc(to_id),
-        eid  = esc(edge_id),
-        now  = esc(now),
-    );
-    db.execute(&insert_q)?;
-
-    // Construct the result from the values we just inserted rather than reading
-    // the relationship back. grafeo 0.5.x does not reliably return a freshly
-    // INSERTed relationship by property within the same session — the
-    // relationship index update races the subsequent read, which surfaced as
-    // intermittent "Edge was just inserted but cannot be retrieved" errors.
-    // Every field below mirrors the INSERT defaults above; only the endpoint
-    // names need a lookup, and single-node reads are reliable.
-    let from_name = get_intent(db, from_id)?.map(|i| i.name).unwrap_or_default();
-    let to_name = get_intent(db, to_id)?.map(|i| i.name).unwrap_or_default();
-    Ok(RelatesTo {
-        id:                edge_id.to_string(),
-        from_id:           from_id.to_string(),
-        to_id:             to_id.to_string(),
-        from_name,
-        to_name,
-        inspection_status: "uninspected".to_string(),
-        criterion:         String::new(),
-        confidence:        0.0,
-        evidence:          String::new(),
-        last_inspected:    String::new(),
-        inspected_by:      String::new(),
-        priority_score:    0.0,
-        notes:             String::new(),
-    })
 }
 
 pub fn list_relates_to(
     db: &dyn LoomDb,
     status_filter: Option<&str>,
 ) -> Result<Vec<RelatesTo>> {
-    // Full traversal returning every edge with its properties is reliable;
-    // filtering a relationship by its own property in the query (WHERE/inline)
-    // is NOT reliable in grafeo 0.5.x. So we always scan and filter in Rust.
-    let q = "MATCH (a:Intent)-[r:RELATES_TO]->(b:Intent) \
-             RETURN r.id, r.inspection_status, r.criterion, r.confidence, r.evidence, \
-                    r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
-                    a.id AS from_id, a.name AS from_name, \
-                    b.id AS to_id, b.name AS to_name \
-             ORDER BY r.priority_score DESC";
-    let result = db.execute(q)?;
+    // The status filter is pushed into the query: edge-property EQUALITY
+    // filtering is deterministic on grafeo 0.5.42 (50/50 set-then-filter
+    // cycles, in-memory and persistent — tests/grafeo_probe.rs). Only the
+    // property NAME `id` is broken in filter position (it resolves to the
+    // internal edge id there), so edge-id lookups still scan. The Rust
+    // retain stays as a zero-cost guard: if a grafeo upgrade ever regresses
+    // the pushdown, results shrink to correct instead of silently widening.
+    let where_clause = match status_filter {
+        Some(s) => format!("WHERE r.inspection_status = '{}' ", esc(s)),
+        None => String::new(),
+    };
+    let q = format!(
+        "MATCH (a:Intent)-[r:RELATES_TO]->(b:Intent) {where_clause}\
+         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
+                r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
+                a.id AS from_id, a.name AS from_name, \
+                b.id AS to_id, b.name AS to_name \
+         ORDER BY r.priority_score DESC"
+    );
+    let result = db.execute(&q)?;
     let cols = col_map(&result);
     let mut edges: Vec<RelatesTo> =
         result.rows().iter().map(|row| row_to_relates_to(row, &cols)).collect();
@@ -135,11 +122,9 @@ pub fn list_relates_to(
 }
 
 // The RELATES_TO update helpers below identify the edge by its endpoint node
-// ids rather than by the edge's own id property. There is at most one
-// RELATES_TO edge per ordered (from, to) pair (enforced by
-// get_or_create_relates_to), so the endpoints are a unique key — and matching a
-// relationship via its endpoint nodes is reliable, whereas filtering by the
-// relationship's own property is not in grafeo 0.5.x.
+// ids: since schema v4 the ordered (from, to) pair IS the edge's identity
+// (at most one RELATES_TO per pair, enforced by get_or_create_relates_to;
+// the derived `rt:<from>:<to>` key is just this pair spelled out).
 
 /// Set inspection_status = passing (was: grounded) with meta.
 pub fn update_relates_to_ground(
@@ -154,18 +139,19 @@ pub fn update_relates_to_ground(
     let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
     };
-    db.execute(&format!(
-        "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
-         SET r.inspection_status = 'passing', r.criterion = '{crit}', \
-             r.confidence = {conf}, r.inspected_by = '{by}', \
-             r.last_inspected = '{now}'",
-        from = esc(from_id),
-        to   = esc(to_id),
-        crit = esc(criterion),
-        conf = confidence,
-        by   = esc(inspected_by),
-        now  = esc(now),
-    ))?;
+    db.execute_with_params(
+        &format!(
+            "MATCH (a:Intent {{id: $from}})-[r:RELATES_TO]->(b:Intent {{id: $to}}) \
+             SET r.inspection_status = 'passing', r.criterion = $crit, \
+                 r.confidence = {conf}, r.inspected_by = $by, \
+                 r.last_inspected = $now",
+            conf = confidence,
+        ),
+        super::row::sparams(&[
+            ("from", from_id), ("to", to_id), ("crit", criterion),
+            ("by", inspected_by), ("now", now),
+        ]),
+    )?;
     super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "passing", inspected_by, now)?;
     Ok(true)
 }
@@ -184,19 +170,19 @@ pub fn update_relates_to_issue(
     let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
     };
-    db.execute(&format!(
-        "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
-         SET r.inspection_status = 'failing', r.criterion = '{crit}', \
-             r.evidence = '{ev}', r.confidence = {conf}, r.inspected_by = '{by}', \
-             r.last_inspected = '{now}'",
-        from = esc(from_id),
-        to   = esc(to_id),
-        crit = esc(criterion),
-        ev   = esc(evidence),
-        conf = confidence,
-        by   = esc(inspected_by),
-        now  = esc(now),
-    ))?;
+    db.execute_with_params(
+        &format!(
+            "MATCH (a:Intent {{id: $from}})-[r:RELATES_TO]->(b:Intent {{id: $to}}) \
+             SET r.inspection_status = 'failing', r.criterion = $crit, \
+                 r.evidence = $ev, r.confidence = {conf}, r.inspected_by = $by, \
+                 r.last_inspected = $now",
+            conf = confidence,
+        ),
+        super::row::sparams(&[
+            ("from", from_id), ("to", to_id), ("crit", criterion),
+            ("ev", evidence), ("by", inspected_by), ("now", now),
+        ]),
+    )?;
     super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "failing", inspected_by, now)?;
     Ok(true)
 }
@@ -213,16 +199,15 @@ pub fn update_relates_to_independent(
     let Some(prev) = get_relates_to_between(db, from_id, to_id)? else {
         return Ok(false);
     };
-    db.execute(&format!(
-        "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
-         SET r.inspection_status = 'independent', r.notes = '{notes}', \
-             r.inspected_by = '{by}', r.last_inspected = '{now}'",
-        from  = esc(from_id),
-        to    = esc(to_id),
-        notes = esc(notes),
-        by    = esc(inspected_by),
-        now   = esc(now),
-    ))?;
+    db.execute_with_params(
+        "MATCH (a:Intent {id: $from})-[r:RELATES_TO]->(b:Intent {id: $to}) \
+         SET r.inspection_status = 'independent', r.notes = $notes, \
+             r.inspected_by = $by, r.last_inspected = $now",
+        super::row::sparams(&[
+            ("from", from_id), ("to", to_id), ("notes", notes),
+            ("by", inspected_by), ("now", now),
+        ]),
+    )?;
     super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "independent", inspected_by, now)?;
     Ok(true)
 }
@@ -253,20 +238,20 @@ pub fn stamp_relates_to_runtime(
     } else {
         &prev.criterion
     };
-    db.execute(&format!(
-        "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
-         SET r.inspection_status = '{status}', r.criterion = '{crit}', \
-             r.evidence = '{ev}', r.confidence = {conf}, r.inspected_by = '{by}', \
-             r.last_inspected = '{now}'",
-        from   = esc(from_id),
-        to     = esc(to_id),
-        status = esc(status),
-        crit   = esc(criterion),
-        ev     = esc(evidence),
-        conf   = confidence,
-        by     = esc(inspected_by),
-        now    = esc(now),
-    ))?;
+    db.execute_with_params(
+        &format!(
+            "MATCH (a:Intent {{id: $from}})-[r:RELATES_TO]->(b:Intent {{id: $to}}) \
+             SET r.inspection_status = $status, r.criterion = $crit, \
+                 r.evidence = $ev, r.confidence = {conf}, r.inspected_by = $by, \
+                 r.last_inspected = $now",
+            conf = confidence,
+        ),
+        super::row::sparams(&[
+            ("from", from_id), ("to", to_id), ("status", status),
+            ("crit", criterion), ("ev", evidence),
+            ("by", inspected_by), ("now", now),
+        ]),
+    )?;
     super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, status, inspected_by, now)?;
     Ok(true)
 }
@@ -328,7 +313,7 @@ pub fn fix_edge(
 pub fn edges_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<RelatesTo>> {
     let out_q = format!(
         "MATCH (a:Intent {{id: '{id}'}})-[r:RELATES_TO]->(b:Intent) \
-         RETURN r.id, r.inspection_status, r.criterion, r.confidence, r.evidence, \
+         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
                 r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
                 a.id AS from_id, a.name AS from_name, \
                 b.id AS to_id, b.name AS to_name",
@@ -336,7 +321,7 @@ pub fn edges_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<RelatesT
     );
     let in_q = format!(
         "MATCH (a:Intent)-[r:RELATES_TO]->(b:Intent {{id: '{id}'}}) \
-         RETURN r.id, r.inspection_status, r.criterion, r.confidence, r.evidence, \
+         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
                 r.last_inspected, r.inspected_by, r.priority_score, r.notes, \
                 a.id AS from_id, a.name AS from_name, \
                 b.id AS to_id, b.name AS to_name",
@@ -374,10 +359,15 @@ pub fn recent_passing(db: &dyn LoomDb, limit: usize) -> Result<Vec<RelatesTo>> {
 }
 
 fn row_to_relates_to(row: &[Value], cols: &HashMap<&str, usize>) -> RelatesTo {
+    let from_id = str_val(get(row, cols, "from_id"));
+    let to_id = str_val(get(row, cols, "to_id"));
     RelatesTo {
-        id:                str_val(get(row, cols, "r.id")),
-        from_id:           str_val(get(row, cols, "from_id")),
-        to_id:             str_val(get(row, cols, "to_id")),
+        // v4: edge identity is DERIVED from the endpoints (unique per ordered
+        // pair) — nothing is stored, nothing can go stale, and the key is the
+        // same on every machine the graph travels to.
+        id:                crate::db::schema::edge_key(crate::db::schema::edge::RELATES_TO, &from_id, &to_id),
+        from_id,
+        to_id,
         from_name:         str_val(get(row, cols, "from_name")),
         to_name:           str_val(get(row, cols, "to_name")),
         inspection_status: str_val(get(row, cols, "r.inspection_status")),

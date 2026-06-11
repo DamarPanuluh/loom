@@ -28,12 +28,12 @@ name                STRING
 description         STRING
 abstraction_level   STRING  -- "feature" | "component" | "system" | "cross_cutting"
 domain              STRING
-source_refs         STRING  -- JSON array of file paths
+source_refs         LIST    -- file paths (native list since schema v5)
 status              STRING  -- "proposed" | "confirmed" | "deprecated"
 created_at          STRING
 updated_at          STRING
-tags                STRING  -- JSON array of registered VocabTerm names (≤3, sorted;
-                               "[]"/absent = untagged). Additive in v3; validated
+tags                LIST    -- registered VocabTerm names (≤3, sorted; empty/absent
+                               = untagged). Native list since schema v5; validated
                                against the registry at write time.
 ```
 
@@ -52,7 +52,8 @@ id              STRING (uuid)
 path            STRING  -- absolute path
 language        STRING
 last_modified   STRING  -- mtime from filesystem, updated by loom sync
-imports         STRING  -- JSON array of statically-imported repo paths (loom sync)
+imports         LIST    -- statically-imported repo paths (loom sync; native
+                           list since schema v5)
 content_hash    STRING  -- FNV-1a 64 hex of the bytes; sync's change detector
                            (mtime churn from checkout/rebase never false-flags)
 ```
@@ -576,6 +577,12 @@ loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id> | --fil
   the directed-handoff channel: an out-of-lane finding becomes a message the
   owning lane sees FIRST (`loom next` sorts addressed notes to the top of the
   item's notes). Notes surface in `loom next`, `loom intent show`, `loom edge show`.
+loom note prune
+  Remove notes whose target no longer exists (deleted intent/hypothesis/edge)
+  — the remedy `loom doctor` names for dangling note targets. Only
+  unreachable notes are removed; history on live or retired nodes is never
+  touched. (The hard-delete commands now prune their edges' notes themselves;
+  this cleans up damage from older versions.)
 loom note list [--intent <id>] [--edge <id>] [--file <path|id>] [--kind <kind>] [--for <role>] [--limit N]
   --for <role> = the lane's inbox (only notes addressed to it). --limit keeps
   the NEWEST rows (append-only memory; the tail is the live context).
@@ -605,6 +612,21 @@ loom doctor
   HINTS (never fail the exit code): all-solo provenance (declare roles for real
   separation of duties), and a stale committed loom.graph.json.
   Exits non-zero if any issue is found. Run after upgrades or if results look wrong.
+  A version mismatch points at `loom migrate`.
+
+loom migrate
+  Upgrade a LIVE graph to the current schema version IN PLACE — a version
+  CHAIN, each step idempotent, the meta version stamped LAST (crash-safe by
+  re-run, not by transaction: bulk read-modify loops inside one transaction
+  go quadratic on grafeo 0.5.x — see commands/migrate.rs).
+  v3 → v4: edge identity became DERIVED (`<prefix>:<from>:<to>`, e.g.
+  `rt:<intent-a>:<intent-b>`) instead of a stored uuid — every note that
+  referenced a stored edge uuid is remapped (legacy id props on old edges are
+  inert and left alone). v3/v4 → v5: source_refs/tags/imports convert from
+  JSON-encoded strings to NATIVE LISTS. Also backfills the property indexes.
+  Idempotent: a current graph reports "nothing to do". Re-export after
+  migrating. Repos with only a committed loom.graph.json don't need this —
+  `loom import` upgrades v3/v4 exports in flight.
 
 loom guide [--mode greenfield|brownfield|refactor|port]
   Self-contained driving protocol for an LLM new to loom: mental model, the loop,
@@ -758,6 +780,9 @@ loom delegate list
  to a symbol; `loom codefile add 'src/**/*.rs'` bulk-registers via glob. `loom status`
  ends with a phase-aware "→ Next" compass, and status/next carry a `graph_state` pulse.
  Intents and rules are addressable by id, exact name, or unique name fragment.
+ Edge ids are DERIVED from the endpoints — `rt:<from>:<to>` (hy/imp/gov/val/tgt
+ for the other types), never stored — stable across export/import; `loom edge
+ show` takes them and notes reference them.
  `loom edge implement <intent> 'src/db/**'` bulk-grounds over REGISTERED paths;
  `loom edge unimplement <intent> <path|glob>` is the ungrounding half — used to
  move groundings down to children when decomposing a scattered intent.)
@@ -957,4 +982,6 @@ which covers the relationship reliability rule below.
 
 **Why loom sync propagates one hop:** Full graph propagation from a file change would be too aggressive — everything would reset. One hop (IMPLEMENTS → RELATES_TO neighbors) is the right blast radius for a file-level change. System-level changes require explicit re-initialization.
 
-**Why edges are matched by endpoints, never by their own id:** grafeo 0.5.x does not reliably match/filter a relationship by its own property (`r.id`, `r.inspection_status`) — inline `{id: X}`, `WHERE r.id = X`, and `WHERE r.inspection_status = X` all return results nondeterministically, and a read right after writing the same relationship is especially flaky. A full traversal (`MATCH (a)-[r]->(b) RETURN r.*`) and node-property matching are reliable. So: edge updates take endpoint ids and match `MATCH (a {id})-[r]->(b {id}) SET ...` (RELATES_TO/IMPLEMENTS/GOVERNS/VALIDATES are unique per endpoint pair); id/status lookups scan all and filter in Rust; and after a write we construct the result struct in Rust instead of re-reading. This is also why `db/mod.rs` holds one long-lived `Session` (read-your-writes within a session) rather than one per statement.
+**Why edge identity is DERIVED, not stored (schema v4):** edges are unique per endpoint pair, so an edge's id is computed at read time — `schema::edge_key(type, from, to)` → `rt:<a>:<b>` / `imp:` / `gov:` / `val:` / `tgt:` / `hy:` — never written to the store. The uuid it replaced was redundant identity that (a) sat on the one property name grafeo can't filter by, (b) regenerated on every import so note targets broke in transit, and (c) forced scan-to-find-by-id reads. Derived keys are stable across machines and exports by construction. `loom migrate` upgrades live v3 graphs (remaps note targets); `loom import` upgrades v3 exports in flight.
+
+**Why edges are matched by endpoints, never by their own id:** in grafeo 0.5.42, the property NAME `id` is shadowed on relationships in *filter* position: `WHERE r.id = X` and inline `{id: X}` resolve `id` to grafeo's INTERNAL edge id (an integer) instead of the user property — they match nothing, ever (deterministically; in *RETURN* position `r.id` correctly yields the stored property). Every OTHER edge-property filter (`WHERE r.inspection_status = X`, `<>`, inline forms) is deterministic — verified under stress in `tests/grafeo_probe.rs` (50/50 set-then-filter cycles, in-memory and persistent), which also pins MERGE+RETURN, transactions, `$param` binding, and index idempotency; run it after any grafeo upgrade. So: edge-ID lookups take endpoint ids and match `MATCH (a {id})-[r]->(b {id}) SET ...` (RELATES_TO/IMPLEMENTS/GOVERNS/VALIDATES are unique per endpoint pair) or scan-and-filter in Rust; status filters live in the query (with a zero-cost Rust retain as regression guard); get-or-create is one `MERGE … ON CREATE SET … RETURN`. The long-lived single `Session` in `db/mod.rs` stays (read-your-writes within a session). Multi-statement mutations (import, the sync ripple, retire, one batch line) run inside `with_transaction` (START TRANSACTION/COMMIT/ROLLBACK) — a failure midway rolls back instead of leaving a half-flipped graph. `loom init` creates property indexes on every inline-matched key (idempotent; re-running init backfills older graphs). CALL procedures run but a trailing MATCH after `CALL … YIELD` is silently dropped — joining algorithm output back to properties requires a Rust-side join via `id(n)` (works; unused so far). Concurrent ReadOnly access alongside a writer is refused by the file lock — don't design for parallel readers on 0.5.42.

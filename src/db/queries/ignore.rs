@@ -5,7 +5,7 @@ use anyhow::Result;
 use grafeo::Value;
 use std::collections::HashMap;
 
-use crate::db::schema::{esc, label, prop};
+use crate::db::schema::{label, prop};
 use crate::db::LoomDb;
 use crate::types::Ignore;
 
@@ -13,13 +13,8 @@ use super::row::{col_map, get, str_val};
 
 pub fn insert_ignore(db: &dyn LoomDb, ig: &Ignore) -> Result<()> {
     let q = format!(
-        "INSERT (:{lbl} {{{id}: '{}', {pattern}: '{}', {reason}: '{}', {author}: '{}', \
-         {created}: '{}'}})",
-        esc(&ig.id),
-        esc(&ig.pattern),
-        esc(&ig.reason),
-        esc(&ig.author),
-        esc(&ig.created_at),
+        "INSERT (:{lbl} {{{id}: $id, {pattern}: $pattern, {reason}: $reason, \
+         {author}: $author, {created}: $created}})",
         lbl = label::IGNORE,
         id = prop::ID,
         pattern = prop::PATTERN,
@@ -27,7 +22,10 @@ pub fn insert_ignore(db: &dyn LoomDb, ig: &Ignore) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute(&q)?;
+    db.execute_with_params(&q, super::row::sparams(&[
+        ("id", &ig.id), ("pattern", &ig.pattern), ("reason", &ig.reason),
+        ("author", &ig.author), ("created", &ig.created_at),
+    ]))?;
     Ok(())
 }
 

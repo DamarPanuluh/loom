@@ -12,48 +12,39 @@ use super::row::{col_map, f64_val, get, str_val};
 
 pub fn insert_implements(
     db: &dyn LoomDb,
-    edge_id: &str,
     intent_id: &str,
     codefile_id: &str,
     locator: &str,
     notes: &str,
     now: &str,
 ) -> Result<()> {
-    // Verify both nodes exist
-    let check_intent = db.execute(&format!(
-        "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
-    ))?;
-    if check_intent.rows().is_empty() {
-        anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
-    }
-    let check_cf = db.execute(&format!(
-        "MATCH (cf:CodeFile {{id: '{}'}}) RETURN cf.id", esc(codefile_id)
-    ))?;
-    if check_cf.rows().is_empty() {
+    // One MERGE does verify + idempotency + insert in a single trip:
+    // endpoint-pair uniqueness is the invariant every edge update relies on,
+    // and ON CREATE-only means re-grounding the same pair keeps the first
+    // grounding (no ON MATCH). A row comes back iff both endpoints exist.
+    let r = db.execute_with_params(
+        "MATCH (i:Intent {id: $iid}), (cf:CodeFile {id: $cfid}) \
+         MERGE (i)-[e:IMPLEMENTS]->(cf) \
+         ON CREATE SET e.inspection_status = 'passing', \
+           e.criterion = '', e.confidence = 0.0, e.evidence = '', \
+           e.last_inspected = '', e.inspected_by = '', e.locator = $locator, \
+           e.notes = $notes, e.created_at = $now \
+         RETURN e.inspection_status",
+        super::row::sparams(&[
+            ("iid", intent_id), ("cfid", codefile_id),
+            ("locator", locator), ("notes", notes), ("now", now),
+        ]),
+    )?;
+    if r.rows().is_empty() {
+        // The miss path pays for the precise teaching error.
+        let check_intent = db.execute(&format!(
+            "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
+        ))?;
+        if check_intent.rows().is_empty() {
+            anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+        }
         anyhow::bail!("CodeFile '{}' not found. Add it with `loom codefile add` first.", codefile_id);
     }
-    // Endpoint-pair uniqueness is the invariant every edge update relies on
-    // (edges are matched by endpoints, never by their own id) — enforce it at
-    // insert: re-grounding the same pair is a no-op, like get_or_create.
-    let existing = db.execute(&format!(
-        "MATCH (i:Intent {{id: '{}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{}'}}) RETURN i.id",
-        esc(intent_id), esc(codefile_id)
-    ))?;
-    if !existing.rows().is_empty() {
-        return Ok(());
-    }
-    db.execute(&format!(
-        "MATCH (i:Intent {{id: '{iid}'}}), (cf:CodeFile {{id: '{cfid}'}}) \
-         INSERT (i)-[:IMPLEMENTS {{id: '{eid}', inspection_status: 'passing', \
-           criterion: '', confidence: 0.0, evidence: '', last_inspected: '', \
-           inspected_by: '', locator: '{locator}', notes: '{notes}', created_at: '{now}'}}]->(cf)",
-        iid     = esc(intent_id),
-        cfid    = esc(codefile_id),
-        eid     = esc(edge_id),
-        locator = esc(locator),
-        notes   = esc(notes),
-        now     = esc(now),
-    ))?;
     Ok(())
 }
 
@@ -63,7 +54,7 @@ pub fn list_implements_for_intent(
 ) -> Result<Vec<Implements>> {
     let q = format!(
         "MATCH (i:Intent {{id: '{id}'}})-[e:IMPLEMENTS]->(cf:CodeFile) \
-         RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+         RETURN e.inspection_status, e.criterion, e.confidence, e.evidence, \
                 e.last_inspected, e.inspected_by, e.locator, e.notes, e.created_at, \
                 i.id AS intent_id, i.name AS intent_name, \
                 cf.id AS codefile_id, cf.path AS codefile_path",
@@ -98,7 +89,7 @@ pub fn delete_implements(db: &dyn LoomDb, intent_id: &str, codefile_id: &str) ->
 /// the `loom doctor` audit.
 pub fn list_all_implements(db: &dyn LoomDb) -> Result<Vec<Implements>> {
     let q = "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) \
-             RETURN e.id, e.inspection_status, e.criterion, e.confidence, e.evidence, \
+             RETURN e.inspection_status, e.criterion, e.confidence, e.evidence, \
                     e.last_inspected, e.inspected_by, e.locator, e.notes, e.created_at, \
                     i.id AS intent_id, i.name AS intent_name, \
                     cf.id AS codefile_id, cf.path AS codefile_path";
@@ -135,10 +126,12 @@ pub fn intent_ids_implementing_codefile(
 }
 
 fn row_to_implements(row: &[Value], cols: &HashMap<&str, usize>) -> Implements {
+    let intent_id = str_val(get(row, cols, "intent_id"));
+    let codefile_id = str_val(get(row, cols, "codefile_id"));
     Implements {
-        id:                str_val(get(row, cols, "e.id")),
-        intent_id:         str_val(get(row, cols, "intent_id")),
-        codefile_id:       str_val(get(row, cols, "codefile_id")),
+        id:                crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, &intent_id, &codefile_id),
+        intent_id,
+        codefile_id,
         intent_name:       str_val(get(row, cols, "intent_name")),
         codefile_path:     str_val(get(row, cols, "codefile_path")),
         inspection_status: str_val(get(row, cols, "e.inspection_status")),

@@ -254,8 +254,8 @@ fn set_validates_edge_status(
     // the validation has a VALIDATES edge to. Updating only the invoked
     // intent's edge left sibling edges `uninspected` forever — the validator
     // queue (keyed on last_result) went quiet while the compass (keyed on edge
-    // states) kept saying phase=validate. Node-anchored match; matching a
-    // relationship by its own id property is unreliable in grafeo 0.5.x.
+    // states) kept saying phase=validate. Node-anchored match — the
+    // validation's id is the edge family's key (schema v4 derived identity).
     db.execute(&format!(
         "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(:Intent) \
          SET e.inspection_status = '{status}'",

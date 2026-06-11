@@ -2,24 +2,22 @@
 
 use anyhow::Result;
 
-use crate::db::schema::esc;
 use crate::db::LoomDb;
 use crate::types::QualityRule;
 
 use super::row::{col_map, get, str_val};
 
 pub fn insert_rule(db: &dyn LoomDb, rule: &QualityRule) -> Result<()> {
-    let q = format!(
-        "INSERT (:QualityRule {{id: '{id}', name: '{name}', description: '{desc}', \
-         detection_logic: '{logic}', severity: '{sev}', inspection_effort: '{eff}'}})",
-        id    = esc(&rule.id),
-        name  = esc(&rule.name),
-        desc  = esc(&rule.description),
-        logic = esc(&rule.detection_logic),
-        sev   = esc(&rule.severity),
-        eff   = esc(&rule.inspection_effort),
-    );
-    db.execute(&q)?;
+    // Param-bound: description/detection_logic are agent-written prose.
+    db.execute_with_params(
+        "INSERT (:QualityRule {id: $id, name: $name, description: $desc, \
+         detection_logic: $logic, severity: $sev, inspection_effort: $eff})",
+        super::row::sparams(&[
+            ("id", &rule.id), ("name", &rule.name), ("desc", &rule.description),
+            ("logic", &rule.detection_logic), ("sev", &rule.severity),
+            ("eff", &rule.inspection_effort),
+        ]),
+    )?;
     Ok(())
 }
 

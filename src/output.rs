@@ -175,21 +175,21 @@ pub fn with_anchor(
 // ---------------------------------------------------------------------------
 
 pub fn fmt_intent(i: &crate::types::Intent) -> String {
-    let refs_str = match serde_json::from_str::<Vec<String>>(&i.source_refs) {
-        Ok(refs) if refs.is_empty() => "(none)".to_string(),
-        Ok(refs) => refs.join(", "),
-        Err(e) => format!("(invalid source_refs JSON: {e})"),
+    let refs_str = if i.source_refs.is_empty() {
+        "(none)".to_string()
+    } else {
+        i.source_refs.join(", ")
     };
     let aspect_line = if i.aspect.is_empty() {
         String::new()
     } else {
         format!("\n  aspect:      {}", i.aspect)
     };
-    // Tags render only when present — "" (older graphs) and "[]" both mean
-    // untagged, and untagged is not worth a line.
-    let tags_line = match serde_json::from_str::<Vec<String>>(&i.tags) {
-        Ok(tags) if !tags.is_empty() => format!("\n  tags:        {}", tags.join(", ")),
-        _ => String::new(),
+    // Tags render only when present — untagged is not worth a line.
+    let tags_line = if i.tags.is_empty() {
+        String::new()
+    } else {
+        format!("\n  tags:        {}", i.tags.join(", "))
     };
     let lifecycle = if i.lifecycle.is_empty() { "implemented" } else { &i.lifecycle };
     format!(
@@ -292,24 +292,24 @@ mod tests {
     use crate::db::LoomDb;
 
     #[test]
-    fn fmt_intent_reports_malformed_source_refs() {
+    fn fmt_intent_renders_refs_and_tags() {
         let intent = crate::types::Intent {
             id: "i".to_string(),
             name: "intent".to_string(),
             description: "description".to_string(),
             abstraction_level: "feature".to_string(),
             domain: "test".to_string(),
-            source_refs: "not json".to_string(),
+            source_refs: vec!["src/a.rs".to_string(), "docs/SPEC.md".to_string()],
             status: "proposed".to_string(),
             aspect: String::new(),
-            tags: "[\"enforcement\"]".to_string(),
+            tags: vec!["enforcement".to_string()],
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),
         };
 
         let rendered = fmt_intent(&intent);
-        assert!(rendered.contains("invalid source_refs JSON"), "{rendered}");
+        assert!(rendered.contains("src/a.rs, docs/SPEC.md"), "{rendered}");
         assert!(rendered.contains("tags:        enforcement"), "{rendered}");
     }
 

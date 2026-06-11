@@ -384,7 +384,6 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
-            let edge_id = Uuid::new_v4().to_string();
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {
                 // Criterion is optional at apply time (the edge starts
@@ -394,7 +393,9 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "what compliance looks like for this rule on this intent",
                 )?;
             }
-            insert_governs(&db, &edge_id, &rule_id, &intent_id, crit, &now)?;
+            insert_governs(&db, &rule_id, &intent_id, crit, &now)?;
+            let edge_id = crate::db::schema::edge_key(
+                crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status":    "ok",
@@ -452,7 +453,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 // A verdict IS a measurement — no separate `apply` step needed.
                 // Create the edge and record the verdict in one motion, so the
                 // unmeasured queue resolves with a single command.
-                insert_governs(&db, &Uuid::new_v4().to_string(), &rule_id, &intent_id, &criterion, &now)?;
+                insert_governs(&db, &rule_id, &intent_id, &criterion, &now)?;
                 found = update_governs_verdict(
                     &db, &rule_id, &intent_id, &status, &criterion, &evidence,
                     confidence, &by, &now,

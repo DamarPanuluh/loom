@@ -206,6 +206,12 @@ pub enum Command {
     /// properties, valid field values, and dangling references.
     Doctor,
 
+    /// Upgrade a live graph to the current schema version IN PLACE
+    /// (v3→v4: note targets remapped to derived edge keys; v3/v4→v5:
+    /// source_refs/tags/imports converted to native lists). Idempotent and
+    /// crash-safe (version stamped last). Re-export after migrating.
+    Migrate,
+
     /// Print the driving protocol for an LLM new to loom: the mental model, the
     /// loop, the done-condition, and a mode-specific population checklist.
     Guide {
@@ -1011,6 +1017,11 @@ pub enum SagaCmd {
 
 #[derive(Subcommand)]
 pub enum NoteCmd {
+    /// Remove notes whose target no longer exists (deleted intent/hypothesis/
+    /// edge) — the remedy `loom doctor` names for dangling note targets.
+    /// Reports what was removed; floating and file notes are never touched.
+    Prune,
+
     /// Add a note. Attach it to an intent, an edge, or a code file, or leave
     /// it free-floating.
     Add {

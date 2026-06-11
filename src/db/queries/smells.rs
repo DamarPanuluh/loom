@@ -16,7 +16,7 @@
 //! on each finding stays with the inspecting agent, via the exact remedy
 //! command each smell carries.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
@@ -457,9 +457,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
         for cf in &snapshot.codefiles {
             let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
-            let imports: Vec<String> = serde_json::from_str(&cf.imports)
-                .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
-            for target in &imports {
+            for target in &cf.imports {
                 let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
                 for a in owners_a {
                     for b in owners_b {

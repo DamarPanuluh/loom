@@ -63,12 +63,17 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
 
     let now = chrono::Utc::now().to_rfc3339();
 
+    // Atomic declaration: the Validation, its VALIDATES links, the path
+    // edges, and the spec's CodeFile registration land together — a saga
+    // half-declared (proof node without its path) would mislead the compass.
+    let required_env = crate::saga::spec::required_env(&spec);
+    let (validation_id, created, linked, path_edges, registered_spec) =
+        crate::db::with_transaction(&db, || {
     // The Validation node, keyed by the saga's name. Re-adding reconciles.
     let existing = list_validations(&db)?
         .into_iter()
         .find(|v| v.name == spec.saga);
     let command = format!("loom saga run {rel}");
-    let required_env = crate::saga::spec::required_env(&spec);
     let env_line = if required_env.is_empty() {
         String::new()
     } else {
@@ -122,7 +127,7 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
     let mut seen = std::collections::HashSet::new();
     for (iid, _) in &step_intents {
         if seen.insert(iid.clone()) && !already.contains(iid) {
-            insert_validates(&db, &Uuid::new_v4().to_string(), &validation_id, iid, "", &now)?;
+            insert_validates(&db, &validation_id, iid, "", &now)?;
             linked += 1;
         }
     }
@@ -134,7 +139,7 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
     for pair in step_intents.windows(2) {
         let (a, b) = (&pair[0].0, &pair[1].0);
         if a != b {
-            get_or_create_relates_to(&db, &Uuid::new_v4().to_string(), a, b, &now)?;
+            get_or_create_relates_to(&db, a, b, &now)?;
             path_edges += 1;
         }
     }
@@ -156,11 +161,13 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
             path: rel.clone(),
             language: "yaml".to_string(),
             last_modified,
-            imports: "[]".to_string(),
+            imports: Vec::new(),
             content_hash,
         })?;
         registered_spec = true;
     }
+    Ok((validation_id, created, linked, path_edges, registered_spec))
+    })?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -311,7 +318,7 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
             "consumer saga '{}': step '{}' ({}) feeds step '{}' ({}) and the chain executes end-to-end",
             report.saga, o_a.name, a_name, o_b.name, b_name
         );
-        get_or_create_relates_to(&db, &Uuid::new_v4().to_string(), a_id, b_id, &now)?;
+        get_or_create_relates_to(&db, a_id, b_id, &now)?;
         if o_a.passed && o_b.passed {
             let evidence = format!(
                 "runtime: saga '{}' run {now}: step {} ('{}' {} {}) → step {} ('{}' {} {}) both passed against the live surface",

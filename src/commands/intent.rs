@@ -39,8 +39,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // moment of choice). Empty = untagged, always honest.
             let tags = crate::commands::vocab::validate_tags(&db, &tags)?;
             let has_tags = !tags.is_empty();
-            let tags_json = crate::db::queries::encode_tags(tags)?;
-            let source_refs = serde_json::to_string(&sources)?;
+            let tags = crate::db::queries::encode_tags(tags)?;
+            let source_refs = sources.clone();
             let now = chrono::Utc::now().to_rfc3339();
             let id  = Uuid::new_v4().to_string();
 
@@ -53,7 +53,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 source_refs,
                 status:            "proposed".to_string(),
                 aspect,
-                tags:              tags_json,
+                tags,
                 lifecycle,
                 created_at:        now.clone(),
                 updated_at:        now,
@@ -189,7 +189,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
         IntentCmd::Delete { id } => {
             gate::acting_in_lane("delete an intent", &[role::BUILDER], None)?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let deleted = delete_intent(&db, &id)?;
+            // Atomic: node, edges, and all their notes go together.
+            let deleted = crate::db::with_transaction(&db, || delete_intent(&db, &id))?;
             if !deleted {
                 anyhow::bail!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
@@ -225,7 +226,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // Fallout BEFORE the flip, so the report reflects this retirement.
             let fallout = crate::db::queries::retire_fallout(&db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
-            if !crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)? {
+            // Atomic: the status flip and its decision/lineage notes land
+            // together or not at all — a half-retired intent (deprecated but
+            // unexplained) would defeat the whole "history stays traceable" point.
+            if !crate::db::with_transaction(&db, || {
+                crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)
+            })? {
                 anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
             }
             let next_step = "`loom status` re-checks the compass; `loom coverage` shows any new gaps.";
@@ -316,13 +322,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     if !add_source_ref(&db, &id, &path, &now)? {
                         anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
                     }
-                    let refs = get_intent(&db, &id)?
+                    let parsed = get_intent(&db, &id)?
                         .map(|i| i.source_refs)
                         .unwrap_or_default();
-                    // add_source_ref just wrote this JSON; a parse failure here
-                    // means corrupted storage — surface it, never render [].
-                    let parsed: Vec<String> = serde_json::from_str(&refs)
-                        .map_err(|e| anyhow::anyhow!("Intent '{id}' has malformed source_refs JSON: {e} — run `loom doctor`."))?;
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "added": path,

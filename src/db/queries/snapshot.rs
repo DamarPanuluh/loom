@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
@@ -136,9 +136,7 @@ impl DiscoverySnapshot {
 
         let mut import_links: HashSet<(usize, usize)> = HashSet::new();
         for (from_idx, cf) in snapshot.codefiles.iter().enumerate() {
-            let imports: Vec<String> = serde_json::from_str(&cf.imports)
-                .with_context(|| format!("Malformed imports JSON for CodeFile '{}'", cf.path))?;
-            for target in imports {
+            for target in cf.imports.clone() {
                 if let Some(&to_idx) = path_index.get(target.as_str()) {
                     import_links.insert((from_idx, to_idx));
                     import_links.insert((to_idx, from_idx));

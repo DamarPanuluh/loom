@@ -10,7 +10,7 @@ use anyhow::Result;
 use grafeo::Value;
 use std::collections::HashMap;
 
-use crate::db::schema::{esc, label, prop};
+use crate::db::schema::{label, prop};
 use crate::db::LoomDb;
 use crate::types::Delegation;
 
@@ -18,13 +18,8 @@ use super::row::{col_map, get, str_val};
 
 pub fn insert_delegation(db: &dyn LoomDb, d: &Delegation) -> Result<()> {
     let q = format!(
-        "INSERT (:{lbl} {{{id}: '{}', {pattern}: '{}', {target}: '{}', {author}: '{}', \
-         {created}: '{}'}})",
-        esc(&d.id),
-        esc(&d.pattern),
-        esc(&d.target),
-        esc(&d.author),
-        esc(&d.created_at),
+        "INSERT (:{lbl} {{{id}: $id, {pattern}: $pattern, {target}: $target, \
+         {author}: $author, {created}: $created}})",
         lbl = label::DELEGATION,
         id = prop::ID,
         pattern = prop::PATTERN,
@@ -32,7 +27,10 @@ pub fn insert_delegation(db: &dyn LoomDb, d: &Delegation) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute(&q)?;
+    db.execute_with_params(&q, super::row::sparams(&[
+        ("id", &d.id), ("pattern", &d.pattern), ("target", &d.target),
+        ("author", &d.author), ("created", &d.created_at),
+    ]))?;
     Ok(())
 }
 

@@ -12,19 +12,16 @@ use crate::types::Validation;
 use super::row::{col_map, get, str_val};
 
 pub fn insert_validation(db: &dyn LoomDb, v: &Validation) -> Result<()> {
-    let q = format!(
-        "INSERT (:Validation {{id: '{id}', name: '{name}', description: '{desc}', \
-         validation_type: '{vtype}', command: '{cmd}', \
-         last_run: '{lrun}', last_result: '{lres}'}})",
-        id    = esc(&v.id),
-        name  = esc(&v.name),
-        desc  = esc(&v.description),
-        vtype = esc(&v.validation_type),
-        cmd   = esc(&v.command),
-        lrun  = esc(&v.last_run),
-        lres  = esc(&v.last_result),
-    );
-    db.execute(&q)?;
+    db.execute_with_params(
+        "INSERT (:Validation {id: $id, name: $name, description: $desc, \
+         validation_type: $vtype, command: $cmd, \
+         last_run: $lrun, last_result: $lres})",
+        super::row::sparams(&[
+            ("id", &v.id), ("name", &v.name), ("desc", &v.description),
+            ("vtype", &v.validation_type), ("cmd", &v.command),
+            ("lrun", &v.last_run), ("lres", &v.last_result),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -107,11 +104,14 @@ pub fn update_validation_definition(
     description: Option<&str>,
 ) -> Result<bool> {
     let mut sets = Vec::new();
+    let mut params = super::row::sparams(&[("id", id)]);
     if let Some(c) = command {
-        sets.push(format!("v.command = '{}'", esc(c)));
+        sets.push("v.command = $cmd");
+        params.insert("cmd".into(), grafeo::Value::from(c));
     }
     if let Some(d) = description {
-        sets.push(format!("v.description = '{}'", esc(d)));
+        sets.push("v.description = $desc");
+        params.insert("desc".into(), grafeo::Value::from(d));
     }
     if sets.is_empty() {
         return Ok(get_validation(db, id)?.is_some());
@@ -122,11 +122,10 @@ pub fn update_validation_definition(
     if check.rows().is_empty() {
         return Ok(false);
     }
-    db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) SET {}",
-        esc(id),
-        sets.join(", ")
-    ))?;
+    db.execute_with_params(
+        &format!("MATCH (v:Validation {{id: $id}}) SET {}", sets.join(", ")),
+        params,
+    )?;
     Ok(true)
 }
 
@@ -159,6 +158,9 @@ pub fn delete_validation(db: &dyn LoomDb, id: &str) -> Result<bool> {
     db.execute(&format!(
         "MATCH (v:Validation {{id: '{}'}}) DETACH DELETE v", esc(id)
     ))?;
+    // VALIDATES edges died with the node — prune their notes (derived edge
+    // keys embed the validation id).
+    super::note::prune_edge_notes_touching(db, id)?;
     Ok(true)
 }
 

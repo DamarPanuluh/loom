@@ -15,34 +15,32 @@ use super::validation::get_validation;
 
 pub fn insert_validates(
     db: &dyn LoomDb,
-    edge_id: &str,
     validation_id: &str,
     intent_id: &str,
     notes: &str,
     now: &str,
 ) -> Result<()> {
-    let check_v = db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(validation_id)
-    ))?;
-    if check_v.rows().is_empty() {
-        anyhow::bail!("Validation '{}' not found — `loom validation list`.", validation_id);
-    }
-    let check_i = db.execute(&format!(
-        "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
-    ))?;
-    if check_i.rows().is_empty() {
+    // One MERGE trip (verify + idempotent insert); see insert_implements.
+    let r = db.execute_with_params(
+        "MATCH (v:Validation {id: $vid}), (i:Intent {id: $iid}) \
+         MERGE (v)-[e:VALIDATES]->(i) \
+         ON CREATE SET e.inspection_status = 'uninspected', \
+           e.notes = $notes, e.created_at = $now \
+         RETURN e.inspection_status",
+        super::row::sparams(&[
+            ("vid", validation_id), ("iid", intent_id),
+            ("notes", notes), ("now", now),
+        ]),
+    )?;
+    if r.rows().is_empty() {
+        let check_v = db.execute(&format!(
+            "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(validation_id)
+        ))?;
+        if check_v.rows().is_empty() {
+            anyhow::bail!("Validation '{}' not found — `loom validation list`.", validation_id);
+        }
         anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
-    db.execute(&format!(
-        "MATCH (v:Validation {{id: '{vid}'}}), (i:Intent {{id: '{iid}'}}) \
-         INSERT (v)-[:VALIDATES {{id: '{eid}', inspection_status: 'uninspected', \
-           notes: '{notes}', created_at: '{now}'}}]->(i)",
-        vid   = esc(validation_id),
-        iid   = esc(intent_id),
-        eid   = esc(edge_id),
-        notes = esc(notes),
-        now   = esc(now),
-    ))?;
     Ok(())
 }
 
@@ -76,19 +74,23 @@ pub fn set_validates_status_for_validation(
 /// calling `list_validates_for_intent` N times.
 pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
     let q = "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent) \
-             RETURN e.id, e.inspection_status, e.notes, \
+             RETURN e.inspection_status, e.notes, \
                     v.id AS validation_id, v.name AS validation_name, \
                     i.id AS intent_id, i.name AS intent_name";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| ValidatesEdge {
-        id:                str_val(get(row, &cols, "e.id")),
-        validation_id:     str_val(get(row, &cols, "validation_id")),
-        intent_id:         str_val(get(row, &cols, "intent_id")),
-        validation_name:   str_val(get(row, &cols, "validation_name")),
-        intent_name:       str_val(get(row, &cols, "intent_name")),
-        inspection_status: str_val(get(row, &cols, "e.inspection_status")),
-        notes:             str_val(get(row, &cols, "e.notes")),
+    Ok(result.rows().iter().map(|row| {
+        let validation_id = str_val(get(row, &cols, "validation_id"));
+        let intent_id = str_val(get(row, &cols, "intent_id"));
+        ValidatesEdge {
+            id:                crate::db::schema::edge_key(crate::db::schema::edge::VALIDATES, &validation_id, &intent_id),
+            validation_id,
+            intent_id,
+            validation_name:   str_val(get(row, &cols, "validation_name")),
+            intent_name:       str_val(get(row, &cols, "intent_name")),
+            inspection_status: str_val(get(row, &cols, "e.inspection_status")),
+            notes:             str_val(get(row, &cols, "e.notes")),
+        }
     }).collect())
 }
 
@@ -99,21 +101,25 @@ pub fn list_validates_for_intent(
 ) -> Result<Vec<ValidatesEdge>> {
     let q = format!(
         "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent {{id: '{id}'}}) \
-         RETURN e.id, e.inspection_status, e.notes, \
+         RETURN e.inspection_status, e.notes, \
                 v.id AS validation_id, v.name AS validation_name, \
                 i.id AS intent_id, i.name AS intent_name",
         id = esc(intent_id)
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| ValidatesEdge {
-        id:                str_val(get(row, &cols, "e.id")),
-        validation_id:     str_val(get(row, &cols, "validation_id")),
-        intent_id:         str_val(get(row, &cols, "intent_id")),
-        validation_name:   str_val(get(row, &cols, "validation_name")),
-        intent_name:       str_val(get(row, &cols, "intent_name")),
-        inspection_status: str_val(get(row, &cols, "e.inspection_status")),
-        notes:             str_val(get(row, &cols, "e.notes")),
+    Ok(result.rows().iter().map(|row| {
+        let validation_id = str_val(get(row, &cols, "validation_id"));
+        let intent_id = str_val(get(row, &cols, "intent_id"));
+        ValidatesEdge {
+            id:                crate::db::schema::edge_key(crate::db::schema::edge::VALIDATES, &validation_id, &intent_id),
+            validation_id,
+            intent_id,
+            validation_name:   str_val(get(row, &cols, "validation_name")),
+            intent_name:       str_val(get(row, &cols, "intent_name")),
+            inspection_status: str_val(get(row, &cols, "e.inspection_status")),
+            notes:             str_val(get(row, &cols, "e.notes")),
+        }
     }).collect())
 }
 

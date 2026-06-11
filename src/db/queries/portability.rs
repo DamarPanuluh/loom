@@ -83,8 +83,18 @@ fn is_numeric(p: &str) -> bool {
     p == prop::CONFIDENCE || p == prop::PRIORITY_SCORE
 }
 
+/// Native-list properties (schema v5): exported as real JSON arrays,
+/// imported as list literals. Pre-v5 exports carry these as JSON-encoded
+/// strings — the import shim parses them.
+fn is_list(p: &str) -> bool {
+    p == prop::SOURCE_REFS || p == prop::TAGS || p == prop::IMPORTS
+}
+
 fn grafeo_to_json(v: &grafeo::Value, numeric: bool) -> J {
     // Render through the shared row helpers so NULL becomes ""/0.0 uniformly.
+    if let grafeo::Value::List(_) = v {
+        return json!(super::row::list_val(v));
+    }
     if numeric {
         json!(super::row::f64_val(v))
     } else {
@@ -175,16 +185,16 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
             }
             items.push(J::Object(obj));
         }
+        // (from, to) IS the edge identity in v4 — unique per ordered pair,
+        // so the sort is total without any stored id.
         items.sort_by(|a, b| {
             let ak = (
                 a["from"].as_str().unwrap_or_default(),
                 a["to"].as_str().unwrap_or_default(),
-                a["id"].as_str().unwrap_or_default(),
             );
             let bk = (
                 b["from"].as_str().unwrap_or_default(),
                 b["to"].as_str().unwrap_or_default(),
-                b["id"].as_str().unwrap_or_default(),
             );
             ak.cmp(&bk)
         });
@@ -236,9 +246,18 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
         anyhow::bail!("Not a loom export (missing/unknown `loom_export` marker).");
     }
     let ver = data.get("schema_version").and_then(J::as_str).unwrap_or("");
-    if ver != schema::SCHEMA_VERSION {
+    // Older exports upgrade IN FLIGHT:
+    // - v3 → v4: edge identity (stored uuids → derived endpoint keys). The
+    //   export carries everything needed — each edge item has id + from + to,
+    //   so notes that referenced edge uuids are remapped to derived keys and
+    //   the legacy id prop is simply not imported.
+    // - v3/v4 → v5: list props (source_refs/tags/imports) arrive as
+    //   JSON-encoded strings and are parsed into native lists (see `is_list`).
+    let upgrading_v3 = ver == "3";
+    if ver != schema::SCHEMA_VERSION && !matches!(ver, "3" | "4") {
         anyhow::bail!(
-            "Export schema version '{}' does not match this loom ('{}').",
+            "Export schema version '{}' does not match this loom ('{}'), and no upgrade \
+             path exists for it (v3/v4 exports upgrade automatically).",
             ver, schema::SCHEMA_VERSION
         );
     }
@@ -304,6 +323,26 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
         }
     };
 
+    // v3 upgrade map: legacy stored edge uuid → derived v4 edge key, built
+    // from the export's own edge items before any note is processed.
+    let mut legacy_edge_ids: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    if upgrading_v3 {
+        for &etype in EDGE_TYPES {
+            let Some(items) = edges.get(etype).and_then(J::as_array) else { continue };
+            for item in items {
+                if let (Some(id), Some(from), Some(to)) = (
+                    item.get("id").and_then(J::as_str),
+                    item.get("from").and_then(J::as_str),
+                    item.get("to").and_then(J::as_str),
+                ) {
+                    legacy_edge_ids
+                        .insert(id.to_string(), schema::edge_key(etype, from, to));
+                }
+            }
+        }
+    }
+
     // Phase 1a: nodes.
     for &lbl in NODE_LABELS {
         if is_additive_node_section(lbl) && !nodes.contains_key(lbl) {
@@ -319,12 +358,53 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             let assigns = node_props(lbl)
                 .iter()
                 .map(|p| {
+                    // Native-list props (v5): real arrays in current exports,
+                    // JSON-encoded strings in pre-v5 exports, absent when
+                    // additive — all three import as a list literal.
+                    if is_list(p) {
+                        let ctx = format!("nodes.{lbl}.{p}");
+                        let items: Vec<String> = match obj.get(*p) {
+                            Some(J::Array(a)) => a
+                                .iter()
+                                .map(|x| {
+                                    x.as_str().map(str::to_string).with_context(|| {
+                                        format!("Export `{ctx}` has a non-string item")
+                                    })
+                                })
+                                .collect::<Result<_>>()?,
+                            Some(J::String(s)) if s.trim().is_empty() => Vec::new(),
+                            Some(J::String(s)) => serde_json::from_str(s)
+                                .with_context(|| format!("Export `{ctx}` is not a JSON array"))?,
+                            None if is_optional_prop(p) => Vec::new(),
+                            Some(_) => anyhow::bail!("Export `{ctx}` is neither array nor string"),
+                            None => anyhow::bail!("Export `nodes.{lbl}` is missing field `{p}`"),
+                        };
+                        let lit = items
+                            .iter()
+                            .map(|s| format!("'{}'", schema::esc(s)))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        return Ok(format!("{p}: [{lit}]"));
+                    }
                     let v = if is_optional_prop(p) {
                         obj.get(*p).and_then(J::as_str).unwrap_or("")
                     } else {
                         required_str(obj, p, &format!("nodes.{lbl}"))?
                     };
                     let v = node_override(lbl, p, v).unwrap_or_else(|| v.to_string());
+                    // v3 upgrade: notes that referenced a stored edge uuid now
+                    // reference the derived edge key. Unmapped values pass
+                    // through (a dangling target was dangling in v3 too —
+                    // doctor reports it either way).
+                    let v = if upgrading_v3
+                        && lbl == label::NOTE
+                        && *p == prop::TARGET_ID
+                        && obj.get(prop::TARGET_KIND).and_then(J::as_str) == Some("edge")
+                    {
+                        legacy_edge_ids.get(v.as_str()).cloned().unwrap_or(v)
+                    } else {
+                        v
+                    };
                     Ok(format!("{p}: '{}'", schema::esc(&v)))
                 })
                 .collect::<Result<Vec<_>>>()?

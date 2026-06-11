@@ -79,7 +79,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     // `loom sync` is a no-op and only genuine later edits ripple
                     // needs_reverification.
                     last_modified,
-                    imports:       "[]".to_string(), // populated by `loom sync`
+                    imports:       Vec::new(), // populated by `loom sync`
                     content_hash,
                 };
                 insert_codefile(&db, &cf)?;
@@ -166,10 +166,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     }
                 }
             }
-            let imports: Vec<String> = match serde_json::from_str(&cf.imports) {
-                Ok(imports) => imports,
-                Err(e) => vec![format!("(invalid imports JSON: {e})")],
-            };
+            let imports = cf.imports.clone();
             let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
             // Notes targeting the file itself — where a tangled_file
             // adjudication (`loom note add --file … --kind decision`) lives.
@@ -265,7 +262,10 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 &[crate::db::schema::role::BUILDER],
                 None,
             )?;
-            let removed = crate::db::queries::delete_codefile(&db, &path_or_id)?;
+            // Atomic: node, IMPLEMENTS edges, and their notes go together.
+            let removed = crate::db::with_transaction(&db, || {
+                crate::db::queries::delete_codefile(&db, &path_or_id)
+            })?;
             let Some(cf) = removed else {
                 anyhow::bail!(
                     "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",

@@ -36,7 +36,51 @@
 /// Still v3 after the bounded tag vocabulary (the VocabTerm label +
 /// Intent.tags): additive once more — older graphs have no terms and untagged
 /// intents, older exports import with `tags` read as "" (`is_optional_prop`).
-pub const SCHEMA_VERSION: &str = "3";
+///
+/// v4: edge identity is DERIVED, never stored. An edge's id is
+/// `edge_key(type, from, to)` (e.g. `rt:<intent-a>:<intent-b>`) computed at
+/// read time — edges are unique per endpoint pair, so the stored uuid was
+/// redundant identity sitting on the ONE property name grafeo can't filter by
+/// (`r.id` resolves to the internal edge id in filter position — see
+/// tests/grafeo_probe.rs). Derived keys are also stable across export/import,
+/// which stored uuids never were (they regenerated). Stored `id` props on
+/// pre-v4 edges are inert; `loom migrate` rewrites the notes that referenced
+/// them and bumps the version; `loom import` upgrades v3 exports in flight.
+///
+/// v5: `Intent.source_refs`, `Intent.tags`, and `CodeFile.imports` are NATIVE
+/// LISTS instead of JSON-encoded strings — no more double encoding (the
+/// committed export now diffs as real arrays), and the malformed-JSON failure
+/// class is impossible by construction. Readers tolerate legacy string values
+/// (parsed as JSON) so a half-migrated graph still reads correctly;
+/// `loom migrate` converts storage; `loom import` upgrades v3/v4 exports in
+/// flight.
+pub const SCHEMA_VERSION: &str = "5";
+
+/// The storage type of a property — surfaced by `loom schema` so a driving
+/// LLM knows which fields are lists (native since v5) or numbers without
+/// guessing from examples.
+pub fn prop_type(p: &str) -> &'static str {
+    match p {
+        x if x == prop::TAGS || x == prop::SOURCE_REFS || x == prop::IMPORTS => "list",
+        x if x == prop::CONFIDENCE || x == prop::PRIORITY_SCORE => "float",
+        _ => "string",
+    }
+}
+
+/// Derived edge identity: `<prefix>:<from-node-id>:<to-node-id>`.
+/// Node ids are uuids (no `:`), so the key parses unambiguously.
+pub fn edge_key(etype: &str, from_id: &str, to_id: &str) -> String {
+    let prefix = match etype {
+        edge::RELATES_TO => "rt",
+        edge::HIERARCHY => "hy",
+        edge::IMPLEMENTS => "imp",
+        edge::GOVERNS => "gov",
+        edge::VALIDATES => "val",
+        edge::TARGETS => "tgt",
+        other => other,
+    };
+    format!("{prefix}:{from_id}:{to_id}")
+}
 
 // ---------------------------------------------------------------------------
 // Node labels
@@ -172,7 +216,7 @@ pub mod prop {
     /// The prescriptive axis (does the code need to be built/changed?), distinct
     /// from `status` (is this a valid intent?).
     pub const LIFECYCLE: &str = "lifecycle";
-    /// Intent: JSON array of registered VocabTerm names (≤3, sorted, deduped) —
+    /// Intent: native list of registered VocabTerm names (≤3, sorted, deduped) —
     /// the bounded facet duplicate-responsibility detection collides on. "[]" =
     /// untagged (honest absence; tags are positive evidence only). NOT in the
     /// required-property table (additive; absent on intents from older graphs).
@@ -181,7 +225,7 @@ pub mod prop {
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";
     pub const LAST_MODIFIED: &str = "last_modified";
-    /// CodeFile: JSON array of repo-relative paths this file statically
+    /// CodeFile: native list of repo-relative paths this file statically
     /// imports — extracted by `loom sync`, consumed by smells/discovery for
     /// undeclared-coupling reconciliation. NOT in the required-property table
     /// (additive in v3; absent on older graphs until the next sync).
@@ -324,22 +368,22 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
     use role::*;
     match edge {
         self::edge::RELATES_TO => &[
-            (ID, LOOM), (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
+            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
             (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
             (INSPECTED_BY, ANALYZER), (PRIORITY_SCORE, LOOM), (NOTES, ANY),
             (CREATED_AT, LOOM),
         ],
         // HIERARCHY is a structural tree edge, enforced at insert — it is never
         // "inspected", so it carries no inspection_status (dropped in v3).
-        self::edge::HIERARCHY => &[(ID, LOOM), (NOTES, ANY), (CREATED_AT, LOOM)],
+        self::edge::HIERARCHY => &[(NOTES, ANY), (CREATED_AT, LOOM)],
         self::edge::IMPLEMENTS => &[
-            (ID, LOOM), (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
+            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
             (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
             (INSPECTED_BY, ANALYZER), (LOCATOR, BUILDER), (NOTES, ANY),
             (CREATED_AT, LOOM),
         ],
         self::edge::GOVERNS => &[
-            (ID, LOOM), (INSPECTION_STATUS, QUALITY), (CRITERION, QUALITY),
+            (INSPECTION_STATUS, QUALITY), (CRITERION, QUALITY),
             (CONFIDENCE, QUALITY), (EVIDENCE, QUALITY), (LAST_INSPECTED, QUALITY),
             (INSPECTED_BY, QUALITY), (NOTES, ANY), (CREATED_AT, LOOM),
         ],
@@ -347,11 +391,11 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
         // from the Validation node's last_result, which is its last execution —
         // a node is reusable across intents). Owned by the validator.
         self::edge::VALIDATES => &[
-            (ID, LOOM), (INSPECTION_STATUS, VALIDATOR), (NOTES, ANY), (CREATED_AT, LOOM),
+            (INSPECTION_STATUS, VALIDATOR), (NOTES, ANY), (CREATED_AT, LOOM),
         ],
         // TARGETS mirrors GOVERNS: a claim about code, inspectable + sync-stale-able.
         self::edge::TARGETS => &[
-            (ID, LOOM), (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
+            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
             (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
             (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
         ],
@@ -392,6 +436,37 @@ pub fn insert_meta(
         gname = esc(graph_name),
         custody = esc(custody),
     )
+}
+
+// ---------------------------------------------------------------------------
+// Property indexes — the large-graph defense
+// ---------------------------------------------------------------------------
+
+/// CREATE INDEX statements for every node property loom matches inline
+/// (`{id: '…'}` / `{path: '…'}` / `{name: '…'}`). Without these, every
+/// node-keyed lookup is a label scan — invisible at hundreds of intents,
+/// real at tens of thousands (a federation root). Grafeo's CREATE INDEX is
+/// idempotent (re-creating the same name is accepted — tests/grafeo_probe.rs,
+/// "index dup"), so `loom init` runs these on BOTH the fresh and the re-init
+/// path: re-running init is also the index backfill for older graphs.
+pub fn index_statements() -> Vec<String> {
+    [
+        (label::INTENT, "id"),
+        (label::CODE_FILE, "id"),
+        (label::CODE_FILE, "path"),
+        (label::QUALITY_RULE, "id"),
+        (label::QUALITY_RULE, "name"),
+        (label::VALIDATION, "id"),
+        (label::VALIDATION, "name"),
+        (label::HYPOTHESIS, "id"),
+        (label::VOCAB_TERM, "name"),
+    ]
+    .iter()
+    .map(|(lbl, prop)| {
+        format!("CREATE INDEX loom_{lbl_lower}_{prop} FOR (n:{lbl}) ON (n.{prop})",
+                lbl_lower = lbl.to_lowercase())
+    })
+    .collect()
 }
 
 // ---------------------------------------------------------------------------

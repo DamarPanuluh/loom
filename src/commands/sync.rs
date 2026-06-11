@@ -77,6 +77,12 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
     let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
 
+    // The whole mutation phase is ONE transaction: a sync that dies midway
+    // (unreadable file, write error) must not leave the graph half-rippled —
+    // some edges flagged, others not, and no last_synced stamp to say which.
+    // Rollback restores the pre-sync graph exactly; re-running after the fix
+    // does the full ripple.
+    let locators_stale = crate::db::with_transaction(&db, || {
     for cf in &codefiles {
         // Resolve path relative to the loom project root if not absolute
         let file_path = Path::new(&cf.path);
@@ -240,9 +246,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     for cf in &codefiles {
         if let Some(content) = text_contents.get(&cf.path) {
             let imports = crate::repo::extract_imports(&base, &cf.path, content);
-            let imports_json = serde_json::to_string(&imports)?;
-            if imports_json != cf.imports {
-                update_codefile_imports(&db, &cf.id, &imports_json)?;
+            if imports != cf.imports {
+                update_codefile_imports(&db, &cf.id, &imports)?;
             }
         } else if non_utf8_files.contains(&cf.path) {
             // Present but unreadable as text (binary/non-UTF8). Never skip
@@ -280,6 +285,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     // Stamp the graph as reconciled against disk (freshness signal).
     set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
+
+    Ok(locators_stale)
+    })?;
 
     let report = SyncReport {
         files_checked,

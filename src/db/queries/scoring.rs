@@ -12,23 +12,22 @@ use super::intent::list_active_intents;
 use super::relates_to::list_relates_to;
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
-/// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan
-/// plus one node scan, merged in Rust. Two deliberate exclusions:
+/// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan.
+/// Two deliberate exclusions, both pushed into the query:
 /// - `independent` edges: a VERIFIED ABSENCE of relationship gives closure to
 ///   the grid but contributes NOTHING to blast radius — counting it made
 ///   well-scouted intents look like hubs.
 /// - edges touching `deprecated` intents: retired design is invisible to
 ///   computation (the retirement contract).
-/// Status is read as a RETURNED column and filtered in Rust — matching an
-/// edge by its own property in a WHERE is the known-unreliable grafeo path.
+/// Edge-property inequality + node-status filtering in one WHERE is
+/// deterministic on grafeo 0.5.42 (tests/grafeo_probe.rs, "combined
+/// pushdown"); the Rust independent-check stays as a zero-cost guard.
 pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
-    let active: std::collections::HashSet<String> = super::intent::list_active_intents(db)?
-        .into_iter()
-        .map(|i| i.id)
-        .collect();
     let mut degrees: HashMap<String, i64> = HashMap::new();
     let r = db.execute(
         "MATCH (a:Intent)-[r:RELATES_TO]->(b:Intent) \
+         WHERE r.inspection_status <> 'independent' \
+           AND a.status <> 'deprecated' AND b.status <> 'deprecated' \
          RETURN a.id AS f, b.id AS t, r.inspection_status AS s",
     )?;
     let cols = col_map(&r);
@@ -39,9 +38,6 @@ pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
         }
         let f = str_val(get(row, &cols, "f"));
         let t = str_val(get(row, &cols, "t"));
-        if !active.contains(&f) || !active.contains(&t) {
-            continue;
-        }
         *degrees.entry(f).or_insert(0) += 1;
         *degrees.entry(t).or_insert(0) += 1;
     }
