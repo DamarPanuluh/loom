@@ -32,6 +32,10 @@
 /// Still v3 after the hypothesis plane (the Hypothesis label + TARGETS edge):
 /// additive again — older graphs simply have no hypotheses, and older exports
 /// without the sections import as empty (see `portability::is_additive_*`).
+///
+/// Still v3 after the bounded tag vocabulary (the VocabTerm label +
+/// Intent.tags): additive once more — older graphs have no terms and untagged
+/// intents, older exports import with `tags` read as "" (`is_optional_prop`).
 pub const SCHEMA_VERSION: &str = "3";
 
 // ---------------------------------------------------------------------------
@@ -55,6 +59,10 @@ pub mod label {
     /// converts it into planned intents. Invisible to coverage/completeness
     /// until then — speculation never dilutes the done-condition.
     pub const HYPOTHESIS: &str = "Hypothesis";
+    /// A registered tag term — the bounded vocabulary intents may reference in
+    /// `tags`. A KEY, not a knowledge node: no edges, no inspection state; its
+    /// value is forcing two descriptions of one responsibility to collide.
+    pub const VOCAB_TERM: &str = "VocabTerm";
     /// Sentinel node marking an initialised graph (carries the schema version,
     /// the graph's identity, and its custody).
     pub const META: &str = "LoomMeta";
@@ -70,6 +78,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::IGNORE,
     label::DELEGATION,
     label::HYPOTHESIS,
+    label::VOCAB_TERM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -163,6 +172,11 @@ pub mod prop {
     /// The prescriptive axis (does the code need to be built/changed?), distinct
     /// from `status` (is this a valid intent?).
     pub const LIFECYCLE: &str = "lifecycle";
+    /// Intent: JSON array of registered VocabTerm names (≤3, sorted, deduped) —
+    /// the bounded facet duplicate-responsibility detection collides on. "[]" =
+    /// untagged (honest absence; tags are positive evidence only). NOT in the
+    /// required-property table (additive; absent on intents from older graphs).
+    pub const TAGS: &str = "tags";
     // CodeFile
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";
@@ -292,6 +306,13 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (PREDICTED_OUTCOME, ANY), (STATUS, ANALYZER), (AUTHOR, ANY),
             (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
             (INSPECTED_BY, ANALYZER), (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+        ],
+        // The bounded tag vocabulary. `name` is the term (the key intents
+        // reference in `tags`); `description` is the contrastive definition an
+        // agent disambiguates by when picking from the inlined list.
+        self::label::VOCAB_TERM => &[
+            (ID, LOOM), (NAME, ANY), (DESCRIPTION, ANY),
+            (AUTHOR, ANY), (CREATED_AT, LOOM),
         ],
         _ => &[],
     }

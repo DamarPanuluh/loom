@@ -20,6 +20,9 @@ use super::row::col_map;
 fn node_props(lbl: &str) -> Vec<&'static str> {
     let mut props: Vec<&'static str> =
         schema::required_node_props(lbl).iter().map(|(p, _)| *p).collect();
+    if lbl == label::INTENT {
+        props.push(prop::TAGS);
+    }
     if lbl == label::CODE_FILE {
         props.push(prop::IMPORTS);
         props.push(prop::CONTENT_HASH);
@@ -44,6 +47,7 @@ fn is_optional_prop(p: &str) -> bool {
             || x == prop::CONTENT_HASH
             || x == prop::INSPECTION_EFFORT
             || x == prop::AUDIENCE
+            || x == prop::TAGS
     )
 }
 
@@ -62,11 +66,12 @@ fn endpoints(etype: &str) -> (&'static str, &'static str) {
     }
 }
 
-/// Sections ADDITIVE to schema v3 (the hypothesis plane): exports from older
-/// binaries don't have them, so import reads a missing section as empty —
-/// same growth contract as `is_optional_prop`, at section granularity.
+/// Sections ADDITIVE to schema v3 (the hypothesis plane, the tag vocabulary):
+/// exports from older binaries don't have them, so import reads a missing
+/// section as empty — same growth contract as `is_optional_prop`, at section
+/// granularity.
 fn is_additive_node_section(lbl: &str) -> bool {
-    lbl == label::HYPOTHESIS
+    lbl == label::HYPOTHESIS || lbl == label::VOCAB_TERM
 }
 
 fn is_additive_edge_section(etype: &str) -> bool {

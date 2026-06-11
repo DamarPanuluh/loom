@@ -143,8 +143,11 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
     let mut registered_spec = false;
     if get_codefile_by_id_or_path(&db, &rel)?.is_none() {
         let abs = cwd.join(&rel);
-        let last_modified = crate::repo::mtime_rfc3339(&abs)
-            .ok_or_else(|| anyhow::anyhow!("Cannot read mtime for {}", abs.display()))?;
+        let last_modified = crate::repo::mtime_rfc3339(&abs).ok_or_else(|| anyhow::anyhow!(
+            "Cannot read mtime for {} — ensure the spec file exists under the graph root, \
+             or re-register: `loom saga add <file>`.",
+            abs.display()
+        ))?;
         let content_hash = std::fs::read(&abs)
             .map(|b| crate::repo::content_hash(&b))
             .with_context(|| format!("Cannot read bytes for {}", abs.display()))?;
@@ -221,7 +224,9 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
     } else {
         let vid = resolve_validation(&db, arg)?;
         let v = get_validation(&db, &vid)?
-            .ok_or_else(|| anyhow::anyhow!("Validation '{vid}' not found."))?;
+            .ok_or_else(|| anyhow::anyhow!(
+                "Validation '{vid}' not found. Run `loom saga list` (or `loom validation list`)."
+            ))?;
         if v.validation_type != "saga" {
             anyhow::bail!(
                 "'{}' is a {} validation, not a saga. Run it via `loom validate <intent>`.",
@@ -325,11 +330,13 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
         }
     }
 
-    // `process::exit` skips destructors and grafeo persists on Drop — close
-    // the session BEFORE exiting or the failure stamps never reach disk.
+    // The run verdict moves the phase — anchor while the session is still
+    // open (the pulse reads the graph), THEN close it: `process::exit` skips
+    // destructors and grafeo persists on Drop, so the session must be closed
+    // before exiting or the failure stamps never reach disk.
+    print_report(&report, stamped_passing, stamped_failing, &db, printer)?;
     drop(db);
 
-    print_report(&report, stamped_passing, stamped_failing, printer);
     if !report.passed {
         // Non-zero exit: `loom validate` (and CI) read this as the proof failing.
         std::process::exit(1);
@@ -341,10 +348,17 @@ fn print_report(
     report: &SagaRunReport,
     stamped_passing: usize,
     stamped_failing: usize,
+    db: &dyn crate::db::LoomDb,
     printer: &Printer,
-) {
+) -> Result<()> {
+    // Result-sensitive anchor for both modes.
+    let next_step = if report.passed {
+        "`loom next --mode validate` continues the proof queue".to_string()
+    } else {
+        "the failing edge carries the evidence: `loom next --mode fix` will serve it.".to_string()
+    };
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&crate::output::with_anchor(serde_json::json!({
             "saga": report.saga,
             "result": if report.passed { "passed" } else { "failed" },
             "executed": report.executed,
@@ -352,8 +366,8 @@ fn print_report(
             "steps": report.outcomes,
             "relates_to_stamped_passing": stamped_passing,
             "relates_to_stamped_failing": stamped_failing,
-        }));
-        return;
+        }), db, &next_step)?);
+        return Ok(());
     }
     for o in &report.outcomes {
         let mark = if o.passed { "✓" } else { "✗" };
@@ -381,8 +395,9 @@ fn print_report(
             "  {} path edge(s) stamped passing (they ran), {} stamped failing (the broken boundary).",
             stamped_passing, stamped_failing
         );
-        println!("  → The failing edge carries the evidence: `loom next --mode fix` will serve it.");
     }
+    crate::output::print_anchor(db, &next_step)?;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

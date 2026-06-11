@@ -29,9 +29,10 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let is_glob = path.contains('*') || path.contains('?') || path.contains('[');
             let targets: Vec<String> = if is_glob {
                 let mut v = Vec::new();
-                for entry in glob::glob(&path)
-                    .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {}", path, e))?
-                {
+                for entry in glob::glob(&path).map_err(|e| anyhow::anyhow!(
+                    "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
+                    path, e
+                ))? {
                     if let Ok(p) = entry {
                         if p.is_file() {
                             v.push(p.display().to_string());
@@ -55,12 +56,20 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 }
                 let abs_path = cwd.join(&p);
                 let last_modified = crate::repo::mtime_rfc3339(&abs_path).ok_or_else(|| {
-                    anyhow::anyhow!("Cannot read mtime for {}", abs_path.display())
+                    anyhow::anyhow!(
+                        "Cannot read mtime for {} — restore the file or remove the registration \
+                         (`loom codefile remove <path>`), then `loom sync`.",
+                        abs_path.display()
+                    )
                 })?;
                 let content_hash = std::fs::read(&abs_path)
                     .map(|b| crate::repo::content_hash(&b))
                     .map_err(|e| {
-                        anyhow::anyhow!("Cannot read bytes for {}: {}", abs_path.display(), e)
+                        anyhow::anyhow!(
+                            "Cannot read bytes for {}: {} — restore the file or remove the registration \
+                             (`loom codefile remove <path>`), then `loom sync`.",
+                            abs_path.display(), e
+                        )
                     })?;
                 let cf = CodeFile {
                     id:            Uuid::new_v4().to_string(),
@@ -78,11 +87,25 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             }
 
             if printer.json {
-                printer.print_json(&serde_json::json!({
+                // next_step parity with the human branch below.
+                let mut payload = serde_json::json!({
                     "added":       added,
                     "added_count": added.len(),
                     "skipped":     skipped,
-                }));
+                });
+                if added.len() == 1 && skipped == 0 {
+                    payload["next_step"] = serde_json::Value::String(format!(
+                        "ground an intent to it — `loom edge implement <intent> {} --locator \"<symbol>\"` \
+                         (symbol as it appears in the file, e.g. `def foo`/`fn foo`)",
+                        added[0].id
+                    ));
+                } else if !added.is_empty() {
+                    payload["next_step"] = serde_json::Value::String(
+                        "`loom sync` to stamp mtimes, then ground intents with `loom edge implement`."
+                            .to_string(),
+                    );
+                }
+                printer.print_json(&payload);
             } else if added.len() == 1 && skipped == 0 {
                 let cf = &added[0];
                 println!("✓ CodeFile added  (id: {})", cf.id);
@@ -148,15 +171,22 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 Err(e) => vec![format!("(invalid imports JSON: {e})")],
             };
             let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
+            // Sections inside show are bounded (SECTION_CAP) in human mode;
+            // the full view is one command away.
+            let fetch = format!("`loom codefile show {} --json`", cf.path);
+            let cap = crate::output::SECTION_CAP;
 
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "codefile": cf,
                     "owners": owners,
                     "owner_count": owners.len(),
+                    "owners_total": owners.len(),
                     "tangled": tangled,
                     "governing_rules": rules,
+                    "governing_rules_total": rules.len(),
                     "imports": imports,
+                    "imports_total": imports.len(),
                 }));
             } else {
                 println!("── CodeFile ───────────────────────────────────────────────────────");
@@ -171,11 +201,14 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 if claims.is_empty() {
                     println!("  (none — unexplained code; ground it: `loom edge implement <intent> {}`)", cf.path);
                 } else {
-                    for im in &claims {
+                    for im in claims.iter().take(cap) {
                         let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
                         let intent = get_intent(&db, &im.intent_id)?;
                         let level = intent.map(|i| i.abstraction_level).unwrap_or_default();
                         println!("  [{:<13}] {}{}  ({})", level, im.intent_name, loc, im.intent_id);
+                    }
+                    if let Some(m) = crate::output::more_marker(claims.len(), claims.len().min(cap), &fetch) {
+                        println!("  {m}");
                     }
                 }
                 if tangled {
@@ -187,18 +220,24 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 if rules.is_empty() {
                     println!("  (none)");
                 } else {
-                    for r in &rules {
+                    for r in rules.iter().take(cap) {
                         println!("  [{:<20}] {}  (via '{}')",
                             r["inspection_status"].as_str().unwrap_or(""),
                             r["rule"].as_str().unwrap_or(""),
                             r["via_intent"].as_str().unwrap_or(""));
                     }
+                    if let Some(m) = crate::output::more_marker(rules.len(), rules.len().min(cap), &fetch) {
+                        println!("  {m}");
+                    }
                 }
                 if !imports.is_empty() {
                     println!();
                     println!("── Imports ({}) ─────────────────────────────────────────────────────", imports.len());
-                    for i in &imports {
+                    for i in imports.iter().take(cap) {
                         println!("  → {}", i);
+                    }
+                    if let Some(m) = crate::output::more_marker(imports.len(), imports.len().min(cap), &fetch) {
+                        println!("  {m}");
                     }
                 }
             }
@@ -230,10 +269,15 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        CodefileCmd::List => {
-            let files = list_codefiles(&db)?;
+        CodefileCmd::List { limit } => {
+            let mut files = list_codefiles(&db)?;
+            let total = crate::output::apply_limit(&mut files, limit);
             if printer.json {
-                printer.print_json(&files);
+                printer.print_json(&serde_json::json!({
+                    "codefiles": files,
+                    "total":     total,
+                    "truncated": files.len() < total,
+                }));
             } else if files.is_empty() {
                 println!("(no code files registered)");
             } else {
@@ -257,6 +301,11 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                         path  = cf.path,
                         id    = cf.id,
                     );
+                }
+                if let Some(m) = crate::output::more_marker(
+                    total, files.len(), "`loom codefile list --limit 0`",
+                ) {
+                    println!("  {m}");
                 }
             }
         }

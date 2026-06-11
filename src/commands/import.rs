@@ -14,28 +14,33 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     let raw = fs::read_to_string(cwd.join(file))
-        .map_err(|e| anyhow::anyhow!("Cannot read '{}': {}", file, e))?;
+        .map_err(|e| anyhow::anyhow!("Cannot read '{}': {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
     let data: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {}", file, e))?;
+        .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
 
     let report = import_graph(&db, &data, as_planned)?;
-
+    let next_step = if as_planned {
+        "`loom guide --mode port` for the re-realization loop, then `loom next --mode build`."
+    } else {
+        "`loom sync` to reconcile against this machine's files, then `loom status`."
+    };
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let payload = serde_json::json!({
             "status": "ok", "file": file, "as_planned": as_planned,
             "nodes": report.nodes, "edges": report.edges,
             "skipped_nodes": report.skipped_nodes, "skipped_edges": report.skipped_edges,
-        }));
+        });
+        printer.print_json(&crate::output::with_anchor(payload, &db, next_step)?);
     } else if as_planned {
         println!(
             "✓ Design adopted from {file}  ({} nodes, {} edges; {} node(s) + {} edge(s) dropped — the old repo's files/groundings)",
             report.nodes, report.edges, report.skipped_nodes, report.skipped_edges
         );
         println!("  Every intent arrived lifecycle=planned; every proof not_run; verdict meta reset to uninspected.");
-        println!("  → `loom guide --mode port` for the re-realization loop, then `loom next --mode build`.");
+        crate::output::print_anchor(&db, next_step)?;
     } else {
         println!("✓ Graph imported from {file}  ({} nodes, {} edges)", report.nodes, report.edges);
-        println!("  → `loom sync` to reconcile against this machine's files, then `loom status`.");
+        crate::output::print_anchor(&db, next_step)?;
     }
     Ok(())
 }

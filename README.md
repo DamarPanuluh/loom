@@ -61,7 +61,7 @@ Everything is addressable by id, exact name, or unique name fragment. Ambiguity 
 1. `loom next` hands you one edge with both intents, the code locations, prior notes, and a suggested action.
 2. Work it Socratically: form a hypothesis, read the actual code, then record the verdict — `ground` (passing, with criterion), `issue` (failing, with evidence), or `independent` (verified *no* relationship — as valuable as a pass).
 3. After any code change: `loom sync`. Change detection is **content-hash based** (checkout/rebase mtime churn never false-flags), and every invalidated edge gets a note naming the file that staled it.
-4. `loom smells` surfaces what nobody asserted: twin intents, overlapping ownership, scattered responsibilities (clustered by directory), tangled files, undeclared coupling (imports the graph doesn't explain), recurrent trouble, happy-path-only features (no failure behavior declared). Each finding carries its exact remedy command — and the redesign-shaped ones emit a `loom hypothesis add`, so a redesign gets *proven* before it becomes work.
+4. `loom smells` surfaces what nobody asserted: twin intents, overlapping ownership, scattered responsibilities (clustered by directory), tangled files, undeclared coupling (imports the graph doesn't explain), recurrent trouble, happy-path-only features (no failure behavior declared), duplicated responsibility (tag collisions across unrelated code), vocab drift. Each finding carries its exact remedy command — and the redesign-shaped ones emit a `loom hypothesis add`, so a redesign gets *proven* before it becomes work.
 5. Seed the quality packs `loom detect` recommends — `iso5055` (baseline, any code), `mobile`, `web-ui`, `service`, `data`, `concurrency` — and `loom next --mode quality` serves every rule × coded-intent pair never measured. One `loom rule verdict` resolves each (it creates the edge; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply).
 6. Close out with `loom next --all`, prove intents with `loom validate`.
 
@@ -98,6 +98,8 @@ Capability is tiered, honestly: every work item carries `effort: low|mid|high` �
 
 Topology is yours: one agent switching hats, sequential handoffs, or parallel agents per lane. Handoff happens **through the graph**, not through chat.
 
+The CLI itself is built for that driver: every state-changing command ends with the next runnable command plus a one-line graph pulse (same fields in `--json` as `next_step` + `graph_state`), every list is bounded (`--limit`, default 50) with explicit `+N more — <command>` markers, and every error names its corrective command — so an agent recovering from a compacted context can re-orient from any single output.
+
 ## The graph travels with the repo
 
 `.loom/` is a local binary cache (gitignore it). The committed artifact is `loom.graph.json` — a **deterministic export** (same graph → identical bytes), so graph changes are diffable in PRs and `loom export --check` can gate CI/pre-commit: it exits non-zero whenever the committed export drifts from the live graph. Rebuild anywhere with `loom init . && loom import loom.graph.json && loom sync`. Import is **two-phase**: a corrupted export is rejected loudly and never leaves a partial graph.
@@ -114,6 +116,7 @@ A few states exist specifically so the graph never lies by omission:
 - `needs_change` — a known issue/refactor, flagged without faking a verdict
 - `blocked` — a proof that *can't* run yet (live target down, missing credential), recorded with a reason; out of the work queue but visible in `loom report`, and a code change doesn't quietly reset it
 - `loom ignore add <glob> --reason` — coverage exclusions live *in the graph*, with a recorded why
+- `loom vocab` — a bounded tag vocabulary (≤3 tags per intent, registered terms only). Open prose rarely collides; a small shared keyspace does — so two intents tagged `retry` in *unrelated* files surface as `duplicated_responsibility` even when no file, import, or wording connects them. Collisions are rarity-weighted (spammed broad terms decay to zero), tagging is optional (untagged is honest; a wrong tag lies), and drift converges with `loom vocab merge` instead of being prevented by a closed list
 
 ## Monorepos & federation
 

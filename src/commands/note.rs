@@ -63,7 +63,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        NoteCmd::List { intent, edge, kind, for_role } => {
+        NoteCmd::List { intent, edge, kind, for_role, limit } => {
             if let Some(ref k) = kind {
                 k.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
@@ -77,8 +77,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             if let Some(r) = &for_role {
                 notes.retain(|n| &n.audience == r);
             }
+            // Newest LAST in `notes`; keep the tail — the live context.
+            let total = notes.len();
+            if limit > 0 && total > limit {
+                notes.drain(..total - limit);
+            }
             if printer.json {
-                printer.print_json(&notes);
+                printer.print_json(&serde_json::json!({
+                    "notes": notes,
+                    "total": total,
+                    "truncated": total > notes.len(),
+                }));
             } else if notes.is_empty() {
                 println!("(no notes)");
             } else {
@@ -92,6 +101,9 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                     let aud = if n.audience.is_empty() { String::new() } else { format!(" → for {}", n.audience) };
                     println!("  [{:<13}]{} {}", n.kind, aud, n.text);
                     println!("      ({} · {})", n.author, tgt);
+                }
+                if let Some(m) = crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`") {
+                    println!("  {}", m);
                 }
             }
         }

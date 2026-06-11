@@ -23,13 +23,13 @@ pub fn insert_targets(
         "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id", esc(hypothesis_id)
     ))?;
     if check_h.rows().is_empty() {
-        anyhow::bail!("Hypothesis '{}' not found", hypothesis_id);
+        anyhow::bail!("Hypothesis '{}' not found — `loom hypothesis list`.", hypothesis_id);
     }
     let check_i = db.execute(&format!(
         "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
     ))?;
     if check_i.rows().is_empty() {
-        anyhow::bail!("Intent '{}' not found", intent_id);
+        anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
     db.execute(&format!(
         "MATCH (h:Hypothesis {{id: '{hid}'}}), (i:Intent {{id: '{iid}'}}) \

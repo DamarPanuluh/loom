@@ -21,6 +21,10 @@ use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
 pub const TWIN_SIMILARITY: f64 = 0.4;
+/// Rarity-weighted shared-tag weight at/above this is a duplicated-responsibility
+/// suspicion: one near-unique shared term (2 carriers → 0.5) or several
+/// moderately rare ones. Broad spammed terms decay toward zero on their own.
+pub const DUP_TAG_WEIGHT: f64 = 0.5;
 /// Scatter thresholds are level-aware: a feature should be cohesive (few
 /// files); a component legitimately spans a directory; a system intent
 /// grounds to manifests and is never "scattered".
@@ -37,9 +41,10 @@ pub const TANGLE_INTENTS: usize = 3;
 /// One derived finding, with the exact remedy that resolves it.
 #[derive(Debug, Clone, Serialize)]
 pub struct Smell {
-    /// twin_intents | overlapping_ownership | scattered_intent | tangled_file
-    /// | unmeasured_intents | undeclared_coupling | recurrent_trouble
-    /// | unused_rule | happy_path_only
+    /// twin_intents | duplicated_responsibility | overlapping_ownership
+    /// | scattered_intent | tangled_file | unmeasured_intents
+    /// | undeclared_coupling | recurrent_trouble | unused_rule
+    /// | happy_path_only | vocab_drift
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -130,6 +135,73 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     ),
                 });
             }
+        }
+    }
+
+    // 1b. Duplicated responsibility — the collision detector the bounded tag
+    //     vocabulary exists for: two same-level intents whose REGISTERED tags
+    //     collide (rarity-weighted), grounded in DISJOINT files with no import
+    //     between them and no recorded relationship. Exactly the case every
+    //     other detector misses: lexical twins need shared wording,
+    //     overlapping_ownership needs a shared file, undeclared_coupling needs
+    //     an import — same responsibility implemented twice in unrelated code
+    //     has none of those. Tags are positive evidence only: untagged intents
+    //     never fire this.
+    for i in 0..intents.len() {
+        for j in (i + 1)..intents.len() {
+            let (a, b) = (&intents[i], &intents[j]);
+            if a.abstraction_level != b.abstraction_level
+                || linked.contains(&(a.id.as_str(), b.id.as_str()))
+            {
+                continue;
+            }
+            let (Some(ta), Some(tb)) = (
+                discovery.tags_by_intent.get(a.id.as_str()),
+                discovery.tags_by_intent.get(b.id.as_str()),
+            ) else {
+                continue;
+            };
+            let (weight, shared_terms) =
+                super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
+            if weight < DUP_TAG_WEIGHT {
+                continue;
+            }
+            // Physical separation: no shared file, no import between their code.
+            let (fa, fb) = (
+                discovery.files_of.get(a.id.as_str()).cloned().unwrap_or_default(),
+                discovery.files_of.get(b.id.as_str()).cloned().unwrap_or_default(),
+            );
+            if fa.intersection(&fb).next().is_some() {
+                continue; // overlapping_ownership owns this case
+            }
+            let imports = fa
+                .iter()
+                .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+                .any(|p| discovery.import_links.contains(&p));
+            if imports {
+                continue; // undeclared_coupling owns this case
+            }
+            let term_detail = shared_terms
+                .iter()
+                .map(|t| format!("'{}' ({} intents carry it)", t, discovery.tag_counts.get(t).copied().unwrap_or(1)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            smells.push(Smell {
+                kind: "duplicated_responsibility".into(),
+                score: weight * 8.0,
+                summary: format!(
+                    "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
+                    a.name, b.name
+                ),
+                evidence: format!(
+                    "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
+                    term_detail, weight
+                ),
+                remedy: format!(
+                    "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
+                    a = a.id, b = b.id
+                ),
+            });
         }
     }
 
@@ -498,6 +570,46 @@ pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
                     r.id
                 ),
             });
+        }
+    }
+
+    // 10. Vocab drift — the registry policing itself: two registered terms
+    //     that read like the same word (edit distance / containment). The
+    //     vocabulary's value is forced collision; synonym terms split the
+    //     keyspace and silently halve the signal. Detection-and-merge is the
+    //     designed governance — never a closed list.
+    {
+        let terms = super::vocab::list_vocab_terms(db)?;
+        let counts = super::vocab::tag_counts(&intents)?;
+        for i in 0..terms.len() {
+            for j in (i + 1)..terms.len() {
+                let (a, b) = (&terms[i], &terms[j]);
+                if !super::vocab::terms_look_alike(&a.name, &b.name) {
+                    continue;
+                }
+                let (ua, ub) = (
+                    counts.get(&a.name).copied().unwrap_or(0),
+                    counts.get(&b.name).copied().unwrap_or(0),
+                );
+                // Keep the better-established term; merge the other into it.
+                let (keep, drop) = if ua >= ub { (a, b) } else { (b, a) };
+                smells.push(Smell {
+                    kind: "vocab_drift".into(),
+                    score: 3.0 + (ua + ub) as f64,
+                    summary: format!(
+                        "vocab terms '{}' and '{}' read like the same word — split keyspace halves collision signal",
+                        a.name, b.name
+                    ),
+                    evidence: format!(
+                        "'{}' tags {} intent(s), '{}' tags {} intent(s); intents split across synonym terms never collide in duplicate detection",
+                        a.name, ua, b.name, ub
+                    ),
+                    remedy: format!(
+                        "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely different concepts, sharpen both descriptions instead so the next agent can tell them apart",
+                        drop.name, keep.name, drop.name
+                    ),
+                });
+            }
         }
     }
 

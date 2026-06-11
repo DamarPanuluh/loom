@@ -14,7 +14,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
     let q = format!(
         "INSERT (:Intent {{id: '{id}', name: '{name}', description: '{desc}', \
          abstraction_level: '{level}', domain: '{domain}', source_refs: '{refs}', \
-         status: '{status}', aspect: '{aspect}', lifecycle: '{lifecycle}', \
+         status: '{status}', aspect: '{aspect}', tags: '{tags}', lifecycle: '{lifecycle}', \
          created_at: '{created}', updated_at: '{updated}'}})",
         id        = esc(&intent.id),
         name      = esc(&intent.name),
@@ -24,6 +24,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
         refs      = esc(&intent.source_refs),
         status    = esc(&intent.status),
         aspect    = esc(&intent.aspect),
+        tags      = esc(&intent.tags),
         lifecycle = esc(&intent.lifecycle),
         created   = esc(&intent.created_at),
         updated   = esc(&intent.updated_at),
@@ -60,11 +61,25 @@ pub fn resolve_intent(db: &dyn LoomDb, key: &str) -> Result<String> {
             "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
             key
         ),
-        _ => anyhow::bail!(
-            "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
-            key,
-            subs.iter().map(|i| format!("'{}'", i.name)).collect::<Vec<_>>().join(", ")
-        ),
+        _ => {
+            let total = subs.len();
+            let shown = subs
+                .iter()
+                .take(10)
+                .map(|i| format!("'{}'", i.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if total > 10 {
+                anyhow::bail!(
+                    "'{}' is ambiguous — it matches: {} … +{} more — narrow the fragment or `loom find \"{}\"`.",
+                    key, shown, total - 10, key
+                );
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key, shown
+            )
+        }
     }
 }
 
@@ -143,7 +158,7 @@ pub fn get_intent(db: &dyn LoomDb, id: &str) -> Result<Option<Intent>> {
     let q = format!(
         "MATCH (n:Intent {{id: '{}'}}) \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
-                n.source_refs, n.status, n.aspect, n.lifecycle, n.created_at, n.updated_at",
+                n.source_refs, n.status, n.aspect, n.tags, n.lifecycle, n.created_at, n.updated_at",
         esc(id)
     );
     let result = db.execute(&q)?;
@@ -171,7 +186,7 @@ pub fn list_intents(
     let q = format!(
         "MATCH (n:Intent){} \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
-                n.source_refs, n.status, n.aspect, n.lifecycle, n.created_at, n.updated_at \
+                n.source_refs, n.status, n.aspect, n.tags, n.lifecycle, n.created_at, n.updated_at \
          ORDER BY n.name",
         where_clause
     );
@@ -356,6 +371,9 @@ fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {
         source_refs:      str_val(get(row, cols, "n.source_refs")),
         status:           str_val(get(row, cols, "n.status")),
         aspect:           str_val(get(row, cols, "n.aspect")),
+        // Additive in v3: Null on intents from older graphs reads as ""
+        // (= untagged) — see `vocab::parse_tags`.
+        tags:             str_val(get(row, cols, "n.tags")),
         lifecycle:        str_val(get(row, cols, "n.lifecycle")),
         created_at:       str_val(get(row, cols, "n.created_at")),
         updated_at:       str_val(get(row, cols, "n.updated_at")),

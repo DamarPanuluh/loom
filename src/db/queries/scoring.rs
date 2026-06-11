@@ -804,6 +804,12 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             let shared = fa.intersection(fb).count();
             let sim = jaccard(&discovery.tokens_by_intent[&a.id], &discovery.tokens_by_intent[&b.id]);
             let same_domain = !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown";
+            let empty_tags = Vec::new();
+            let (tag_weight, shared_tags) = super::vocab::shared_tag_weight(
+                discovery.tags_by_intent.get(&a.id).unwrap_or(&empty_tags),
+                discovery.tags_by_intent.get(&b.id).unwrap_or(&empty_tags),
+                &discovery.tag_counts,
+            );
             let imports = fa
                 .iter()
                 .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
@@ -819,12 +825,23 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             if sim >= 0.25 {
                 why.push(format!("descriptions overlap ({sim:.2})"));
             }
+            if tag_weight > 0.0 {
+                why.push(format!(
+                    "tagged with the same vocabulary ({}, weight {tag_weight:.2})",
+                    shared_tags.join(", ")
+                ));
+            }
             if same_domain {
                 why.push(format!("same domain '{}'", a.domain));
             }
+            // Tag collisions are graded by rarity (Σ 1/freq), so a collision on
+            // a near-unique term outranks the binary same_domain bump — the
+            // bounded vocabulary is the same signal domain wanted to be, with a
+            // working denominator.
             let suspicion = 5.0 * imports as f64
                 + 3.0 * shared as f64
                 + 4.0 * sim
+                + 4.0 * tag_weight
                 + if same_domain { 1.0 } else { 0.0 };
 
             let score = *snapshot.degrees.get(&a.id).unwrap_or(&0) as f64

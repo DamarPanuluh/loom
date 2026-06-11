@@ -47,7 +47,7 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
         s
     } else {
         std::fs::read_to_string(file)
-            .map_err(|e| anyhow::anyhow!("Cannot read batch file '{file}': {e}"))?
+            .map_err(|e| anyhow::anyhow!("Cannot read batch file '{file}': {e} — pass a readable JSONL file or '-' for stdin."))?
     };
 
     let cwd = crate::db::resolve_root()?;
@@ -102,8 +102,14 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
 /// single-shot commands use. Returns a one-line description of what happened.
 fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
     let v: serde_json::Value = serde_json::from_str(line)
-        .map_err(|e| anyhow::anyhow!("not valid JSON: {e}"))?;
-    let op = str_field(&v, "op")?;
+        .map_err(|e| anyhow::anyhow!("not valid JSON: {e} — each line must be ONE JSON object: {{\"op\": \"<name>\", …}}"))?;
+    let op = v
+        .get("op")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| anyhow::anyhow!(
+            "missing or non-string field 'op' — each line must be ONE JSON object: \
+             {{\"op\": \"<name>\", …}} (ground | issue | independent | rule_verdict)"
+        ))?;
     let now = chrono::Utc::now().to_rfc3339();
 
     match op {
@@ -111,10 +117,10 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let by = gate::acting_in_lane(
                 "ground a RELATES_TO edge", &[role::ANALYZER, role::FIXER], None,
             )?;
-            let a = resolve_intent(db, str_field(&v, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, "b")?)?;
-            let criterion = str_field(&v, "criterion")?;
-            let confidence = f64_field(&v, "confidence")?;
+            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
+            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let criterion = str_field(&v, op, "criterion")?;
+            let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive(
                 "criterion", criterion,
                 "the falsifiable coexistence criterion this edge was checked against",
@@ -128,11 +134,11 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let by = gate::acting_in_lane(
                 "record an issue on a RELATES_TO edge", &[role::ANALYZER, role::FIXER], None,
             )?;
-            let a = resolve_intent(db, str_field(&v, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, "b")?)?;
-            let criterion = str_field(&v, "criterion")?;
-            let evidence = str_field(&v, "evidence")?;
-            let confidence = f64_field(&v, "confidence")?;
+            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
+            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let criterion = str_field(&v, op, "criterion")?;
+            let evidence = str_field(&v, op, "evidence")?;
+            let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
@@ -144,9 +150,9 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let by = gate::acting_in_lane(
                 "confirm two intents independent", &[role::ANALYZER], None,
             )?;
-            let a = resolve_intent(db, str_field(&v, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, "b")?)?;
-            let notes = str_field(&v, "notes")?;
+            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
+            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let notes = str_field(&v, op, "notes")?;
             gate::require_substantive(
                 "notes", notes, "why these two intents have no meaningful relationship",
             )?;
@@ -156,15 +162,15 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
         }
         "rule_verdict" => {
             let by = gate::acting_in_lane("record a GOVERNS verdict", &[role::QUALITY], None)?;
-            let rule = resolve_rule(db, str_field(&v, "rule")?)?;
-            let intent = resolve_intent(db, str_field(&v, "intent")?)?;
-            let status = str_field(&v, "status")?;
+            let rule = resolve_rule(db, str_field(&v, op, "rule")?)?;
+            let intent = resolve_intent(db, str_field(&v, op, "intent")?)?;
+            let status = str_field(&v, op, "status")?;
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!("invalid status '{status}' (passing | failing | independent)");
             }
-            let criterion = str_field(&v, "criterion")?;
-            let evidence = str_field(&v, "evidence")?;
-            let confidence = f64_field(&v, "confidence")?;
+            let criterion = str_field(&v, op, "criterion")?;
+            let evidence = str_field(&v, op, "evidence")?;
+            let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive(
                 "criterion", criterion, "what compliance looks like for this rule on this intent",
             )?;
@@ -193,14 +199,32 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
     }
 }
 
-fn str_field<'a>(v: &'a serde_json::Value, key: &str) -> Result<&'a str> {
-    v.get(key)
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| anyhow::anyhow!("missing or non-string field '{key}'"))
+/// The full field list an op requires — quoted back on every missing-field
+/// error so a driver can repair the line without consulting the docs.
+fn required_fields(op: &str) -> &'static str {
+    match op {
+        "ground" => "a, b, criterion, confidence",
+        "issue" => "a, b, criterion, evidence, confidence",
+        "independent" => "a, b, notes",
+        "rule_verdict" => "rule, intent, status, criterion, evidence, confidence",
+        _ => "op",
+    }
 }
 
-fn f64_field(v: &serde_json::Value, key: &str) -> Result<f64> {
-    v.get(key)
-        .and_then(|x| x.as_f64())
-        .ok_or_else(|| anyhow::anyhow!("missing or non-numeric field '{key}'"))
+fn str_field<'a>(v: &'a serde_json::Value, op: &str, key: &str) -> Result<&'a str> {
+    v.get(key).and_then(|x| x.as_str()).ok_or_else(|| {
+        anyhow::anyhow!(
+            "op '{op}': missing or non-string field '{key}' (requires: {})",
+            required_fields(op)
+        )
+    })
+}
+
+fn f64_field(v: &serde_json::Value, op: &str, key: &str) -> Result<f64> {
+    v.get(key).and_then(|x| x.as_f64()).ok_or_else(|| {
+        anyhow::anyhow!(
+            "op '{op}': missing or non-numeric field '{key}' (requires: {})",
+            required_fields(op)
+        )
+    })
 }

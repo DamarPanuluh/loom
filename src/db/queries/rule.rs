@@ -43,11 +43,25 @@ pub fn resolve_rule(db: &dyn LoomDb, key: &str) -> Result<String> {
             "No rule matches '{}' (by id, exact name, or name fragment). Run `loom rule list`.",
             key
         ),
-        _ => anyhow::bail!(
-            "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
-            key,
-            subs.iter().map(|r| format!("'{}'", r.name)).collect::<Vec<_>>().join(", ")
-        ),
+        _ => {
+            // Bounded: an ambiguity over a big rule set must not flood the
+            // driver's context — show a sample, point at the inventory.
+            let cap = crate::output::SECTION_CAP;
+            let mut shown = subs
+                .iter()
+                .take(cap)
+                .map(|r| format!("'{}'", r.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if let Some(m) = crate::output::more_marker(subs.len(), subs.len().min(cap), "`loom rule list`") {
+                shown.push_str(", ");
+                shown.push_str(&m);
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key, shown
+            )
+        }
     }
 }
 

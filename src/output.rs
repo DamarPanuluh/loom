@@ -101,6 +101,76 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// The LLM-driver output contract (shared by every command)
+//
+// loom is driven almost exclusively by LLM agents over long horizons, where
+// every output is the prompt for the agent's next decision and the only
+// memory that survives context compaction. Three invariants:
+//
+//   1. ANCHOR AFTER MUTATION — a state-changing command ends with the next
+//      command + the two-line pulse (human), or `next_step` + `graph_state`
+//      fields (json). An agent should never need a separate `loom status`
+//      call to know where it stands.
+//   2. PARITY — whatever guidance human mode prints, json mode carries.
+//      Orchestrated agents run --json; hints that exist only in println!
+//      leave them blind.
+//   3. BOUNDED — any list that scales with graph size is capped with an
+//      explicit "+N more" marker carrying the retrieval command. Flooding
+//      the context window evicts the agent's own plan.
+// ---------------------------------------------------------------------------
+
+/// Default cap for a variable-length section rendered inside another
+/// command's output (notes on a work item, groundings on a show view, …).
+pub const SECTION_CAP: usize = 10;
+
+/// Default `--limit` for inventory list commands. 0 = unlimited.
+pub const LIST_LIMIT: usize = 50;
+
+/// The standard truncation marker: `… +N more — <how to fetch the rest>`.
+/// Returns None when nothing was elided. `fetch_cmd` MUST be a runnable
+/// command, not prose — the marker is an affordance, not an apology.
+pub fn more_marker(total: usize, shown: usize, fetch_cmd: &str) -> Option<String> {
+    (total > shown).then(|| format!("… +{} more — {}", total - shown, fetch_cmd))
+}
+
+/// Bound a list in place honoring the `--limit` convention (0 = all).
+/// Returns the pre-truncation total for the caller's marker/count fields.
+pub fn apply_limit<T>(items: &mut Vec<T>, limit: usize) -> usize {
+    let total = items.len();
+    if limit > 0 && total > limit {
+        items.truncate(limit);
+    }
+    total
+}
+
+/// Human-mode mutation footer: the next command + the two-line pulse.
+/// Call as the LAST lines of a mutating command's human branch.
+pub fn print_anchor(db: &dyn crate::db::LoomDb, next_step: &str) -> anyhow::Result<()> {
+    let gs = crate::db::queries::graph_state(db)?;
+    println!("  → Next: {next_step}");
+    println!("  {}", fmt_pulse(&gs));
+    Ok(())
+}
+
+/// JSON-mode mutation anchor: merge `next_step` + `graph_state` into the
+/// command's payload (same data the human branch prints — parity by
+/// construction). Non-object payloads are returned untouched.
+pub fn with_anchor(
+    mut v: serde_json::Value,
+    db: &dyn crate::db::LoomDb,
+    next_step: &str,
+) -> anyhow::Result<serde_json::Value> {
+    if let Some(obj) = v.as_object_mut() {
+        obj.insert("next_step".into(), serde_json::Value::String(next_step.to_string()));
+        obj.insert(
+            "graph_state".into(),
+            serde_json::to_value(crate::db::queries::graph_state(db)?)?,
+        );
+    }
+    Ok(v)
+}
+
+// ---------------------------------------------------------------------------
 // Human-readable Display helpers
 // ---------------------------------------------------------------------------
 
@@ -115,10 +185,16 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
     } else {
         format!("\n  aspect:      {}", i.aspect)
     };
+    // Tags render only when present — "" (older graphs) and "[]" both mean
+    // untagged, and untagged is not worth a line.
+    let tags_line = match serde_json::from_str::<Vec<String>>(&i.tags) {
+        Ok(tags) if !tags.is_empty() => format!("\n  tags:        {}", tags.join(", ")),
+        _ => String::new(),
+    };
     let lifecycle = if i.lifecycle.is_empty() { "implemented" } else { &i.lifecycle };
     format!(
-        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}\n  status:      {}\n  lifecycle:   {}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
-        i.id, i.name, i.abstraction_level, i.domain, i.status, lifecycle, aspect_line,
+        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}\n  status:      {}\n  lifecycle:   {}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
+        i.id, i.name, i.abstraction_level, i.domain, i.status, lifecycle, aspect_line, tags_line,
         i.description, refs_str, i.created_at, i.updated_at
     )
 }
@@ -213,6 +289,7 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::LoomDb;
 
     #[test]
     fn fmt_intent_reports_malformed_source_refs() {
@@ -225,6 +302,7 @@ mod tests {
             source_refs: "not json".to_string(),
             status: "proposed".to_string(),
             aspect: String::new(),
+            tags: "[\"enforcement\"]".to_string(),
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),
@@ -232,5 +310,40 @@ mod tests {
 
         let rendered = fmt_intent(&intent);
         assert!(rendered.contains("invalid source_refs JSON"), "{rendered}");
+        assert!(rendered.contains("tags:        enforcement"), "{rendered}");
+    }
+
+    #[test]
+    fn more_marker_is_an_affordance_not_an_apology() {
+        assert_eq!(more_marker(10, 10, "loom x"), None, "nothing elided, no marker");
+        assert_eq!(more_marker(9, 10, "loom x"), None, "shown >= total, no marker");
+        let m = more_marker(12, 10, "loom note list --edge e1").unwrap();
+        assert!(m.contains("+2 more"), "{m}");
+        assert!(m.contains("loom note list --edge e1"), "the marker must carry the runnable fetch: {m}");
+    }
+
+    #[test]
+    fn apply_limit_honors_zero_as_unlimited() {
+        let mut v: Vec<u32> = (0..7).collect();
+        assert_eq!(apply_limit(&mut v, 0), 7);
+        assert_eq!(v.len(), 7, "0 = all");
+        assert_eq!(apply_limit(&mut v, 3), 7, "returns pre-truncation total");
+        assert_eq!(v, vec![0, 1, 2], "keeps the head");
+        assert_eq!(apply_limit(&mut v, 5), 3, "under the cap stays untouched");
+    }
+
+    #[test]
+    fn anchor_json_carries_next_step_and_graph_state() {
+        let db = crate::db::GrafeoDb::in_memory();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g", "anchor", "owned",
+        )).unwrap();
+        let v = with_anchor(serde_json::json!({"status": "ok"}), &db, "`loom next`").unwrap();
+        assert_eq!(v["status"], "ok", "existing fields preserved");
+        assert_eq!(v["next_step"], "`loom next`");
+        assert!(v["graph_state"].get("phase").is_some(), "the pulse travels in json: {v}");
+        // Non-object payloads pass through untouched (lists wrap themselves).
+        let arr = with_anchor(serde_json::json!([1, 2]), &db, "x").unwrap();
+        assert!(arr.is_array());
     }
 }

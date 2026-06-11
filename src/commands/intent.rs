@@ -1,7 +1,7 @@
 use anyhow::Result;
 use uuid::Uuid;
 
-use crate::cli::{IntentCmd, SourceCmd};
+use crate::cli::{IntentCmd, SourceCmd, TagCmd};
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     add_source_ref, confirm_intent, delete_intent, edges_for_intent, get_intent,
@@ -19,7 +19,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources } => {
+        IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources, tags } => {
             gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
             // Validate abstraction level + lifecycle
             level.parse::<crate::types::AbstractionLevel>()
@@ -34,6 +34,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 )?;
             }
 
+            // Tags are validated against the registry — unknown terms error
+            // with the full registry inlined (the agent sees the menu at the
+            // moment of choice). Empty = untagged, always honest.
+            let tags = crate::commands::vocab::validate_tags(&db, &tags)?;
+            let has_tags = !tags.is_empty();
+            let tags_json = crate::db::queries::encode_tags(tags)?;
             let source_refs = serde_json::to_string(&sources)?;
             let now = chrono::Utc::now().to_rfc3339();
             let id  = Uuid::new_v4().to_string();
@@ -47,6 +53,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 source_refs,
                 status:            "proposed".to_string(),
                 aspect,
+                tags:              tags_json,
                 lifecycle,
                 created_at:        now.clone(),
                 updated_at:        now,
@@ -65,16 +72,27 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             } else {
                 format!("Attach it to the tree: `loom edge hierarchy <parent-id> {}` (every non-system intent needs exactly one parent).", id)
             };
+            // The tag affordance, in-band: only when there IS a registry to
+            // pick from and the intent arrived untagged. One line, never a nag
+            // — tags stay optional.
+            let registry_size = crate::db::queries::list_vocab_terms(&db)?.len();
+            let tag_step = (!has_tags && registry_size > 0).then(|| format!(
+                "Optional: tag it from the {registry_size}-term vocabulary (`loom vocab list`, then `loom intent tag add {id} <term>`) so duplicate-responsibility detection can see it."
+            ));
 
             if printer.json {
                 let mut v = serde_json::to_value(&intent)?;
                 if let Some(obj) = v.as_object_mut() {
-                    obj.insert("next_steps".to_string(), serde_json::json!([
+                    let mut steps = vec![
                         tree_step,
-                        "Ground it to code: `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol as it appears in the file — e.g. `def foo`, `fn foo`; required for leaf intents).",
-                        "Relate it to other intents — `loom next` will surface unexplored pairs (optional).",
-                        "If this is a feature, add its sad/fallback siblings (--aspect).",
-                    ]));
+                        "Ground it to code: `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol as it appears in the file — e.g. `def foo`, `fn foo`; required for leaf intents).".to_string(),
+                        "Relate it to other intents — `loom next` will surface unexplored pairs (optional).".to_string(),
+                        "If this is a feature, add its sad/fallback siblings (--aspect).".to_string(),
+                    ];
+                    if let Some(ts) = &tag_step {
+                        steps.push(ts.clone());
+                    }
+                    obj.insert("next_steps".to_string(), serde_json::json!(steps));
                 }
                 printer.print_json(&v);
             } else {
@@ -82,6 +100,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 println!("{}", fmt_intent(&intent));
                 println!("  → Next: {}", tree_step);
                 println!("          then ground it: `loom edge implement {} <codefile> --locator \"<symbol>\"` (symbol as written in the file).", id);
+                if let Some(ts) = &tag_step {
+                    println!("          {ts}");
+                }
             }
         }
 
@@ -99,9 +120,15 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 );
             }
             if printer.json {
-                printer.print_json(&serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"}));
+                let payload = crate::output::with_anchor(
+                    serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"}),
+                    &db,
+                    "`loom next` serves the next item",
+                )?;
+                printer.print_json(&payload);
             } else {
                 println!("✓ Intent {} confirmed", id);
+                crate::output::print_anchor(&db, "`loom next` serves the next item")?;
             }
         }
 
@@ -141,14 +168,20 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 };
                 crate::db::queries::insert_note(&db, &note)?;
             }
+            let next_step = (lifecycle == "planned" || lifecycle == "needs_change")
+                .then_some("`loom next --mode build` will surface it.");
             if printer.json {
-                printer.print_json(&serde_json::json!({
+                let mut payload = serde_json::json!({
                     "status": "ok", "id": id, "lifecycle": lifecycle,
-                }));
+                });
+                if let Some(ns) = next_step {
+                    payload["next_step"] = serde_json::json!(ns);
+                }
+                printer.print_json(&payload);
             } else {
                 println!("✓ Intent {} → lifecycle '{}'", id, lifecycle);
-                if lifecycle == "planned" || lifecycle == "needs_change" {
-                    println!("  → Next: `loom next --mode build` will surface it.");
+                if let Some(ns) = next_step {
+                    println!("  → Next: {ns}");
                 }
             }
         }
@@ -164,9 +197,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 );
             }
             if printer.json {
-                printer.print_json(&serde_json::json!({"status": "ok", "id": id, "deleted": true}));
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "id": id, "deleted": true,
+                    "next_step": "`loom status` re-checks the compass",
+                }));
             } else {
                 println!("✓ Intent {} deleted (with its edges and notes).", id);
+                println!("  → Next: `loom status` re-checks the compass");
             }
         }
 
@@ -179,7 +216,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 Some(k) => {
                     let sid = crate::db::queries::resolve_intent(&db, k)?;
                     if sid == id {
-                        anyhow::bail!("--replaced-by points at the intent being retired.");
+                        anyhow::bail!("--replaced-by points at the intent being retired — pass a different successor or omit --replaced-by.");
                     }
                     Some(sid)
                 }
@@ -189,13 +226,19 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             let fallout = crate::db::queries::retire_fallout(&db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
             if !crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)? {
-                anyhow::bail!("Intent '{}' not found.", id);
+                anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
             }
+            let next_step = "`loom status` re-checks the compass; `loom coverage` shows any new gaps.";
             if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok", "id": id, "retired": true,
-                    "replaced_by": successor, "fallout": fallout,
-                }));
+                let payload = crate::output::with_anchor(
+                    serde_json::json!({
+                        "status": "ok", "id": id, "retired": true,
+                        "replaced_by": successor, "fallout": fallout,
+                    }),
+                    &db,
+                    next_step,
+                )?;
+                printer.print_json(&payload);
             } else {
                 println!("✓ Intent {id} retired (status=deprecated — history kept, computation stops counting it).");
                 if let Some(s) = &successor {
@@ -222,11 +265,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 if f.edges_leaving_computation > 0 {
                     println!("  {} RELATES_TO edge(s) leave every queue/centrality computation (kept as history).", f.edges_leaving_computation);
                 }
-                println!("  → `loom status` re-checks the compass; `loom coverage` shows any new gaps.");
+                crate::output::print_anchor(&db, next_step)?;
             }
         }
 
-        IntentCmd::List { status, level } => {
+        IntentCmd::List { status, level, limit } => {
             // Validate filter values against the domain vocabulary.
             if let Some(ref s) = status {
                 s.parse::<crate::types::IntentStatus>().map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -234,9 +277,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             if let Some(ref l) = level {
                 l.parse::<crate::types::AbstractionLevel>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
-            let intents = list_intents(&db, status.as_deref(), level.as_deref())?;
+            let mut intents = list_intents(&db, status.as_deref(), level.as_deref())?;
+            let total = crate::output::apply_limit(&mut intents, limit);
             if printer.json {
-                printer.print_json(&intents);
+                printer.print_json(&serde_json::json!({
+                    "intents": intents,
+                    "total": total,
+                    "truncated": intents.len() < total,
+                }));
             } else {
                 if intents.is_empty() {
                     println!("(no intents found)");
@@ -251,6 +299,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     for i in &intents {
                         println!("{}", fmt_intent_row(i));
                     }
+                    if let Some(m) = crate::output::more_marker(total, intents.len(), "loom intent list --limit 0") {
+                        println!("  {m}");
+                    }
                 }
             }
         }
@@ -263,7 +314,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 SourceCmd::Add { id, path } => {
                     let id = crate::db::queries::resolve_intent(&db, &id)?;
                     if !add_source_ref(&db, &id, &path, &now)? {
-                        anyhow::bail!("Intent '{}' not found.", id);
+                        anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
                     }
                     let refs = get_intent(&db, &id)?
                         .map(|i| i.source_refs)
@@ -271,20 +322,22 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     // add_source_ref just wrote this JSON; a parse failure here
                     // means corrupted storage — surface it, never render [].
                     let parsed: Vec<String> = serde_json::from_str(&refs)
-                        .map_err(|e| anyhow::anyhow!("Intent '{id}' has malformed source_refs JSON: {e}"))?;
+                        .map_err(|e| anyhow::anyhow!("Intent '{id}' has malformed source_refs JSON: {e} — run `loom doctor`."))?;
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "added": path,
                             "source_refs": parsed,
+                            "next_step": format!("`loom intent show {id}`"),
                         }));
                     } else {
                         println!("✓ Source ref added to intent {id}: {path}");
+                        println!("  → Next: `loom intent show {id}`");
                     }
                 }
                 SourceCmd::Remove { id, path } => {
                     let id = crate::db::queries::resolve_intent(&db, &id)?;
                     match remove_source_ref(&db, &id, &path, &now)? {
-                        None => anyhow::bail!("Intent '{}' not found.", id),
+                        None => anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id),
                         Some(false) => anyhow::bail!(
                             "Intent {} has no source ref '{}' — `loom intent show {}` lists them.",
                             id, path, id
@@ -293,11 +346,66 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                             if printer.json {
                                 printer.print_json(&serde_json::json!({
                                     "status": "ok", "id": id, "removed": path,
+                                    "next_step": format!("`loom intent show {id}`"),
                                 }));
                             } else {
                                 println!("✓ Source ref removed from intent {id}: {path}");
+                                println!("  → Next: `loom intent show {id}`");
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        IntentCmd::Tag { subcommand } => {
+            // Tags are builder-owned intent metadata, like source_refs.
+            gate::acting_in_lane("edit an intent's tags", &[role::BUILDER], None)?;
+            let now = chrono::Utc::now().to_rfc3339();
+            match subcommand {
+                TagCmd::Add { id, term } => {
+                    let id = crate::db::queries::resolve_intent(&db, &id)?;
+                    let intent = get_intent(&db, &id)?
+                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id))?;
+                    let mut tags = crate::db::queries::parse_tags(&intent)?;
+                    tags.push(term);
+                    // validate_tags normalizes, dedupes (idempotent re-add),
+                    // enforces the cap, and nudges on unknown terms.
+                    let tags = crate::commands::vocab::validate_tags(&db, &tags)?;
+                    crate::db::queries::set_intent_tags(&db, &id, tags.clone(), &now)?;
+                    if printer.json {
+                        printer.print_json(&serde_json::json!({
+                            "status": "ok", "id": id, "tags": tags,
+                            "next_step": format!("`loom intent show {id}`"),
+                        }));
+                    } else {
+                        println!("✓ Intent {id} tagged: [{}]", tags.join(", "));
+                        println!("  → Next: `loom intent show {id}`");
+                    }
+                }
+                TagCmd::Remove { id, term } => {
+                    let id = crate::db::queries::resolve_intent(&db, &id)?;
+                    let intent = get_intent(&db, &id)?
+                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id))?;
+                    let term = crate::db::queries::normalize_term(&term)?;
+                    let mut tags = crate::db::queries::parse_tags(&intent)?;
+                    let before = tags.len();
+                    tags.retain(|t| *t != term);
+                    if tags.len() == before {
+                        anyhow::bail!(
+                            "Intent {} carries no tag '{}' — `loom intent show {}` lists them.",
+                            id, term, id
+                        );
+                    }
+                    crate::db::queries::set_intent_tags(&db, &id, tags.clone(), &now)?;
+                    if printer.json {
+                        printer.print_json(&serde_json::json!({
+                            "status": "ok", "id": id, "removed": term, "tags": tags,
+                            "next_step": format!("`loom intent show {id}`"),
+                        }));
+                    } else {
+                        println!("✓ Tag '{term}' removed from intent {id}");
+                        println!("  → Next: `loom intent show {id}`");
                     }
                 }
             }
@@ -312,32 +420,47 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     id
                 ),
                 Some(ref i) => {
-                    let edges = edges_for_intent(&db, &id)?;
-                    let hierarchy = list_hierarchy_for_intent(&db, &id)?;
-                    let implements = list_implements_for_intent(&db, &id)?;
-                    let notes = notes_for_target(&db, &id)?;
+                    let mut edges = edges_for_intent(&db, &id)?;
+                    let edges_total = crate::output::apply_limit(&mut edges, crate::output::SECTION_CAP);
+                    let mut hierarchy = list_hierarchy_for_intent(&db, &id)?;
+                    let hierarchy_total = crate::output::apply_limit(&mut hierarchy, crate::output::SECTION_CAP);
+                    let mut implements = list_implements_for_intent(&db, &id)?;
+                    let implements_total = crate::output::apply_limit(&mut implements, crate::output::SECTION_CAP);
+                    let mut notes = notes_for_target(&db, &id)?;
+                    let notes_total = notes.len();
+                    if notes_total > crate::output::SECTION_CAP {
+                        // notes_for_target returns oldest-first; keep the NEWEST.
+                        notes.drain(..notes_total - crate::output::SECTION_CAP);
+                    }
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "intent": i,
                             "edges": edges,
+                            "edges_total": edges_total,
                             "hierarchy": hierarchy,
+                            "hierarchy_total": hierarchy_total,
                             "implements": implements,
+                            "implements_total": implements_total,
                             "notes": notes,
+                            "notes_total": notes_total,
                         }));
                     } else {
                         println!("── Intent ─────────────────────────────────────────────────────────");
                         println!("{}", fmt_intent(i));
                         println!();
-                        println!("── RELATES_TO edges ({}) ────────────────────────────────────────────", edges.len());
+                        println!("── RELATES_TO edges ({}) ────────────────────────────────────────────", edges_total);
                         if edges.is_empty() {
                             println!("  (none)");
                         } else {
                             for e in &edges {
                                 println!("{}", fmt_edge_row(e));
                             }
+                            if let Some(m) = crate::output::more_marker(edges_total, edges.len(), &format!("loom cluster {id}")) {
+                                println!("  {m}");
+                            }
                         }
                         println!();
-                        println!("── Hierarchy ({}) ───────────────────────────────────────────────────", hierarchy.len());
+                        println!("── Hierarchy ({}) ───────────────────────────────────────────────────", hierarchy_total);
                         if hierarchy.is_empty() {
                             println!("  (none — no parent/child intents)");
                         } else {
@@ -348,9 +471,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                                     println!("  ↑ parent: {} ({})", h.parent_name, h.parent_id);
                                 }
                             }
+                            if let Some(m) = crate::output::more_marker(hierarchy_total, hierarchy.len(), &format!("loom cluster {id}")) {
+                                println!("  {m}");
+                            }
                         }
                         println!();
-                        println!("── Implements ({}) ──────────────────────────────────────────────────", implements.len());
+                        println!("── Implements ({}) ──────────────────────────────────────────────────", implements_total);
                         if implements.is_empty() {
                             println!("  (none — intent not yet grounded to code)");
                         } else {
@@ -358,14 +484,20 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                                 let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
                                 println!("  → {}{}  [{}]", im.codefile_path, loc, im.inspection_status);
                             }
+                            if let Some(m) = crate::output::more_marker(implements_total, implements.len(), &format!("loom cluster {id}")) {
+                                println!("  {m}");
+                            }
                         }
                         println!();
-                        println!("── Notes ({}) ───────────────────────────────────────────────────────", notes.len());
+                        println!("── Notes ({}) ───────────────────────────────────────────────────────", notes_total);
                         if notes.is_empty() {
                             println!("  (none)");
                         } else {
                             for n in &notes {
                                 println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+                            }
+                            if let Some(m) = crate::output::more_marker(notes_total, notes.len(), &format!("loom note list --intent {id}")) {
+                                println!("  {m}");
                             }
                         }
                     }

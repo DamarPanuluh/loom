@@ -141,6 +141,16 @@ pub enum Command {
         subcommand: HypothesisCmd,
     },
 
+    /// Manage the bounded tag vocabulary — the registered terms intents may
+    /// carry in `tags`. Bounded on purpose: two agents describing the same
+    /// responsibility in open prose rarely share words, but picking from a
+    /// small registry they collide — and collisions are how duplicated
+    /// responsibility gets caught across unrelated files.
+    Vocab {
+        #[command(subcommand)]
+        subcommand: VocabCmd,
+    },
+
     /// Append free-text memory — justification, commentary, idea, question, etc.
     Note {
         #[command(subcommand)]
@@ -386,6 +396,12 @@ pub enum IntentCmd {
         /// Source file paths (may be repeated).
         #[arg(long = "source", num_args = 0..)]
         sources: Vec<String>,
+
+        /// Registered vocabulary terms (repeatable, max 3). Optional — an
+        /// untagged intent is honest; a wrong tag lies. `loom vocab list`
+        /// shows the registry; unknown terms error with the full list inline.
+        #[arg(long = "tag", num_args = 0..)]
+        tags: Vec<String>,
     },
 
     /// Mark an intent as confirmed.
@@ -441,6 +457,11 @@ pub enum IntentCmd {
 
         #[arg(long)]
         level: Option<String>,
+
+        /// Max rows (0 = all). Newest-irrelevant inventories stay bounded so
+        /// recovery commands never become the token spike.
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
     },
 
     /// Show full detail of one intent including all its edges.
@@ -454,6 +475,14 @@ pub enum IntentCmd {
     Source {
         #[command(subcommand)]
         subcommand: SourceCmd,
+    },
+
+    /// Manage an intent's vocabulary tags (max 3, from the registered
+    /// vocabulary — `loom vocab list`). Tags are the bounded facet that lets
+    /// duplicate-responsibility detection see across unrelated files.
+    Tag {
+        #[command(subcommand)]
+        subcommand: TagCmd,
     },
 }
 
@@ -477,6 +506,72 @@ pub enum SourceCmd {
 
         /// The exact path to remove.
         path: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TagCmd {
+    /// Add a registered term to an intent's tags (idempotent).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent tag add gate-authority enforcement")]
+    Add {
+        /// Intent id, exact name, or unique name fragment.
+        id: String,
+
+        /// A registered vocab term (see `loom vocab list`).
+        term: String,
+    },
+
+    /// Remove a term from an intent's tags.
+    Remove {
+        /// Intent id, exact name, or unique name fragment.
+        id: String,
+
+        /// The exact term to remove.
+        term: String,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Vocab subcommands (the bounded tag vocabulary)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum VocabCmd {
+    /// Register a new term. Keep the registry SMALL — its value is forcing
+    /// collisions, and a list an agent can't hold in context stops forcing
+    /// anything. Before adding, check `loom vocab list` for a term that
+    /// already covers this.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom vocab add authz --why \"permission checks, role gates, ACLs — NOT login/session (that's authn)\"")]
+    Add {
+        /// The term: lowercase, digits, '-' or '_' (an exact-match key, not prose).
+        term: String,
+
+        /// Contrastive definition: what it covers AND what it does not —
+        /// name the neighbouring term so the next agent can disambiguate.
+        #[arg(long)]
+        why: String,
+
+        /// Acting agent (defaults to $LOOM_AGENT or "llm").
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// List the registry: every term with its usage count and definition.
+    List,
+
+    /// Merge term <from> into term <to>: every intent carrying <from> is
+    /// retagged to <to>, then <from> is deleted. One sweep, nothing to
+    /// re-inspect — this is how vocab drift converges.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom vocab merge authentication authn")]
+    Merge {
+        /// The term to dissolve.
+        from: String,
+
+        /// The term that absorbs it.
+        to: String,
     },
 }
 
@@ -557,6 +652,10 @@ pub enum EdgeCmd {
     List {
         #[arg(long)]
         status: Option<String>,
+
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
     },
 
     /// Show full detail of one RELATES_TO edge including both intent nodes.
@@ -642,7 +741,11 @@ pub enum RuleCmd {
     },
 
     /// List all quality rules.
-    List,
+    List {
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
 
     /// Show all GOVERNS edges for an intent (violations and passing checks).
     Check {
@@ -828,6 +931,10 @@ pub enum HypothesisCmd {
         /// proposed | supported | refuted | adopted | confirmed | rejected
         #[arg(long)]
         status: Option<String>,
+
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
     },
 
     /// Show one hypothesis in full: fields, TARGETS edges, and notes.
@@ -942,6 +1049,11 @@ pub enum NoteCmd {
         /// Only notes addressed to this lane (the lane's inbox).
         #[arg(long = "for", value_name = "ROLE")]
         for_role: Option<String>,
+
+        /// Max rows, NEWEST kept (0 = all) — note memory is append-only and
+        /// grows forever; the tail is the live context.
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
     },
 }
 
@@ -966,7 +1078,11 @@ pub enum CodefileCmd {
     },
 
     /// List all registered code files.
-    List,
+    List {
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
 
     /// The ownership view of ONE file: which intents claim it (with locators),
     /// which quality rules reach it through them, and whether it is tangled
@@ -1067,7 +1183,11 @@ pub enum ValidationCmd {
     },
 
     /// List all validation nodes.
-    List,
+    List {
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
 
     /// Show full detail of one validation node.
     Show {

@@ -98,7 +98,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         };
 
         let mtime = meta.modified().map_err(|e| {
-            anyhow::anyhow!("Cannot read mtime for {}: {}", abs_path.display(), e)
+            anyhow::anyhow!(
+                "Cannot read mtime for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
+                abs_path.display(), e
+            )
         })?;
 
         let mtime_str = {
@@ -112,7 +115,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // mtime comparison remains only as the fallback when no fingerprint is
         // stored yet (pre-upgrade graph).
         let bytes = fs::read(&abs_path).map_err(|e| {
-            anyhow::anyhow!("Cannot read bytes for {}: {}", abs_path.display(), e)
+            anyhow::anyhow!(
+                "Cannot read bytes for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
+                abs_path.display(), e
+            )
         })?;
         let new_hash = crate::repo::content_hash(&bytes);
         match String::from_utf8(bytes) {
@@ -287,8 +293,38 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         changes,
     };
 
+    // Bounded rendering: sync runs after every code churn, and a big rebase
+    // can list hundreds of files — flooding the context window evicts the
+    // driving agent's plan. Counts stay exact; lists are capped.
+    const REPORT_CAP: usize = 20;
+    let next_step = if report.files_changed == 0 && report.missing_files.is_empty() {
+        "`loom status` (or `loom next --all` for closeout)".to_string()
+    } else {
+        format!(
+            "`loom next --mode fix` to re-inspect flagged edges{}",
+            if report.governs_edges_flagged > 0 {
+                ", and `loom next --mode quality` to re-earn flagged quality green."
+            } else {
+                "."
+            }
+        )
+    };
+
     if printer.json {
-        printer.print_json(&report);
+        let mut v = serde_json::to_value(&report)?;
+        let obj = v.as_object_mut().expect("SyncReport serializes to an object");
+        for (key, total_key) in [
+            ("changes", "changes_total"),
+            ("missing_files", "missing_files_total"),
+            ("locators_stale", "locators_stale_total"),
+        ] {
+            let total = obj.get(key).and_then(|a| a.as_array()).map_or(0, |a| a.len());
+            if let Some(arr) = obj.get_mut(key).and_then(|a| a.as_array_mut()) {
+                arr.truncate(REPORT_CAP);
+            }
+            obj.insert(total_key.to_string(), total.into());
+        }
+        printer.print_json(&crate::output::with_anchor(v, &db, &next_step)?);
     } else {
         println!("── loom sync ────────────────────────────────────────────────────────");
         println!("  Files checked:                 {}", report.files_checked);
@@ -299,39 +335,43 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         println!("  Validations invalidated:       {}", report.validations_invalidated);
         if !report.changes.is_empty() {
             println!();
-            println!("  Changed files:");
-            for c in &report.changes {
+            println!("  Changed files ({}):", report.changes.len());
+            for c in report.changes.iter().take(REPORT_CAP) {
                 println!("    {}  (mtime → {})", c.path, c.new_mtime);
+            }
+            if let Some(m) = crate::output::more_marker(report.changes.len(), REPORT_CAP, "`loom next --mode fix`") {
+                println!("    {m}");
             }
         }
         if !report.missing_files.is_empty() {
             println!();
-            println!("  ⚠ Registered files MISSING on disk (deleted/renamed?):");
-            for p in &report.missing_files {
+            println!("  ⚠ Registered files MISSING on disk ({} — deleted/renamed?):", report.missing_files.len());
+            for p in report.missing_files.iter().take(REPORT_CAP) {
                 println!("    {}", p);
+            }
+            if let Some(m) = crate::output::more_marker(report.missing_files.len(), REPORT_CAP, "`loom report`") {
+                println!("    {m}");
             }
             println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
         }
         if !report.locators_stale.is_empty() {
             println!();
-            println!("  ⚠ STALE locators (symbol renamed/moved? grounding flipped to needs_reverification):");
-            for l in &report.locators_stale {
+            println!("  ⚠ STALE locators ({} — symbol renamed/moved? grounding flipped to needs_reverification):", report.locators_stale.len());
+            for l in report.locators_stale.iter().take(REPORT_CAP) {
                 println!("    {}", l);
+            }
+            if let Some(m) = crate::output::more_marker(report.locators_stale.len(), REPORT_CAP, "`loom next --mode fix`") {
+                println!("    {m}");
             }
             println!("    → re-ground: `loom edge implement <intent> <path> --locator \"<current symbol>\"`.");
         }
         println!();
         if report.files_changed == 0 && report.missing_files.is_empty() {
             println!("  ✓ All files up to date — no edges need reverification.");
-        } else if report.files_changed > 0 {
-            println!("  Run `loom next --mode fix` to re-inspect flagged edges{}",
-                if report.governs_edges_flagged > 0 {
-                    ", and `loom next --mode quality` to re-earn flagged quality green."
-                } else { "." });
-            if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
-                println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
-            }
+        } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
+            println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
         }
+        crate::output::print_anchor(&db, &next_step)?;
     }
 
     Ok(())

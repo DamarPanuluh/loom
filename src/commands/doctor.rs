@@ -38,7 +38,9 @@ pub fn run(printer: &Printer) -> Result<()> {
             "node_counts": report.node_counts,
             "edge_counts": report.edge_counts,
             "issues":      report.issues,
+            "issues_total": report.issues.len(),
             "hints":       hints,
+            "hints_total": hints.len(),
         }));
     } else {
         println!("── loom doctor ──────────────────────────────────────────────────────");
@@ -61,16 +63,24 @@ pub fn run(printer: &Printer) -> Result<()> {
         if report.issues.is_empty() && report.version_ok {
             println!("  ✓ No integrity issues — the graph conforms to the schema.");
         } else {
+            // Bounded: a badly-drifted graph can carry hundreds of issues —
+            // doctor --json stays the diagnostic of record (full arrays).
             println!("  ✗ {} issue(s):", report.issues.len());
-            for i in &report.issues {
+            for i in report.issues.iter().take(20) {
                 println!("    - {}", i);
+            }
+            if let Some(m) = crate::output::more_marker(report.issues.len(), 20, "`loom doctor --json` for the full list") {
+                println!("    {m}");
             }
         }
         if !hints.is_empty() {
             println!();
             println!("  Hints (advisory — never fail the check):");
-            for h in &hints {
+            for h in hints.iter().take(20) {
                 println!("    · {}", h);
+            }
+            if let Some(m) = crate::output::more_marker(hints.len(), 20, "`loom doctor --json` for the full list") {
+                println!("    {m}");
             }
         }
     }
@@ -78,7 +88,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     // Non-zero exit on problems so `loom doctor` is scriptable; stdout (incl.
     // JSON) is already written, the error only goes to stderr.
     if !report.healthy() {
-        anyhow::bail!("graph has integrity issues");
+        anyhow::bail!("graph has integrity issues — the list above carries per-issue remedies; fix and re-run `loom doctor`.");
     }
     Ok(())
 }

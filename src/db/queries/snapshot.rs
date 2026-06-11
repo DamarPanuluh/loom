@@ -72,6 +72,11 @@ pub struct DiscoverySnapshot {
     pub files_of: HashMap<String, HashSet<usize>>,
     pub intents_on_file: HashMap<String, Vec<String>>,
     pub tokens_by_intent: HashMap<String, HashSet<String>>,
+    /// Decoded `tags` per active intent (empty vec = untagged) — the bounded
+    /// vocabulary facet; collisions feed `duplicated_responsibility` + ranking.
+    pub tags_by_intent: HashMap<String, Vec<String>>,
+    /// Intents per term — the rarity denominator for collision weighting.
+    pub tag_counts: HashMap<String, usize>,
     pub import_links: HashSet<(usize, usize)>,
 }
 
@@ -117,6 +122,18 @@ impl DiscoverySnapshot {
             })
             .collect();
 
+        let tags_by_intent: HashMap<String, Vec<String>> = snapshot
+            .intents
+            .iter()
+            .map(|intent| Ok((intent.id.clone(), super::vocab::parse_tags(intent)?)))
+            .collect::<Result<_>>()?;
+        let mut tag_counts: HashMap<String, usize> = HashMap::new();
+        for tags in tags_by_intent.values() {
+            for t in tags {
+                *tag_counts.entry(t.clone()).or_insert(0) += 1;
+            }
+        }
+
         let mut import_links: HashSet<(usize, usize)> = HashSet::new();
         for (from_idx, cf) in snapshot.codefiles.iter().enumerate() {
             let imports: Vec<String> = serde_json::from_str(&cf.imports)
@@ -134,6 +151,8 @@ impl DiscoverySnapshot {
             files_of,
             intents_on_file,
             tokens_by_intent,
+            tags_by_intent,
+            tag_counts,
             import_links,
         })
     }

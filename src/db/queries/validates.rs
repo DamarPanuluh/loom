@@ -25,13 +25,13 @@ pub fn insert_validates(
         "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(validation_id)
     ))?;
     if check_v.rows().is_empty() {
-        anyhow::bail!("Validation '{}' not found", validation_id);
+        anyhow::bail!("Validation '{}' not found — `loom validation list`.", validation_id);
     }
     let check_i = db.execute(&format!(
         "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
     ))?;
     if check_i.rows().is_empty() {
-        anyhow::bail!("Intent '{}' not found", intent_id);
+        anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
     db.execute(&format!(
         "MATCH (v:Validation {{id: '{vid}'}}), (i:Intent {{id: '{iid}'}}) \

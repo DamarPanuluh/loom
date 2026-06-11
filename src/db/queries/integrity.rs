@@ -133,6 +133,9 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     let query_snapshot = QuerySnapshot::load(db)?;
 
     // 4. Value validity for constrained fields (reliable full scans).
+    let vocab_terms = super::vocab::list_vocab_terms(db)?;
+    let registered_terms: std::collections::HashSet<&str> =
+        vocab_terms.iter().map(|t| t.name.as_str()).collect();
     for i in &intents {
         if i.id.is_empty() {
             issues.push(format!("Intent '{}' has an empty id", i.name));
@@ -145,6 +148,34 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
                 "Intent {} has invalid abstraction_level '{}'",
                 i.id, i.abstraction_level
             ));
+        }
+        // Tags: well-formed JSON, within the cap, every term registered.
+        // Older graphs read the absent property as "" — that is valid
+        // (untagged), so this only audits what was actually written.
+        match super::vocab::parse_tags(i) {
+            Err(_) => {
+                issues.push(format!("Intent {} has malformed tags JSON '{}'", i.id, i.tags));
+            }
+            Ok(tags) => {
+                if tags.len() > super::vocab::MAX_TAGS_PER_INTENT {
+                    issues.push(format!(
+                        "Intent '{}' carries {} tags (max {}) — tag spam makes everything \
+                         collide and kills the duplicate-responsibility signal",
+                        i.name,
+                        tags.len(),
+                        super::vocab::MAX_TAGS_PER_INTENT
+                    ));
+                }
+                for t in &tags {
+                    if !registered_terms.contains(t.as_str()) {
+                        issues.push(format!(
+                            "Intent '{}' is tagged '{}' but no such VocabTerm is registered \
+                             (register it: loom vocab add {} --why \"…\"; or retag the intent)",
+                            i.name, t, t
+                        ));
+                    }
+                }
+            }
         }
     }
     for r in &query_snapshot.rules {

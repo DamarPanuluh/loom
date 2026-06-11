@@ -22,13 +22,13 @@ pub fn insert_governs(
         "MATCH (r:QualityRule {{id: '{}'}}) RETURN r.id", esc(rule_id)
     ))?;
     if check_rule.rows().is_empty() {
-        anyhow::bail!("QualityRule '{}' not found", rule_id);
+        anyhow::bail!("QualityRule '{}' not found — `loom rule list` shows registered rules.", rule_id);
     }
     let check_intent = db.execute(&format!(
         "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
     ))?;
     if check_intent.rows().is_empty() {
-        anyhow::bail!("Intent '{}' not found", intent_id);
+        anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
     // Default `uninspected`, not `passing`: applying a quality rule asserts it
     // *applies*, not that the intent *complies*. Green must be earned — the

@@ -135,19 +135,33 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                     }
                 }
             }
+            // Result-sensitive anchor: a verdict moves the phase, so the
+            // output ends with where the driver goes next.
+            let next_step = match res {
+                ValidationResult::Passed =>
+                    "`loom next --mode validate` for the next proof".to_string(),
+                ValidationResult::Failed =>
+                    "flag the owner: `loom intent mark <intent> --lifecycle needs_change --reason \"<validation failure>\"`".to_string(),
+                _ =>
+                    "out of the validator queue until re-marked; visible in `loom validation list` / `loom report`".to_string(),
+            };
             if printer.json {
-                printer.print_json(&serde_json::json!({
+                let mut payload = serde_json::json!({
                     "status": "ok", "validation_id": vid, "result": res.to_string(),
                     "intents_updated": n, "note": edge_note,
-                }));
+                });
+                if n == 0 {
+                    payload["hint"] = serde_json::Value::String(format!(
+                        "Not linked yet: `loom edge validates {vid} <intent-id>`."
+                    ));
+                }
+                printer.print_json(&crate::output::with_anchor(payload, &db, &next_step)?);
             } else {
                 println!("✓ Validation {vid} marked {res}  ({n} linked intent(s) updated)");
-                if res == ValidationResult::Blocked {
-                    println!("  Out of the validator queue until re-marked; visible in `loom validation list` / `loom report`.");
-                }
                 if n == 0 {
                     println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
                 }
+                crate::output::print_anchor(&db, &next_step)?;
             }
         }
 
@@ -216,10 +230,15 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        ValidationCmd::List => {
-            let validations = list_validations(&db)?;
+        ValidationCmd::List { limit } => {
+            let mut validations = list_validations(&db)?;
+            let total = crate::output::apply_limit(&mut validations, limit);
             if printer.json {
-                printer.print_json(&validations);
+                printer.print_json(&serde_json::json!({
+                    "validations": validations,
+                    "total":       total,
+                    "truncated":   validations.len() < total,
+                }));
             } else if validations.is_empty() {
                 println!("(no validations defined)");
             } else {
@@ -238,6 +257,11 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                         name   = v.name,
                         id     = v.id,
                     );
+                }
+                if let Some(m) = crate::output::more_marker(
+                    total, validations.len(), "`loom validation list --limit 0`",
+                ) {
+                    println!("  {m}");
                 }
             }
         }

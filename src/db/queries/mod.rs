@@ -34,6 +34,7 @@ pub mod smells;
 pub mod stats;
 pub mod targets;
 pub mod validates;
+pub mod vocab;
 pub mod validation;
 
 // Flat re-export: callers use `crate::db::queries::<fn>` regardless of which
@@ -61,6 +62,7 @@ pub use smells::*;
 pub use stats::*;
 pub use targets::*;
 pub use validates::*;
+pub use vocab::*;
 pub use validation::*;
 
 #[cfg(test)]
@@ -79,6 +81,7 @@ mod tests {
             source_refs:       "[]".to_string(),
             status:            "proposed".to_string(),
             aspect:            String::new(),
+            tags:              "[]".to_string(),
             lifecycle:         "implemented".to_string(),
             created_at:        "t0".to_string(),
             updated_at:        "t0".to_string(),
@@ -2027,6 +2030,202 @@ mod tests {
         assert!(find_intents(&db, "qwertyuiop zxcvbn", 5).unwrap().is_empty(),
             "a miss is an empty result, not an error");
     }
+
+    // -----------------------------------------------------------------------
+    // The bounded tag vocabulary (vocab.rs + the smells/scoring it feeds)
+    // -----------------------------------------------------------------------
+
+    fn term(name: &str, desc: &str) -> crate::types::VocabTerm {
+        crate::types::VocabTerm {
+            id:          format!("vt-{name}"),
+            name:        name.to_string(),
+            description: desc.to_string(),
+            author:      "llm".to_string(),
+            created_at:  "t0".to_string(),
+        }
+    }
+
+    fn tag_intent(db: &GrafeoDb, id: &str, tags: &[&str]) {
+        set_intent_tags(db, id, tags.iter().map(|s| s.to_string()).collect(), "t1").unwrap();
+    }
+
+    #[test]
+    fn vocab_terms_round_trip_and_merge_retags() {
+        let (db, ids) = db_with_intents(3);
+        insert_vocab_term(&db, &term("retry", "re-attempt after failure")).unwrap();
+        insert_vocab_term(&db, &term("retries", "duplicate of retry")).unwrap();
+        assert_eq!(get_vocab_term(&db, "retry").unwrap().unwrap().description, "re-attempt after failure");
+
+        tag_intent(&db, &ids[0], &["retries"]);
+        tag_intent(&db, &ids[1], &["retries", "retry"]); // merge must dedupe
+        tag_intent(&db, &ids[2], &["retry"]);
+
+        let retagged = merge_vocab_terms(&db, "retries", "retry", "t2").unwrap();
+        assert_eq!(retagged, 2, "only carriers of the dissolved term are touched");
+        assert!(get_vocab_term(&db, "retries").unwrap().is_none(), "dissolved term deleted");
+        for id in &ids {
+            let tags = parse_tags(&get_intent(&db, id).unwrap().unwrap()).unwrap();
+            assert_eq!(tags, vec!["retry".to_string()], "intent {id}: {tags:?}");
+        }
+        let counts = tag_counts(&list_active_intents(&db).unwrap()).unwrap();
+        assert_eq!(counts.get("retry"), Some(&3));
+    }
+
+    #[test]
+    fn term_keys_are_normalized_and_drift_is_recognizable() {
+        assert_eq!(normalize_term("  AuthN ").unwrap(), "authn");
+        assert!(normalize_term("two words").is_err(), "whitespace is not a key");
+        assert!(normalize_term("").is_err());
+
+        assert!(terms_look_alike("auth", "authn"), "containment");
+        assert!(terms_look_alike("retry", "retries"), "plural via stemming");
+        assert!(terms_look_alike("color", "colour"), "small edit distance");
+        assert!(!terms_look_alike("retry", "retry"), "identity is not drift");
+        assert!(!terms_look_alike("authz", "cache"), "distinct keys stay distinct");
+        // Deliberate limitation: morphological drift only — semantic synonyms
+        // ('authn'/'authentication') are caught by the inlined registry at tag
+        // time and the agent's judgment, not by string distance.
+        assert!(!terms_look_alike("authn", "authentication"));
+    }
+
+    #[test]
+    fn shared_tag_weight_is_rarity_weighted() {
+        let counts: std::collections::HashMap<String, usize> =
+            [("rare".to_string(), 2), ("broad".to_string(), 20)].into();
+        let a = vec!["rare".to_string(), "broad".to_string()];
+        let b = vec!["rare".to_string(), "broad".to_string()];
+        let (w, shared) = shared_tag_weight(&a, &b, &counts);
+        assert_eq!(shared, vec!["broad".to_string(), "rare".to_string()]);
+        // 1/2 + 1/20 — the near-unique term dominates; a spammed broad term
+        // contributes almost nothing (the over-tagging defense).
+        assert!((w - 0.55).abs() < 1e-9, "{w}");
+        let (w0, _) = shared_tag_weight(&a, &[], &counts);
+        assert_eq!(w0, 0.0, "untagged never collides");
+    }
+
+    #[test]
+    fn duplicated_responsibility_fires_only_for_unlinked_disjoint_pairs() {
+        let (db, ids) = db_with_intents(4);
+        insert_vocab_term(&db, &term("backoff", "delay growth between attempts")).unwrap();
+        // Phrased so token jaccard stays below TWIN_SIMILARITY — the lexical
+        // detector must NOT be the one catching this pair.
+        tag_intent(&db, &ids[0], &["backoff"]);
+        tag_intent(&db, &ids[1], &["backoff"]);
+        // Disjoint groundings, no import between them.
+        insert_codefile(&db, &codefile("f0", "src/fetch.rs")).unwrap();
+        insert_codefile(&db, &codefile("f1", "src/jobs.rs")).unwrap();
+        insert_implements(&db, "im0", &ids[0], "f0", "", "", "t").unwrap();
+        insert_implements(&db, "im1", &ids[1], "f1", "", "", "t").unwrap();
+
+        let smells = compute_smells(&db).unwrap();
+        let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
+        assert_eq!(dup.len(), 1, "{smells:?}");
+        assert!(dup[0].evidence.contains("backoff"), "{}", dup[0].evidence);
+        assert!(dup[0].remedy.contains(&ids[0]) && dup[0].remedy.contains(&ids[1]));
+
+        // A recorded relationship silences it — the suspicion did its job.
+        get_or_create_relates_to(&db, "e01", &ids[0], &ids[1], "t").unwrap();
+        let smells = compute_smells(&db).unwrap();
+        assert!(!smells.iter().any(|s| s.kind == "duplicated_responsibility"), "{smells:?}");
+
+        // A shared file belongs to overlapping_ownership, not this detector.
+        tag_intent(&db, &ids[2], &["backoff"]);
+        tag_intent(&db, &ids[3], &["backoff"]);
+        insert_implements(&db, "im2", &ids[2], "f0", "", "", "t").unwrap();
+        insert_implements(&db, "im3", &ids[3], "f0", "", "", "t").unwrap();
+        let smells = compute_smells(&db).unwrap();
+        let dup_pairs: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility"
+            && s.remedy.contains(&ids[2]) && s.remedy.contains(&ids[3])).collect();
+        assert!(dup_pairs.is_empty(), "shared-file pair must route to overlapping_ownership: {smells:?}");
+    }
+
+    #[test]
+    fn vocab_drift_smell_names_the_merge() {
+        let (db, ids) = db_with_intents(2);
+        insert_vocab_term(&db, &term("auth", "login, sessions")).unwrap();
+        insert_vocab_term(&db, &term("authn", "who are you")).unwrap();
+        insert_vocab_term(&db, &term("cache", "stored derived data")).unwrap();
+        tag_intent(&db, &ids[0], &["auth"]);
+        tag_intent(&db, &ids[1], &["authn"]);
+
+        let smells = compute_smells(&db).unwrap();
+        let drift: Vec<&Smell> = smells.iter().filter(|s| s.kind == "vocab_drift").collect();
+        assert_eq!(drift.len(), 1, "{smells:?}");
+        // Equal usage (1 vs 1): the tie keeps the first-ranked ('authn' here by
+        // ua >= ub) — what matters is the remedy is a concrete merge command.
+        assert!(drift[0].remedy.contains("loom vocab merge"), "{}", drift[0].remedy);
+        assert!(!smells.iter().any(|s| s.kind == "vocab_drift" && s.summary.contains("cache")));
+    }
+
+    #[test]
+    fn discovery_ranking_rewards_tag_collisions() {
+        let (db, ids) = db_with_intents(3);
+        insert_vocab_term(&db, &term("lineage", "where a decision came from")).unwrap();
+        tag_intent(&db, &ids[0], &["lineage"]);
+        tag_intent(&db, &ids[1], &["lineage"]);
+
+        let pairs = unexplored_pairs_scored(&db).unwrap();
+        let top = &pairs[0].0;
+        let tagged_pair = (top.from_id == ids[0] && top.to_id == ids[1])
+            || (top.from_id == ids[1] && top.to_id == ids[0]);
+        assert!(tagged_pair, "tag collision must outrank untagged pairs: {pairs:?}");
+        assert!(top.notes.contains("lineage"), "the why must travel: {}", top.notes);
+    }
+
+    #[test]
+    fn vocab_travels_in_export_and_old_exports_still_import() {
+        let (db, ids) = db_inited(2);
+        insert_vocab_term(&db, &term("custody", "who may change the code")).unwrap();
+        tag_intent(&db, &ids[0], &["custody"]);
+
+        let export = export_graph(&db).unwrap();
+        assert_eq!(export["nodes"]["VocabTerm"].as_array().unwrap().len(), 1);
+
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, false).unwrap();
+        assert_eq!(list_vocab_terms(&db2).unwrap().len(), 1);
+        let tags = parse_tags(&get_intent(&db2, &ids[0]).unwrap().unwrap()).unwrap();
+        assert_eq!(tags, vec!["custody".to_string()], "tags survive the trip");
+
+        // An older export has no VocabTerm section and no tags property.
+        let mut old = export.clone();
+        old["nodes"].as_object_mut().unwrap().remove("VocabTerm");
+        for i in old["nodes"]["Intent"].as_array_mut().unwrap() {
+            i.as_object_mut().unwrap().remove("tags");
+        }
+        let db3 = GrafeoDb::in_memory();
+        db3.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
+        )).unwrap();
+        import_graph(&db3, &old, false).unwrap();
+        assert!(list_vocab_terms(&db3).unwrap().is_empty());
+        let tags = parse_tags(&get_intent(&db3, &ids[0]).unwrap().unwrap()).unwrap();
+        assert!(tags.is_empty(), "absent tags read as untagged, never an error");
+    }
+
+    #[test]
+    fn doctor_flags_unregistered_and_spammed_tags() {
+        let (db, ids) = db_inited(2);
+        insert_vocab_term(&db, &term("good", "a registered term")).unwrap();
+        tag_intent(&db, &ids[0], &["good", "ghost"]); // ghost is unregistered
+        let report = check_graph(&db).unwrap();
+        assert!(
+            report.issues.iter().any(|i| i.contains("ghost") && i.contains("VocabTerm")),
+            "{:?}", report.issues
+        );
+        // Over the cap: bypasses the command gate by writing directly — doctor
+        // must still catch it (defense in depth, like every other audit).
+        set_intent_tags(&db, &ids[1],
+            vec!["good".into(), "a1".into(), "a2".into(), "a3".into()], "t").unwrap();
+        let report = check_graph(&db).unwrap();
+        assert!(
+            report.issues.iter().any(|i| i.contains("4 tags")),
+            "{:?}", report.issues
+        );
+    }
 }
 
 /// Proves the value-escaping path (`schema::esc` + string interpolation) is
@@ -2044,7 +2243,8 @@ mod escaping {
     fn mk(id: &str, desc: &str) -> Intent {
         Intent { id: id.into(), name: "n".into(), description: desc.into(),
             abstraction_level: "feature".into(), domain: "d".into(), source_refs: "[]".into(),
-            status: "proposed".into(), aspect: String::new(), lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }
+            status: "proposed".into(), aspect: String::new(), tags: "[]".into(),
+            lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }
     }
 
     #[test]

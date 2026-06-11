@@ -453,6 +453,10 @@ pub struct Intent {
     /// Behavioural facet for completeness: happy | sad | fallback | … (open
     /// vocabulary; "" = unspecified).
     pub aspect: String,
+    /// JSON-encoded array of registered vocabulary terms (≤3, sorted, deduped).
+    /// The bounded facet duplicate-responsibility detection collides on;
+    /// "[]" = untagged (honest absence — never counted as evidence).
+    pub tags: String,
     /// Implementation lifecycle: planned | implemented | needs_change.
     pub lifecycle: String,
     pub created_at: String,
@@ -552,6 +556,28 @@ pub struct Ignore {
     pub id: String,
     pub pattern: String,
     pub reason: String,
+    pub author: String,
+    pub created_at: String,
+}
+
+// ---------------------------------------------------------------------------
+// VocabTerm — the bounded tag vocabulary (a registry of keys, not a plane)
+// ---------------------------------------------------------------------------
+
+/// A registered tag term. Deliberately a KEY, not a knowledge node: it carries
+/// no lifecycle, no edges, no inspection state. Its value is forced collision —
+/// two agents describing the same responsibility in open prose rarely share
+/// words, but picking from a small registry they collide, and collisions are
+/// what duplicate-responsibility detection consumes. Kept honest by detection
+/// (`vocab_drift` smell + `loom vocab merge`), never by a closed list.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VocabTerm {
+    pub id: String,
+    /// The term itself — lowercase, the unique key intents reference in `tags`.
+    pub name: String,
+    /// Contrastive one-liner: what it covers AND what it does not (names the
+    /// neighbouring term), so an agent picking from the list can disambiguate.
+    pub description: String,
     pub author: String,
     pub created_at: String,
 }

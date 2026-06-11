@@ -18,7 +18,7 @@ The graph spans three planes:
 
 Edges connect planes. The graph is only useful when all three planes are populated and connected.
 
-## Node types (5)
+## Node types (6)
 
 ### Intent
 The core node. Everything orbits this.
@@ -32,6 +32,9 @@ source_refs         STRING  -- JSON array of file paths
 status              STRING  -- "proposed" | "confirmed" | "deprecated"
 created_at          STRING
 updated_at          STRING
+tags                STRING  -- JSON array of registered VocabTerm names (≤3, sorted;
+                               "[]"/absent = untagged). Additive in v3; validated
+                               against the registry at write time.
 ```
 
 Abstraction levels:
@@ -115,6 +118,25 @@ improvement gets checked for whether it actually delivered. Additive in
 schema v3 (older graphs/exports keep working); a PORT (`--as-planned`) resets
 supported/refuted→proposed and confirmed→adopted (earned evidence stays
 behind; decisions travel as lineage).
+
+### VocabTerm
+The bounded tag vocabulary — a registry of KEYS, not a knowledge plane: no
+edges, no lifecycle, no inspection state. Its value is forced collision: two
+agents describing the same responsibility in open prose rarely share words,
+but picking from a small inlined registry they collide — and collisions are
+what the `duplicated_responsibility` smell and discovery ranking consume.
+Collision strength is rarity-weighted (Σ 1/freq over shared terms), so broad
+spammed terms decay toward zero on their own. Drift is DETECTED (`vocab_drift`
+smell) and converged (`loom vocab merge` — one sweep, nothing to re-inspect),
+never prevented by a closed list. Tags stay OPTIONAL: an untagged intent is
+honest, a wrong tag lies.
+```
+id           STRING (uuid)
+name         STRING  -- the term: lowercase [a-z0-9_-]+, the key intents carry in `tags`
+description  STRING  -- contrastive: what it covers AND what it does not (names the neighbour)
+author       STRING
+created_at   STRING
+```
 
 ## Edge types (6)
 
@@ -258,6 +280,36 @@ grounded only there become unrealized again and the compass routes to ground).
 
 The graph structure IS the impact analysis. No custom algorithm — just edge traversal with state transitions.
 
+## The LLM-driver output contract
+
+loom's only user is an LLM agent on a long horizon: every output is the prompt
+for the agent's next decision, and after context compaction loom's output is
+the only memory that survives. Three invariants, enforced by shared helpers in
+`src/output.rs` (`print_anchor`, `with_anchor`, `more_marker`, `apply_limit`,
+`SECTION_CAP = 10`, `LIST_LIMIT = 50`) — every new command MUST follow them:
+
+1. **Anchor after mutation.** Phase-moving verdicts (edge ground/issue/
+   independent/fix, validation mark, rule verdict, sync, import, saga run,
+   validate, intent confirm/retire) end with `→ Next: <runnable command>` +
+   the two-line pulse in human mode, and `next_step` + `graph_state` fields in
+   json. Construction steps called in rapid mapping loops (implement,
+   hierarchy, tag, codefile add, vocab add, …) get a LIGHT anchor — the
+   `next_step` line/field without the pulse, so loops don't drown in repeated
+   state. An agent never needs a separate `loom status` to know where it
+   stands.
+2. **Human/json parity.** Whatever guidance human mode prints, json carries
+   (orchestrated agents run `--json`; a hint that lives only in `println!` is
+   invisible to them). List commands always emit
+   `{"<noun>s": [...], "total": N, "truncated": bool}` — never a bare array,
+   never a data-dependent shape.
+3. **Bounded output.** Anything that scales with graph size is capped:
+   inventory lists honor `--limit` (default 50, `0` = all), sub-sections
+   inside work items and show views cap at `SECTION_CAP` keeping the NEWEST
+   notes (addressed-to-role notes always survive the cap), and every
+   truncation prints `… +N more — <runnable fetch command>` (an affordance,
+   never an apology). Errors teach: a failure names the corrective command or
+   inlines the valid choices — never a bare "not found".
+
 ## Commands reference
 
 ```
@@ -327,7 +379,7 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage]
   No second lookup needed. LLM can act immediately.
 
 loom intent add --name --description --level [--domain] [--source ...]
-loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change]
+loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...]
 loom intent confirm <id>
 loom intent mark <id> --lifecycle planned|implemented|needs_change [--reason "<why>"]
   Set the prescriptive lifecycle. needs_change = a known issue/refactor (honest,
@@ -344,7 +396,11 @@ loom intent retire <id> --reason "<why>" [--replaced-by <intent>]
 loom intent source add <id> <path>     (append to source_refs — docs AND code:
                                         contracts, ADRs, design notes; idempotent)
 loom intent source remove <id> <path>
-loom intent list [--status] [--level]
+loom intent tag add <id> <term>        (tag from the registered vocabulary, max 3;
+                                        an unknown term errors with the registry
+                                        inlined — the menu at the decision point)
+loom intent tag remove <id> <term>
+loom intent list [--status] [--level] [--limit N]
 loom intent show <id>            (intent + edges + hierarchy + implements + notes)
 
 loom edge explore <a-id> <b-id>
@@ -355,14 +411,14 @@ loom edge explore <a-id> <b-id>
     independent --notes
     fix --description
 
-loom edge list [--status]
+loom edge list [--status] [--limit N]
 loom edge show <edge-id>
 
 loom cluster <intent-id>
   All unresolved edges touching this intent. For batching neighborhood work.
 
 loom codefile add <path>          (or a glob: 'src/**/*.rs')
-loom codefile list
+loom codefile list [--limit N]
 loom codefile show <path-or-id>
   The per-file OWNERSHIP view: which intents claim it (level + locator +
   status), which quality rules reach it through them, its imports, and a
@@ -389,7 +445,7 @@ loom validation delete <id|name>
   Remove a mistake (the validation analogue of `intent delete`): node +
   VALIDATES edges + their notes. Intents that lose their only proof resurface
   in `loom next --mode validate`.
-loom validation list [--intent <id>]
+loom validation list [--intent <id>] [--limit N]
 
 loom validate <intent-id>
   Runs command on all VALIDATES edges for this intent. (manual_check without a
@@ -451,7 +507,7 @@ loom rule add --name --description --severity [--effort low|mid|high]
   --effort = how much capability INSPECTING this rule needs (pack rules ship
   annotated: secrets-scan low, atomicity high, default mid). Travels into
   quality work items as `effort`.
-loom rule list
+loom rule list [--limit N]
 loom rule apply <rule-id> <intent-id>   (positional; creates GOVERNS edge, uninspected)
 loom rule check <intent-id>             (read-only: show GOVERNS edges by status)
 loom rule verdict <rule-id> <intent-id> --status passing|failing|independent \
@@ -501,7 +557,7 @@ loom hypothesis adopt <id> [--spawned <intent>]... [--reason "<how it converts>"
   When `loom validation mark <outcome-validation> --result passed` lands, the
   hypothesis derives `confirmed` — the improvement provably delivered.
 loom hypothesis reject <id> --reason "<why>"   (any state except adopted/confirmed)
-loom hypothesis list [--status proposed|supported|refuted|adopted|confirmed|rejected]
+loom hypothesis list [--status proposed|supported|refuted|adopted|confirmed|rejected] [--limit N]
 loom hypothesis show <id>                      (fields + TARGETS + notes)
 
 loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--author human|llm] [--for <role>]
@@ -511,8 +567,25 @@ loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id>] [--aut
   the directed-handoff channel: an out-of-lane finding becomes a message the
   owning lane sees FIRST (`loom next` sorts addressed notes to the top of the
   item's notes). Notes surface in `loom next`, `loom intent show`, `loom edge show`.
-loom note list [--intent <id>] [--edge <id>] [--kind <kind>] [--for <role>]
-  --for <role> = the lane's inbox (only notes addressed to it).
+loom note list [--intent <id>] [--edge <id>] [--kind <kind>] [--for <role>] [--limit N]
+  --for <role> = the lane's inbox (only notes addressed to it). --limit keeps
+  the NEWEST rows (append-only memory; the tail is the live context).
+
+loom vocab add <term> --why "<contrastive definition>"
+  Register a tag term (builder lane). The --why must be CONTRASTIVE: what it
+  covers AND what it does not, naming the neighbouring term ("authz —
+  permission checks, NOT login/session (that's authn)"). A term that reads
+  like an existing one (same stem / containment / tiny edit distance) is
+  REJECTED at the door — synonym terms split the keyspace and intents stop
+  colliding. Keep the registry small (warn past ~75): its value is that an
+  agent can hold the whole menu in context at the moment of choice.
+loom vocab list
+  The registry: every term with usage count + definition — the menu agents
+  pick from when tagging.
+loom vocab merge <from> <to>
+  Converge drift: every intent carrying <from> is retagged to <to> (deduped),
+  <from> is deleted. One sweep, nothing to re-inspect — terms are keys, not
+  inspectable claims. The `vocab_drift` smell emits this command.
 
 loom doctor
   Verify graph integrity against the declared schema (src/db/schema.rs):
@@ -569,12 +642,19 @@ loom smells [--limit N]
   component covers its descendants, so measure at the highest honest altitude
   instead of grinding per-leaf busywork; a leaf can still get its own, more
   specific verdict), unused rules, happy-path-only groups (children declare an
-  `--aspect happy` but no sad/fallback sibling — failure behavior undeclared).
+  `--aspect happy` but no sad/fallback sibling — failure behavior undeclared),
+  duplicated responsibility (two same-level intents whose REGISTERED tags
+  collide rarity-weighted, grounded in DISJOINT files with no import between
+  them — the case every physical detector misses: same responsibility
+  implemented twice in unrelated code; untagged intents never fire it), and
+  vocab drift (two registered terms that read like the same word — remedy is
+  the exact `loom vocab merge`).
   Each finding carries the exact remedy command — and the redesign-shaped ones
   (recurrent trouble, tangled files, twin merges, code-level scatter) emit
   `loom hypothesis add` so a redesign gets PROVEN before it becomes work,
   instead of dying in a note. The same suspicion signals
-  (import links, shared files, description overlap, same domain) rank
+  (import links, shared files, description overlap, shared tags
+  rarity-weighted, same domain) rank
   unexplored pairs in `loom next` discovery, with the why in the work item's
   notes. `loom rule verdict --status independent` records "measured — rule
   does not apply" so unmeasured findings resolve honestly.
@@ -791,6 +871,8 @@ src/
 │       ├── hypothesis.rs   Hypothesis node queries (the pre-decision plane)
 │       ├── note.rs         Note annotation queries (append-only memory)
 │       ├── ignore.rs       Ignore patterns (coverage escape hatch, with reasons)
+│       ├── vocab.rs        VocabTerm registry + intent tags (bounded vocabulary:
+│       │                   normalize/merge/rarity-weighted collision + look-alike)
 │       ├── meta.rs         LoomMeta sentinel: version + last_synced freshness
 │       ├── completeness.rs vertical-completeness spine (tree + realization join)
 │       ├── relates_to.rs   RELATES_TO edge (the intent grid)
@@ -815,6 +897,7 @@ src/
     ├── codefile.rs       loom codefile * (glob-aware add)
     ├── validation.rs     loom validation *
     ├── hypothesis.rs     loom hypothesis * (propose/prove/adopt/reject)
+    ├── vocab.rs          loom vocab * (registry + the in-band tag nudge `validate_tags`)
     ├── note.rs           loom note *
     ├── rule.rs           loom rule *
     ├── saga.rs           loom saga * (consumer-plane proofs: declare, run, stamp the path)

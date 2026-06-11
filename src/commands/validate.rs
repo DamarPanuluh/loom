@@ -39,6 +39,11 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
                 "intent_id": intent_id,
                 "results":   [],
                 "message":   "No validations linked to this intent.",
+                "next_step": format!(
+                    "Add one: `loom validation add --name \"...\" --type test --command \"cargo test ...\"`, \
+                     then link it: `loom edge validates <validation-id> {}`",
+                    intent_id
+                ),
             }));
         } else {
             println!("No validation nodes linked to intent '{}'.", intent_id);
@@ -191,16 +196,23 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         crate::db::queries::set_validates_status_for_validation(&db, vid, "uninspected", note)?;
     }
 
+    // End-of-run summary moves the phase: full anchor, result-sensitive.
+    let next_step = if failed > 0 {
+        "`loom next --mode fix`"
+    } else {
+        "`loom status` re-checks the compass"
+    };
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&crate::output::with_anchor(serde_json::json!({
             "intent_id": intent_id,
             "passed":    passed,
             "failed":    failed,
             "results":   results,
-        }));
+        }), &db, next_step)?);
     } else {
         println!();
         println!("  Summary: {}/{} passed", passed, passed + failed);
+        crate::output::print_anchor(&db, next_step)?;
     }
 
     Ok(())

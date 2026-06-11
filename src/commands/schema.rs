@@ -28,6 +28,7 @@ fn node_desc(label: &str) -> &'static str {
         "Validation" => "A runnable proof that an intent is fulfilled.",
         "Note" => "Append-only free-text memory (justification, idea, question, …).",
         "Hypothesis" => "An improvement proposal (the pre-decision plane): claim + proposal + predicted outcome. proposed → supported|refuted (proven by a DIFFERENT agent) → adopted → confirmed (outcome verified) or rejected. Invisible to coverage/completeness until adopted.",
+        "VocabTerm" => "A registered tag term — the bounded vocabulary intents may carry in `tags` (max 3). A key, not a knowledge node: its value is forcing two descriptions of one responsibility to collide (`duplicated_responsibility`). Registry: `loom vocab list`.",
         _ => "",
     }
 }
@@ -152,5 +153,6 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");
     println!("  validation_result: passed | failed | not_run | blocked (recorded \"can't run yet\" + reason)");
     println!("  aspect (open):     happy | sad | fallback | edge_case | lifecycle | security | performance | …");
+    println!("  tags (bounded):    ≤3 registered VocabTerm names per intent — `loom vocab list` is the menu; unknown terms error with it inlined");
     Ok(())
 }

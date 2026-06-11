@@ -24,7 +24,7 @@ pub fn insert_implements(
         "MATCH (i:Intent {{id: '{}'}}) RETURN i.id", esc(intent_id)
     ))?;
     if check_intent.rows().is_empty() {
-        anyhow::bail!("Intent '{}' not found", intent_id);
+        anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
     let check_cf = db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) RETURN cf.id", esc(codefile_id)

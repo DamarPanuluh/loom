@@ -131,7 +131,7 @@ pub fn resolve_root() -> Result<PathBuf> {
     if let Some(p) = EXPLICIT_GRAPH.get() {
         anyhow::ensure!(
             p.is_dir(),
-            "--graph points at '{}', which is not a directory.",
+            "--graph points at '{}', which is not a directory — point it at the repo root that contains `.loom/` (the directory, not a file).",
             p.display()
         );
         return Ok(p.clone());
@@ -141,7 +141,7 @@ pub fn resolve_root() -> Result<PathBuf> {
             let pb = PathBuf::from(&p);
             anyhow::ensure!(
                 pb.is_dir(),
-                "LOOM_GRAPH points at '{p}', which is not a directory."
+                "LOOM_GRAPH points at '{p}', which is not a directory — point it at the repo root that contains `.loom/` (the directory, not a file)."
             );
             return Ok(pb);
         }

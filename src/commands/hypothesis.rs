@@ -92,17 +92,22 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             let hid = resolve_hypothesis(&db, &hypothesis)?;
             let iid = resolve_intent(&db, &intent)?;
             if crate::db::queries::get_targets_between(&db, &hid, &iid)?.is_some() {
-                anyhow::bail!("Hypothesis already targets that intent.");
+                anyhow::bail!("Hypothesis already targets that intent — `loom hypothesis show {hid}` lists current targets.");
             }
             let now = chrono::Utc::now().to_rfc3339();
             let eid = Uuid::new_v4().to_string();
             insert_targets(&db, &eid, &hid, &iid, &now)?;
+            let next_step = format!(
+                "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} …` when evidence is ready"
+            );
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "edge_id": eid, "hypothesis_id": hid, "intent_id": iid,
+                    "next_step": next_step,
                 }));
             } else {
                 println!("✓ TARGETS edge created: {hid} → {iid}");
+                println!("  → Next: {next_step}");
             }
         }
 
@@ -126,7 +131,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             )?;
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
+                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
             if matches!(h.status.as_str(), "adopted" | "confirmed" | "rejected") {
                 anyhow::bail!(
                     "Hypothesis '{}' is already decided ({}) — the decision is recorded; \
@@ -187,7 +192,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             )?;
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
+                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
             if h.status != "supported" {
                 anyhow::bail!(
                     "Only a SUPPORTED hypothesis can be adopted — '{}' is '{}'. \
@@ -218,7 +223,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             for s in &spawned {
                 let iid = resolve_intent(&db, s)?;
                 let i = crate::db::queries::get_intent(&db, &iid)?
-                    .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found.", iid))?;
+                    .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list`; for --spawned the intent must exist first.", iid))?;
                 spawned_ids.push(iid);
                 spawned_names.push(i.name);
             }
@@ -320,7 +325,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             gate::require_substantive("reason", &reason, "why this hypothesis is not being pursued")?;
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
+                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
             if matches!(h.status.as_str(), "adopted" | "confirmed") {
                 anyhow::bail!(
                     "Hypothesis '{}' was adopted — its spawned intents are real work now. \
@@ -342,19 +347,28 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 created_at: now,
             })?;
             if printer.json {
-                printer.print_json(&serde_json::json!({"status": "ok", "id": hid, "rejected": true}));
+                printer.print_json(&serde_json::json!({
+                    "status": "ok", "id": hid, "rejected": true,
+                    "next_step": "`loom next` for the next item",
+                }));
             } else {
                 println!("✓ Hypothesis '{}' rejected (decision recorded).", h.name);
+                println!("  → Next: `loom next` for the next item");
             }
         }
 
-        HypothesisCmd::List { status } => {
+        HypothesisCmd::List { status, limit } => {
             if let Some(ref s) = status {
                 s.parse::<HypothesisStatus>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
-            let hs = list_hypotheses(&db, status.as_deref())?;
+            let mut hs = list_hypotheses(&db, status.as_deref())?;
+            let total = crate::output::apply_limit(&mut hs, limit);
             if printer.json {
-                printer.print_json(&hs);
+                printer.print_json(&serde_json::json!({
+                    "hypotheses": hs,
+                    "total": total,
+                    "truncated": hs.len() < total,
+                }));
             } else if hs.is_empty() {
                 println!("(no hypotheses{})", status.map(|s| format!(" with status '{s}'")).unwrap_or_default());
             } else {
@@ -366,40 +380,58 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                         status = h.status, name = h.name, id = h.id
                     );
                 }
+                if let Some(m) = crate::output::more_marker(total, hs.len(), "loom hypothesis list --limit 0") {
+                    println!("  {m}");
+                }
             }
         }
 
         HypothesisCmd::Show { id } => {
             let hid = resolve_hypothesis(&db, &id)?;
             let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found.", hid))?;
+                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
             let targets = list_targets_for_hypothesis(&db, &hid)?;
-            let notes = notes_for_target(&db, &hid)?;
+            let targets_total = targets.len();
+            let mut notes = notes_for_target(&db, &hid)?;
+            let notes_total = notes.len();
+            if notes_total > crate::output::SECTION_CAP {
+                // notes come oldest-first; keep the NEWEST.
+                notes.drain(..notes_total - crate::output::SECTION_CAP);
+            }
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "hypothesis": h,
                     "targets": targets,
+                    "targets_total": targets_total,
                     "notes": notes,
+                    "notes_total": notes_total,
                 }));
             } else {
                 println!("── Hypothesis ─────────────────────────────────────────────────────");
                 println!("{}", fmt_hypothesis(&h));
                 println!();
-                println!("── Targets ({}) ─────────────────────────────────────────────────────", targets.len());
+                println!("── Targets ({}) ─────────────────────────────────────────────────────", targets_total);
                 if targets.is_empty() {
                     println!("  (none — `loom hypothesis target {hid} <intent>` links affected intents)");
                 } else {
-                    for t in &targets {
+                    for t in targets.iter().take(crate::output::SECTION_CAP) {
                         println!("  → {}  [{}]  ({})", t.intent_name, t.inspection_status, t.intent_id);
+                    }
+                    let shown = targets.len().min(crate::output::SECTION_CAP);
+                    if let Some(m) = crate::output::more_marker(targets_total, shown, &format!("full list: loom hypothesis show {hid} --json")) {
+                        println!("  {m}");
                     }
                 }
                 println!();
-                println!("── Notes ({}) ───────────────────────────────────────────────────────", notes.len());
+                println!("── Notes ({}) ───────────────────────────────────────────────────────", notes_total);
                 if notes.is_empty() {
                     println!("  (none)");
                 } else {
                     for n in &notes {
                         println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+                    }
+                    if let Some(m) = crate::output::more_marker(notes_total, notes.len(), &format!("loom note list --edge {hid}")) {
+                        println!("  {m}");
                     }
                 }
             }

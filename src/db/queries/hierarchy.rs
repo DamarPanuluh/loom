@@ -23,7 +23,8 @@ pub fn insert_hierarchy(
     if db.execute(&verify_q)?.rows().is_empty() {
         anyhow::bail!(
             "Cannot create HIERARCHY: one or both intents not found.\n\
-             parent id: {}\nchild id: {}",
+             parent id: {}\nchild id: {} — `loom intent list` to verify; \
+             `loom intent add` if missing.",
             parent_id, child_id
         );
     }
@@ -35,7 +36,12 @@ pub fn insert_hierarchy(
     let existing = list_all_hierarchy(db)?;
     if let Some((p, _)) = existing.iter().find(|(_, c)| c == child_id) {
         if p == parent_id {
-            anyhow::bail!("HIERARCHY {} -> {} already exists.", parent_id, child_id);
+            anyhow::bail!(
+                "HIERARCHY {} -> {} already exists. Already recorded — \
+                 `loom intent show {}` displays the tree; cross-cutting \
+                 relationships belong in `loom edge explore`.",
+                parent_id, child_id, child_id
+            );
         }
         anyhow::bail!(
             "Cannot add parent: intent '{}' already has parent '{}'.\n\
@@ -49,7 +55,9 @@ pub fn insert_hierarchy(
     if reaches(&existing, child_id, parent_id) {
         anyhow::bail!(
             "Cannot add HIERARCHY {} -> {}: it would create a cycle (the child is \
-             already an ancestor of the parent).",
+             already an ancestor of the parent). Choose a different parent; if the \
+             relationship is cross-cutting rather than structural, record it with \
+             `loom edge explore` instead.",
             parent_id, child_id
         );
     }

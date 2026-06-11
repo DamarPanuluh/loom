@@ -11,7 +11,10 @@ use crate::db::queries::{
 };
 use crate::db::schema::role;
 use crate::gate;
-use crate::output::{fmt_edge_detail, fmt_edge_row, fmt_intent, Printer};
+use crate::output::{
+    apply_limit, fmt_edge_detail, fmt_edge_row, fmt_intent, more_marker, print_anchor,
+    with_anchor, Printer, SECTION_CAP,
+};
 use crate::types::{EdgeType, Intent, RelatesTo};
 
 pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
@@ -36,9 +39,9 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         &db, &edge_id, &intent_a_id, &intent_b_id, &now,
                     )?;
                     let intent_a = get_intent(&db, &intent_a_id)?
-                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found", intent_a_id))?;
+                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.", intent_a_id))?;
                     let intent_b = get_intent(&db, &intent_b_id)?
-                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found", intent_b_id))?;
+                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.", intent_b_id))?;
 
                     if printer.json {
                         printer.print_json(&serde_json::json!({
@@ -105,12 +108,14 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         last_inspected: now,
                         ..edge
                     };
+                    let next_step = "`loom next` for the next item.";
                     if printer.json {
-                        printer.print_json(&updated);
+                        let v = with_anchor(serde_json::to_value(&updated)?, &db, next_step)?;
+                        printer.print_json(&v);
                     } else {
                         println!("✓ Edge marked as passing (grounded)");
                         println!("{}", fmt_edge_detail(&updated));
-                        println!("  → Next: `loom next` for the next item.");
+                        print_anchor(&db, next_step)?;
                     }
                 }
 
@@ -144,12 +149,17 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         last_inspected: now,
                         ..edge
                     };
+                    let next_step = format!(
+                        "fix it then `loom edge fix {}`, or `loom next --mode fix`.",
+                        updated.id
+                    );
                     if printer.json {
-                        printer.print_json(&updated);
+                        let v = with_anchor(serde_json::to_value(&updated)?, &db, &next_step)?;
+                        printer.print_json(&v);
                     } else {
                         println!("✓ Issue recorded — edge marked as failing");
                         println!("{}", fmt_edge_detail(&updated));
-                        println!("  → Next: fix it then `loom edge fix {}`, or `loom next --mode fix`.", updated.id);
+                        print_anchor(&db, &next_step)?;
                     }
                 }
 
@@ -176,20 +186,27 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     )?;
                     update_relates_to_independent(&db, &edge.from_id, &edge.to_id, &notes, by, &now)?;
 
+                    let next_step = "Continue discovery: `loom next`";
                     if printer.json {
-                        printer.print_json(&serde_json::json!({
-                            "status":  "ok",
-                            "edge_id": edge.id,
-                            "inspection_status": "independent",
-                            "from":    intent_a_id,
-                            "to":      intent_b_id,
-                            "notes":   notes,
-                        }));
+                        let v = with_anchor(
+                            serde_json::json!({
+                                "status":  "ok",
+                                "edge_id": edge.id,
+                                "inspection_status": "independent",
+                                "from":    intent_a_id,
+                                "to":      intent_b_id,
+                                "notes":   notes,
+                            }),
+                            &db,
+                            next_step,
+                        )?;
+                        printer.print_json(&v);
                     } else {
                         println!(
                             "✓ Confirmed independent: {} ↔ {}  (edge id: {})",
                             intent_a_id, intent_b_id, edge.id
                         );
+                        print_anchor(&db, next_step)?;
                     }
                 }
             }
@@ -203,6 +220,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let targets = resolve_codefiles(&db, &codefile_id)?;
+            let next_step = "ground more (`loom edge implement …`) or, if the leaf is fully grounded, prove it: `loom next --mode validate`";
             if targets.len() > 1 {
                 // Bulk (glob) grounding: one edge per matched registered file.
                 for cf in &targets {
@@ -213,9 +231,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         "status": "ok", "intent_id": intent_id,
                         "grounded": targets.iter().map(|c| c.path.clone()).collect::<Vec<_>>(),
                         "count": targets.len(),
+                        "next_step": next_step,
                     }));
                 } else {
                     println!("✓ Grounded intent in {} registered file(s) matching '{}'.", targets.len(), codefile_id);
+                    println!("  → Next: {}", next_step);
                 }
             } else {
                 let cf = &targets[0];
@@ -229,12 +249,14 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         "intent_id":    intent_id,
                         "codefile_id":  cf.id,
                         "locator":      locator,
+                        "next_step":    next_step,
                     }));
                 } else {
                     println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
                     println!("  intent   → {}", intent_id);
                     println!("  codefile → {}{}", cf.path,
                         if locator.is_empty() { String::new() } else { format!("  @ {}", locator) });
+                    println!("  → Next: {}", next_step);
                 }
             }
         }
@@ -254,13 +276,14 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             }
             if removed.is_empty() {
                 anyhow::bail!(
-                    "No IMPLEMENTS edge between intent '{}' and '{}'.",
+                    "No IMPLEMENTS edge between intent '{}' and '{}'.\n`loom codefile show <path>` lists the file's owners; `loom edge implement <intent> <path>` creates the grounding.",
                     intent_id, codefile_id
                 );
             }
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "intent_id": intent_id, "removed": removed,
+                    "next_step": "If the intent is a leaf it may be unrealized now — `loom status` will route.",
                 }));
             } else {
                 println!("✓ Removed {} grounding(s).", removed.len());
@@ -283,6 +306,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                 )?;
             }
             insert_governs(&db, &edge_id, &rule_id, &intent_id, crit, &now)?;
+            let next_step = format!(
+                "make the edge real with a verdict: `loom rule verdict {} {} --status <passing|failing|independent> --criterion \"<text>\" --evidence \"<text>\"`",
+                rule_id, intent_id
+            );
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status":    "ok",
@@ -290,11 +317,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     "edge_type": EdgeType::Governs.to_string(),
                     "rule_id":   rule_id,
                     "intent_id": intent_id,
+                    "next_step": next_step,
                 }));
             } else {
                 println!("✓ GOVERNS edge created  (id: {})", edge_id);
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
+                println!("  → Next: {}", next_step);
             }
         }
 
@@ -309,6 +338,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let edge_id = Uuid::new_v4().to_string();
             let n = notes.as_deref().unwrap_or("");
             insert_hierarchy(&db, &edge_id, &parent_id, &child_id, n, &now)?;
+            let next_step = format!(
+                "ground the child if it is a leaf (`loom edge implement {} <codefile> --locator \"<symbol>\"`), or keep decomposing",
+                child_id
+            );
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status":    "ok",
@@ -316,11 +349,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     "edge_type": EdgeType::Hierarchy.to_string(),
                     "parent_id": parent_id,
                     "child_id":  child_id,
+                    "next_step": next_step,
                 }));
             } else {
                 println!("✓ HIERARCHY edge created  (id: {})", edge_id);
                 println!("  parent → {}", parent_id);
                 println!("  child  → {}", child_id);
+                println!("  → Next: {}", next_step);
             }
         }
 
@@ -341,6 +376,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let edge_id = Uuid::new_v4().to_string();
             let n = notes.as_deref().unwrap_or("");
             insert_validates(&db, &edge_id, &validation_id, &intent_id, n, &now)?;
+            let next_step = format!("make the proof real: `loom validate {}`", intent_id);
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status":        "ok",
@@ -348,26 +384,37 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     "edge_type":     EdgeType::Validates.to_string(),
                     "validation_id": validation_id,
                     "intent_id":     intent_id,
+                    "next_step":     next_step,
                 }));
             } else {
                 println!("✓ VALIDATES edge created  (id: {})", edge_id);
                 println!("  validation → {}", validation_id);
                 println!("  intent     → {}", intent_id);
+                println!("  → Next: {}", next_step);
             }
         }
 
         // ----------------------------------------------------------------
         // List RELATES_TO edges
         // ----------------------------------------------------------------
-        EdgeCmd::List { status } => {
-            let edges = list_relates_to(&db, status.as_deref())?;
+        EdgeCmd::List { status, limit } => {
+            let mut edges = list_relates_to(&db, status.as_deref())?;
+            let total = apply_limit(&mut edges, limit);
+            let shown = edges.len();
             if printer.json {
-                printer.print_json(&edges);
+                printer.print_json(&serde_json::json!({
+                    "edges":     edges,
+                    "total":     total,
+                    "truncated": shown < total,
+                }));
             } else if edges.is_empty() {
                 println!("(no RELATES_TO edges found)");
             } else {
                 for e in &edges {
                     println!("{}", fmt_edge_row(e));
+                }
+                if let Some(m) = more_marker(total, shown, "loom edge list --limit 0") {
+                    println!("{}", m);
                 }
             }
         }
@@ -387,13 +434,19 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         .unwrap_or_else(|| default_intent(&e.from_id));
                     let intent_b = get_intent(&db, &e.to_id)?
                         .unwrap_or_else(|| default_intent(&e.to_id));
-                    let notes = notes_for_target(&db, &e.id)?;
+                    let mut notes = notes_for_target(&db, &e.id)?;
+                    // Notes come back oldest-first; keep the NEWEST when capping.
+                    let notes_total = notes.len();
+                    if notes_total > SECTION_CAP {
+                        notes.drain(..notes_total - SECTION_CAP);
+                    }
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "edge":     e,
                             "intent_a": intent_a,
                             "intent_b": intent_b,
                             "notes":    notes,
+                            "notes_total": notes_total,
                         }));
                     } else {
                         println!("── Edge ──────────────────────────────────────────────────────────");
@@ -411,12 +464,15 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         );
                         println!("{}", fmt_intent(&intent_b));
                         println!();
-                        println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
+                        println!("── Notes ({}) ──────────────────────────────────────────────────────", notes_total);
                         if notes.is_empty() {
                             println!("  (none)");
                         } else {
                             for n in &notes {
                                 println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+                            }
+                            if let Some(m) = more_marker(notes_total, notes.len(), &format!("loom note list --edge {}", e.id)) {
+                                println!("  {}", m);
                             }
                         }
                     }
@@ -444,16 +500,23 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     edge_id
                 );
             }
+            let next_step =
+                "Neighbouring passing/independent edges set to needs_reverification — `loom next --mode fix`.";
             if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status":      "ok",
-                    "edge_id":     edge_id,
-                    "description": description,
-                    "message":     "Edge marked passing. Neighbouring passing/independent edges set to needs_reverification.",
-                }));
+                let v = with_anchor(
+                    serde_json::json!({
+                        "status":      "ok",
+                        "edge_id":     edge_id,
+                        "description": description,
+                        "message":     "Edge marked passing. Neighbouring passing/independent edges set to needs_reverification.",
+                    }),
+                    &db,
+                    next_step,
+                )?;
+                printer.print_json(&v);
             } else {
                 println!("✓ Edge {} marked as passing (fixed)", edge_id);
-                println!("  Neighbouring passing/independent edges set to needs_reverification.");
+                print_anchor(&db, next_step)?;
             }
         }
     }
@@ -471,7 +534,7 @@ fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeF
     let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
     if is_glob {
         let pat = glob::Pattern::new(key)
-            .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {}", key, e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`", key, e))?;
         let matched: Vec<_> = crate::db::queries::list_codefiles(db)?
             .into_iter()
             .filter(|c| pat.matches(&c.path))
@@ -502,6 +565,7 @@ fn default_intent(id: &str) -> Intent {
         source_refs:       "[]".to_string(),
         status:            String::new(),
         aspect:            String::new(),
+        tags:              String::new(),
         lifecycle:         String::new(),
         created_at:        String::new(),
         updated_at:        String::new(),

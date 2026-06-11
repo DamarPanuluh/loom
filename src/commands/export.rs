@@ -22,7 +22,7 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
         // on drift makes this hookable (pre-commit / CI) — a graph change can
         // never silently ship without its travel format.
         if out == "-" {
-            anyhow::bail!("--check needs a file to compare against (not '-')");
+            anyhow::bail!("--check needs a file to compare against (not '-') — use `loom export --check loom.graph.json` or drop --check.");
         }
         let on_disk = fs::read_to_string(cwd.join(out)).ok();
         let fresh = on_disk.as_deref() == Some(pretty.as_str());
@@ -30,6 +30,11 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": if fresh { "ok" } else if on_disk.is_none() { "missing" } else { "stale" },
                 "out": out,
+                "next_step": if fresh {
+                    format!("commit {out} so the graph travels")
+                } else {
+                    format!("run `loom export` and commit {out}")
+                },
             }));
         } else if fresh {
             println!("✓ {out} is up to date with the graph.");
@@ -40,7 +45,7 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
             println!("  Run `loom export` and commit the result.");
         }
         if !fresh {
-            anyhow::bail!("export file is stale or missing");
+            anyhow::bail!("export file is stale or missing — run `loom export` and commit the result.");
         }
         return Ok(());
     }
@@ -56,6 +61,7 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok", "out": out, "nodes": nodes, "edges": edges,
+            "next_step": format!("commit {out} so the graph travels"),
         }));
     } else {
         println!("✓ Graph exported to {out}  ({nodes} nodes, {edges} edges)");

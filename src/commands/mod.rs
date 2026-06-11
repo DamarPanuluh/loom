@@ -29,6 +29,7 @@ pub mod smells;
 pub mod status;
 pub mod sync;
 pub mod validate;
+pub mod vocab;
 pub mod validation;
 
 pub fn dispatch(cli: Cli) -> Result<()> {
@@ -54,6 +55,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Saga        { subcommand } => saga::run(subcommand, &printer),
         Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
+        Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id }  => validate::run(&intent_id, &printer),
         Command::Report                     => report::run(&printer),

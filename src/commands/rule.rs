@@ -306,15 +306,25 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        RuleCmd::List => {
-            let rules = list_rules(&db)?;
+        RuleCmd::List { limit } => {
+            let mut rules = list_rules(&db)?;
+            let total = crate::output::apply_limit(&mut rules, limit);
             if printer.json {
-                printer.print_json(&rules);
+                printer.print_json(&serde_json::json!({
+                    "rules":     rules,
+                    "total":     total,
+                    "truncated": rules.len() < total,
+                }));
             } else if rules.is_empty() {
                 println!("(no rules defined)");
             } else {
                 for r in &rules {
                     println!("{}", fmt_rule_row(r));
+                }
+                if let Some(m) = crate::output::more_marker(
+                    total, rules.len(), "`loom rule list --limit 0`",
+                ) {
+                    println!("  {m}");
                 }
             }
         }
@@ -393,6 +403,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "intent_id": intent_id,
                     "message":   "GOVERNS edge created with inspection_status=uninspected. \
                                   Inspect and update via `loom rule check`.",
+                    "next_step": format!("Run `loom rule check {}` to inspect.", intent_id),
                 }));
             } else {
                 println!("✓ GOVERNS edge created  (id: {})", edge_id);
@@ -450,12 +461,22 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             }
             if !found {
                 anyhow::bail!(
-                    "Could not record the GOVERNS verdict between rule '{}' and intent '{}'.",
+                    "Could not record the GOVERNS verdict between rule '{}' and intent '{}' — \
+                     run `loom doctor`; `loom rule list` / `loom intent list` to verify both endpoints.",
                     rule_id, intent_id
                 );
             }
+            // Verdict = phase-moving: full anchor, result-sensitive.
+            let next_step = if status == "failing" {
+                format!(
+                    "flag the intent (`loom intent mark {} --lifecycle needs_change --reason \"…\"`) or fix and re-verdict.",
+                    intent_id
+                )
+            } else {
+                "`loom next --mode quality` for the next pair".to_string()
+            };
             if printer.json {
-                printer.print_json(&serde_json::json!({
+                printer.print_json(&crate::output::with_anchor(serde_json::json!({
                     "status":            "ok",
                     "rule_id":           rule_id,
                     "intent_id":         intent_id,
@@ -466,7 +487,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "inspected_by":      by,
                     "last_inspected":    now,
                     "edge_created":      edge_created,
-                }));
+                }), &db, &next_step)?);
             } else {
                 let mark = match status.as_str() {
                     "passing" => "✓",
@@ -477,9 +498,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     if edge_created { "  (edge created — the verdict is the measurement)" } else { "" });
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
-                if status == "failing" {
-                    println!("  → Next: flag the intent (`loom intent mark {} --lifecycle needs_change --reason \"…\"`) or fix and re-verdict.", intent_id);
-                }
+                crate::output::print_anchor(&db, &next_step)?;
             }
         }
     }
