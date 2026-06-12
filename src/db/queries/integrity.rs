@@ -11,7 +11,8 @@ use anyhow::Result;
 use crate::db::schema::{self, prop, EDGE_TYPES, NODE_LABELS};
 use crate::db::LoomDb;
 use crate::types::{
-    AbstractionLevel, HypothesisStatus, IntentStatus, NoteKind, Severity, ValidationResult,
+    AbstractionLevel, HypothesisStatus, IntentStatus, NoteKind, Severity, TargetsEdge,
+    ValidationResult,
 };
 
 use super::row::i64_val;
@@ -66,6 +67,14 @@ fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
 
 /// Run every integrity check and collect a report.
 pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
+    let query_snapshot = QuerySnapshot::load(db)?;
+    check_graph_from_snapshot(db, &query_snapshot)
+}
+
+pub fn check_graph_from_snapshot(
+    db: &dyn LoomDb,
+    query_snapshot: &QuerySnapshot,
+) -> Result<DoctorReport> {
     let mut issues = Vec::new();
     let mut hints = Vec::new();
 
@@ -130,7 +139,6 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     let intents = list_intents(db, None, None)?;
     let hypotheses = list_hypotheses(db, None)?;
 
-    let query_snapshot = QuerySnapshot::load(db)?;
 
     // 4. Value validity for constrained fields (reliable full scans).
     let vocab_terms = super::vocab::list_vocab_terms(db)?;
@@ -230,7 +238,8 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         intents.iter().map(|i| i.id.clone()).collect();
     let hypothesis_ids: std::collections::HashSet<String> =
         hypotheses.iter().map(|h| h.id.clone()).collect();
-    let edge_ids = collect_edge_ids(db)?;
+    let target_edges = list_all_targets(db)?;
+    let edge_ids = collect_edge_ids_from_snapshot(query_snapshot, &target_edges);
     for n in list_notes(db, None, None)? {
         if let Err(e) = n.kind.parse::<NoteKind>() {
             issues.push(format!(
@@ -257,7 +266,7 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         }
     }
 
-    audit_inspectable_edges(db, &query_snapshot, &mut issues, &mut hints)?;
+    audit_inspectable_edges(query_snapshot, &target_edges, &mut issues, &mut hints)?;
     // evidence behind a verdict, and provenance lanes (a verdict recorded by an
     // out-of-lane role is a separation-of-duties breach — the whole point of
     // the role system is that no agent green-lights its own work).
@@ -266,7 +275,7 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     // spine isn't a tree), not progress — so they belong in doctor. The other
     // completeness facts (unrealized leaves / unreached files) are progress and
     // are surfaced by `loom report` / the status compass instead.
-    let vc = super::completeness::vertical_completeness(db)?;
+    let vc = super::completeness::vertical_completeness_from_snapshot(query_snapshot);
     for name in &vc.multi_parent {
         issues.push(format!(
             "Intent '{}' has more than one HIERARCHY parent — the hierarchy must be a tree.",
@@ -311,8 +320,8 @@ struct EdgeClaim {
 /// recorded reasoning behind `independent`, and provenance lanes
 /// (`inspected_by` role must be the owning role for that edge type).
 fn audit_inspectable_edges(
-    db: &dyn LoomDb,
     snapshot: &QuerySnapshot,
+    targets: &[TargetsEdge],
     issues: &mut Vec<String>,
     hints: &mut Vec<String>,
 ) -> Result<()> {
@@ -358,17 +367,17 @@ fn audit_inspectable_edges(
             inspected_by: e.inspected_by.clone(),
         });
     }
-    for e in list_all_targets(db)? {
+    for e in targets {
         claims.push(EdgeClaim {
             etype: schema::edge::TARGETS,
             label: format!("{} → {}", e.hypothesis_name, e.intent_name),
-            status: e.inspection_status,
-            criterion: e.criterion,
+            status: e.inspection_status.clone(),
+            criterion: e.criterion.clone(),
             confidence: e.confidence,
-            evidence: e.evidence,
-            last_inspected: e.last_inspected,
-            notes: e.notes,
-            inspected_by: e.inspected_by,
+            evidence: e.evidence.clone(),
+            last_inspected: e.last_inspected.clone(),
+            notes: e.notes.clone(),
+            inspected_by: e.inspected_by.clone(),
         });
     }
     // VALIDATES carries only a status — audit its vocabulary too.
@@ -503,6 +512,25 @@ fn audit_inspectable_edges(
         }
     }
     Ok(())
+}
+
+fn collect_edge_ids_from_snapshot(
+    snapshot: &QuerySnapshot,
+    targets: &[TargetsEdge],
+) -> std::collections::HashSet<String> {
+    let mut ids = std::collections::HashSet::new();
+    ids.extend(snapshot.relates.iter().map(|edge| edge.id.clone()));
+    ids.extend(
+        snapshot
+            .hierarchy
+            .iter()
+            .map(|(from, to)| schema::edge_key(schema::edge::HIERARCHY, from, to)),
+    );
+    ids.extend(snapshot.implements.iter().map(|edge| edge.id.clone()));
+    ids.extend(snapshot.governs.iter().map(|edge| edge.id.clone()));
+    ids.extend(snapshot.validates.iter().map(|edge| edge.id.clone()));
+    ids.extend(targets.iter().map(|edge| edge.id.clone()));
+    ids
 }
 
 /// Collect every tracked edge id once for note referential-integrity checks.

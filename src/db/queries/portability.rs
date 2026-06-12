@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use crate::db::schema::{self, edge, label, prop, EDGE_TYPES, NODE_LABELS};
 use crate::db::LoomDb;
 
-use super::row::col_map;
+
 
 /// Properties exported per node label: the required set plus additive extras
 /// that aren't in the required table (kept out of it so older graphs stay
@@ -105,6 +105,11 @@ fn grafeo_to_json(v: &grafeo::Value, numeric: bool) -> J {
     }
 }
 
+fn row_value(row: &[grafeo::Value], idx: usize) -> &grafeo::Value {
+    static NULL: grafeo::Value = grafeo::Value::Null;
+    row.get(idx).unwrap_or(&NULL)
+}
+
 fn object_field<'a>(data: &'a J, field: &str) -> Result<&'a Map<String, J>> {
     data.get(field)
         .with_context(|| format!("Export is missing `{field}` object"))?
@@ -151,13 +156,11 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
         let prop_cols = props.iter().map(|p| format!("n.{p}")).collect::<Vec<_>>();
         let select = prop_cols.join(", ");
         let result = db.execute(&format!("MATCH (n:{lbl}) RETURN {select}"))?;
-        let cols = col_map(&result);
-        let mut items: Vec<J> = Vec::new();
+        let mut items: Vec<J> = Vec::with_capacity(result.rows().len());
         for row in result.rows() {
             let mut obj = Map::new();
-            for (p, col) in props.iter().zip(prop_cols.iter()) {
-                let v = super::row::get(row, &cols, col);
-                obj.insert((*p).to_string(), grafeo_to_json(v, false));
+            for (idx, p) in props.iter().enumerate() {
+                obj.insert((*p).to_string(), grafeo_to_json(row_value(row, idx), false));
             }
             items.push(J::Object(obj));
         }
@@ -176,14 +179,13 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
         let result = db.execute(&format!(
             "MATCH (a:{la})-[r:{etype}]->(b:{lb}) RETURN a.id AS __from, b.id AS __to, {select}"
         ))?;
-        let cols = col_map(&result);
-        let mut items: Vec<J> = Vec::new();
+        let mut items: Vec<J> = Vec::with_capacity(result.rows().len());
         for row in result.rows() {
             let mut obj = Map::new();
-            obj.insert("from".into(), grafeo_to_json(super::row::get(row, &cols, "__from"), false));
-            obj.insert("to".into(), grafeo_to_json(super::row::get(row, &cols, "__to"), false));
-            for (p, col) in props.iter().zip(prop_cols.iter()) {
-                let v = super::row::get(row, &cols, col);
+            obj.insert("from".into(), grafeo_to_json(row_value(row, 0), false));
+            obj.insert("to".into(), grafeo_to_json(row_value(row, 1), false));
+            for (idx, p) in props.iter().enumerate() {
+                let v = row_value(row, idx + 2);
                 obj.insert((*p).to_string(), grafeo_to_json(v, is_numeric(p)));
             }
             items.push(J::Object(obj));

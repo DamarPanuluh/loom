@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::db::LoomDb;
 use crate::types::{Intent, IntentCentrality};
 
-use super::completeness::vertical_completeness;
+use super::completeness::vertical_completeness_from_snapshot;
 use super::hierarchy::list_all_hierarchy;
 use super::implements::intents_with_implements;
 use super::intent::{intents_without_validations, list_active_intents};
@@ -151,10 +151,6 @@ pub struct GraphState {
     pub coverage: Coverage360,
 }
 
-fn count_edges_of_type(db: &dyn LoomDb, etype: &str) -> Result<i64> {
-    let r = db.execute(&format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"))?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
-}
 
 /// Status histogram for one edge type (group-by, reliable — no per-property filter).
 fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i64>> {
@@ -174,13 +170,17 @@ fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i6
 
 /// Compute the graph pulse + phase + recommended next action.
 pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
+    let snapshot = QuerySnapshot::load(db)?;
+    graph_state_from_snapshot(db, &snapshot)
+}
+
+pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<GraphState> {
     // Active intents only: retired (deprecated) design is invisible to every
     // computed number here — counts, pair denominators, coverage axes.
-    let snapshot = QuerySnapshot::load(db)?;
-    let all_intents = snapshot.intents.clone();
+    let all_intents = &snapshot.intents;
     let intents = all_intents.len() as i64;
-    let codefiles = count_codefiles(db)?;
-    let validations = count_validations(db)?;
+    let codefiles = snapshot.codefiles.len() as i64;
+    let validations = snapshot.validations.len() as i64;
     let notes = db
         .execute("MATCH (n:Note) RETURN count(n) AS c")?
         .rows()
@@ -188,7 +188,19 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         .map(|row| i64_val(&row[0]))
         .unwrap_or(0);
 
-    let by_status = count_all_edges_by_inspection_status(db)?;
+    let mut by_status: HashMap<&str, i64> = HashMap::new();
+    for s in snapshot
+        .relates
+        .iter()
+        .map(|e| e.inspection_status.as_str())
+        .chain(snapshot.implements.iter().map(|e| e.inspection_status.as_str()))
+        .chain(snapshot.governs.iter().map(|e| e.inspection_status.as_str()))
+        .chain(snapshot.validates.iter().map(|e| e.inspection_status.as_str()))
+    {
+        if !s.is_empty() {
+            *by_status.entry(s).or_insert(0) += 1;
+        }
+    }
     let total_edges: i64 = by_status.values().sum();
 
     // The discovery/fix loop only actions RELATES_TO, so the phase + the
@@ -196,11 +208,11 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // GOVERNS/HIERARCHY are structural (default passing); VALIDATES completeness
     // is surfaced by `loom report`, not the compass. (Counting all edge types
     // here would tell the user to run `loom next` for work it can't action.)
-    let all_relates = snapshot.relates.clone();
+    let all_relates = &snapshot.relates;
     let mut rt_uninspected = 0;
     let mut rt_failing = 0;
     let mut rt_needs_rev = 0;
-    for e in &all_relates {
+    for e in all_relates {
         match e.inspection_status.as_str() {
             "uninspected" => rt_uninspected += 1,
             "failing" => rt_failing += 1,
@@ -219,38 +231,58 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
     let v_no_proof = validate_backlog.iter().filter(|(_, u, _)| *u >= 3.0 && *u < 4.0).count();
 
-    let v = edge_status_counts(db, "VALIDATES")?;
-    let v_failing = *v.get("failing").unwrap_or(&0);
-    // `blocked` proofs are recorded decisions ("can't run yet — reason on
-    // file"), not pending work: exclude their uninspected VALIDATES edges so
-    // the unresolved tally doesn't count work nobody can do. Filtering happens
-    // in Rust (node-anchored scan) — the reliable path.
-    let blocked_uninspected = blocked_uninspected_validates(db)?;
-    let v_uninspected = (*v.get("uninspected").unwrap_or(&0) - blocked_uninspected).max(0);
+    let validation_result: HashMap<&str, &str> = snapshot
+        .validations
+        .iter()
+        .map(|v| (v.id.as_str(), v.last_result.as_str()))
+        .collect();
+    let mut v_uninspected_raw = 0;
+    let mut v_failing = 0;
+    let mut blocked_uninspected = 0;
+    for e in &snapshot.validates {
+        match e.inspection_status.as_str() {
+            "uninspected" => {
+                v_uninspected_raw += 1;
+                if validation_result.get(e.validation_id.as_str()).copied() == Some("blocked") {
+                    blocked_uninspected += 1;
+                }
+            }
+            "failing" => v_failing += 1,
+            _ => {}
+        }
+    }
+    let v_uninspected = (v_uninspected_raw - blocked_uninspected).max(0);
 
     // GOVERNS is the green gate: an uninspected gate is an unchecked quality
     // claim; failing is a violation; needs_reverification is green that must
     // be re-earned after a code change. ALL THREE are quality work — exactly
     // what `loom next --mode quality` serves (stale GOVERNS once drove the
     // queue but not the compass or the unresolved tally — a coherence bug).
-    let g = edge_status_counts(db, "GOVERNS")?;
-    let g_uninspected = *g.get("uninspected").unwrap_or(&0);
-    let g_failing = *g.get("failing").unwrap_or(&0);
-    let g_needs_rev = *g.get("needs_reverification").unwrap_or(&0);
+    let mut g_uninspected = 0;
+    let mut g_failing = 0;
+    let mut g_needs_rev = 0;
+    for e in &snapshot.governs {
+        match e.inspection_status.as_str() {
+            "uninspected" => g_uninspected += 1,
+            "failing" => g_failing += 1,
+            "needs_reverification" => g_needs_rev += 1,
+            _ => {}
+        }
+    }
 
     let unresolved_edges = rt_uninspected + rt_failing + rt_needs_rev
         + v_uninspected + v_failing + g_uninspected + g_failing + g_needs_rev;
 
-    let relates_to_edges = count_edges_of_type(db, "RELATES_TO")?;
-    let implements_edges = count_edges_of_type(db, "IMPLEMENTS")?;
+    let relates_to_edges = snapshot.relates.len() as i64;
+    let implements_edges = snapshot.implements.len() as i64;
 
     // Use the SAME computation `loom next` uses for discovery candidates, so the
     // compass can never disagree with what `loom next` actually surfaces (e.g.
     // hierarchy-linked pairs are excluded). Authoritative, not a heuristic.
     // Arithmetic count — the full scored O(N²) enumeration lives in discovery
     // (`unexplored_pairs_scored`) where the items are actually consumed.
-    let hierarchy = snapshot.hierarchy.clone();
-    let unexplored_pairs = count_unexplored_pairs_from(&all_intents, &all_relates, &hierarchy);
+    let hierarchy = &snapshot.hierarchy;
+    let unexplored_pairs = count_unexplored_pairs_from(all_intents, all_relates, hierarchy);
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
     let needs_change = all_intents.iter().filter(|i| i.lifecycle == "needs_change").count() as i64;
@@ -259,7 +291,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // The two completeness axes. Vertical (binding) is the spine; horizontal
     // (optional) is the N×N grid. The compass routes vertical gaps ahead of
     // optional discovery, and only calls the graph "complete" when both hold.
-    let vc = vertical_completeness(db)?;
+    let vc = vertical_completeness_from_snapshot(snapshot);
     let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
@@ -268,7 +300,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
 
     let is_parent: std::collections::HashSet<&str> =
         hierarchy.iter().map(|(p, _)| p.as_str()).collect();
-    let with_code = snapshot.with_code.clone();
+    let with_code = &snapshot.with_code;
     let implemented_leaves: Vec<&Intent> = all_intents
         .iter()
         .filter(|i| i.lifecycle == "implemented" && !is_parent.contains(i.id.as_str()))
@@ -278,8 +310,16 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         total: implemented_leaves.len() as i64,
     };
 
+    let active_ids: std::collections::HashSet<&str> =
+        all_intents.iter().map(|i| i.id.as_str()).collect();
+    let grounded: std::collections::HashSet<&str> = snapshot
+        .implements
+        .iter()
+        .filter(|edge| active_ids.contains(edge.intent_id.as_str()))
+        .map(|edge| edge.codefile_path.as_str())
+        .collect();
     let grounded_files = CoverageAxis {
-        covered: grounded_paths(db)?.len() as i64,
+        covered: grounded.len() as i64,
         total: codefiles,
     };
 
@@ -304,7 +344,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         .collect();
     let mut inspected_pairs: std::collections::HashSet<(&str, &str)> =
         std::collections::HashSet::new();
-    for e in &all_relates {
+    for e in all_relates {
         if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent")
             && active_ids.contains(e.from_id.as_str())
             && active_ids.contains(e.to_id.as_str())
@@ -322,20 +362,14 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
 
     // Proven = implemented leaves whose proof actually PASSED (blocked/not_run
     // are visible elsewhere; this axis counts earned proof only).
-    let proven_ids: std::collections::HashSet<String> = {
-        let r = db.execute(
-            "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent) \
-             RETURN v.last_result AS lr, i.id AS iid",
-        )?;
-        let cols = col_map(&r);
-        r.rows()
-            .iter()
-            .filter(|row| str_val(get(row, &cols, "lr")) == "passed")
-            .map(|row| str_val(get(row, &cols, "iid")))
-            .collect()
-    };
+    let proven_ids: std::collections::HashSet<&str> = snapshot
+        .validates
+        .iter()
+        .filter(|edge| validation_result.get(edge.validation_id.as_str()).copied() == Some("passed"))
+        .map(|edge| edge.intent_id.as_str())
+        .collect();
     let proven_leaves = CoverageAxis {
-        covered: implemented_leaves.iter().filter(|i| proven_ids.contains(&i.id)).count() as i64,
+        covered: implemented_leaves.iter().filter(|i| proven_ids.contains(i.id.as_str())).count() as i64,
         total: implemented_leaves.len() as i64,
     };
 

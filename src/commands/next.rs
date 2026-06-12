@@ -2,13 +2,13 @@ use anyhow::Result;
 
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    align_candidates, build_candidates, build_candidates_from_snapshot, check_graph,
-    compute_smells_from, edges_for_intent, get_intent, graph_state, list_hierarchy_for_intent,
-    list_implements_for_intent, notes_for_target,
-    parse_sync_cause, quality_candidates, quality_candidates_from_snapshot,
-    review_candidates_from_snapshot, scored_candidates, scored_candidates_from_snapshot,
-    unexplored_pairs_scored, validate_candidates, validate_candidates_from_snapshot,
-    validations_for_intent, vertical_completeness, QuerySnapshot,
+    align_candidates, build_candidates, build_candidates_from_snapshot, check_graph_from_snapshot,
+    compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
+    list_hierarchy_for_intent, list_implements_for_intent, notes_for_target,
+    parse_sync_cause, quality_candidates_from_snapshot,
+    review_candidates_from_snapshot, scored_candidates_from_snapshot, unexplored_pairs_scored,
+    validate_candidates, validate_candidates_from_snapshot, validations_for_intent,
+    vertical_completeness_from_snapshot, QuerySnapshot,
 };
 use crate::output::{fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP};
 use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
@@ -67,7 +67,8 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         _ => {}
     }
 
-    let mut candidates = scored_candidates(&db, mode)?;
+    let snapshot = QuerySnapshot::load(&db)?;
+    let mut candidates = scored_candidates_from_snapshot(&snapshot, mode);
 
     // Discovery keeps going once every materialised edge is inspected: fall back
     // to intent pairs that have no edge yet, so the N×N grid gets explored.
@@ -76,7 +77,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     }
 
     if candidates.is_empty() {
-        let gs = graph_state(&db)?;
+        let gs = graph_state_from_snapshot(&db, &snapshot)?;
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
@@ -100,7 +101,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
 
     // The bulk-read path: N compact items, one shared anchor.
     if take > 0 {
-        let gs = graph_state(&db)?;
+        let gs = graph_state_from_snapshot(&db, &snapshot)?;
         return run_take(&db, mode, &candidates, take, &gs, printer);
     }
 
@@ -167,7 +168,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         suggested_action,
     };
 
-    let gs = graph_state(&db)?;
+    let gs = graph_state_from_snapshot(&db, &snapshot)?;
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
@@ -421,8 +422,9 @@ fn run_take(
 // ---------------------------------------------------------------------------
 
 fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()> {
-    let candidates = quality_candidates(db)?;
-    let gs = graph_state(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -730,10 +732,10 @@ fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str
 // ---------------------------------------------------------------------------
 
 fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let gs = graph_state(db)?;
-    let doctor = check_graph(db)?;
-    let mut vc = vertical_completeness(db)?;
     let snapshot = QuerySnapshot::load(db)?;
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let doctor = check_graph_from_snapshot(db, &snapshot)?;
+    let mut vc = vertical_completeness_from_snapshot(&snapshot);
     let build = build_candidates_from_snapshot(&snapshot);
     let fix = scored_candidates_from_snapshot(&snapshot, "fix");
     let discovery_uninspected =
@@ -1396,8 +1398,9 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = quality_candidates(db)?;
-    let gs = graph_state(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {

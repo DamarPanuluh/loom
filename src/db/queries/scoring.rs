@@ -55,6 +55,7 @@ pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
 /// `degrees` is an optional pre-built degree map (from `all_intent_degrees`); pass
 /// `None` and it is built here. Callers that already have the map (e.g. `run_all`)
 /// should pass it in to avoid a redundant pair of queries.
+#[cfg(test)]
 pub fn scored_candidates(
     db: &dyn LoomDb,
     mode: &str,
@@ -62,6 +63,7 @@ pub fn scored_candidates(
     scored_candidates_with_degrees(db, mode, None)
 }
 
+#[cfg(test)]
 pub fn scored_candidates_with_degrees(
     db: &dyn LoomDb,
     mode: &str,
@@ -400,6 +402,7 @@ pub fn review_candidates_with_degrees(
     Ok(scored)
 }
 
+#[cfg(test)]
 pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
     let snapshot = QuerySnapshot::load(db)?;
     Ok(normative_coverage_from_snapshot(&snapshot))
@@ -521,10 +524,12 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
 /// every real edge (urgency 1.0) and resolve in ONE command — `loom rule
 /// verdict` creates the edge with the verdict (independent = measured, doesn't
 /// apply; a verdict at component altitude covers descendants).
+#[cfg(test)]
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
     quality_candidates_with_degrees(db, None)
 }
 
+#[cfg(test)]
 pub fn quality_candidates_with_degrees(
     db: &dyn LoomDb,
     prebuilt_degrees: Option<&HashMap<String, i64>>,
