@@ -55,6 +55,7 @@ pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
 /// `degrees` is an optional pre-built degree map (from `all_intent_degrees`); pass
 /// `None` and it is built here. Callers that already have the map (e.g. `run_all`)
 /// should pass it in to avoid a redundant pair of queries.
+#[cfg(test)]
 pub fn scored_candidates(
     db: &dyn LoomDb,
     mode: &str,
@@ -62,6 +63,7 @@ pub fn scored_candidates(
     scored_candidates_with_degrees(db, mode, None)
 }
 
+#[cfg(test)]
 pub fn scored_candidates_with_degrees(
     db: &dyn LoomDb,
     mode: &str,
