@@ -108,7 +108,6 @@ mod tests {
     fn every_created_edge_is_retrievable() {
         let (db, ids) = db_with_intents(8);
         let mut created = Vec::new();
-        let mut k = 0;
         for i in 0..ids.len() {
             for j in (i + 1)..ids.len() {
                 let e = get_or_create_relates_to(&db, &ids[i], &ids[j], "t").unwrap();
@@ -116,7 +115,6 @@ mod tests {
                 assert_eq!(e.to_id, ids[j]);
                 assert_eq!(e.inspection_status, "uninspected");
                 created.push((e.id.clone(), ids[i].clone(), ids[j].clone()));
-                k += 1;
             }
         }
         let all = list_relates_to(&db, None).unwrap();
@@ -133,7 +131,7 @@ mod tests {
     fn get_or_create_is_idempotent() {
         let (db, ids) = db_with_intents(2);
         let first = get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        for k in 0..10 {
+        for _ in 0..10 {
             let again = get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
             assert_eq!(again.id, first.id);
         }
@@ -416,7 +414,7 @@ mod tests {
             validation_type: "test".into(), command: "true".into(),
             last_run: "t".into(), last_result: "passed".into(),
         }).unwrap();
-        for (k, id) in ids.iter().enumerate() {
+        for id in ids.iter() {
             insert_validates(&db, "v0", id, "", "t").unwrap();
         }
 
@@ -1893,7 +1891,7 @@ mod tests {
     fn tangled_file_decision_note_resolves_and_reflags() {
         let (db, ids) = db_inited(4);
         insert_codefile(&db, &codefile("cf", "src/hub.rs")).unwrap();
-        for (k, id) in ids.iter().take(3).enumerate() {
+        for id in ids.iter().take(3) {
             insert_implements(&db, id, "cf", "fn f", "", "t1").unwrap();
         }
         assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "tangled_file"));

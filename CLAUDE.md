@@ -310,11 +310,22 @@ follow them:
    notes (addressed-to-role notes always survive the cap), and every
    truncation prints `… +N more — <runnable fetch command>` (an affordance,
    never an apology). Errors teach: a failure names the corrective command or
-   inlines the valid choices — never a bare "not found". This includes SYNTAX
-   failures: noun-less verbs (`loom update`/`confirm`/`ground`) are hidden
-   stubs that print the real invocation with the agent's own argument spliced
-   in, and `intent update` catches positional wording and a missing --reason
-   with the full shape (evolved / --reword / rename) instead of clap-babble.
+   inlines the valid choices — never a bare "not found". SYNTAX failures are
+   covered systematically (cli.rs `parse_or_teach` + commands/mod.rs
+   `teach_unknown`):
+   - every clap parse error (missing flag, bad value, stray positional)
+     reprints the failing command's EXAMPLE after_help under the error — an
+     EXAMPLE block IS the command's error message;
+   - a ratchet test (`every_flag_requiring_command_ships_an_example`) fails
+     the build when a command with required flags lacks an EXAMPLE, so new
+     commands can't ship friction-shaped;
+   - unknown top-level tokens land in an `external_subcommand` catch-all:
+     noun-less verbs and synonyms (`update`/`rename`/`retire`/`add`/`ground`/
+     `prove`/…) answer with the real invocation and the agent's own argument
+     spliced in; typos get a real edit-distance suggestion (clap's stock tip
+     once mapped `update` → 'guide');
+   - `intent update` additionally catches positional wording and a missing
+     --reason with the full shape (evolved / --reword / rename).
 4. **Surface, then dig.** Payloads embed PROJECTIONS — the fields the next
    decision needs — never full records: work items carry the `*Surface` types
    from `src/types.rs` (intent without timestamps, grounding as

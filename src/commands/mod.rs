@@ -82,27 +82,134 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             export::run(&out, check, &printer)
         }
         Command::Import      { file, as_planned } => import::run(&file, as_planned, &printer),
-        // Noun-less verb stubs: teach the real invocation instead of letting
-        // clap's similar-name tip mislead (`loom update` suggested 'guide').
-        Command::Update { rest } => anyhow::bail!(
-            "`update` lives under its noun:\n  \
-             loom intent update {target} --description \"<new meaning>\" --reason \"<why it moved>\"   (meaning evolution; --reword when only the words change)\n  \
-             loom validation update <id> --command \"<cmd>\"   (repair a proof's command)",
-            target = rest.first().map(|s| format!("\"{s}\"")).unwrap_or_else(|| "<id>".into()),
-        ),
-        Command::Confirm { rest } => anyhow::bail!(
-            "`confirm` lives under its noun:\n  \
-             loom intent confirm {target}   (ratify the meaning; resets the align clock)\n  \
-             loom intent confirm {target} --visibility internal   (machinery — stop interviewing it)",
-            target = rest.first().map(|s| format!("\"{s}\"")).unwrap_or_else(|| "<id>".into()),
-        ),
-        Command::Ground { rest } => anyhow::bail!(
-            "`ground` is a verdict on an edge:\n  \
-             loom edge explore <intent-a> <intent-b> ground --criterion \"<falsifiable coexistence test>\" --confidence 0.9\n  \
-             (issue / independent are the other verdicts; `loom next` serves the pair to inspect{hint})",
-            hint = if rest.is_empty() { "" } else { " — pass BOTH intents, then the verdict" },
-        ),
+        Command::Unknown(tokens) => teach_unknown(&tokens),
     }
+}
+
+/// Any unrecognized top-level token lands here (clap `external_subcommand`).
+/// Three populations, three answers — all of them teach:
+/// 1. noun-less verbs and synonym guesses (`update`, `rename`, `retire`) →
+///    the real invocation, with the agent's own argument spliced in;
+/// 2. typos of real commands (`statsu`) → the nearest command by edit
+///    distance (clap's stock tip once mapped `update` → 'guide');
+/// 3. anything else → the noun list and the guide.
+fn teach_unknown(tokens: &[String]) -> Result<()> {
+    let verb = tokens.first().map(String::as_str).unwrap_or("");
+    let arg = tokens
+        .iter()
+        .skip(1)
+        .find(|t| !t.starts_with('-'))
+        .map(|s| format!("\"{s}\""))
+        .unwrap_or_else(|| "<id>".into());
+    match verb {
+        "update" | "edit" | "set" | "describe" | "redefine" | "reword" => anyhow::bail!(
+            "`{verb}` lives under its noun:\n  \
+             loom intent update {arg} --description \"<new meaning>\" --reason \"<why it moved>\"   (meaning evolution; --reword when only the words change)\n  \
+             loom validation update <id> --command \"<cmd>\"   (repair a proof's command)"
+        ),
+        "rename" => anyhow::bail!(
+            "renaming is `update` under the noun:\n  \
+             loom intent update {arg} --name \"<new name>\" --reason \"<why>\"   (cosmetic — no ripple)"
+        ),
+        "confirm" => anyhow::bail!(
+            "`confirm` lives under its noun:\n  \
+             loom intent confirm {arg}   (ratify the meaning; resets the align clock)\n  \
+             loom intent confirm {arg} --visibility internal   (machinery — stop interviewing it)"
+        ),
+        "ground" | "issue" | "independent" => anyhow::bail!(
+            "`{verb}` is a verdict on an edge:\n  \
+             loom edge explore <intent-a> <intent-b> {verb}{flags}\n  \
+             (`loom next` serves the pair to inspect, with the verdict commands prefilled)",
+            flags = match verb {
+                "ground" => " --criterion \"<falsifiable coexistence test>\" --confidence 0.9",
+                "issue" => " --criterion \"<test>\" --evidence \"<what is wrong>\" --confidence 0.9",
+                _ => " --notes \"<why these never interact>\"",
+            },
+        ),
+        "add" | "create" | "new" => anyhow::bail!(
+            "`{verb}` needs a noun — what is being added?\n  \
+             loom intent add --name \"<behavior>\" --description \"<falsifiable meaning>\" --level feature\n  \
+             loom note add --text \"<text>\" --kind decision [--intent <id>]\n  \
+             loom validation add --name \"<proof>\" --type test --command \"<cmd>\" --intent <id>\n  \
+             (also: codefile add · rule add · vocab add · hypothesis add)"
+        ),
+        "retire" | "remove" | "delete" | "deprecate" => anyhow::bail!(
+            "removal lives under the noun, and the WHY picks the verb:\n  \
+             loom intent retire {arg} --reason \"<why>\" [--replaced-by <successor>]   (superseded design — permanent history, ripples like a redefinition)\n  \
+             loom intent delete {arg}   (a MISTAKE, not history — irreversible, takes edges and notes with it)"
+        ),
+        "explore" => anyhow::bail!(
+            "`explore` lives under `edge`:\n  \
+             loom edge explore <intent-a> <intent-b> ground|issue|independent …   (`loom next` serves the pair)"
+        ),
+        "implement" | "map" => anyhow::bail!(
+            "grounding is `implement` under `edge`:\n  \
+             loom edge implement <intent> <file> [--locator \"<symbol>\"]   (the structural claim `loom sync` watches)"
+        ),
+        "mark" => anyhow::bail!(
+            "`mark` lives under its noun:\n  \
+             loom intent mark {arg} --lifecycle planned|implemented|needs_change [--reason \"<why>\"]\n  \
+             loom validation mark <id> --result passed|failed|blocked [--reason \"<why>\"]"
+        ),
+        "verdict" => anyhow::bail!(
+            "`verdict` lives under `rule` (GOVERNS); edge verdicts go through `edge explore`:\n  \
+             loom rule verdict <rule> <intent> --status passing|failing|independent --criterion \"…\" --evidence \"…\"\n  \
+             loom edge explore <a> <b> ground|issue|independent …"
+        ),
+        "prove" | "run" | "test" => anyhow::bail!(
+            "proofs run through `validate`:\n  \
+             loom validate {arg}   (run one intent's proofs)\n  \
+             loom validate --all   (every pending proof)"
+        ),
+        "show" | "list" => anyhow::bail!(
+            "`{verb}` needs a noun:\n  \
+             loom intent {verb} · loom edge list · loom note list · loom rule list · loom validation list\n  \
+             (or the read surfaces: loom status · loom next · loom find \"<query>\")"
+        ),
+        _ => {
+            // A typo of a real command? Suggest the nearest by edit distance —
+            // computed against the live command list, so it never drifts.
+            use clap::CommandFactory;
+            let cli = crate::cli::Cli::command();
+            let nearest = cli
+                .get_subcommands()
+                .map(|s| s.get_name())
+                .filter(|n| *n != "help")
+                .map(|n| (edit_distance(verb, n), n))
+                .min()
+                .filter(|(d, _)| *d <= 2);
+            match nearest {
+                Some((_, n)) => anyhow::bail!(
+                    "Unknown command '{verb}' — did you mean `loom {n}`? (`loom --help` lists everything)"
+                ),
+                None => anyhow::bail!(
+                    "Unknown command '{verb}'. The nouns: intent · edge · note · rule · validation · \
+                     codefile · vocab · hypothesis — each with add/list/show verbs. The loop: \
+                     `loom status` → `loom next` → record what you found. `loom guide` teaches it."
+                ),
+            }
+        }
+    }
+}
+
+/// Levenshtein distance, two-row DP — small inputs (command names), no
+/// dependency worth taking.
+fn edit_distance(a: &str, b: &str) -> usize {
+    let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut cur = vec![0; b.len() + 1];
+    for (i, ca) in a.iter().enumerate() {
+        cur[0] = i + 1;
+        for (j, cb) in b.iter().enumerate() {
+            cur[j + 1] = if ca == cb {
+                prev[j]
+            } else {
+                1 + prev[j].min(prev[j + 1]).min(cur[j])
+            };
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    prev[b.len()]
 }
 
 /// Bare `loom` (no subcommand): a short orientation pointing at the self-teaching

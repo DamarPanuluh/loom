@@ -337,26 +337,82 @@ pub enum Command {
         as_planned: bool,
     },
 
-    // Hidden noun-less verb stubs — agents reach for `loom update` / `loom
-    // confirm` / `loom ground` under time pressure, and clap's similar-name
-    // tip pointed them at the WRONG command (`update` → "did you mean
-    // 'guide'?"). Each stub swallows whatever arguments followed and bails
-    // with the real invocation(s) — errors teach, even spelling errors.
-    #[command(hide = true)]
-    Update {
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
-        rest: Vec<String>,
-    },
-    #[command(hide = true)]
-    Confirm {
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
-        rest: Vec<String>,
-    },
-    #[command(hide = true)]
-    Ground {
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
-        rest: Vec<String>,
-    },
+    // The universal catch-all: ANY unrecognized top-level token lands here
+    // (verb-without-noun, synonym guess, typo) and `commands::teach_unknown`
+    // answers with the real invocation — agents reach for `loom update` /
+    // `loom rename` / `loom retire` under time pressure, and clap's stock
+    // similar-name tip pointed them at the WRONG command (`update` → "did
+    // you mean 'guide'?"). Errors teach, including spelling errors.
+    #[command(external_subcommand)]
+    Unknown(Vec<String>),
+}
+// ---------------------------------------------------------------------------
+// Parse-error teaching — every command's EXAMPLE doubles as its error message
+// ---------------------------------------------------------------------------
+
+/// Parse argv; on ANY syntax failure, append the failing command's EXAMPLE
+/// block (its after_help) plus a guide pointer before exiting. Clap's stock
+/// errors name the missing flag but not the why or the shape — and a stalled
+/// agent leaves the loop to go doc-hunting (dogfood finding). With this,
+/// writing an EXAMPLE on a command IS writing its error message.
+pub fn parse_or_teach() -> Cli {
+    let err = match Cli::try_parse() {
+        Ok(cli) => return cli,
+        Err(err) => err,
+    };
+    use clap::error::ErrorKind as K;
+    let teachable = matches!(
+        err.kind(),
+        K::MissingRequiredArgument
+            | K::UnknownArgument
+            | K::InvalidValue
+            | K::ValueValidation
+            | K::WrongNumberOfValues
+            | K::TooFewValues
+            | K::TooManyValues
+            | K::NoEquals
+            | K::MissingSubcommand
+            | K::InvalidSubcommand
+            | K::ArgumentConflict
+    );
+    let _ = err.print();
+    if teachable {
+        if let Some(cmd) = deepest_subcommand(std::env::args().skip(1)) {
+            if let Some(h) = cmd.get_after_help() {
+                eprintln!();
+                eprintln!("{h}");
+            }
+        }
+        eprintln!();
+        eprintln!("(`loom guide` teaches the loop; any command plus --help shows its full shape)");
+    }
+    std::process::exit(err.exit_code());
+}
+
+/// Walk the clap tree along argv to the deepest matching subcommand — the
+/// command whose shape the failing invocation was reaching for. Non-matching
+/// tokens (flags, values) are skipped; a flag VALUE that happens to spell a
+/// subcommand name could mis-route the walk, which costs at worst an
+/// unrelated example under an otherwise-correct error. Returns None when no
+/// subcommand matched (the error is top-level; nothing to add).
+fn deepest_subcommand(argv: impl Iterator<Item = String>) -> Option<clap::Command> {
+    use clap::CommandFactory;
+    let mut cur = Cli::command();
+    let mut matched = false;
+    for tok in argv {
+        if tok.starts_with('-') {
+            continue;
+        }
+        let hit = cur
+            .get_subcommands()
+            .find(|s| s.get_name() == tok || s.get_all_aliases().any(|a| a == tok))
+            .cloned();
+        if let Some(sc) = hit {
+            cur = sc;
+            matched = true;
+        }
+    }
+    matched.then_some(cur)
 }
 
 // ---------------------------------------------------------------------------
@@ -534,6 +590,9 @@ pub enum IntentCmd {
 
     /// Set an intent's lifecycle (planned | implemented | needs_change). Use
     /// needs_change to flag a known issue/refactor without faking a verdict.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent mark \"request routing\" --lifecycle needs_change \\\n    \
+          --reason \"routing table rebuilt on every call — known hotspot\"")]
     Mark {
         id: String,
 
@@ -559,6 +618,9 @@ pub enum IntentCmd {
     /// Reports the triggered fallout: orphaned children to re-parent or
     /// retire, files that lost their only owner (they surface as vertical
     /// gaps), and proofs left dangling.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent retire \"legacy draft store\" \\\n    \
+          --reason \"superseded by the unified content store\" --replaced-by \"unified content store\"")]
     Retire {
         /// Intent id, name, or unique name fragment.
         id: String,
@@ -787,6 +849,9 @@ pub enum EdgeCmd {
     },
 
     /// Mark a failing RELATES_TO edge as passing and propagate reverification.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom edge fix rt:a1b2:c3d4 --description \"moved auth middleware registration ahead of route dispatch\"\n  \
+        (fix AFTER the code change and `loom sync`; the edge id comes from `loom next --mode fix`)")]
     Fix {
         edge_id: String,
 
@@ -799,6 +864,10 @@ pub enum EdgeCmd {
 #[derive(Subcommand)]
 pub enum ExploreSubCmd {
     /// Record that this edge is passing (coexistence criterion defined).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom edge explore \"request routing\" \"session auth\" ground \\\n    \
+          --criterion \"routing never reads session state; auth middleware runs before route dispatch\" \\\n    \
+          --evidence \"verified the middleware order\" --evidence-locator src/server/mod.rs:40-80 --confidence 0.9")]
     Ground {
         #[arg(long)]
         criterion: String,
@@ -825,6 +894,10 @@ pub enum ExploreSubCmd {
     },
 
     /// Record that a problem was found between these two intents.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom edge explore \"request routing\" \"session auth\" issue \\\n    \
+          --criterion \"auth must run before route dispatch\" \\\n    \
+          --evidence \"routes register before the auth layer\" --evidence-locator src/server/mod.rs:52 --confidence 0.9")]
     Issue {
         #[arg(long)]
         criterion: String,
@@ -863,6 +936,10 @@ pub enum ExploreSubCmd {
 #[derive(Subcommand)]
 pub enum RuleCmd {
     /// Add a quality rule.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom rule add --name no_sql_in_handlers \\\n    \
+          --description \"HTTP handlers never embed SQL; data access goes through the repository layer\" \\\n    \
+          --severity error --effort low")]
     Add {
         #[arg(long)]
         name: String,
@@ -1065,6 +1142,9 @@ pub enum HypothesisCmd {
 
     /// REJECT a hypothesis with a recorded why (not pursuing it). Valid from
     /// any state except adopted. Refuted hypotheses usually end here.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom hypothesis reject \"split the scoring module\" \\\n    \
+          --reason \"the ranking passes share one snapshot; splitting doubles the load path for no cohesion win\"")]
     Reject {
         /// Hypothesis id, name, or unique fragment.
         id: String,
@@ -1155,6 +1235,9 @@ pub enum NoteCmd {
 
     /// Add a note. Attach it to an intent, an edge, or a code file, or leave
     /// it free-floating.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom note add --kind decision --intent \"request routing\" \\\n    \
+          --text \"host-only routing is deliberate: path routing was descoped in the multi-tenant review\"")]
     Add {
         /// The note text.
         #[arg(long)]
@@ -1271,6 +1354,9 @@ pub enum CodefileCmd {
 #[derive(Subcommand)]
 pub enum ValidationCmd {
     /// Add a Validation node. Pass --intent to also link it (VALIDATES) in one step.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom validation add --name \"routing smoke\" --type test \\\n    \
+          --command \"cargo test -p server --test routing\" --intent \"request routing\"")]
     Add {
         #[arg(long)]
         name: String,
@@ -1371,23 +1457,78 @@ mod tests {
         Cli::command().debug_assert();
     }
 
-    /// The noun-less verb stubs must CAPTURE (not clap-error) so the dispatch
-    /// can teach the real invocation — including any flags the agent passed.
+    /// Unrecognized top-level tokens must CAPTURE into the catch-all (not
+    /// clap-error) so `teach_unknown` answers with the real invocation —
+    /// verbs, synonyms, and typos alike, flags included.
     #[test]
-    fn nounless_verbs_parse_into_teaching_stubs() {
-        let cli = Cli::parse_from(["loom", "update", "request routing", "--description", "x"]);
-        match cli.command {
-            Some(Command::Update { rest }) => assert_eq!(rest[0], "request routing"),
-            other => panic!("expected Update stub, got {:?}", other.is_some()),
+    fn unknown_tokens_parse_into_the_teaching_catchall() {
+        for argv in [
+            vec!["loom", "update", "request routing", "--description", "x"],
+            vec!["loom", "rename", "x"],
+            vec!["loom", "retire"],
+            vec!["loom", "statsu"],
+        ] {
+            let verb = argv[1].to_string();
+            match Cli::parse_from(&argv).command {
+                Some(Command::Unknown(rest)) => assert_eq!(rest[0], verb),
+                other => panic!("expected catch-all for {verb}, got {:?}", other.is_some()),
+            }
         }
+        // Real commands must NOT be swallowed by the catch-all.
         assert!(matches!(
-            Cli::parse_from(["loom", "confirm", "x"]).command,
-            Some(Command::Confirm { .. })
+            Cli::parse_from(["loom", "status"]).command,
+            Some(Command::Status)
         ));
-        assert!(matches!(
-            Cli::parse_from(["loom", "ground"]).command,
-            Some(Command::Ground { .. })
-        ));
+    }
+
+    /// The parse-error footer walks argv to the failing command — its EXAMPLE
+    /// is what gets appended under the clap error.
+    #[test]
+    fn deepest_subcommand_walk_finds_the_failing_command() {
+        let walk = |argv: &[&str]| {
+            super::deepest_subcommand(argv.iter().map(|s| s.to_string()))
+                .map(|c| c.get_name().to_string())
+        };
+        assert_eq!(walk(&["intent", "update", "routing"]).as_deref(), Some("update"));
+        assert_eq!(walk(&["--json", "intent", "update"]).as_deref(), Some("update"));
+        assert_eq!(walk(&["export", "--check"]).as_deref(), Some("export"));
+        assert_eq!(walk(&["nonsense"]), None);
+    }
+
+    /// THE RATCHET: every leaf command that REQUIRES a flag must ship an
+    /// EXAMPLE after_help — `parse_or_teach` prints it under every syntax
+    /// error, so a command without one fails with bare clap-babble and the
+    /// agent leaves the loop to go doc-hunting (the dogfood finding that
+    /// started this). Adding a required flag obligates adding the example.
+    #[test]
+    fn every_flag_requiring_command_ships_an_example() {
+        use clap::CommandFactory;
+        fn walk(cmd: &clap::Command, path: &str, missing: &mut Vec<String>) {
+            let subs: Vec<&clap::Command> =
+                cmd.get_subcommands().filter(|s| s.get_name() != "help").collect();
+            if subs.is_empty() {
+                let requires_flag = cmd
+                    .get_arguments()
+                    .any(|a| a.is_required_set() && a.get_long().is_some());
+                let has_example = cmd
+                    .get_after_help()
+                    .map(|h| h.to_string().contains("loom "))
+                    .unwrap_or(false);
+                if requires_flag && !has_example {
+                    missing.push(path.to_string());
+                }
+            }
+            for s in subs {
+                walk(s, &format!("{path} {}", s.get_name()), missing);
+            }
+        }
+        let cmd = Cli::command();
+        let mut missing = Vec::new();
+        walk(&cmd, "loom", &mut missing);
+        assert!(
+            missing.is_empty(),
+            "commands with required flags but no EXAMPLE after_help (their errors can't teach): {missing:#?}"
+        );
     }
 
     /// Positional wording on `intent update` lands in the hidden catch-all
