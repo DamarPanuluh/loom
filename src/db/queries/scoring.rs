@@ -523,10 +523,12 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
 /// every real edge (urgency 1.0) and resolve in ONE command — `loom rule
 /// verdict` creates the edge with the verdict (independent = measured, doesn't
 /// apply; a verdict at component altitude covers descendants).
+#[cfg(test)]
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
     quality_candidates_with_degrees(db, None)
 }
 
+#[cfg(test)]
 pub fn quality_candidates_with_degrees(
     db: &dyn LoomDb,
     prebuilt_degrees: Option<&HashMap<String, i64>>,

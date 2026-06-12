@@ -5,7 +5,7 @@ use crate::db::queries::{
     align_candidates, build_candidates, build_candidates_from_snapshot, check_graph_from_snapshot,
     compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
     list_hierarchy_for_intent, list_implements_for_intent, notes_for_target,
-    parse_sync_cause, quality_candidates, quality_candidates_from_snapshot,
+    parse_sync_cause, quality_candidates_from_snapshot,
     review_candidates_from_snapshot, scored_candidates_from_snapshot, unexplored_pairs_scored,
     validate_candidates, validate_candidates_from_snapshot, validations_for_intent,
     vertical_completeness, QuerySnapshot,
@@ -422,8 +422,9 @@ fn run_take(
 // ---------------------------------------------------------------------------
 
 fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()> {
-    let candidates = quality_candidates(db)?;
-    let gs = graph_state(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1397,8 +1398,9 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = quality_candidates(db)?;
-    let gs = graph_state(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
