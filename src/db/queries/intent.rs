@@ -15,8 +15,8 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
     db.execute_with_params(
         "INSERT (:Intent {id: $id, name: $name, description: $desc, \
          abstraction_level: $level, domain: $domain, source_refs: $refs, \
-         status: $status, aspect: $aspect, tags: $tags, lifecycle: $lifecycle, \
-         created_at: $created, updated_at: $updated})",
+         status: $status, aspect: $aspect, tags: $tags, visibility: $vis, \
+         lifecycle: $lifecycle, created_at: $created, updated_at: $updated})",
         {
             let mut p = super::row::sparams(&[
                 ("id", &intent.id),
@@ -26,6 +26,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
                 ("domain", &intent.domain),
                 ("status", &intent.status),
                 ("aspect", &intent.aspect),
+                ("vis", &intent.visibility),
                 ("lifecycle", &intent.lifecycle),
                 ("created", &intent.created_at),
                 ("updated", &intent.updated_at),
@@ -164,7 +165,8 @@ pub fn get_intent(db: &dyn LoomDb, id: &str) -> Result<Option<Intent>> {
     let q = format!(
         "MATCH (n:Intent {{id: '{}'}}) \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
-                n.source_refs, n.status, n.aspect, n.tags, n.lifecycle, n.created_at, n.updated_at",
+                n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
+                n.lifecycle, n.created_at, n.updated_at",
         esc(id)
     );
     let result = db.execute(&q)?;
@@ -192,7 +194,8 @@ pub fn list_intents(
     let q = format!(
         "MATCH (n:Intent){} \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
-                n.source_refs, n.status, n.aspect, n.tags, n.lifecycle, n.created_at, n.updated_at \
+                n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
+                n.lifecycle, n.created_at, n.updated_at \
          ORDER BY n.name",
         where_clause
     );
@@ -357,6 +360,35 @@ pub fn confirm_intent(db: &dyn LoomDb, id: &str, updated_at: &str) -> Result<boo
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.status = 'confirmed', n.updated_at = '{}'",
         esc(id), esc(updated_at)
+    ))?;
+    Ok(true)
+}
+
+/// Set who the behavior is for: "user_visible" | "internal" | "" (untriaged).
+/// "" clears the ruling — `loom intent update --description` does exactly
+/// that, because a redefined meaning's audience is unknown again. Returns
+/// false when the intent doesn't exist.
+pub fn set_intent_visibility(
+    db: &dyn LoomDb,
+    id: &str,
+    visibility: &str,
+    updated_at: &str,
+) -> Result<bool> {
+    if !matches!(visibility, "" | "user_visible" | "internal") {
+        anyhow::bail!(
+            "Invalid visibility '{visibility}'. Valid: user_visible (a capability the user can \
+             see/feel) | internal (machinery serving other intents)."
+        );
+    }
+    let check = db.execute(&format!(
+        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)
+    ))?;
+    if check.rows().is_empty() {
+        return Ok(false);
+    }
+    db.execute(&format!(
+        "MATCH (n:Intent {{id: '{}'}}) SET n.visibility = '{}', n.updated_at = '{}'",
+        esc(id), esc(visibility), esc(updated_at)
     ))?;
     Ok(true)
 }
@@ -590,6 +622,8 @@ fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {
         // Additive in v3, native list in v5: Null on intents from older
         // graphs reads as empty (= untagged); legacy JSON strings parse.
         tags:             super::row::list_val(get(row, cols, "n.tags")),
+        // Additive: Null on intents from older graphs reads as "" (untriaged).
+        visibility:       str_val(get(row, cols, "n.visibility")),
         lifecycle:        str_val(get(row, cols, "n.lifecycle")),
         created_at:       str_val(get(row, cols, "n.created_at")),
         updated_at:       str_val(get(row, cols, "n.updated_at")),

@@ -466,6 +466,12 @@ pub struct Intent {
     /// counted as evidence).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    /// Who the behavior is for: user_visible | internal | "" (untriaged).
+    /// The align interview's framing label — internal machinery is never
+    /// presented to the user as a product capability, and internal intents
+    /// leave the align queue until redefined.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub visibility: String,
     /// Implementation lifecycle: planned | implemented | needs_change.
     pub lifecycle: String,
     pub created_at: String,

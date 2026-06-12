@@ -793,15 +793,25 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
     let decision_notes = list_notes(db, None, Some("decision"))?;
     let mut redefined_at: HashMap<&str, &str> = HashMap::new();
     for n in &decision_notes {
-        // `loom intent update --description` writes "redefined: …" (renames
-        // are cosmetic — no ripple, no clock reset).
-        if n.text.starts_with("redefined: ") {
+        // `loom intent update --description` writes "redefined: …";
+        // `--description --reword` writes "reworded: …". BOTH reset the
+        // freshness clock (the meaning statement was just deliberately
+        // restated), only the former ripples claims. Renames are cosmetic —
+        // no stamp, no ripple, no clock reset.
+        if n.text.starts_with("redefined: ") || n.text.starts_with("reworded: ") {
             redefined_at.insert(n.target_id.as_str(), n.created_at.as_str());
         }
     }
 
     let mut candidates = Vec::new();
     for intent in intents {
+        // "This is internal, don't ask the user again": a recorded
+        // visibility=internal ruling takes the intent OUT of the interview.
+        // The ruling is cleared by redefinition (`intent update --description`),
+        // so "unless it changes" is exactly when it can come back.
+        if intent.visibility == "internal" {
+            continue;
+        }
         let last_confirmed = confirmed_at.get(intent.id.as_str()).map(|s| s.to_string());
         // Newest of the confirm and redefinition stamps (RFC3339 sorts
         // lexicographically — sync freshness leans on the same property);

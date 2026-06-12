@@ -19,7 +19,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources, tags } => {
+        IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources, tags, visibility } => {
             gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
             // Validate and canonicalize abstraction level + lifecycle.
             let level = level.parse::<crate::types::AbstractionLevel>()
@@ -38,6 +38,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 crate::db::queries::ensure_owned(
                     &db, &format!("declare a '{lifecycle}' intent (a promise to change the code)"),
                 )?;
+            }
+            if !matches!(visibility.as_str(), "" | "user_visible" | "internal") {
+                anyhow::bail!(
+                    "Invalid --visibility '{visibility}'. Valid: user_visible (a capability the \
+                     user can see/feel) | internal (machinery serving other intents). Omit when \
+                     untriaged — the align interview triages it."
+                );
             }
 
             // Tags are validated against the registry — unknown terms error
@@ -60,6 +67,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 status:            "proposed".to_string(),
                 aspect,
                 tags,
+                visibility,
                 lifecycle,
                 created_at:        now.clone(),
                 updated_at:        now,
@@ -112,7 +120,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::Confirm { id } => {
+        IntentCmd::Confirm { id, visibility } => {
             // Confirmation is a *verdict* that the intent is valid — validator
             // lane, so the builder cannot ratify its own proposals.
             let by = gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
@@ -128,15 +136,39 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     id
                 );
             }
+            if let Some(v) = visibility.as_deref() {
+                if !matches!(v, "user_visible" | "internal") {
+                    anyhow::bail!(
+                        "Invalid --visibility '{v}'. Valid: user_visible (a capability the user \
+                         can see/feel) | internal (machinery serving other intents — leaves the \
+                         align interview until redefined)."
+                    );
+                }
+            }
             let now  = chrono::Utc::now().to_rfc3339();
-            // Atomic: the status flip and its freshness stamp land together.
-            // The stamp is what `loom next --mode align` ranks by — a confirm
-            // without it would ratify the meaning while leaving the intent
-            // looking drift-suspect forever.
+            // Atomic: the status flip, its freshness stamp, and the audience
+            // ruling land together. The stamp is what `loom next --mode align`
+            // ranks by — a confirm without it would ratify the meaning while
+            // leaving the intent looking drift-suspect forever. The visibility
+            // ruling is part of the same interview outcome ("this is internal,
+            // stop asking"): splitting them would let one land without the other.
             let found = crate::db::with_transaction(&db, || {
                 let found = confirm_intent(&db, &id, &now)?;
                 if found {
                     crate::db::queries::record_confirmation(&db, &id, &by, &now)?;
+                    if let Some(v) = visibility.as_deref() {
+                        crate::db::queries::set_intent_visibility(&db, &id, v, &now)?;
+                        crate::db::queries::insert_note(&db, &crate::types::Note {
+                            id: Uuid::new_v4().to_string(),
+                            kind: "decision".into(),
+                            text: format!("visibility ruled {v} during alignment"),
+                            author: by.clone(),
+                            target_kind: "intent".into(),
+                            target_id: id.clone(),
+                            audience: String::new(),
+                            created_at: now.clone(),
+                        })?;
+                    }
                 }
                 Ok(found)
             })?;
@@ -146,20 +178,29 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     id
                 );
             }
+            let confirmed_msg = match visibility.as_deref() {
+                Some("internal") => "confirmed + ruled internal — out of the align interview until its meaning is redefined",
+                Some("user_visible") => "confirmed + ruled user-visible",
+                _ => "confirmed",
+            };
             if printer.json {
+                let mut payload = serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"});
+                if let Some(v) = visibility.as_deref() {
+                    payload["visibility"] = serde_json::json!(v);
+                }
                 let payload = crate::output::with_anchor(
-                    serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"}),
+                    payload,
                     &db,
                     "`loom next` serves the next item",
                 )?;
                 printer.print_json(&payload);
             } else {
-                println!("✓ Intent {} confirmed", id);
+                println!("✓ Intent {} {}", id, confirmed_msg);
                 crate::output::print_anchor(&db, "`loom next` serves the next item")?;
             }
         }
 
-        IntentCmd::Update { id, name, description, reason } => {
+        IntentCmd::Update { id, name, description, reword, reason } => {
             // Evolution is builder-owned, like add/retire: the meaning
             // statement is design, and design decisions belong to the
             // graph's owners.
@@ -212,6 +253,28 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     })?;
                 }
                 if let Some(d) = new_desc {
+                    if reword {
+                        // REWORDING: the concept the user confirmed stays;
+                        // only the words get clearer (the "terminology
+                        // confusing, keep concept" interview outcome). No
+                        // semantic ripple — no claim's meaning moved — and
+                        // the visibility ruling survives. The "reworded:"
+                        // stamp still resets the align clock, so the intent
+                        // exits the interview queue exactly like a
+                        // redefinition does.
+                        crate::db::queries::insert_note(&db, &crate::types::Note {
+                            id: Uuid::new_v4().to_string(),
+                            kind: "decision".into(),
+                            text: format!("reworded: {}\nwas: {}", reason, intent.description),
+                            author: by.clone(),
+                            target_kind: "intent".into(),
+                            target_id: id.clone(),
+                            audience: String::new(),
+                            created_at: now.clone(),
+                        })?;
+                        let _ = d;
+                        return Ok(None);
+                    }
                     crate::db::queries::insert_note(&db, &crate::types::Note {
                         id: Uuid::new_v4().to_string(),
                         kind: "decision".into(),
@@ -223,6 +286,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         created_at: now.clone(),
                     })?;
                     let _ = d; // the new wording lives on the node; the note keeps the old
+                    // The audience ruling was made about the OLD meaning —
+                    // a redefinition makes it unknown again (the align
+                    // interview re-triages it). Cleared with the ripple, for
+                    // the same reason the ripple exists.
+                    if !intent.visibility.is_empty() {
+                        crate::db::queries::set_intent_visibility(&db, &id, "", &now)?;
+                    }
                     return Ok(Some(crate::db::queries::ripple_intent_redefinition(
                         &db,
                         &id,
@@ -246,7 +316,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     serde_json::json!({
                         "status": "ok", "id": id,
                         "renamed": new_name.is_some(),
-                        "redefined": new_desc.is_some(),
+                        "redefined": new_desc.is_some() && !reword,
+                        "reworded": new_desc.is_some() && reword,
+                        "visibility_cleared": new_desc.is_some() && !reword && !intent.visibility.is_empty(),
                         "ripple": ripple,
                     }),
                     &db,
@@ -255,10 +327,17 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 printer.print_json(&payload);
             } else {
                 match (new_name, new_desc) {
+                    (_, Some(_)) if reword => println!("✓ Intent {id} reworded (same concept, clearer words — no ripple)."),
                     (Some(n), Some(_)) => println!("✓ Intent {id} renamed to '{n}' and redefined."),
                     (Some(n), None)    => println!("✓ Intent {id} renamed to '{n}' (cosmetic — no ripple)."),
                     (None, Some(_))    => println!("✓ Intent {id} redefined."),
                     (None, None)       => unreachable!("bailed above"),
+                }
+                if new_desc.is_some() && !reword && !intent.visibility.is_empty() {
+                    println!(
+                        "  visibility ruling '{}' cleared — the new meaning's audience is unknown; the align interview re-triages it.",
+                        intent.visibility
+                    );
                 }
                 if let Some(r) = &ripple {
                     if rippled {

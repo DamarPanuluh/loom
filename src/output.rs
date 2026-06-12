@@ -240,11 +240,17 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
     } else {
         format!("\n  tags:        {}", i.tags.join(", "))
     };
+    // Visibility renders only when ruled — untriaged is not worth a line.
+    let visibility_line = if i.visibility.is_empty() {
+        String::new()
+    } else {
+        format!("\n  visibility:  {}", i.visibility)
+    };
     let lifecycle = if i.lifecycle.is_empty() { "implemented" } else { &i.lifecycle };
     format!(
-        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}\n  status:      {}\n  lifecycle:   {}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
+        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}\n  status:      {}\n  lifecycle:   {}{}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
         i.id, i.name, i.abstraction_level, i.domain, i.status, lifecycle, aspect_line, tags_line,
-        i.description, refs_str, i.created_at, i.updated_at
+        visibility_line, i.description, refs_str, i.created_at, i.updated_at
     )
 }
 
@@ -377,6 +383,7 @@ mod tests {
             status: "proposed".to_string(),
             aspect: String::new(),
             tags: vec!["enforcement".to_string()],
+            visibility: String::new(),
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),

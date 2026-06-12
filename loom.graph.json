@@ -10451,7 +10451,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T00:23:55.195398+00:00"
+        "updated_at": "2026-06-11T00:23:55.195398+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10465,7 +10466,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:29.742501+00:00"
+        "updated_at": "2026-06-09T20:14:29.742501+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10482,7 +10484,8 @@
         ],
         "status": "deprecated",
         "tags": "",
-        "updated_at": "2026-06-11T07:36:23.408156+00:00"
+        "updated_at": "2026-06-11T07:36:23.408156+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10496,7 +10499,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T03:16:16.420938+00:00"
+        "updated_at": "2026-06-11T03:16:16.420938+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10512,7 +10516,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T08:42:25.250438+00:00"
+        "updated_at": "2026-06-11T08:42:25.250438+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10526,7 +10531,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T19:09:12.697597+00:00"
+        "updated_at": "2026-06-09T19:09:12.697597+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10540,7 +10546,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:17:03.721582+00:00"
+        "updated_at": "2026-06-09T20:17:03.721582+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10554,7 +10561,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:29:49.990265+00:00"
+        "updated_at": "2026-06-12T04:29:49.990265+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10568,7 +10576,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T03:16:16.457096+00:00"
+        "updated_at": "2026-06-11T03:16:16.457096+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10582,7 +10591,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:05.411226+00:00"
+        "updated_at": "2026-06-09T20:14:05.411226+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10596,7 +10606,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-10T13:20:59.497715+00:00"
+        "updated_at": "2026-06-10T13:20:59.497715+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10613,7 +10624,8 @@
         ],
         "status": "deprecated",
         "tags": "",
-        "updated_at": "2026-06-11T07:36:23.489583+00:00"
+        "updated_at": "2026-06-11T07:36:23.489583+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10630,7 +10642,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T19:10:26.079184+00:00"
+        "updated_at": "2026-06-10T19:10:26.079184+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10644,7 +10657,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T02:01:48.046088+00:00"
+        "updated_at": "2026-06-11T02:01:48.046088+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10662,7 +10676,8 @@
         ],
         "status": "deprecated",
         "tags": "",
-        "updated_at": "2026-06-11T07:36:23.247261+00:00"
+        "updated_at": "2026-06-11T07:36:23.247261+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10676,7 +10691,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-10T13:41:23.724960+00:00"
+        "updated_at": "2026-06-10T13:41:23.724960+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10690,7 +10706,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:03:14.765638+00:00"
+        "updated_at": "2026-06-09T20:03:14.765638+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10706,7 +10723,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T08:42:24.660431+00:00"
+        "updated_at": "2026-06-11T08:42:24.660431+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10720,7 +10738,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:14:45.074390+00:00"
+        "updated_at": "2026-06-12T04:14:45.074390+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10734,7 +10753,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-10T13:28:36.609408+00:00"
+        "updated_at": "2026-06-10T13:28:36.609408+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10751,7 +10771,8 @@
         ],
         "status": "deprecated",
         "tags": "",
-        "updated_at": "2026-06-11T07:36:23.328300+00:00"
+        "updated_at": "2026-06-11T07:36:23.328300+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10767,7 +10788,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T08:42:05.587701+00:00"
+        "updated_at": "2026-06-11T08:42:05.587701+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10781,7 +10803,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T13:56:34.195776+00:00"
+        "updated_at": "2026-06-10T13:56:34.195776+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10797,7 +10820,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T19:10:27.808424+00:00"
+        "updated_at": "2026-06-10T19:10:27.808424+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10814,7 +10838,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T20:33:12.468976+00:00"
+        "updated_at": "2026-06-10T20:33:12.468976+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10828,7 +10853,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:06.180480+00:00"
+        "updated_at": "2026-06-09T20:14:06.180480+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10842,7 +10868,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:04.578411+00:00"
+        "updated_at": "2026-06-09T20:14:04.578411+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10856,7 +10883,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:07.057245+00:00"
+        "updated_at": "2026-06-09T20:14:07.057245+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10873,7 +10901,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T02:01:47.931283+00:00"
+        "updated_at": "2026-06-11T02:01:47.931283+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "system",
@@ -10887,7 +10916,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T19:09:12.587403+00:00"
+        "updated_at": "2026-06-09T19:09:12.587403+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10901,7 +10931,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T04:51:12.630555+00:00"
+        "updated_at": "2026-06-11T04:51:12.630555+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10915,7 +10946,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T04:51:12.813360+00:00"
+        "updated_at": "2026-06-11T04:51:12.813360+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10932,7 +10964,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T20:33:12.511996+00:00"
+        "updated_at": "2026-06-10T20:33:12.511996+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10946,7 +10979,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:14:45.916985+00:00"
+        "updated_at": "2026-06-12T04:14:45.916985+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10960,7 +10994,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:29:47.348171+00:00"
+        "updated_at": "2026-06-12T04:29:47.348171+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -10976,7 +11011,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T19:10:26.454277+00:00"
+        "updated_at": "2026-06-10T19:10:26.454277+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -10990,7 +11026,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:06.621563+00:00"
+        "updated_at": "2026-06-09T20:14:06.621563+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11007,7 +11044,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T20:33:12.547296+00:00"
+        "updated_at": "2026-06-10T20:33:12.547296+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -11021,7 +11059,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:29.811400+00:00"
+        "updated_at": "2026-06-09T20:14:29.811400+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -11035,7 +11074,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T20:08:18.910368+00:00"
+        "updated_at": "2026-06-09T20:08:18.910368+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -11049,7 +11089,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T19:09:12.741086+00:00"
+        "updated_at": "2026-06-09T19:09:12.741086+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11066,7 +11107,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T00:27:39.957758+00:00"
+        "updated_at": "2026-06-11T00:27:39.957758+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11084,7 +11126,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T07:11:37.505494+00:00"
+        "updated_at": "2026-06-11T07:11:37.505494+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11102,7 +11145,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T16:48:39.270861+00:00"
+        "updated_at": "2026-06-10T16:48:39.270861+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11116,7 +11160,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:14:44.207772+00:00"
+        "updated_at": "2026-06-12T04:14:44.207772+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11130,7 +11175,8 @@
         "source_refs": [],
         "status": "deprecated",
         "tags": "",
-        "updated_at": "2026-06-11T07:36:23.569534+00:00"
+        "updated_at": "2026-06-11T07:36:23.569534+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11144,7 +11190,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-09T19:57:05.034661+00:00"
+        "updated_at": "2026-06-09T19:57:05.034661+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11160,7 +11207,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T02:01:47.975862+00:00"
+        "updated_at": "2026-06-11T02:01:47.975862+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11174,7 +11222,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T13:32:41.627227+00:00"
+        "updated_at": "2026-06-10T13:32:41.627227+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11191,7 +11240,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T19:10:28.016231+00:00"
+        "updated_at": "2026-06-10T19:10:28.016231+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -11205,7 +11255,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-10T13:03:25.432585+00:00"
+        "updated_at": "2026-06-10T13:03:25.432585+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11222,7 +11273,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T15:18:45.572308+00:00"
+        "updated_at": "2026-06-11T15:18:45.572308+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11238,7 +11290,8 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T08:42:24.061202+00:00"
+        "updated_at": "2026-06-11T08:42:24.061202+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "component",
@@ -11252,7 +11305,8 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T19:09:12.785780+00:00"
+        "updated_at": "2026-06-09T19:09:12.785780+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11266,7 +11320,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-12T04:14:46.769226+00:00"
+        "updated_at": "2026-06-12T04:14:46.769226+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -11283,7 +11338,8 @@
         ],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-11T00:11:06.481130+00:00"
+        "updated_at": "2026-06-11T00:11:06.481130+00:00",
+        "visibility": ""
       }
     ],
     "Note": [

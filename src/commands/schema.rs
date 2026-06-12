@@ -86,6 +86,7 @@ pub fn run(printer: &Printer) -> Result<()> {
             "granularity": "system: 1–3 per repo (the product's purpose) · component: 5–15 (cohesive subsystems) · feature: many, ATOMIC — independently verifiable · cross_cutting: spans everything. Test: one falsifiable criterion per intent; a description needing 'and' is several intents.",
         },
         "lifecycle": ["planned", "implemented", "needs_change"],
+        "visibility": ["user_visible", "internal"],
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo", "transition", "confirm"],
         "severity": ["warning", "error"],
@@ -157,6 +158,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
     println!("  lifecycle:         planned | implemented | needs_change");
+    println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");
     println!("  note_kind:         justification | commentary | idea | question | decision | todo | transition (auto: verdict history) | confirm (auto: `loom intent confirm` stamp)");
     println!("  severity:          warning | error");
     println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");

@@ -84,6 +84,7 @@ mod tests {
             status:            "proposed".to_string(),
             aspect:            String::new(),
             tags:              Vec::new(),
+            visibility:        String::new(),
             lifecycle:         "implemented".to_string(),
             created_at:        "t0".to_string(),
             updated_at:        "t0".to_string(),
@@ -829,6 +830,7 @@ mod tests {
             last_run: String::new(), last_result: "not_run".into(),
         }).unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
+        set_intent_visibility(&db, &ids[0], "internal", "t2").unwrap();
 
         let export = export_graph(&db).unwrap();
         let again = export_graph(&db).unwrap();
@@ -848,6 +850,8 @@ mod tests {
         assert!((e.confidence - 0.8).abs() < 1e-9);
         let cf = list_codefiles(&db2).unwrap();
         assert_eq!(cf[0].imports, vec!["src/y.rs".to_string()]);
+        let i0 = get_intent(&db2, &ids[0]).unwrap().unwrap();
+        assert_eq!(i0.visibility, "internal", "the audience ruling survives the trip");
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export, false).is_err());
     }
@@ -2612,6 +2616,55 @@ mod tests {
         let candidate = candidates.iter().find(|c| c.intent.id == ids[0]).unwrap();
         assert_eq!(candidate.churn_since_confirm, 0);
     }
+    /// "This is internal, don't ask the user again": a visibility=internal
+    /// ruling takes the intent OUT of the interview queue regardless of
+    /// churn; clearing the ruling (what a redefinition does) re-admits it.
+    #[test]
+    fn align_skips_internal_until_ruling_cleared() {
+        let (db, ids) = db_with_intents(2);
+        let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
+        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification",
+            "src/lib.rs changed", "2026-01-02T00:00:00Z").unwrap();
+        assert_eq!(align_candidates(&db).unwrap().len(), 2, "both churned → both suspects");
+
+        set_intent_visibility(&db, &ids[0], "internal", "2026-01-03T00:00:00Z").unwrap();
+        let candidates = align_candidates(&db).unwrap();
+        assert!(candidates.iter().all(|c| c.intent.id != ids[0]), "internal leaves the interview");
+        assert!(candidates.iter().any(|c| c.intent.id == ids[1]));
+
+        // A redefinition clears the ruling ("" = untriaged) — back in the queue.
+        set_intent_visibility(&db, &ids[0], "", "2026-01-04T00:00:00Z").unwrap();
+        assert!(align_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+    }
+
+    /// The "terminology confusing, keep concept" outcome: a `--reword` stamp
+    /// resets the align clock exactly like a redefinition (the meaning
+    /// statement was just deliberately restated) — churn predating it stops
+    /// counting and the fresh wording sits inside the grace window.
+    #[test]
+    fn reworded_stamp_resets_align_clock() {
+        let (db, ids) = db_with_intents(2);
+        let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
+        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification",
+            "src/lib.rs changed", "2026-01-02T00:00:00Z").unwrap();
+        assert!(
+            align_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0] && c.churn_since_confirm == 1),
+            "churned under an old confirm → suspect"
+        );
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let mut reword = note_at("rw", "decision", "intent", &ids[0], &now);
+        reword.text = "reworded: clearer words for the same concept\nwas: d".to_string();
+        insert_note(&db, &reword).unwrap();
+
+        assert!(
+            align_candidates(&db).unwrap().iter().all(|c| c.intent.id != ids[0]),
+            "fresh reword + no churn since = out of the queue"
+        );
+    }
 }
 
 /// Proves the value-escaping path (`schema::esc` + string interpolation) is
@@ -2630,6 +2683,7 @@ mod escaping {
         Intent { id: id.into(), name: "n".into(), description: desc.into(),
             abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
             status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
+            visibility: String::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }
     }
 

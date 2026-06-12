@@ -3,7 +3,8 @@ use anyhow::Result;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     align_candidates, build_candidates, build_candidates_from_snapshot, check_graph,
-    compute_smells_from, get_intent, graph_state, list_implements_for_intent, notes_for_target,
+    compute_smells_from, edges_for_intent, get_intent, graph_state, list_hierarchy_for_intent,
+    list_implements_for_intent, notes_for_target,
     parse_sync_cause, quality_candidates, quality_candidates_from_snapshot,
     review_candidates_from_snapshot, scored_candidates, scored_candidates_from_snapshot,
     unexplored_pairs_scored, validate_candidates, validate_candidates_from_snapshot,
@@ -1190,37 +1191,111 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let groundings_total = cap_section(&mut groundings);
     let (notes, notes_total) = note_surfaces(notes_for_target(db, &c.intent.id)?, "validator");
     let last_confirmed = c.last_confirmed.as_deref().unwrap_or("never");
+
+    // Concept context — the item must let the driver present the CONCEPT
+    // (what the product does, why it matters, who it's for, what it is not),
+    // not recite wording. All one-hop-ish reads on the single served item.
+    // Parent chain = the "why it matters" spine (root → … → this).
+    let mut parent_chain: Vec<String> = Vec::new();
+    let mut immediate_parent_id: Option<String> = None;
+    let mut cursor = c.intent.id.clone();
+    for _ in 0..6 {
+        let Some(h) = list_hierarchy_for_intent(db, &cursor)?
+            .into_iter()
+            .find(|h| h.child_id == cursor)
+        else {
+            break;
+        };
+        if immediate_parent_id.is_none() {
+            immediate_parent_id = Some(h.parent_id.clone());
+        }
+        parent_chain.push(h.parent_name.clone());
+        cursor = h.parent_id;
+    }
+    parent_chain.reverse();
+    // Siblings + verified-independent neighbours = "nearby concepts it is NOT".
+    let mut siblings: Vec<String> = Vec::new();
+    if let Some(pid) = &immediate_parent_id {
+        siblings = list_hierarchy_for_intent(db, pid)?
+            .into_iter()
+            .filter(|h| h.parent_id == *pid && h.child_id != c.intent.id)
+            .map(|h| h.child_name)
+            .take(5)
+            .collect();
+    }
+    let independent_of: Vec<String> = edges_for_intent(db, &c.intent.id)?
+        .into_iter()
+        .filter(|e| e.inspection_status == "independent")
+        .map(|e| if e.from_id == c.intent.id { e.to_name } else { e.from_name })
+        .take(5)
+        .collect();
+    let visibility = if c.intent.visibility.is_empty() { "untriaged" } else { c.intent.visibility.as_str() };
+
     // The action text is a SCAFFOLD the driving LLM copies almost verbatim —
-    // so it must model the translation, not the parroting. The description is
-    // graph-speak (written by agents, for grounding code: enumerations, route
-    // lists, internal nouns); reading it aloud confuses the exact non-coder
-    // this queue exists for. The description is labelled as source material
-    // ("meaning on record"), never embedded inside the question to ask.
+    // so it must model CONCEPT alignment, not wording approval. The question
+    // is "what can the product do here, and does that match your mental
+    // model?"; vocabulary surfaces only when the user asks, stumbles, or uses
+    // a term that conflicts with the graph. The description stays labelled as
+    // source material (graph-speak), never embedded in the question. The
+    // audience label leads: machinery presented as a product capability is
+    // exactly how interviews go wrong (dogfood finding).
+    let audience_brief = match visibility {
+        "internal" => "internal machinery (serves other parts; the user never touches it directly)".to_string(),
+        "user_visible" => "a user-visible capability (the user can see or feel it)".to_string(),
+        _ => "untriaged — decide from the groundings whether this is user-visible capability or \
+              internal machinery, OPEN with that framing, and let the user correct you".to_string(),
+    };
+    let where_it_sits = if parent_chain.is_empty() {
+        c.intent.name.clone()
+    } else {
+        format!("{} → {}", parent_chain.join(" → "), c.intent.name)
+    };
+    let mut not_this = Vec::new();
+    if !siblings.is_empty() {
+        not_this.push(format!("sibling concepts (distinct on purpose): {}", siblings.join(" · ")));
+    }
+    if !independent_of.is_empty() {
+        not_this.push(format!("verified independent of: {}", independent_of.join(" · ")));
+    }
+    let not_this_block = if not_this.is_empty() {
+        String::new()
+    } else {
+        format!("\n  what it is NOT: {}", not_this.join("; "))
+    };
     let action = format!(
-        "Interview move — TRANSLATE, never parrot. The meaning on record below is \
-         graph-speak; the user speaks product. Re-express what this makes the product \
-         DO from the user's vantage — one or two plain sentences, no file paths, no \
-         route lists, no internal nouns (jargon test: would a non-coder nod?). Then \
-         ask: \"is that still what this part should do?\"\n\
-         \n  meaning on record: {description}\n\
-         \nRecord exactly one outcome:\n  \
-         - still right → loom intent confirm {id}\n  \
-         - evolved → translate their answer BACK into a falsifiable description: \
-         loom intent update {id} --description \"…\" --reason \"…\"\n  \
+        "Interview move — align the CONCEPT, not the wording. Present, in the user's plain \
+         language:\n  \
+         1. what the product can DO because this exists — one or two sentences, no file \
+         paths, no internal nouns (jargon test: would a non-coder nod?)\n  \
+         2. why it matters: its place in the design — {where_it_sits}\n  \
+         3. its audience, UP FRONT: {audience_brief}{not_this}\n\
+         Vocabulary stays out of the question unless the user asks, gets confused, or uses \
+         a term that conflicts with the graph — then reconcile terms, not before.\n\
+         \n  meaning on record (graph-speak — source material, never read aloud): {description}\n\
+         \nAsk: \"does that match what you expect this product to do here?\" \
+         Record exactly ONE outcome:\n  \
+         - concept still right → loom intent confirm {id}\n  \
+         - words confusing, concept right → loom intent update {id} --description \"…\" \
+         --reword --reason \"…\"  (no ripple; the clock still resets)\n  \
+         - concept evolved → translate their answer into a falsifiable description: \
+         loom intent update {id} --description \"…\" --reason \"…\"  (ripples; audience re-triaged)\n  \
+         - internal machinery, stop asking → loom intent confirm {id} --visibility internal  \
+         (leaves this queue until the meaning is redefined)\n  \
          - superseded → loom intent retire {id} --reason \"…\" --replaced-by <successor>\n  \
-         - revealed a gap → loom intent add … --lifecycle planned\n\
-         \nThe user's yes/no is about BEHAVIOR, not wording — never ask them to \
-         approve a sentence they can't parse.",
+         - missing concept revealed → loom intent add … --lifecycle planned\n\
+         \nThe user rules on BEHAVIOR, never on wording.",
         description = c.intent.description.as_str(),
         id = c.intent.id.as_str(),
+        not_this = not_this_block,
     );
 
     // Validator-lane, but NOT the validate queue: `dispatch_line` derives the
     // queue from the role (validator → validate), and align is the validator's
     // SECOND queue — same lane gates, different work. Spell it out, or an
     // orchestrator dispatching from this line sends the agent to the wrong queue.
-    let dispatch = "this is validator work — fills the alignment outcome: present the meaning \
-         to the USER, then record exactly ONE of `loom intent confirm` / `update` / `retire` / \
+    let dispatch = "this is validator work — fills the alignment outcome: present the CONCEPT \
+         to the USER, then record exactly ONE of `loom intent confirm` (optionally \
+         `--visibility internal`) / `update` (`--reword` for wording-only) / `retire` / \
          `add` (update/retire/add are builder-lane: a solo agent records them directly; a \
          role-split validator hands the user's words to a builder). Whoever takes it declares \
          `LOOM_AGENT=llm:validator` (or stay bare `llm` for solo); its queue is \
@@ -1238,6 +1313,12 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         obj.insert("degree".to_string(), serde_json::json!(c.degree));
         obj.insert("score".to_string(), serde_json::json!(c.score));
         obj.insert("queue_depth".to_string(), serde_json::json!(candidates.len()));
+        obj.insert("visibility".to_string(), serde_json::json!(visibility));
+        obj.insert("where_it_sits".to_string(), serde_json::json!(where_it_sits));
+        obj.insert("not_to_confuse_with".to_string(), serde_json::json!({
+            "siblings": siblings,
+            "verified_independent": independent_of,
+        }));
         obj.insert("groundings".to_string(), serde_json::json!(groundings.iter().map(GroundingSurface::from).collect::<Vec<_>>()));
         obj.insert("groundings_total".to_string(), serde_json::json!(groundings_total));
         obj.insert("notes".to_string(), serde_json::json!(notes));
@@ -1262,6 +1343,11 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("  level: {}", c.intent.abstraction_level);
     println!("  description: {}", c.intent.description);
     println!("  lifecycle: {}  status: {}", c.intent.lifecycle, c.intent.status);
+    println!("  audience: {}", audience_brief);
+    println!("  sits under: {}", where_it_sits);
+    if !not_this.is_empty() {
+        println!("  not this: {}", not_this.join("; "));
+    }
     println!("  last_confirmed: {}", last_confirmed);
     println!("  churn since confirm: {} staled-claim flip(s)", c.churn_since_confirm);
     println!();

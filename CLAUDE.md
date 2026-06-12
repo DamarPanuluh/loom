@@ -377,14 +377,23 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--t
   Optional like discovery — review hardens closure, it never blocks complete.
   align = the validator's user↔intent drift queue: intents ranked by
   churn-since-confirm × centrality × staleness — code moved under a meaning the
-  user never re-affirmed. The item is an INTERVIEW move with a TRANSLATION
-  contract both ways: the description is graph-speak — never read it aloud;
-  re-express what it makes the product DO in the user's plain language, and on
-  "evolved" translate their answer back into a falsifiable description. The
-  user rules on BEHAVIOR, never on wording. Exactly one outcome lands:
-  `loom intent confirm` (still
-  right — resets the suspicion clock) / `update` (evolved) / `retire
-  --replaced-by` (superseded) / `add --lifecycle planned` (revealed gap).
+  user never re-affirmed. Intents ruled visibility=internal are NEVER served
+  (machinery isn't interview material) until a redefinition clears the ruling.
+  The item is a CONCEPT-alignment move, not a wording check: it carries
+  `visibility` (user_visible | internal | untriaged), `where_it_sits` (the
+  parent chain — why it matters), and `not_to_confuse_with` (siblings +
+  verified-independent neighbours), and the scaffold says to present what the
+  product can DO, why it matters, and the audience UP FRONT — machinery
+  presented as a product capability is how interviews go wrong. Vocabulary
+  enters only when the user asks, stumbles, or collides with the graph. The
+  description stays graph-speak source material — never read it aloud; on
+  "evolved" translate the user's answer back into a falsifiable description.
+  The user rules on BEHAVIOR, never on wording. Exactly one outcome lands:
+  `loom intent confirm` (concept still right — resets the suspicion clock) /
+  `confirm --visibility internal` (machinery — stop asking until redefined) /
+  `update --reword` (words confusing, concept right — no ripple, clock resets) /
+  `update` (concept evolved) / `retire --replaced-by` (superseded) /
+  `add --lifecycle planned` (missing concept revealed).
   Optional like discovery — the graph can't read heads; this is the human gate.
   triage = the pre-decision plane's queue (analyzer, effort high), ranked by
   combined target-intent centrality (blast radius). Two item kinds, told apart
@@ -422,13 +431,16 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--t
   No second lookup needed. LLM can act immediately.
 
 loom intent add --name --description --level [--domain] [--source ...]
-loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...]
-loom intent confirm <id>
+loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...] [--visibility user_visible|internal]
+loom intent confirm <id> [--visibility user_visible|internal]
   Ratify the meaning (status → confirmed) AND stamp a freshness note (kind=
   confirm, append-only — alignment history travels in the export). Re-confirming
   is the align loop's cheap outcome: it resets the drift-suspicion clock
-  `loom next --mode align` ranks by. Validator lane.
-loom intent update <id> [--name "<new>"] [--description "<new>"] --reason "<why>"
+  `loom next --mode align` ranks by. `--visibility internal` records the
+  audience ruling atomically with the confirm — the "this is machinery, stop
+  asking the user about it" interview outcome (out of the align queue until
+  the meaning is redefined). Validator lane.
+loom intent update <id> [--name "<new>"] [--description "<new>"] [--reword] --reason "<why>"
   EVOLUTION in place — same node, same id, full history — distinct from retire
   (supersession by a different intent). A --description change is a REDEFINITION
   and ripples ONE HOP, the semantic twin of `loom sync`: passing/independent
@@ -437,6 +449,10 @@ loom intent update <id> [--name "<new>"] [--description "<new>"] --reason "<why>
   TARGETS → needs_reverification, linked proofs → not_run (blocked keeps its
   reason). Every flip is noted with cause "intent '<name>' redefined"; the old
   wording is preserved in a decision note. --name alone is cosmetic (no ripple).
+  A redefinition also CLEARS the visibility ruling (the new meaning's audience
+  is unknown — the align interview re-triages it). --reword (requires
+  --description) = same concept, clearer words: no ripple, visibility kept,
+  but the align clock still resets ("terminology confusing, keep concept").
   Lifecycle is NOT auto-flipped — the staled IMPLEMENTS routes the honest
   question through the fix queue instead of faking a needs_change verdict.
   Builder lane.

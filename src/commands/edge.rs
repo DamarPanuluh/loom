@@ -582,6 +582,7 @@ fn default_intent(id: &str) -> Intent {
         status:            String::new(),
         aspect:            String::new(),
         tags:              Vec::new(),
+        visibility:        String::new(),
         lifecycle:         String::new(),
         created_at:        String::new(),
         updated_at:        String::new(),

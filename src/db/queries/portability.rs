@@ -23,6 +23,7 @@ fn node_props(lbl: &str) -> Vec<&'static str> {
         schema::required_node_props(lbl).iter().map(|(p, _)| *p).collect();
     if lbl == label::INTENT {
         props.push(prop::TAGS);
+        props.push(prop::VISIBILITY);
     }
     if lbl == label::CODE_FILE {
         props.push(prop::IMPORTS);
@@ -49,6 +50,7 @@ fn is_optional_prop(p: &str) -> bool {
             || x == prop::INSPECTION_EFFORT
             || x == prop::AUDIENCE
             || x == prop::TAGS
+            || x == prop::VISIBILITY
     )
 }
 

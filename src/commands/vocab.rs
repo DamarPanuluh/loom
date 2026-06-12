@@ -258,6 +258,7 @@ mod tests {
             id: "i0".into(), name: "n".into(), description: "d".into(),
             abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
             status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
+            visibility: String::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into(),
         }).unwrap();
         set_intent_tags(&db, "i0", vec!["retry".into()], "t").unwrap();

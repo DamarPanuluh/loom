@@ -221,6 +221,14 @@ pub mod prop {
     /// untagged (honest absence; tags are positive evidence only). NOT in the
     /// required-property table (additive; absent on intents from older graphs).
     pub const TAGS: &str = "tags";
+    /// Intent: who the behavior is FOR — "user_visible" (a capability the
+    /// user can see/feel) | "internal" (machinery serving other intents) |
+    /// "" (untriaged). The align interview's framing label: internal intents
+    /// are presented as machinery and EXCLUDED from the user interview until
+    /// redefined (a redefinition clears the ruling — the new meaning's
+    /// audience is unknown again). NOT in the required-property table
+    /// (additive; absent on intents from older graphs).
+    pub const VISIBILITY: &str = "visibility";
     // CodeFile
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";

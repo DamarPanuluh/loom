@@ -440,6 +440,13 @@ pub enum IntentCmd {
         /// shows the registry; unknown terms error with the full list inline.
         #[arg(long = "tag", num_args = 0..)]
         tags: Vec<String>,
+
+        /// Who the behavior is for: user_visible (a capability the user can
+        /// see/feel) | internal (machinery serving other intents). Omit when
+        /// untriaged — the align interview triages it. Internal intents are
+        /// excluded from the user interview until redefined.
+        #[arg(long, default_value = "")]
+        visibility: String,
     },
 
     /// Confirm an intent (status = confirmed) AND stamp a freshness note —
@@ -448,6 +455,13 @@ pub enum IntentCmd {
     /// `loom next --mode align` ranks by.
     Confirm {
         id: String,
+
+        /// Record the audience ruling alongside the confirmation:
+        /// `--visibility internal` is the "this is machinery, stop asking the
+        /// user about it" interview outcome (leaves the align queue until the
+        /// meaning is redefined); `user_visible` pins the opposite.
+        #[arg(long)]
+        visibility: Option<String>,
     },
 
     /// UPDATE an intent's meaning in place — design EVOLUTION (same node,
@@ -469,9 +483,20 @@ pub enum IntentCmd {
         #[arg(long)]
         name: Option<String>,
 
-        /// New meaning statement (REDEFINITION — ripples staleness one hop).
+        /// New meaning statement (REDEFINITION — ripples staleness one hop,
+        /// and clears the visibility ruling: the new meaning's audience is
+        /// unknown again). With --reword: same concept in clearer words —
+        /// no ripple, no visibility clear, but the align clock still resets.
         #[arg(long)]
         description: Option<String>,
+
+        /// The description change is a REWORDING, not a redefinition: the
+        /// concept the user confirmed stays; only the words get clearer
+        /// (the "terminology confusing, keep concept" interview outcome).
+        /// Skips the semantic ripple — use ONLY when no claim's meaning
+        /// moved; if behavior changed, that is a redefinition.
+        #[arg(long, requires = "description")]
+        reword: bool,
 
         /// Why the meaning moved (recorded as a decision note, with the
         /// previous wording preserved alongside).
