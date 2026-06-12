@@ -66,6 +66,14 @@ fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
 
 /// Run every integrity check and collect a report.
 pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
+    let query_snapshot = QuerySnapshot::load(db)?;
+    check_graph_from_snapshot(db, &query_snapshot)
+}
+
+pub fn check_graph_from_snapshot(
+    db: &dyn LoomDb,
+    query_snapshot: &QuerySnapshot,
+) -> Result<DoctorReport> {
     let mut issues = Vec::new();
     let mut hints = Vec::new();
 
@@ -130,7 +138,6 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
     let intents = list_intents(db, None, None)?;
     let hypotheses = list_hypotheses(db, None)?;
 
-    let query_snapshot = QuerySnapshot::load(db)?;
 
     // 4. Value validity for constrained fields (reliable full scans).
     let vocab_terms = super::vocab::list_vocab_terms(db)?;
