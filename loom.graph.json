@@ -1,5 +1,6 @@
 {
   "custody": "owned",
+  "domain_order": [],
   "edges": {
     "GOVERNS": [
       {
@@ -4601,6 +4602,7 @@
         "to": "66970ecc-6db7-45d1-b3ff-642b6613a0a6"
       }
     ],
+    "JOURNEYS": [],
     "RELATES_TO": [
       {
         "confidence": 0.8,
@@ -8828,6 +8830,7 @@
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
       }
     ],
+    "SERVES": [],
     "TARGETS": [
       {
         "confidence": 0.9,
@@ -78085,6 +78088,7 @@
         "text": "needs_reverification → passing"
       }
     ],
+    "Persona": [],
     "QualityRule": [
       {
         "description": "Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.",
