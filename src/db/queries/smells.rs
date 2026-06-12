@@ -62,6 +62,33 @@ pub struct Smell {
     pub remedy: String,
 }
 
+/// A finding the detector WOULD raise, suppressed by a recorded ruling — the
+/// audit trail `loom smells` shows instead of silently reporting zero. The
+/// dogfood lesson: five godfile findings vanished behind five decision notes
+/// stamped in one second, and nothing in any output said so; "no findings"
+/// and "five findings, all ruled deliberate" must never look alike.
+#[derive(Debug, Clone, Serialize)]
+pub struct AdjudicatedSmell {
+    pub kind: String,
+    /// What would have been flagged.
+    pub summary: String,
+    /// The decision note's text — the recorded "looked at it, here's the call".
+    pub ruling: String,
+    pub ruled_by: String,
+    pub ruled_at: String,
+    /// The structural change that voids this ruling and re-opens the finding.
+    pub reopens_when: String,
+}
+
+/// What the instrument actually measured: open suspicions AND the suppressed
+/// ones with their rulings. Phase gating consumes `open`; the audit surface
+/// (`loom smells`) shows both.
+#[derive(Debug, Clone, Serialize)]
+pub struct SmellReport {
+    pub open: Vec<Smell>,
+    pub adjudicated: Vec<AdjudicatedSmell>,
+}
+
 /// Jaccard similarity of two token sets (0.0 when either is empty).
 pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     if a.is_empty() || b.is_empty() {
@@ -81,14 +108,14 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
 /// returned. That is what lets `graph_state` gate phase=complete on zero
 /// findings without inviting threshold-gaming: green means every suspicion
 /// was ANSWERED, not that every heuristic is happy.
-pub fn compute_smells(db: &dyn LoomDb) -> Result<Vec<Smell>> {
+pub fn compute_smells(db: &dyn LoomDb) -> Result<SmellReport> {
     let snapshot = QuerySnapshot::load(db)?;
     compute_smells_from(db, &snapshot)
 }
 
 /// Snapshot-reusing form for callers that already hold one (`graph_state`,
 /// `loom next --all`). `db` is still needed for notes and the vocab registry.
-pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<Vec<Smell>> {
+pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<SmellReport> {
     let discovery = DiscoverySnapshot::from_query(snapshot)?;
     let intents = &snapshot.intents;
     let implements = &snapshot.implements;
@@ -125,12 +152,12 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     // here's the call" that resolves a structural finding until the structure
     // changes again underneath it (recurrent_trouble set the pattern).
     let all_notes = list_notes(db, None, None)?;
-    let mut last_decision: HashMap<&str, &str> = HashMap::new();
+    let mut last_decision: HashMap<&str, &crate::types::Note> = HashMap::new();
     for n in &all_notes {
         if n.kind == "decision" && !n.target_id.is_empty() {
-            let e = last_decision.entry(n.target_id.as_str()).or_default();
-            if n.created_at.as_str() > *e {
-                *e = &n.created_at;
+            let e = last_decision.entry(n.target_id.as_str()).or_insert(n);
+            if n.created_at > e.created_at {
+                *e = n;
             }
         }
     }
@@ -153,12 +180,15 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     let cf_id_of: HashMap<&str, &str> =
         snapshot.codefiles.iter().map(|cf| (cf.path.as_str(), cf.id.as_str())).collect();
     // Adjudicated: a decision on `target` newer than the structure's newest
-    // change at `anchor` ("" = no structural timestamp recorded).
-    let adjudicated = |target: &str, anchor: &str| -> bool {
-        last_decision.get(target).is_some_and(|d| *d > anchor)
+    // change at `anchor` ("" = no structural timestamp recorded). Returns the
+    // ruling note — suppressed findings surface WITH their ruling, never
+    // silently.
+    let adjudicated = |target: &str, anchor: &str| -> Option<&crate::types::Note> {
+        last_decision.get(target).filter(|n| n.created_at.as_str() > anchor).copied()
     };
 
     let mut smells: Vec<Smell> = Vec::new();
+    let mut adjudicated_out: Vec<AdjudicatedSmell> = Vec::new();
 
     // 1. Twin intents — split-brain in the semantic plane: two intents at the
     //    same abstraction level that read like the same responsibility, with
@@ -310,7 +340,15 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             // Adjudicated: a decision note on the intent newer than its newest
             // grounding says the spread is deliberate. A grounding added after
             // the decision re-opens the question.
-            if adjudicated(i.id.as_str(), newest_grounding.get(i.id.as_str()).copied().unwrap_or("")) {
+            if let Some(note) = adjudicated(i.id.as_str(), newest_grounding.get(i.id.as_str()).copied().unwrap_or("")) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "scattered_intent".into(),
+                    summary: format!("'{}' is grounded in {} files", i.name, files.len()),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new grounding lands on this intent".into(),
+                });
                 continue;
             }
             // Group the grounded files by directory — the mechanical clustering
@@ -360,10 +398,18 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             // Adjudicated: a decision note on the FILE newer than its newest
             // claim ("loom note add --file … --kind decision") says the
             // cohabitation is deliberate. A new claim re-opens it.
-            if adjudicated(
+            if let Some(note) = adjudicated(
                 cf_id_of.get(path).copied().unwrap_or(""),
                 newest_claim.get(path).copied().unwrap_or(""),
             ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "tangled_file".into(),
+                    summary: format!("{} serves {} distinct intents", path, distinct.len()),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new IMPLEMENTS claim lands on this file".into(),
+                });
                 continue;
             }
             let mut names: Vec<&str> = distinct.iter().filter_map(|id| name_of.get(**id).copied()).collect();
@@ -537,19 +583,27 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if count < 2 {
                 continue;
             }
-            // Addressed: a decision note recorded after the last regression.
-            if let (Some(d), Some(t)) =
-                (last_decision.get(id.as_str()), last_trouble.get(&(kind.clone(), id.clone())))
-            {
-                if *d > t.as_str() {
-                    continue;
-                }
-            }
             let label = if kind == "intent" {
                 name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
             } else {
                 edge_label.get(id.as_str()).cloned().unwrap_or_else(|| id.clone())
             };
+            // Addressed: a decision note recorded after the last regression.
+            if let (Some(d), Some(t)) =
+                (last_decision.get(id.as_str()), last_trouble.get(&(kind.clone(), id.clone())))
+            {
+                if d.created_at.as_str() > t.as_str() {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "recurrent_trouble".into(),
+                        summary: format!("'{}' has regressed {} times", label, count),
+                        ruling: d.text.clone(),
+                        ruled_by: d.author.clone(),
+                        ruled_at: d.created_at.clone(),
+                        reopens_when: "another failing/needs_change transition lands after the ruling".into(),
+                    });
+                    continue;
+                }
+            }
             smells.push(Smell {
                 kind: "recurrent_trouble".into(),
                 score: 2.0 * count as f64,
@@ -603,10 +657,18 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             // Adjudicated: a decision note on the parent newer than its newest
             // aspect-carrying child records why the missing path is N/A. A new
             // aspect-tagged child re-opens the question.
-            if adjudicated(parent_id, newest_aspect_child.get(parent_id).copied().unwrap_or("")) {
+            let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
+            if let Some(note) = adjudicated(parent_id, newest_aspect_child.get(parent_id).copied().unwrap_or("")) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "happy_path_only".into(),
+                    summary: format!("'{}' declares a happy path but no {} behavior", pname, missing.join("/")),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new aspect-tagged child lands under this intent".into(),
+                });
                 continue;
             }
-            let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
             smells.push(Smell {
                 kind: "happy_path_only".into(),
                 score: 2.0 + 2.0 * missing.len() as f64,
@@ -697,5 +759,6 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             .then_with(|| a.evidence.cmp(&b.evidence))
             .then_with(|| a.remedy.cmp(&b.remedy))
     });
-    Ok(smells)
+    adjudicated_out.sort_by(|a, b| a.ruled_at.cmp(&b.ruled_at).then_with(|| a.summary.cmp(&b.summary)));
+    Ok(SmellReport { open: smells, adjudicated: adjudicated_out })
 }

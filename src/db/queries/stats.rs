@@ -400,7 +400,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         // fix). Computed lazily: only graphs that cleared every other gate
         // pay for the O(N²) scan, and at this point every pair is linked, so
         // the pairwise detectors short-circuit.
-        let open_findings = compute_smells_from(db, &snapshot)?.len();
+        let open_findings = compute_smells_from(db, &snapshot)?.open.len();
         if open_findings > 0 {
             ("audit", format!(
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."

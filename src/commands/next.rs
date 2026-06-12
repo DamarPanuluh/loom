@@ -740,7 +740,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         snapshot.relates.iter().filter(|e| e.inspection_status == "uninspected").count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
-    let all_smells = compute_smells_from(db, &snapshot)?;
+    let all_smells = compute_smells_from(db, &snapshot)?.open;
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
 

@@ -779,9 +779,16 @@ loom smells [--limit N]
   vocab drift (two registered terms that read like the same word — remedy is
   the exact `loom vocab merge`).
   OPEN FINDINGS GATE GREEN: once every queue is dry, `graph_state` routes
-  phase=audit until `loom smells` returns zero — green means every suspicion
-  was ANSWERED (structurally fixed, or refuted via its adjudication path
-  above), never that the heuristics went quiet on their own.
+  phase=audit until `loom smells` returns zero OPEN — green means every
+  suspicion was ANSWERED (structurally fixed, or refuted via its adjudication
+  path above), never that the heuristics went quiet on their own.
+  ADJUDICATIONS STAY VISIBLE: a finding suppressed by a decision note is not
+  gone — `loom smells` prints it under `adjudicated` with the ruling (who,
+  when, why) and the exact structural change that re-opens it. "No findings"
+  and "N findings ruled deliberate" never look alike (dogfood lesson: five
+  godfile rulings batch-stamped in one second were invisible in every output).
+  Disagreeing with a ruling is overruled through the work, not the ledger:
+  `loom hypothesis add … --target <intent>` routes the redesign through triage.
   Each finding carries the exact remedy command — and the redesign-shaped ones
   (recurrent trouble, tangled files, twin merges, code-level scatter) emit
   `loom hypothesis add` so a redesign gets PROVEN before it becomes work,

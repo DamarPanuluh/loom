@@ -637,14 +637,14 @@ mod tests {
                     !scored_candidates(db, "discovery").unwrap().is_empty()
                         || !unexplored_pairs_scored(db).unwrap().is_empty(),
                     "[{step}] phase=discovery but nothing to discover"),
-                "audit" => assert!(!compute_smells(db).unwrap().is_empty(),
+                "audit" => assert!(!compute_smells(db).unwrap().open.is_empty(),
                     "[{step}] phase=audit but no open findings"),
                 "complete" => {
                     assert!(build_candidates(db).unwrap().is_empty(), "[{step}] complete with build work");
                     assert!(scored_candidates(db, "fix").unwrap().is_empty(), "[{step}] complete with fix work");
                     assert!(validate_candidates(db).unwrap().is_empty(), "[{step}] complete with validate work");
                     assert!(quality_candidates(db).unwrap().is_empty(), "[{step}] complete with quality work");
-                    assert!(compute_smells(db).unwrap().is_empty(), "[{step}] complete with open findings");
+                    assert!(compute_smells(db).unwrap().open.is_empty(), "[{step}] complete with open findings");
                 }
                 _ => {}
             }
@@ -753,7 +753,7 @@ mod tests {
         let transitions = list_notes(&db, Some(&e.id), Some("transition")).unwrap();
         assert!(transitions.len() >= 3, "every verdict change recorded: {transitions:?}");
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let rec: Vec<_> = smells.iter().filter(|s| s.kind == "recurrent_trouble").collect();
         assert_eq!(rec.len(), 1, "{smells:?}");
         assert!(rec[0].summary.contains("regressed 2 times"), "{}", rec[0].summary);
@@ -764,7 +764,7 @@ mod tests {
         decision.text = "redesigned the criterion; root cause was X".into();
         decision.created_at = "t4".into(); // after the t3 regression
         insert_note(&db, &decision).unwrap();
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         assert!(
             !smells.iter().any(|s| s.kind == "recurrent_trouble"),
             "a decision newer than the last regression must resolve the finding: {smells:?}"
@@ -773,7 +773,7 @@ mod tests {
         // …but a NEW regression after the decision re-flags it.
         fix_edge(&db, &e.id, "patched again", "llm:fixer", "t5").unwrap();
         update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence three", 0.9, "llm:analyzer", "t6").unwrap();
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         assert!(
             smells.iter().any(|s| s.kind == "recurrent_trouble"),
             "a regression after the decision must re-flag: {smells:?}"
@@ -794,7 +794,7 @@ mod tests {
         insert_implements(&db, "b", "cfb", "", "", "t").unwrap();
         update_codefile_imports(&db, "cfa", &["src/b.rs".to_string()]).unwrap();
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         assert!(smells.iter().any(|s| s.kind == "undeclared_coupling"
             && s.evidence.contains("src/a.rs → src/b.rs")), "{smells:?}");
         let pairs = unexplored_pairs_scored(&db).unwrap();
@@ -802,7 +802,7 @@ mod tests {
 
         get_or_create_relates_to(&db, "a", "b", "t").unwrap();
         update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", "", 0.9, "llm:analyzer", "t").unwrap();
-        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "undeclared_coupling"));
+        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "undeclared_coupling"));
     }
 
 
@@ -1704,7 +1704,7 @@ mod tests {
             "workspace clippy denial covers the whole subtree", 0.9, "llm:quality", "t",
         ).unwrap();
 
-        let unmeasured: Vec<_> = compute_smells(&db).unwrap()
+        let unmeasured: Vec<_> = compute_smells(&db).unwrap().open
             .into_iter()
             .filter(|s| s.kind == "unmeasured_intents")
             .collect();
@@ -1869,7 +1869,7 @@ mod tests {
         insert_intent(&db, &happy).unwrap();
         insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let found = smells.iter().find(|s| s.kind == "happy_path_only");
         assert!(found.is_some(), "{smells:?}");
         assert!(found.unwrap().summary.contains("sad/fallback"), "{:?}", found.unwrap().summary);
@@ -1882,7 +1882,7 @@ mod tests {
         fb.aspect = "fallback".into();
         insert_intent(&db, &fb).unwrap();
         insert_hierarchy(&db, &ids[0], "fb-child", "", "t").unwrap();
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
     }
 
@@ -1896,15 +1896,27 @@ mod tests {
         for (k, id) in ids.iter().take(3).enumerate() {
             insert_implements(&db, id, "cf", "fn f", "", "t1").unwrap();
         }
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "tangled_file"));
 
-        // Decision newer than every claim → adjudicated, finding closed.
+        // Decision newer than every claim → adjudicated: the finding leaves
+        // `open` but surfaces in `adjudicated` WITH its ruling — "no findings"
+        // and "findings ruled deliberate" must never look alike (dogfood: five
+        // godfiles vanished behind batch-stamped notes and nothing said so).
         insert_note(&db, &note_at("nd", "decision", "codefile", "cf", "t2")).unwrap();
-        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+        let report = compute_smells(&db).unwrap();
+        assert!(!report.open.iter().any(|s| s.kind == "tangled_file"));
+        let adj = report.adjudicated.iter().find(|a| a.kind == "tangled_file")
+            .expect("suppressed finding must surface with its ruling");
+        assert_eq!(adj.ruled_at, "t2");
+        assert!(adj.summary.contains("3 distinct intents"), "{}", adj.summary);
+        assert!(adj.reopens_when.contains("IMPLEMENTS claim"), "{}", adj.reopens_when);
 
-        // A NEW claim after the decision re-opens the question.
+        // A NEW claim after the decision re-opens the question (and the
+        // adjudication entry disappears — it no longer suppresses anything).
         insert_implements(&db, &ids[3], "cf", "fn g", "", "t3").unwrap();
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "tangled_file"));
+        let report = compute_smells(&db).unwrap();
+        assert!(report.open.iter().any(|s| s.kind == "tangled_file"));
+        assert!(!report.adjudicated.iter().any(|a| a.kind == "tangled_file"));
     }
 
     /// Adjudication terminal state for scattered_intent: a decision note on
@@ -1917,14 +1929,14 @@ mod tests {
             insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
             insert_implements(&db, &ids[0], &format!("cf{k}"), "fn f", "", "t1").unwrap();
         }
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
 
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
-        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
 
         insert_codefile(&db, &codefile("cf4", "src/f4.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf4", "fn f", "", "t3").unwrap();
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "scattered_intent"));
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
     }
 
     /// Adjudication terminal state for happy_path_only: a decision note on
@@ -1938,17 +1950,17 @@ mod tests {
         happy.created_at = "t1".into();
         insert_intent(&db, &happy).unwrap();
         insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
 
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
-        assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
+        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
 
         let mut edge_case = intent("edge-child", "login rejects malformed input");
         edge_case.aspect = "edge_case".into();
         edge_case.created_at = "t3".into();
         insert_intent(&db, &edge_case).unwrap();
         insert_hierarchy(&db, &ids[0], "edge-child", "", "t").unwrap();
-        assert!(compute_smells(&db).unwrap().iter().any(|s| s.kind == "happy_path_only"));
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
     }
 
     /// The 360° coverage vector counts every axis honestly: an axis with no
@@ -2167,7 +2179,7 @@ mod tests {
             detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
         }).unwrap();
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let kinds: Vec<&str> = smells.iter().map(|s| s.kind.as_str()).collect();
         assert!(kinds.contains(&"twin_intents"), "{kinds:?}");
         assert!(kinds.contains(&"overlapping_ownership"), "{kinds:?}");
@@ -2183,7 +2195,7 @@ mod tests {
         update_governs_verdict(&db, "r0", "o2", "independent",
             "panic-freedom criterion does not constrain beta",
             "beta duty has no execution path that can panic", 0.9, "llm:quality", "t").unwrap();
-        let kinds: Vec<String> = compute_smells(&db).unwrap().iter().map(|s| s.kind.clone()).collect();
+        let kinds: Vec<String> = compute_smells(&db).unwrap().open.iter().map(|s| s.kind.clone()).collect();
         assert!(!kinds.contains(&"twin_intents".to_string()), "{kinds:?}");
         assert!(!kinds.contains(&"overlapping_ownership".to_string()), "{kinds:?}");
         assert!(!kinds.contains(&"unmeasured_intents".to_string()), "{kinds:?}");
@@ -2378,7 +2390,7 @@ mod tests {
         insert_implements(&db, &ids[0], "f0", "", "", "t").unwrap();
         insert_implements(&db, &ids[1], "f1", "", "", "t").unwrap();
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
         assert_eq!(dup.len(), 1, "{smells:?}");
         assert!(dup[0].evidence.contains("backoff"), "{}", dup[0].evidence);
@@ -2386,7 +2398,7 @@ mod tests {
 
         // A recorded relationship silences it — the suspicion did its job.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         assert!(!smells.iter().any(|s| s.kind == "duplicated_responsibility"), "{smells:?}");
 
         // A shared file belongs to overlapping_ownership, not this detector.
@@ -2394,7 +2406,7 @@ mod tests {
         tag_intent(&db, &ids[3], &["backoff"]);
         insert_implements(&db, &ids[2], "f0", "", "", "t").unwrap();
         insert_implements(&db, &ids[3], "f0", "", "", "t").unwrap();
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let dup_pairs: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility"
             && s.remedy.contains(&ids[2]) && s.remedy.contains(&ids[3])).collect();
         assert!(dup_pairs.is_empty(), "shared-file pair must route to overlapping_ownership: {smells:?}");
@@ -2409,7 +2421,7 @@ mod tests {
         tag_intent(&db, &ids[0], &["auth"]);
         tag_intent(&db, &ids[1], &["authn"]);
 
-        let smells = compute_smells(&db).unwrap();
+        let smells = compute_smells(&db).unwrap().open;
         let drift: Vec<&Smell> = smells.iter().filter(|s| s.kind == "vocab_drift").collect();
         assert_eq!(drift.len(), 1, "{smells:?}");
         // Equal usage (1 vs 1): the tie keeps the first-ranked ('authn' here by

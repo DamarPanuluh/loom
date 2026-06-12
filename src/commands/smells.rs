@@ -3,6 +3,11 @@
 //! any role may run it. The findings route INTO the normal loop: every smell's
 //! remedy is an existing loom command sequence — and OPEN findings gate green
 //! (`graph_state` routes phase=audit until zero remain).
+//!
+//! Adjudicated findings are NOT hidden: a suppressed suspicion prints with
+//! its ruling (who, when, why, and what re-opens it). "No findings" and
+//! "five findings, all ruled deliberate" must never look alike — the second
+//! is an audit surface a human may want to overrule.
 
 use anyhow::Result;
 
@@ -15,16 +20,20 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
-    let mut smells = compute_smells(&db)?;
-    let total = smells.len();
+    let report = compute_smells(&db)?;
+    let total = report.open.len();
+    let mut smells = report.open;
     smells.truncate(limit);
+    let adjudicated = report.adjudicated;
 
     if printer.json {
         printer.print_json(&serde_json::json!({
             "total": total,
             "shown": smells.len(),
             "smells": smells,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero.",
+            "adjudicated_total": adjudicated.len(),
+            "adjudicated": adjudicated,
+            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it.",
         }));
         return Ok(());
     }
@@ -32,10 +41,13 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     println!("── loom smells (derived from graph structure — suspicions, not verdicts) ──");
     println!();
     if smells.is_empty() {
-        println!("  ✓ No open findings: no twins, no overlapping ownership, no scatter, no");
-        println!("    tangles, every rule considered against every coded intent — and every");
-        println!("    adjudicated suspicion is on record. The audit gate is green.");
-        return Ok(());
+        if adjudicated.is_empty() {
+            println!("  ✓ No open findings: no twins, no overlapping ownership, no scatter, no");
+            println!("    tangles, every rule considered against every coded intent. The audit");
+            println!("    gate is green.");
+        } else {
+            println!("  ✓ No OPEN findings — the audit gate is green.");
+        }
     }
     for s in &smells {
         println!("  [{}]  (score {:.1})", s.kind, s.score);
@@ -47,7 +59,24 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     if total > smells.len() {
         println!("  ({} more — `loom smells --limit {}`)", total - smells.len(), total);
     }
-    println!("  Resolve or refute each via its remedy — `independent`/a decision note is as");
-    println!("  valuable as a fix. Open findings gate green: phase=complete requires zero.");
+    if !adjudicated.is_empty() {
+        println!();
+        println!("── adjudicated ({}) — suppressed by recorded rulings, not by absence ──────", adjudicated.len());
+        println!();
+        for a in &adjudicated {
+            println!("  [{}]  {}", a.kind, a.summary);
+            println!("    ruling ({}, {}): {}", a.ruled_by, &a.ruled_at[..a.ruled_at.len().min(19)], a.ruling);
+            println!("    re-opens when: {}", a.reopens_when);
+            println!();
+        }
+        println!("  A ruling you disagree with is overruled through the work, not the ledger:");
+        println!("  propose the change (`loom hypothesis add … --target <intent>`) — adoption");
+        println!("  restructures the graph and the ruling's subject with it.");
+    }
+    if !smells.is_empty() {
+        println!();
+        println!("  Resolve or refute each via its remedy — `independent`/a decision note is as");
+        println!("  valuable as a fix. Open findings gate green: phase=complete requires zero.");
+    }
     Ok(())
 }
