@@ -170,6 +170,16 @@ pub enum Command {
         subcommand: VocabCmd,
     },
 
+    /// Declare the architecture's layer order — which domains sit above
+    /// which. Imports flowing UP the order (lower-layer code depending on a
+    /// higher layer) surface as `layering_violation` in `loom smells`; a
+    /// recorded relationship does not excuse direction. Domains not in the
+    /// order are exempt — declare only what you mean to enforce.
+    Domain {
+        #[command(subcommand)]
+        subcommand: DomainCmd,
+    },
+
     /// Manage user personas — named audience segments (the "as a [X]" of user
     /// stories). Personas connect to intents via inspectable SERVES edges
     /// ("does this intent actually serve this persona?") and to sagas via
@@ -806,6 +816,36 @@ pub enum VocabCmd {
         /// The term that absorbs it.
         to: String,
     },
+}
+
+// ---------------------------------------------------------------------------
+// Domain subcommands (the declared layer order)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum DomainCmd {
+    /// Declare the layer order, top layer first — REPLACES any previous
+    /// order. `loom domain order cli app storage` means cli may depend on
+    /// app and storage, app on storage, and any import pointing the other
+    /// way is a layering_violation.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom domain order cli commands queries storage")]
+    Order {
+        /// Domains, highest layer first (≥2; each holds exactly one rank).
+        #[arg(num_args = 2..)]
+        domains: Vec<String>,
+
+        /// Acting agent (defaults to $LOOM_AGENT or "llm").
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// Show the declared order with per-domain intent counts, plus the
+    /// domains in use that the order does not cover (exempt from the smell).
+    List,
+
+    /// Remove the declared order — layering_violation goes silent.
+    Clear,
 }
 
 // ---------------------------------------------------------------------------

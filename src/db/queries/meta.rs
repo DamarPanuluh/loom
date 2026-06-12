@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::db::schema::{esc, label, prop};
 use crate::db::LoomDb;
 
-use super::row::{col_map, get, str_val};
+use super::row::{col_map, get, list_val, str_val};
 
 /// Version + freshness + identity + custody of the graph, read from the
 /// LoomMeta sentinel.
@@ -106,5 +106,40 @@ pub fn set_last_synced(db: &dyn LoomDb, now: &str) -> Result<()> {
         s = prop::LAST_SYNCED,
         now = esc(now),
     ))?;
+    Ok(())
+}
+
+/// The declared domain layer order, top layer first ([] = never declared).
+/// This is the normative input `layering_violation` judges imports against:
+/// a domain earlier in the list may depend on later ones, never the reverse.
+pub fn get_domain_order(db: &dyn LoomDb) -> Result<Vec<String>> {
+    let q = format!(
+        "MATCH (m:{meta}) RETURN m.{p} AS o LIMIT 1",
+        meta = label::META,
+        p = prop::DOMAIN_ORDER,
+    );
+    let result = db.execute(&q)?;
+    let cols = col_map(&result);
+    Ok(result
+        .rows()
+        .first()
+        .map(|row| list_val(get(row, &cols, "o")))
+        .unwrap_or_default())
+}
+
+/// Declare (REPLACE) or clear (`&[]`) the domain layer order. Atomic by
+/// construction: the order is one list property on the meta sentinel —
+/// there is no partial state to corrupt.
+pub fn set_domain_order(db: &dyn LoomDb, order: &[String]) -> Result<()> {
+    let mut p = std::collections::HashMap::new();
+    p.insert("order".to_string(), super::row::list_param(order));
+    db.execute_with_params(
+        &format!(
+            "MATCH (m:{meta}) SET m.{p} = $order",
+            meta = label::META,
+            p = prop::DOMAIN_ORDER,
+        ),
+        p,
+    )?;
     Ok(())
 }

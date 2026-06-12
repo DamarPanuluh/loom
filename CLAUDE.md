@@ -27,7 +27,9 @@ id                  STRING (uuid)
 name                STRING
 description         STRING
 abstraction_level   STRING  -- "feature" | "component" | "system" | "cross_cutting"
-domain              STRING
+domain              STRING  -- free grouping label; `loom domain order` ranks
+                               domains into layers, and imports pointing UP
+                               that order surface as layering_violation
 source_refs         LIST    -- file paths (native list since schema v5)
 status              STRING  -- "proposed" | "confirmed" | "deprecated"
 created_at          STRING
@@ -731,6 +733,20 @@ loom vocab merge <from> <to>
   <from> is deleted. One sweep, nothing to re-inspect — terms are keys, not
   inspectable claims. The `vocab_drift` smell emits this command.
 
+loom domain order <top> … <bottom>
+  Declare the architecture's layer order, top layer first (builder lane;
+  REPLACES any previous order — one atomic list on the LoomMeta sentinel,
+  travels in exports and ports). This is the normative input the
+  `layering_violation` smell judges imports against: a domain earlier in the
+  order may depend on later ones, never the reverse. Domains not in the order
+  are exempt — declare only what you mean to enforce (the same positive-
+  evidence-only stance as tags).
+loom domain list
+  The declared order with per-domain intent counts, plus domains in use that
+  the order does not cover (exempt).
+loom domain clear
+  Remove the order — layering_violation goes silent.
+
 loom doctor
   Verify graph integrity against the declared schema (src/db/schema.rs):
   schema version, required-property presence, valid field values, dangling
@@ -853,7 +869,17 @@ loom smells [--limit N]
   duplicated responsibility (two same-level intents whose REGISTERED tags
   collide rarity-weighted, grounded in DISJOINT files with no import between
   them — the case every physical detector misses: same responsibility
-  implemented twice in unrelated code; untagged intents never fire it),
+  implemented twice in unrelated code; untagged intents never fire it, so
+  `loom smells` also discloses the blind spot — how many coded intents carry
+  no registered tag and are therefore invisible to this detector),
+  layering violation (code owned by a LOWER layer imports code owned by a
+  HIGHER layer per the declared `loom domain order` — direction always
+  existed in the physical plane; the declared order is what makes it
+  judgeable. A recorded RELATES_TO edge does NOT excuse direction —
+  undeclared coupling asks "is the contact declared?", this asks "does it
+  point the right way?"; undeclared domains are exempt; a kind=decision note
+  on the importing intent newer than its newest grounding records "this
+  layer may reach up" and resolves it, a new grounding re-flags),
   vocab drift (two registered terms that read like the same word — remedy is
   the exact `loom vocab merge`), and unjourneyed surface (the consumer
   plane's completeness check: a user_visible intent with real code that NO

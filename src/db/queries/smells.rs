@@ -49,8 +49,8 @@ pub const TANGLE_INTENTS: usize = 3;
 pub struct Smell {
     /// twin_intents | duplicated_responsibility | overlapping_ownership
     /// | scattered_intent | tangled_file | unmeasured_intents
-    /// | undeclared_coupling | recurrent_trouble | unused_rule
-    /// | happy_path_only | vocab_drift
+    /// | undeclared_coupling | layering_violation | recurrent_trouble
+    /// | unused_rule | happy_path_only | vocab_drift
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -551,6 +551,97 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     a, b
                 ),
             });
+        }
+    }
+
+    // 6b. Layering violation — the declared order judging the import graph:
+    //     code owned by a LOWER layer imports code owned by a HIGHER layer.
+    //     Direction always existed in the physical plane (imports are
+    //     directed); what was missing is the normative input — a violation
+    //     only exists relative to a DECLARED order (`loom domain order`,
+    //     top layer first; undeclared domains are exempt). Crucially, a
+    //     recorded RELATES_TO edge does NOT excuse direction: undeclared_
+    //     coupling asks "is the contact declared?", this asks "does the
+    //     dependency point the right way?" — independent questions.
+    {
+        let layer_rank: HashMap<String, usize> = super::meta::get_domain_order(db)?
+            .into_iter()
+            .enumerate()
+            .map(|(rank, domain)| (domain, rank))
+            .collect();
+        if !layer_rank.is_empty() {
+            let domain_of: HashMap<&str, &str> =
+                intents.iter().map(|i| (i.id.as_str(), i.domain.as_str())).collect();
+            // Ordered pair (lower importer, higher imported) → example imports.
+            let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
+            for cf in &snapshot.codefiles {
+                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
+                for target in &cf.imports {
+                    let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
+                    for a in owners_a {
+                        for b in owners_b {
+                            let (Some(&ra), Some(&rb)) = (
+                                domain_of.get(*a).and_then(|d| layer_rank.get(*d)),
+                                domain_of.get(*b).and_then(|d| layer_rank.get(*d)),
+                            ) else {
+                                continue; // undeclared domain — exempt
+                            };
+                            // Bigger rank = deeper layer; flag deep → shallow.
+                            if a == b || ra <= rb {
+                                continue;
+                            }
+                            let example = format!("{} → {}", cf.path, target);
+                            let entry =
+                                pair_files.entry((a.to_string(), b.to_string())).or_default();
+                            if !entry.contains(&example) {
+                                entry.push(example);
+                            }
+                        }
+                    }
+                }
+            }
+            for ((a, b), examples) in pair_files {
+                let (na, nb) = (
+                    name_of.get(a.as_str()).copied().unwrap_or(&a),
+                    name_of.get(b.as_str()).copied().unwrap_or(&b),
+                );
+                let (da, db_) = (
+                    domain_of.get(a.as_str()).copied().unwrap_or(""),
+                    domain_of.get(b.as_str()).copied().unwrap_or(""),
+                );
+                // Adjudicated: a decision note on the IMPORTING (lower)
+                // intent newer than its newest grounding says the
+                // up-dependency is deliberate; a new grounding re-opens it.
+                if let Some(note) =
+                    adjudicated(a.as_str(), newest_grounding.get(a.as_str()).copied().unwrap_or(""))
+                {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "layering_violation".into(),
+                        summary: format!(
+                            "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
+                        ),
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "a new grounding lands on the importing intent".into(),
+                    });
+                    continue;
+                }
+                smells.push(Smell {
+                    kind: "layering_violation".into(),
+                    score: 6.0 + examples.len() as f64,
+                    summary: format!(
+                        "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
+                    ),
+                    evidence: format!(
+                        "`loom domain order` puts '{da}' below '{db_}', but the dependency points UP: {} (a recorded relationship does not excuse direction)",
+                        examples.join(", ")
+                    ),
+                    remedy: format!(
+                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom domain order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
+                    ),
+                });
+            }
         }
     }
 

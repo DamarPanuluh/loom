@@ -2598,6 +2598,118 @@ mod tests {
         assert!(tags.is_empty(), "absent tags read as untagged, never an error");
     }
 
+    /// The declared layer order is one atomic list on the meta sentinel:
+    /// empty until declared, replaced whole, cleared with `&[]`.
+    #[test]
+    fn domain_order_round_trip_replace_and_clear() {
+        let (db, _) = db_inited(0);
+        assert!(get_domain_order(&db).unwrap().is_empty(), "fresh graph has no order");
+        set_domain_order(&db, &["cli".into(), "app".into(), "db".into()]).unwrap();
+        assert_eq!(get_domain_order(&db).unwrap(), vec!["cli", "app", "db"]);
+        set_domain_order(&db, &["ui".into(), "core".into()]).unwrap();
+        assert_eq!(get_domain_order(&db).unwrap(), vec!["ui", "core"], "order replaces whole");
+        set_domain_order(&db, &[]).unwrap();
+        assert!(get_domain_order(&db).unwrap().is_empty(), "clear empties the order");
+    }
+
+    /// Layering: an import pointing UP the declared order is flagged; down
+    /// imports, undeclared domains, and no-order graphs are silent. A recorded
+    /// RELATES_TO edge does NOT excuse direction (that is the whole point —
+    /// undeclared_coupling asks "declared?", this asks "right way?"). The
+    /// terminal state is a decision note on the importing intent newer than
+    /// its newest grounding; a new grounding re-opens.
+    #[test]
+    fn layering_violation_flags_imports_up_the_declared_order() {
+        let (db, _) = db_inited(0);
+        let mut ui = intent("ui", "panel rendering");
+        ui.domain = "presentation".into();
+        insert_intent(&db, &ui).unwrap();
+        let mut infra = intent("infra", "storage adapters");
+        infra.domain = "storage".into();
+        insert_intent(&db, &infra).unwrap();
+        let mut misc = intent("misc", "scratch tools");
+        misc.domain = "tools".into(); // never declared in the order
+        insert_intent(&db, &misc).unwrap();
+        insert_codefile(&db, &codefile("cfu", "src/ui.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfi", "src/infra.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfm", "src/misc.rs")).unwrap();
+        insert_implements(&db, "ui", "cfu", "", "", "t").unwrap();
+        insert_implements(&db, "infra", "cfi", "", "", "t").unwrap();
+        insert_implements(&db, "misc", "cfm", "", "", "t").unwrap();
+        update_codefile_imports(&db, "cfi", &["src/ui.rs".to_string()]).unwrap(); // UP
+        update_codefile_imports(&db, "cfu", &["src/infra.rs".to_string()]).unwrap(); // down
+        update_codefile_imports(&db, "cfm", &["src/ui.rs".to_string()]).unwrap(); // exempt
+
+        let lv = |r: &SmellReport| {
+            r.open.iter().filter(|s| s.kind == "layering_violation").count()
+        };
+        assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "no order declared → silent");
+
+        set_domain_order(&db, &["presentation".into(), "storage".into()]).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert_eq!(lv(&report), 1, "only the up-import is flagged: {:?}", report.open);
+        let s = report.open.iter().find(|s| s.kind == "layering_violation").unwrap();
+        assert!(s.summary.contains("'storage adapters' (storage)"), "{}", s.summary);
+        assert!(s.evidence.contains("src/infra.rs → src/ui.rs"), "{}", s.evidence);
+
+        // A recorded relationship does not excuse direction.
+        get_or_create_relates_to(&db, "infra", "ui", "t").unwrap();
+        update_relates_to_ground(&db, "infra", "ui", "criterion long enough", "", 0.9, "llm", "t")
+            .unwrap();
+        assert_eq!(lv(&compute_smells(&db).unwrap()), 1, "a RELATES_TO edge must not silence it");
+
+        // Terminal state: decision on the importing intent, newer than its
+        // newest grounding — the finding moves to the adjudicated surface.
+        insert_note(&db, &note_at("nd", "decision", "intent", "infra", "t2")).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert_eq!(lv(&report), 0, "a decision newer than the grounding resolves it");
+        assert!(
+            report.adjudicated.iter().any(|a| a.kind == "layering_violation"),
+            "suppressed finding must surface WITH its ruling: {:?}", report.adjudicated
+        );
+
+        // A new grounding on the importing intent re-opens the question.
+        insert_codefile(&db, &codefile("cfi2", "src/infra2.rs")).unwrap();
+        insert_implements(&db, "infra", "cfi2", "", "", "t3").unwrap();
+        assert_eq!(lv(&compute_smells(&db).unwrap()), 1, "a new grounding must re-open it");
+
+        set_domain_order(&db, &[]).unwrap();
+        assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "clearing the order silences it");
+    }
+
+    /// The declared order travels: in restores AND in ports (it is design,
+    /// not evidence earned against old code); absent on older exports.
+    #[test]
+    fn domain_order_travels_in_export_and_ports() {
+        let (db, _) = db_inited(1);
+        set_domain_order(&db, &["app".into(), "db".into()]).unwrap();
+        let export = export_graph(&db).unwrap();
+        assert_eq!(export["domain_order"], serde_json::json!(["app", "db"]));
+
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, false).unwrap();
+        assert_eq!(get_domain_order(&db2).unwrap(), vec!["app", "db"], "restore adopts the order");
+
+        let db3 = GrafeoDb::in_memory();
+        db3.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
+        )).unwrap();
+        import_graph(&db3, &export, true).unwrap();
+        assert_eq!(get_domain_order(&db3).unwrap(), vec!["app", "db"], "a port keeps the design");
+
+        let mut old = export.clone();
+        old.as_object_mut().unwrap().remove("domain_order");
+        let db4 = GrafeoDb::in_memory();
+        db4.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g-4", "four", "owned",
+        )).unwrap();
+        import_graph(&db4, &old, false).unwrap();
+        assert!(get_domain_order(&db4).unwrap().is_empty(), "older exports read as no order");
+    }
+
     #[test]
     fn doctor_flags_unregistered_and_spammed_tags() {
         let (db, ids) = db_inited(2);

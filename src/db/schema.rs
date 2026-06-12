@@ -324,6 +324,13 @@ pub mod prop {
     /// "owned" (we can change this code) | "observed" (mapping someone else's
     /// code: build/fix lanes are disabled — findings, not fixes).
     pub const CUSTODY: &str = "custody";
+    /// LoomMeta: the declared domain layer order, top layer first (native
+    /// list; absent/empty = no order declared). The normative input the
+    /// `layering_violation` smell judges the import graph against — imports
+    /// are directed facts, but a violation only exists relative to a declared
+    /// order. Additive — NOT in the required-property table (absent on older
+    /// graphs; travels in exports as a top-level field).
+    pub const DOMAIN_ORDER: &str = "domain_order";
 }
 
 // ---------------------------------------------------------------------------

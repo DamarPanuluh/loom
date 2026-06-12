@@ -8,6 +8,7 @@ pub mod codefile;
 pub mod coverage;
 pub mod delegate;
 pub mod detect;
+pub mod domain;
 pub mod door;
 pub mod doctor;
 pub mod export;
@@ -60,6 +61,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),
+        Command::Domain      { subcommand } => domain::run(subcommand, &printer),
         Command::Persona     { subcommand } => persona::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id, all, timeout_secs } => match (intent_id, all) {

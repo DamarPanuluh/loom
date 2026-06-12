@@ -65,6 +65,8 @@ fn endpoints(etype: &str) -> (&'static str, &'static str) {
         edge::GOVERNS => (label::QUALITY_RULE, label::INTENT),
         edge::VALIDATES => (label::VALIDATION, label::INTENT),
         edge::TARGETS => (label::HYPOTHESIS, label::INTENT),
+        edge::SERVES => (label::PERSONA, label::INTENT),
+        edge::JOURNEYS => (label::PERSONA, label::VALIDATION),
         _ => (label::INTENT, label::INTENT), // RELATES_TO, HIERARCHY
     }
 }
@@ -219,6 +221,7 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
         "graph_id": gid,
         "graph_name": gname,
         "custody": custody,
+        "domain_order": super::meta::get_domain_order(db)?,
         "nodes": nodes,
         "edges": edges,
     }))
@@ -496,6 +499,17 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             data.get("graph_name").and_then(J::as_str).unwrap_or(""),
             data.get("custody").and_then(J::as_str).unwrap_or("owned"),
         )?;
+    }
+    // The declared layer order travels — it is DESIGN (a claim about the
+    // architecture), not evidence earned against the old code, so a PORT
+    // keeps it too. Absent on older exports (additive) → no order declared.
+    let domain_order: Vec<String> = data
+        .get("domain_order")
+        .and_then(J::as_array)
+        .map(|a| a.iter().filter_map(J::as_str).map(str::to_string).collect())
+        .unwrap_or_default();
+    if !domain_order.is_empty() {
+        super::meta::set_domain_order(db, &domain_order)?;
     }
     for s in &stmts {
         db.execute(s)?;
