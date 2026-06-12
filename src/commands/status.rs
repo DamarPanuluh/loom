@@ -48,6 +48,21 @@ pub fn run(printer: &Printer) -> Result<()> {
     // deliberately don't serve (structural IMPLEMENTS, blocked proofs) — name
     // them, so `uninspected_edges: 1, unresolved_edges: 0` reconciles itself.
     let outside = crate::db::queries::uninspected_outside_queues(&db)?;
+    // The oscillation summary — what needs the USER, computed the same way
+    // `loom next --all` gates its queues: align drift suspects (the graph
+    // cannot read heads), supported hypotheses awaiting the adopt/reject
+    // ruling, and blocked proofs (an external prerequisite someone must
+    // provide). The agent drains everything else alone; these get batched
+    // into one agenda for the next conversation window.
+    let align_count = crate::db::queries::align_candidates(&db)?.len() as i64;
+    let prove = crate::db::queries::prove_candidates(&db)?;
+    let in_prove: std::collections::HashSet<&str> =
+        prove.iter().map(|(h, _)| h.id.as_str()).collect();
+    let adopt_count = crate::db::queries::list_hypotheses(&db, Some("supported"))?
+        .iter()
+        .filter(|h| !in_prove.contains(h.id.as_str()))
+        .count() as i64;
+    let human_gated = align_count + adopt_count + outside.blocked_validations;
     // The travel format must move WITH graph changes — surface drift in-band
     // (status is an orientation command; the agent reads this, no repo
     // plumbing required). "fresh" | "stale" | "absent".
@@ -67,6 +82,15 @@ pub fn run(printer: &Printer) -> Result<()> {
                 serde_json::to_value(&outside)?,
             );
             obj.insert("committed_export".to_string(), serde_json::json!(export_freshness));
+            obj.insert("human_gated".to_string(), serde_json::json!({
+                "total": human_gated,
+                "align_drift_suspects": align_count,
+                "adopt_rulings": adopt_count,
+                "blocked_validations": outside.blocked_validations,
+                "note": if human_gated > 0 {
+                    "These need the USER. Drain autonomous queues now; batch these into ONE agenda for the next conversation window (`loom next --all` tags each queue's gate)."
+                } else { "" },
+            }));
             if export_freshness == "stale" {
                 obj.insert(
                     "committed_export_action".to_string(),
@@ -84,6 +108,12 @@ pub fn run(printer: &Printer) -> Result<()> {
                 "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons).",
                 outside.implements + outside.blocked_validations,
                 outside.implements, outside.blocked_validations
+            );
+        }
+        if human_gated > 0 {
+            println!(
+                "  ⚑ {human_gated} item(s) need the user: {align_count} align drift suspect(s), {adopt_count} adopt ruling(s), {} blocked proof(s). Batch them into one agenda; drain autonomous queues meanwhile (`loom next --all` tags each queue's gate).",
+                outside.blocked_validations
             );
         }
         if export_freshness == "stale" {

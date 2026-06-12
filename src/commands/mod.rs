@@ -8,6 +8,7 @@ pub mod codefile;
 pub mod coverage;
 pub mod delegate;
 pub mod detect;
+pub mod door;
 pub mod doctor;
 pub mod export;
 pub mod find;
@@ -71,6 +72,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
+        Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
         Command::Smells      { limit }      => smells::run(limit, &printer),
         Command::Coverage                   => coverage::run(&printer),
@@ -226,6 +228,7 @@ fn orient(printer: &Printer) -> Result<()> {
                 "loom next       — get the next thing to inspect",
                 "loom next --all — the closeout view: every role queue + gaps in one list",
                 "loom find <q>   — ask the map: keyword search over intents (with groundings)",
+                "loom door \"<utterance>\" — route a user statement to its landing (matches + landing menu)",
                 "loom sync       — run after ANY code change (flags stale edges/verdicts/proofs)",
                 "loom export --check — fail if the committed graph export went stale",
             ],
@@ -241,6 +244,7 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("  loom next        get the next thing to inspect");
         println!("  loom next --all  closeout: every role queue + gaps in one list");
         println!("  loom find <q>    ask the map: keyword search over intents");
+        println!("  loom door \"…\"   user said something? route it to its landing");
         println!("  loom sync        run after ANY code change");
         println!();
         println!("Every command has --help; add --json for machine-readable output.");

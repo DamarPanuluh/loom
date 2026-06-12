@@ -1536,11 +1536,11 @@ mod tests {
         assert_eq!(list_hypotheses(&db, Some("proposed")).unwrap().len(), 0);
     }
 
-    /// The triage queue serves only PROPOSED hypotheses, highest combined
+    /// The prove queue serves only PROPOSED hypotheses, highest combined
     /// target-centrality (blast radius) first; proven/decided ones leave the
     /// queue. An untargeted proposal still surfaces, last.
     #[test]
-    fn triage_ranks_proposed_hypotheses_by_target_centrality() {
+    fn prove_queue_ranks_proposed_hypotheses_by_target_centrality() {
         let (db, ids) = db_with_intents(4);
         // Make intent 0 central: real RELATES_TO edges to the other three.
         for j in 1..4 {
@@ -1557,25 +1557,25 @@ mod tests {
         insert_targets(&db, "h-leaf", &ids[3], "t").unwrap();
         insert_hypothesis(&db, &hypothesis("h-untargeted", "floats free")).unwrap();
 
-        let q = triage_candidates(&db).unwrap();
+        let q = prove_candidates(&db).unwrap();
         assert_eq!(q.len(), 3);
         assert_eq!(q[0].0.id, "h-central", "hub-targeting proposal first: {q:?}");
         assert!(q[0].1 > q[1].1);
         assert_eq!(q[2].0.id, "h-untargeted", "untargeted still surfaces, last");
 
-        // A proven hypothesis leaves the triage queue.
+        // A proven hypothesis leaves the prove queue.
         update_hypothesis_verdict(&db, "h-central", "supported", "checked: the hub is real", "llm:analyzer", "t3").unwrap();
-        let q = triage_candidates(&db).unwrap();
+        let q = prove_candidates(&db).unwrap();
         assert_eq!(q.len(), 2);
         assert!(q.iter().all(|(h, _)| h.status == "proposed"));
     }
 
     /// The v3 staleness loop: sync flips passing TARGETS edges when target
-    /// code changes, the triage queue then serves the supported hypothesis as
+    /// code changes, the prove queue then serves the supported hypothesis as
     /// a RE-PROVE item (its support was earned against old code), and
     /// re-proving re-stamps the edges, clearing the staleness.
     #[test]
-    fn stale_target_support_routes_back_to_triage() {
+    fn stale_target_support_routes_back_to_prove_queue() {
         let (db, ids) = db_with_intents(2);
         insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
         insert_targets(&db, "h0", &ids[0], "t").unwrap();
@@ -1587,7 +1587,7 @@ mod tests {
             "hypothesis proof establishes whether this target is affected",
             "checked against the code", "llm:analyzer", "t1",
         ).unwrap();
-        assert!(triage_candidates(&db).unwrap().is_empty(), "fresh support is not triage work");
+        assert!(prove_candidates(&db).unwrap().is_empty(), "fresh support is not prove-queue work");
 
         // Target code changes — the ripple flips the passing TARGETS edge.
         let flipped = targets::flag_targets_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
@@ -1596,7 +1596,7 @@ mod tests {
         assert_eq!(ts[0].inspection_status, "needs_reverification");
 
         // Stale support routes back: the supported hypothesis is due again.
-        let q = triage_candidates(&db).unwrap();
+        let q = prove_candidates(&db).unwrap();
         assert_eq!(q.len(), 1);
         assert_eq!(q[0].0.status, "supported");
 
@@ -1607,7 +1607,7 @@ mod tests {
             "hypothesis proof establishes whether this target is affected",
             "still holds after the change", "llm:analyzer", "t3",
         ).unwrap();
-        assert!(triage_candidates(&db).unwrap().is_empty());
+        assert!(prove_candidates(&db).unwrap().is_empty());
     }
 
     /// The hypothesis plane travels with the export, and exports from OLDER
@@ -1959,6 +1959,81 @@ mod tests {
         insert_intent(&db, &edge_case).unwrap();
         insert_hierarchy(&db, &ids[0], "edge-child", "", "t").unwrap();
         assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
+    }
+
+    /// The consumer plane's completeness check (unjourneyed_surface), both
+    /// regimes: zero sagas → ONE aggregate finding on the root, adjudicated by
+    /// a decision note there; ≥1 saga → per-intent findings with tree-aware
+    /// coverage (a journeyed sibling never covers its sibling), adjudicated
+    /// per intent, re-opened by a redefinition. Untriaged visibility never
+    /// fires — the smell is what makes the user_visible ruling load-bearing.
+    #[test]
+    fn unjourneyed_surface_flags_aggregate_then_per_intent() {
+        use crate::types::Validation;
+        let (db, ids) = db_inited(3);
+        insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
+        insert_hierarchy(&db, &ids[0], &ids[2], "", "t").unwrap();
+        insert_codefile(&db, &codefile("cf1", "src/f1.rs")).unwrap();
+        insert_codefile(&db, &codefile("cf2", "src/f2.rs")).unwrap();
+        insert_implements(&db, &ids[1], "cf1", "fn a", "", "t").unwrap();
+        insert_implements(&db, &ids[2], "cf2", "fn b", "", "t").unwrap();
+
+        // Untriaged visibility → silent.
+        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "unjourneyed_surface"));
+
+        set_intent_visibility(&db, &ids[1], "user_visible", "t1").unwrap();
+        set_intent_visibility(&db, &ids[2], "user_visible", "t1").unwrap();
+
+        // Zero sagas → exactly ONE aggregate finding, targeting the root.
+        let smells = compute_smells(&db).unwrap().open;
+        let uj: Vec<&Smell> = smells.iter().filter(|s| s.kind == "unjourneyed_surface").collect();
+        assert_eq!(uj.len(), 1, "{smells:?}");
+        assert!(uj[0].summary.contains("no consumer journey"), "{}", uj[0].summary);
+        assert!(uj[0].remedy.contains(&ids[0]), "aggregate remedy targets the root: {}", uj[0].remedy);
+
+        // A decision note on the root (newer than the newest user_visible
+        // intent) adjudicates the aggregate — visible WITH its ruling.
+        insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t8")).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(!report.open.iter().any(|s| s.kind == "unjourneyed_surface"));
+        assert!(report.adjudicated.iter().any(|a| a.kind == "unjourneyed_surface"));
+
+        // A saga arrives → per-intent regime. It journeys ids[1] only: ids[1]
+        // is covered (direct), ids[0] via ancestor roll-up, ids[2] — the
+        // unjourneyed SIBLING — fires individually.
+        insert_validation(&db, &Validation {
+            id: "sg0".into(), name: "first journey".into(), description: String::new(),
+            validation_type: "saga".into(), command: "loom saga run j.yaml".into(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "sg0", &ids[1], "", "t2").unwrap();
+        let smells = compute_smells(&db).unwrap().open;
+        let uj: Vec<&Smell> = smells.iter().filter(|s| s.kind == "unjourneyed_surface").collect();
+        assert_eq!(uj.len(), 1, "{smells:?}");
+        assert!(uj[0].summary.contains("I2"), "{}", uj[0].summary);
+
+        // A decision note on the intent (newer than its updated_at) adjudicates.
+        insert_note(&db, &note_at("nd2", "decision", "intent", &ids[2], "t9")).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(!report.open.iter().any(|s| s.kind == "unjourneyed_surface"));
+        assert!(report.adjudicated.iter().any(|a| a.kind == "unjourneyed_surface"
+            && a.summary.contains("I2")));
+
+        // A redefinition after the ruling re-opens the question.
+        assert!(update_intent_meaning(&db, &ids[2], None, Some("checkout now also handles refunds"), "t9b").unwrap());
+        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "unjourneyed_surface"));
+    }
+
+    /// `try_resolve_intent` is the spawn guard for the journey-first saga
+    /// entrance: Ok(None) ONLY when nothing matches; an ambiguous fragment is
+    /// still an error (spawning on ambiguity would mint a twin).
+    #[test]
+    fn try_resolve_distinguishes_missing_from_ambiguous() {
+        let (db, _) = db_with_intents(2); // names I0, I1 — fragment "I" is ambiguous
+        assert_eq!(try_resolve_intent(&db, "no-such-intent").unwrap(), None);
+        assert_eq!(try_resolve_intent(&db, "I0").unwrap(), Some("intent-0".to_string()));
+        let err = try_resolve_intent(&db, "I").unwrap_err().to_string();
+        assert!(err.contains("ambiguous"), "got: {err}");
     }
 
     /// The 360° coverage vector counts every axis honestly: an axis with no

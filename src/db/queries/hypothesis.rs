@@ -99,7 +99,7 @@ pub fn list_hypotheses(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Hypo
     Ok(hs)
 }
 
-/// `loom next --mode triage`: hypotheses needing analyzer attention, ranked by
+/// `loom next --mode prove`: hypotheses needing analyzer attention, ranked by
 /// the combined centrality of their target intents — the blast radius of the
 /// proposal. Two kinds of item, distinguished by the hypothesis status:
 ///   proposed  → never proven: prove it.
@@ -107,8 +107,8 @@ pub fn list_hypotheses(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Hypo
 ///               to needs_reverification because target code changed — the
 ///               evidence is about old code, re-prove or refute.
 /// An untargeted proposal still surfaces (base score 1.0), just last.
-/// Optional work like discovery/review: triage never blocks `phase=complete`.
-pub fn triage_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
+/// Optional work like discovery/review: proving never blocks `phase=complete`.
+pub fn prove_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
     let hs = list_hypotheses(db, None)?;
     if hs.is_empty() {
         return Ok(Vec::new());

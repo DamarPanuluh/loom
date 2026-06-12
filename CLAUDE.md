@@ -266,7 +266,7 @@ loom sync detects content change (content_hash differs; mtime is only the
 → VALIDATES edges on those intents → Validation.last_result = not_run
   (blocked validations are NOT flipped — a code change doesn't unblock them)
 → Passing TARGETS edges on hypotheses aimed at those intents → needs_reverification
-  (hypothesis support was earned against the old target code — the triage
+  (hypothesis support was earned against the old target code — the prove
    queue serves the supported hypothesis as a RE-PROVE item; re-proving
    re-stamps the edges)
 (IMPLEMENTS edges are structural assertions, used as the index — not flipped.
@@ -358,6 +358,10 @@ loom status
   reconciles with `unresolved_edges`. Coverage math is an identity:
   explored_pairs.total = covered + pending(uninspected/stale pairs) +
   unexplored_pairs (all over ACTIVE intents).
+  `human_gated` (json; ⚑ line in human mode) is the oscillation summary —
+  align drift suspects + supported hypotheses awaiting the adopt/reject
+  ruling + blocked proofs: what needs the USER, so the agent drains the
+  autonomous queues alone and batches these into one conversation agenda.
 
 loom sync [path]
   THE PROGRAMMATIC FLAG ENGINE.
@@ -371,12 +375,19 @@ loom sync [path]
 
 loom next --all
   THE CLOSEOUT VIEW: every role queue at once — counts + top item per queue
-  (build/fix/ground/validate/quality/discovery, in handoff order), vertical-
-  completeness gaps, doctor health, and top smells, as ONE prioritized list.
-  The single operational answer to "what's left?" — no reconciling five
-  commands by hand. Discovery is flagged optional (horizontal axis).
+  (build/fix/ground/validate/quality/review/prove/adopt/align/discovery, in
+  handoff order), vertical-completeness gaps, doctor health, and top smells,
+  as ONE prioritized list. The single operational answer to "what's left?" —
+  no reconciling five commands by hand. Discovery is flagged optional
+  (horizontal axis). EVERY QUEUE CARRIES A GATE: `autonomous` (an agent
+  drains it alone) or `human` (needs the user — align drift suspects, the
+  adopt/reject ruling on a supported hypothesis). The gate makes the
+  interactive↔autonomous oscillation plannable: drain autonomous queues now,
+  BATCH human-gated items into ONE agenda for the next conversation window
+  (`human_gated` total in json; ⚑ lines in human mode; `loom status` carries
+  the same summary plus blocked proofs).
 
-loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--take N] [--compact]
+loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--take N] [--compact]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -410,7 +421,7 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--t
   `update` (concept evolved) / `retire --replaced-by` (superseded) /
   `add --lifecycle planned` (missing concept revealed).
   Optional like discovery — the graph can't read heads; this is the human gate.
-  triage = the pre-decision plane's queue (analyzer, effort high), ranked by
+  prove = the pre-decision plane's queue (analyzer, effort high), ranked by
   combined target-intent centrality (blast radius). Two item kinds, told apart
   by status: proposed = never proven (prove it) · supported with stale TARGETS
   = its support was earned against since-changed target code (re-prove or
@@ -553,7 +564,7 @@ loom validate <intent-id> | --all
   proofs at once. Settled verdicts (passed/failed) are not re-run; blocked
   proofs keep their recorded reason and stay out.
 
-loom saga add <spec.yaml>
+loom saga add <spec.yaml> [--spawn-missing [--under <parent>]]
 loom saga run <name|spec.yaml>
 loom saga list
   THE CONSUMER PLANE: an external-consumer proof — an ordered chain of endpoint
@@ -564,6 +575,13 @@ loom saga list
   Engine is built in and pure Rust (reqwest/rustls + RFC 9535 JSONPath — no
   libcurl); deliberately a saga executor, NOT a general HTTP test tool
   (anything fancier = an ordinary command-based Validation).
+  JOURNEY-FIRST (the bidirectional intent↔story entrance): with
+  --spawn-missing, a step may name an intent that doesn't exist yet — it is
+  spawned as a planned, user_visible FEATURE (the narrated journey IS the
+  design; the build queue realizes it and the saga is its acceptance test).
+  --under <parent> hierarchy-links the spawns (keeps the tree, no minted
+  roots). Ambiguous bindings still fail — spawning on ambiguity would mint a
+  twin; only ZERO-candidate bindings spawn. Builder lane; owned graphs only.
   Saga specs are trusted repo artifacts: `run` executes the declared HTTP
   calls, allows any `http(s)` target (including localhost), and follows
   reqwest's default redirect policy (up to 10 redirects). Guardrails are size
@@ -765,6 +783,26 @@ loom find <query> [--limit N]
   stemming by design — the calling LLM reformulates. A miss distinguishes
   "not mapped" (points at `loom coverage`) from "doesn't exist".
 
+loom door "<utterance>" [--limit N]
+  THE ENTRANCE — progressive disclosure at turn zero: route a USER UTTERANCE
+  to its landing. Loom never interprets (pure computation in the tool,
+  judgment in the LLM): it assembles the routing context mechanically — what
+  every plane already knows about the topic (intents by BM25 = `loom find`,
+  vocab/sagas/rules by token overlap), the compass pulse, and the LANDING
+  MENU: the total enumeration of ways an utterance becomes a graph noun, each
+  an existing command (new behavior → intent add planned · story → saga
+  [--spawn-missing] · complaint → mark needs_change · redesign → hypothesis
+  add · norm → rule add · term → vocab add · meaning shift → intent update ·
+  ruling/declined scope → decision note · question → answer from matches,
+  nothing lands · "go work" → status/next). Two contracts keep the corridor
+  clear: TOTALITY (no good landing = a menu bug, not a user problem) and THE
+  DOOR ADVISES, NEVER BLOCKS (state lives in the graph, not the conversation —
+  any noun lands at any time; queues re-derive, the compass re-sorts; there is
+  no wrong moment to say anything). Discipline: ONE landing per utterance,
+  landed before the next question; before going autonomous, sweep — every
+  conversational fragment must have landed (conversation residue is the
+  failure mode).
+
 loom hotspots [--limit N]
   Structural importance (graph centrality, NOT runtime profiling): most-central
   intents (blast radius) and most-tangled files (most intents in one file).
@@ -797,9 +835,18 @@ loom smells [--limit N]
   duplicated responsibility (two same-level intents whose REGISTERED tags
   collide rarity-weighted, grounded in DISJOINT files with no import between
   them — the case every physical detector misses: same responsibility
-  implemented twice in unrelated code; untagged intents never fire it), and
+  implemented twice in unrelated code; untagged intents never fire it),
   vocab drift (two registered terms that read like the same word — remedy is
-  the exact `loom vocab merge`).
+  the exact `loom vocab merge`), and unjourneyed surface (the consumer
+  plane's completeness check: a user_visible intent with real code that NO
+  saga exercises end-to-end — what makes the visibility ruling load-bearing
+  outside the align interview. Two regimes so a journey-less repo isn't
+  flooded: zero sagas → ONE aggregate finding on the root, adjudicated by a
+  decision note there, re-opened by a new user_visible intent; ≥1 saga →
+  per-intent findings with tree-aware coverage — a step bound at component
+  altitude covers the features the journey runs through, a journeyed leaf
+  covers its ancestors, unjourneyed SIBLINGS still fire; a decision note on
+  the intent resolves, a redefinition re-opens).
   OPEN FINDINGS GATE GREEN: once every queue is dry, `graph_state` routes
   phase=audit until `loom smells` returns zero OPEN — green means every
   suspicion was ANSWERED (structurally fixed, or refuted via its adjudication
@@ -810,7 +857,7 @@ loom smells [--limit N]
   and "N findings ruled deliberate" never look alike (dogfood lesson: five
   godfile rulings batch-stamped in one second were invisible in every output).
   Disagreeing with a ruling is overruled through the work, not the ledger:
-  `loom hypothesis add … --target <intent>` routes the redesign through triage.
+  `loom hypothesis add … --target <intent>` routes the redesign through prove.
   Each finding carries the exact remedy command — and the redesign-shaped ones
   (recurrent trouble, tangled files, twin merges, code-level scatter) emit
   `loom hypothesis add` so a redesign gets PROVEN before it becomes work,
@@ -1073,6 +1120,7 @@ src/
     ├── guide.rs          loom guide
     ├── schema.rs         loom schema
     ├── find.rs           loom find (ask the map)
+    ├── door.rs           loom door (the entrance: utterance → matches + landing menu)
     ├── hotspots.rs       loom hotspots
     ├── coverage.rs       loom coverage
     ├── detect.rs         loom detect

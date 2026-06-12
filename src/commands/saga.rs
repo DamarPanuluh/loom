@@ -20,9 +20,10 @@ use uuid::Uuid;
 
 use crate::cli::SagaCmd;
 use crate::db::queries::{
-    get_codefile_by_id_or_path, get_or_create_relates_to, get_validation, insert_codefile,
-    insert_validates, insert_validation, list_all_validates, list_validations, resolve_intent,
-    resolve_validation, set_validates_status_for_validation, stamp_relates_to_runtime,
+    get_codefile_by_id_or_path, get_intent, get_or_create_relates_to, get_validation,
+    insert_codefile, insert_hierarchy, insert_intent, insert_validates, insert_validation,
+    list_all_validates, list_validations, resolve_intent, resolve_validation,
+    set_validates_status_for_validation, stamp_relates_to_runtime, try_resolve_intent,
     update_validation_result,
 };
 use crate::db::schema::role;
@@ -30,11 +31,12 @@ use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 use crate::saga::spec::{load_spec_file, SagaSpec};
 use crate::saga::{run_saga, SagaRunReport};
-use crate::types::{CodeFile, Validation};
+use crate::types::{CodeFile, Intent, Validation};
 
 pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
     match cmd {
-        SagaCmd::Add { file } => add(&file, printer),
+        SagaCmd::Add { file, spawn_missing, under } =>
+            add(&file, spawn_missing, under.as_deref(), printer),
         SagaCmd::Run { saga } => execute(&saga, printer),
         SagaCmd::List => list(printer),
     }
@@ -44,7 +46,7 @@ pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
 // add — declare the proof
 // ---------------------------------------------------------------------------
 
-fn add(file: &str, printer: &Printer) -> Result<()> {
+fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) -> Result<()> {
     crate::gate::acting_in_lane(
         "register a saga proof",
         &[role::BUILDER, role::VALIDATOR],
@@ -54,21 +56,39 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
+    if spawn_missing {
+        // Spawning intents is graph CONSTRUCTION, not proof declaration —
+        // builder lane, and a promise to build code, so owned graphs only.
+        crate::gate::acting_in_lane(
+            "spawn planned intents from a journey",
+            &[role::BUILDER],
+            None,
+        )?;
+        crate::db::queries::ensure_owned(
+            &db, "spawn planned intents from a journey (a promise to build the code)",
+        )?;
+    }
+    // Resolve the spawn parent up front — a bad --under fails before anything lands.
+    let parent_id = under.map(|u| resolve_intent(&db, u)).transpose()?;
+
     let rel = relative_to_root(file, &cwd)?;
     let spec = load_spec_file(&cwd.join(&rel))?;
 
-    // Resolve every step's intent binding up front — a typo fails the add,
-    // not a run three weeks later.
-    let step_intents = resolve_step_intents(&db, &spec)?;
-
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Atomic declaration: the Validation, its VALIDATES links, the path
-    // edges, and the spec's CodeFile registration land together — a saga
-    // half-declared (proof node without its path) would mislead the compass.
+    // Atomic declaration: the resolution (and any journey-first spawns), the
+    // Validation, its VALIDATES links, the path edges, and the spec's
+    // CodeFile registration land together — a saga half-declared (proof node
+    // without its path, or spawned intents without their saga) would mislead
+    // the compass.
     let required_env = crate::saga::spec::required_env(&spec);
-    let (validation_id, created, linked, path_edges, registered_spec) =
+    let (validation_id, created, linked, path_edges, registered_spec, step_intents, spawned) =
         crate::db::with_transaction(&db, || {
+    // Resolve every step's intent binding first — a typo fails the add, not a
+    // run three weeks later. With --spawn-missing, an unmatched binding spawns
+    // a planned feature instead (ambiguity still fails: never mint a twin).
+    let (step_intents, spawned) =
+        resolve_step_intents(&db, &spec, spawn_missing, parent_id.as_deref(), &now)?;
     // The Validation node, keyed by the saga's name. Re-adding reconciles.
     let existing = list_validations(&db)?
         .into_iter()
@@ -166,10 +186,18 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
         })?;
         registered_spec = true;
     }
-    Ok((validation_id, created, linked, path_edges, registered_spec))
+    Ok((validation_id, created, linked, path_edges, registered_spec, step_intents, spawned))
     })?;
 
     if printer.json {
+        let mut next_steps = Vec::new();
+        if !spawned.is_empty() {
+            next_steps.push(format!(
+                "{} planned intent(s) spawned from the journey — `loom next --mode build` realizes them (the saga is their acceptance test).",
+                spawned.len()
+            ));
+        }
+        next_steps.push(format!("Run it: `{}`.", run_invocation(&spec.saga, &required_env)));
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "saga": spec.saga,
@@ -180,11 +208,14 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
             "intents": step_intents.iter().map(|(id, name)| serde_json::json!({
                 "id": id, "name": name,
             })).collect::<Vec<_>>(),
+            "spawned_intents": spawned.iter().map(|(id, name)| serde_json::json!({
+                "id": id, "name": name, "lifecycle": "planned", "visibility": "user_visible",
+            })).collect::<Vec<_>>(),
             "validates_linked": linked,
             "path_edges_ensured": path_edges,
             "spec_registered_as_codefile": registered_spec,
             "requires_env": required_env,
-            "next_steps": [format!("Run it: `{}`.", run_invocation(&spec.saga, &required_env))],
+            "next_steps": next_steps,
         }));
     } else {
         println!(
@@ -195,6 +226,15 @@ fn add(file: &str, printer: &Printer) -> Result<()> {
         );
         for (i, (_, name)) in step_intents.iter().enumerate() {
             println!("  {}. {} → intent '{}'", i + 1, spec.steps[i].name, name);
+        }
+        if !spawned.is_empty() {
+            println!("  Spawned from the journey (planned, user_visible — the build queue realizes them):");
+            for (id, name) in &spawned {
+                println!("    + '{}' ({})", name, id);
+            }
+            if under.is_none() {
+                println!("    ⚠ spawned as roots — link them: `loom edge hierarchy <parent> <child>`");
+            }
         }
         println!("  VALIDATES edges added: {linked} · path RELATES_TO ensured: {path_edges}");
         if registered_spec {
@@ -260,7 +300,9 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
             "Saga '{}' is not registered in the graph yet. Run `loom saga add {rel}` first.",
             spec.saga
         ))?;
-    let step_intents = resolve_step_intents(&db, &spec)?;
+    // The RUN path never spawns: an unmatched binding here means the graph
+    // changed under the spec — re-register via `loom saga add`.
+    let (step_intents, _) = resolve_step_intents(&db, &spec, false, None, "")?;
 
     // Pre-flight: a saga consumes a LIVE target, and its `{{ env.X }}` values
     // arrive at invocation. Missing values are an ENVIRONMENT problem, not a
@@ -467,26 +509,84 @@ fn list(printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 /// Resolve each step's `intent:` binding to (intent_id, intent_name), in step
-/// order. Fails on the first unknown/ambiguous binding, naming the step.
+/// order. Fails on the first unknown/ambiguous binding, naming the step —
+/// unless `spawn_missing`, where an UNMATCHED binding (zero candidates; an
+/// ambiguous one still fails — spawning on ambiguity would mint a twin)
+/// becomes a planned, user_visible feature intent: the journey-first
+/// entrance, where the narrated story IS the design and the build queue
+/// realizes it. Returns (step bindings, spawned (id, name) pairs).
 fn resolve_step_intents(
     db: &GrafeoDb,
     spec: &SagaSpec,
-) -> Result<Vec<(String, String)>> {
+    spawn_missing: bool,
+    parent_id: Option<&str>,
+    now: &str,
+) -> Result<(Vec<(String, String)>, Vec<(String, String)>)> {
     let mut out = Vec::with_capacity(spec.steps.len());
+    let mut spawned: Vec<(String, String)> = Vec::new();
     for (i, step) in spec.steps.iter().enumerate() {
-        let iid = resolve_intent(db, &step.intent).with_context(|| {
-            format!(
-                "step {} ('{}'): cannot resolve intent '{}' — every step must bind to an existing intent \
-                 (create it first: `loom intent add`)",
-                i + 1, step.name, step.intent
-            )
+        let key = step.intent.trim();
+        if key.is_empty() {
+            anyhow::bail!(
+                "step {} ('{}'): `intent:` must not be empty — name the behavior this step exercises.",
+                i + 1, step.name
+            );
+        }
+        let resolved = try_resolve_intent(db, key).with_context(|| {
+            format!("step {} ('{}'): intent binding '{}'", i + 1, step.name, key)
         })?;
-        let name = crate::db::queries::get_intent(db, &iid)?
+        let iid = match resolved {
+            Some(iid) => iid,
+            // Two steps narrating the same new behavior reuse one spawn even
+            // if the transaction's reads don't see its writes yet.
+            None if spawned.iter().any(|(_, n)| n.eq_ignore_ascii_case(key)) => spawned
+                .iter()
+                .find(|(_, n)| n.eq_ignore_ascii_case(key))
+                .map(|(id, _)| id.clone())
+                .unwrap(),
+            None if spawn_missing => {
+                let id = Uuid::new_v4().to_string();
+                insert_intent(db, &Intent {
+                    id: id.clone(),
+                    name: key.to_string(),
+                    description: format!(
+                        "Journey '{}' step {}: {} — {} {}. Spawned from the narrated journey; \
+                         sharpen into a falsifiable criterion when realizing.",
+                        spec.saga, i + 1, step.name, step.request.method, step.request.url
+                    ),
+                    abstraction_level: "feature".to_string(),
+                    domain: String::new(),
+                    source_refs: Vec::new(),
+                    status: "proposed".to_string(),
+                    aspect: String::new(),
+                    tags: Vec::new(),
+                    // A consumer-journey step is consumer-visible by construction.
+                    visibility: "user_visible".to_string(),
+                    lifecycle: "planned".to_string(),
+                    created_at: now.to_string(),
+                    updated_at: now.to_string(),
+                })?;
+                if let Some(p) = parent_id {
+                    insert_hierarchy(db, p, &id, "", now)?;
+                }
+                spawned.push((id.clone(), key.to_string()));
+                id
+            }
+            None => anyhow::bail!(
+                "step {} ('{}'): cannot resolve intent '{}' — every step binds to an intent. \
+                 Create it first (`loom intent add`), or let the journey spawn it: re-run with \
+                 `--spawn-missing [--under <parent>]` (unmatched steps become planned, \
+                 user_visible features the build queue realizes).",
+                i + 1, step.name, step.intent
+            ),
+        };
+        let name = get_intent(db, &iid)?
             .map(|x| x.name)
+            .or_else(|| spawned.iter().find(|(sid, _)| *sid == iid).map(|(_, n)| n.clone()))
             .unwrap_or_else(|| iid.clone());
         out.push((iid, name));
     }
-    Ok(out)
+    Ok((out, spawned))
 }
 
 /// The exact command line to run a saga, with required env vars as

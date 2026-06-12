@@ -38,7 +38,9 @@ const STOPWORDS: &[&str] = &[
     "that", "the", "this", "to", "was", "were", "will", "with",
 ];
 
-fn tokenize(text: &str) -> Vec<String> {
+/// Shared with `loom door`'s cross-plane matchers — one tokenizer, one
+/// definition of "matches".
+pub(crate) fn tokenize(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_alphanumeric())
         .map(str::to_lowercase)
         .filter(|t| t.len() >= 2 && !STOPWORDS.contains(&t.as_str()))
@@ -198,4 +200,101 @@ fn stale_edge_count(db: &dyn LoomDb, intent_id: &str) -> Result<usize> {
         .filter(|e| e.inspection_status == STALE)
         .count();
     Ok(relates + governs + validates + implements)
+}
+
+// ---------------------------------------------------------------------------
+// `loom door` — cross-plane matches beyond the semantic plane
+// ---------------------------------------------------------------------------
+
+/// One non-intent hit for `loom door`: where the utterance's words already
+/// live in the OTHER planes (vocabulary, consumer journeys, norms).
+#[derive(Debug, Clone, Serialize)]
+pub struct PlaneHit {
+    pub id: String,
+    pub name: String,
+    /// Plane-specific context: the vocab term's why, the saga's run command,
+    /// the rule's severity + description.
+    pub detail: String,
+    /// The query tokens that hit — the why of the match.
+    pub matched: Vec<String>,
+}
+
+/// Everything the non-semantic planes know about an utterance, by token
+/// overlap on names + descriptions (same tokenizer as `find_intents`, so one
+/// definition of "matches"). Deliberately judgment-free: the door assembles
+/// context for the LLM's routing decision; it never ranks landings. Ranked by
+/// overlap count (ties on name), capped at `limit` per plane.
+pub struct DoorMatches {
+    pub vocab: Vec<PlaneHit>,
+    pub sagas: Vec<PlaneHit>,
+    pub rules: Vec<PlaneHit>,
+}
+
+pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMatches> {
+    let terms = tokenize(query);
+    let overlap = |text: &str| -> Vec<String> {
+        if terms.is_empty() {
+            return Vec::new();
+        }
+        let toks = tokenize(text);
+        let mut hit: Vec<String> =
+            terms.iter().filter(|t| toks.contains(t)).cloned().collect();
+        hit.dedup();
+        hit
+    };
+    let rank = |mut hits: Vec<PlaneHit>| -> Vec<PlaneHit> {
+        hits.sort_by(|a, b| {
+            b.matched.len().cmp(&a.matched.len()).then_with(|| a.name.cmp(&b.name))
+        });
+        hits.truncate(limit);
+        hits
+    };
+
+    let vocab = rank(
+        super::vocab::list_vocab_terms(db)?
+            .into_iter()
+            .filter_map(|t| {
+                let matched = overlap(&format!("{} {}", t.name, t.description));
+                (!matched.is_empty()).then(|| PlaneHit {
+                    id: t.id,
+                    name: t.name,
+                    detail: t.description,
+                    matched,
+                })
+            })
+            .collect(),
+    );
+
+    let sagas = rank(
+        super::validation::list_validations(db)?
+            .into_iter()
+            .filter(|v| v.validation_type == "saga")
+            .filter_map(|v| {
+                let matched = overlap(&format!("{} {}", v.name, v.description));
+                (!matched.is_empty()).then(|| PlaneHit {
+                    id: v.id,
+                    name: v.name,
+                    detail: format!("[{}] {}", v.last_result, v.command),
+                    matched,
+                })
+            })
+            .collect(),
+    );
+
+    let rules = rank(
+        super::rule::list_rules(db)?
+            .into_iter()
+            .filter_map(|r| {
+                let matched = overlap(&format!("{} {}", r.name, r.description));
+                (!matched.is_empty()).then(|| PlaneHit {
+                    id: r.id,
+                    name: r.name,
+                    detail: format!("[{}] {}", r.severity, r.description),
+                    matched,
+                })
+            })
+            .collect(),
+    );
+
+    Ok(DoorMatches { vocab, sagas, rules })
 }

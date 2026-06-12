@@ -20,9 +20,16 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         let db = GrafeoDb::open(&db_file)?;
         return run_all(&db, printer);
     }
-    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "align" | "quality" | "review" | "triage") {
+    if mode == "triage" {
         anyhow::bail!(
-            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, align, quality, review, triage
+            "Mode 'triage' was renamed to 'prove' (it proves proposed hypotheses; \
+             'triage' now belongs to the door — `loom door \"<utterance>\"` routes \
+             user input to its landing). Run: loom next --mode prove"
+        );
+    }
+    if !matches!(mode, "discovery" | "fix" | "build" | "validate" | "align" | "quality" | "review" | "prove") {
+        anyhow::bail!(
+            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, align, quality, review, prove
 \
              discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \
              build = realize planned/needs_change intents (builder) · \
@@ -30,7 +37,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
              align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \
              quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \
              re-recording with confidence ≥ 0.7 or overturning) · \
-             triage = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional).",
+             prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional).",
             mode
         );
     }
@@ -63,7 +70,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
             return if take > 0 { run_take_quality(&db, take, printer) } else { run_quality(&db, printer) }
         }
         "review" => return run_review(&db, printer),
-        "triage" => return run_triage(&db, printer),
+        "prove" => return run_prove(&db, printer),
         _ => {}
     }
 
@@ -749,11 +756,18 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     // Queues in dependency order (the handoff order from `loom guide`), each
     // with its count + top item. Vertical gaps slot in as builder work; the
     // horizontal grid comes last, flagged optional.
+    //
+    // Every queue carries a GATE: `autonomous` (an agent drains it alone) or
+    // `human` (the item needs the user — a meaning to re-affirm, a ruling to
+    // make). The gate is what makes the interactive↔autonomous oscillation
+    // plannable: drain autonomous queues now, BATCH human-gated items into one
+    // agenda for the next conversation window instead of dribbling questions.
     let mut queues: Vec<serde_json::Value> = Vec::new();
     if !build.is_empty() {
         let c = &build[0];
         queues.push(serde_json::json!({
             "queue": "build", "role": if c.intent.lifecycle == "needs_change" { "fixer" } else { "builder" },
+            "gate": "autonomous",
             "count": build.len(), "command": "loom next --mode build",
             "top": format!("'{}' ({})", c.intent.name, c.intent.lifecycle),
         }));
@@ -761,7 +775,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     if !fix.is_empty() {
         let (e, _) = &fix[0];
         queues.push(serde_json::json!({
-            "queue": "fix", "role": "fixer",
+            "queue": "fix", "role": "fixer", "gate": "autonomous",
             "count": fix.len(), "command": "loom next --mode fix",
             "top": format!("'{}' × '{}' [{}]", e.from_name, e.to_name, e.inspection_status),
         }));
@@ -773,7 +787,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             .or_else(|| vc.unreached_codefiles.first().map(|p| format!("unreached file {p}")))
             .unwrap_or_default();
         queues.push(serde_json::json!({
-            "queue": "ground", "role": "builder",
+            "queue": "ground", "role": "builder", "gate": "autonomous",
             "count": ground_gaps, "command": "loom report  (then `loom edge implement` / `loom edge hierarchy` / `loom ignore`)",
             "top": top,
         }));
@@ -781,7 +795,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     if !validate.is_empty() {
         let c = &validate[0];
         queues.push(serde_json::json!({
-            "queue": "validate", "role": "validator",
+            "queue": "validate", "role": "validator", "gate": "autonomous",
             "count": validate.len(), "command": "loom next --mode validate",
             "top": format!("'{}' — {}", c.intent.name, c.reason),
         }));
@@ -789,7 +803,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     if !quality.is_empty() {
         let (g, _) = &quality[0];
         queues.push(serde_json::json!({
-            "queue": "quality", "role": "quality",
+            "queue": "quality", "role": "quality", "gate": "autonomous",
             "count": quality.len(), "command": "loom next --mode quality",
             "top": format!("rule '{}' → '{}' [{}]", g.rule_name, g.intent_name, g.inspection_status),
         }));
@@ -797,17 +811,17 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let review = review_candidates_from_snapshot(&snapshot);
     if !review.is_empty() {
         queues.push(serde_json::json!({
-            "queue": "review", "role": "reviewer", "optional": true, "effort": "high",
+            "queue": "review", "role": "reviewer", "gate": "autonomous", "optional": true, "effort": "high",
             "count": review.len(), "command": "loom next --mode review",
             "top": "low-confidence verdicts × centrality — the tiered double-check",
         }));
     }
-    let triage = crate::db::queries::triage_candidates(db)?;
-    if !triage.is_empty() {
-        let (h, _) = &triage[0];
+    let prove = crate::db::queries::prove_candidates(db)?;
+    if !prove.is_empty() {
+        let (h, _) = &prove[0];
         queues.push(serde_json::json!({
-            "queue": "triage", "role": "analyzer", "optional": true, "effort": "high",
-            "count": triage.len(), "command": "loom next --mode triage",
+            "queue": "prove", "role": "analyzer", "gate": "autonomous", "optional": true, "effort": "high",
+            "count": prove.len(), "command": "loom next --mode prove",
             "top": if h.status == "supported" {
                 format!("hypothesis '{}' — support went stale (target code changed)", h.name)
             } else {
@@ -815,10 +829,37 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             },
         }));
     }
+    // Supported hypotheses NOT back in the prove queue await the adopt/reject
+    // ruling — a judgment call on scope, so it is human-gated: the agent
+    // prepares the case, the user (or an explicitly entrusted builder) rules.
+    let in_prove: std::collections::HashSet<&str> =
+        prove.iter().map(|(h, _)| h.id.as_str()).collect();
+    let adopt: Vec<_> = crate::db::queries::list_hypotheses(db, Some("supported"))?
+        .into_iter()
+        .filter(|h| !in_prove.contains(h.id.as_str()))
+        .collect();
+    if !adopt.is_empty() {
+        queues.push(serde_json::json!({
+            "queue": "adopt", "role": "builder", "gate": "human",
+            "count": adopt.len(),
+            "command": "loom hypothesis show <id>  → loom hypothesis adopt <id> --spawned <planned-intent>… | loom hypothesis reject <id> --reason …",
+            "top": format!("hypothesis '{}' is supported — awaiting the adopt/reject ruling", adopt[0].name),
+        }));
+    }
+    // The user↔intent drift queue: meanings to re-affirm WITH the user. The
+    // graph cannot read heads — this queue is human-gated by definition.
+    let align = crate::db::queries::align_candidates(db)?;
+    if !align.is_empty() {
+        queues.push(serde_json::json!({
+            "queue": "align", "role": "validator", "gate": "human", "optional": true,
+            "count": align.len(), "command": "loom next --mode align",
+            "top": format!("'{}' — re-affirm its meaning with the user", align[0].intent.name),
+        }));
+    }
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
-            "queue": "discovery", "role": "analyzer", "optional": true,
+            "queue": "discovery", "role": "analyzer", "gate": "autonomous", "optional": true,
             "count": discovery_backlog, "command": "loom next",
             "top": "the horizontal N×N grid — understanding/cleanup, not required for done",
         }));
@@ -832,6 +873,12 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         None => "absent",
     };
 
+    // The oscillation summary: how much of the remainder needs the user.
+    let human_gated: i64 = queues.iter()
+        .filter(|q| q["gate"].as_str() == Some("human"))
+        .map(|q| q["count"].as_i64().unwrap_or(0))
+        .sum();
+
     if printer.json {
         let unrealized_leaves_total = vc.unrealized_leaves.len();
         let unreached_codefiles_total = vc.unreached_codefiles.len();
@@ -842,6 +889,10 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "doctor": { "healthy": doctor.healthy(), "issues": doctor.issues, "hints": doctor.hints },
             "committed_export": export_freshness,
             "queues": queues,
+            "human_gated": human_gated,
+            "human_gated_note": if human_gated > 0 {
+                "These items need the user. Drain autonomous queues now; batch human-gated items into ONE agenda for the next conversation window."
+            } else { "" },
             "vertical_gaps": {
                 "unrealized_leaves": vc.unrealized_leaves,
                 "unreached_codefiles": vc.unreached_codefiles,
@@ -871,16 +922,25 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
     for (i, q) in queues.iter().enumerate() {
         let opt = if q.get("optional").is_some() { "  (optional)" } else { "" };
+        let gate = if q["gate"].as_str() == Some("human") { "  ⚑ human-gated" } else { "" };
         println!(
-            "  {}. [{:<9}] {:<9} {:>4} item(s)   → {}{}",
+            "  {}. [{:<9}] {:<9} {:>4} item(s)   → {}{}{}",
             i + 1,
             q["role"].as_str().unwrap_or(""),
             q["queue"].as_str().unwrap_or(""),
             q["count"].as_i64().unwrap_or(0),
             q["command"].as_str().unwrap_or(""),
             opt,
+            gate,
         );
         println!("       top: {}", q["top"].as_str().unwrap_or(""));
+    }
+    if human_gated > 0 {
+        println!();
+        println!(
+            "  ⚑ {human_gated} item(s) need the user. Drain the autonomous queues now; batch the"
+        );
+        println!("    human-gated ones into ONE agenda for the next conversation window.");
     }
     println!();
     if smells_total > 0 {
@@ -1683,19 +1743,19 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
 }
 
 // ---------------------------------------------------------------------------
-// Triage mode: the pre-decision plane's queue — proposed hypotheses awaiting
+// Prove mode: the pre-decision plane's queue — proposed hypotheses awaiting
 // their proof, highest target-centrality (blast radius) first. Analyzer work;
 // optional like discovery/review (speculation never blocks complete).
 // ---------------------------------------------------------------------------
 
-fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = crate::db::queries::triage_candidates(db)?;
+fn run_prove(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+    let candidates = crate::db::queries::prove_candidates(db)?;
     let gs = graph_state(db)?;
 
     if candidates.is_empty() {
         if printer.json {
             printer.print_json(&serde_json::json!({
-                "status": "empty", "mode": "triage",
+                "status": "empty", "mode": "prove",
                 "message": "No proposed hypotheses and no stale support — the pre-decision plane is clear.",
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
@@ -1753,7 +1813,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 
     if printer.json {
         printer.print_json(&serde_json::json!({
-            "mode":             "triage",
+            "mode":             "prove",
             "priority_score":   score,
             "hypothesis":       h,
             "targets":          targets,
@@ -1772,7 +1832,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     println!(
-        "── Next Triage Item  [{}  priority={:.2}] ────────────────────────",
+        "── Next Prove Item  [{}  priority={:.2}] ─────────────────────────",
         if h.status == "supported" { "stale support" } else { "proposed" },
         score
     );

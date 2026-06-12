@@ -750,6 +750,165 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
+    // 11. Unjourneyed surface — the consumer plane's completeness check: a
+    //     user_visible intent with real code that NO saga exercises end-to-end.
+    //     The product claims a consumer can see/feel it; no consumer journey
+    //     ever proves it. Visibility is the key — this smell is what makes the
+    //     `user_visible` ruling load-bearing outside the align interview.
+    //
+    //     Two regimes, so a journey-less repo isn't flooded:
+    //     - ZERO sagas declared → ONE aggregate finding on the root intent
+    //       ("no consumer journey at all"), adjudicated by a decision note on
+    //       the root newer than the newest user_visible intent.
+    //     - ≥1 saga → per-intent findings; the instrument is in use, so each
+    //       gap is meaningful. Adjudicated by a decision note on the intent
+    //       newer than its last redefinition (updated_at).
+    //
+    //     Coverage propagates BOTH ways through the tree: a step bound at
+    //     component altitude exercises the features the journey runs through,
+    //     and a journeyed leaf suppresses its ancestors' own findings
+    //     (unjourneyed SIBLINGS still fire individually).
+    {
+        let saga_ids: HashSet<&str> = snapshot
+            .validations
+            .iter()
+            .filter(|v| v.validation_type == "saga")
+            .map(|v| v.id.as_str())
+            .collect();
+        let journeyed: HashSet<&str> = snapshot
+            .validates
+            .iter()
+            .filter(|e| saga_ids.contains(e.validation_id.as_str()))
+            .map(|e| e.intent_id.as_str())
+            .collect();
+        let mut covered: HashSet<&str> = journeyed.clone();
+        // Ancestors of journeyed intents (parent_of comes from section 5;
+        // the tree is insert-enforced acyclic, visited is belt-and-braces).
+        for id in &journeyed {
+            let mut cur = *id;
+            let mut visited: HashSet<&str> = HashSet::new();
+            while let Some(p) = parent_of.get(cur) {
+                if !visited.insert(cur) {
+                    break;
+                }
+                covered.insert(p);
+                cur = p;
+            }
+        }
+        // Descendants of journeyed intents.
+        let mut children_of: HashMap<&str, Vec<&str>> = HashMap::new();
+        for (p, c) in hierarchy {
+            children_of.entry(p.as_str()).or_default().push(c.as_str());
+        }
+        let mut stack: Vec<&str> = journeyed.iter().copied().collect();
+        let mut walked: HashSet<&str> = HashSet::new();
+        while let Some(id) = stack.pop() {
+            if !walked.insert(id) {
+                continue;
+            }
+            if let Some(kids) = children_of.get(id) {
+                for k in kids {
+                    covered.insert(k);
+                    stack.push(k);
+                }
+            }
+        }
+        let candidates: Vec<&crate::types::Intent> = intents
+            .iter()
+            .filter(|i| {
+                i.visibility == "user_visible"
+                    && i.status != "deprecated"
+                    && i.abstraction_level != "system" // system grounds to manifests; journeys live below
+                    && files_of.contains_key(i.id.as_str()) // real code to exercise
+                    && !covered.contains(i.id.as_str())
+            })
+            .collect();
+
+        if saga_ids.is_empty() {
+            if !candidates.is_empty() {
+                // The aggregate target: the system root (or any root) — "this
+                // product has no consumer surface" is a claim about the root.
+                let is_child: HashSet<&str> =
+                    hierarchy.iter().map(|(_, c)| c.as_str()).collect();
+                let mut roots: Vec<&crate::types::Intent> = intents
+                    .iter()
+                    .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
+                    .collect();
+                roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
+                if let Some(root) = roots.first() {
+                    let newest_uv = intents
+                        .iter()
+                        .filter(|i| i.visibility == "user_visible")
+                        .map(|i| i.created_at.as_str())
+                        .max()
+                        .unwrap_or("");
+                    if let Some(note) = adjudicated(root.id.as_str(), newest_uv) {
+                        adjudicated_out.push(AdjudicatedSmell {
+                            kind: "unjourneyed_surface".into(),
+                            summary: format!(
+                                "no consumer journey declared — {} user_visible intent(s) never exercised end-to-end",
+                                candidates.len()
+                            ),
+                            ruling: note.text.clone(),
+                            ruled_by: note.author.clone(),
+                            ruled_at: note.created_at.clone(),
+                            reopens_when: "a new user_visible intent lands after the ruling (or a first saga is declared — per-intent gaps become visible)".into(),
+                        });
+                    } else {
+                        let sample: Vec<&str> =
+                            candidates.iter().take(3).map(|i| i.name.as_str()).collect();
+                        smells.push(Smell {
+                            kind: "unjourneyed_surface".into(),
+                            score: 3.0 + candidates.len() as f64,
+                            summary: format!(
+                                "no consumer journey declared — {} user_visible intent(s) are never exercised end-to-end",
+                                candidates.len()
+                            ),
+                            evidence: format!(
+                                "the product claims these are consumer-visible, but no saga touches any intent: e.g. {}",
+                                sample.join(" · ")
+                            ),
+                            remedy: format!(
+                                "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --intent {} --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
+                                root.id
+                            ),
+                        });
+                    }
+                }
+            }
+        } else {
+            for i in candidates {
+                if let Some(note) = adjudicated(i.id.as_str(), i.updated_at.as_str()) {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "unjourneyed_surface".into(),
+                        summary: format!("'{}' is user_visible but no journey exercises it", i.name),
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "the intent is redefined after the ruling".into(),
+                    });
+                    continue;
+                }
+                smells.push(Smell {
+                    kind: "unjourneyed_surface".into(),
+                    score: if i.abstraction_level == "component" { 5.0 } else { 4.0 },
+                    summary: format!(
+                        "'{}' is user_visible but no consumer journey exercises it",
+                        i.name
+                    ),
+                    evidence: format!(
+                        "a {}-level intent ruled user_visible, grounded in code, reached by no saga (directly or via the tree)",
+                        i.abstraction_level
+                    ),
+                    remedy: format!(
+                        "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --intent {id} --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
+                        id = i.id
+                    ),
+                });
+            }
+        }
+    }
+
     smells.sort_by(|a, b| {
         b.score
             .partial_cmp(&a.score)

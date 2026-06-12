@@ -86,7 +86,7 @@ pub enum Command {
         /// (builder: realize planned/needs_change intents) | validate
         /// (validator: run/repair proofs) | align (validator: re-affirm intent
         /// meaning against the user) | quality (quality: earn GOVERNS green)
-        /// | review (re-inspect low-confidence verdicts) | triage (analyzer:
+        /// | review (re-inspect low-confidence verdicts) | prove (analyzer:
         /// prove proposed hypotheses — the pre-decision plane, optional).
         #[arg(long, default_value = "discovery")]
         mode: String,
@@ -260,6 +260,26 @@ pub enum Command {
         /// What you're looking for, in your own words (e.g. "where is retry handled").
         query: String,
         /// How many hits to return.
+        #[arg(long, default_value_t = 5)]
+        limit: usize,
+    },
+
+    /// The entrance: route a user utterance to its landing. Returns what the
+    /// graph already knows about the topic (intents, vocab terms, sagas,
+    /// rules), the compass state, and the LANDING MENU — every way a user
+    /// statement becomes a graph noun, each an existing command. Loom never
+    /// interprets; the driving LLM reads the matches and picks the landing.
+    /// The door advises, never blocks: any noun can land at any time — queues
+    /// re-derive and the compass re-sorts.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom door \"users should be able to reset their password\"\n  \
+        loom door \"checkout keeps breaking when the cart is empty\"\n  \
+        (read matches → pick ONE landing from the menu → run that command; \
+        land every conversational fragment before going autonomous)")]
+    Door {
+        /// The user's statement, in their words.
+        utterance: String,
+        /// How many matches to return per plane.
         #[arg(long, default_value_t = 5)]
         limit: usize,
     },
@@ -1189,6 +1209,10 @@ pub enum SagaCmd {
     /// between consecutive step intents (uninspected until a run earns them),
     /// and registers the spec file itself as a CodeFile. Idempotent —
     /// re-running after editing the spec reconciles the links.
+    ///
+    /// JOURNEY-FIRST: with --spawn-missing, a step may name an intent that
+    /// does not exist yet — it is spawned as a planned, user_visible feature
+    /// (the narrated journey IS the design; the build queue realizes it).
     #[command(after_help = "SPEC FORMAT (YAML):\n  \
         saga: checkout-flow\n  \
         base: \"{{ env.BASE_URL }}\"\n  \
@@ -1201,10 +1225,24 @@ pub enum SagaCmd {
           - name: capture payment\n      \
             intent: payment-capture\n      \
             request: { method: POST, url: \"/carts/{{ cart_id }}/payment\" }\n      \
-            expect:  { status: 200, body: { \"$.state\": paid } }")]
+            expect:  { status: 200, body: { \"$.state\": paid } }\n\n  \
+        JOURNEY-FIRST (story → intents):\n  \
+        loom saga add journeys/checkout.yaml --spawn-missing --under \"checkout component\"")]
     Add {
         /// Path to the saga spec file.
         file: String,
+
+        /// Spawn a planned, user_visible FEATURE intent for every step whose
+        /// `intent:` binding resolves to nothing — the journey-first entrance:
+        /// the user narrates the story, the steps become the design, the build
+        /// queue realizes them. Builder lane; refuses on observed graphs.
+        #[arg(long)]
+        spawn_missing: bool,
+
+        /// Parent intent (id, name, or fragment) for spawned steps — keeps the
+        /// hierarchy a tree instead of minting roots. Requires --spawn-missing.
+        #[arg(long, requires = "spawn_missing")]
+        under: Option<String>,
     },
 
     /// Execute a saga and stamp the run into the graph: the Validation's

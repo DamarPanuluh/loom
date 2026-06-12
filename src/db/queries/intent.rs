@@ -45,14 +45,27 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
 /// round-trip (dogfood finding). Ambiguity is an error that lists the
 /// candidates, so resolution is never a guess.
 pub fn resolve_intent(db: &dyn LoomDb, key: &str) -> Result<String> {
+    try_resolve_intent(db, key)?.ok_or_else(|| {
+        anyhow::anyhow!(
+            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
+            key
+        )
+    })
+}
+
+/// Resolution with an honest "nothing matches" channel: Ok(None) ONLY when no
+/// intent matches by id, exact name, or fragment. Ambiguity stays an error —
+/// a caller that creates on None (the journey-first saga entrance) must never
+/// mint a twin because a fragment matched two names.
+pub fn try_resolve_intent(db: &dyn LoomDb, key: &str) -> Result<Option<String>> {
     let intents = list_intents(db, None, None)?;
     if intents.iter().any(|i| i.id == key) {
-        return Ok(key.to_string());
+        return Ok(Some(key.to_string()));
     }
     let kl = key.to_lowercase();
     let exact: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase() == kl).collect();
     if exact.len() == 1 {
-        return Ok(exact[0].id.clone());
+        return Ok(Some(exact[0].id.clone()));
     }
     if exact.len() > 1 {
         anyhow::bail!(
@@ -62,11 +75,8 @@ pub fn resolve_intent(db: &dyn LoomDb, key: &str) -> Result<String> {
     }
     let subs: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase().contains(&kl)).collect();
     match subs.len() {
-        1 => Ok(subs[0].id.clone()),
-        0 => anyhow::bail!(
-            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
-            key
-        ),
+        1 => Ok(Some(subs[0].id.clone())),
+        0 => Ok(None),
         _ => {
             let total = subs.len();
             let shown = subs
