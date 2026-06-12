@@ -143,7 +143,7 @@ pub struct GraphState {
     /// The optional axis: every intent pair has an inspected RELATES_TO edge
     /// (none uninspected, stale, or unexplored). Reported, never gates `complete`.
     pub horizontally_explored: bool,
-    /// empty | build | fix | incomplete | ground | validate | quality |
+    /// seed | build | fix | incomplete | ground | validate | quality |
     /// discovery | audit | complete
     pub phase: String,
     pub next_action: String,
@@ -263,7 +263,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // Arithmetic count — the full scored O(N²) enumeration lives in discovery
     // (`unexplored_pairs_scored`) where the items are actually consumed.
     let hierarchy = snapshot.hierarchy.clone();
-    let unexplored_pairs = count_unexplored_pairs_from(intents, &all_relates, &hierarchy);
+    let unexplored_pairs = count_unexplored_pairs_from(&all_intents, &all_relates, &hierarchy);
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
     let needs_change = all_intents.iter().filter(|i| i.lifecycle == "needs_change").count() as i64;
@@ -348,7 +348,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let unmeasured_queue = nc.queue.len();
 
     let (phase, next_action) = if intents == 0 {
-        ("empty", "Seed intents: `loom intent add --level system …`  (or run `loom guide`).".to_string())
+        ("seed", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
     } else if needs_change > 0 {
         ("build", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
     } else if rt_failing > 0 || rt_needs_rev > 0 {
@@ -508,7 +508,7 @@ pub fn grounded_paths(db: &dyn LoomDb) -> Result<Vec<String>> {
 /// carrying many concerns). Returns (path, intent_count) sorted desc.
 pub fn tangled_files(db: &dyn LoomDb, limit: usize) -> Result<Vec<(String, i64)>> {
     let q = "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) \
-             RETURN cf.path AS p, count(e) AS c ORDER BY c DESC";
+             RETURN cf.path AS p, count(e) AS c";
     let result = db.execute(q)?;
     let cols = col_map(&result);
     let mut rows: Vec<(String, i64)> = result
@@ -516,6 +516,7 @@ pub fn tangled_files(db: &dyn LoomDb, limit: usize) -> Result<Vec<(String, i64)>
         .iter()
         .map(|row| (str_val(get(row, &cols, "p")), i64_val(get(row, &cols, "c"))))
         .collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     rows.truncate(limit);
     Ok(rows)
 }
@@ -532,7 +533,7 @@ pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<In
             (i, deg)
         })
         .collect();
-    with_degree.sort_by(|a, b| b.1.cmp(&a.1));
+    with_degree.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.id.cmp(&b.0.id)));
     with_degree.truncate(limit);
     Ok(with_degree.into_iter().map(|(intent, degree)| IntentCentrality { intent, degree }).collect())
 }

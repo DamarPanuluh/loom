@@ -131,7 +131,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         for g in &failing_governs {
             println!(
                 "  [failing]  rule={rname}  intent={iname}  evidence={}",
-                &g.evidence[..g.evidence.len().min(80)],
+                truncate_chars(&g.evidence, 80),
                 rname = g.rule_name,
                 iname = g.intent_name,
             );
@@ -159,7 +159,7 @@ pub fn run(printer: &Printer) -> Result<()> {
                 e.id,
                 e.from_name,
                 e.to_name,
-                &e.criterion[..e.criterion.len().min(60)],
+                truncate_chars(&e.criterion, 60),
             );
         }
     }
@@ -215,3 +215,10 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     Ok(())
 }
+fn truncate_chars(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        Some((idx, _)) => &s[..idx],
+        None => s,
+    }
+}
+

@@ -344,7 +344,7 @@ loom next --all
   The single operational answer to "what's left?" — no reconciling five
   commands by hand. Discovery is flagged optional (horizontal axis).
 
-loom next [--mode discovery|fix|build|validate|quality|review|triage] [--take N]
+loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--take N]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -358,6 +358,13 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage] [--take N]
   to a stronger reviewer (independent re-inspection: form your own hypothesis
   BEFORE reading the recorded evidence; re-record to confirm ≥0.7 or overturn).
   Optional like discovery — review hardens closure, it never blocks complete.
+  align = the validator's user↔intent drift queue: intents ranked by
+  churn-since-confirm × centrality × staleness — code moved under a meaning the
+  user never re-affirmed. The item is an INTERVIEW move (present the meaning in
+  the user's language); exactly one outcome lands: `loom intent confirm` (still
+  right — resets the suspicion clock) / `update` (evolved) / `retire
+  --replaced-by` (superseded) / `add --lifecycle planned` (revealed gap).
+  Optional like discovery — the graph can't read heads; this is the human gate.
   triage = the pre-decision plane's queue (analyzer, effort high), ranked by
   combined target-intent centrality (blast radius). Two item kinds, told apart
   by status: proposed = never proven (prove it) · supported with stale TARGETS
@@ -365,12 +372,15 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage] [--take N]
   refute; re-proving re-stamps the edges). The work item carries the claim,
   targets, their groundings, and the prove command. Optional like
   discovery/review — speculation never blocks complete.
-  --take N (discovery/fix, capped 50) = the bulk READ half of the batch loop:
-  N COMPACT items in ONE call — grouped by the file that staled them (parsed
-  from the sync transition notes), with a prefilled `loom batch` template and
-  a single anchor — instead of one rich item + anchor per call. The token-
-  bounded post-sync drain: read each hot file once, verdict its whole group
-  via `loom batch`. Sync suggests `--take 20` when it flags >10 edges.
+  --take N (discovery/fix/quality, capped 50) = the bulk READ half of the batch
+  loop: N COMPACT items in ONE call instead of one rich item + anchor per call.
+  discovery/fix group by the file that staled them (parsed from sync transition
+  notes, indexed in one scan — never per-item) with prefilled `ground` template
+  lines; quality groups by INTENT (one neighborhood read pays for every rule
+  held against it) with prefilled `rule_verdict` lines and per-item effort from
+  the rule's annotation. The token-bounded post-sync drain: read each hot
+  neighborhood once, verdict its whole group via `loom batch`. Sync suggests
+  `--take 20` when it flags >10 edges.
   EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
   names how much capability the WORK needs (computed from structure; quality
   items inherit the rule's inspection_effort). Loom never names models — the
@@ -388,6 +398,22 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage] [--take N]
 loom intent add --name --description --level [--domain] [--source ...]
 loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...]
 loom intent confirm <id>
+  Ratify the meaning (status → confirmed) AND stamp a freshness note (kind=
+  confirm, append-only — alignment history travels in the export). Re-confirming
+  is the align loop's cheap outcome: it resets the drift-suspicion clock
+  `loom next --mode align` ranks by. Validator lane.
+loom intent update <id> [--name "<new>"] [--description "<new>"] --reason "<why>"
+  EVOLUTION in place — same node, same id, full history — distinct from retire
+  (supersession by a different intent). A --description change is a REDEFINITION
+  and ripples ONE HOP, the semantic twin of `loom sync`: passing/independent
+  RELATES_TO + GOVERNS → needs_reverification, passing IMPLEMENTS →
+  needs_reverification ("does the code still do what this NOW says?"), passing
+  TARGETS → needs_reverification, linked proofs → not_run (blocked keeps its
+  reason). Every flip is noted with cause "intent '<name>' redefined"; the old
+  wording is preserved in a decision note. --name alone is cosmetic (no ripple).
+  Lifecycle is NOT auto-flipped — the staled IMPLEMENTS routes the honest
+  question through the fix queue instead of faking a needs_change verdict.
+  Builder lane.
 loom intent mark <id> --lifecycle planned|implemented|needs_change [--reason "<why>"]
   Set the prescriptive lifecycle. needs_change = a known issue/refactor (honest,
   no faked verdict); --reason is recorded as a note. Feeds `loom next --mode build`.
@@ -433,9 +459,9 @@ loom codefile show <path-or-id>
 loom codefile remove <path-or-id> (drop a phantom after delete/rename on disk;
                                    removes its IMPLEMENTS edges too)
 
-loom validation add --name --type [--command] [--description] [--intent <id>]
-  --intent links the new Validation to an intent (VALIDATES) in one step;
-  omit it to link later with `loom edge validates <validation-id> <intent-id>`.
+loom validation add --name --type [--command] [--description] [--intent <id>]...
+  --intent (repeatable) links the new Validation to intent(s) (one VALIDATES
+  edge each) in one step; omit to link later with `loom edge validates`.
 loom validation mark <id|name> --result passed|failed --evidence "<what you checked>"
 loom validation mark <id|name> --result blocked --reason "<what it is waiting on>"
   Record a verdict BY HAND for a manual_check / async proof that has no runnable
@@ -454,10 +480,14 @@ loom validation delete <id|name>
   in `loom next --mode validate`.
 loom validation list [--intent <id>] [--limit N]
 
-loom validate <intent-id>
+loom validate <intent-id> | --all
   Runs command on all VALIDATES edges for this intent. (manual_check without a
   command is skipped — use `loom validation mark` for those.)
   Updates Validation.last_result and VALIDATES edge inspection_status.
+  --all = every PENDING proof in the graph (last_result == not_run: never run
+  or sync-invalidated) in one verb — the drain after a sync flood resets N
+  proofs at once. Settled verdicts (passed/failed) are not re-run; blocked
+  proofs keep their recorded reason and stay out.
 
 loom saga add <spec.yaml>
 loom saga run <name|spec.yaml>
@@ -470,6 +500,11 @@ loom saga list
   Engine is built in and pure Rust (reqwest/rustls + RFC 9535 JSONPath — no
   libcurl); deliberately a saga executor, NOT a general HTTP test tool
   (anything fancier = an ordinary command-based Validation).
+  Saga specs are trusted repo artifacts: `run` executes the declared HTTP
+  calls, allows any `http(s)` target (including localhost), and follows
+  reqwest's default redirect policy (up to 10 redirects). Guardrails are size
+  ceilings, not sandboxing: response bodies are capped at 8 MiB and spec files
+  are capped at 512 KiB before YAML parsing.
   Spec (YAML, the graph binding is first-class — every step names the intent
   it proves):
     saga: checkout-flow
@@ -628,13 +663,17 @@ loom migrate
   migrating. Repos with only a committed loom.graph.json don't need this —
   `loom import` upgrades v3/v4 exports in flight.
 
-loom guide [--mode greenfield|brownfield|refactor|port]
+loom guide [--mode greenfield|brownfield|refactor|port|seed]
   Self-contained driving protocol for an LLM new to loom: mental model, the loop,
   the done-condition, and a MODE-SPECIFIC population checklist (auto-detected via
   `loom detect` if --mode omitted): greenfield = design-as-planned-intents then
   build; brownfield = map & verify existing; refactor = flag needs_change & change;
   port = adopt a source graph's design (`import --as-planned`) and re-realize
-  it in a new language/repo.
+  it in a new language/repo; seed = the USER interview (explicit-only, never
+  auto-detected — the binary can't detect "the user wants to talk"): elicit a
+  head into planned intents (altitude-calibrated, one question per landing,
+  terminate on enumerable gaps, not exhaustion) or re-align a populated graph
+  via `loom next --mode align`. An empty graph's compass routes phase=seed here.
 
 loom schema
   The data model — node/edge types + properties, the inspection state machine,

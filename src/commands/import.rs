@@ -18,6 +18,24 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     let data: serde_json::Value = serde_json::from_str(&raw)
         .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
 
+    // CodeFile paths are later read from disk by `loom sync` (content hash +
+    // locator probes): a path escaping the graph root would turn the graph
+    // into a contents oracle against any readable file. Reject at the
+    // boundary, in the two-phase spirit — a hostile export never half-imports.
+    if let Some(items) = data.pointer("/nodes/CodeFile").and_then(|v| v.as_array()) {
+        for item in items {
+            if let Some(p) = item.get("path").and_then(|v| v.as_str()) {
+                if crate::repo::confine(&cwd, std::path::Path::new(p)).is_none() {
+                    anyhow::bail!(
+                        "Export contains CodeFile path '{}' that escapes the graph root {} — \
+                         fix or remove the entry before importing.",
+                        p, cwd.display()
+                    );
+                }
+            }
+        }
+    }
+
     // Atomic restore: validation already rejects bad exports before writing
     // (two-phase), and the transaction closes the remaining hole — a crash or
     // write error midway can no longer leave a partial graph behind.

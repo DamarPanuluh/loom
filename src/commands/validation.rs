@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::cli::ValidationCmd;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    delete_validation, get_validation, insert_validates, insert_validation, list_validations,
-    resolve_validation, set_hypothesis_status, set_validates_status_for_validation,
+    delete_validation, get_hypothesis, get_validation, insert_validates, insert_validation,
+    list_validations, resolve_validation, set_hypothesis_status, set_validates_status_for_validation,
     update_validation_definition, update_validation_result,
 };
 use crate::output::Printer;
@@ -41,31 +41,28 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             insert_validation(&db, &v)?;
 
             // A validation only proves something once it's attached to an intent.
-            // Linking in one step (when --intent is given) removes the most common
+            // Linking in one step (repeatable --intent) removes the most common
             // friction; otherwise we tell the driver exactly how to link it.
-            let mut linked_intent: Option<String> = None;
-            if let Some(iid) = intent {
-                let iid = crate::db::queries::resolve_intent(&db, &iid)?;
+            let mut linked_intents: Vec<String> = Vec::new();
+            for iid in &intent {
+                let iid = crate::db::queries::resolve_intent(&db, iid)?;
                 insert_validates(&db, &id, &iid, "", &now)?;
-                linked_intent = Some(iid);
+                linked_intents.push(iid);
             }
 
             if printer.json {
                 let mut val = serde_json::to_value(&v)?;
                 if let Some(obj) = val.as_object_mut() {
-                    match &linked_intent {
-                        Some(iid) => {
-                            obj.insert("linked_intent".to_string(), serde_json::json!(iid));
-                            obj.insert("next_steps".to_string(), serde_json::json!([
-                                format!("Run it: `loom validate {}`.", iid),
-                            ]));
-                        }
-                        None => {
-                            obj.insert("next_steps".to_string(), serde_json::json!([
-                                format!("Link it to an intent: `loom edge validates {} <intent-id>`.", id),
-                                "Then run it: `loom validate <intent-id>`.",
-                            ]));
-                        }
+                    if linked_intents.is_empty() {
+                        obj.insert("next_steps".to_string(), serde_json::json!([
+                            format!("Link it to an intent: `loom edge validates {} <intent-id>`.", id),
+                            "Then run it: `loom validate <intent-id>`.",
+                        ]));
+                    } else {
+                        obj.insert("linked_intents".to_string(), serde_json::json!(linked_intents));
+                        obj.insert("next_steps".to_string(), serde_json::json!([
+                            format!("Run it: `loom validate {}`.", linked_intents[0]),
+                        ]));
                     }
                 }
                 printer.print_json(&val);
@@ -73,9 +70,13 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 println!("✓ Validation '{}' created  (id: {})", name, id);
                 println!("  type:    {}", validation_type);
                 println!("  command: {}", v.command);
-                match &linked_intent {
-                    Some(iid) => println!("  → Linked to intent {iid}. Run it: `loom validate {iid}`."),
-                    None => println!("  → Next: link it — `loom edge validates {id} <intent-id>` (or re-add with --intent)."),
+                if linked_intents.is_empty() {
+                    println!("  → Next: link it — `loom edge validates {id} <intent-id>` (or re-add with --intent).");
+                } else {
+                    for iid in &linked_intents {
+                        println!("  → Linked to intent {iid}.");
+                    }
+                    println!("  Run: `loom validate {}`.", linked_intents[0]);
                 }
             }
         }
@@ -112,28 +113,36 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             let vid = resolve_validation(&db, &id)?;
             let validation = get_validation(&db, &vid)?;
             let now = chrono::Utc::now().to_rfc3339();
-            update_validation_result(&db, &vid, &res.to_string(), &now)?;
-            // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
-            // leaves the edge uninspected (no proof was produced — that's
-            // honest); the "blocked: <reason>" note distinguishes it from
-            // forgotten, and the compass + validator queue skip blocked proofs.
-            let status = match res {
-                ValidationResult::Passed => "passing",
-                ValidationResult::Failed => "failing",
-                _ => "uninspected",
-            };
-            let n = set_validates_status_for_validation(&db, &vid, status, &edge_note)?;
-            if res == ValidationResult::Passed {
-                if let Some(v) = &validation {
-                    if let Some(hid) = v
-                        .description
-                        .lines()
-                        .find_map(|line| line.strip_prefix("hypothesis:"))
-                    {
-                        set_hypothesis_status(&db, hid.trim(), "confirmed", &marker, &now)?;
+            let n = crate::db::with_transaction(&db, || {
+                update_validation_result(&db, &vid, &res.to_string(), &now)?;
+                // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
+                // leaves the edge uninspected (no proof was produced — that's
+                // honest); the "blocked: <reason>" note distinguishes it from
+                // forgotten, and the compass + validator queue skip blocked proofs.
+                let status = match res {
+                    ValidationResult::Passed => "passing",
+                    ValidationResult::Failed => "failing",
+                    _ => "uninspected",
+                };
+                let n = set_validates_status_for_validation(&db, &vid, status, &edge_note)?;
+                if res == ValidationResult::Passed {
+                    if let Some(v) = &validation {
+                        if let Some(hid) = v
+                            .description
+                            .lines()
+                            .find_map(|line| line.strip_prefix("hypothesis:"))
+                        {
+                            let hid = hid.trim();
+                            if get_hypothesis(&db, hid)?
+                                .is_some_and(|h| h.status == "adopted")
+                            {
+                                set_hypothesis_status(&db, hid, "confirmed", &marker, &now)?;
+                            }
+                        }
                     }
                 }
-            }
+                Ok(n)
+            })?;
             // Result-sensitive anchor: a verdict moves the phase, so the
             // output ends with where the driver goes next.
             let next_step = match res {

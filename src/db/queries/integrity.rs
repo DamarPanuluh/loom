@@ -488,6 +488,12 @@ fn audit_inspectable_edges(
                         allowed.join(" or "),
                     ));
                 }
+            } else if let Some(r) = crate::gate::known_bare_role(&c.inspected_by) {
+                issues.push(format!(
+                    "{} edge {} was inspected by '{}' — bare known role '{}' has no provenance prefix; \
+                     use 'llm:{}' so lane gates can enforce separation of duties",
+                    c.etype, c.label, c.inspected_by, r, r,
+                ));
             }
         }
     }
@@ -515,4 +521,9 @@ pub(super) fn collect_edge_ids(db: &dyn LoomDb) -> Result<std::collections::Hash
         }
     }
     Ok(ids)
+}
+
+/// True when an edge-targeted note can resolve its derived edge id.
+pub fn edge_id_exists(db: &dyn LoomDb, edge_id: &str) -> Result<bool> {
+    Ok(collect_edge_ids(db)?.contains(edge_id))
 }

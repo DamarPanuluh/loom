@@ -17,9 +17,16 @@ pub fn run(printer: &Printer) -> Result<()> {
     let registered: HashSet<String> =
         list_codefiles(&db)?.into_iter().map(|c| c.path).collect();
     let grounded: HashSet<String> = grounded_paths(&db)?.into_iter().collect();
+    let mut pattern_errors = Vec::new();
     let patterns: Vec<glob::Pattern> = list_ignores(&db)?
         .into_iter()
-        .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
+        .filter_map(|i| match glob::Pattern::new(&i.pattern) {
+            Ok(p) => Some(p),
+            Err(e) => {
+                pattern_errors.push(format!("ignore '{}': {}", i.pattern, e));
+                None
+            }
+        })
         .collect();
     let is_ignored = |p: &str| patterns.iter().any(|pat| pat.matches(p));
     // Delegated subtrees: covered by a CHILD graph (federation), verified
@@ -27,7 +34,13 @@ pub fn run(printer: &Printer) -> Result<()> {
     let delegations = list_delegations(&db)?;
     let delegation_pats: Vec<(glob::Pattern, &str)> = delegations
         .iter()
-        .filter_map(|d| glob::Pattern::new(&d.pattern).ok().map(|p| (p, d.target.as_str())))
+        .filter_map(|d| match glob::Pattern::new(&d.pattern) {
+            Ok(p) => Some((p, d.target.as_str())),
+            Err(e) => {
+                pattern_errors.push(format!("delegation '{}' -> '{}': {}", d.pattern, d.target, e));
+                None
+            }
+        })
         .collect();
     let is_delegated = |p: &str| delegation_pats.iter().any(|(pat, _)| pat.matches(p));
     let missing_targets: Vec<&str> = delegations
@@ -68,6 +81,7 @@ pub fn run(printer: &Printer) -> Result<()> {
             "ungrounded_files":      ungrounded,
             "unaccounted_files":     unaccounted,
             "delegation_targets_missing": missing_targets,
+            "pattern_errors":        pattern_errors,
         }));
         return Ok(());
     }
@@ -80,6 +94,12 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("  ⚠ delegation target(s) MISSING — the child graph must `loom export`:");
         for t in &missing_targets {
             println!("      - {}", t);
+        }
+    }
+    if !pattern_errors.is_empty() {
+        println!("  ⚠ invalid stored glob pattern(s) — fix or remove them:");
+        for e in &pattern_errors {
+            println!("      - {}", e);
         }
     }
     println!("  unexplained (registered, no intent): {}", ungrounded.len());

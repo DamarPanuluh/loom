@@ -84,7 +84,8 @@ pub enum Command {
         /// Work mode — one queue per agent role: discovery (analyzer: inspect
         /// relationships) | fix (fixer: resolve failures/stale) | build
         /// (builder: realize planned/needs_change intents) | validate
-        /// (validator: run/repair proofs) | quality (quality: earn GOVERNS green)
+        /// (validator: run/repair proofs) | align (validator: re-affirm intent
+        /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect low-confidence verdicts) | triage (analyzer:
         /// prove proposed hypotheses — the pre-decision plane, optional).
         #[arg(long, default_value = "discovery")]
@@ -179,10 +180,22 @@ pub enum Command {
         path: String,
     },
 
-    /// Run all validation commands linked to an intent and record results.
+    /// Run validation commands and record results: `loom validate <intent>` runs
+    /// the proofs linked to one intent; `loom validate --all` runs every proof
+    /// whose last_result is not_run — the one-verb drain after a sync flood
+    /// invalidates many proofs at once (blocked proofs stay out either way).
     Validate {
-        /// The intent whose validations should be run.
-        intent_id: String,
+        /// The intent whose validations should be run (omit with --all).
+        intent_id: Option<String>,
+
+        /// Run every pending (not_run) validation in the graph instead of one
+        /// intent's. Skips blocked proofs (they carry a recorded reason).
+        #[arg(long)]
+        all: bool,
+
+        /// Seconds to wait for each validation command before marking it failed.
+        #[arg(long, default_value_t = 900)]
+        timeout_secs: u64,
     },
 
     /// Print a full coverage and quality report.
@@ -216,7 +229,7 @@ pub enum Command {
     /// loop, the done-condition, and a mode-specific population checklist.
     Guide {
         /// greenfield (design first) | brownfield (map existing code) |
-        /// refactor (change existing). Auto-detected from the repo if omitted.
+        /// refactor (change existing) | seed (interview user). Auto-detected from the repo if omitted.
         #[arg(long)]
         mode: Option<String>,
     },
@@ -421,9 +434,41 @@ pub enum IntentCmd {
         tags: Vec<String>,
     },
 
-    /// Mark an intent as confirmed.
+    /// Confirm an intent (status = confirmed) AND stamp a freshness note —
+    /// "the user re-affirmed this meaning as of now". Re-confirming is the
+    /// align loop's cheap outcome: it resets the drift-suspicion clock that
+    /// `loom next --mode align` ranks by.
     Confirm {
         id: String,
+    },
+
+    /// UPDATE an intent's meaning in place — design EVOLUTION (same node,
+    /// same id, full history), distinct from `retire` (supersession by a
+    /// different intent). A --description change is a REDEFINITION and
+    /// ripples one hop, like `loom sync` but for meaning: earned verdicts
+    /// touching the intent → needs_reverification, linked proofs → not_run —
+    /// every green claim was earned against the old wording. A --name-only
+    /// change is cosmetic and ripples nothing.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom intent update \"request routing\" \\\n    \
+          --description \"route by host AND path; unknown hosts get 421\" \\\n    \
+          --reason \"multi-tenant pivot: host-based routing is now in scope\"")]
+    Update {
+        /// Intent id, name, or unique name fragment.
+        id: String,
+
+        /// New name (cosmetic — no ripple).
+        #[arg(long)]
+        name: Option<String>,
+
+        /// New meaning statement (REDEFINITION — ripples staleness one hop).
+        #[arg(long)]
+        description: Option<String>,
+
+        /// Why the meaning moved (recorded as a decision note, with the
+        /// previous wording preserved alongside).
+        #[arg(long)]
+        reason: String,
     },
 
     /// Set an intent's lifecycle (planned | implemented | needs_change). Use
@@ -1154,10 +1199,10 @@ pub enum ValidationCmd {
         #[arg(long)]
         command: Option<String>,
 
-        /// Optionally link the new validation to this intent (creates a VALIDATES
-        /// edge in the same step). Omit to link later with `loom edge validates`.
+        /// Link the new validation to intent(s) in one step (repeatable —
+        /// one VALIDATES edge each). Omit to link later with `loom edge validates`.
         #[arg(long)]
-        intent: Option<String>,
+        intent: Vec<String>,
     },
 
     /// Record a validation's result by hand (for manual_check / async proofs that

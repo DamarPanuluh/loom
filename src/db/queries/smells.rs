@@ -688,6 +688,14 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
-    smells.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    smells.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.kind.cmp(&b.kind))
+            .then_with(|| a.summary.cmp(&b.summary))
+            .then_with(|| a.evidence.cmp(&b.evidence))
+            .then_with(|| a.remedy.cmp(&b.remedy))
+    });
     Ok(smells)
 }

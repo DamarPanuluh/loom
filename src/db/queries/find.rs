@@ -145,8 +145,12 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
     let mut hits = Vec::with_capacity(scored.len());
     for (score, intent) in scored {
         let mut chain = Vec::new();
+        let mut visited = std::collections::HashSet::new();
         let mut cur = intent.id.as_str();
         while let Some(p) = parent_of.get(cur) {
+            if !visited.insert(cur) {
+                break;
+            }
             match name_of.get(p.as_str()) {
                 Some(name) => chain.push((*name).to_string()),
                 None => break, // deprecated ancestor — invisible to computation

@@ -35,6 +35,14 @@ pub fn role_of(agent: &str) -> Option<&str> {
         .map(|(_, r)| r.trim())
         .filter(|r| !r.is_empty())
 }
+pub(crate) fn known_bare_role(agent: &str) -> Option<&'static str> {
+    let bare = agent.trim();
+    if bare.contains(':') {
+        return None;
+    }
+    ROLES.iter().copied().find(|r| r.eq_ignore_ascii_case(bare))
+}
+
 
 /// The `loom next` mode that serves a role's lane — used in lane-violation
 /// errors to point the agent back at its own queue.
@@ -57,6 +65,13 @@ pub fn mode_for_role(r: &str) -> Option<&'static str> {
 ///   offender's own work queue.
 pub fn enforce_lane(action: &str, allowed: &[&str], agent: &str) -> Result<()> {
     let Some(r) = role_of(agent) else {
+        if let Some(r) = known_bare_role(agent) {
+            anyhow::bail!(
+                "Agent '{agent}' names the known role '{r}' without a provenance prefix. \
+                 Use `llm:{r}` (or `human:{r}` for human provenance) so lane gates can enforce separation of duties; \
+                 use bare 'llm'/'human' only for solo mode."
+            );
+        }
         return Ok(()); // solo mode
     };
     if !ROLES.contains(&r) {
@@ -181,6 +196,15 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("Unknown agent role"), "got: {err}");
+    }
+
+    #[test]
+    fn bare_known_role_is_rejected_not_solo_mode() {
+        let err = enforce_lane("ground an edge", &[role::ANALYZER], "builder")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Use `llm:builder`"), "got: {err}");
+        assert!(enforce_lane("ground an edge", &[role::ANALYZER], "alice").is_ok());
     }
 
     #[test]

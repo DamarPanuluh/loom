@@ -8,6 +8,7 @@
 
 use anyhow::{Context, Result};
 use serde_json::{json, Map, Value as J};
+use std::collections::{HashMap, HashSet};
 
 use crate::db::schema::{self, edge, label, prop, EDGE_TYPES, NODE_LABELS};
 use crate::db::LoomDb;
@@ -325,8 +326,9 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
 
     // v3 upgrade map: legacy stored edge uuid → derived v4 edge key, built
     // from the export's own edge items before any note is processed.
-    let mut legacy_edge_ids: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
+    let mut legacy_edge_ids: HashMap<String, String> = HashMap::new();
+    let mut node_ids: HashSet<String> = HashSet::new();
+    let mut node_id_labels: HashMap<String, &'static str> = HashMap::new();
     if upgrading_v3 {
         for &etype in EDGE_TYPES {
             let Some(items) = edges.get(etype).and_then(J::as_array) else { continue };
@@ -349,6 +351,18 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             continue; // older export — the section simply doesn't exist yet
         }
         let items = array_in_object(nodes, "nodes", lbl)?;
+        for item in items {
+            let obj = item_object(item, &format!("nodes.{lbl}"))?;
+            let id = required_str(obj, prop::ID, &format!("nodes.{lbl}"))?;
+            if !node_ids.insert(id.to_string()) {
+                let first_lbl = node_id_labels.get(id).copied().unwrap_or("unknown");
+                anyhow::bail!(
+                    "Duplicate node id '{id}' in nodes.{lbl}; already seen in nodes.{first_lbl}. \
+                     Node ids are globally unique — fix the export before importing."
+                );
+            }
+            node_id_labels.insert(id.to_string(), lbl);
+        }
         if skip_label(lbl) {
             report.skipped_nodes += items.len();
             continue;
@@ -429,6 +443,18 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
             let obj = item_object(item, &format!("edges.{etype}"))?;
             let from = required_str(obj, "from", &format!("edges.{etype}"))?;
             let to = required_str(obj, "to", &format!("edges.{etype}"))?;
+            if !node_ids.contains(from) {
+                anyhow::bail!(
+                    "Dangling edge endpoint in edges.{etype}: edge from '{from}' to '{to}' references \
+                     missing from-node id '{from}' (expected label {la}). Fix the export before importing."
+                );
+            }
+            if !node_ids.contains(to) {
+                anyhow::bail!(
+                    "Dangling edge endpoint in edges.{etype}: edge from '{from}' to '{to}' references \
+                     missing to-node id '{to}' (expected label {lb}). Fix the export before importing."
+                );
+            }
             let assigns = edge_props(etype)
                 .iter()
                 .map(|p| {

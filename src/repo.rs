@@ -31,7 +31,9 @@ pub fn walk_files(root: &Path) -> Result<Vec<String>> {
             continue;
         }
         if let Ok(rel) = entry.path().strip_prefix(root) {
-            let s = rel.to_string_lossy().replace('\\', "/");
+            let Some(s) = rel.to_str().map(|s| s.replace('\\', "/")) else {
+                continue;
+            };
             if s.is_empty() {
                 continue;
             }
@@ -66,6 +68,53 @@ pub fn content_hash(bytes: &[u8]) -> String {
         h = h.wrapping_mul(FNV_PRIME);
     }
     format!("{h:016x}")
+}
+
+/// Confine a registered path to the graph root: `.`/`..` fold lexically (the
+/// file may not exist yet, and a hostile path must never be probed), the
+/// result must stay under `root`, and the returned form is root-relative with
+/// `/` separators. `None` = the path escapes the root.
+///
+/// The graph is untrusted input (imports and hand edits travel in
+/// loom.graph.json): a CodeFile path like `/etc/passwd` or `../../secret`
+/// must never reach `fs::read` — sync hashes file bytes and probes locator
+/// substrings, which would otherwise answer "is this string in that file?"
+/// for any readable file on the machine. Absolute paths are accepted iff
+/// they resolve under `root` (and come back relative, the stored convention).
+/// When the lexical check fails for an absolute path, both sides resolve
+/// through `canonicalize` once — an absolute path may spell the root through
+/// a symlinked prefix (e.g. `/var` vs `/private/var` on macOS); resolving a
+/// path reveals nothing, contents are never read.
+pub fn confine(root: &Path, path: &Path) -> Option<String> {
+    use std::path::{Component, Path, PathBuf};
+    fn finish(rel: &Path) -> Option<String> {
+        if rel.as_os_str().is_empty() {
+            return None; // the root itself is not a file path
+        }
+        Some(rel.to_str()?.replace('\\', "/"))
+    }
+    let joined = if path.is_absolute() { path.to_path_buf() } else { root.join(path) };
+    let mut resolved = PathBuf::new();
+    for c in joined.components() {
+        match c {
+            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => resolved.push(c),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !resolved.pop() {
+                    return None; // walked above the filesystem root
+                }
+            }
+        }
+    }
+    if let Ok(rel) = resolved.strip_prefix(root) {
+        return finish(rel);
+    }
+    if path.is_absolute() {
+        let croot = root.canonicalize().ok()?;
+        let cpath = resolved.canonicalize().ok()?;
+        return finish(cpath.strip_prefix(&croot).ok()?);
+    }
+    None
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -358,6 +407,26 @@ mod tests {
         assert!(locator_present("fn run() {}", "fn run"));
         assert!(locator_present("anything", "")); // file-level grounding
         assert!(!locator_present("fn walk() {}", "fn run"));
+    }
+
+    #[test]
+    fn confine_keeps_root_relative_and_rejects_escapes() {
+        let root = Path::new("/repo");
+        // In-root forms normalize to the stored convention.
+        assert_eq!(confine(root, Path::new("src/main.rs")).as_deref(), Some("src/main.rs"));
+        assert_eq!(confine(root, Path::new("./src/./main.rs")).as_deref(), Some("src/main.rs"));
+        assert_eq!(confine(root, Path::new("src/db/../gate.rs")).as_deref(), Some("src/gate.rs"));
+        // Absolute is accepted iff it RESOLVES under root — and comes back relative.
+        assert_eq!(confine(root, Path::new("/repo/sub/file.rs")).as_deref(), Some("sub/file.rs"));
+        assert_eq!(confine(root, Path::new("/repo/a/../b.rs")).as_deref(), Some("b.rs"));
+        // What matters is the resolved target, not the route taken to it.
+        assert_eq!(confine(root, Path::new("../repo/src/x.rs")).as_deref(), Some("src/x.rs"));
+        // Escapes: relative, `..`-smuggled, absolute, above-fs-root, root itself.
+        assert_eq!(confine(root, Path::new("../outside.rs")), None);
+        assert_eq!(confine(root, Path::new("src/../../etc/passwd")), None);
+        assert_eq!(confine(root, Path::new("/etc/passwd")), None);
+        assert_eq!(confine(root, Path::new("../../../../..")), None);
+        assert_eq!(confine(root, Path::new("/repo")), None);
     }
 
     #[test]

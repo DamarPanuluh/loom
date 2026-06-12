@@ -290,6 +290,8 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         EdgeCmd::Govern { rule_id, intent_id, criterion } => {
             gate::acting_in_lane("apply a quality rule (GOVERNS)", &[role::QUALITY], None)?;
+            let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {

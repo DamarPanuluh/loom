@@ -22,7 +22,7 @@
 //! `loom import` upgrades v3 exports in flight. This command is for live
 //! graphs with history — note targets — worth preserving.)
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use grafeo::Value;
 use std::collections::HashMap;
 
@@ -110,8 +110,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     let intent_rows = db.execute("MATCH (n:Intent) RETURN n.id, n.source_refs, n.tags")?;
     for row in intent_rows.rows() {
         let id = str_of(&row[0]);
-        let refs = string_json_list(&row[1]);
-        let tags = string_json_list(&row[2]);
+        let refs = string_json_list(&row[1], "Intent", &id, "source_refs")?;
+        let tags = string_json_list(&row[2], "Intent", &id, "tags")?;
         if refs.is_none() && tags.is_none() {
             continue;
         }
@@ -135,7 +135,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cf_rows = db.execute("MATCH (n:CodeFile) RETURN n.id, n.imports")?;
     for row in cf_rows.rows() {
         let id = str_of(&row[0]);
-        let Some(imports) = string_json_list(&row[1]) else { continue };
+        let Some(imports) = string_json_list(&row[1], "CodeFile", &id, "imports")? else { continue };
         let mut p: HashMap<String, Value> = HashMap::new();
         p.insert("id".into(), Value::String(id.into()));
         p.insert("imports".into(), list_value(imports));
@@ -180,11 +180,18 @@ fn str_of(v: &Value) -> String {
 
 /// Some(items) when the stored value is still a pre-v5 JSON-encoded string
 /// ("" counts as empty list); None when already a native list (or absent).
-fn string_json_list(v: &Value) -> Option<Vec<String>> {
+fn string_json_list(v: &Value, label: &str, id: &str, prop: &str) -> Result<Option<Vec<String>>> {
     match v {
-        Value::String(s) if s.trim().is_empty() => Some(Vec::new()),
-        Value::String(s) => Some(serde_json::from_str(s.as_ref()).unwrap_or_default()),
-        _ => None,
+        Value::String(s) if s.trim().is_empty() => Ok(Some(Vec::new())),
+        Value::String(s) => serde_json::from_str(s.as_ref())
+            .map(Some)
+            .with_context(|| {
+                format!(
+                    "Failed to parse pre-v5 JSON list for {label} node '{id}' property '{prop}'. \
+                     Fix the stored JSON string before running `loom migrate`."
+                )
+            }),
+        _ => Ok(None),
     }
 }
 

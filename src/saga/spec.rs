@@ -48,6 +48,8 @@ fn default_timeout() -> u64 {
     DEFAULT_TIMEOUT_SECS
 }
 
+const SPEC_SIZE_CAP: usize = 512 * 1024;
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Step {
@@ -125,14 +127,22 @@ const METHODS: &[&str] = &["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPT
 /// both `saga add` and `saga run` fail fast with a line-level reason instead
 /// of mid-run.
 pub fn load_spec(yaml: &str, origin: &str) -> Result<SagaSpec> {
+    if yaml.len() > SPEC_SIZE_CAP {
+        anyhow::bail!(
+            "{origin}: saga spec is {} bytes, above the 512 KiB limit. Split the proof or remove generated payloads before running `loom saga add`.",
+            yaml.len()
+        );
+    }
     let spec: SagaSpec = serde_yaml::from_str(yaml)
         .with_context(|| format!("Invalid saga spec: {origin}"))?;
-
     if spec.saga.trim().is_empty() {
         anyhow::bail!("{origin}: `saga:` (the name) must not be empty.");
     }
     if spec.steps.is_empty() {
         anyhow::bail!("{origin}: a saga needs at least one step.");
+    }
+    if spec.timeout_secs == 0 {
+        anyhow::bail!("{origin}: `timeout_secs:` must be at least 1 second.");
     }
     for (i, step) in spec.steps.iter().enumerate() {
         let at = format!("{origin}: step {} ('{}')", i + 1, step.name);
@@ -166,6 +176,15 @@ pub fn load_spec(yaml: &str, origin: &str) -> Result<SagaSpec> {
 
 /// Read + parse a spec file.
 pub fn load_spec_file(path: &std::path::Path) -> Result<SagaSpec> {
+    let size = std::fs::metadata(path)
+        .with_context(|| format!("Cannot stat saga spec '{}'", path.display()))?
+        .len();
+    if size > SPEC_SIZE_CAP as u64 {
+        anyhow::bail!(
+            "Saga spec '{}' is {size} bytes, above the 512 KiB limit. Split the proof or remove generated payloads before running `loom saga add`.",
+            path.display()
+        );
+    }
     let yaml = std::fs::read_to_string(path)
         .with_context(|| format!("Cannot read saga spec '{}'", path.display()))?;
     load_spec(&yaml, &path.display().to_string())
@@ -336,6 +355,20 @@ steps:
         let bad = GOOD.replace("    intent: cart-creation\n", "");
         let err = load_spec(&bad, "test").unwrap_err().to_string();
         assert!(err.contains("Invalid saga spec"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_zero_timeout() {
+        let bad = GOOD.replace("saga: checkout-flow", "saga: checkout-flow\ntimeout_secs: 0");
+        let err = format!("{:#}", load_spec(&bad, "t").unwrap_err());
+        assert!(err.contains("`timeout_secs:` must be at least 1 second"), "got: {err}");
+    }
+
+    #[test]
+    fn rejects_oversized_spec_before_yaml_parse() {
+        let huge = "x".repeat(SPEC_SIZE_CAP + 1);
+        let err = format!("{:#}", load_spec(&huge, "huge.yaml").unwrap_err());
+        assert!(err.contains("above the 512 KiB limit"), "got: {err}");
     }
 
     #[test]

@@ -1233,6 +1233,84 @@ mod tests {
         assert_eq!(gs.intents, 2, "pulse counts active intents only");
     }
 
+    /// Redefinition is the semantic twin of the sync ripple: every verdict
+    /// earned against the OLD wording goes stale — including the IMPLEMENTS
+    /// grounding (code is byte-identical, but "does it do what this says?"
+    /// changed meaning) and `independent` claims (verified absence was judged
+    /// against the old meaning too). Blocked proofs keep their reason.
+    #[test]
+    fn redefinition_ripples_one_hop() {
+        use crate::types::Validation;
+        let (db, ids) = db_with_intents(3);
+        // RELATES_TO: one passing, one independent — both flip.
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
+        update_relates_to_independent(&db, &ids[0], &ids[2], "verified: nothing shared", "llm", "t").unwrap();
+        // IMPLEMENTS: passing by construction.
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
+        // GOVERNS: passing verdict.
+        insert_rule(&db, &QualityRule {
+            id: "r0".into(), name: "stick".into(), description: "d".into(),
+            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
+        }).unwrap();
+        insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
+        update_governs_verdict(&db, "r0", &ids[0], "passing",
+            "criterion text long enough", "evidence text long enough", 0.9, "llm:quality", "t").unwrap();
+        // Proofs: one passed (flips), one blocked (keeps its reason).
+        insert_validation(&db, &Validation {
+            id: "v0".into(), name: "proof".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: "t".into(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
+        insert_validation(&db, &Validation {
+            id: "v1".into(), name: "blocked-proof".into(), description: String::new(),
+            validation_type: "manual_check".into(), command: String::new(),
+            last_run: String::new(), last_result: "blocked".into(),
+        }).unwrap();
+        insert_validates(&db, "v1", &ids[0], "", "t").unwrap();
+
+        assert!(update_intent_meaning(&db, &ids[0], None, Some("routing now includes host matching"), "t2").unwrap());
+        let r = ripple_intent_redefinition(&db, &ids[0], "I0", "t2").unwrap();
+
+        assert_eq!(get_intent(&db, &ids[0]).unwrap().unwrap().description, "routing now includes host matching");
+        assert_eq!(r.relates_to_flagged, 2, "passing AND independent flip");
+        assert_eq!(r.implements_flagged, 1);
+        assert_eq!(r.governs_flagged, 1);
+        assert_eq!(r.validations_invalidated, 1, "blocked proof untouched");
+        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().inspection_status, "needs_reverification");
+        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap().inspection_status, "needs_reverification");
+        assert_eq!(list_implements_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "needs_reverification");
+        assert_eq!(list_governs_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "needs_reverification");
+        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "not_run");
+        assert_eq!(get_validation(&db, "v1").unwrap().unwrap().last_result, "blocked");
+        // The flip notes carry the redefinition cause, but never pollute the
+        // hot-FILE grouping (`parse_sync_cause` is for "<path> changed" only).
+        let edge_id = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().id;
+        let n = &notes_for_target(&db, &edge_id).unwrap().pop().unwrap();
+        assert!(n.text.contains("intent 'I0' redefined"), "{}", n.text);
+        assert_eq!(parse_sync_cause(&n.text), None);
+        // A neighbour's OWN claims are untouched (one hop, not transitive).
+        let d1 = get_intent(&db, &ids[1]).unwrap().unwrap();
+        assert_eq!(d1.description, "d", "neighbour intents are not rewritten");
+    }
+
+    /// Confirmation is an append-only freshness EVENT: the newest confirm note
+    /// is the stamp the align queue ranks by; never confirmed = None.
+    #[test]
+    fn confirm_stamps_are_append_only_freshness() {
+        let (db, ids) = db_with_intents(1);
+        assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap(), None);
+        record_confirmation(&db, &ids[0], "human", "t1").unwrap();
+        assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap().as_deref(), Some("t1"));
+        record_confirmation(&db, &ids[0], "human", "t3").unwrap();
+        assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap().as_deref(), Some("t3"), "newest stamp wins");
+        // Both events remain — alignment history, not a mutable field.
+        assert_eq!(list_notes(&db, Some(&ids[0]), Some("confirm")).unwrap().len(), 2);
+    }
+
     /// Centrality counts REAL relationships only: `independent` edges give the
     /// grid closure but contribute nothing to blast radius.
     #[test]
@@ -2381,6 +2459,61 @@ mod tests {
             "{:?}", report.issues
         );
     }
+
+    #[test]
+    fn align_ranks_churned_unconfirmed_intent_first() {
+        let (db, ids) = db_with_intents(2);
+        let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        let confirm_a = note_at("confirm-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z");
+        let confirm_b = note_at("confirm-b", "confirm", "intent", &ids[1], "2026-01-03T00:00:00Z");
+        insert_note(&db, &confirm_a).unwrap();
+        insert_note(&db, &confirm_b).unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            &edge.id,
+            "passing",
+            "needs_reverification",
+            "src/lib.rs changed",
+            "2026-01-02T00:00:00Z",
+        ).unwrap();
+
+        let candidates = align_candidates(&db).unwrap();
+        assert_eq!(candidates[0].intent.id, ids[0]);
+        assert_eq!(candidates[0].churn_since_confirm, 1);
+        assert!(candidates[0].score > candidates[1].score);
+    }
+
+    #[test]
+    fn align_ignores_retired_intents() {
+        let (db, ids) = db_with_intents(2);
+        retire_intent(&db, &ids[0], "superseded", None, "2026-01-01T00:00:00Z").unwrap();
+
+        let candidates = align_candidates(&db).unwrap();
+        assert!(candidates.iter().all(|c| c.intent.id != ids[0]));
+        assert!(candidates.iter().any(|c| c.intent.id == ids[1]));
+    }
+
+    #[test]
+    fn align_churn_before_confirm_not_counted() {
+        let (db, ids) = db_with_intents(2);
+        let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            &edge.id,
+            "passing",
+            "needs_reverification",
+            "src/lib.rs changed",
+            "2026-01-01T00:00:00Z",
+        ).unwrap();
+        let confirm = note_at("confirm-after", "confirm", "intent", &ids[0], "2026-01-02T00:00:00Z");
+        insert_note(&db, &confirm).unwrap();
+
+        let candidates = align_candidates(&db).unwrap();
+        let candidate = candidates.iter().find(|c| c.intent.id == ids[0]).unwrap();
+        assert_eq!(candidate.churn_since_confirm, 0);
+    }
 }
 
 /// Proves the value-escaping path (`schema::esc` + string interpolation) is
@@ -2392,7 +2525,7 @@ mod tests {
 #[cfg(test)]
 mod escaping {
     use super::*;
-    use crate::db::GrafeoDb;
+    use crate::db::{GrafeoDb, LoomDb};
     use crate::types::Intent;
 
     fn mk(id: &str, desc: &str) -> Intent {
@@ -2405,11 +2538,21 @@ mod escaping {
     #[test]
     fn esc_round_trips_adversarial_input() {
         let db = GrafeoDb::in_memory();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-test",
+            "testgraph",
+            "owned",
+        )).unwrap();
         let nasty = [
             "O'Brien",
+            "\"double\" quote",
             "back\\slash",            // a literal backslash
+            "trailing\\",
             "quote'and\\back",
             "'; MATCH (n) DETACH DELETE n; //",
+            "'}) DETACH DELETE (n) //",
             "café 日本語 — ünîcödé",
             "tab\tand\nnewline-literal",
             "actual\nnewline:\n<-",
@@ -2420,6 +2563,9 @@ mod escaping {
             insert_intent(&db, &mk(&id, d)).unwrap();
             let got = get_intent(&db, &id).unwrap().expect("must read back");
             assert_eq!(&got.description, d, "round-trip mismatch for input {k:?}");
+            set_identity(&db, "g-test", d, "owned").unwrap();
+            let meta = get_meta(&db).unwrap().expect("must read meta back");
+            assert_eq!(&meta.graph_name, d, "esc/interpolation round-trip mismatch for input {k:?}");
         }
         // also a real newline byte and a real tab byte
         let id = "real_ctrl";

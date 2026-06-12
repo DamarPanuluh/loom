@@ -1,5 +1,7 @@
 use anyhow::Result;
 use std::process::Command as StdCommand;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
@@ -10,7 +12,7 @@ use crate::db::schema::esc;
 use crate::output::Printer;
 use crate::types::ValidationResult;
 
-pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
+pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> {
     // Running validations writes last_run/last_result and the VALIDATES
     // verdict — validator lane.
     crate::gate::acting_in_lane(
@@ -65,11 +67,68 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         }
     }
 
-    // Phase 2 (DB CLOSED): run the commands with the graph lock released.
-    // loom holds one exclusive grafeo session; a validation command may itself
-    // invoke loom (e.g. `loom status --json` as a smoke check) or anything else
-    // that reads the graph — holding the lock here would deadlock it with
-    // GRAFEO-X001. Found by loom validating itself.
+    execute_and_record(
+        &db_file, &cwd, db, &to_run, timeout_secs, printer,
+        ("intent_id", serde_json::json!(intent_id)),
+    )
+}
+
+/// `loom validate --all`: run every PENDING proof — last_result == not_run,
+/// i.e. never run or invalidated by a sync flood. One verb instead of
+/// enumerating intents by hand after `loom sync` resets N proofs at once.
+/// Passed/failed results are settled verdicts (re-run them per intent when you
+/// mean to); blocked proofs carry a recorded reason and stay out everywhere.
+pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
+    crate::gate::acting_in_lane(
+        "run validations",
+        &[crate::db::schema::role::VALIDATOR],
+        None,
+    )?;
+    let cwd = crate::db::resolve_root()?;
+    let db_file = ensure_initialized(&cwd)?;
+    let db = GrafeoDb::open(&db_file)?;
+
+    let to_run: Vec<crate::types::Validation> = crate::db::queries::list_validations(&db)?
+        .into_iter()
+        .filter(|v| v.last_result == "not_run")
+        .collect();
+
+    if to_run.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "scope":   "all",
+                "results": [],
+                "message": "Nothing pending — every proof has a recorded result (passed/failed/blocked).",
+            }));
+        } else {
+            println!("✓ Nothing pending — every proof has a recorded result (passed/failed/blocked).");
+        }
+        return Ok(());
+    }
+    if !printer.json {
+        println!("Running {} pending validation(s)…", to_run.len());
+    }
+
+    execute_and_record(
+        &db_file, &cwd, db, &to_run, timeout_secs, printer,
+        ("scope", serde_json::json!("all")),
+    )
+}
+
+/// Phases 2+3 shared by `run` and `run_all`: execute commands with the DB
+/// CLOSED (the graph lock must be released — a validation may itself invoke
+/// loom; found by loom validating itself), then reopen and persist results +
+/// VALIDATES verdicts in one transaction. `scope` is the JSON envelope key
+/// identifying what was run (intent_id vs all).
+fn execute_and_record(
+    db_file: &std::path::Path,
+    cwd: &std::path::Path,
+    db: GrafeoDb,
+    to_run: &[crate::types::Validation],
+    timeout_secs: u64,
+    printer: &Printer,
+    scope: (&str, serde_json::Value),
+) -> Result<()> {
     drop(db);
 
     let now = chrono::Utc::now().to_rfc3339();
@@ -79,7 +138,7 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let mut passed = 0usize;
     let mut failed = 0usize;
 
-    for validation in &to_run {
+    for validation in to_run {
         if validation.last_result == "blocked" {
             // A recorded "can't run yet" — don't run it, don't overwrite it.
             // Unblock by re-marking: `loom validation mark <id> --result passed|failed`.
@@ -140,19 +199,20 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         }
 
         // Run the command via sh -c so shell features work (e.g. cargo test --test foo)
-        let exit_status = StdCommand::new("sh")
-            .arg("-c")
-            .arg(&validation.command)
-            .status();
+        let exit_status = run_validation_command(&validation.command, &cwd, timeout_secs);
 
-        let result = match exit_status {
-            Ok(s) if s.success() => {
+        let (result, detail) = match exit_status {
+            Ok(CommandOutcome::Exited(s)) if s.success() => {
                 passed += 1;
-                ValidationResult::Passed
+                (ValidationResult::Passed, None)
             }
-            Ok(_) => {
+            Ok(CommandOutcome::Exited(s)) => {
                 failed += 1;
-                ValidationResult::Failed
+                (ValidationResult::Failed, Some(format!("exited with {s}")))
+            }
+            Ok(CommandOutcome::TimedOut) => {
+                failed += 1;
+                (ValidationResult::Failed, Some(format!("timed out after {timeout_secs}s")))
             }
             Err(e) => {
                 failed += 1;
@@ -160,41 +220,51 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
                     "Warning: Could not run command for '{}': {}",
                     validation.name, e
                 );
-                ValidationResult::Failed
+                (ValidationResult::Failed, Some(e.to_string()))
             }
         };
         let new_result = result.to_string();
         outcomes.push((validation.id.clone(), new_result.clone()));
 
-        results.push(serde_json::json!({
+        let mut entry = serde_json::json!({
             "validation_id": validation.id,
             "name":          validation.name,
             "type":          validation.validation_type,
             "command":       validation.command,
             "result":        &new_result,
             "run_at":        &now,
-        }));
+        });
+        if let Some(detail) = &detail {
+            entry["detail"] = serde_json::Value::String(detail.clone());
+        }
+        results.push(entry);
 
         if !printer.json {
             let mark = if new_result == "passed" { "✓" } else { "✗" };
             println!("  {} {} [{}]", mark, validation.name, new_result);
             println!("    cmd: {}", validation.command);
+            if let Some(detail) = &detail {
+                println!("    detail: {detail}");
+            }
         }
     }
 
     // Phase 3 (DB reopened): persist results on the Validation nodes and the
     // VALIDATES edges.
     let db = GrafeoDb::open(&db_file)?;
-    for (vid, new_result) in &outcomes {
-        update_validation_result(&db, vid, new_result, &now)?;
-        set_validates_edge_status(&db, vid, new_result)?;
-    }
-    // Blocked proofs also record WHY on their VALIDATES edges (mirrors
-    // `loom validation mark --result blocked`): out of the queue, never
-    // looking forgotten, and a code change won't quietly reset them.
-    for (vid, note) in &blocked_notes {
-        crate::db::queries::set_validates_status_for_validation(&db, vid, "uninspected", note)?;
-    }
+    crate::db::with_transaction(&db, || {
+        for (vid, new_result) in &outcomes {
+            update_validation_result(&db, vid, new_result, &now)?;
+            set_validates_edge_status(&db, vid, new_result)?;
+        }
+        // Blocked proofs also record WHY on their VALIDATES edges (mirrors
+        // `loom validation mark --result blocked`): out of the queue, never
+        // looking forgotten, and a code change won't quietly reset them.
+        for (vid, note) in &blocked_notes {
+            crate::db::queries::set_validates_status_for_validation(&db, vid, "uninspected", note)?;
+        }
+        Ok(())
+    })?;
 
     // End-of-run summary moves the phase: full anchor, result-sensitive.
     let next_step = if failed > 0 {
@@ -203,8 +273,9 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
         "`loom status` re-checks the compass"
     };
     if printer.json {
+        let (scope_key, scope_val) = scope;
         printer.print_json(&crate::output::with_anchor(serde_json::json!({
-            "intent_id": intent_id,
+            scope_key:   scope_val,
             "passed":    passed,
             "failed":    failed,
             "results":   results,
@@ -216,6 +287,36 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     }
 
     Ok(())
+}
+
+enum CommandOutcome {
+    Exited(std::process::ExitStatus),
+    TimedOut,
+}
+
+fn run_validation_command(
+    command: &str,
+    cwd: &std::path::Path,
+    timeout_secs: u64,
+) -> Result<CommandOutcome> {
+    let mut child = StdCommand::new("sh")
+        .arg("-c")
+        .arg(command)
+        .current_dir(cwd)
+        .spawn()?;
+    let deadline = Instant::now() + Duration::from_secs(timeout_secs);
+
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(CommandOutcome::Exited(status));
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(CommandOutcome::TimedOut);
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
 }
 
 // ---------------------------------------------------------------------------

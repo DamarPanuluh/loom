@@ -10,11 +10,11 @@ impl Printer {
     }
 
     pub fn print_json<T: Serialize>(&self, value: &T) {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(value)
-                .unwrap_or_else(|e| format!("{{\"error\": \"{}\"}}", e))
-        );
+        let rendered = serde_json::to_string_pretty(value).unwrap_or_else(|e| {
+            serde_json::to_string_pretty(&serde_json::json!({ "error": e.to_string() }))
+                .expect("serializing JSON error object cannot fail")
+        });
+        println!("{rendered}");
     }
 }
 

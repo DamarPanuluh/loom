@@ -54,7 +54,12 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
         println!("{pretty}");
         return Ok(());
     }
-    fs::write(cwd.join(out), &pretty)?;
+    let target = cwd.join(out);
+    let mut tmp = target.as_os_str().to_os_string();
+    tmp.push(".tmp");
+    let tmp = std::path::PathBuf::from(tmp);
+    fs::write(&tmp, &pretty)?;
+    fs::rename(&tmp, &target)?;
 
     let nodes: usize = graph["nodes"].as_object().map(|m| m.values().filter_map(|v| v.as_array()).map(|a| a.len()).sum()).unwrap_or(0);
     let edges: usize = graph["edges"].as_object().map(|m| m.values().filter_map(|v| v.as_array()).map(|a| a.len()).sum()).unwrap_or(0);

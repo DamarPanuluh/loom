@@ -229,7 +229,7 @@ impl std::str::FromStr for ValidationResult {
 // EdgeType
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EdgeType {
     RelatesTo,
     Hierarchy,
@@ -848,6 +848,10 @@ pub struct SyncReport {
     /// Phantom files distort coverage — remove them (`loom codefile remove`)
     /// or restore them.
     pub missing_files: Vec<String>,
+    /// Registered CodeFile paths that resolve OUTSIDE the graph root
+    /// (hostile/corrupt graph data) — sync refuses to read them; remove the
+    /// registration.
+    pub escaped_files: Vec<String>,
     /// IMPLEMENTS locators that no longer occur in their file (renamed
     /// symbol?) — the edge was flipped to needs_reverification if it was
     /// passing. Re-ground with a fresh locator.

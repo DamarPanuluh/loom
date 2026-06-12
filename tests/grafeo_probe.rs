@@ -95,6 +95,35 @@ fn probe_params() {
     }
 }
 
+#[test]
+fn pin_param_binding_round_trips_quotes_and_backslashes() {
+    let (_db, s) = mem();
+    let expected = "o'brien — tricky 'quotes' and \\backslashes\\";
+    let mut p = HashMap::new();
+    p.insert("name".to_string(), Value::String(expected.into()));
+
+    let ins = s.execute_with_params("INSERT (:T {name: $name})", p.clone());
+    assert!(
+        ins.is_ok(),
+        "grafeo rejected $param INSERT for free text with quotes/backslashes: {ins:?}"
+    );
+
+    let rd = s.execute_with_params("MATCH (n:T) WHERE n.name = $name RETURN n.name", p);
+    let got = rd
+        .as_ref()
+        .map(|r| r.rows())
+        .expect("grafeo rejected $param WHERE for free text with quotes/backslashes");
+    assert_eq!(
+        got.len(),
+        1,
+        "grafeo $param binding no longer matches the exact free-text value; free-text writes depend on this safe pattern"
+    );
+    assert!(
+        matches!(got[0].as_slice(), [Value::String(actual)] if actual == expected),
+        "grafeo $param binding did not round-trip quotes/backslashes intact; free-text writes depend on this safe pattern; got {got:?}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Probe 2 — the known bug, reproduced as a baseline: filtering a relationship
 // by its own property (WHERE r.x and inline {x: ...}), including immediately
@@ -158,6 +187,34 @@ fn probe_edge_property_filter() {
     .map(|r| r.len());
     println!(
         "PROBE edge_prop_filter(after-SET): VERDICT — expected Ok(2), observed {after:?}"
+    );
+}
+
+#[test]
+fn pin_edge_id_filters_match_nothing() {
+    let (_db, s) = mem();
+    must(&s, "INSERT (:T {id: 'a'}), (:T {id: 'b'})");
+    must(
+        &s,
+        "MATCH (a:T {id: 'a'}), (b:T {id: 'b'}) INSERT (a)-[:R {id: 'edge-1'}]->(b)",
+    );
+
+    let where_rows = must(
+        &s,
+        "MATCH (a:T)-[r:R]->(b:T) WHERE r.id = 'edge-1' RETURN a.id",
+    );
+    assert!(
+        where_rows.is_empty(),
+        "grafeo now matches edge-id filters in WHERE position — revisit the endpoint-matching workaround, see CLAUDE.md"
+    );
+
+    let inline_rows = must(
+        &s,
+        "MATCH (a:T)-[r:R {id: 'edge-1'}]->(b:T) RETURN a.id",
+    );
+    assert!(
+        inline_rows.is_empty(),
+        "grafeo now matches edge-id filters in inline position — revisit the endpoint-matching workaround, see CLAUDE.md"
     );
 }
 

@@ -13,12 +13,13 @@
 //! which is exactly what the proof exists to detect.
 
 use std::collections::BTreeMap;
+use std::io::Read;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use serde::Serialize;
 
-use super::spec::{interpolate, interpolate_json, BodyExpectation, SagaSpec, Step};
+use super::spec::{interpolate, interpolate_json, required_env, BodyExpectation, SagaSpec, Step};
 
 // ---------------------------------------------------------------------------
 // Outcomes
@@ -31,8 +32,10 @@ pub struct StepOutcome {
     pub name: String,
     /// The intent binding as written in the spec.
     pub intent: String,
+    /// HTTP method as written in the spec (uppercased).
     pub method: String,
-    /// Fully resolved URL (after interpolation + base join).
+    /// Resolved URL (after interpolation + base join), with `{{ env.X }}`
+    /// values redacted before the outcome leaves the runner.
     pub url: String,
     /// HTTP status received, if the request got a response at all.
     pub status: Option<u16>,
@@ -61,13 +64,43 @@ impl SagaRunReport {
     }
 }
 
+const RESPONSE_BODY_CAP: usize = 8 * 1024 * 1024;
+
+#[derive(Debug, Clone)]
+struct EnvRedactor {
+    pairs: Vec<(String, String)>,
+}
+
+impl EnvRedactor {
+    fn from_spec(spec: &SagaSpec) -> Result<Self> {
+        let mut pairs = Vec::new();
+        for key in required_env(spec) {
+            let value = std::env::var(&key).with_context(|| {
+                format!("Template references '{{{{ env.{key} }}}}' but ${key} is not set.")
+            })?;
+            if value.len() >= 4 {
+                pairs.push((key, value));
+            }
+        }
+        Ok(Self { pairs })
+    }
+
+    fn redact(&self, s: &str) -> String {
+        let mut out = s.to_string();
+        for (key, value) in &self.pairs {
+            out = out.replace(value, &format!("{{{{ env.{key} }}}}"));
+        }
+        out
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Execution
 // ---------------------------------------------------------------------------
 
 /// Run the saga start to finish (or to first failure). Only environment-level
-/// problems (a broken HTTP client, a relative url with no `base`) return
-/// `Err`; everything observed *against the target* is an outcome.
+/// problems (a broken HTTP client or unresolvable `base`) return `Err`;
+/// everything observed *against the target* is an outcome.
 pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(spec.timeout_secs))
@@ -75,6 +108,7 @@ pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
         .context("Could not build the HTTP client")?;
 
     let mut vars = spec.vars.clone();
+    let redactor = EnvRedactor::from_spec(spec)?;
     let base = interpolate(&spec.base, &vars)
         .context("Could not resolve the saga `base:` url")?;
 
@@ -82,7 +116,7 @@ pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
     let mut passed = true;
 
     for (i, step) in spec.steps.iter().enumerate() {
-        let outcome = run_step(&client, &base, step, i + 1, &mut vars)?;
+        let outcome = run_step(&client, &base, &redactor, step, i + 1, &mut vars)?;
         let step_passed = outcome.passed;
         outcomes.push(outcome);
         if !step_passed {
@@ -103,6 +137,7 @@ pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
 fn run_step(
     client: &reqwest::blocking::Client,
     base: &str,
+    redactor: &EnvRedactor,
     step: &Step,
     number: usize,
     vars: &mut BTreeMap<String, String>,
@@ -113,15 +148,15 @@ fn run_step(
         name: step.name.clone(),
         intent: step.intent.clone(),
         method: method.clone(),
-        url,
+        url: redactor.redact(&url),
         status,
         passed: false,
-        detail,
+        detail: redactor.redact(&detail),
         captured: BTreeMap::new(),
     };
 
-    // Resolve the URL. A relative url with no base is an environment problem
-    // (hard error), not something the target did.
+    // Resolve the URL. A relative url with no base is a failed step outcome,
+    // not a hard process error, so earlier side effects are still recorded.
     let url = match interpolate(&step.request.url, vars) {
         Ok(u) => u,
         Err(e) => return Ok(fail(step.request.url.clone(), None, format!("spec error: {e}"))),
@@ -130,10 +165,11 @@ fn run_step(
         url
     } else {
         if base.is_empty() {
-            anyhow::bail!(
-                "Step {number} ('{}') has a relative url '{url}' but the saga has no `base:`.",
-                step.name
-            );
+            return Ok(fail(
+                url.clone(),
+                None,
+                format!("relative url '{url}' cannot run because the saga has no `base:`"),
+            ));
         }
         format!("{}/{}", base.trim_end_matches('/'), url.trim_start_matches('/'))
     };
@@ -169,9 +205,9 @@ fn run_step(
     };
     let status = resp.status().as_u16();
     let headers = resp.headers().clone();
-    let text = match resp.text() {
+    let text = match read_capped_body(resp) {
         Ok(t) => t,
-        Err(e) => return Ok(fail(url, Some(status), format!("could not read response body: {e}"))),
+        Err(e) => return Ok(fail(url, Some(status), e)),
     };
 
     // Evaluate expectations — collect EVERY broken one (better debugging than
@@ -277,23 +313,36 @@ fn run_step(
     if passed {
         vars.extend(captured.clone());
     }
+    let detail = if passed {
+        format!("ok ({status})")
+    } else {
+        problems.join("; ")
+    };
     Ok(StepOutcome {
         step: number,
         name: step.name.clone(),
         intent: step.intent.clone(),
         method,
-        url,
+        url: redactor.redact(&url),
         status: Some(status),
         passed,
-        detail: if passed {
-            format!("ok ({status})")
-        } else {
-            problems.join("; ")
-        },
+        detail: redactor.redact(&detail),
         captured,
     })
 }
 
+
+fn read_capped_body(resp: reqwest::blocking::Response) -> std::result::Result<String, String> {
+    let mut bytes = Vec::new();
+    let mut limited = resp.take((RESPONSE_BODY_CAP + 1) as u64);
+    limited
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("could not read response body: {e}"))?;
+    if bytes.len() > RESPONSE_BODY_CAP {
+        return Err("response body exceeds 8 MiB cap".to_string());
+    }
+    String::from_utf8(bytes).map_err(|e| format!("response body is not valid UTF-8: {e}"))
+}
 /// A captured/compared node as a string: raw for JSON strings, compact JSON
 /// for everything else.
 fn node_as_string(node: &serde_json::Value) -> String {
@@ -445,5 +494,32 @@ steps:
         assert!(!report.passed);
         assert_eq!(report.executed, 1);
         assert!(report.failure().unwrap().detail.contains("request failed"));
+    }
+
+    #[test]
+    fn relative_url_without_base_is_step_failure() {
+        let spec = load("");
+        let report = run_saga(&spec).unwrap();
+        assert!(!report.passed);
+        assert_eq!(report.executed, 1);
+        let failure = report.failure().unwrap();
+        assert!(failure.detail.contains("no `base:`"), "got: {}", failure.detail);
+        assert_eq!(failure.url, "/carts");
+    }
+
+    #[test]
+    fn env_values_are_redacted_from_outcomes() {
+        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let secret_base = format!("http://127.0.0.1:{port}");
+        std::env::set_var("LOOM_SAGA_REDACT_BASE", &secret_base);
+        let spec = crate::saga::spec::load_spec(
+            &SPEC.replace("__BASE__", "{{ env.LOOM_SAGA_REDACT_BASE }}"),
+            "test",
+        ).unwrap();
+        let report = run_saga(&spec).unwrap();
+        let failure = report.failure().unwrap();
+        assert!(failure.url.contains("{{ env.LOOM_SAGA_REDACT_BASE }}"), "got: {}", failure.url);
+        assert!(!failure.url.contains(&secret_base), "got: {}", failure.url);
+        assert!(!failure.detail.contains(&secret_base), "got: {}", failure.detail);
     }
 }

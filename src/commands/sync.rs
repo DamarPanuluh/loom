@@ -35,6 +35,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut validations_invalidated = 0usize;
     let mut changes: Vec<SyncChange> = Vec::new();
     let mut missing_files: Vec<String> = Vec::new();
+    let mut escaped_files: Vec<String> = Vec::new();
     let mut text_contents: HashMap<String, String> = HashMap::new();
     let mut non_utf8_files: HashSet<String> = HashSet::new();
     let mut active_intents: Option<HashSet<String>> = None;
@@ -77,20 +78,27 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
     let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
 
-    // The whole mutation phase is ONE transaction: a sync that dies midway
-    // (unreadable file, write error) must not leave the graph half-rippled —
-    // some edges flagged, others not, and no last_synced stamp to say which.
-    // Rollback restores the pre-sync graph exactly; re-running after the fix
-    // does the full ripple.
-    let locators_stale = crate::db::with_transaction(&db, || {
+    // Per-FILE atomicity, not one graph-wide transaction: each changed file's
+    // fingerprint update + edge flags + validation invalidations commit
+    // together, so a crash can never record "already synced" while the ripple
+    // is missing. Across files no transaction is needed — change detection is
+    // content-hash-driven, so a re-run picks up exactly the files whose unit
+    // didn't commit, and the flag helpers skip edges already flipped. A single
+    // mega-transaction would also be wrong on grafeo 0.5.x: every
+    // MATCH-by-property inside a transaction rescans the label through the
+    // growing MVCC overlay, so N statements cost O(N²) — the trap migrate.rs
+    // documents and escaped.
     for cf in &codefiles {
-        // Resolve path relative to the loom project root if not absolute
-        let file_path = Path::new(&cf.path);
-        let abs_path = if file_path.is_absolute() {
-            file_path.to_path_buf()
-        } else {
-            base.join(file_path)
+        // Containment: the graph is untrusted input (imports, hand edits
+        // travel in loom.graph.json). A path that escapes the root must never
+        // reach fs::read — the content hash and locator probes would
+        // otherwise answer "is this string in that file?" for any readable
+        // file on the machine. Surface it; never read it.
+        let Some(rel) = crate::repo::confine(&base, Path::new(&cf.path)) else {
+            escaped_files.push(cf.path.clone());
+            continue;
         };
+        let abs_path = base.join(rel);
 
         let meta = match fs::metadata(&abs_path) {
             Ok(m) => m,
@@ -168,22 +176,6 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
         files_changed += 1;
 
-        // 1. Update CodeFile content fingerprint + last_modified
-        update_codefile_hash_and_mtime(&db, &cf.id, &new_hash, &mtime_str)?;
-        changes.push(SyncChange {
-            path:        cf.path.clone(),
-            codefile_id: cf.id.clone(),
-            new_mtime:   mtime_str.clone(),
-        });
-
-        // 2. One-hop propagation: use the IMPLEMENTS edges (read-only, as an
-        //    index) to find intents grounded in this file, and flag THEIR
-        //    RELATES_TO neighbours needs_reverification. The IMPLEMENTS edges
-        //    themselves are structural assertions and are not mutated — flagging
-        //    them would leave an unresolvable state (the loop only re-inspects
-        //    RELATES_TO). Each flip records a transition note naming the
-        //    triggering file, so a stale edge explains itself in `loom edge
-        //    show` / `loom next`.
         let cause = format!("{} changed", cf.path);
         // Retired intents take no ripple: their claims are history, not live
         // design — flipping them would resurrect work nobody owns.
@@ -197,43 +189,65 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         }
         let active = active_intents.as_ref().expect("active intents loaded above");
         let intent_ids = intents_by_codefile.get(cf.id.as_str()).cloned().unwrap_or_default();
-        for iid in intent_ids.iter().filter(|i| active.contains(*i)) {
-            relates_to_flagged += flag_relates_to_for_intent_with_indexes(
-                &db,
-                iid,
-                &cause,
-                &now,
-                &relates_by_intent,
-                &mut related_edges_flagged,
-            )?;
-            // A passing quality verdict is a claim about the old code — flip
-            // it to needs_reverification so green is re-earned.
-            targets_flagged += flag_targets_for_intent_with_indexes(
-                &db,
-                iid,
-                &cause,
-                &now,
-                &targets_by_intent,
-                &mut targets_edges_flagged_ids,
-            )?;
-            governs_flagged += flag_governs_for_intent_with_indexes(
-                &db,
-                iid,
-                &cause,
-                &now,
-                &governs_by_intent,
-                &mut governs_edges_flagged_ids,
-            )?;
-        }
 
-        // 3. Invalidate Validation.last_result for those intents
-        validations_invalidated += invalidate_validations_for_intents_with_indexes(
-            &db,
-            &intent_ids,
-            &validates_by_intent,
-            &validation_by_id,
-            &mut invalidated_validation_ids,
-        )?;
+        // This file's whole mutation unit commits atomically (see above):
+        // fingerprint + ripple together, or neither.
+        crate::db::with_transaction(&db, || {
+            // 1. Update CodeFile content fingerprint + last_modified
+            update_codefile_hash_and_mtime(&db, &cf.id, &new_hash, &mtime_str)?;
+
+            // 2. One-hop propagation: use the IMPLEMENTS edges (read-only, as an
+            //    index) to find intents grounded in this file, and flag THEIR
+            //    RELATES_TO neighbours needs_reverification. The IMPLEMENTS edges
+            //    themselves are structural assertions and are not mutated — flagging
+            //    them would leave an unresolvable state (the loop only re-inspects
+            //    RELATES_TO). Each flip records a transition note naming the
+            //    triggering file, so a stale edge explains itself in `loom edge
+            //    show` / `loom next`.
+            for iid in intent_ids.iter().filter(|i| active.contains(*i)) {
+                relates_to_flagged += flag_relates_to_for_intent_with_indexes(
+                    &db,
+                    iid,
+                    &cause,
+                    &now,
+                    &relates_by_intent,
+                    &mut related_edges_flagged,
+                )?;
+                // A passing quality verdict is a claim about the old code — flip
+                // it to needs_reverification so green is re-earned.
+                targets_flagged += flag_targets_for_intent_with_indexes(
+                    &db,
+                    iid,
+                    &cause,
+                    &now,
+                    &targets_by_intent,
+                    &mut targets_edges_flagged_ids,
+                )?;
+                governs_flagged += flag_governs_for_intent_with_indexes(
+                    &db,
+                    iid,
+                    &cause,
+                    &now,
+                    &governs_by_intent,
+                    &mut governs_edges_flagged_ids,
+                )?;
+            }
+
+            // 3. Invalidate Validation.last_result for those intents
+            validations_invalidated += invalidate_validations_for_intents_with_indexes(
+                &db,
+                &intent_ids,
+                &validates_by_intent,
+                &validation_by_id,
+                &mut invalidated_validation_ids,
+            )?;
+            Ok(())
+        })?;
+        changes.push(SyncChange {
+            path:        cf.path.clone(),
+            codefile_id: cf.id.clone(),
+            new_mtime:   mtime_str.clone(),
+        });
     }
 
     // 4. Grounding-truth pass over every file present on disk:
@@ -242,6 +256,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     //    b) verify every IMPLEMENTS locator still occurs in its file —
     //       a renamed symbol must not leave a grounding silently pointing
     //       at nothing.
+    //    These writes are individually self-healing — recomputed from disk
+    //    evidence on every run — so they need no transaction; auto-commit is
+    //    correct and keeps no MVCC overlay growing.
     let mut locators_stale: Vec<String> = Vec::new();
     for cf in &codefiles {
         if let Some(content) = text_contents.get(&cf.path) {
@@ -286,8 +303,6 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // Stamp the graph as reconciled against disk (freshness signal).
     set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
 
-    Ok(locators_stale)
-    })?;
 
     let report = SyncReport {
         files_checked,
@@ -297,6 +312,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         governs_edges_flagged: governs_flagged,
         validations_invalidated,
         missing_files,
+        escaped_files,
         locators_stale,
         changes,
     };
@@ -305,7 +321,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // can list hundreds of files — flooding the context window evicts the
     // driving agent's plan. Counts stay exact; lists are capped.
     const REPORT_CAP: usize = 20;
-    let next_step = if report.files_changed == 0 && report.missing_files.is_empty() {
+    let next_step = if report.files_changed == 0 && report.missing_files.is_empty() && report.escaped_files.is_empty() {
         "`loom status` (or `loom next --all` for closeout)".to_string()
     } else {
         format!(
@@ -327,6 +343,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         for (key, total_key) in [
             ("changes", "changes_total"),
             ("missing_files", "missing_files_total"),
+            ("escaped_files", "escaped_files_total"),
             ("locators_stale", "locators_stale_total"),
         ] {
             let total = obj.get(key).and_then(|a| a.as_array()).map_or(0, |a| a.len());
@@ -365,6 +382,17 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             }
             println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
         }
+        if !report.escaped_files.is_empty() {
+            println!();
+            println!("  ⚠ Registered paths ESCAPING the graph root ({} — refused to read):", report.escaped_files.len());
+            for p in report.escaped_files.iter().take(REPORT_CAP) {
+                println!("    {}", p);
+            }
+            if let Some(m) = crate::output::more_marker(report.escaped_files.len(), REPORT_CAP, "`loom report`") {
+                println!("    {m}");
+            }
+            println!("    → `loom codefile remove <path>` — files outside the repository cannot be tracked.");
+        }
         if !report.locators_stale.is_empty() {
             println!();
             println!("  ⚠ STALE locators ({} — symbol renamed/moved? grounding flipped to needs_reverification):", report.locators_stale.len());
@@ -377,7 +405,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             println!("    → re-ground: `loom edge implement <intent> <path> --locator \"<current symbol>\"`.");
         }
         println!();
-        if report.files_changed == 0 && report.missing_files.is_empty() {
+        if report.files_changed == 0 && report.missing_files.is_empty() && report.escaped_files.is_empty() {
             println!("  ✓ All files up to date — no edges need reverification.");
         } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
             println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");

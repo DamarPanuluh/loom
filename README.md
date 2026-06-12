@@ -65,6 +65,14 @@ Everything is addressable by id, exact name, or unique name fragment. Ambiguity 
 5. Seed the quality packs `loom detect` recommends — `iso5055` (baseline, any code), `mobile`, `web-ui`, `service`, `data`, `concurrency` — and `loom next --mode quality` serves every rule × coded-intent pair never measured. One `loom rule verdict` resolves each (it creates the edge; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply).
 6. Close out with `loom next --all`, prove intents with `loom validate`.
 
+## The user drifts too: seeding & alignment
+
+`loom sync` catches intent↔code drift mechanically — but a graph can be perfectly green and perfectly wrong, faithfully describing a product the user no longer wants. That third axis (user↔intent) can't be hashed; it's caught by **interview**, and loom makes the interview mechanical too:
+
+- `loom guide --mode seed` teaches the elicitation protocol: calibrate altitude to the user's fluency (a vague user gets *proposals to react to*, never "enumerate your features"), one question per landing (every crystallized answer immediately becomes a `planned` intent, a vocab term, or a decision note), and **terminate on completeness, not exhaustion** — every question must close a gap the graph can enumerate; no open gap, no more questions. An empty graph's compass starts here (`phase=seed`).
+- `loom intent confirm` stamps "the user re-affirmed this meaning as of now"; `loom next --mode align` ranks intents by **churn-since-confirm × centrality × staleness** — code that moved under a meaning nobody re-affirmed — and serves the top suspect as one interview move with exactly four outcomes: `confirm` (resets the clock), `intent update` (evolved), `retire --replaced-by` (superseded), `add` (revealed gap).
+- `loom intent update` is design **evolution** in place — same node, same history. A description change is a *redefinition* and ripples one hop, the semantic twin of `sync`: every verdict earned against the old wording (including the IMPLEMENTS grounding — "does the code still do what this *now* says?") goes `needs_reverification`, linked proofs go `not_run`, and the old wording is preserved in a decision note. Iterate freely while intents are `planned` — there's nothing downstream to stale; after grounding, every meaning change costs re-verification, which is the point.
+
 ## Prove it from the outside: consumer sagas
 
 Everything above grounds claims by *reading* code. A **saga** proves intents compose by *executing* them — an ordered chain of endpoint invocations that consumes the system the way a real consumer will, with values captured from one response threading into the next request. The engine is built in and pure Rust (reqwest on rustls — no libcurl, loom stays one static binary):

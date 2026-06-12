@@ -21,11 +21,17 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     match cmd {
         IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources, tags } => {
             gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
-            // Validate abstraction level + lifecycle
-            level.parse::<crate::types::AbstractionLevel>()
+            // Validate and canonicalize abstraction level + lifecycle.
+            let level = level.parse::<crate::types::AbstractionLevel>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             lifecycle.parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
+            if name.trim().is_empty() {
+                anyhow::bail!("--name must not be empty. State the responsibility this intent owns.");
+            }
+            if description.trim().is_empty() {
+                anyhow::bail!("--description must not be empty. State the observable behavior or design responsibility this intent captures.");
+            }
             // planned/needs_change promise code changes — meaningless on a
             // repo this graph merely observes.
             if lifecycle != "implemented" {
@@ -48,7 +54,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 id:                id.clone(),
                 name:              name.clone(),
                 description,
-                abstraction_level: level,
+                abstraction_level: level.to_string(),
                 domain,
                 source_refs,
                 status:            "proposed".to_string(),
@@ -109,10 +115,31 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
         IntentCmd::Confirm { id } => {
             // Confirmation is a *verdict* that the intent is valid — validator
             // lane, so the builder cannot ratify its own proposals.
-            gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
+            let by = gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let intent = get_intent(&db, &id)?
+                .ok_or_else(|| anyhow::anyhow!(
+                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
+                    id
+                ))?;
+            if intent.status == "deprecated" {
+                anyhow::bail!(
+                    "Intent '{}' is retired (status=deprecated). Retirement is permanent history: create a successor intent and link the lineage instead of confirming it.",
+                    id
+                );
+            }
             let now  = chrono::Utc::now().to_rfc3339();
-            let found = confirm_intent(&db, &id, &now)?;
+            // Atomic: the status flip and its freshness stamp land together.
+            // The stamp is what `loom next --mode align` ranks by — a confirm
+            // without it would ratify the meaning while leaving the intent
+            // looking drift-suspect forever.
+            let found = crate::db::with_transaction(&db, || {
+                let found = confirm_intent(&db, &id, &now)?;
+                if found {
+                    crate::db::queries::record_confirmation(&db, &id, &by, &now)?;
+                }
+                Ok(found)
+            })?;
             if !found {
                 anyhow::bail!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
@@ -129,6 +156,133 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             } else {
                 println!("✓ Intent {} confirmed", id);
                 crate::output::print_anchor(&db, "`loom next` serves the next item")?;
+            }
+        }
+
+        IntentCmd::Update { id, name, description, reason } => {
+            // Evolution is builder-owned, like add/retire: the meaning
+            // statement is design, and design decisions belong to the
+            // graph's owners.
+            let by = gate::acting_in_lane("update an intent", &[role::BUILDER], None)?;
+            crate::db::queries::ensure_owned(&db, "update an intent (the design decision belongs to the graph's owners)")?;
+            gate::require_substantive("reason", &reason, "why the meaning moved")?;
+            let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let intent = get_intent(&db, &id)?
+                .ok_or_else(|| anyhow::anyhow!(
+                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
+                    id
+                ))?;
+            if intent.status == "deprecated" {
+                anyhow::bail!(
+                    "Intent '{}' is retired (status=deprecated). Retirement is permanent history: create a successor intent (`loom intent add` + `--replaced-by` lineage) instead of rewriting it.",
+                    id
+                );
+            }
+            let new_name = name.as_deref().filter(|n| *n != intent.name);
+            let new_desc = description.as_deref().filter(|d| *d != intent.description);
+            if new_name.is_none() && new_desc.is_none() {
+                anyhow::bail!(
+                    "Nothing to change: pass --name and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
+                    id
+                );
+            }
+            let now = chrono::Utc::now().to_rfc3339();
+            // Atomic: the new wording, its decision notes (which preserve the
+            // OLD wording — the export diff is not the only history), and the
+            // semantic ripple land together or not at all. A redefinition
+            // whose ripple is missing would be the lie this command exists to
+            // prevent: green verdicts standing on words that no longer exist.
+            //
+            // Lifecycle is NOT auto-flipped to needs_change: that would fake
+            // a verdict nobody made. The flipped IMPLEMENTS grounding routes
+            // the honest question — "does the code still do what this now
+            // says?" — through the fix queue, where a real inspection decides.
+            let ripple = crate::db::with_transaction(&db, || {
+                crate::db::queries::update_intent_meaning(&db, &id, new_name, new_desc, &now)?;
+                if let Some(n) = new_name {
+                    crate::db::queries::insert_note(&db, &crate::types::Note {
+                        id: Uuid::new_v4().to_string(),
+                        kind: "decision".into(),
+                        text: format!("renamed: '{}' → '{}' ({})", intent.name, n, reason),
+                        author: by.clone(),
+                        target_kind: "intent".into(),
+                        target_id: id.clone(),
+                        audience: String::new(),
+                        created_at: now.clone(),
+                    })?;
+                }
+                if let Some(d) = new_desc {
+                    crate::db::queries::insert_note(&db, &crate::types::Note {
+                        id: Uuid::new_v4().to_string(),
+                        kind: "decision".into(),
+                        text: format!("redefined: {}\nwas: {}", reason, intent.description),
+                        author: by.clone(),
+                        target_kind: "intent".into(),
+                        target_id: id.clone(),
+                        audience: String::new(),
+                        created_at: now.clone(),
+                    })?;
+                    let _ = d; // the new wording lives on the node; the note keeps the old
+                    return Ok(Some(crate::db::queries::ripple_intent_redefinition(
+                        &db,
+                        &id,
+                        new_name.unwrap_or(&intent.name),
+                        &now,
+                    )?));
+                }
+                Ok(None)
+            })?;
+            let rippled = ripple.as_ref().is_some_and(|r| {
+                r.relates_to_flagged + r.governs_flagged + r.targets_flagged
+                    + r.implements_flagged + r.validations_invalidated > 0
+            });
+            let next_step = if rippled {
+                "`loom next --mode fix` re-inspects staled claims; `loom next --mode quality` re-earns flagged quality green; `loom validate` re-runs invalidated proofs."
+            } else {
+                "`loom next` serves the next item"
+            };
+            if printer.json {
+                let payload = crate::output::with_anchor(
+                    serde_json::json!({
+                        "status": "ok", "id": id,
+                        "renamed": new_name.is_some(),
+                        "redefined": new_desc.is_some(),
+                        "ripple": ripple,
+                    }),
+                    &db,
+                    next_step,
+                )?;
+                printer.print_json(&payload);
+            } else {
+                match (new_name, new_desc) {
+                    (Some(n), Some(_)) => println!("✓ Intent {id} renamed to '{n}' and redefined."),
+                    (Some(n), None)    => println!("✓ Intent {id} renamed to '{n}' (cosmetic — no ripple)."),
+                    (None, Some(_))    => println!("✓ Intent {id} redefined."),
+                    (None, None)       => unreachable!("bailed above"),
+                }
+                if let Some(r) = &ripple {
+                    if rippled {
+                        println!("  SEMANTIC RIPPLE (claims earned against the old wording):");
+                        if r.relates_to_flagged > 0 {
+                            println!("    · {} RELATES_TO verdict(s) → needs_reverification", r.relates_to_flagged);
+                        }
+                        if r.implements_flagged > 0 {
+                            println!("    · {} IMPLEMENTS grounding(s) → needs_reverification (does the code still do what this now says?)", r.implements_flagged);
+                        }
+                        if r.governs_flagged > 0 {
+                            println!("    · {} GOVERNS verdict(s) → needs_reverification (green re-earned against the new meaning)", r.governs_flagged);
+                        }
+                        if r.targets_flagged > 0 {
+                            println!("    · {} hypothesis TARGETS edge(s) → needs_reverification", r.targets_flagged);
+                        }
+                        if r.validations_invalidated > 0 {
+                            println!("    · {} validation(s) → not_run (they proved the old acceptance contract)", r.validations_invalidated);
+                        }
+                    } else {
+                        println!("  No earned claims touched this intent — nothing to re-verify.");
+                    }
+                }
+                crate::output::print_anchor(&db, next_step)?;
             }
         }
 
@@ -280,9 +434,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             if let Some(ref s) = status {
                 s.parse::<crate::types::IntentStatus>().map_err(|e| anyhow::anyhow!("{}", e))?;
             }
-            if let Some(ref l) = level {
-                l.parse::<crate::types::AbstractionLevel>().map_err(|e| anyhow::anyhow!("{}", e))?;
-            }
+            let level = match level {
+                Some(l) => Some(l.parse::<crate::types::AbstractionLevel>()
+                    .map_err(|e| anyhow::anyhow!("{}", e))?
+                    .to_string()),
+                None => None,
+            };
             let mut intents = list_intents(&db, status.as_deref(), level.as_deref())?;
             let total = crate::output::apply_limit(&mut intents, limit);
             if printer.json {

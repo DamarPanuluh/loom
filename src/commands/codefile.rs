@@ -50,6 +50,16 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let mut added: Vec<CodeFile> = Vec::new();
             let mut skipped = 0usize;
             for p in targets {
+                // Normalize against the graph root: `..`-escapes and outside
+                // paths are rejected, absolute-under-root comes back relative
+                // (the stored convention — paths must travel across machines).
+                let Some(p) = crate::repo::confine(&cwd, std::path::Path::new(&p)) else {
+                    anyhow::bail!(
+                        "Path '{}' escapes the graph root {} — register files inside the \
+                         repository (paths are stored root-relative).",
+                        p, cwd.display()
+                    );
+                };
                 if existing.contains(&p) {
                     skipped += 1;
                     continue;

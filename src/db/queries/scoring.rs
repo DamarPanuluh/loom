@@ -1,15 +1,19 @@
 //! Priority scoring and discovery-candidate selection for `loom next`.
 
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use chrono::{DateTime, Utc};
 
 use crate::db::LoomDb;
-use crate::types::{Governs, InspectionStatus, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation};
+use crate::types::{Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation};
 
-use super::governs::list_all_governs;
+use super::governs::{list_all_governs, list_governs_for_intent};
 use super::hierarchy::list_all_hierarchy;
+use super::implements::list_implements_for_intent;
 use super::intent::list_active_intents;
-use super::relates_to::list_relates_to;
+use super::note::list_notes;
+use super::relates_to::{edges_for_intent, list_relates_to};
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 /// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan.
@@ -677,6 +681,17 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
                 || edges.iter().any(|e| e.inspection_status == "failing")
             {
                 (4.0, "a linked validation is failing".to_string())
+            } else if let Some(v) = validations.iter().find(|v| {
+                v.command.trim().is_empty()
+                    && (v.last_result == "not_run" || v.last_result.is_empty())
+            }) {
+                (
+                    2.0,
+                    format!(
+                        "validation '{}' has no command — needs `loom validation update {} --command \"…\"` or a manual `loom validation mark {}`",
+                        v.name, v.id, v.id
+                    ),
+                )
             } else if validations
                 .iter()
                 .any(|v| v.last_result == "not_run" || v.last_result.is_empty())
@@ -725,6 +740,91 @@ pub fn validate_candidates_with_degrees(
     Ok(scored)
 }
 
+/// A user↔intent drift suspect: active intent meaning whose surrounding claims
+/// changed since the user last confirmed it.
+#[derive(Debug, Clone)]
+pub struct AlignCandidate {
+    pub intent: crate::types::Intent,
+    pub last_confirmed: Option<String>,
+    pub churn_since_confirm: usize,
+    pub degree: i64,
+    pub score: f64,
+}
+
+/// Rank active intents for a user interview:
+/// `(1 + churn_since_confirm) * (1 + ln_1p(degree)) + age_days / 90`.
+/// Churn is strongest (code moved under an unrefreshed meaning), centrality
+/// multiplies blast radius, and the slow age term eventually sweeps in quiet
+/// never-confirmed intent wording.
+pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
+    let intents = list_active_intents(db)?;
+    let degrees = all_intent_degrees(db)?;
+    let transition_notes = list_notes(db, None, Some("transition"))?;
+
+    let mut notes_by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
+    for note in &transition_notes {
+        notes_by_target.entry(note.target_id.as_str()).or_default().push(note);
+    }
+
+    let mut candidates = Vec::with_capacity(intents.len());
+    for intent in intents {
+        let last_confirmed = super::intent::last_confirmed_at(db, &intent.id)?;
+        let baseline = last_confirmed.as_deref().unwrap_or(intent.created_at.as_str());
+
+        let mut edge_ids: HashSet<String> = HashSet::new();
+        for edge in edges_for_intent(db, &intent.id)? {
+            edge_ids.insert(edge.id);
+        }
+        for edge in list_governs_for_intent(db, &intent.id)? {
+            edge_ids.insert(edge.id);
+        }
+        for edge in list_implements_for_intent(db, &intent.id)? {
+            edge_ids.insert(edge.id);
+        }
+
+        let mut churn_since_confirm = 0;
+        for edge_id in &edge_ids {
+            if let Some(notes) = notes_by_target.get(edge_id.as_str()) {
+                churn_since_confirm += notes
+                    .iter()
+                    .filter(|note| {
+                        // Loom timestamps are RFC3339, so lexicographic order is
+                        // chronological; existing sync freshness logic relies on it.
+                        note.created_at.as_str() > baseline && note.text.contains("(sync: ")
+                    })
+                    .count();
+            }
+        }
+
+        let degree = *degrees.get(&intent.id).unwrap_or(&0);
+        let age_days = DateTime::parse_from_rfc3339(baseline)
+            .ok()
+            .map(|at| {
+                let age = Utc::now().signed_duration_since(at.with_timezone(&Utc));
+                age.num_seconds().max(0) as f64 / 86_400.0
+            })
+            .unwrap_or(0.0);
+        let score = (1.0 + churn_since_confirm as f64) * (1.0 + (degree as f64).ln_1p())
+            + age_days / 90.0;
+
+        candidates.push(AlignCandidate {
+            intent,
+            last_confirmed,
+            churn_since_confirm,
+            degree,
+            score,
+        });
+    }
+
+    candidates.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.intent.name.cmp(&b.intent.name))
+    });
+    Ok(candidates)
+}
+
 
 pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<ValidateCandidate> {
     let selected = validate_selection_from_snapshot(snapshot);
@@ -750,23 +850,30 @@ pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
     let intents = list_active_intents(db)?;
     let relates = list_relates_to(db, None)?;
     let hierarchy = list_all_hierarchy(db)?;
-    Ok(count_unexplored_pairs_from(intents.len() as i64, &relates, &hierarchy))
+    Ok(count_unexplored_pairs_from(&intents, &relates, &hierarchy))
 }
 
 pub fn count_unexplored_pairs_from(
-    intent_count: i64,
+    active_intents: &[Intent],
     relates: &[RelatesTo],
     hierarchy: &[(String, String)],
 ) -> i64 {
+    let active_ids: std::collections::HashSet<&str> =
+        active_intents.iter().map(|i| i.id.as_str()).collect();
+    let intent_count = active_intents.len() as i64;
     let mut linked: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
     fn key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
         if a < b { (a, b) } else { (b, a) }
     }
     for e in relates {
-        linked.insert(key(&e.from_id, &e.to_id));
+        if active_ids.contains(e.from_id.as_str()) && active_ids.contains(e.to_id.as_str()) {
+            linked.insert(key(&e.from_id, &e.to_id));
+        }
     }
     for (p, c) in hierarchy {
-        linked.insert(key(p, c));
+        if active_ids.contains(p.as_str()) && active_ids.contains(c.as_str()) {
+            linked.insert(key(p, c));
+        }
     }
     (intent_count * (intent_count - 1) / 2 - linked.len() as i64).max(0)
 }
@@ -783,6 +890,11 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
 
     let snapshot = QuerySnapshot::load(db)?;
     let discovery = DiscoverySnapshot::from_query(&snapshot)?;
+    let linked: std::collections::HashSet<(&str, &str)> = discovery
+        .linked
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
     let base_urgency = InspectionStatus::Uninspected.urgency();
     let empty_files = std::collections::HashSet::new();
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
@@ -791,7 +903,7 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
         for j in (i + 1)..snapshot.intents.len() {
             let a = &snapshot.intents[i];
             let b = &snapshot.intents[j];
-            if discovery.linked.contains(&(a.id.clone(), b.id.clone())) {
+            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
                 continue;
             }
 

@@ -58,7 +58,12 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
-        Command::Validate    { intent_id }  => validate::run(&intent_id, &printer),
+        Command::Validate    { intent_id, all, timeout_secs } => match (intent_id, all) {
+            (Some(i), false) => validate::run(&i, timeout_secs, &printer),
+            (None,    true)  => validate::run_all(timeout_secs, &printer),
+            (Some(_), true)  => anyhow::bail!("Pass an intent OR --all, not both."),
+            (None,    false) => anyhow::bail!("Pass the intent whose proofs should run, or --all for every pending (not_run) validation."),
+        },
         Command::Report                     => report::run(&printer),
         Command::Batch       { file }       => batch::run(&file, &printer),
         Command::Doctor                     => doctor::run(&printer),

@@ -54,7 +54,15 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             }
             let (target_kind, target_id) = match (intent, edge, file) {
                 (Some(i), _, _) => ("intent".to_string(), crate::db::queries::resolve_intent(&db, &i)?),
-                (_, Some(e), _) => ("edge".to_string(), e),
+                (_, Some(e), _) => {
+                    if !crate::db::queries::edge_id_exists(&db, &e)? {
+                        anyhow::bail!(
+                            "Edge '{}' not found. Use the derived edge id shown by `loom edge ...` commands, or run `loom doctor` to find dangling edge notes.",
+                            e
+                        );
+                    }
+                    ("edge".to_string(), e)
+                },
                 (_, _, Some(f)) => {
                     let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
                         .ok_or_else(|| anyhow::anyhow!(

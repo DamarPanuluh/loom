@@ -136,7 +136,7 @@ impl DiscoverySnapshot {
 
         let mut import_links: HashSet<(usize, usize)> = HashSet::new();
         for (from_idx, cf) in snapshot.codefiles.iter().enumerate() {
-            for target in cf.imports.clone() {
+            for target in &cf.imports {
                 if let Some(&to_idx) = path_index.get(target.as_str()) {
                     import_links.insert((from_idx, to_idx));
                     import_links.insert((to_idx, from_idx));

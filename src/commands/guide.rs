@@ -8,7 +8,7 @@ use crate::output::Printer;
 
 const GOLDEN_RULES: &[&str] = &[
     "Drive via `loom next` — it prioritises and tells you the exact next command.",
-    "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below. When a sync stales MANY claims at once, re-verify in bulk: read the touched code once per neighborhood, then `loom batch -` with one JSONL verdict per line (same gates as the single commands — bulk changes the ceremony, never the honesty).",
+    "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below. When a sync stales MANY claims at once, drain in bulk: `loom next --mode fix --take 20` / `--mode quality --take 20` hand back compact groups (fix groups by staling file, quality by intent — read each hot neighborhood ONCE) with a prefilled template, then `loom batch -` applies one JSONL verdict per line, and `loom validate --all` re-runs every invalidated proof in one verb (same gates as the single commands — bulk changes the ceremony, never the honesty).",
     "Per edge, work the Socratic loop: read both intents → form a hypothesis (\"I expect the code to show X\") → inspect the actual code → confirmed = ground it, code wrong = record the issue, hypothesis wrong = revise and re-inspect. Never record a verdict you didn't check.",
     "Batch by neighborhood: when you inspect an edge, `loom cluster <intent-id>` lists every other unresolved edge touching it — work those while the context is loaded.",
     "ASK THE MAP: `loom find \"<what you're looking for>\"` — keyword search over intent names/descriptions when you don't know the intent's name yet. Hits carry hierarchy position, code groundings with locators, and a staleness warning (claims about since-changed code). No fuzzy matching — a miss means reformulate in the map's vocabulary, or the area isn't mapped (`loom coverage`).",
@@ -38,7 +38,7 @@ const RIPPLE: &[&str] = &[
     "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`; the edge's transition note names the changed file)",
     "passing GOVERNS verdicts on those intents → needs_reverification (quality green is re-earned via `loom next --mode quality` + `loom rule verdict`)",
     "passing TARGETS evidence on hypotheses aimed at those intents → needs_reverification (hypothesis support must be re-earned against the changed target code)",
-    "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`)",
+    "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`, or every pending proof at once: `loom validate --all`)",
     "IMPLEMENTS locators that no longer occur in their file (renamed symbol) → needs_reverification, and reported — re-ground with a fresh locator",
     "files registered in the graph but missing on disk are reported — drop phantoms with `loom codefile remove <path>` or restore the file",
     "static imports are re-extracted per file — they feed `loom smells` (undeclared coupling) and discovery ranking",
@@ -131,6 +131,18 @@ fn port() -> Vec<(&'static str, &'static str)> {
         ("close out", "`loom next --all` until only optional discovery remains; `loom coverage` for unaccounted files (new-repo scaffolding may need `loom ignore add … --reason`); `loom export --check` before committing the new graph."),
     ]
 }
+fn seed() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("why this mode", "`loom sync` catches intent↔code drift mechanically; THIS mode catches user↔intent drift. A graph can be green and still describe a product the user no longer wants. Two loops share it: ELICIT (zero/few intents — capture the user's head from nothing) and ALIGN (populated graph — `loom next --mode align` serves meanings to re-affirm). Pick by graph state: sparse graph → elicit; otherwise align."),
+        ("calibrate altitude", "Start at SYSTEM altitude: ask \"what is this product, in one sentence?\" and land the answer with `loom intent add … --level system --lifecycle planned`. Descend only while answers stay confident. Fluent user → grill at FEATURE level for falsifiable criteria and `loom intent add … --level feature`. Vague user → stay at system/component, PROPOSE candidate features with a recommended answer, then let them react. NEVER ask a vague user to enumerate features cold."),
+        ("one question, one landing", "Ask ONE question at a time, always with your recommended answer. If code can answer it, switch to brownfield and explore instead of asking (`loom guide --mode brownfield`). The moment an answer crystallises, LAND it before the next question: behavior → `loom intent add … --lifecycle planned`; term → `loom vocab add`; hard tradeoff → `loom note add --kind decision`; error path → same tree with `--aspect sad|fallback`. Atomic only: if an intent description needs 'and', split it."),
+        ("challenge, don't transcribe", "When the user's term collides with registered vocab, call it out and resolve with `loom vocab add` or a decision note (`loom note add --kind decision`). When a claim contradicts existing intents or code, surface the contradiction and make the user choose. Stress-test boundaries with scenarios: \"a payment fails mid-checkout — what does the user see?\" Each answer usually lands as `loom intent add … --aspect sad|fallback --lifecycle planned`."),
+        ("terminate on completeness, not exhaustion", "The interview ends when the GRAPH says so, never when conversation peters out. Every question must close an enumerable gap: component with no children (`loom edge hierarchy`), feature with no criterion (`loom intent update … --description … --reason …`), happy-path-only group with no `--aspect sad|fallback`, or vocab collision (`loom vocab add`). No open gap → STOP. Explicitly declined scope lands as `loom note add --kind decision`; silence and decision must never look alike."),
+        ("the align loop", "On a populated graph, `loom next --mode align` ranks drift suspicion: code churn since last user confirm × centrality × staleness. Present each intent in the USER's language and record exactly ONE outcome: still right → `loom intent confirm <id>`; evolved → `loom intent update <id> --description … --reason …`; superseded → `loom intent retire <id> --reason … --replaced-by <successor>`; revealed gap → `loom intent add … --lifecycle planned`. Confirm resets the suspicion clock."),
+        ("handoff", "After seeding/aligning, builder lanes take over: `loom status` routes the compass, and planned intents flow through `loom next --mode build`. Iterate code freely while intents are `planned` (nothing downstream to stale). After grounding, every meaning change uses `loom intent update … --reason …` and costs re-verification through `loom sync` — which is the point."),
+    ]
+}
+
 
 fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
     if let Some(m) = mode {
@@ -139,9 +151,11 @@ fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
             "brownfield" => Ok("brownfield"),
             "refactor" => Ok("refactor"),
             "port" => Ok("port"),
-            other => anyhow::bail!("Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port", other),
+            "seed" => Ok("seed"),
+            other => anyhow::bail!("Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed", other),
         };
     }
+    // Seed is explicit-only: this is a user-in-the-loop session, and the binary cannot detect "the user wants to talk".
     // Auto-detect from the repo: no source on disk → greenfield, else brownfield.
     let cwd = crate::db::resolve_root()?;
     Ok(if crate::repo::detect(&cwd)?.has_source { "brownfield" } else { "greenfield" })
@@ -153,6 +167,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
         "greenfield" => greenfield(),
         "refactor" => refactor(),
         "port" => port(),
+        "seed" => seed(),
         _ => brownfield(),
     };
 
@@ -250,6 +265,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
         "greenfield" => "design first, then build",
         "refactor" => "change existing code with intent",
         "port" => "re-realize a mapped system in a new language/repo",
+        "seed" => "capture & re-align the user's head — interview, land, terminate on completeness",
         _ => "map & verify existing code",
     });
     for (i, (title, doc)) in steps.iter().enumerate() {
@@ -281,6 +297,6 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
         println!("  {}", line);
     }
     println!();
-    println!("Other modes: `loom guide --mode greenfield|brownfield|refactor`. Start: `loom status` · `loom next`.");
+    println!("Other modes: `loom guide --mode greenfield|brownfield|refactor|port|seed`. Start: `loom status` · `loom next`.");
     Ok(())
 }

@@ -335,6 +335,183 @@ pub fn confirm_intent(db: &dyn LoomDb, id: &str, updated_at: &str) -> Result<boo
     Ok(true)
 }
 
+/// Record a confirmation EVENT — the freshness stamp the align queue ranks by.
+/// Status alone can't carry freshness ("confirmed" is sticky; re-confirming is
+/// a no-op on the node), so each ratification lands as an append-only note:
+/// kind="confirm", target=the intent. "When did a human last re-affirm this
+/// meaning?" = the newest such note. Notes travel in the export, so alignment
+/// history survives a re-import — no schema field, no migration.
+pub fn record_confirmation(db: &dyn LoomDb, id: &str, author: &str, now: &str) -> Result<()> {
+    super::note::insert_note(db, &crate::types::Note {
+        id: uuid::Uuid::new_v4().to_string(),
+        kind: "confirm".into(),
+        text: "meaning re-affirmed".into(),
+        author: author.to_string(),
+        target_kind: "intent".into(),
+        target_id: id.to_string(),
+        audience: String::new(),
+        created_at: now.to_string(),
+    })
+}
+
+/// Newest confirmation stamp for an intent (rfc3339), None = never confirmed.
+/// `list_notes` returns newest LAST; confirm events are append-only, so the
+/// tail is the latest ratification.
+pub fn last_confirmed_at(db: &dyn LoomDb, intent_id: &str) -> Result<Option<String>> {
+    Ok(super::note::list_notes(db, Some(intent_id), Some("confirm"))?
+        .pop()
+        .map(|n| n.created_at))
+}
+
+/// Update an intent's name and/or description in place — design EVOLUTION,
+/// distinct from retirement: same node, same id, same edge and note history;
+/// only the meaning statement moves. Free text goes through $params
+/// (agent/user-written). Returns false when the intent doesn't exist.
+pub fn update_intent_meaning(
+    db: &dyn LoomDb,
+    id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+    updated_at: &str,
+) -> Result<bool> {
+    if get_intent(db, id)?.is_none() {
+        return Ok(false);
+    }
+    let mut sets = vec!["n.updated_at = $updated"];
+    let mut pairs: Vec<(&str, &str)> = vec![("id", id), ("updated", updated_at)];
+    if let Some(n) = name {
+        sets.push("n.name = $name");
+        pairs.push(("name", n));
+    }
+    if let Some(d) = description {
+        sets.push("n.description = $desc");
+        pairs.push(("desc", d));
+    }
+    db.execute_with_params(
+        &format!("MATCH (n:Intent {{id: $id}}) SET {}", sets.join(", ")),
+        super::row::sparams(&pairs),
+    )?;
+    Ok(true)
+}
+
+/// What one redefinition staled — the counts `loom intent update` reports.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct RedefinitionRipple {
+    pub relates_to_flagged: usize,
+    pub governs_flagged: usize,
+    pub targets_flagged: usize,
+    pub implements_flagged: usize,
+    pub validations_invalidated: usize,
+}
+
+/// The semantic twin of the `loom sync` ripple. Sync flips claims when the
+/// CODE under an intent changes; this flips them when the intent's MEANING
+/// changes — every earned verdict touching it was earned against the old
+/// wording, so green must be re-earned against the new one. One hop, like
+/// sync. Differences from the sync flip set, deliberate:
+/// - IMPLEMENTS flips here (sync only flips it on a missing locator): the
+///   grounding claim is "this code does what the intent says" — redefinition
+///   stales it even though the code is byte-identical.
+/// - GOVERNS `independent` flips here (sync flips `passing` only): "this rule
+///   doesn't apply" was judged against the old meaning; a code change can't
+///   alter what an intent MEANS, but a redefinition is exactly that.
+/// The cause string ends in "redefined", never " changed", so
+/// `parse_sync_cause` returns None and the hot-FILE grouping in
+/// `loom next --take` is never polluted with a non-file.
+pub fn ripple_intent_redefinition(
+    db: &dyn LoomDb,
+    intent_id: &str,
+    intent_name: &str,
+    now: &str,
+) -> Result<RedefinitionRipple> {
+    let cause = format!("intent '{intent_name}' redefined");
+    let mut r = RedefinitionRipple::default();
+
+    // RELATES_TO: same flip set as sync (passing | independent).
+    for edge in super::relates_to::edges_for_intent(db, intent_id)? {
+        if edge.inspection_status == "passing" || edge.inspection_status == "independent" {
+            db.execute(&format!(
+                "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
+                 SET r.inspection_status = 'needs_reverification'",
+                from = esc(&edge.from_id),
+                to = esc(&edge.to_id),
+            ))?;
+            super::note::record_sync_flip(
+                db, "edge", &edge.id, &edge.inspection_status,
+                "needs_reverification", &cause, now,
+            )?;
+            r.relates_to_flagged += 1;
+        }
+    }
+
+    // GOVERNS: passing AND independent (see above — broader than sync).
+    for g in super::governs::list_governs_for_intent(db, intent_id)? {
+        if g.inspection_status == "passing" || g.inspection_status == "independent" {
+            db.execute(&format!(
+                "MATCH (r:QualityRule {{id: '{rid}'}})-[e:GOVERNS]->(i:Intent {{id: '{iid}'}}) \
+                 SET e.inspection_status = 'needs_reverification'",
+                rid = esc(&g.rule_id),
+                iid = esc(intent_id),
+            ))?;
+            super::note::record_sync_flip(
+                db, "edge", &g.id, &g.inspection_status,
+                "needs_reverification", &cause, now,
+            )?;
+            r.governs_flagged += 1;
+        }
+    }
+
+    // TARGETS: a supported hypothesis was proven against the old claim text.
+    for t in super::targets::list_all_targets(db)? {
+        if t.intent_id == intent_id && t.inspection_status == "passing" {
+            db.execute(&format!(
+                "MATCH (h:Hypothesis {{id: '{hid}'}})-[e:TARGETS]->(i:Intent {{id: '{iid}'}}) \
+                 SET e.inspection_status = 'needs_reverification', e.notes = '{notes}'",
+                hid = esc(&t.hypothesis_id),
+                iid = esc(intent_id),
+                notes = esc(&format!("stale: {cause}")),
+            ))?;
+            super::note::record_sync_flip(
+                db, "edge", &t.id, "passing", "needs_reverification", &cause, now,
+            )?;
+            r.targets_flagged += 1;
+        }
+    }
+
+    // IMPLEMENTS: the grounding claim itself (see above).
+    for im in super::implements::list_implements_for_intent(db, intent_id)? {
+        if im.inspection_status == "passing" {
+            db.execute(&format!(
+                "MATCH (i:Intent {{id: '{iid}'}})-[e:IMPLEMENTS]->(cf:CodeFile {{id: '{cfid}'}}) \
+                 SET e.inspection_status = 'needs_reverification'",
+                iid = esc(intent_id),
+                cfid = esc(&im.codefile_id),
+            ))?;
+            super::note::record_sync_flip(
+                db, "edge", &im.id, "passing", "needs_reverification", &cause, now,
+            )?;
+            r.implements_flagged += 1;
+        }
+    }
+
+    // Linked proofs: passed runs proved the OLD acceptance contract. Skip
+    // `blocked` (waiting on something external; flipping would erase the
+    // recorded reason) and already-not_run — same skip set as sync.
+    for edge in super::validates::list_validates_for_intent(db, intent_id)? {
+        if let Some(v) = super::validation::get_validation(db, &edge.validation_id)? {
+            if v.last_result != "not_run" && v.last_result != "blocked" && !v.last_result.is_empty() {
+                db.execute(&format!(
+                    "MATCH (v:Validation {{id: '{}'}}) SET v.last_result = 'not_run'",
+                    esc(&v.id)
+                ))?;
+                r.validations_invalidated += 1;
+            }
+        }
+    }
+
+    Ok(r)
+}
+
 /// Hard-delete an intent: the node, every edge touching it, and any notes
 /// targeting it. Returns false if the intent didn't exist.
 pub fn delete_intent(db: &dyn LoomDb, id: &str) -> Result<bool> {

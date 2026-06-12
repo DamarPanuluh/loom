@@ -240,10 +240,16 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
                 v.name, v.validation_type
             );
         }
-        spec_path_of(&v).ok_or_else(|| anyhow::anyhow!(
+        let recorded = spec_path_of(&v).ok_or_else(|| anyhow::anyhow!(
             "Saga validation '{}' has no `spec:` line in its description — \
              re-register it: `loom saga add <file>`.", v.name
-        ))?
+        ))?;
+        relative_to_root(&recorded, &cwd).with_context(|| {
+            format!(
+                "Saga validation '{}' records spec path '{}'. Re-register it with `loom saga add <file>` using a file under the graph root.",
+                v.name, recorded
+            )
+        })?
     };
     let spec = load_spec_file(&cwd.join(&rel))?;
 
@@ -285,57 +291,61 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
     let now = chrono::Utc::now().to_rfc3339();
     let result = if report.passed { "passed" } else { "failed" };
-    update_validation_result(&db, &validation.id, result, &now)?;
+    let (stamped_passing, stamped_failing) = crate::db::with_transaction(&db, || {
+        update_validation_result(&db, &validation.id, result, &now)?;
 
-    let summary = match report.failure() {
-        None => format!(
-            "saga {}: all {} step(s) passed at {now}",
-            report.saga, report.total_steps
-        ),
-        Some(f) => format!(
-            "saga {} failed at step {}/{} ('{}', {} {}): {}. Steps before it passed; steps after were never reached.",
-            report.saga, f.step, report.total_steps, f.name, f.method, f.url, f.detail
-        ),
-    };
-    set_validates_status_for_validation(
-        &db,
-        &validation.id,
-        if report.passed { "passing" } else { "failing" },
-        &summary,
-    )?;
+        let summary = match report.failure() {
+            None => format!(
+                "saga {}: all {} step(s) passed at {now}",
+                report.saga, report.total_steps
+            ),
+            Some(f) => format!(
+                "saga {} failed at step {}/{} ('{}', {} {}): {}. Steps before it passed; steps after were never reached.",
+                report.saga, f.step, report.total_steps, f.name, f.method, f.url, f.detail
+            ),
+        };
+        set_validates_status_for_validation(
+            &db,
+            &validation.id,
+            if report.passed { "passing" } else { "failing" },
+            &summary,
+        )?;
 
-    // The path stamps: consecutive distinct step intents among EXECUTED steps.
-    let mut stamped_passing = 0usize;
-    let mut stamped_failing = 0usize;
-    for i in 0..report.executed.saturating_sub(1) {
-        let (a_id, a_name) = &step_intents[i];
-        let (b_id, b_name) = &step_intents[i + 1];
-        if a_id == b_id {
-            continue;
-        }
-        let (o_a, o_b) = (&report.outcomes[i], &report.outcomes[i + 1]);
-        let criterion = format!(
-            "consumer saga '{}': step '{}' ({}) feeds step '{}' ({}) and the chain executes end-to-end",
-            report.saga, o_a.name, a_name, o_b.name, b_name
-        );
-        get_or_create_relates_to(&db, a_id, b_id, &now)?;
-        if o_a.passed && o_b.passed {
-            let evidence = format!(
-                "runtime: saga '{}' run {now}: step {} ('{}' {} {}) → step {} ('{}' {} {}) both passed against the live surface",
-                report.saga, o_a.step, o_a.name, o_a.method, o_a.url,
-                o_b.step, o_b.name, o_b.method, o_b.url,
+        // The path stamps: consecutive distinct step intents among EXECUTED steps.
+        let mut stamped_passing = 0usize;
+        let mut stamped_failing = 0usize;
+        for i in 0..report.executed.saturating_sub(1) {
+            let (a_id, a_name) = &step_intents[i];
+            let (b_id, b_name) = &step_intents[i + 1];
+            if a_id == b_id {
+                continue;
+            }
+            let (o_a, o_b) = (&report.outcomes[i], &report.outcomes[i + 1]);
+            let criterion = format!(
+                "consumer saga '{}': step '{}' ({}) feeds step '{}' ({}) and the chain executes end-to-end",
+                report.saga, o_a.name, a_name, o_b.name, b_name
             );
-            stamp_relates_to_runtime(&db, a_id, b_id, "passing", &criterion, &evidence, 0.95, &agent, &now)?;
-            stamped_passing += 1;
-        } else if o_a.passed && !o_b.passed {
-            let evidence = format!(
-                "runtime: saga '{}' run {now}: step {} ('{}' {} {}) failed — {}",
-                report.saga, o_b.step, o_b.name, o_b.method, o_b.url, o_b.detail,
-            );
-            stamp_relates_to_runtime(&db, a_id, b_id, "failing", &criterion, &evidence, 0.95, &agent, &now)?;
-            stamped_failing += 1;
+            get_or_create_relates_to(&db, a_id, b_id, &now)?;
+            if o_a.passed && o_b.passed {
+                let evidence = format!(
+                    "runtime: saga '{}' run {now}: step {} ('{}' {} {}) → step {} ('{}' {} {}) both passed against the live surface",
+                    report.saga, o_a.step, o_a.name, o_a.method, o_a.url,
+                    o_b.step, o_b.name, o_b.method, o_b.url,
+                );
+                stamp_relates_to_runtime(&db, a_id, b_id, "passing", &criterion, &evidence, 0.95, &agent, &now)?;
+                stamped_passing += 1;
+            } else if o_a.passed && !o_b.passed {
+                let evidence = format!(
+                    "runtime: saga '{}' run {now}: step {} ('{}' {} {}) failed — {}",
+                    report.saga, o_b.step, o_b.name, o_b.method, o_b.url, o_b.detail,
+                );
+                stamp_relates_to_runtime(&db, a_id, b_id, "failing", &criterion, &evidence, 0.95, &agent, &now)?;
+                stamped_failing += 1;
+            }
         }
-    }
+
+        Ok((stamped_passing, stamped_failing))
+    })?;
 
     // The run verdict moves the phase — anchor while the session is still
     // open (the pulse reads the graph), THEN close it: `process::exit` skips
@@ -516,8 +526,12 @@ fn relative_to_root(file: &str, root: &std::path::Path) -> Result<String> {
     let abs = std::fs::canonicalize(&abs)
         .with_context(|| format!("Saga spec '{}' not found", file))?;
     let root_canon = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
-    Ok(abs
-        .strip_prefix(&root_canon)
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|_| abs.display().to_string()))
+    let rel = abs.strip_prefix(&root_canon).with_context(|| {
+        format!(
+            "Saga spec '{}' is outside the graph root '{}'. Move the spec under the graph root, then run `loom saga add <file>` again.",
+            abs.display(),
+            root_canon.display()
+        )
+    })?;
+    Ok(rel.display().to_string())
 }
