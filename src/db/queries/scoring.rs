@@ -402,6 +402,7 @@ pub fn review_candidates_with_degrees(
     Ok(scored)
 }
 
+#[cfg(test)]
 pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
     let snapshot = QuerySnapshot::load(db)?;
     Ok(normative_coverage_from_snapshot(&snapshot))
