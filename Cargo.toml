@@ -25,5 +25,5 @@ serde_yaml = "0.9"
 serde_json_path = "0.7"
 
 [profile.release]
-lto = "thin"
+lto = "fat"
 codegen-units = 1
