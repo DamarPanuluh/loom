@@ -3,8 +3,8 @@ use anyhow::Result;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     align_candidates, build_candidates, build_candidates_from_snapshot, check_graph,
-    compute_smells_from, edges_for_intent, get_intent, graph_state, list_hierarchy_for_intent,
-    list_implements_for_intent, notes_for_target,
+    compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
+    list_hierarchy_for_intent, list_implements_for_intent, notes_for_target,
     parse_sync_cause, quality_candidates, quality_candidates_from_snapshot,
     review_candidates_from_snapshot, scored_candidates, scored_candidates_from_snapshot,
     unexplored_pairs_scored, validate_candidates, validate_candidates_from_snapshot,
@@ -730,10 +730,10 @@ fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str
 // ---------------------------------------------------------------------------
 
 fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let gs = graph_state(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
     let doctor = check_graph(db)?;
     let mut vc = vertical_completeness(db)?;
-    let snapshot = QuerySnapshot::load(db)?;
     let build = build_candidates_from_snapshot(&snapshot);
     let fix = scored_candidates_from_snapshot(&snapshot, "fix");
     let discovery_uninspected =

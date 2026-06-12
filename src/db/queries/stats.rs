@@ -174,9 +174,13 @@ fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i6
 
 /// Compute the graph pulse + phase + recommended next action.
 pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
+    let snapshot = QuerySnapshot::load(db)?;
+    graph_state_from_snapshot(db, &snapshot)
+}
+
+pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<GraphState> {
     // Active intents only: retired (deprecated) design is invisible to every
     // computed number here — counts, pair denominators, coverage axes.
-    let snapshot = QuerySnapshot::load(db)?;
     let all_intents = snapshot.intents.clone();
     let intents = all_intents.len() as i64;
     let codefiles = count_codefiles(db)?;
