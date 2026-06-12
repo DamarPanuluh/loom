@@ -24,7 +24,7 @@ expect_clean_fail() { # <file> <label>
   if "$L" import "$1" >/dev/null 2>&1; then
     echo "FAIL: $2 — import SUCCEEDED on corrupted input"; exit 1
   fi
-  n="$("$L" intent list --json | python3 -c 'import sys,json;print(len(json.load(sys.stdin)))')"
+  n="$("$L" intent list --json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get("total", len(d.get("intents", []))))')"
   if [ "$n" != 0 ]; then
     echo "FAIL: $2 — left $n intent(s) behind (partial import)"; exit 1
   fi

@@ -96,7 +96,7 @@ for i in range(CF_COUNT):
     cf_ids.append(cfid)
     codefiles.append({
         "id": cfid,
-        "path": f"/synth/src/module_{i // 10}/file_{i}.rs",
+        "path": f"synth/src/module_{i // 10}/file_{i}.rs",
         "language": "rust",
         "last_modified": TS,
         "imports": "[]",
