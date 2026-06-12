@@ -151,10 +151,6 @@ pub struct GraphState {
     pub coverage: Coverage360,
 }
 
-fn count_edges_of_type(db: &dyn LoomDb, etype: &str) -> Result<i64> {
-    let r = db.execute(&format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"))?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
-}
 
 /// Status histogram for one edge type (group-by, reliable — no per-property filter).
 fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i64>> {
