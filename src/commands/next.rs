@@ -1078,15 +1078,27 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     sort_notes_for_role(&mut notes, "validator");
     let notes_total = cap_notes(&mut notes, "validator");
     let last_confirmed = c.last_confirmed.as_deref().unwrap_or("never");
+    // The action text is a SCAFFOLD the driving LLM copies almost verbatim —
+    // so it must model the translation, not the parroting. The description is
+    // graph-speak (written by agents, for grounding code: enumerations, route
+    // lists, internal nouns); reading it aloud confuses the exact non-coder
+    // this queue exists for. The description is labelled as source material
+    // ("meaning on record"), never embedded inside the question to ask.
     let action = format!(
-        "Interview the user in THEIR language:\n\
-         \n  The graph says this is supposed to: {description}\n\
-         \nAsk: \"Is that still what you mean?\"\n\
+        "Interview move — TRANSLATE, never parrot. The meaning on record below is \
+         graph-speak; the user speaks product. Re-express what this makes the product \
+         DO from the user's vantage — one or two plain sentences, no file paths, no \
+         route lists, no internal nouns (jargon test: would a non-coder nod?). Then \
+         ask: \"is that still what this part should do?\"\n\
+         \n  meaning on record: {description}\n\
          \nRecord exactly one outcome:\n  \
-         - confirmed → loom intent confirm {id}\n  \
-         - evolved → loom intent update {id} --description \"…\" --reason \"…\"\n  \
+         - still right → loom intent confirm {id}\n  \
+         - evolved → translate their answer BACK into a falsifiable description: \
+         loom intent update {id} --description \"…\" --reason \"…\"\n  \
          - superseded → loom intent retire {id} --reason \"…\" --replaced-by <successor>\n  \
-         - gap → loom intent add … --lifecycle planned",
+         - revealed a gap → loom intent add … --lifecycle planned\n\
+         \nThe user's yes/no is about BEHAVIOR, not wording — never ask them to \
+         approve a sentence they can't parse.",
         description = c.intent.description.as_str(),
         id = c.intent.id.as_str(),
     );

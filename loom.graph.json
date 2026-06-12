@@ -8698,13 +8698,13 @@
         "path": "/Users/laptopdp/Developer/damarpanuluh/loom/.claude/skills/run-loom/gen_synth_graph.py"
       },
       {
-        "content_hash": "8356701e08c54267",
+        "content_hash": "95fd9b02cfc2131f",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-12T04:28:59.068053868+00:00",
+        "last_modified": "2026-06-12T04:40:30.207705229+00:00",
         "path": "src/commands/guide.rs"
       },
       {
@@ -9066,7 +9066,7 @@
         "path": "src/types.rs"
       },
       {
-        "content_hash": "b966b2684245d428",
+        "content_hash": "4feef819cc3b4c29",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
           "src/db/mod.rs",
@@ -9075,7 +9075,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-12T04:26:02.602557253+00:00",
+        "last_modified": "2026-06-12T04:40:04.566993625+00:00",
         "path": "src/commands/next.rs"
       },
       {

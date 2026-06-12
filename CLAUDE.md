@@ -360,8 +360,12 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--t
   Optional like discovery — review hardens closure, it never blocks complete.
   align = the validator's user↔intent drift queue: intents ranked by
   churn-since-confirm × centrality × staleness — code moved under a meaning the
-  user never re-affirmed. The item is an INTERVIEW move (present the meaning in
-  the user's language); exactly one outcome lands: `loom intent confirm` (still
+  user never re-affirmed. The item is an INTERVIEW move with a TRANSLATION
+  contract both ways: the description is graph-speak — never read it aloud;
+  re-express what it makes the product DO in the user's plain language, and on
+  "evolved" translate their answer back into a falsifiable description. The
+  user rules on BEHAVIOR, never on wording. Exactly one outcome lands:
+  `loom intent confirm` (still
   right — resets the suspicion clock) / `update` (evolved) / `retire
   --replaced-by` (superseded) / `add --lifecycle planned` (revealed gap).
   Optional like discovery — the graph can't read heads; this is the human gate.
