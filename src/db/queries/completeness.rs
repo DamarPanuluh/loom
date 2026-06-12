@@ -25,6 +25,7 @@ use super::hierarchy::list_all_hierarchy;
 use super::implements::intents_with_implements;
 use super::intent::list_active_intents;
 use super::row::{col_map, get, str_val};
+use super::snapshot::QuerySnapshot;
 
 /// The verifiable state of the completeness spine. Every field is computed from
 /// reliable, node-anchored queries + Rust-side graph analysis.
@@ -131,6 +132,85 @@ pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
         unreached_codefiles,
         complete,
     })
+}
+
+pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> VerticalCompleteness {
+    let intents = &snapshot.intents;
+    let hier = &snapshot.hierarchy;
+
+    // Tree shape: parent multiplicity, who-is-a-child, who-is-a-parent.
+    let mut parent_count: HashMap<&str, usize> = HashMap::new();
+    let mut is_child: HashSet<&str> = HashSet::new();
+    let mut is_parent: HashSet<&str> = HashSet::new();
+    for (p, c) in hier {
+        *parent_count.entry(c.as_str()).or_insert(0) += 1;
+        is_child.insert(c.as_str());
+        is_parent.insert(p.as_str());
+    }
+
+    let name_of: HashMap<&str, &str> =
+        intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
+    let resolve = |id: &str| name_of.get(id).copied().unwrap_or(id).to_string();
+
+    let mut multi_parent: Vec<String> = parent_count
+        .iter()
+        .filter(|(_, &n)| n > 1)
+        .map(|(id, _)| resolve(id))
+        .collect();
+    multi_parent.sort();
+
+    let cycle = has_cycle(hier);
+
+    let roots: Vec<&Intent> = intents.iter().filter(|i| !is_child.contains(i.id.as_str())).collect();
+    let leaves: Vec<&Intent> = intents.iter().filter(|i| !is_parent.contains(i.id.as_str())).collect();
+
+    let mut non_system_roots: Vec<String> = roots
+        .iter()
+        .filter(|i| i.abstraction_level != "system")
+        .map(|i| i.name.clone())
+        .collect();
+    non_system_roots.sort();
+
+    let realized = &snapshot.with_code;
+    let mut unrealized_leaves: Vec<String> = leaves
+        .iter()
+        .filter(|i| i.lifecycle == "implemented" && !realized.contains(&i.id))
+        .map(|i| i.name.clone())
+        .collect();
+    unrealized_leaves.sort();
+
+    let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
+    let reached: HashSet<&str> = snapshot
+        .implements
+        .iter()
+        .filter(|edge| active_ids.contains(edge.intent_id.as_str()))
+        .map(|edge| edge.codefile_path.as_str())
+        .collect();
+    let mut unreached_codefiles: Vec<String> = snapshot
+        .codefiles
+        .iter()
+        .map(|c| c.path.clone())
+        .filter(|p| !reached.contains(p.as_str()))
+        .collect();
+    unreached_codefiles.sort();
+
+    let complete = !intents.is_empty()
+        && multi_parent.is_empty()
+        && !cycle
+        && unrealized_leaves.is_empty()
+        && unreached_codefiles.is_empty();
+
+    VerticalCompleteness {
+        intents: intents.len() as i64,
+        roots: roots.len() as i64,
+        leaves: leaves.len() as i64,
+        multi_parent,
+        cycle,
+        non_system_roots,
+        unrealized_leaves,
+        unreached_codefiles,
+        complete,
+    }
 }
 
 /// Distinct CodeFile paths reached by at least one IMPLEMENTS edge.

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::db::LoomDb;
 use crate::types::{Intent, IntentCentrality};
 
-use super::completeness::vertical_completeness;
+use super::completeness::vertical_completeness_from_snapshot;
 use super::hierarchy::list_all_hierarchy;
 use super::implements::intents_with_implements;
 use super::intent::{intents_without_validations, list_active_intents};
@@ -263,7 +263,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // The two completeness axes. Vertical (binding) is the spine; horizontal
     // (optional) is the N×N grid. The compass routes vertical gaps ahead of
     // optional discovery, and only calls the graph "complete" when both hold.
-    let vc = vertical_completeness(db)?;
+    let vc = vertical_completeness_from_snapshot(snapshot);
     let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------

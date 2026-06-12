@@ -273,7 +273,7 @@ pub fn check_graph_from_snapshot(
     // spine isn't a tree), not progress — so they belong in doctor. The other
     // completeness facts (unrealized leaves / unreached files) are progress and
     // are surfaced by `loom report` / the status compass instead.
-    let vc = super::completeness::vertical_completeness(db)?;
+    let vc = super::completeness::vertical_completeness_from_snapshot(query_snapshot);
     for name in &vc.multi_parent {
         issues.push(format!(
             "Intent '{}' has more than one HIERARCHY parent — the hierarchy must be a tree.",

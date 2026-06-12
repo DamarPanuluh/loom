@@ -8,7 +8,7 @@ use crate::db::queries::{
     parse_sync_cause, quality_candidates_from_snapshot,
     review_candidates_from_snapshot, scored_candidates_from_snapshot, unexplored_pairs_scored,
     validate_candidates, validate_candidates_from_snapshot, validations_for_intent,
-    vertical_completeness, QuerySnapshot,
+    vertical_completeness_from_snapshot, QuerySnapshot,
 };
 use crate::output::{fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP};
 use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
@@ -735,7 +735,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let snapshot = QuerySnapshot::load(db)?;
     let gs = graph_state_from_snapshot(db, &snapshot)?;
     let doctor = check_graph_from_snapshot(db, &snapshot)?;
-    let mut vc = vertical_completeness(db)?;
+    let mut vc = vertical_completeness_from_snapshot(&snapshot);
     let build = build_candidates_from_snapshot(&snapshot);
     let fix = scored_candidates_from_snapshot(&snapshot, "fix");
     let discovery_uninspected =
