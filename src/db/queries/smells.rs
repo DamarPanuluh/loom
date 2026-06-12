@@ -96,6 +96,13 @@ pub struct SmellReport {
     /// must never look alike (same lesson as `adjudicated`).
     pub coded_intents: usize,
     pub tagged_coded_intents: usize,
+    /// Blind-spot disclosure for `layering_violation`: the detector judges
+    /// imports against the DECLARED order only. `coded_domains` counts the
+    /// distinct non-empty domains across coded intents; `declared_layers` the
+    /// length of `loom domain order`. Domains in use with no declared order
+    /// = the layering instrument is unarmed, and the report must say so.
+    pub coded_domains: usize,
+    pub declared_layers: usize,
 }
 
 /// Jaccard similarity of two token sets (0.0 when either is empty).
@@ -1037,5 +1044,19 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 && discovery.tags_by_intent.get(i.id.as_str()).is_some_and(|t| !t.is_empty())
         })
         .count();
-    Ok(SmellReport { open: smells, adjudicated: adjudicated_out, coded_intents, tagged_coded_intents })
+    let coded_domains = intents
+        .iter()
+        .filter(|i| files_of.contains_key(i.id.as_str()) && !i.domain.is_empty())
+        .map(|i| i.domain.as_str())
+        .collect::<HashSet<_>>()
+        .len();
+    let declared_layers = super::meta::get_domain_order(db)?.len();
+    Ok(SmellReport {
+        open: smells,
+        adjudicated: adjudicated_out,
+        coded_intents,
+        tagged_coded_intents,
+        coded_domains,
+        declared_layers,
+    })
 }

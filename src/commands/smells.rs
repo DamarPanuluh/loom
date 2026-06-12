@@ -23,6 +23,7 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let report = compute_smells(&db)?;
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
+    let (coded_domains, declared_layers) = (report.coded_domains, report.declared_layers);
     let registry = crate::db::queries::list_vocab_terms(&db)?.len();
     let mut smells = report.open;
     smells.truncate(limit);
@@ -38,6 +39,8 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
             "coded_intents": coded,
             "tagged_coded_intents": tagged,
             "vocab_terms": registry,
+            "coded_domains": coded_domains,
+            "declared_layers": declared_layers,
             "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it.",
         }));
         return Ok(());
@@ -95,6 +98,16 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
             println!("    positive evidence only). `loom vocab list` shows the registry; tag with");
             println!("    `loom intent tag add <intent> <term>`.");
         }
+    }
+    // Same doctrine for the layering instrument: domains in use but no
+    // declared order means imports pointing up the architecture are invisible
+    // — say so where the readings are.
+    if declared_layers == 0 && coded_domains >= 2 {
+        println!();
+        println!("  ⚠ layering_violation is unarmed: {coded_domains} domains in use across coded intents");
+        println!("    but no layer order declared — imports pointing up the architecture are");
+        println!("    invisible. Declare it: `loom domain order <top> … <bottom>` (top layer");
+        println!("    first; `loom domain list` shows usage; undeclared domains stay exempt).");
     }
     if !smells.is_empty() {
         println!();

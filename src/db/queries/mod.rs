@@ -812,7 +812,9 @@ mod tests {
         let mut a = intent("a", "alpha engine");
         a.tags = vec!["authz".into()];
         insert_intent(&db, &a).unwrap();
-        insert_intent(&db, &intent("b", "beta surface")).unwrap();
+        let mut b = intent("b", "beta surface");
+        b.domain = "storage".into(); // helper default is "test" → two coded domains
+        insert_intent(&db, &b).unwrap();
         insert_intent(&db, &intent("c", "gamma uncoded")).unwrap(); // no code → outside the pair-space
         insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
         insert_codefile(&db, &codefile("cfb", "src/b.rs")).unwrap();
@@ -822,6 +824,12 @@ mod tests {
         let report = compute_smells(&db).unwrap();
         assert_eq!(report.coded_intents, 2, "only intents with IMPLEMENTS count");
         assert_eq!(report.tagged_coded_intents, 1, "only the tagged coded intent counts");
+        assert_eq!(report.coded_domains, 2, "distinct domains across coded intents");
+        assert_eq!(report.declared_layers, 0, "no order declared yet");
+
+        set_domain_order(&db, &["test".into(), "storage".into()]).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert_eq!(report.declared_layers, 2, "the report reflects the armed instrument");
     }
 
     /// Undeclared coupling: file A imports file B, their owning intents have no
