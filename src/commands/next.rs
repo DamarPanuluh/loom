@@ -6,9 +6,9 @@ use crate::db::queries::{
     compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
     list_hierarchy_for_intent, list_implements_for_intent, notes_for_target,
     parse_sync_cause, quality_candidates, quality_candidates_from_snapshot,
-    review_candidates_from_snapshot, scored_candidates, scored_candidates_from_snapshot,
-    unexplored_pairs_scored, validate_candidates, validate_candidates_from_snapshot,
-    validations_for_intent, vertical_completeness, QuerySnapshot,
+    review_candidates_from_snapshot, scored_candidates_from_snapshot, unexplored_pairs_scored,
+    validate_candidates, validate_candidates_from_snapshot, validations_for_intent,
+    vertical_completeness, QuerySnapshot,
 };
 use crate::output::{fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP};
 use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
@@ -67,7 +67,8 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         _ => {}
     }
 
-    let mut candidates = scored_candidates(&db, mode)?;
+    let snapshot = QuerySnapshot::load(&db)?;
+    let mut candidates = scored_candidates_from_snapshot(&snapshot, mode);
 
     // Discovery keeps going once every materialised edge is inspected: fall back
     // to intent pairs that have no edge yet, so the N×N grid gets explored.
@@ -76,7 +77,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     }
 
     if candidates.is_empty() {
-        let gs = graph_state(&db)?;
+        let gs = graph_state_from_snapshot(&db, &snapshot)?;
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
@@ -100,7 +101,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
 
     // The bulk-read path: N compact items, one shared anchor.
     if take > 0 {
-        let gs = graph_state(&db)?;
+        let gs = graph_state_from_snapshot(&db, &snapshot)?;
         return run_take(&db, mode, &candidates, take, &gs, printer);
     }
 
@@ -167,7 +168,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         suggested_action,
     };
 
-    let gs = graph_state(&db)?;
+    let gs = graph_state_from_snapshot(&db, &snapshot)?;
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
