@@ -70,10 +70,13 @@ descendants; `independent` = measured, doesn't apply).
 Derived problems: `loom smells`; per-file ownership: `loom codefile show`.
 Proofs that can't run yet: `loom validation mark <id> --result blocked
 --reason "…"` (honest, out of the queue, visible in `loom report`).
-Bulk re-verification after a big sync: `loom batch <file>` with one JSONL
-verdict per line (ground/issue/independent/rule_verdict) — same gates per line
-(write the file first; never pipe loom-generated output into `loom batch -`,
-the DB lock is exclusive and both pipe ends start concurrently).
+Bulk re-verification after a big sync: `loom batch - <<'EOF' … EOF` with one
+JSONL verdict per line (ground/issue/independent/rule_verdict) — same gates
+per line. The heredoc is the frictionless apply: no scratch file to place, no
+repo pollution, nothing to clean up (a file path suits very large batches).
+One real hazard: never pipe LIVE loom output into `loom batch -` (`loom next
+… | loom batch -`) — the DB lock is exclusive and both pipe ends start
+concurrently; static heredoc text has no such problem.
 Pin a session to one repo's graph: `export LOOM_GRAPH=<path>` (or `--graph`)
 — every loom call then hits that graph regardless of cd mistakes.
 Tiered agents: every work item carries `effort: low|mid|high` (about the WORK,

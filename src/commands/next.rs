@@ -357,7 +357,7 @@ fn run_take(
             .cmp(&(b.0.is_empty(), std::cmp::Reverse(b.1.len()), &b.0))
     });
 
-    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: save the edited template and `loom batch <file>` (or pipe to `loom batch -`). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
+    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -399,7 +399,7 @@ fn run_take(
         }
     }
     println!();
-    println!("── Batch template (edit per finding, then `loom batch <file>`) ─────");
+    println!("── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──");
     for l in &batch_lines {
         println!("  {l}");
     }
@@ -489,7 +489,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
     // Biggest intent-group first: one neighborhood read pays for the most verdicts.
     groups.sort_by(|a, b| (std::cmp::Reverse(a.2.len()), &a.1).cmp(&(std::cmp::Reverse(b.2.len()), &b.1)));
 
-    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: `loom batch <file>`. Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
+    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -529,7 +529,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
         }
     }
     println!();
-    println!("── Batch template (edit per finding, then `loom batch <file>`) ─────");
+    println!("── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──");
     for l in &batch_lines {
         println!("  {l}");
     }

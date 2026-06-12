@@ -8,7 +8,13 @@
 //! substantive criterion/evidence/notes, confidence in [0,1], transition
 //! notes recorded per edge. Bulk changes the ceremony, never the honesty.
 //!
-//! Input: one JSON object per line (file path arg, or "-" = stdin):
+//! Input: one JSON object per line. Stdin ("-", the default) is the
+//! frictionless path — paste the lines into a heredoc and run, no scratch
+//! file to place, no repo pollution, nothing to clean up:
+//!   loom batch - <<'EOF'
+//!   {"op":"ground","a":"…","b":"…","confidence":0.9}
+//!   EOF
+//! A file path argument works for very large batches. Line shapes:
 //!   {"op":"ground","a":"<intent>","b":"<intent>","criterion":"…","confidence":0.9}
 //!   {"op":"issue","a":"…","b":"…","criterion":"…","evidence":"…","confidence":0.9}
 //!   {"op":"independent","a":"…","b":"…","notes":"…"}
@@ -54,7 +60,10 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
         s
     } else {
         std::fs::read_to_string(file)
-            .map_err(|e| anyhow::anyhow!("Cannot read batch file '{file}': {e} — pass a readable JSONL file or '-' for stdin."))?
+            .map_err(|e| anyhow::anyhow!(
+                "Cannot read batch file '{file}': {e} — no scratch file is needed: pipe the lines \
+                 via heredoc instead: loom batch - <<'EOF' … EOF (a file path is for very large batches)."
+            ))?
     };
 
     let cwd = crate::db::resolve_root()?;

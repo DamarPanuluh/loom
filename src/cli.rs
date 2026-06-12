@@ -217,6 +217,12 @@ pub enum Command {
     /// {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent","criterion":"…","evidence":"…","confidence":0.9}.
     /// Every gate (lanes, substantive evidence, confidence) applies per line;
     /// continues past failures, exits non-zero if any line failed.
+    #[command(after_help = "EXAMPLE (heredoc — no scratch file, nothing to clean up):\n  \
+        loom batch - <<'EOF'\n  \
+        {\"op\":\"ground\",\"a\":\"request routing\",\"b\":\"session auth\",\"confidence\":0.9}\n  \
+        {\"op\":\"issue\",\"a\":\"request routing\",\"b\":\"rate limiting\",\"evidence\":\"limiter runs after dispatch\",\"confidence\":0.9}\n  \
+        EOF\n  \
+        (a file path instead of '-' works for very large batches)")]
     Batch {
         /// JSONL file path, or "-" to read stdin.
         #[arg(default_value = "-")]

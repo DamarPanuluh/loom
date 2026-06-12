@@ -633,6 +633,13 @@ loom batch [file|-]
   Bulk verdicts from JSON Lines (default stdin) — THE post-sync re-verification
   surface: a sync that stales 30 claims is one `loom batch` call, not 30
   invocations (pair with the bulk read: `loom next --mode fix --take 20`).
+  The frictionless apply is a HEREDOC — no scratch file to place, no repo
+  pollution, nothing to clean up (an agent once stalled deliberating where a
+  /tmp jsonl could safely live):
+    loom batch - <<'EOF'
+    {"op":"ground","a":"…","b":"…","confidence":0.9}
+    EOF
+  A file path argument is for very large batches.
   Ops per line: ground / issue / independent (RELATES_TO) and
   rule_verdict (GOVERNS, creates the edge if absent). ground also takes an
   optional "evidence"; ground/issue/rule_verdict take an optional
