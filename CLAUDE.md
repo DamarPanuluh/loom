@@ -310,7 +310,11 @@ follow them:
    notes (addressed-to-role notes always survive the cap), and every
    truncation prints `… +N more — <runnable fetch command>` (an affordance,
    never an apology). Errors teach: a failure names the corrective command or
-   inlines the valid choices — never a bare "not found".
+   inlines the valid choices — never a bare "not found". This includes SYNTAX
+   failures: noun-less verbs (`loom update`/`confirm`/`ground`) are hidden
+   stubs that print the real invocation with the agent's own argument spliced
+   in, and `intent update` catches positional wording and a missing --reason
+   with the full shape (evolved / --reword / rename) instead of clap-babble.
 4. **Surface, then dig.** Payloads embed PROJECTIONS — the fields the next
    decision needs — never full records: work items carry the `*Surface` types
    from `src/types.rs` (intent without timestamps, grounding as

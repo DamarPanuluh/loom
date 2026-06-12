@@ -82,6 +82,26 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             export::run(&out, check, &printer)
         }
         Command::Import      { file, as_planned } => import::run(&file, as_planned, &printer),
+        // Noun-less verb stubs: teach the real invocation instead of letting
+        // clap's similar-name tip mislead (`loom update` suggested 'guide').
+        Command::Update { rest } => anyhow::bail!(
+            "`update` lives under its noun:\n  \
+             loom intent update {target} --description \"<new meaning>\" --reason \"<why it moved>\"   (meaning evolution; --reword when only the words change)\n  \
+             loom validation update <id> --command \"<cmd>\"   (repair a proof's command)",
+            target = rest.first().map(|s| format!("\"{s}\"")).unwrap_or_else(|| "<id>".into()),
+        ),
+        Command::Confirm { rest } => anyhow::bail!(
+            "`confirm` lives under its noun:\n  \
+             loom intent confirm {target}   (ratify the meaning; resets the align clock)\n  \
+             loom intent confirm {target} --visibility internal   (machinery — stop interviewing it)",
+            target = rest.first().map(|s| format!("\"{s}\"")).unwrap_or_else(|| "<id>".into()),
+        ),
+        Command::Ground { rest } => anyhow::bail!(
+            "`ground` is a verdict on an edge:\n  \
+             loom edge explore <intent-a> <intent-b> ground --criterion \"<falsifiable coexistence test>\" --confidence 0.9\n  \
+             (issue / independent are the other verdicts; `loom next` serves the pair to inspect{hint})",
+            hint = if rest.is_empty() { "" } else { " — pass BOTH intents, then the verdict" },
+        ),
     }
 }
 

@@ -200,7 +200,26 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::Update { id, name, description, reword, reason } => {
+        IntentCmd::Update { id, name, description, reword, reason, extra } => {
+            // Syntax friction kills the loop mid-interview (dogfood: an agent
+            // stalled on "what's the update syntax?" and went doc-hunting) —
+            // the two observed stumbles teach the full shape right here.
+            if let Some(first) = extra.first() {
+                anyhow::bail!(
+                    "Unexpected positional text {first:?} — new wording travels through flags:\n  \
+                     loom intent update \"{id}\" --description \"<new meaning>\" --reason \"<why it moved>\"\n  \
+                     (--reword when only the words change; --name \"<new>\" for a cosmetic rename)"
+                );
+            }
+            if reason.trim().is_empty() {
+                anyhow::bail!(
+                    "--reason is required: the recorded WHY behind the change (it lands as a decision \
+                     note beside the old wording — the export diff is not the only history). Pick the shape:\n  \
+                     concept evolved:    loom intent update \"{id}\" --description \"<new meaning>\" --reason \"<what was decided>\"   (ripples staleness one hop)\n  \
+                     clearer words only: loom intent update \"{id}\" --description \"<same concept, clearer>\" --reword --reason \"<what was confusing>\"   (no ripple)\n  \
+                     rename:             loom intent update \"{id}\" --name \"<new name>\" --reason \"<why>\"   (cosmetic, no ripple)"
+                );
+            }
             // Evolution is builder-owned, like add/retire: the meaning
             // statement is design, and design decisions belong to the
             // graph's owners.

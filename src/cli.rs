@@ -336,6 +336,27 @@ pub enum Command {
         #[arg(long)]
         as_planned: bool,
     },
+
+    // Hidden noun-less verb stubs — agents reach for `loom update` / `loom
+    // confirm` / `loom ground` under time pressure, and clap's similar-name
+    // tip pointed them at the WRONG command (`update` → "did you mean
+    // 'guide'?"). Each stub swallows whatever arguments followed and bails
+    // with the real invocation(s) — errors teach, even spelling errors.
+    #[command(hide = true)]
+    Update {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+        rest: Vec<String>,
+    },
+    #[command(hide = true)]
+    Confirm {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+        rest: Vec<String>,
+    },
+    #[command(hide = true)]
+    Ground {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+        rest: Vec<String>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -499,9 +520,16 @@ pub enum IntentCmd {
         reword: bool,
 
         /// Why the meaning moved (recorded as a decision note, with the
-        /// previous wording preserved alongside).
-        #[arg(long)]
+        /// previous wording preserved alongside). Required in effect — the
+        /// handler teaches the full shape when it's missing (a clap "required
+        /// argument" line names the flag but not the why or the variants).
+        #[arg(long, default_value = "")]
         reason: String,
+
+        /// Catch-all so positional wording teaches instead of clap-babbling
+        /// ("unexpected argument found"): new wording travels through flags.
+        #[arg(hide = true, num_args = 0.., value_name = "UNEXPECTED")]
+        extra: Vec<String>,
     },
 
     /// Set an intent's lifecycle (planned | implemented | needs_change). Use
@@ -1329,4 +1357,49 @@ pub enum ValidationCmd {
     Show {
         id: String,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Validates the entire clap tree config (conflicts, trailing var-args,
+    /// hidden stubs) — a mis-declared arg panics here instead of at runtime.
+    #[test]
+    fn clap_tree_is_well_formed() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
+
+    /// The noun-less verb stubs must CAPTURE (not clap-error) so the dispatch
+    /// can teach the real invocation — including any flags the agent passed.
+    #[test]
+    fn nounless_verbs_parse_into_teaching_stubs() {
+        let cli = Cli::parse_from(["loom", "update", "request routing", "--description", "x"]);
+        match cli.command {
+            Some(Command::Update { rest }) => assert_eq!(rest[0], "request routing"),
+            other => panic!("expected Update stub, got {:?}", other.is_some()),
+        }
+        assert!(matches!(
+            Cli::parse_from(["loom", "confirm", "x"]).command,
+            Some(Command::Confirm { .. })
+        ));
+        assert!(matches!(
+            Cli::parse_from(["loom", "ground"]).command,
+            Some(Command::Ground { .. })
+        ));
+    }
+
+    /// Positional wording on `intent update` lands in the hidden catch-all
+    /// (so the handler teaches) instead of a clap "unexpected argument".
+    #[test]
+    fn intent_update_positional_text_is_caught_for_teaching() {
+        let cli = Cli::parse_from(["loom", "intent", "update", "routing", "new words here"]);
+        let Some(Command::Intent { subcommand: IntentCmd::Update { id, extra, .. } }) = cli.command
+        else {
+            panic!("expected intent update");
+        };
+        assert_eq!(id, "routing");
+        assert_eq!(extra, vec!["new words here".to_string()]);
+    }
 }
