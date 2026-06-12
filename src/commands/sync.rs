@@ -12,7 +12,7 @@ use crate::db::queries::{
 };
 use crate::db::schema::esc;
 use crate::output::Printer;
-use crate::types::{SyncChange, SyncReport};
+use crate::types::SyncReport;
 
 pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let base = if path == "." {
@@ -33,7 +33,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut relates_to_flagged = 0usize;
     let mut governs_flagged = 0usize;
     let mut validations_invalidated = 0usize;
-    let mut changes: Vec<SyncChange> = Vec::new();
+    let mut changes: Vec<String> = Vec::new();
     let mut missing_files: Vec<String> = Vec::new();
     let mut escaped_files: Vec<String> = Vec::new();
     let mut text_contents: HashMap<String, String> = HashMap::new();
@@ -243,11 +243,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             )?;
             Ok(())
         })?;
-        changes.push(SyncChange {
-            path:        cf.path.clone(),
-            codefile_id: cf.id.clone(),
-            new_mtime:   mtime_str.clone(),
-        });
+        changes.push(cf.path.clone());
     }
 
     // 4. Grounding-truth pass over every file present on disk:
@@ -365,7 +361,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             println!();
             println!("  Changed files ({}):", report.changes.len());
             for c in report.changes.iter().take(REPORT_CAP) {
-                println!("    {}  (mtime → {})", c.path, c.new_mtime);
+                println!("    {c}");
             }
             if let Some(m) = crate::output::more_marker(report.changes.len(), REPORT_CAP, "`loom next --mode fix`") {
                 println!("    {m}");

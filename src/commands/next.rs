@@ -9,8 +9,8 @@ use crate::db::queries::{
     unexplored_pairs_scored, validate_candidates, validate_candidates_from_snapshot,
     validations_for_intent, vertical_completeness, QuerySnapshot,
 };
-use crate::output::{fmt_edge_detail, fmt_intent, fmt_pulse, more_marker, Printer, SECTION_CAP};
-use crate::types::{CodeFile, EdgeType, WorkItem};
+use crate::output::{fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP};
+use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
 
 pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> {
     if all {
@@ -74,7 +74,7 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
                 "status":  "empty",
                 "mode":    mode,
                 "message": "No work items found for this mode.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             match mode {
@@ -104,20 +104,9 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         ))?;
     let intent_b_opt = get_intent(&db, &top_edge.to_id)?;
 
-    // Fetch code files related to intent_a (via IMPLEMENTS)
+    // IMPLEMENTS groundings for intent_a — projected to path/locator/status.
     let mut implements_a = list_implements_for_intent(&db, &top_edge.from_id)?;
     let implements_total = cap_section(&mut implements_a);
-    let code_files: Vec<CodeFile> = implements_a
-        .iter()
-        .map(|imp| CodeFile {
-            id:            imp.codefile_id.clone(),
-            path:          imp.codefile_path.clone(),
-            language:      String::new(), // path is the primary identifier
-            last_modified: String::new(),
-            imports:       Vec::new(),
-            content_hash:  String::new(),
-        })
-        .collect();
 
     // Fetch validations for intent_a (via VALIDATES)
     let mut validations = validations_for_intent(&db, &top_edge.from_id)?;
@@ -142,8 +131,7 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
     }
     notes.extend(notes_for_target(&db, &top_edge.from_id)?);
     notes.extend(notes_for_target(&db, &top_edge.to_id)?);
-    sort_notes_for_role(&mut notes, role);
-    let notes_total = cap_notes(&mut notes, role);
+    let (notes, notes_total) = note_surfaces(notes, role);
 
     // Build suggested action string
     let suggested_action = build_suggested_action(top_edge, score);
@@ -155,19 +143,18 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         criterion:         top_edge.criterion.clone(),
         evidence:          top_edge.evidence.clone(),
         priority_score:    *score,
-        intent_a:          intent_a.clone(),
-        intent_b:          intent_b_opt.clone(),
-        code_files:        code_files.clone(),
-        implements:        implements_a.clone(),
-        validations:       validations.clone(),
-        notes:             notes.clone(),
-        suggested_action:  suggested_action.clone(),
+        intent_a:          IntentSurface::from(&intent_a),
+        intent_b:          intent_b_opt.as_ref().map(IntentSurface::from),
+        implements:        implements_a.iter().map(GroundingSurface::from).collect(),
+        validations:       validations.iter().map(ValidationSurface::from).collect(),
+        notes,
+        suggested_action,
     };
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
-            obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            obj.insert("graph_state".to_string(), pulse_json(&gs));
             obj.insert("notes_total".to_string(), notes_total.into());
             obj.insert("implements_total".to_string(), implements_total.into());
             obj.insert("validations_total".to_string(), validations_total.into());
@@ -185,12 +172,12 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
     println!();
 
     println!("── Intent A ────────────────────────────────────────────────────────");
-    println!("{}", fmt_intent(&intent_a));
+    println!("{}", fmt_intent_surface(&item.intent_a));
     println!();
 
-    if let Some(ref intent_b) = intent_b_opt {
+    if let Some(ref intent_b) = item.intent_b {
         println!("── Intent B ────────────────────────────────────────────────────────");
-        println!("{}", fmt_intent(intent_b));
+        println!("{}", fmt_intent_surface(intent_b));
         println!();
     }
 
@@ -203,9 +190,9 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         println!("── Related Code Files ──────────────────────────────────────────────");
         for imp in &item.implements {
             if imp.locator.is_empty() {
-                println!("  {}", imp.codefile_path);
+                println!("  {}", imp.path);
             } else {
-                println!("  {}  @ {}", imp.codefile_path, imp.locator);
+                println!("  {}  @ {}", imp.path, imp.locator);
             }
         }
         if let Some(m) = more_marker(
@@ -219,10 +206,10 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
     }
 
     // Validations
-    if !validations.is_empty() {
+    if !item.validations.is_empty() {
         println!("── Validations on Intent A ─────────────────────────────────────────");
-        for v in &validations {
-            let result_mark = match v.last_result.as_str() {
+        for v in &item.validations {
+            let result_mark = match v.result.as_str() {
                 "passed"  => "✓",
                 "failed"  => "✗",
                 "blocked" => "⊘",
@@ -230,31 +217,35 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
             };
             println!(
                 "  {} {}  [{}]  cmd: {}",
-                result_mark, v.name, v.last_result, v.command
+                result_mark, v.name, v.result, v.command
             );
         }
-        if let Some(m) = more_marker(validations_total, validations.len(), "loom validation list") {
+        if let Some(m) = more_marker(validations_total, item.validations.len(), "loom validation list") {
             println!("  {m}");
         }
         println!();
     }
 
     // Accumulated memory
-    if !notes.is_empty() {
-        if notes_total > notes.len() {
-            println!("── Notes ({}, showing {}) ─────────────────────────────────────────", notes_total, notes.len());
+    if !item.notes.is_empty() {
+        if notes_total > item.notes.len() {
+            println!("── Notes ({}, showing {}) ─────────────────────────────────────────", notes_total, item.notes.len());
         } else {
-            println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
+            println!("── Notes ({}) ──────────────────────────────────────────────────────", item.notes.len());
         }
-        for n in &notes {
-            println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+        for n in &item.notes {
+            if n.times > 1 {
+                println!("  [{}] {}  ({}, ×{})", n.kind, n.text, n.author, n.times);
+            } else {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
         }
         let fetch = if top_edge.id.is_empty() {
             format!("loom note list --intent {}", top_edge.from_id)
         } else {
             format!("loom note list --edge {}", top_edge.id)
         };
-        if let Some(m) = more_marker(notes_total, notes.len(), &fetch) {
+        if let Some(m) = more_marker(notes_total, item.notes.len(), &fetch) {
             println!("  {m}");
         }
         println!();
@@ -262,7 +253,7 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
 
     // Suggested action
     println!("── Suggested Action ────────────────────────────────────────────────");
-    println!("{}", suggested_action);
+    println!("{}", item.suggested_action);
     println!();
     println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
@@ -315,18 +306,19 @@ fn run_take(
     let mut batch_lines: Vec<String> = Vec::new();
     for (edge, score) in candidates.iter().take(n) {
         let staled_by = latest_cause.get(&edge.id).cloned().unwrap_or_default();
-        // Re-inspection usually re-affirms the existing criterion — prefill
-        // it; the agent rewrites the line to issue/independent on breakage.
-        batch_lines.push(
-            serde_json::json!({
-                "op": "ground",
-                "a": edge.from_id,
-                "b": edge.to_id,
-                "criterion": if edge.criterion.is_empty() { "<criterion>" } else { edge.criterion.as_str() },
-                "confidence": 0.9,
-            })
-            .to_string(),
-        );
+        // Re-inspection usually re-affirms the existing criterion — the line
+        // OMITS it (`loom batch` reuses the stored text); only a bare edge
+        // gets a placeholder, which the gates reject unedited.
+        let mut line = serde_json::json!({
+            "op": "ground",
+            "a": edge.from_id,
+            "b": edge.to_id,
+            "confidence": 0.9,
+        });
+        if edge.criterion.is_empty() {
+            line["criterion"] = "<criterion>".into();
+        }
+        batch_lines.push(line.to_string());
         let item = serde_json::json!({
             "edge_id": edge.id,
             "a": { "id": edge.from_id, "name": edge.from_name },
@@ -334,7 +326,6 @@ fn run_take(
             "inspection_status": edge.inspection_status,
             "criterion": edge.criterion,
             "priority_score": score,
-            "staled_by": staled_by,
         });
         match groups.iter_mut().find(|(f, _)| *f == staled_by) {
             Some((_, items)) => items.push(item),
@@ -348,7 +339,7 @@ fn run_take(
             .cmp(&(b.0.is_empty(), std::cmp::Reverse(b.1.len()), &b.0))
     });
 
-    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: save the edited template and `loom batch <file>` (or pipe to `loom batch -`). Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
+    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: save the edited template and `loom batch <file>` (or pipe to `loom batch -`). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -363,7 +354,7 @@ fn run_take(
             "batch_template": batch_lines,
             "guidance": guidance,
             "dispatch": { "role": "analyzer", "effort": "mid" },
-            "graph_state": gs,
+            "graph_state": pulse_json(gs),
         }));
         return Ok(());
     }
@@ -420,7 +411,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
                 "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
@@ -445,21 +436,21 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
     let mut groups: Vec<(String, String, Vec<serde_json::Value>)> = Vec::new(); // (intent_id, intent_name, items)
     let mut batch_lines: Vec<String> = Vec::new();
     for (g, score) in candidates.iter().take(n) {
-        // Prefill the verdict line the agent edits: existing criterion when
-        // the green merely went stale; placeholders force real text through
-        // the gates on first measurement.
-        batch_lines.push(
-            serde_json::json!({
-                "op": "rule_verdict",
-                "rule": g.rule_id,
-                "intent": g.intent_id,
-                "status": "passing",
-                "criterion": if g.criterion.is_empty() { "<criterion>" } else { g.criterion.as_str() },
-                "evidence": "<evidence>",
-                "confidence": 0.9,
-            })
-            .to_string(),
-        );
+        // Prefill the verdict line: stale green re-affirms the recorded
+        // criterion, so the line OMITS it (`loom batch` reuses the stored
+        // text); first measurements get placeholders the gates reject unedited.
+        let mut line = serde_json::json!({
+            "op": "rule_verdict",
+            "rule": g.rule_id,
+            "intent": g.intent_id,
+            "status": "passing",
+            "evidence": "<evidence>",
+            "confidence": 0.9,
+        });
+        if g.criterion.is_empty() {
+            line["criterion"] = "<criterion>".into();
+        }
+        batch_lines.push(line.to_string());
         let effort = rule_effort.get(&g.rule_id).map(String::as_str).filter(|e| !e.is_empty()).unwrap_or("mid");
         let item = serde_json::json!({
             "rule": { "id": g.rule_id, "name": g.rule_name },
@@ -479,7 +470,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
     // Biggest intent-group first: one neighborhood read pays for the most verdicts.
     groups.sort_by(|a, b| (std::cmp::Reverse(a.2.len()), &a.1).cmp(&(std::cmp::Reverse(b.2.len()), &b.1)));
 
-    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: `loom batch <file>`. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
+    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: `loom batch <file>`. Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -497,7 +488,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
             "batch_template": batch_lines,
             "guidance": guidance,
             "dispatch": { "role": "quality", "effort": "per-item (see items[].effort)" },
-            "graph_state": gs,
+            "graph_state": pulse_json(&gs),
         }));
         return Ok(());
     }
@@ -737,8 +728,10 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
                 "unreached_codefiles_total": unreached_codefiles_total,
             },
             "smells_total": smells_total,
-            "smells_top": smells_top,
-            "graph_state": gs,
+            "smells_top": smells_top.iter().map(|s| serde_json::json!({
+                "kind": s.kind, "summary": s.summary, "remedy": s.remedy,
+            })).collect::<Vec<_>>(),
+            "graph_state": pulse_json(&gs),
         }));
         return Ok(());
     }
@@ -798,7 +791,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "build",
                 "message": "No planned or needs_change intents — nothing to build.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No planned/needs_change intents — nothing to build.");
@@ -826,9 +819,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     } else {
         ("builder", "high")
     };
-    let mut notes = notes_for_target(db, &intent.id)?;
-    sort_notes_for_role(&mut notes, role);
-    let notes_total = cap_notes(&mut notes, role);
+    let (notes, notes_total) = note_surfaces(notes_for_target(db, &intent.id)?, role);
     let action = build_action(intent, c.rollup);
 
     let item = WorkItem {
@@ -838,19 +829,18 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         criterion:         String::new(),
         evidence:          String::new(),
         priority_score:    *score,
-        intent_a:          intent.clone(),
+        intent_a:          IntentSurface::from(intent),
         intent_b:          None,
-        code_files:        Vec::new(),
-        implements:        implements.clone(),
-        validations:       validations.clone(),
-        notes:             notes.clone(),
+        implements:        implements.iter().map(GroundingSurface::from).collect(),
+        validations:       validations.iter().map(ValidationSurface::from).collect(),
+        notes,
         suggested_action:  action.clone(),
     };
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
-            obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            obj.insert("graph_state".to_string(), pulse_json(&gs));
             obj.insert("notes_total".to_string(), notes_total.into());
             obj.insert("implements_total".to_string(), implements_total.into());
             obj.insert("validations_total".to_string(), validations_total.into());
@@ -866,7 +856,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     );
     println!();
     println!("── Intent ──────────────────────────────────────────────────────────");
-    println!("{}", fmt_intent(intent));
+    println!("{}", fmt_intent_surface(&item.intent_a));
     println!();
     if !implements.is_empty() {
         println!("── Currently grounded at ───────────────────────────────────────────");
@@ -883,18 +873,22 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         }
         println!();
     }
-    if !notes.is_empty() {
-        if notes_total > notes.len() {
-            println!("── Notes ({}, showing {}) ─────────────────────────────────────────", notes_total, notes.len());
+    if !item.notes.is_empty() {
+        if notes_total > item.notes.len() {
+            println!("── Notes ({}, showing {}) ─────────────────────────────────────────", notes_total, item.notes.len());
         } else {
-            println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
+            println!("── Notes ({}) ──────────────────────────────────────────────────────", item.notes.len());
         }
-        for n in &notes {
-            println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+        for n in &item.notes {
+            if n.times > 1 {
+                println!("  [{}] {}  ({}, ×{})", n.kind, n.text, n.author, n.times);
+            } else {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
         }
         if let Some(m) = more_marker(
             notes_total,
-            notes.len(),
+            item.notes.len(),
             &format!("loom note list --intent {}", intent.id),
         ) {
             println!("  {m}");
@@ -922,7 +916,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "validate",
                 "message": "Every intent's proof is green — nothing to validate.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ Every intent's proof is green — nothing to validate.");
@@ -935,9 +929,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 
     let c = &candidates[0];
     let mut validations = validations_for_intent(db, &c.intent.id)?;
-    let mut notes = notes_for_target(db, &c.intent.id)?;
-    sort_notes_for_role(&mut notes, "validator");
-    let notes_total = cap_notes(&mut notes, "validator");
+    let (notes, notes_total) = note_surfaces(notes_for_target(db, &c.intent.id)?, "validator");
     let action = if validations.is_empty() {
         format!(
             "PROVE this intent — it has no validations:\n\
@@ -997,8 +989,8 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "mode":             "validate",
             "reason":           c.reason,
             "priority_score":   c.score,
-            "intent":           c.intent,
-            "validations":      validations,
+            "intent":           IntentSurface::from(&c.intent),
+            "validations":      validations.iter().map(ValidationSurface::from).collect::<Vec<_>>(),
             "validations_total": validations_total,
             "notes":            notes,
             "notes_total":      notes_total,
@@ -1006,7 +998,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "owner_role":       "validator",
             "effort":           if validations.is_empty() { "mid" } else { "low" },
             "dispatch":         dispatch_line("validator"),
-            "graph_state":      gs,
+            "graph_state":      pulse_json(&gs),
         }));
         return Ok(());
     }
@@ -1019,7 +1011,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("  why: {}", c.reason);
     println!();
     println!("── Intent ──────────────────────────────────────────────────────────");
-    println!("{}", fmt_intent(&c.intent));
+    println!("{}", fmt_intent_surface(&IntentSurface::from(&c.intent)));
     println!();
     if !validations.is_empty() {
         println!("── Linked Validations ──────────────────────────────────────────────");
@@ -1060,7 +1052,7 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "align",
                 "message": "No drift suspected — nothing churned under a confirmed meaning.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No drift suspected — nothing churned under a confirmed meaning.");
@@ -1074,9 +1066,7 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let c = &candidates[0];
     let mut groundings = list_implements_for_intent(db, &c.intent.id)?;
     let groundings_total = cap_section(&mut groundings);
-    let mut notes = notes_for_target(db, &c.intent.id)?;
-    sort_notes_for_role(&mut notes, "validator");
-    let notes_total = cap_notes(&mut notes, "validator");
+    let (notes, notes_total) = note_surfaces(notes_for_target(db, &c.intent.id)?, "validator");
     let last_confirmed = c.last_confirmed.as_deref().unwrap_or("never");
     // The action text is a SCAFFOLD the driving LLM copies almost verbatim —
     // so it must model the translation, not the parroting. The description is
@@ -1116,18 +1106,18 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     if printer.json {
         let mut obj = serde_json::Map::new();
         obj.insert("mode".to_string(), serde_json::json!("align"));
-        obj.insert("intent".to_string(), serde_json::json!(c.intent));
+        obj.insert("intent".to_string(), serde_json::json!(IntentSurface::from(&c.intent)));
         obj.insert("last_confirmed".to_string(), serde_json::json!(c.last_confirmed));
         obj.insert("churn_since_confirm".to_string(), serde_json::json!(c.churn_since_confirm));
         obj.insert("degree".to_string(), serde_json::json!(c.degree));
         obj.insert("score".to_string(), serde_json::json!(c.score));
         obj.insert("queue_depth".to_string(), serde_json::json!(candidates.len()));
-        obj.insert("groundings".to_string(), serde_json::json!(groundings));
+        obj.insert("groundings".to_string(), serde_json::json!(groundings.iter().map(GroundingSurface::from).collect::<Vec<_>>()));
         obj.insert("groundings_total".to_string(), serde_json::json!(groundings_total));
         obj.insert("notes".to_string(), serde_json::json!(notes));
         obj.insert("notes_total".to_string(), serde_json::json!(notes_total));
         obj.insert("suggested_action".to_string(), serde_json::json!(action));
-        obj.insert("graph_state".to_string(), serde_json::json!(gs));
+        obj.insert("graph_state".to_string(), pulse_json(&gs));
         obj.insert("owner_role".to_string(), serde_json::json!("validator"));
         obj.insert("effort".to_string(), serde_json::json!("mid"));
         obj.insert("dispatch".to_string(), serde_json::json!(dispatch));
@@ -1166,7 +1156,11 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
         }
         for n in &notes {
-            println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            if n.times > 1 {
+                println!("  [{}] {}  ({}, ×{})", n.kind, n.text, n.author, n.times);
+            } else {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
         }
         if let Some(m) = more_marker(
             notes_total,
@@ -1197,7 +1191,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
                 "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
@@ -1212,9 +1206,8 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     let intent = get_intent(db, &g.intent_id)?;
     let mut implements = list_implements_for_intent(db, &g.intent_id)?;
     let implements_total = cap_section(&mut implements);
-    let mut notes = if g.id.is_empty() { Vec::new() } else { notes_for_target(db, &g.id)? };
-    sort_notes_for_role(&mut notes, "quality");
-    let notes_total = cap_notes(&mut notes, "quality");
+    let edge_notes = if g.id.is_empty() { Vec::new() } else { notes_for_target(db, &g.id)? };
+    let (notes, notes_total) = note_surfaces(edge_notes, "quality");
     // Effort comes from the RULE: the pack author knows statically whether
     // holding this stick against code is a near-mechanical scan or deep
     // semantic reading. "" (unannotated/older rules) reads as mid.
@@ -1256,8 +1249,8 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "mode":             "quality",
             "priority_score":   score,
             "governs":          g,
-            "intent":           intent,
-            "implements":       implements,
+            "intent":           intent.as_ref().map(IntentSurface::from),
+            "implements":       implements.iter().map(GroundingSurface::from).collect::<Vec<_>>(),
             "implements_total": implements_total,
             "notes":            notes,
             "notes_total":      notes_total,
@@ -1265,7 +1258,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "owner_role":       "quality",
             "effort":           rule_effort,
             "dispatch":         dispatch_line("quality"),
-            "graph_state":      gs,
+            "graph_state":      pulse_json(&gs),
         }));
         return Ok(());
     }
@@ -1290,7 +1283,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!();
     if let Some(ref i) = intent {
         println!("── Intent ──────────────────────────────────────────────────────────");
-        println!("{}", fmt_intent(i));
+        println!("{}", fmt_intent_surface(&IntentSurface::from(i)));
         println!();
     }
     if !implements.is_empty() {
@@ -1380,7 +1373,7 @@ fn run_review(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "review",
                 "message": format!("No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."),
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look.");
@@ -1400,9 +1393,7 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
         ReviewCandidate::RelatesTo(e) => {
             let intent_a = get_intent(db, &e.from_id)?;
             let intent_b = get_intent(db, &e.to_id)?;
-            let mut notes = notes_for_target(db, &e.id)?;
-            sort_notes_for_role(&mut notes, "analyzer");
-            let notes_total = cap_notes(&mut notes, "analyzer");
+            let (notes, notes_total) = note_surfaces(notes_for_target(db, &e.id)?, "analyzer");
             let action = format!(
                 "{protocol}
 
@@ -1414,12 +1405,13 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "mode": "review", "kind": "relates_to", "priority_score": score,
-                    "edge": e, "intent_a": intent_a, "intent_b": intent_b, "notes": notes,
+                    "edge": e, "intent_a": intent_a.as_ref().map(IntentSurface::from),
+                    "intent_b": intent_b.as_ref().map(IntentSurface::from), "notes": notes,
                     "notes_total": notes_total,
                     "suggested_action": action,
                     "owner_role": "analyzer", "effort": "high",
                     "dispatch": dispatch_line("analyzer"),
-                    "graph_state": gs,
+                    "graph_state": pulse_json(&gs),
                 }));
                 return Ok(());
             }
@@ -1437,9 +1429,7 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
         }
         ReviewCandidate::Governs(g) => {
             let intent = get_intent(db, &g.intent_id)?;
-            let mut notes = notes_for_target(db, &g.id)?;
-            sort_notes_for_role(&mut notes, "quality");
-            let notes_total = cap_notes(&mut notes, "quality");
+            let (notes, notes_total) = note_surfaces(notes_for_target(db, &g.id)?, "quality");
             let action = format!(
                 "{protocol}
 
@@ -1449,12 +1439,12 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "mode": "review", "kind": "governs", "priority_score": score,
-                    "governs": g, "intent": intent, "notes": notes,
+                    "governs": g, "intent": intent.as_ref().map(IntentSurface::from), "notes": notes,
                     "notes_total": notes_total,
                     "suggested_action": action,
                     "owner_role": "quality", "effort": "high",
                     "dispatch": dispatch_line("quality"),
-                    "graph_state": gs,
+                    "graph_state": pulse_json(&gs),
                 }));
                 return Ok(());
             }
@@ -1489,7 +1479,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "triage",
                 "message": "No proposed hypotheses and no stale support — the pre-decision plane is clear.",
-                "graph_state": gs,
+                "graph_state": pulse_json(&gs),
             }));
         } else {
             println!("✓ No proposed hypotheses and no stale support — the pre-decision plane is clear.");
@@ -1507,9 +1497,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     for t in &targets {
         implements.extend(list_implements_for_intent(db, &t.intent_id)?);
     }
-    let mut notes = notes_for_target(db, &h.id)?;
-    sort_notes_for_role(&mut notes, "analyzer");
-    let notes_total = cap_notes(&mut notes, "analyzer");
+    let (notes, notes_total) = note_surfaces(notes_for_target(db, &h.id)?, "analyzer");
     // Two item kinds share this queue: a never-proven proposal, and a
     // supported hypothesis whose TARGETS evidence went stale under it
     // (`loom sync` flipped them — the support was earned against old code).
@@ -1550,7 +1538,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "priority_score":   score,
             "hypothesis":       h,
             "targets":          targets,
-            "implements":       implements,
+            "implements":       implements.iter().map(GroundingSurface::from).collect::<Vec<_>>(),
             "notes":            notes,
             "targets_total":    targets_total,
             "implements_total": implements_total,
@@ -1559,7 +1547,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "owner_role":       "analyzer",
             "effort":           "high",
             "dispatch":         dispatch_line("analyzer"),
-            "graph_state":      gs,
+            "graph_state":      pulse_json(&gs),
         }));
         return Ok(());
     }
@@ -1612,7 +1600,11 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             println!("── Notes ({}) ──────────────────────────────────────────────────────", notes.len());
         }
         for n in &notes {
-            println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            if n.times > 1 {
+                println!("  [{}] {}  ({}, ×{})", n.kind, n.text, n.author, n.times);
+            } else {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
         }
         if let Some(m) = more_marker(
             notes_total,
@@ -1631,13 +1623,6 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     Ok(())
 }
 
-/// Addressed notes first: a note with `audience == role` is a directed handoff
-/// message for whoever is working this item — surface it before the ambient
-/// memory. Stable within groups (chronological order preserved).
-fn sort_notes_for_role(notes: &mut [crate::types::Note], role: &str) {
-    notes.sort_by_key(|n| if n.audience == role { 0 } else { 1 });
-}
-
 /// Bound a sub-list rendered inside a work item at SECTION_CAP.
 /// Returns the pre-cap total for the caller's marker/`*_total` fields.
 fn cap_section<T>(items: &mut Vec<T>) -> usize {
@@ -1646,20 +1631,92 @@ fn cap_section<T>(items: &mut Vec<T>) -> usize {
     total
 }
 
-/// Bound a role-sorted note list at SECTION_CAP. Addressed-to-role notes
-/// (already first, via `sort_notes_for_role`) keep priority; remaining
-/// slots go to the NEWEST ambient notes (the tail of the chronological
-/// remainder). Returns the pre-cap total.
-fn cap_notes(notes: &mut Vec<crate::types::Note>, role: &str) -> usize {
-    let total = notes.len();
-    if total <= SECTION_CAP {
-        return total;
+/// The work-item note pipeline: collapse repeated (kind, text) notes into one
+/// surface carrying a count (sync re-flips spam identical transition text —
+/// the count IS the information, the copies are not), put notes addressed to
+/// `role` first (directed handoffs beat ambient memory; stable within groups,
+/// chronological order preserved), cap at SECTION_CAP (addressed notes keep
+/// priority; remaining slots go to the NEWEST ambient notes). Returns the
+/// surfaces + the pre-cap unique total for the caller's marker/`*_total`.
+fn note_surfaces(
+    notes: Vec<crate::types::Note>,
+    role: &str,
+) -> (Vec<crate::types::NoteSurface>, usize) {
+    // Dedup: the first occurrence keeps the slot (input is chronological).
+    let mut uniq: Vec<(crate::types::Note, u32)> = Vec::new();
+    for n in notes {
+        match uniq.iter_mut().find(|(u, _)| u.kind == n.kind && u.text == n.text) {
+            Some((_, c)) => *c += 1,
+            None => uniq.push((n, 1)),
+        }
     }
-    let addressed = notes.iter().take_while(|n| n.audience == role).count();
-    if addressed >= SECTION_CAP {
-        notes.truncate(SECTION_CAP);
-    } else {
-        notes.drain(addressed..total - (SECTION_CAP - addressed));
+    let total = uniq.len();
+    uniq.sort_by_key(|(n, _)| if n.audience == role { 0 } else { 1 });
+    if total > SECTION_CAP {
+        let addressed = uniq.iter().take_while(|(n, _)| n.audience == role).count();
+        if addressed >= SECTION_CAP {
+            uniq.truncate(SECTION_CAP);
+        } else {
+            uniq.drain(addressed..total - (SECTION_CAP - addressed));
+        }
     }
-    total
+    let surfaces = uniq
+        .into_iter()
+        .map(|(n, times)| crate::types::NoteSurface {
+            kind: n.kind,
+            text: n.text,
+            author: n.author,
+            audience: n.audience,
+            times,
+        })
+        .collect();
+    (surfaces, total)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::note_surfaces;
+
+    fn note(kind: &str, text: &str, audience: &str) -> crate::types::Note {
+        crate::types::Note {
+            id: format!("{kind}:{text}"),
+            kind: kind.to_string(),
+            text: text.to_string(),
+            author: "loom".to_string(),
+            target_kind: "edge".to_string(),
+            target_id: "e".to_string(),
+            audience: audience.to_string(),
+            created_at: "t".to_string(),
+        }
+    }
+
+    #[test]
+    fn repeated_notes_collapse_into_a_count() {
+        let notes = vec![
+            note("transition", "passing → needs_reverification (sync: a.rs changed)", ""),
+            note("transition", "needs_reverification → passing", ""),
+            note("transition", "passing → needs_reverification (sync: a.rs changed)", ""),
+            note("transition", "passing → needs_reverification (sync: a.rs changed)", ""),
+        ];
+        let (surfaces, total) = note_surfaces(notes, "analyzer");
+        assert_eq!(total, 2, "total counts UNIQUE notes");
+        assert_eq!(surfaces.len(), 2);
+        assert_eq!(surfaces[0].times, 3, "the flap count is the signal");
+        assert_eq!(surfaces[1].times, 1);
+    }
+
+    #[test]
+    fn addressed_notes_survive_the_cap() {
+        // 12 ambient notes + 1 directed handoff buried at the end.
+        let mut notes: Vec<_> = (0..12).map(|i| note("commentary", &format!("ambient {i}"), "")).collect();
+        notes.push(note("decision", "directed handoff", "analyzer"));
+        let (surfaces, total) = note_surfaces(notes, "analyzer");
+        assert_eq!(total, 13);
+        assert_eq!(surfaces.len(), crate::output::SECTION_CAP);
+        assert_eq!(surfaces[0].text, "directed handoff", "addressed-to-role notes surface first");
+        assert_eq!(
+            surfaces.last().unwrap().text, "ambient 11",
+            "remaining slots go to the newest ambient notes"
+        );
+    }
 }

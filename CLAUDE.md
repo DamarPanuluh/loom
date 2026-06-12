@@ -285,9 +285,10 @@ The graph structure IS the impact analysis. No custom algorithm — just edge tr
 
 loom's only user is an LLM agent on a long horizon: every output is the prompt
 for the agent's next decision, and after context compaction loom's output is
-the only memory that survives. Three invariants, enforced by shared helpers in
-`src/output.rs` (`print_anchor`, `with_anchor`, `more_marker`, `apply_limit`,
-`SECTION_CAP = 10`, `LIST_LIMIT = 50`) — every new command MUST follow them:
+the only memory that survives. Four invariants, enforced by shared helpers in
+`src/output.rs` (`print_anchor`, `with_anchor`, `pulse_json`, `more_marker`,
+`apply_limit`, `SECTION_CAP = 10`, `LIST_LIMIT = 50`) — every new command MUST
+follow them:
 
 1. **Anchor after mutation.** Phase-moving verdicts (edge ground/issue/
    independent/fix, validation mark, rule verdict, sync, import, saga run,
@@ -310,6 +311,17 @@ the only memory that survives. Three invariants, enforced by shared helpers in
    truncation prints `… +N more — <runnable fetch command>` (an affordance,
    never an apology). Errors teach: a failure names the corrective command or
    inlines the valid choices — never a bare "not found".
+4. **Surface, then dig.** Payloads embed PROJECTIONS — the fields the next
+   decision needs — never full records: work items carry the `*Surface` types
+   from `src/types.rs` (intent without timestamps, grounding as
+   path/locator/status, notes deduplicated with a `×times` count), the json
+   `graph_state` field is `pulse_json` (the two human pulse lines,
+   structured), and `--json` prints COMPACT (pretty-printing is token spend).
+   Every elision names its runnable dig command: `loom intent show`,
+   `loom edge show`, `loom note list`, `loom status --json` (the one place
+   the FULL GraphState travels). Same reason `loom next --take` template
+   lines omit `criterion`: `loom batch` reuses the recorded one, so neither
+   loom nor the agent re-transmits text the graph already holds.
 
 ## Commands reference
 

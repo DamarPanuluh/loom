@@ -17,6 +17,11 @@
 //! Intents/rules resolve by id, exact name, or unique fragment — same
 //! addressability as everywhere else.
 //!
+//! `criterion` may be OMITTED on ground/issue/rule_verdict when the edge
+//! already carries one — re-verification re-affirms the recorded criterion
+//! (that text passed the substantive gate when first written). A FIRST
+//! verdict still requires it explicitly; omitting on a bare edge is an error.
+//!
 //! Failure semantics: the batch CONTINUES past a failed line (each line is an
 //! independent verdict), reports per-line results, and exits non-zero if any
 //! line failed — so CI and drivers can't mistake a partial batch for a clean one.
@@ -27,7 +32,7 @@ use std::io::Read;
 use crate::db::schema::role;
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    get_or_create_relates_to, insert_governs, resolve_intent, resolve_rule,
+    get_governs_between, get_or_create_relates_to, insert_governs, resolve_intent, resolve_rule,
     update_governs_verdict, update_relates_to_ground, update_relates_to_independent,
     update_relates_to_issue,
 };
@@ -121,14 +126,14 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             )?;
             let a = resolve_intent(db, str_field(&v, op, "a")?)?;
             let b = resolve_intent(db, str_field(&v, op, "b")?)?;
-            let criterion = str_field(&v, op, "criterion")?;
             let confidence = f64_field(&v, op, "confidence")?;
+            gate::require_confidence(confidence)?;
+            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
+            let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
             gate::require_substantive(
                 "criterion", criterion,
                 "the falsifiable coexistence criterion this edge was checked against",
             )?;
-            gate::require_confidence(confidence)?;
-            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             update_relates_to_ground(db, &edge.from_id, &edge.to_id, criterion, confidence, &by, &now)?;
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
@@ -138,13 +143,13 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             )?;
             let a = resolve_intent(db, str_field(&v, op, "a")?)?;
             let b = resolve_intent(db, str_field(&v, op, "b")?)?;
-            let criterion = str_field(&v, op, "criterion")?;
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
-            gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
             let edge = get_or_create_relates_to(db, &a, &b, &now)?;
+            let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
+            gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
             update_relates_to_issue(db, &edge.from_id, &edge.to_id, criterion, evidence, confidence, &by, &now)?;
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
@@ -170,7 +175,9 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!("invalid status '{status}' (passing | failing | independent)");
             }
-            let criterion = str_field(&v, op, "criterion")?;
+            let existing = get_governs_between(db, &rule, &intent)?;
+            let stored_criterion = existing.map(|g| g.criterion).unwrap_or_default();
+            let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive(
@@ -205,10 +212,10 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
 /// error so a driver can repair the line without consulting the docs.
 fn required_fields(op: &str) -> &'static str {
     match op {
-        "ground" => "a, b, criterion, confidence",
-        "issue" => "a, b, criterion, evidence, confidence",
+        "ground" => "a, b, confidence (+ criterion unless the edge already has one)",
+        "issue" => "a, b, evidence, confidence (+ criterion unless the edge already has one)",
         "independent" => "a, b, notes",
-        "rule_verdict" => "rule, intent, status, criterion, evidence, confidence",
+        "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before)",
         _ => "op",
     }
 }
@@ -222,6 +229,21 @@ fn str_field<'a>(v: &'a serde_json::Value, op: &str, key: &str) -> Result<&'a st
     })
 }
 
+/// The explicit `criterion` when given, the stored one when omitted on an
+/// edge that already carries it (re-verification re-affirms the recorded
+/// claim), and an error otherwise — a first verdict must spell it out.
+fn criterion_or_stored<'a>(v: &'a serde_json::Value, op: &str, stored: &'a str) -> Result<&'a str> {
+    match v.get("criterion").and_then(|x| x.as_str()) {
+        Some(c) if !c.trim().is_empty() => Ok(c),
+        _ if !stored.is_empty() => Ok(stored),
+        _ => Err(anyhow::anyhow!(
+            "op '{op}': no 'criterion' given and none on record — omitting criterion only works \
+             when re-verdicting an edge that already carries one (requires: {})",
+            required_fields(op)
+        )),
+    }
+}
+
 fn f64_field(v: &serde_json::Value, op: &str, key: &str) -> Result<f64> {
     v.get(key).and_then(|x| x.as_f64()).ok_or_else(|| {
         anyhow::anyhow!(
@@ -229,4 +251,35 @@ fn f64_field(v: &serde_json::Value, op: &str, key: &str) -> Result<f64> {
             required_fields(op)
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::criterion_or_stored;
+
+    #[test]
+    fn criterion_explicit_beats_stored_beats_error() {
+        let explicit = serde_json::json!({"criterion": "explicit text"});
+        assert_eq!(criterion_or_stored(&explicit, "ground", "stored").unwrap(), "explicit text");
+
+        let omitted = serde_json::json!({"op": "ground"});
+        assert_eq!(
+            criterion_or_stored(&omitted, "ground", "stored").unwrap(),
+            "stored",
+            "omission re-affirms the recorded criterion"
+        );
+
+        let blank = serde_json::json!({"criterion": "   "});
+        assert_eq!(
+            criterion_or_stored(&blank, "ground", "stored").unwrap(),
+            "stored",
+            "whitespace-only reads as omitted"
+        );
+
+        let err = criterion_or_stored(&omitted, "ground", "").unwrap_err();
+        assert!(
+            err.to_string().contains("none on record"),
+            "a first verdict must spell the criterion out: {err}"
+        );
+    }
 }

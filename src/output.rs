@@ -10,8 +10,10 @@ impl Printer {
     }
 
     pub fn print_json<T: Serialize>(&self, value: &T) {
-        let rendered = serde_json::to_string_pretty(value).unwrap_or_else(|e| {
-            serde_json::to_string_pretty(&serde_json::json!({ "error": e.to_string() }))
+        // Compact, not pretty: the consumer is an LLM agent (pretty-printed
+        // indentation is pure token spend; jq re-pretties for humans).
+        let rendered = serde_json::to_string(value).unwrap_or_else(|e| {
+            serde_json::to_string(&serde_json::json!({ "error": e.to_string() }))
                 .expect("serializing JSON error object cannot fail")
         });
         println!("{rendered}");
@@ -56,17 +58,23 @@ fn fmt_axis(a: &crate::db::queries::CoverageAxis) -> String {
     }
 }
 
-/// The 360° coverage vector as one line — every vantage point counted, so the
-/// driving LLM always sees which dimension is weakest without asking.
-pub fn fmt_coverage(c: &crate::db::queries::Coverage360) -> String {
+/// The five axes joined as one compact line — shared by the human pulse
+/// (with the "360°: " prefix) and the JSON pulse (`coverage` field).
+pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
     format!(
-        "360°: grounded {} · realized {} · explored {} · measured {} · proven {}",
+        "grounded {} · realized {} · explored {} · measured {} · proven {}",
         fmt_axis(&c.grounded_files),
         fmt_axis(&c.realized_leaves),
         fmt_axis(&c.explored_pairs),
         fmt_axis(&c.measured_pairs),
         fmt_axis(&c.proven_leaves),
     )
+}
+
+/// The 360° coverage vector as one line — every vantage point counted, so the
+/// driving LLM always sees which dimension is weakest without asking.
+pub fn fmt_coverage(c: &crate::db::queries::Coverage360) -> String {
+    format!("360°: {}", coverage_line(c))
 }
 
 /// One-line graph pulse for an LLM's quick look (shown as a footer).
@@ -100,6 +108,39 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     )
 }
 
+/// The JSON pulse — the same situational awareness the two human pulse lines
+/// carry, structured. This is the `graph_state` payload field on every
+/// command EXCEPT `loom status --json`, which returns the full GraphState
+/// (the tier-2 deep view: identity, version, custody, per-axis counts).
+pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
+    let mut o = serde_json::Map::new();
+    if !s.graph_name.is_empty() {
+        let ident = if s.custody == "observed" {
+            format!("{} (observed)", s.graph_name)
+        } else {
+            s.graph_name.clone()
+        };
+        o.insert("graph".into(), ident.into());
+    }
+    o.insert("phase".into(), s.phase.clone().into());
+    o.insert("next_action".into(), s.next_action.clone().into());
+    o.insert("vertical".into(), s.vertically_complete.into());
+    o.insert("horizontal".into(), s.horizontally_explored.into());
+    o.insert("intents".into(), s.intents.into());
+    o.insert("codefiles".into(), s.codefiles.into());
+    o.insert("edges".into(), s.total_edges.into());
+    o.insert("unresolved".into(), s.unresolved_edges.into());
+    if s.unexplored_pairs > 0 {
+        o.insert("unexplored".into(), s.unexplored_pairs.into());
+    }
+    o.insert(
+        "synced".into(),
+        if s.last_synced.is_empty() { "never".to_string() } else { rel_time(&s.last_synced) }.into(),
+    );
+    o.insert("coverage".into(), coverage_line(&s.coverage).into());
+    serde_json::Value::Object(o)
+}
+
 // ---------------------------------------------------------------------------
 // The LLM-driver output contract (shared by every command)
 //
@@ -117,6 +158,12 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
 //   3. BOUNDED — any list that scales with graph size is capped with an
 //      explicit "+N more" marker carrying the retrieval command. Flooding
 //      the context window evicts the agent's own plan.
+//   4. SURFACE, THEN DIG — payloads embed PROJECTIONS (the fields the next
+//      decision needs), never full records: work items carry *Surface types,
+//      anchors carry `pulse_json` (not the full GraphState), and every
+//      elision names the runnable command that retrieves the rest
+//      (`loom intent show`, `loom edge show`, `loom note list`,
+//      `loom status --json`). Token spend is part of the contract.
 // ---------------------------------------------------------------------------
 
 /// Default cap for a variable-length section rendered inside another
@@ -164,7 +211,7 @@ pub fn with_anchor(
         obj.insert("next_step".into(), serde_json::Value::String(next_step.to_string()));
         obj.insert(
             "graph_state".into(),
-            serde_json::to_value(crate::db::queries::graph_state(db)?)?,
+            pulse_json(&crate::db::queries::graph_state(db)?),
         );
     }
     Ok(v)
@@ -197,6 +244,31 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
         i.id, i.name, i.abstraction_level, i.domain, i.status, lifecycle, aspect_line, tags_line,
         i.description, refs_str, i.created_at, i.updated_at
     )
+}
+
+/// Human rendering of an IntentSurface — the work-item block. Mirrors the
+/// JSON surface field-for-field (parity by construction); the full record
+/// (timestamps, empty facets) is `loom intent show <id>`.
+pub fn fmt_intent_surface(i: &crate::types::IntentSurface) -> String {
+    let mut s = format!(
+        "  id:          {}\n  name:        {}\n  level:       {}",
+        i.id, i.name, i.level,
+    );
+    if !(i.domain.is_empty() || i.domain == "unknown") {
+        s.push_str(&format!("\n  domain:      {}", i.domain));
+    }
+    s.push_str(&format!("\n  status:      {}\n  lifecycle:   {}", i.status, i.lifecycle));
+    if !i.aspect.is_empty() {
+        s.push_str(&format!("\n  aspect:      {}", i.aspect));
+    }
+    if !i.tags.is_empty() {
+        s.push_str(&format!("\n  tags:        {}", i.tags.join(", ")));
+    }
+    s.push_str(&format!("\n  description: {}", i.description));
+    if !i.sources.is_empty() {
+        s.push_str(&format!("\n  sources:     {}", i.sources.join(", ")));
+    }
+    s
 }
 
 pub fn fmt_intent_row(i: &crate::types::Intent) -> String {
@@ -345,5 +417,33 @@ mod tests {
         // Non-object payloads pass through untouched (lists wrap themselves).
         let arr = with_anchor(serde_json::json!([1, 2]), &db, "x").unwrap();
         assert!(arr.is_array());
+    }
+
+    #[test]
+    fn pulse_is_a_surface_not_the_full_state() {
+        let db = crate::db::GrafeoDb::in_memory();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, "t", "g", "pulse", "owned",
+        )).unwrap();
+        let gs = crate::db::queries::graph_state(&db).unwrap();
+        let p = pulse_json(&gs);
+        // Everything the next decision needs travels…
+        for k in [
+            "phase", "next_action", "vertical", "horizontal", "intents",
+            "codefiles", "edges", "unresolved", "synced", "coverage",
+        ] {
+            assert!(p.get(k).is_some(), "pulse must carry '{k}': {p}");
+        }
+        assert_eq!(p["graph"], "pulse", "identity is the human-form name");
+        assert!(p["coverage"].is_string(), "coverage is the compact axis vector: {p}");
+        // …and none of the deep-view fields `loom status --json` owns (tier-2).
+        for k in [
+            "version", "graph_id", "graph_name", "custody", "notes",
+            "validations", "relates_to_edges", "implements_edges", "last_synced",
+        ] {
+            assert!(p.get(k).is_none(), "'{k}' is tier-2 — dig via `loom status --json`: {p}");
+        }
+        // Never synced reads as prose, not as an empty string.
+        assert_eq!(p["synced"], "never");
     }
 }

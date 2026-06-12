@@ -8866,13 +8866,13 @@
         "path": "src/commands/intent.rs"
       },
       {
-        "content_hash": "4afd9575426288fe",
+        "content_hash": "c89be974e8905695",
         "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
         "imports": [
           "src/db/mod.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-11T20:19:39.625596939+00:00",
+        "last_modified": "2026-06-12T05:13:17.733860675+00:00",
         "path": "src/output.rs"
       },
       {
@@ -9058,15 +9058,15 @@
         "path": "src/commands/cluster.rs"
       },
       {
-        "content_hash": "6d7f169548786946",
+        "content_hash": "420543efd7d33013",
         "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-11T20:31:12.068819174+00:00",
+        "last_modified": "2026-06-12T05:10:22.201221296+00:00",
         "path": "src/types.rs"
       },
       {
-        "content_hash": "4feef819cc3b4c29",
+        "content_hash": "0de8311787c712cc",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
           "src/db/mod.rs",
@@ -9075,7 +9075,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-12T04:40:04.566993625+00:00",
+        "last_modified": "2026-06-12T05:13:17.757412523+00:00",
         "path": "src/commands/next.rs"
       },
       {
@@ -9093,7 +9093,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-11T08:30:57.241185144+00:00",
+        "last_modified": "2026-06-12T05:09:10.658921115+00:00",
         "path": "src/main.rs"
       },
       {
@@ -9193,7 +9193,7 @@
         "path": "src/commands/doctor.rs"
       },
       {
-        "content_hash": "bba1e5c735c6e523",
+        "content_hash": "d7a355dbc9ad0325",
         "id": "acf86b95-edbb-4d21-9e76-90e61c2aba72",
         "imports": [
           "src/db/mod.rs",
@@ -9203,7 +9203,7 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-11T18:31:07.146691001+00:00",
+        "last_modified": "2026-06-12T05:13:17.746579118+00:00",
         "path": "src/commands/batch.rs"
       },
       {
@@ -9492,7 +9492,7 @@
         "path": "src/commands/schema.rs"
       },
       {
-        "content_hash": "893e6240e53e915a",
+        "content_hash": "88141693c3019b53",
         "id": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a",
         "imports": [
           "src/db/mod.rs",
@@ -9502,7 +9502,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-11T20:31:02.098640294+00:00",
+        "last_modified": "2026-06-12T05:10:01.714176619+00:00",
         "path": "src/commands/sync.rs"
       },
       {

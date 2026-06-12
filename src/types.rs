@@ -448,15 +448,18 @@ pub struct Intent {
     pub abstraction_level: String,
     pub domain: String,
     /// File path strings (native list in the store as of schema v5).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_refs: Vec<String>,
     pub status: String,
     /// Behavioural facet for completeness: happy | sad | fallback | … (open
     /// vocabulary; "" = unspecified).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub aspect: String,
     /// Registered vocabulary terms (≤3, sorted, deduped; native list in the
     /// store as of schema v5). The bounded facet duplicate-responsibility
     /// detection collides on; empty = untagged (honest absence — never
     /// counted as evidence).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     /// Implementation lifecycle: planned | implemented | needs_change.
     pub lifecycle: String,
@@ -469,17 +472,19 @@ pub struct Intent {
 pub struct CodeFile {
     pub id: String,
     pub path: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub language: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_modified: String,
     /// Repo-relative paths this file statically imports (extracted by
     /// `loom sync`; native list in the store as of schema v5).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imports: Vec<String>,
     /// Content hash (FNV-1a 64, hex) of the file's bytes — `loom sync`'s change
     /// detector. mtime alone false-flags on checkout/rebase (mtime churns,
     /// content doesn't); the hash makes "changed" mean the bytes changed.
     /// Empty on never-synced/pre-upgrade graphs (sync falls back to mtime once).
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub content_hash: String,
 }
 
@@ -495,7 +500,7 @@ pub struct QualityRule {
     /// e.g. a secrets scan) | "mid" (read-and-judge) | "high" (deep semantic
     /// reading, e.g. atomicity). Optional — "" reads as mid. Loom names the
     /// WORK; which model answers is the harness's business.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspection_effort: String,
 }
 
@@ -504,12 +509,14 @@ pub struct QualityRule {
 pub struct Validation {
     pub id: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
     /// test | assertion | benchmark | manual_check
     pub validation_type: String,
     /// Shell command to run, e.g. "cargo test --test foo"
     pub command: String,
     /// RFC3339 timestamp of last run (empty = never run)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_run: String,
     /// passed | failed | not_run
     pub last_result: String,
@@ -540,7 +547,7 @@ pub struct Note {
     /// analyzer | fixer | validator | quality. The directed-handoff channel —
     /// an out-of-lane finding becomes a message the owning lane will see
     /// first in its work items.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub audience: String,
     pub created_at: String,
 }
@@ -654,14 +661,19 @@ pub struct RelatesTo {
     // --- State (workflow-critical) ---
     pub inspection_status: String,
     // --- Meta (evidence layer) ---
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub criterion: String,
     pub confidence: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub evidence: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_inspected: String,
     /// Who inspected — role-aware provenance, e.g. "llm:analyzer", "human".
     /// Resolved from --inspected-by / $LOOM_AGENT (see `crate::agent`).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspected_by: String,
     pub priority_score: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
 }
 
@@ -689,18 +701,25 @@ pub struct Implements {
     // --- State ---
     pub inspection_status: String,
     // --- Meta ---
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub criterion: String,
+    #[serde(default, skip_serializing_if = "f64_is_zero")]
     pub confidence: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub evidence: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_inspected: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspected_by: String,
     /// Finer-than-file anchor inside the CodeFile (symbol/region), or "".
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub locator: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
     /// When the grounding was made — the staleness anchor for smell
     /// adjudication (a decision note older than the newest grounding no
     /// longer speaks for the structure). "" on edges from pre-v3 graphs.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub created_at: String,
 }
 
@@ -717,11 +736,16 @@ pub struct Governs {
     // --- State ---
     pub inspection_status: String,
     // --- Meta ---
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub criterion: String,
     pub confidence: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub evidence: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_inspected: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspected_by: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
 }
 
@@ -738,11 +762,16 @@ pub struct TargetsEdge {
     // --- State ---
     pub inspection_status: String,
     // --- Meta ---
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub criterion: String,
     pub confidence: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub evidence: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_inspected: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspected_by: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
 }
 
@@ -756,36 +785,164 @@ pub struct ValidatesEdge {
     pub intent_name: String,
     // --- State ---
     pub inspection_status: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+}
+
+// ---------------------------------------------------------------------------
+// Serde skip predicates — an empty/zero field means "not recorded"; omitting
+// it from JSON says the same thing in zero bytes. Round-trip safe: every
+// skipped field pairs with #[serde(default)].
+// ---------------------------------------------------------------------------
+
+fn f64_is_zero(v: &f64) -> bool {
+    *v == 0.0
+}
+
+/// "unknown" is the historical placeholder default — as empty as "".
+fn domain_is_unknown(s: &String) -> bool {
+    s.is_empty() || s == "unknown"
 }
 
 // ---------------------------------------------------------------------------
 // Composite output types
 // ---------------------------------------------------------------------------
 
-/// Rich work item returned by `loom next` — includes all context an LLM needs.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+// ---------------------------------------------------------------------------
+// Tier-1 surfaces — the projection of an entity that travels INSIDE a work
+// item: exactly the fields the verdict needs, nothing it doesn't. The full
+// record stays one dig away (`loom intent show`, `loom edge show`,
+// `loom note list`, `loom validation list`); these never replace those views.
+// ---------------------------------------------------------------------------
+
+/// An intent as embedded in a work item. Timestamps and empty facets stay in
+/// `loom intent show <id>`.
+#[derive(Debug, Clone, Serialize)]
+pub struct IntentSurface {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub level: String,
+    #[serde(skip_serializing_if = "domain_is_unknown")]
+    pub domain: String,
+    pub status: String,
+    pub lifecycle: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub aspect: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub sources: Vec<String>,
+}
+
+impl From<&Intent> for IntentSurface {
+    fn from(i: &Intent) -> Self {
+        Self {
+            id: i.id.clone(),
+            name: i.name.clone(),
+            description: i.description.clone(),
+            level: i.abstraction_level.clone(),
+            domain: i.domain.clone(),
+            status: i.status.clone(),
+            // "" reads as implemented everywhere (pre-lifecycle graphs).
+            lifecycle: if i.lifecycle.is_empty() { "implemented".into() } else { i.lifecycle.clone() },
+            aspect: i.aspect.clone(),
+            tags: i.tags.clone(),
+            sources: i.source_refs.clone(),
+        }
+    }
+}
+
+/// An IMPLEMENTS grounding as embedded in a work item: where the code lives.
+/// The full edge (criterion, evidence, provenance): `loom intent show <id>`.
+#[derive(Debug, Clone, Serialize)]
+pub struct GroundingSurface {
+    pub path: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub locator: String,
+    pub status: String,
+}
+
+impl From<&Implements> for GroundingSurface {
+    fn from(im: &Implements) -> Self {
+        Self {
+            path: im.codefile_path.clone(),
+            locator: im.locator.clone(),
+            status: im.inspection_status.clone(),
+        }
+    }
+}
+
+/// A validation as embedded in a work item: enough to run it or mark it.
+/// Full record: `loom validation list`.
+#[derive(Debug, Clone, Serialize)]
+pub struct ValidationSurface {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub command: String,
+    pub result: String,
+}
+
+impl From<&Validation> for ValidationSurface {
+    fn from(v: &Validation) -> Self {
+        Self {
+            id: v.id.clone(),
+            name: v.name.clone(),
+            command: v.command.clone(),
+            result: v.last_result.clone(),
+        }
+    }
+}
+
+/// A note as embedded in a work item. Repeated identical notes (sync re-flips
+/// spam the same transition text) collapse into one surface with `times` —
+/// the count IS the information; the copies are not. Full records with ids
+/// and timestamps: `loom note list`.
+#[derive(Debug, Clone, Serialize)]
+pub struct NoteSurface {
+    pub kind: String,
+    pub text: String,
+    pub author: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub audience: String,
+    #[serde(skip_serializing_if = "times_is_one")]
+    pub times: u32,
+}
+
+fn times_is_one(n: &u32) -> bool {
+    *n == 1
+}
+
+/// Rich work item returned by `loom next` — the tier-1 actionable surface.
+/// Every embedded entity is a *Surface projection; the dig commands above
+/// retrieve what the projection elides.
+#[derive(Debug, Clone, Serialize)]
 pub struct WorkItem {
     pub edge_type: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub edge_id: String,
     pub inspection_status: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub criterion: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub evidence: String,
     pub priority_score: f64,
     /// The subject intent (always present).
-    pub intent_a: Intent,
+    pub intent_a: IntentSurface,
     /// The related intent (present for RELATES_TO edges).
-    pub intent_b: Option<Intent>,
-    /// Code files touched by these intents (from IMPLEMENTS edges).
-    pub code_files: Vec<CodeFile>,
-    /// IMPLEMENTS edges for intent_a, carrying the finer-grained `locator`
-    /// (symbol/region) where the intent is grounded.
-    pub implements: Vec<Implements>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intent_b: Option<IntentSurface>,
+    /// IMPLEMENTS groundings for intent_a — path + locator + status.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub implements: Vec<GroundingSurface>,
     /// Validations linked to intent_a (from VALIDATES edges).
-    pub validations: Vec<Validation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub validations: Vec<ValidationSurface>,
     /// Accumulated free-text memory relevant to this work item — notes on the
-    /// edge and on both intents. Lets prior reasoning travel with the task.
-    pub notes: Vec<Note>,
+    /// edge and on both intents, deduplicated. Lets prior reasoning travel.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub notes: Vec<NoteSurface>,
     /// Recommended action string for the LLM.
     pub suggested_action: String,
 }
@@ -856,12 +1013,7 @@ pub struct SyncReport {
     /// symbol?) — the edge was flipped to needs_reverification if it was
     /// passing. Re-ground with a fresh locator.
     pub locators_stale: Vec<String>,
-    pub changes: Vec<SyncChange>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SyncChange {
-    pub path: String,
-    pub codefile_id: String,
-    pub new_mtime: String,
+    /// Paths whose CONTENT changed this sync (the ripple's causes). The path
+    /// IS the identity an agent acts on; ids/mtimes stay in the store.
+    pub changes: Vec<String>,
 }
