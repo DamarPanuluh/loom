@@ -22,6 +22,8 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
 
     let report = compute_smells(&db)?;
     let total = report.open.len();
+    let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
+    let registry = crate::db::queries::list_vocab_terms(&db)?.len();
     let mut smells = report.open;
     smells.truncate(limit);
     let adjudicated = report.adjudicated;
@@ -33,6 +35,9 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
             "smells": smells,
             "adjudicated_total": adjudicated.len(),
             "adjudicated": adjudicated,
+            "coded_intents": coded,
+            "tagged_coded_intents": tagged,
+            "vocab_terms": registry,
             "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it.",
         }));
         return Ok(());
@@ -72,6 +77,24 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
         println!("  A ruling you disagree with is overruled through the work, not the ledger:");
         println!("  propose the change (`loom hypothesis add … --target <intent>`) — adoption");
         println!("  restructures the graph and the ruling's subject with it.");
+    }
+    // The instrument's own blind spot, disclosed next to its readings:
+    // duplicated_responsibility collides on registered tags only, so a quiet
+    // report with untagged coded intents is NOT evidence of no duplication.
+    let blind = coded - tagged;
+    if coded >= 2 && blind > 0 {
+        println!();
+        if registry == 0 {
+            println!("  ⚠ duplicated_responsibility is unarmed: no vocabulary registered, and");
+            println!("    {blind} of {coded} coded intent(s) are untagged — same-responsibility pairs in");
+            println!("    unrelated code are invisible to every detector here. Seed terms");
+            println!("    (`loom vocab add`), then tag (`loom intent tag add <intent> <term>`).");
+        } else {
+            println!("  ⚠ blind spot: {blind} of {coded} coded intent(s) carry no registered tag —");
+            println!("    duplicated_responsibility cannot see pairs involving them (tags are");
+            println!("    positive evidence only). `loom vocab list` shows the registry; tag with");
+            println!("    `loom intent tag add <intent> <term>`.");
+        }
     }
     if !smells.is_empty() {
         println!();

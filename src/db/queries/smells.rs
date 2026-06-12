@@ -87,6 +87,15 @@ pub struct AdjudicatedSmell {
 pub struct SmellReport {
     pub open: Vec<Smell>,
     pub adjudicated: Vec<AdjudicatedSmell>,
+    /// Blind-spot disclosure for `duplicated_responsibility`: tags are
+    /// positive evidence only, so a coded intent with no registered tag can
+    /// never collide. `coded_intents` counts active intents with ≥1
+    /// IMPLEMENTS edge; `tagged_coded_intents` how many of those carry ≥1
+    /// tag. The gap is the slice of the pair-space the detector cannot see —
+    /// "no findings" and "no findings, but the instrument is half-blind"
+    /// must never look alike (same lesson as `adjudicated`).
+    pub coded_intents: usize,
+    pub tagged_coded_intents: usize,
 }
 
 /// Jaccard similarity of two token sets (0.0 when either is empty).
@@ -588,11 +597,16 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             } else {
                 edge_label.get(id.as_str()).cloned().unwrap_or_else(|| id.clone())
             };
+            // The last regression: guaranteed present (filled in the same
+            // pass that counted `trouble`); doubles as the adjudication
+            // anchor and the evidence timestamp.
+            let last = last_trouble
+                .get(&(kind.clone(), id.clone()))
+                .map(String::as_str)
+                .unwrap_or("");
             // Addressed: a decision note recorded after the last regression.
-            if let (Some(d), Some(t)) =
-                (last_decision.get(id.as_str()), last_trouble.get(&(kind.clone(), id.clone())))
-            {
-                if d.created_at.as_str() > t.as_str() {
+            if let Some(d) = last_decision.get(id.as_str()) {
+                if d.created_at.as_str() > last {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "recurrent_trouble".into(),
                         summary: format!("'{}' has regressed {} times", label, count),
@@ -611,7 +625,9 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "'{}' has regressed {} times (transitions to failing/needs_change)",
                     label, count
                 ),
-                evidence: "see its transition notes (`loom note list --kind transition`)".into(),
+                evidence: format!(
+                    "{count} transition(s) to failing/needs_change, the last at {last}; full history: `loom note list --kind transition`"
+                ),
                 remedy: format!(
                     "recurring breakage means the criterion or the design is wrong — propose the redesign instead of patching again: `loom hypothesis add --name \"…\" --claim \"<what keeps regressing and the structural why>\" --proposal \"<the redesign>\" --predicted-outcome \"<no failing/needs_change transition after the next N syncs>\"{target}` (proven → adopted → planned intents); once addressed, `loom note add{nt} --kind decision --text \"<what was redesigned and why it won't recur>\"` resolves this finding (a decision newer than the last regression; history stays intact)",
                     target = if kind == "intent" { format!(" --target {id}") } else { String::new() },
@@ -919,5 +935,16 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             .then_with(|| a.remedy.cmp(&b.remedy))
     });
     adjudicated_out.sort_by(|a, b| a.ruled_at.cmp(&b.ruled_at).then_with(|| a.summary.cmp(&b.summary)));
-    Ok(SmellReport { open: smells, adjudicated: adjudicated_out })
+    // The instrument's own coverage: duplicated_responsibility collides on
+    // registered tags only (positive evidence — see 1b), so the report
+    // carries how much of the coded surface is actually visible to it.
+    let coded_intents = intents.iter().filter(|i| files_of.contains_key(i.id.as_str())).count();
+    let tagged_coded_intents = intents
+        .iter()
+        .filter(|i| {
+            files_of.contains_key(i.id.as_str())
+                && discovery.tags_by_intent.get(i.id.as_str()).is_some_and(|t| !t.is_empty())
+        })
+        .count();
+    Ok(SmellReport { open: smells, adjudicated: adjudicated_out, coded_intents, tagged_coded_intents })
 }

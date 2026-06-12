@@ -9,6 +9,7 @@ use crate::types::{Intent, IntentCentrality};
 
 use super::completeness::vertical_completeness_from_snapshot;
 use super::hierarchy::list_all_hierarchy;
+use super::hypothesis::list_hypotheses;
 use super::implements::intents_with_implements;
 use super::intent::{intents_without_validations, list_active_intents};
 use super::meta::get_meta;
@@ -440,7 +441,19 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
             ))
         } else {
-            ("complete", "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string())
+            // The pre-decision plane never gates green (a proposal is not
+            // state of the world — see Hypothesis), but it must not rot
+            // invisibly either: pending proofs are disclosed at the one
+            // message every agent reads. Computed lazily with the same
+            // justification as the smells scan above.
+            let proposed = list_hypotheses(db, Some("proposed"))?.len();
+            let mut msg = "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string();
+            if proposed > 0 {
+                msg.push_str(&format!(
+                    " Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, never gates green: `loom next --mode prove`."
+                ));
+            }
+            ("complete", msg)
         }
     };
 

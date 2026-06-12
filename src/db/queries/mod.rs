@@ -740,6 +740,19 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.phase, "complete", "adjudicated finding must clear the gate, got '{}'", gs.phase);
         assert_coherent(&db, "adjudicated complete");
+
+        // The pre-decision plane never gates green, but rotting proposals must
+        // surface at the gate everyone reads: the complete message discloses
+        // the prove queue (the only push surface the plane has).
+        insert_hypothesis(&db, &hypothesis("h-pending", "split the scoring module")).unwrap();
+        let gs = graph_state(&db).unwrap();
+        assert_eq!(gs.phase, "complete", "a proposed hypothesis must NOT gate green, got '{}'", gs.phase);
+        assert!(
+            gs.next_action.contains("1 proposed hypothesis"),
+            "complete message must disclose pending proofs: {}", gs.next_action
+        );
+        assert!(gs.next_action.contains("--mode prove"), "{}", gs.next_action);
+        assert_coherent(&db, "complete with pending proposal");
     }
 
     /// Recurrence memory: verdict transitions are auto-recorded as transition
@@ -761,6 +774,11 @@ mod tests {
         let rec: Vec<_> = smells.iter().filter(|s| s.kind == "recurrent_trouble").collect();
         assert_eq!(rec.len(), 1, "{smells:?}");
         assert!(rec[0].summary.contains("regressed 2 times"), "{}", rec[0].summary);
+        assert!(rec[0].evidence.contains("2 transition(s)"), "{}", rec[0].evidence);
+        assert!(
+            rec[0].evidence.contains("the last at t3"),
+            "evidence must carry the last regression timestamp: {}", rec[0].evidence
+        );
 
         // Terminal state: a decision note NEWER than the last regression marks
         // the recurrence addressed — finding resolves, history stays intact.
@@ -782,6 +800,28 @@ mod tests {
             smells.iter().any(|s| s.kind == "recurrent_trouble"),
             "a regression after the decision must re-flag: {smells:?}"
         );
+    }
+
+    /// The smells report disclosing its own blind spot: duplicated_responsibility
+    /// collides on registered tags only (positive evidence), so the report
+    /// counts how much of the coded surface the detector can actually see —
+    /// untagged coded intents can never fire it.
+    #[test]
+    fn smell_report_counts_tag_blind_spot() {
+        let (db, _) = db_inited(0);
+        let mut a = intent("a", "alpha engine");
+        a.tags = vec!["authz".into()];
+        insert_intent(&db, &a).unwrap();
+        insert_intent(&db, &intent("b", "beta surface")).unwrap();
+        insert_intent(&db, &intent("c", "gamma uncoded")).unwrap(); // no code → outside the pair-space
+        insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfb", "src/b.rs")).unwrap();
+        insert_implements(&db, "a", "cfa", "", "", "t").unwrap();
+        insert_implements(&db, "b", "cfb", "", "", "t").unwrap();
+
+        let report = compute_smells(&db).unwrap();
+        assert_eq!(report.coded_intents, 2, "only intents with IMPLEMENTS count");
+        assert_eq!(report.tagged_coded_intents, 1, "only the tagged coded intent counts");
     }
 
     /// Undeclared coupling: file A imports file B, their owning intents have no

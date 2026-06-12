@@ -129,7 +129,7 @@ A few states exist specifically so the graph never lies by omission:
 - `needs_change` — a known issue/refactor, flagged without faking a verdict
 - `blocked` — a proof that *can't* run yet (live target down, missing credential), recorded with a reason; out of the work queue but visible in `loom report`, and a code change doesn't quietly reset it
 - `loom ignore add <glob> --reason` — coverage exclusions live *in the graph*, with a recorded why
-- `loom vocab` — a bounded tag vocabulary (≤3 tags per intent, registered terms only). Open prose rarely collides; a small shared keyspace does — so two intents tagged `retry` in *unrelated* files surface as `duplicated_responsibility` even when no file, import, or wording connects them. Collisions are rarity-weighted (spammed broad terms decay to zero), tagging is optional (untagged is honest; a wrong tag lies), and drift converges with `loom vocab merge` instead of being prevented by a closed list
+- `loom vocab` — a bounded tag vocabulary (≤3 tags per intent, registered terms only). Open prose rarely collides; a small shared keyspace does — so two intents tagged `retry` in *unrelated* files surface as `duplicated_responsibility` even when no file, import, or wording connects them. Collisions are rarity-weighted (spammed broad terms decay to zero), tagging is optional (untagged is honest; a wrong tag lies), and drift converges with `loom vocab merge` instead of being prevented by a closed list. Because tags are positive evidence only, `loom smells` also discloses the detector's blind spot — how many coded intents are untagged and therefore invisible to it — so a quiet report is never mistaken for proof of no duplication
 
 ## Monorepos & federation
 
