@@ -23,6 +23,7 @@ pub mod init;
 pub mod intent;
 pub mod next;
 pub mod note;
+pub mod persona;
 pub mod report;
 pub mod rule;
 pub mod saga;
@@ -59,6 +60,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),
+        Command::Persona     { subcommand } => persona::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id, all, timeout_secs } => match (intent_id, all) {
             (Some(i), false) => validate::run(&i, timeout_secs, &printer),

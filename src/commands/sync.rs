@@ -5,10 +5,10 @@ use std::path::Path;
 
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
-    invalidate_validations_for_intents_with_indexes, list_all_governs, list_all_implements,
-    list_all_targets, list_all_validates, list_codefiles, list_relates_to, list_validations,
-    record_sync_flip, set_last_synced, update_codefile_hash, update_codefile_hash_and_mtime,
-    update_codefile_imports, update_codefile_mtime,
+    flag_serves_for_intent, invalidate_validations_for_intents_with_indexes, list_all_governs,
+    list_all_implements, list_all_serves, list_all_targets, list_all_validates, list_codefiles,
+    list_relates_to, list_validations, record_sync_flip, set_last_synced, update_codefile_hash,
+    update_codefile_hash_and_mtime, update_codefile_imports, update_codefile_mtime,
 };
 use crate::db::schema::esc;
 use crate::output::Printer;
@@ -32,6 +32,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut targets_flagged = 0usize;
     let mut relates_to_flagged = 0usize;
     let mut governs_flagged = 0usize;
+    let mut serves_flagged = 0usize;
     let mut validations_invalidated = 0usize;
     let mut changes: Vec<String> = Vec::new();
     let mut missing_files: Vec<String> = Vec::new();
@@ -74,9 +75,15 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     for edge in &all_targets {
         targets_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
     }
+    let all_serves = list_all_serves(&db)?;
+    let mut serves_by_intent: HashMap<&str, Vec<&crate::types::ServesEdge>> = HashMap::new();
+    for edge in &all_serves {
+        serves_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+    }
     let mut related_edges_flagged: HashSet<String> = HashSet::new();
     let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
     let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
+    let mut serves_edges_flagged_ids: HashSet<String> = HashSet::new();
 
     // Per-FILE atomicity, not one graph-wide transaction: each changed file's
     // fingerprint update + edge flags + validation invalidations commit
@@ -223,6 +230,17 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                     &targets_by_intent,
                     &mut targets_edges_flagged_ids,
                 )?;
+                // A passing SERVES edge is a claim about behavior for a specific
+                // persona — flip it so the serving claim is re-verified against
+                // the changed code.
+                serves_flagged += flag_serves_for_intent(
+                    &db,
+                    iid,
+                    &cause,
+                    &now,
+                    &serves_by_intent,
+                    &mut serves_edges_flagged_ids,
+                )?;
                 governs_flagged += flag_governs_for_intent_with_indexes(
                     &db,
                     iid,
@@ -306,6 +324,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         relates_to_edges_flagged: relates_to_flagged,
         targets_edges_flagged: targets_flagged,
         governs_edges_flagged: governs_flagged,
+        serves_edges_flagged: serves_flagged,
         validations_invalidated,
         missing_files,
         escaped_files,
@@ -356,6 +375,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         println!("  RELATES_TO edges flagged:      {}", report.relates_to_edges_flagged);
         println!("  GOVERNS verdicts flagged:      {}", report.governs_edges_flagged);
         println!("  TARGETS edges flagged:         {}", report.targets_edges_flagged);
+        println!("  SERVES edges flagged:          {}", report.serves_edges_flagged);
         println!("  Validations invalidated:       {}", report.validations_invalidated);
         if !report.changes.is_empty() {
             println!();

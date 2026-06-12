@@ -236,6 +236,8 @@ pub enum EdgeType {
     Implements,
     Governs,
     Validates,
+    Serves,
+    Journeys,
 }
 
 impl std::fmt::Display for EdgeType {
@@ -246,6 +248,8 @@ impl std::fmt::Display for EdgeType {
             Self::Implements => write!(f, "IMPLEMENTS"),
             Self::Governs   => write!(f, "GOVERNS"),
             Self::Validates => write!(f, "VALIDATES"),
+            Self::Serves    => write!(f, "SERVES"),
+            Self::Journeys  => write!(f, "JOURNEYS"),
         }
     }
 }
@@ -604,6 +608,24 @@ pub struct VocabTerm {
 }
 
 // ---------------------------------------------------------------------------
+// Persona — a named audience segment (the user story "as a [X]" node)
+// ---------------------------------------------------------------------------
+
+/// A user persona: a named audience segment (e.g. "admin", "end_user").
+/// Connects to intents via inspectable SERVES edges ("does this intent actually
+/// serve this persona?") and to saga Validations via structural JOURNEYS edges
+/// ("this saga exercises this persona's path end-to-end").
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Persona {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub author: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Delegation — a subtree owned by ANOTHER loom graph (monorepo/federation)
 // ---------------------------------------------------------------------------
 
@@ -785,6 +807,51 @@ pub struct TargetsEdge {
     pub inspected_by: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+}
+
+/// SERVES: Persona → Intent — this intent serves this persona.
+/// Inspectable: the claim "this intent serves persona X" must be verified
+/// against actual behavior, not assumed from the declaration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServesEdge {
+    pub id: String,
+    pub persona_id: String,
+    pub intent_id: String,
+    pub persona_name: String,
+    pub intent_name: String,
+    // --- State ---
+    pub inspection_status: String,
+    // --- Meta ---
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub criterion: String,
+    pub confidence: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub evidence: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub last_inspected: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub inspected_by: String,
+    pub priority_score: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub notes: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
+}
+
+/// JOURNEYS: Persona → Validation (type=saga) — this saga exercises this
+/// persona's end-to-end path. Structural (like HIERARCHY): no inspection state;
+/// the saga run itself is the proof.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JourneysEdge {
+    pub id: String,
+    pub persona_id: String,
+    pub validation_id: String,
+    pub persona_name: String,
+    pub validation_name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub notes: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
 }
 
 /// VALIDATES: Validation → Intent — this validation proves intent is fulfilled.
@@ -1012,6 +1079,9 @@ pub struct SyncReport {
     /// Passing TARGETS edges flipped to needs_reverification — hypothesis
     /// support must be re-earned after target code changes.
     pub targets_edges_flagged: usize,
+    /// Passing SERVES edges flipped to needs_reverification — persona serving
+    /// claims must be re-earned after the intent's code changes.
+    pub serves_edges_flagged: usize,
     pub validations_invalidated: usize,
     /// Registered CodeFiles that no longer exist on disk (deleted/renamed).
     /// Phantom files distort coverage — remove them (`loom codefile remove`)

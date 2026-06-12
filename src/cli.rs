@@ -170,6 +170,15 @@ pub enum Command {
         subcommand: VocabCmd,
     },
 
+    /// Manage user personas — named audience segments (the "as a [X]" of user
+    /// stories). Personas connect to intents via inspectable SERVES edges
+    /// ("does this intent actually serve this persona?") and to sagas via
+    /// structural JOURNEYS edges ("this saga exercises this persona's path").
+    Persona {
+        #[command(subcommand)]
+        subcommand: PersonaCmd,
+    },
+
     /// Append free-text memory — justification, commentary, idea, question, etc.
     Note {
         #[command(subcommand)]
@@ -1499,6 +1508,79 @@ pub enum ValidationCmd {
     /// Show full detail of one validation node.
     Show {
         id: String,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Persona subcommands (the audience-segment plane)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum PersonaCmd {
+    /// Register a new persona — a named audience segment.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom persona add --name admin \\\n    \
+          --description \"system administrator who configures accounts and manages billing — NOT an end-user (that's viewer)\"")]
+    Add {
+        /// The persona name (short, lowercase, e.g. "admin", "end_user").
+        #[arg(long)]
+        name: String,
+
+        /// Who this persona is and what distinguishes them from other segments.
+        /// Make it CONTRASTIVE: what they can do AND what they cannot (name the
+        /// neighbouring persona), so an agent can disambiguate at tagging time.
+        #[arg(long)]
+        description: String,
+
+        /// Who added this — role-aware (e.g. llm:builder, human).
+        /// Defaults to $LOOM_AGENT, else "llm".
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// List all registered personas.
+    List {
+        /// Max rows (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
+    /// Show one persona: its SERVES edges (with inspection status) and JOURNEYS.
+    Show {
+        /// Persona id, exact name, or unique name fragment.
+        id: String,
+    },
+
+    /// Inspect or create a SERVES edge — "does this intent serve this persona?"
+    /// Without a subcommand, creates the edge (uninspected) and prints context.
+    /// With ground/issue/independent, records the verdict.
+    #[command(after_help = "EXAMPLES:\n  \
+        loom persona serve admin \"user management\"                      # create + print context\n  \
+        loom persona serve admin \"user management\" ground \\\n    \
+          --criterion \"admin can create/suspend/delete accounts; end_user cannot\" --confidence 0.9\n  \
+        loom persona serve admin \"shopping cart\" independent \\\n    \
+          --notes \"cart is end_user only; admin uses bulk order API instead\"")]
+    Serve {
+        /// Persona id, exact name, or unique name fragment.
+        persona_id: String,
+
+        /// Intent id, exact name, or unique name fragment.
+        intent_id: String,
+
+        #[command(subcommand)]
+        subcommand: Option<ExploreSubCmd>,
+    },
+
+    /// Bind a saga to a persona — "this journey exercises this persona's path."
+    /// Creates a structural JOURNEYS edge (Persona → Validation of type=saga).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom persona journey admin checkout-admin-flow")]
+    Journey {
+        /// Persona id, exact name, or unique name fragment.
+        persona_id: String,
+
+        /// Saga validation id, name, or unique name fragment.
+        saga_id: String,
     },
 }
 

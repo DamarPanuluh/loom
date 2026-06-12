@@ -54,6 +54,11 @@
 /// (parsed as JSON) so a half-migrated graph still reads correctly;
 /// `loom migrate` converts storage; `loom import` upgrades v3/v4 exports in
 /// flight.
+///
+/// Still v5 after the Persona plane (the Persona label + SERVES edge + JOURNEYS
+/// edge): additive — older graphs simply have no personas; older exports import
+/// with empty persona sections; `loom doctor` only checks declared required
+/// properties, so a graph with no Persona nodes passes unchanged.
 pub const SCHEMA_VERSION: &str = "5";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
@@ -77,6 +82,8 @@ pub fn edge_key(etype: &str, from_id: &str, to_id: &str) -> String {
         edge::GOVERNS => "gov",
         edge::VALIDATES => "val",
         edge::TARGETS => "tgt",
+        edge::SERVES => "srv",
+        edge::JOURNEYS => "jrn",
         other => other,
     };
     format!("{prefix}:{from_id}:{to_id}")
@@ -107,6 +114,11 @@ pub mod label {
     /// `tags`. A KEY, not a knowledge node: no edges, no inspection state; its
     /// value is forcing two descriptions of one responsibility to collide.
     pub const VOCAB_TERM: &str = "VocabTerm";
+    /// A user persona — a named audience segment (e.g. "admin", "end_user").
+    /// Connects to intents via SERVES edges (inspectable: does this intent
+    /// actually serve this persona?) and to saga validations via JOURNEYS edges
+    /// (structural: this saga exercises this persona's path end-to-end).
+    pub const PERSONA: &str = "Persona";
     /// Sentinel node marking an initialised graph (carries the schema version,
     /// the graph's identity, and its custody).
     pub const META: &str = "LoomMeta";
@@ -123,6 +135,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::DELEGATION,
     label::HYPOTHESIS,
     label::VOCAB_TERM,
+    label::PERSONA,
 ];
 
 // ---------------------------------------------------------------------------
@@ -139,6 +152,16 @@ pub mod edge {
     /// touch. Carries the full inspectable meta so per-target grounding and
     /// sync staleness work like every other claim about code.
     pub const TARGETS: &str = "TARGETS";
+    /// Persona → Intent: this intent serves this persona. INSPECTABLE — "serving
+    /// a persona" is a claim about behavior, not a declaration; earned via
+    /// `loom persona serve … ground/issue/independent`. Sync ripple propagates
+    /// needs_reverification when the intent's code changes (same one-hop rule as
+    /// RELATES_TO).
+    pub const SERVES: &str = "SERVES";
+    /// Persona → Validation (type=saga): this saga exercises this persona's
+    /// end-to-end path. STRUCTURAL — like HIERARCHY, no inspection state; its
+    /// value is enabling persona-scoped journey coverage checks.
+    pub const JOURNEYS: &str = "JOURNEYS";
 }
 
 pub const EDGE_TYPES: &[&str] = &[
@@ -148,6 +171,8 @@ pub const EDGE_TYPES: &[&str] = &[
     edge::GOVERNS,
     edge::VALIDATES,
     edge::TARGETS,
+    edge::SERVES,
+    edge::JOURNEYS,
 ];
 
 // ---------------------------------------------------------------------------
@@ -366,6 +391,12 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (ID, LOOM), (NAME, ANY), (DESCRIPTION, ANY),
             (AUTHOR, ANY), (CREATED_AT, LOOM),
         ],
+        // A user persona: a named audience segment. Connects to intents via
+        // SERVES (inspectable) and to saga Validations via JOURNEYS (structural).
+        self::label::PERSONA => &[
+            (ID, LOOM), (NAME, BUILDER), (DESCRIPTION, BUILDER),
+            (AUTHOR, ANY), (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+        ],
         _ => &[],
     }
 }
@@ -407,6 +438,20 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
             (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
             (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
         ],
+        // SERVES: Persona → Intent. Inspectable — "this intent serves this
+        // persona" is a claim that must be verified against actual behavior.
+        // Sync ripple: code changes → SERVES edges → needs_reverification (the
+        // persona serving claim was earned against the old code). Inspector role
+        // is analyzer (behavioral claim, same as RELATES_TO).
+        self::edge::SERVES => &[
+            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
+        ],
+        // JOURNEYS: Persona → Validation (type=saga). Structural — no inspection
+        // state (the saga run IS the proof; the VALIDATES edges carry the
+        // verdict). Like HIERARCHY: a tree/binding edge, enforced at insert.
+        self::edge::JOURNEYS => &[(NOTES, ANY), (CREATED_AT, LOOM)],
         _ => &[],
     }
 }
@@ -468,6 +513,8 @@ pub fn index_statements() -> Vec<String> {
         (label::VALIDATION, "name"),
         (label::HYPOTHESIS, "id"),
         (label::VOCAB_TERM, "name"),
+        (label::PERSONA, "id"),
+        (label::PERSONA, "name"),
     ]
     .iter()
     .map(|(lbl, prop)| {
