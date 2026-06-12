@@ -423,7 +423,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     }
                 }
                 if f.edges_leaving_computation > 0 {
-                    println!("  {} RELATES_TO edge(s) leave every queue/centrality computation (kept as history).", f.edges_leaving_computation);
+                    println!("  {} RELATES_TO edge(s) leave every queue/centrality computation (kept as history); verified ones are flagged, so living neighbours surface in `loom next --mode align` for the user to re-affirm.", f.edges_leaving_computation);
                 }
                 crate::output::print_anchor(&db, next_step)?;
             }

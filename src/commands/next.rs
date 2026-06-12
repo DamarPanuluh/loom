@@ -1051,11 +1051,11 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "align",
-                "message": "No drift suspected — nothing churned under a confirmed meaning.",
+                "message": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.",
                 "graph_state": pulse_json(&gs),
             }));
         } else {
-            println!("✓ No drift suspected — nothing churned under a confirmed meaning.");
+            println!("✓ No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.");
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -1098,10 +1098,14 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     // SECOND queue — same lane gates, different work. Spell it out, or an
     // orchestrator dispatching from this line sends the agent to the wrong queue.
     let dispatch = "this is validator work — fills the alignment outcome: present the meaning \
-         to the USER, then record exactly ONE of `loom intent confirm` / `update` / `retire` / `add`. \
-         Whoever takes it declares `LOOM_AGENT=llm:validator` (or stay bare `llm` for solo); \
-         its queue is `loom next --mode align`. Same contract whether that's you now, a later \
-         pass, or a parallel agent.";
+         to the USER, then record exactly ONE of `loom intent confirm` / `update` / `retire` / \
+         `add` (update/retire/add are builder-lane: a solo agent records them directly; a \
+         role-split validator hands the user's words to a builder). Whoever takes it declares \
+         `LOOM_AGENT=llm:validator` (or stay bare `llm` for solo); its queue is \
+         `loom next --mode align`. One item per question — after recording the outcome, pull \
+         the queue AGAIN: it admits only drift suspects and every outcome resets that intent's \
+         clock, so it drains to empty. Iterate until it reports clean; never stop after one \
+         answer, never interrogate beyond what it serves.";
 
     if printer.json {
         let mut obj = serde_json::Map::new();
@@ -1126,8 +1130,9 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     println!(
-        "── Next Align Item  [score={:.2}] ───────────────────────────────────",
-        c.score
+        "── Next Align Item  [score={:.2}]  ({} drift suspect(s) queued) ─────",
+        c.score,
+        candidates.len()
     );
     println!();
     println!("── Intent ──────────────────────────────────────────────────────────");

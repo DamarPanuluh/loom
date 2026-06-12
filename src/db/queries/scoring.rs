@@ -751,11 +751,27 @@ pub struct AlignCandidate {
     pub score: f64,
 }
 
-/// Rank active intents for a user interview:
+/// Days a quiet meaning may sit unaffirmed before the slow sweep admits it to
+/// the align queue without any churn. The grace period is the anti-needy
+/// guard: a wording the user dictated yesterday is not a drift suspect. With
+/// it, the queue DRAINS — `loom next --mode align` reporting empty is the
+/// interview's honest stopping point, not the conversation petering out.
+pub const ALIGN_GRACE_DAYS: f64 = 30.0;
+
+/// Rank drift suspects for a user interview:
 /// `(1 + churn_since_confirm) * (1 + ln_1p(degree)) + age_days / 90`.
-/// Churn is strongest (code moved under an unrefreshed meaning), centrality
-/// multiplies blast radius, and the slow age term eventually sweeps in quiet
+/// Churn is strongest (claims flipped under an unrefreshed meaning — code
+/// changes, but also a neighbour's redefinition or retirement rippling in),
+/// centrality multiplies blast radius, and the slow age term sweeps in quiet
 /// never-confirmed intent wording.
+///
+/// ADMISSION, not just ranking: an intent enters the queue only when churn > 0
+/// or its meaning sat unaffirmed past `ALIGN_GRACE_DAYS`. The freshness
+/// baseline is the newest of last user confirm, last redefinition, and
+/// creation — a brand-new wording owes nothing to flips that predate it.
+/// Without the redefinition stamp, an align-driven `loom intent update` would
+/// ripple its own edges and bounce the just-ratified intent straight back to
+/// the top of the queue.
 pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
     let intents = list_active_intents(db)?;
     let degrees = all_intent_degrees(db)?;
@@ -766,10 +782,35 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
         notes_by_target.entry(note.target_id.as_str()).or_default().push(note);
     }
 
-    let mut candidates = Vec::with_capacity(intents.len());
+    // Bulk freshness stamps (list_notes returns newest LAST, so later inserts
+    // overwrite = latest stamp wins) — per-intent lookups here would be the
+    // same O(N·M) trap migrate.rs documents.
+    let confirm_notes = list_notes(db, None, Some("confirm"))?;
+    let mut confirmed_at: HashMap<&str, &str> = HashMap::new();
+    for n in &confirm_notes {
+        confirmed_at.insert(n.target_id.as_str(), n.created_at.as_str());
+    }
+    let decision_notes = list_notes(db, None, Some("decision"))?;
+    let mut redefined_at: HashMap<&str, &str> = HashMap::new();
+    for n in &decision_notes {
+        // `loom intent update --description` writes "redefined: …" (renames
+        // are cosmetic — no ripple, no clock reset).
+        if n.text.starts_with("redefined: ") {
+            redefined_at.insert(n.target_id.as_str(), n.created_at.as_str());
+        }
+    }
+
+    let mut candidates = Vec::new();
     for intent in intents {
-        let last_confirmed = super::intent::last_confirmed_at(db, &intent.id)?;
-        let baseline = last_confirmed.as_deref().unwrap_or(intent.created_at.as_str());
+        let last_confirmed = confirmed_at.get(intent.id.as_str()).map(|s| s.to_string());
+        // Newest of the confirm and redefinition stamps (RFC3339 sorts
+        // lexicographically — sync freshness leans on the same property);
+        // creation is the fallback when neither event ever happened.
+        let redefined = redefined_at.get(intent.id.as_str()).copied();
+        let baseline = match (last_confirmed.as_deref(), redefined) {
+            (None, None) => intent.created_at.as_str(),
+            (a, b) => a.into_iter().chain(b).max().unwrap(),
+        };
 
         let mut edge_ids: HashSet<String> = HashSet::new();
         for edge in edges_for_intent(db, &intent.id)? {
@@ -788,8 +829,8 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
                 churn_since_confirm += notes
                     .iter()
                     .filter(|note| {
-                        // Loom timestamps are RFC3339, so lexicographic order is
-                        // chronological; existing sync freshness logic relies on it.
+                        // Strict `>`: a redefinition's own ripple flips share its
+                        // timestamp and must not count against the new wording.
                         note.created_at.as_str() > baseline && note.text.contains("(sync: ")
                     })
                     .count();
@@ -804,6 +845,11 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
                 age.num_seconds().max(0) as f64 / 86_400.0
             })
             .unwrap_or(0.0);
+        if churn_since_confirm == 0 && age_days < ALIGN_GRACE_DAYS {
+            // Fresh and quiet — asking would be noise. Skipping is what lets
+            // the queue drain to the empty state the interview terminates on.
+            continue;
+        }
         let score = (1.0 + churn_since_confirm as f64) * (1.0 + (degree as f64).ln_1p())
             + age_days / 90.0;
 

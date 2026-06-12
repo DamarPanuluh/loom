@@ -289,6 +289,17 @@ pub fn retire_fallout(db: &dyn LoomDb, id: &str) -> Result<RetireFallout> {
 /// Retire an intent: status → deprecated, with the why (and the successor, if
 /// any) recorded as notes. NOT a delete — deletion is for mistakes; retirement
 /// is for design that was real and got superseded. Returns false if missing.
+///
+/// Retirement RIPPLES like a redefinition (the codefile analogy: a changed
+/// file stales the claims earned against it): every verified RELATES_TO
+/// verdict touching this intent was earned in a world where it existed, so
+/// `passing`/`independent` flip to needs_reverification with a sync-flip note.
+/// The edges themselves leave computation with the retired end (history), but
+/// the flip notes are the churn signal `align_candidates` counts — the living
+/// neighbours become drift suspects and surface in `loom next --mode align`
+/// for the user to re-affirm. One hop, like sync. Other edge kinds stay: the
+/// retired intent's own IMPLEMENTS/GOVERNS/VALIDATES leave computation with
+/// it, and `retire_fallout` already reports what they strand.
 pub fn retire_intent(
     db: &dyn LoomDb,
     id: &str,
@@ -304,6 +315,21 @@ pub fn retire_intent(
         esc(id), esc(now)
     ))?;
     super::note::record_transition(db, "intent", id, &prev.status, "deprecated", "loom", now)?;
+    let cause = format!("intent '{}' retired", prev.name);
+    for edge in super::relates_to::edges_for_intent(db, id)? {
+        if edge.inspection_status == "passing" || edge.inspection_status == "independent" {
+            db.execute(&format!(
+                "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
+                 SET r.inspection_status = 'needs_reverification'",
+                from = esc(&edge.from_id),
+                to = esc(&edge.to_id),
+            ))?;
+            super::note::record_sync_flip(
+                db, "edge", &edge.id, &edge.inspection_status,
+                "needs_reverification", &cause, now,
+            )?;
+        }
+    }
     let text = match replaced_by {
         Some(s) => format!("retired: {reason} — replaced by intent {s}"),
         None => format!("retired: {reason}"),
@@ -356,7 +382,10 @@ pub fn record_confirmation(db: &dyn LoomDb, id: &str, author: &str, now: &str) -
 
 /// Newest confirmation stamp for an intent (rfc3339), None = never confirmed.
 /// `list_notes` returns newest LAST; confirm events are append-only, so the
-/// tail is the latest ratification.
+/// tail is the latest ratification. Production reads the stamps in bulk
+/// (`align_candidates`); this per-intent form remains as the contract's test
+/// surface.
+#[cfg(test)]
 pub fn last_confirmed_at(db: &dyn LoomDb, intent_id: &str) -> Result<Option<String>> {
     Ok(super::note::list_notes(db, Some(intent_id), Some("confirm"))?
         .pop()

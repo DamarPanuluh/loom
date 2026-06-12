@@ -2487,11 +2487,85 @@ mod tests {
     #[test]
     fn align_ignores_retired_intents() {
         let (db, ids) = db_with_intents(2);
-        retire_intent(&db, &ids[0], "superseded", None, "2026-01-01T00:00:00Z").unwrap();
+        // An old confirm admits ids[1] through the grace sweep — a quiet,
+        // freshly-stated intent is (correctly) not a drift suspect at all.
+        insert_note(&db, &note_at("confirm-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+        retire_intent(&db, &ids[0], "superseded", None, "2026-01-02T00:00:00Z").unwrap();
 
         let candidates = align_candidates(&db).unwrap();
         assert!(candidates.iter().all(|c| c.intent.id != ids[0]));
         assert!(candidates.iter().any(|c| c.intent.id == ids[1]));
+    }
+
+    /// The align queue ADMITS only drift suspects: fresh-confirmed, unchurned
+    /// meanings stay out — which is what lets the queue drain to empty, the
+    /// interview's stopping condition.
+    #[test]
+    fn align_queue_drains_when_fresh_and_quiet() {
+        let (db, ids) = db_with_intents(2);
+        let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        let yesterday = (chrono::Utc::now() - chrono::Duration::days(1)).to_rfc3339();
+        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], &yesterday)).unwrap();
+        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], &yesterday)).unwrap();
+        assert!(align_candidates(&db).unwrap().is_empty(), "fresh + quiet = empty queue");
+
+        // Code churns under the shared edge → both meanings are suspects again.
+        let now = chrono::Utc::now().to_rfc3339();
+        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification", "src/lib.rs changed", &now).unwrap();
+        let candidates = align_candidates(&db).unwrap();
+        assert_eq!(candidates.len(), 2);
+        assert!(candidates.iter().all(|c| c.churn_since_confirm == 1));
+    }
+
+    /// Retirement ripples like a redefinition: verified RELATES_TO verdicts
+    /// flip, and the flip is churn on the LIVING neighbour — superseding a
+    /// design makes the meanings confirmed around it drift suspects.
+    #[test]
+    fn retirement_ripples_drift_suspicion_to_neighbours() {
+        let (db, ids) = db_with_intents(2);
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "2026-01-01T00:00:00Z").unwrap();
+        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+
+        retire_intent(&db, &ids[0], "superseded", None, "2026-01-02T00:00:00Z").unwrap();
+
+        let edge = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        assert_eq!(edge.inspection_status, "needs_reverification");
+        let candidates = align_candidates(&db).unwrap();
+        let neighbour = candidates.iter().find(|c| c.intent.id == ids[1]).unwrap();
+        assert_eq!(neighbour.churn_since_confirm, 1, "the retirement flip counts as churn");
+        // The cause is on record, but never pollutes the hot-FILE grouping.
+        let n = notes_for_target(&db, &edge.id).unwrap().pop().unwrap();
+        assert!(n.text.contains("intent 'I0' retired"), "{}", n.text);
+        assert_eq!(parse_sync_cause(&n.text), None);
+    }
+
+    /// A redefinition resets the intent's OWN drift clock — its ripple flips
+    /// share the redefinition timestamp, so an align-driven `intent update`
+    /// must not bounce the just-rewritten meaning back to the top of the
+    /// queue — while the same flips ARE churn for the neighbour, whose
+    /// confirmed meaning predates the new wording.
+    #[test]
+    fn redefinition_resets_own_align_clock_but_churns_neighbours() {
+        let (db, ids) = db_with_intents(2);
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t1").unwrap();
+        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
+        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+
+        // The command transaction lands the decision note and the ripple with
+        // ONE timestamp; mirror that here.
+        let t = "2026-01-05T00:00:00Z";
+        let mut redef = note_at("redef", "decision", "intent", &ids[0], t);
+        redef.text = "redefined: user evolved the meaning\nwas: d".to_string();
+        insert_note(&db, &redef).unwrap();
+        ripple_intent_redefinition(&db, &ids[0], "I0", t).unwrap();
+
+        let candidates = align_candidates(&db).unwrap();
+        let own = candidates.iter().find(|c| c.intent.id == ids[0]).unwrap();
+        assert_eq!(own.churn_since_confirm, 0, "own ripple must not count against the new wording");
+        let neighbour = candidates.iter().find(|c| c.intent.id == ids[1]).unwrap();
+        assert_eq!(neighbour.churn_since_confirm, 1, "neighbour's confirm predates the redefinition");
     }
 
     #[test]
