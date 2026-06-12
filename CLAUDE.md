@@ -803,6 +803,24 @@ loom door "<utterance>" [--limit N]
   conversational fragment must have landed (conversation residue is the
   failure mode).
 
+loom session
+  TURN ZERO, BEFORE ANY UTTERANCE — the door's complement: the user said
+  "use loom" / "loom session" / "loom mode" and stopped. Loom cannot read
+  minds (pure computation in the tool, judgment in the LLM): it computes the
+  OFFER MENU — every way this session could be spent, each offer backed by a
+  live queue and its count — and marks exactly ONE recommended. The LLM asks
+  ONE question ("what do you want from this session?"), in the user's
+  language, recommendation first — an offer, never a quiz. The recommendation
+  order encodes the scarcity of the user's PRESENCE: user-gated queues first
+  (align drift > hypothesis rulings > blocked proofs — the agent cannot drain
+  these alone), then the build backlog, then (phase=complete) saga
+  enrichment, else autonomous handoff ("or should I just get to work?").
+  Free-form answers route through `loom door "<their words>"`; "you decide"
+  = take the recommended offer and go. Works before `loom init` (offers:
+  restore the committed export > map the code > interview) and on an empty
+  graph (interview vs map, picked by source on disk). Synonym verbs
+  (`loom start|begin|hello|mode|talk|chat|interview`) teach this command.
+
 loom hotspots [--limit N]
   Structural importance (graph centrality, NOT runtime profiling): most-central
   intents (blast radius) and most-tangled files (most intents in one file).
@@ -1121,6 +1139,7 @@ src/
     ├── schema.rs         loom schema
     ├── find.rs           loom find (ask the map)
     ├── door.rs           loom door (the entrance: utterance → matches + landing menu)
+    ├── session.rs        loom session (turn zero: ask-the-user playbook + offer menu)
     ├── hotspots.rs       loom hotspots
     ├── coverage.rs       loom coverage
     ├── detect.rs         loom detect

@@ -26,6 +26,7 @@ pub mod note;
 pub mod report;
 pub mod rule;
 pub mod saga;
+pub mod session;
 pub mod schema;
 pub mod smells;
 pub mod status;
@@ -73,6 +74,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
+        Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
         Command::Smells      { limit }      => smells::run(limit, &printer),
         Command::Coverage                   => coverage::run(&printer),
@@ -163,6 +165,11 @@ fn teach_unknown(tokens: &[String]) -> Result<()> {
              loom validate {arg}   (run one intent's proofs)\n  \
              loom validate --all   (every pending proof)"
         ),
+        "start" | "begin" | "hello" | "hi" | "mode" | "talk" | "chat" | "interview" => anyhow::bail!(
+            "opening a session is its own command:\n  \
+             loom session   (turn zero: the ask-the-user playbook — one question, a state-aware offer menu)\n  \
+             loom door \"<their words>\"   (the user already said something? route it to its landing)"
+        ),
         "show" | "list" => anyhow::bail!(
             "`{verb}` needs a noun:\n  \
              loom intent {verb} · loom edge list · loom note list · loom rule list · loom validation list\n  \
@@ -229,6 +236,7 @@ fn orient(printer: &Printer) -> Result<()> {
                 "loom next --all — the closeout view: every role queue + gaps in one list",
                 "loom find <q>   — ask the map: keyword search over intents (with groundings)",
                 "loom door \"<utterance>\" — route a user statement to its landing (matches + landing menu)",
+                "loom session   — turn zero: user opened a session with no stated goal? ask them (offer menu)",
                 "loom sync       — run after ANY code change (flags stale edges/verdicts/proofs)",
                 "loom export --check — fail if the committed graph export went stale",
             ],
@@ -245,6 +253,7 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("  loom next --all  closeout: every role queue + gaps in one list");
         println!("  loom find <q>    ask the map: keyword search over intents");
         println!("  loom door \"…\"   user said something? route it to its landing");
+        println!("  loom session     user said \"use loom\" and nothing else? ask them");
         println!("  loom sync        run after ANY code change");
         println!();
         println!("Every command has --help; add --json for machine-readable output.");

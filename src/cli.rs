@@ -284,6 +284,19 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Turn zero: the user said "use loom" (or "loom session" / "loom mode")
+    /// without stating a goal. Loom cannot read minds — this prints the
+    /// ask-the-user playbook: ONE question ("what do you want from this
+    /// session?"), a state-aware offer menu (each offer backed by a live
+    /// queue and its count), and exactly one recommended offer. User-gated
+    /// work (align drift, hypothesis rulings, blocked proofs) outranks
+    /// everything the agent can drain alone. Works before `loom init` too.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom session\n  \
+        (ask the user the ONE question, lead with the ▸ recommended offer; \
+        a free-form answer routes through `loom door \"<their words>\"`)")]
+    Session,
+
     /// Structural hot spots: most-central intents and most-tangled files
     /// (importance by graph centrality, not runtime profiling).
     Hotspots {
