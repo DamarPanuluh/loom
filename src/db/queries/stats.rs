@@ -225,20 +225,7 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // file"), not pending work: exclude their uninspected VALIDATES edges so
     // the unresolved tally doesn't count work nobody can do. Filtering happens
     // in Rust (node-anchored scan) — the reliable path.
-    let blocked_uninspected = {
-        let r = db.execute(
-            "MATCH (v:Validation)-[e:VALIDATES]->(:Intent) \
-             RETURN v.last_result AS lr, e.inspection_status AS s",
-        )?;
-        let cols = col_map(&r);
-        r.rows()
-            .iter()
-            .filter(|row| {
-                str_val(get(row, &cols, "lr")) == "blocked"
-                    && str_val(get(row, &cols, "s")) == "uninspected"
-            })
-            .count() as i64
-    };
+    let blocked_uninspected = blocked_uninspected_validates(db)?;
     let v_uninspected = (*v.get("uninspected").unwrap_or(&0) - blocked_uninspected).max(0);
 
     // GOVERNS is the green gate: an uninspected gate is an unchecked quality
@@ -299,15 +286,29 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     // Explored = inspected RELATES_TO pairs over the candidate grid (C(n,2)
     // minus HIERARCHY-linked pairs — containment isn't a grid cell). Set ops
     // run over EDGES only; the denominator stays arithmetic (no O(N²) walk).
+    // EVERYTHING here is filtered to ACTIVE intents — the same universe
+    // `count_unexplored_pairs_from` uses — so the identity
+    //   total == covered + pending(uninspected/stale pairs) + unexplored
+    // holds exactly. (A hierarchy edge touching a retired intent once leaked
+    // into the denominator, making status report covered/total/unexplored
+    // numbers that didn't add up.)
     fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
         if a < b { (a, b) } else { (b, a) }
     }
-    let hier_pairs: std::collections::HashSet<(&str, &str)> =
-        hierarchy.iter().map(|(p, c)| pair_key(p, c)).collect();
+    let active_ids: std::collections::HashSet<&str> =
+        all_intents.iter().map(|i| i.id.as_str()).collect();
+    let hier_pairs: std::collections::HashSet<(&str, &str)> = hierarchy
+        .iter()
+        .filter(|(p, c)| active_ids.contains(p.as_str()) && active_ids.contains(c.as_str()))
+        .map(|(p, c)| pair_key(p, c))
+        .collect();
     let mut inspected_pairs: std::collections::HashSet<(&str, &str)> =
         std::collections::HashSet::new();
     for e in &all_relates {
-        if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent") {
+        if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent")
+            && active_ids.contains(e.from_id.as_str())
+            && active_ids.contains(e.to_id.as_str())
+        {
             let k = pair_key(&e.from_id, &e.to_id);
             if !hier_pairs.contains(&k) {
                 inspected_pairs.insert(k);
@@ -430,6 +431,43 @@ pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
         phase: phase.to_string(),
         next_action,
         coverage,
+    })
+}
+
+/// Uninspected VALIDATES edges whose validation is `blocked` — a recorded
+/// "can't run yet", not pending work. Excluded from `unresolved_edges` and
+/// reported by `loom status` as outside-the-queues so the raw histogram and
+/// the queue tally can be reconciled at a glance. Filtering happens in Rust
+/// (node-anchored scan) — the reliable path.
+pub fn blocked_uninspected_validates(db: &dyn LoomDb) -> Result<i64> {
+    let r = db.execute(
+        "MATCH (v:Validation)-[e:VALIDATES]->(:Intent) \
+         RETURN v.last_result AS lr, e.inspection_status AS s",
+    )?;
+    let cols = col_map(&r);
+    Ok(r.rows()
+        .iter()
+        .filter(|row| {
+            str_val(get(row, &cols, "lr")) == "blocked"
+                && str_val(get(row, &cols, "s")) == "uninspected"
+        })
+        .count() as i64)
+}
+
+/// Uninspected edges NO work queue serves — the explanation for
+/// `uninspected_edges > unresolved_edges` in `loom status`: structural
+/// IMPLEMENTS assertions (grounding claims, not verdicts) and VALIDATES
+/// edges on blocked validations (recorded "can't run yet").
+#[derive(Debug, Clone, Serialize)]
+pub struct UninspectedOutsideQueues {
+    pub implements: i64,
+    pub blocked_validations: i64,
+}
+
+pub fn uninspected_outside_queues(db: &dyn LoomDb) -> Result<UninspectedOutsideQueues> {
+    Ok(UninspectedOutsideQueues {
+        implements: *edge_status_counts(db, "IMPLEMENTS")?.get("uninspected").unwrap_or(&0),
+        blocked_validations: blocked_uninspected_validates(db)?,
     })
 }
 

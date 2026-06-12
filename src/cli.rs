@@ -105,6 +105,14 @@ pub enum Command {
         /// Supported for discovery and fix (capped at 50).
         #[arg(long, default_value_t = 0, conflicts_with = "all")]
         take: usize,
+
+        /// Serve the single item as a PROJECTION: intent ids/names, edge id,
+        /// top grounded paths, and a one-line suggested command — no
+        /// validations/notes/descriptions/pulse (each names its dig command
+        /// instead). For agents that only need the verdict coordinates.
+        /// Supported for the RELATES_TO queues (discovery and fix).
+        #[arg(long, conflicts_with_all = ["all", "take"])]
+        compact: bool,
     },
 
     /// Return all unresolved edges touching a given intent — batch a
@@ -742,6 +750,19 @@ pub enum ExploreSubCmd {
         #[arg(long)]
         criterion: String,
 
+        /// What the inspection actually FOUND (optional — the criterion may
+        /// say it all). Stored on the edge; replaces any previous verdict's
+        /// evidence.
+        #[arg(long, default_value = "")]
+        evidence: String,
+
+        /// File/line anchor(s) the evidence points at, e.g.
+        /// `src/db/queries/stats.rs:299-340` (repeatable). Folded into the
+        /// stored evidence as `@<locator>` so a later review lands on the
+        /// exact lines instead of re-deriving them from prose.
+        #[arg(long)]
+        evidence_locator: Vec<String>,
+
         #[arg(long, default_value_t = 0.9)]
         confidence: f64,
 
@@ -757,6 +778,12 @@ pub enum ExploreSubCmd {
 
         #[arg(long)]
         evidence: String,
+
+        /// File/line anchor(s) the evidence points at, e.g.
+        /// `src/db/queries/stats.rs:299-340` (repeatable). Folded into the
+        /// stored evidence as `@<locator>`.
+        #[arg(long)]
+        evidence_locator: Vec<String>,
 
         /// Confidence the problem is real (0.0–1.0). Same slot as `ground`.
         #[arg(long, default_value_t = 0.9)]
@@ -861,6 +888,12 @@ pub enum RuleCmd {
         /// What was actually found during inspection.
         #[arg(long)]
         evidence: String,
+
+        /// File/line anchor(s) the evidence points at, e.g.
+        /// `src/db/queries/stats.rs:299-340` (repeatable). Folded into the
+        /// stored evidence as `@<locator>`.
+        #[arg(long)]
+        evidence_locator: Vec<String>,
 
         /// Confidence the verdict is correct (0.0–1.0).
         #[arg(long, default_value_t = 0.9)]
@@ -1075,6 +1108,7 @@ pub enum NoteCmd {
         text: String,
 
         /// Kind: justification | commentary | idea | question | decision | todo
+        /// (transition and confirm are auto-recorded by loom itself).
         #[arg(long, default_value = "commentary")]
         kind: String,
 

@@ -73,7 +73,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Ground { criterion, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Ground { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
                     let now = chrono::Utc::now().to_rfc3339();
                     // Grounding is inspection work: analyzer lane (fixer too —
                     // it re-grounds edges it has just repaired).
@@ -86,18 +86,29 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         "criterion", &criterion,
                         "the falsifiable coexistence criterion this edge was checked against",
                     )?;
+                    // Evidence is OPTIONAL on ground (the criterion may say it
+                    // all) — but when given it must be substantive, and
+                    // locators must be file anchors.
+                    if !evidence.trim().is_empty() {
+                        gate::require_substantive(
+                            "evidence", &evidence,
+                            "what the inspection actually found (file/symbol + the observation)",
+                        )?;
+                    }
+                    let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
                     let by = by.as_str();
                     // Create the edge if it does not exist yet, so a discovery
                     // suggestion (`explore A B ground ...`) works in one step —
                     // consistent with the `independent` subcommand.
                     let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_ground(&db, &edge.from_id, &edge.to_id, &criterion, confidence, by, &now)?;
+                    update_relates_to_ground(&db, &edge.from_id, &edge.to_id, &criterion, &evidence, confidence, by, &now)?;
                     // Construct the result from the values we just wrote —
                     // cheaper than a re-read, and the values are known.
                     let updated = RelatesTo {
                         inspection_status: "passing".to_string(),
                         criterion,
+                        evidence,
                         confidence,
                         inspected_by: by.to_string(),
                         last_inspected: now,
@@ -114,7 +125,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Issue { criterion, evidence, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Issue { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
                     let now = chrono::Utc::now().to_rfc3339();
                     let by = gate::acting_in_lane(
                         "record an issue on a RELATES_TO edge",
@@ -129,6 +140,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         "evidence", &evidence,
                         "what was actually found in the code (file/symbol + the problem)",
                     )?;
+                    let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
                     let by = by.as_str();
                     let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;

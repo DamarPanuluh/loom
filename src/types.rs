@@ -303,6 +303,9 @@ pub enum NoteKind {
     /// Auto-recorded status change (the graph's recurrence memory) —
     /// written by loom itself on every verdict transition, never by hand.
     Transition,
+    /// Auto-recorded freshness stamp written by `loom intent confirm` —
+    /// the alignment history `loom next --mode align` ranks by.
+    Confirm,
 }
 
 impl std::fmt::Display for NoteKind {
@@ -315,6 +318,7 @@ impl std::fmt::Display for NoteKind {
             Self::Decision      => "decision",
             Self::Todo          => "todo",
             Self::Transition    => "transition",
+            Self::Confirm       => "confirm",
         };
         write!(f, "{s}")
     }
@@ -331,8 +335,9 @@ impl std::str::FromStr for NoteKind {
             "decision"      => Ok(Self::Decision),
             "todo"          => Ok(Self::Todo),
             "transition"    => Ok(Self::Transition),
+            "confirm"       => Ok(Self::Confirm),
             other => anyhow::bail!(
-                "Unknown note kind '{}'. Valid: justification, commentary, idea, question, decision, todo, transition",
+                "Unknown note kind '{}'. Valid: justification, commentary, idea, question, decision, todo, transition, confirm",
                 other
             ),
         }
@@ -534,7 +539,8 @@ pub struct Validation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Note {
     pub id: String,
-    /// justification | commentary | idea | question | decision | todo
+    /// justification | commentary | idea | question | decision | todo |
+    /// transition (auto) | confirm (auto)
     pub kind: String,
     pub text: String,
     /// "human" | "llm"

@@ -415,7 +415,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
         }
 
         RuleCmd::Verdict {
-            rule_id, intent_id, status, criterion, evidence, confidence, inspected_by,
+            rule_id, intent_id, status, criterion, evidence, evidence_locator,
+            confidence, inspected_by,
         } => {
             let by = gate::acting_in_lane(
                 "record a GOVERNS verdict", &[role::QUALITY], inspected_by.as_deref(),
@@ -441,6 +442,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "what was actually found in the code during inspection"
                 },
             )?;
+            let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
 
             let now = chrono::Utc::now().to_rfc3339();

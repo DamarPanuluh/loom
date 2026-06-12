@@ -147,10 +147,11 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
 
-        assert!(update_relates_to_ground(&db, &ids[0], &ids[1], "crit", 0.9, "llm", "t").unwrap());
+        assert!(update_relates_to_ground(&db, &ids[0], &ids[1], "crit", "checked at src/x.rs:1-9", 0.9, "llm", "t").unwrap());
         let e0 = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
         assert_eq!(e0.inspection_status, "passing");
         assert_eq!(e0.criterion, "crit");
+        assert_eq!(e0.evidence, "checked at src/x.rs:1-9", "ground records what was found");
         assert!((e0.confidence - 0.9).abs() < 1e-9);
 
         assert!(update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap());
@@ -158,6 +159,14 @@ mod tests {
         assert_eq!(failing.len(), 1);
         assert_eq!(failing[0].evidence, "ev");
         assert_eq!(list_relates_to(&db, Some("passing")).unwrap().len(), 1);
+
+        // Re-grounding a previously-failing edge must not leave the old
+        // failure evidence behind the new green (evidence belongs to the
+        // verdict that recorded it).
+        assert!(update_relates_to_ground(&db, &ids[0], &ids[2], "c", "", 0.9, "llm", "t").unwrap());
+        let regrounded = get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap();
+        assert_eq!(regrounded.inspection_status, "passing");
+        assert_eq!(regrounded.evidence, "", "stale failing evidence cleared on re-ground");
     }
 
     /// independent is a state on RELATES_TO, not a separate edge.
@@ -179,7 +188,7 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         // e0 is passing (shares node 0 with e1); e1 is failing
-        update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
         update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap();
 
         let e1 = get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap();
@@ -288,9 +297,7 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // The criterion must be substantive — doctor audits verdicts for
         // vacuous criteria (the write-time gate enforces the same rule).
-        update_relates_to_ground(
-            &db, &ids[0], &ids[1], "both intents persist via the same session", 0.9, "llm", "t",
-        ).unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "both intents persist via the same session", "", 0.9, "llm", "t").unwrap();
         insert_note(&db, &note("n1", "idea", "intent", &ids[0])).unwrap();
         insert_ignore(&db, &Ignore {
             id: "ig1".into(), pattern: "fixtures/**".into(), reason: "fixtures".into(),
@@ -388,7 +395,7 @@ mod tests {
     fn compass_agrees_with_next_when_complete() {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
         // Both intents are implemented leaves, so BOTH must be grounded for the
         // vertical spine to be complete (the stricter completeness model).
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
@@ -446,7 +453,7 @@ mod tests {
     fn unrealized_leaf_blocks_vertical_completeness() {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         // ids[1] is an implemented leaf with no IMPLEMENTS → unrealized.
@@ -661,7 +668,7 @@ mod tests {
         update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough",
             "evidence long enough", 0.9, "llm:analyzer", "t").unwrap();
         assert_coherent(&db, "failing edge");
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
 
         // unproven leaves → validate
         assert_coherent(&db, "grounded, unproven");
@@ -709,9 +716,9 @@ mod tests {
         let id2 = "intent-2";
         insert_intent(&db, &intent(id2, "I2")).unwrap();
         get_or_create_relates_to(&db, &ids[0], id2, "t4").unwrap();
-        update_relates_to_ground(&db, &ids[0], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
+        update_relates_to_ground(&db, &ids[0], id2, "criterion long enough", "", 0.9, "llm", "t4").unwrap();
         get_or_create_relates_to(&db, &ids[1], id2, "t4").unwrap();
-        update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", 0.9, "llm", "t4").unwrap();
+        update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", "", 0.9, "llm", "t4").unwrap();
         insert_implements(&db, id2, "cf", "fn z", "", "t4").unwrap();
         insert_validates(&db, "v0", id2, "", "t4").unwrap();
         insert_governs(&db, "r0", id2, "", "t4").unwrap();
@@ -793,7 +800,7 @@ mod tests {
         assert!(pairs[0].0.notes.contains("imports each other"), "{}", pairs[0].0.notes);
 
         get_or_create_relates_to(&db, "a", "b", "t").unwrap();
-        update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", 0.9, "llm:analyzer", "t").unwrap();
+        update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", "", 0.9, "llm:analyzer", "t").unwrap();
         assert!(!compute_smells(&db).unwrap().iter().any(|s| s.kind == "undeclared_coupling"));
     }
 
@@ -810,7 +817,7 @@ mod tests {
         update_codefile_imports(&db, "cf", &["src/y.rs".to_string()]).unwrap();
         insert_implements(&db, &ids[1], "cf", "fn x", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", 0.8, "llm:analyzer", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", "", 0.8, "llm:analyzer", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "no_sql".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
@@ -853,7 +860,7 @@ mod tests {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Grounding records a transition note targeting the edge.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "pair coexists by design here", 0.9, "llm:analyzer", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "pair coexists by design here", "", 0.9, "llm:analyzer", "t").unwrap();
         let key = crate::db::schema::edge_key(
             crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
         assert!(!notes_for_target(&db, &key).unwrap().is_empty(), "transition note exists");
@@ -968,6 +975,34 @@ mod tests {
         assert_eq!(counted, enumerated, "cheap count must equal full enumeration");
         assert_eq!(counted, 8); // 10 − {0,1} − {2,3}
     }
+    /// The discovery numbers must ADD UP: explored_pairs.total ==
+    /// covered + pending(uninspected pairs) + unexplored_pairs. Regression:
+    /// hierarchy edges touching RETIRED intents leaked into the axis
+    /// denominator (and inspected edges with retired endpoints into covered),
+    /// so `loom status --json` reported covered/total/unexplored that
+    /// disagreed by exactly the number of retired-touching links.
+    #[test]
+    fn explored_axis_agrees_with_unexplored_count() {
+        let (db, ids) = db_with_intents(4);
+        // A hierarchy link and an inspected edge that BOTH touch the soon-
+        // retired intent: neither may count anywhere after retirement.
+        insert_hierarchy(&db, &ids[0], &ids[3], "", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[2], &ids[3], "t").unwrap();
+        update_relates_to_ground(&db, &ids[2], &ids[3], "criterion", "", 0.9, "llm", "t").unwrap();
+        assert!(retire_intent(&db, &ids[3], "superseded in test", None, "t2").unwrap());
+
+        // Active grid: {0,1,2} → 3 pairs. One covered, one pending, one unexplored.
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion", "", 0.9, "llm", "t").unwrap();
+        get_or_create_relates_to(&db, &ids[1], &ids[2], "t").unwrap(); // uninspected
+
+        let gs = graph_state(&db).unwrap();
+        let ax = &gs.coverage.explored_pairs;
+        assert_eq!((ax.covered, ax.total), (1, 3), "active-only grid");
+        assert_eq!(gs.unexplored_pairs, 1, "pair 0×2 is the only unexplored one");
+        // The identity an agent reconciles by hand: total = covered + pending + unexplored.
+        assert_eq!(ax.total, ax.covered + 1 + gs.unexplored_pairs);
+    }
 
     /// `blocked` is a recorded "can't run yet": it leaves the validator queue
     /// (not nagging about work nobody can do), the compass stops routing to it,
@@ -1055,8 +1090,7 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Verdict recorded with the 0.0 default — query layer permits it; the
         // command-layer gate normally prevents it; doctor must catch it.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
-            0.0, "llm", "t1").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.0, "llm", "t1").unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(rep.issues.iter().any(|i| i.contains("confidence 0.0")), "{:?}", rep.issues);
 
@@ -1076,14 +1110,12 @@ mod tests {
     fn doctor_hints_solo_mode_provenance() {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
-            0.9, "llm", "t1").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.9, "llm", "t1").unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
         assert!(rep.healthy(), "hints never fail doctor: {:?}", rep.issues);
 
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion",
-            0.9, "llm:analyzer", "t2").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.9, "llm:analyzer", "t2").unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(!rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
     }
@@ -1129,8 +1161,7 @@ mod tests {
         insert_codefile(&db, &codefile("cf", "src/old_lang.rs")).unwrap();
         insert_implements(&db, &ids[1], "cf", "fn old", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1],
-            "parent rolls up the child's contract", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "parent rolls up the child's contract", "", 0.9, "llm", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
@@ -1244,7 +1275,7 @@ mod tests {
         let (db, ids) = db_with_intents(3);
         // RELATES_TO: one passing, one independent — both flip.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2], "verified: nothing shared", "llm", "t").unwrap();
         // IMPLEMENTS: passing by construction.
@@ -1317,7 +1348,7 @@ mod tests {
     fn degree_excludes_independent_edges() {
         let (db, ids) = db_inited(3);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2],
             "verified: no shared surface at all between these", "llm", "t").unwrap();
@@ -1337,8 +1368,7 @@ mod tests {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // A scout grounds with HONEST uncertainty.
-        update_relates_to_ground(&db, &ids[0], &ids[1],
-            "names overlap but the call path was not traced", 0.45, "llm:analyzer", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "names overlap but the call path was not traced", "", 0.45, "llm:analyzer", "t").unwrap();
         insert_rule(&db, &QualityRule {
             id: "r0".into(), name: "stick".into(), description: "d".into(),
             detection_logic: "dl".into(), severity: "warning".into(),
@@ -1353,8 +1383,7 @@ mod tests {
         assert_eq!(rc.len(), 2, "both uncertain verdicts surface: {}", rc.len());
 
         // Reviewer confirms the edge with real confidence → off the queue.
-        update_relates_to_ground(&db, &ids[0], &ids[1],
-            "traced: a calls b's parser in fn run", 0.9, "llm:analyzer", "t2").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "traced: a calls b's parser in fn run", "", 0.9, "llm:analyzer", "t2").unwrap();
         let rc = review_candidates(&db).unwrap();
         assert_eq!(rc.len(), 1, "confirmed edge resolved");
         assert!(matches!(rc[0].0, ReviewCandidate::Governs(_)));
@@ -1514,10 +1543,7 @@ mod tests {
         // Make intent 0 central: real RELATES_TO edges to the other three.
         for j in 1..4 {
             get_or_create_relates_to(&db, &ids[0], &ids[j], "t").unwrap();
-            update_relates_to_ground(
-                &db, &ids[0], &ids[j],
-                "they cooperate via a stable contract", 0.9, "llm", "t",
-            ).unwrap();
+            update_relates_to_ground(&db, &ids[0], &ids[j], "they cooperate via a stable contract", "", 0.9, "llm", "t").unwrap();
         }
         let mut h_central = hypothesis("h-central", "touches the hub");
         h_central.created_at = "t2".into();
@@ -1941,7 +1967,7 @@ mod tests {
 
         // Explore the pair, prove one leaf — the axes move.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "c", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
         insert_validation(&db, &Validation {
             id: "v0".into(), name: "smoke".into(), description: String::new(),
             validation_type: "test".into(), command: "true".into(),
@@ -2209,9 +2235,7 @@ mod tests {
         let (db, ids) = db_inited(3);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Builder green-lighting its own work + absurd confidence.
-        update_relates_to_ground(
-            &db, &ids[0], &ids[1], "a perfectly substantive criterion", 7.3, "llm:builder", "t",
-        ).unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "a perfectly substantive criterion", "", 7.3, "llm:builder", "t").unwrap();
         // Independence with no why (empty notes).
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2], "", "llm:analyzer", "t").unwrap();
@@ -2524,7 +2548,7 @@ mod tests {
     fn retirement_ripples_drift_suspicion_to_neighbours() {
         let (db, ids) = db_with_intents(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "2026-01-01T00:00:00Z").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "2026-01-01T00:00:00Z").unwrap();
         insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
 
         retire_intent(&db, &ids[0], "superseded", None, "2026-01-02T00:00:00Z").unwrap();
@@ -2549,7 +2573,7 @@ mod tests {
     fn redefinition_resets_own_align_clock_but_churns_neighbours() {
         let (db, ids) = db_with_intents(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", 0.9, "llm", "t1").unwrap();
+        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t1").unwrap();
         insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
         insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
 

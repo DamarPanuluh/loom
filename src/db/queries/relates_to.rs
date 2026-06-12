@@ -126,12 +126,16 @@ pub fn list_relates_to(
 // (at most one RELATES_TO per pair, enforced by get_or_create_relates_to;
 // the derived `rt:<from>:<to>` key is just this pair spelled out).
 
-/// Set inspection_status = passing (was: grounded) with meta.
+/// Set inspection_status = passing (was: grounded) with meta. `evidence` is
+/// what the inspection actually found (optional for ground — "" is honest
+/// when the criterion says it all); it is ALWAYS written, so a re-ground
+/// never leaves a previous failing verdict's evidence behind the new green.
 pub fn update_relates_to_ground(
     db: &dyn LoomDb,
     from_id: &str,
     to_id: &str,
     criterion: &str,
+    evidence: &str,
     confidence: f64,
     inspected_by: &str,
     now: &str,
@@ -143,13 +147,13 @@ pub fn update_relates_to_ground(
         &format!(
             "MATCH (a:Intent {{id: $from}})-[r:RELATES_TO]->(b:Intent {{id: $to}}) \
              SET r.inspection_status = 'passing', r.criterion = $crit, \
-                 r.confidence = {conf}, r.inspected_by = $by, \
+                 r.evidence = $ev, r.confidence = {conf}, r.inspected_by = $by, \
                  r.last_inspected = $now",
             conf = confidence,
         ),
         super::row::sparams(&[
             ("from", from_id), ("to", to_id), ("crit", criterion),
-            ("by", inspected_by), ("now", now),
+            ("ev", evidence), ("by", inspected_by), ("now", now),
         ]),
     )?;
     super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "passing", inspected_by, now)?;

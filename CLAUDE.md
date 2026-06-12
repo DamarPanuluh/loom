@@ -338,6 +338,11 @@ loom init [path] [--name <graph-name>] [--observed]
 
 loom status
   Graph stats: intent count, edge counts by inspection_status, open issues.
+  `uninspected_outside_queues` names the uninspected edges NO queue serves
+  (structural IMPLEMENTS, blocked proofs), so the raw histogram always
+  reconciles with `unresolved_edges`. Coverage math is an identity:
+  explored_pairs.total = covered + pending(uninspected/stale pairs) +
+  unexplored_pairs (all over ACTIVE intents).
 
 loom sync [path]
   THE PROGRAMMATIC FLAG ENGINE.
@@ -356,7 +361,7 @@ loom next --all
   The single operational answer to "what's left?" — no reconciling five
   commands by hand. Discovery is flagged optional (horizontal axis).
 
-loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--take N]
+loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--take N] [--compact]
   One queue per agent role:
   discovery = inspect relationships (analyzer) · fix = resolve failing/stale
   RELATES_TO (fixer) · build = realize planned/needs_change intents (builder) ·
@@ -397,6 +402,11 @@ loom next [--mode discovery|fix|build|validate|quality|review|triage|align] [--t
   the rule's annotation. The token-bounded post-sync drain: read each hot
   neighborhood once, verdict its whole group via `loom batch`. Sync suggests
   `--take 20` when it flags >10 edges.
+  --compact (discovery/fix) = the single-item PROJECTION: intent ids/names,
+  edge id, top grounded paths, a ONE-LINE suggested command, owner_role/effort,
+  and a `dig` pointer — no validations/notes/descriptions/pulse. For agents
+  that already know the loop and only need the verdict coordinates ("intent
+  alignment" runs live here: `loom next --compact --json`, verdict, repeat).
   EVERY work item carries `owner_role` AND `effort: low|mid|high` — effort
   names how much capability the WORK needs (computed from structure; quality
   items inherit the rule's inspection_effort). Loom never names models — the
@@ -455,8 +465,15 @@ loom intent show <id>            (intent + edges + hierarchy + implements + note
 loom edge explore <a-id> <b-id>
   Prints both intents + source_refs. Creates edge if not exists.
   Subcommands:
-    ground --criterion --confidence [--inspected-by]
-    issue --criterion --evidence [--inspected-by]
+    ground --criterion --confidence [--evidence "<found>"]
+           [--evidence-locator path:lines]... [--inspected-by]
+      evidence is optional on ground (the criterion may say it all) and ALWAYS
+      replaces the previous verdict's evidence (a re-ground never leaves stale
+      failure evidence behind the new green).
+    issue --criterion --evidence [--evidence-locator path:lines]... [--inspected-by]
+    --evidence-locator (repeatable) = file/line anchor(s), e.g.
+      `src/db/queries/stats.rs:299-340`, folded into the stored evidence as
+      `@<locator>` — a later review lands on the exact lines, not prose.
     independent --notes
     fix --description
 
@@ -570,7 +587,7 @@ loom rule apply <rule-id> <intent-id>   (positional; creates GOVERNS edge, unins
 loom rule check <intent-id>             (read-only: show GOVERNS edges by status)
 loom rule verdict <rule-id> <intent-id> --status passing|failing|independent \
     --criterion "<what compliance looks like>" --evidence "<what was found>" \
-    [--confidence 0.9] [--inspected-by llm:quality]
+    [--evidence-locator path:lines]... [--confidence 0.9] [--inspected-by llm:quality]
   THE quality write path — how GOVERNS green is earned. The verdict IS the
   measurement: if no GOVERNS edge exists yet, it is CREATED with the verdict
   (no separate `apply` needed — `apply` remains for pre-declaring "this rule
@@ -586,7 +603,9 @@ loom batch [file|-]
   surface: a sync that stales 30 claims is one `loom batch` call, not 30
   invocations (pair with the bulk read: `loom next --mode fix --take 20`).
   Ops per line: ground / issue / independent (RELATES_TO) and
-  rule_verdict (GOVERNS, creates the edge if absent). EVERY gate applies per
+  rule_verdict (GOVERNS, creates the edge if absent). ground also takes an
+  optional "evidence"; ground/issue/rule_verdict take an optional
+  "evidence_locator" (string or array of `path:lines` anchors). EVERY gate applies per
   line — lanes, substantive criterion/evidence/notes, confidence — and each
   edge still gets its transition note. Continues past failed lines, reports
   per-line results, exits non-zero if any failed. Bulk changes the ceremony,
@@ -620,7 +639,9 @@ loom hypothesis list [--status proposed|supported|refuted|adopted|confirmed|reje
 loom hypothesis show <id>                      (fields + TARGETS + notes)
 
 loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id> | --file <path|id>] [--author human|llm] [--for <role>]
-  Append free-text memory. kind: justification | commentary | idea | question | decision | todo.
+  Append free-text memory. kind: justification | commentary | idea | question | decision | todo
+  (transition + confirm are auto-recorded by loom: verdict history and
+  `loom intent confirm` freshness stamps — listable, never written by hand).
   Attach to an intent, an edge, or a code file (id or registered path), or leave
   free-floating. Append-only (never overwritten). A kind=decision note is the
   adjudication record smells honor (scatter/tangle/happy-path/recurrence).

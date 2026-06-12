@@ -87,7 +87,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         },
         "lifecycle": ["planned", "implemented", "needs_change"],
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
-        "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo"],
+        "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo", "transition", "confirm"],
         "severity": ["warning", "error"],
         "validation_type": ["test", "assertion", "benchmark", "manual_check", "saga"],
         "validation_result": ["passed", "failed", "not_run", "blocked"],
@@ -157,7 +157,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
     println!("  lifecycle:         planned | implemented | needs_change");
-    println!("  note_kind:         justification | commentary | idea | question | decision | todo");
+    println!("  note_kind:         justification | commentary | idea | question | decision | todo | transition (auto: verdict history) | confirm (auto: `loom intent confirm` stamp)");
     println!("  severity:          warning | error");
     println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");
     println!("  validation_result: passed | failed | not_run | blocked (recorded \"can't run yet\" + reason)");

@@ -14,6 +14,9 @@
 //!   {"op":"independent","a":"…","b":"…","notes":"…"}
 //!   {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent",
 //!    "criterion":"…","evidence":"…","confidence":0.9}
+//! ground also takes an optional "evidence"; ground/issue/rule_verdict take an
+//! optional "evidence_locator" (string or array of `path:lines` anchors,
+//! folded into the stored evidence as `@<locator>`).
 //! Intents/rules resolve by id, exact name, or unique fragment — same
 //! addressability as everywhere else.
 //!
@@ -134,7 +137,16 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 "criterion", criterion,
                 "the falsifiable coexistence criterion this edge was checked against",
             )?;
-            update_relates_to_ground(db, &edge.from_id, &edge.to_id, criterion, confidence, &by, &now)?;
+            // Optional on ground: what was found + file/line anchors.
+            let evidence = v.get("evidence").and_then(|x| x.as_str()).unwrap_or("");
+            if !evidence.trim().is_empty() {
+                gate::require_substantive(
+                    "evidence", evidence,
+                    "what the inspection actually found (file/symbol + the observation)",
+                )?;
+            }
+            let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
+            update_relates_to_ground(db, &edge.from_id, &edge.to_id, criterion, &evidence, confidence, &by, &now)?;
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
         "issue" => {
@@ -147,10 +159,11 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
+            let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
             gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
-            update_relates_to_issue(db, &edge.from_id, &edge.to_id, criterion, evidence, confidence, &by, &now)?;
+            update_relates_to_issue(db, &edge.from_id, &edge.to_id, criterion, &evidence, confidence, &by, &now)?;
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
         "independent" => {
@@ -189,15 +202,16 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 else { "what was actually found in the code during inspection" },
             )?;
             gate::require_confidence(confidence)?;
+            let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             // The verdict IS the measurement — create the edge if absent,
             // exactly like the single-shot `loom rule verdict`.
             let found = update_governs_verdict(
-                db, &rule, &intent, status, criterion, evidence, confidence, &by, &now,
+                db, &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
             )?;
             if !found {
                 insert_governs(db, &rule, &intent, criterion, &now)?;
                 update_governs_verdict(
-                    db, &rule, &intent, status, criterion, evidence, confidence, &by, &now,
+                    db, &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
                 )?;
             }
             Ok(format!("rule_verdict {status}: {rule} → {intent}"))
@@ -212,10 +226,10 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
 /// error so a driver can repair the line without consulting the docs.
 fn required_fields(op: &str) -> &'static str {
     match op {
-        "ground" => "a, b, confidence (+ criterion unless the edge already has one)",
-        "issue" => "a, b, evidence, confidence (+ criterion unless the edge already has one)",
+        "ground" => "a, b, confidence (+ criterion unless the edge already has one; optional: evidence, evidence_locator)",
+        "issue" => "a, b, evidence, confidence (+ criterion unless the edge already has one; optional: evidence_locator)",
         "independent" => "a, b, notes",
-        "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before)",
+        "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before; optional: evidence_locator)",
         _ => "op",
     }
 }
@@ -227,6 +241,19 @@ fn str_field<'a>(v: &'a serde_json::Value, op: &str, key: &str) -> Result<&'a st
             required_fields(op)
         )
     })
+}
+
+/// Optional `evidence_locator`: a single string or an array of strings —
+/// file/line anchors folded into the stored evidence (see
+/// `gate::compose_evidence`). Absent → no anchors.
+fn locators_field(v: &serde_json::Value) -> Vec<String> {
+    match v.get("evidence_locator") {
+        Some(serde_json::Value::String(s)) => vec![s.clone()],
+        Some(serde_json::Value::Array(a)) => {
+            a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()
+        }
+        _ => Vec::new(),
+    }
 }
 
 /// The explicit `criterion` when given, the stored one when omitted on an
@@ -255,7 +282,7 @@ fn f64_field(v: &serde_json::Value, op: &str, key: &str) -> Result<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::criterion_or_stored;
+    use super::{criterion_or_stored, locators_field};
 
     #[test]
     fn criterion_explicit_beats_stored_beats_error() {
@@ -281,5 +308,18 @@ mod tests {
             err.to_string().contains("none on record"),
             "a first verdict must spell the criterion out: {err}"
         );
+    }
+
+    #[test]
+    fn evidence_locator_accepts_string_or_array() {
+        assert_eq!(
+            locators_field(&serde_json::json!({"evidence_locator": "src/a.rs:1-9"})),
+            vec!["src/a.rs:1-9".to_string()]
+        );
+        assert_eq!(
+            locators_field(&serde_json::json!({"evidence_locator": ["src/a.rs:1-9", "src/b.rs:3"]})),
+            vec!["src/a.rs:1-9".to_string(), "src/b.rs:3".to_string()]
+        );
+        assert!(locators_field(&serde_json::json!({"op": "ground"})).is_empty());
     }
 }

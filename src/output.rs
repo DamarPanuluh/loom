@@ -112,6 +112,9 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
 /// carry, structured. This is the `graph_state` payload field on every
 /// command EXCEPT `loom status --json`, which returns the full GraphState
 /// (the tier-2 deep view: identity, version, custody, per-axis counts).
+/// Deliberately NO `next_action`: the carrying payload's `next_step` (or the
+/// human `→ Next:` line) is the guidance channel — repeating the compass
+/// sentence inside every nested graph_state was pure token spend.
 pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
     let mut o = serde_json::Map::new();
     if !s.graph_name.is_empty() {
@@ -123,7 +126,6 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
         o.insert("graph".into(), ident.into());
     }
     o.insert("phase".into(), s.phase.clone().into());
-    o.insert("next_action".into(), s.next_action.clone().into());
     o.insert("vertical".into(), s.vertically_complete.into());
     o.insert("horizontal".into(), s.horizontally_explored.into());
     o.insert("intents".into(), s.intents.into());
@@ -429,16 +431,18 @@ mod tests {
         let p = pulse_json(&gs);
         // Everything the next decision needs travels…
         for k in [
-            "phase", "next_action", "vertical", "horizontal", "intents",
+            "phase", "vertical", "horizontal", "intents",
             "codefiles", "edges", "unresolved", "synced", "coverage",
         ] {
             assert!(p.get(k).is_some(), "pulse must carry '{k}': {p}");
         }
         assert_eq!(p["graph"], "pulse", "identity is the human-form name");
         assert!(p["coverage"].is_string(), "coverage is the compact axis vector: {p}");
-        // …and none of the deep-view fields `loom status --json` owns (tier-2).
+        // …and none of the deep-view fields `loom status --json` owns (tier-2),
+        // nor the compass sentence (the payload's `next_step` is the guidance
+        // channel — `next_action` repeated in every nested pulse was noise).
         for k in [
-            "version", "graph_id", "graph_name", "custody", "notes",
+            "version", "graph_id", "graph_name", "custody", "notes", "next_action",
             "validations", "relates_to_edges", "implements_edges", "last_synced",
         ] {
             assert!(p.get(k).is_none(), "'{k}' is tier-2 — dig via `loom status --json`: {p}");

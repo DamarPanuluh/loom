@@ -12,7 +12,7 @@ use crate::db::queries::{
 use crate::output::{fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP};
 use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
 
-pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> {
+pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer) -> Result<()> {
     if all {
         let cwd = crate::db::resolve_root()?;
         let db_file = ensure_initialized(&cwd)?;
@@ -42,6 +42,14 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         );
     }
 
+    if compact && !matches!(mode, "discovery" | "fix") {
+        anyhow::bail!(
+            "--compact projects a RELATES_TO work item down to its verdict coordinates \
+             (intents, edge id, grounded paths, the command) — it serves the discovery/fix \
+             queues. The other modes' items are already mode-shaped — use `loom next --mode {mode}`."
+        );
+    }
+
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
@@ -66,14 +74,14 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         candidates = unexplored_pairs_scored(&db)?;
     }
 
-    let gs = graph_state(&db)?;
-
     if candidates.is_empty() {
+        let gs = graph_state(&db)?;
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
                 "mode":    mode,
                 "message": "No work items found for this mode.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -91,10 +99,17 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
 
     // The bulk-read path: N compact items, one shared anchor.
     if take > 0 {
+        let gs = graph_state(&db)?;
         return run_take(&db, mode, &candidates, take, &gs, printer);
     }
 
     let (top_edge, score) = &candidates[0];
+
+    // The projection path: verdict coordinates only — no validations, notes,
+    // descriptions, or pulse (each elision names its dig command instead).
+    if compact {
+        return run_compact(&db, mode, top_edge, *score, printer);
+    }
 
     // Fetch rich context for both intents
     let intent_a = get_intent(&db, &top_edge.from_id)?
@@ -150,6 +165,8 @@ pub fn run(mode: &str, all: bool, take: usize, printer: &Printer) -> Result<()> 
         notes,
         suggested_action,
     };
+
+    let gs = graph_state(&db)?;
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
@@ -411,6 +428,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
                 "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -520,6 +538,106 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
     println!("  Dispatch — quality lane; effort is per item (the rule's annotation).");
     println!("  {}", fmt_pulse(&gs));
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// `--compact` — the single-item PROJECTION: verdict coordinates only.
+//
+// The full work item front-loads everything an agent COULD need (intent
+// descriptions, validations, notes, pulse); an agent that already knows the
+// loop only needs where to look and what to run. Compact serves exactly
+// that — intent ids/names, edge id, top grounded paths, a one-line command —
+// and names the dig commands for everything it elides. It also skips the
+// graph_state computation entirely (the pulse can be O(N²) in the audit
+// phase), so the cheap read is cheap end-to-end.
+// ---------------------------------------------------------------------------
+
+fn run_compact(
+    db: &GrafeoDb,
+    mode: &str,
+    edge: &crate::types::RelatesTo,
+    score: f64,
+    printer: &Printer,
+) -> Result<()> {
+    // Top grounded paths only — half the full item's section cap.
+    const COMPACT_PATHS: usize = 5;
+    let mut grounded: Vec<String> = list_implements_for_intent(db, &edge.from_id)?
+        .into_iter()
+        .map(|im| {
+            if im.locator.is_empty() { im.codefile_path } else { format!("{} @ {}", im.codefile_path, im.locator) }
+        })
+        .collect();
+    let implements_total = grounded.len();
+    grounded.truncate(COMPACT_PATHS);
+
+    let (role, effort) = match (mode, edge.inspection_status.as_str()) {
+        ("fix", "failing") => ("fixer", "high"),
+        ("fix", _) => ("analyzer", "mid"),
+        _ => ("analyzer", "mid"),
+    };
+    let suggested_action = build_suggested_action_compact(edge);
+    let dig = if edge.id.is_empty() {
+        format!("loom next --mode {mode} (full item) · loom intent show {}", edge.from_id)
+    } else {
+        format!("loom next --mode {mode} (full item) · loom edge show {}", edge.id)
+    };
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "mode": mode,
+            "edge_id": edge.id,
+            "inspection_status": edge.inspection_status,
+            "priority_score": score,
+            "a": { "id": edge.from_id, "name": edge.from_name },
+            "b": { "id": edge.to_id, "name": edge.to_name },
+            "implements": grounded,
+            "implements_total": implements_total,
+            "suggested_action": suggested_action,
+            "owner_role": role,
+            "effort": effort,
+            "dig": dig,
+        }));
+        return Ok(());
+    }
+
+    println!(
+        "── Next (compact)  [mode={mode}  priority={score:.2}] ───────────────────────"
+    );
+    println!(
+        "  '{}' × '{}'  [{}]{}",
+        edge.from_name, edge.to_name, edge.inspection_status,
+        if edge.id.is_empty() { String::new() } else { format!("  edge: {}", edge.id) },
+    );
+    if !grounded.is_empty() {
+        let more = if implements_total > grounded.len() {
+            format!("  (+{} more)", implements_total - grounded.len())
+        } else {
+            String::new()
+        };
+        println!("  code: {}{}", grounded.join(" · "), more);
+    }
+    println!("  → {suggested_action}");
+    println!("  Dispatch — {role}  [effort: {effort}]   dig: {dig}");
+    Ok(())
+}
+
+/// The one-line counterpart of `build_suggested_action`: the same decision,
+/// stripped to a single runnable template (compact mode and machine drivers).
+fn build_suggested_action_compact(edge: &crate::types::RelatesTo) -> String {
+    match edge.inspection_status.as_str() {
+        "failing" => format!(
+            "fix the code, `loom sync`, then `loom edge fix {} --description \"<what changed>\"`",
+            edge.id
+        ),
+        "needs_reverification" => format!(
+            "re-inspect: loom edge explore {from} {to} ground --criterion \"<updated>\" --confidence 0.9  (or: issue / independent)",
+            from = edge.from_id, to = edge.to_id,
+        ),
+        _ => format!(
+            "loom edge explore {from} {to} ground --criterion \"<text>\" --confidence 0.9  (or: issue --evidence \"…\" / independent --notes \"…\")",
+            from = edge.from_id, to = edge.to_id,
+        ),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -731,6 +849,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "smells_top": smells_top.iter().map(|s| serde_json::json!({
                 "kind": s.kind, "summary": s.summary, "remedy": s.remedy,
             })).collect::<Vec<_>>(),
+            "next_step": gs.next_action,
             "graph_state": pulse_json(&gs),
         }));
         return Ok(());
@@ -791,6 +910,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "build",
                 "message": "No planned or needs_change intents — nothing to build.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -916,6 +1036,7 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "validate",
                 "message": "Every intent's proof is green — nothing to validate.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -1052,6 +1173,7 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "align",
                 "message": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -1196,6 +1318,7 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
                 "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -1378,6 +1501,7 @@ fn run_review(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "review",
                 "message": format!("No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."),
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -1484,6 +1608,7 @@ fn run_triage(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "triage",
                 "message": "No proposed hypotheses and no stale support — the pre-decision plane is clear.",
+                "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
@@ -1680,7 +1805,7 @@ fn note_surfaces(
 
 #[cfg(test)]
 mod tests {
-    use super::note_surfaces;
+    use super::{build_suggested_action_compact, note_surfaces};
 
     fn note(kind: &str, text: &str, audience: &str) -> crate::types::Note {
         crate::types::Note {
@@ -1722,6 +1847,36 @@ mod tests {
         assert_eq!(
             surfaces.last().unwrap().text, "ambient 11",
             "remaining slots go to the newest ambient notes"
+        );
+    }
+
+    #[test]
+    fn compact_action_is_one_runnable_line() {
+        let mut edge = crate::types::RelatesTo {
+            id: "rt:a:b".to_string(),
+            from_id: "a".to_string(),
+            to_id: "b".to_string(),
+            from_name: "A".to_string(),
+            to_name: "B".to_string(),
+            inspection_status: String::new(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            priority_score: 0.0,
+            notes: String::new(),
+        };
+        for status in ["unexplored", "uninspected", "failing", "needs_reverification"] {
+            edge.inspection_status = status.to_string();
+            let action = build_suggested_action_compact(&edge);
+            assert!(!action.contains('\n'), "[{status}] compact action must be one line: {action}");
+            assert!(action.contains("loom "), "[{status}] must carry a runnable command: {action}");
+        }
+        edge.inspection_status = "failing".to_string();
+        assert!(
+            build_suggested_action_compact(&edge).contains("rt:a:b"),
+            "failing routes through `loom edge fix <id>`"
         );
     }
 }

@@ -232,8 +232,13 @@ pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
         hypotheses.iter().map(|h| h.id.clone()).collect();
     let edge_ids = collect_edge_ids(db)?;
     for n in list_notes(db, None, None)? {
-        if n.kind.parse::<NoteKind>().is_err() {
-            issues.push(format!("Note {} has invalid kind '{}'", n.id, n.kind));
+        if let Err(e) = n.kind.parse::<NoteKind>() {
+            issues.push(format!(
+                "Note {} has invalid kind '{}' — {} (likely written by a different loom version; \
+                 `loom note list --limit 0 --json` locates it, and a fresh `loom note add --kind <valid>` \
+                 preserves the text under a valid kind)",
+                n.id, n.kind, e
+            ));
         }
         if n.target_kind == "intent" && !intent_ids.contains(&n.target_id) {
             issues.push(format!(

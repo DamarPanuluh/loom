@@ -48,7 +48,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Status                     => status::run(&printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
-        Command::Next        { mode, all, take } => next::run(&mode, all, take, &printer),
+        Command::Next        { mode, all, take, compact } => next::run(&mode, all, take, compact, &printer),
         Command::Cluster     { intent_id }  => cluster::run(&intent_id, &printer),
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),

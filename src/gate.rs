@@ -154,6 +154,35 @@ pub fn require_confidence(confidence: f64) -> Result<()> {
     Ok(())
 }
 
+/// Fold `--evidence-locator` values (file/line anchors like
+/// `src/db/queries/stats.rs:299-340`) into the stored evidence string with a
+/// canonical, parseable `@<locator>` prefix — so a later reviewer lands on
+/// the exact lines instead of re-deriving them from prose. Locators are
+/// validated (path-shaped, no whitespace); the prose part is untouched.
+/// No locators → the evidence passes through unchanged.
+pub fn compose_evidence(locators: &[String], evidence: &str) -> Result<String> {
+    if locators.is_empty() {
+        return Ok(evidence.to_string());
+    }
+    let mut anchors = Vec::with_capacity(locators.len());
+    for l in locators {
+        let l = l.trim();
+        if l.len() < 3 || l.chars().any(char::is_whitespace) || !(l.contains('/') || l.contains('.')) {
+            anyhow::bail!(
+                "--evidence-locator must be a file anchor like `src/db/queries/stats.rs:299-340` \
+                 (path, optionally `:line` or `:start-end`; no spaces). Got: '{l}'."
+            );
+        }
+        anchors.push(format!("@{l}"));
+    }
+    let anchors = anchors.join(" ");
+    Ok(if evidence.trim().is_empty() {
+        anchors
+    } else {
+        format!("{anchors} — {evidence}")
+    })
+}
+
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
@@ -226,5 +255,26 @@ mod tests {
         assert!(require_confidence(-0.1).is_err());
         assert!(require_confidence(7.3).is_err());
         assert!(require_confidence(f64::NAN).is_err());
+    }
+
+    #[test]
+    fn compose_evidence_folds_locators() {
+        // No locators → passthrough, byte-for-byte.
+        assert_eq!(compose_evidence(&[], "found it in the parser").unwrap(), "found it in the parser");
+        // Locators prefix the prose with parseable anchors.
+        assert_eq!(
+            compose_evidence(&["src/a.rs:10-20".into()], "the call path exists").unwrap(),
+            "@src/a.rs:10-20 — the call path exists"
+        );
+        assert_eq!(
+            compose_evidence(&["src/a.rs:10-20".into(), "src/b.rs:5".into()], "").unwrap(),
+            "@src/a.rs:10-20 @src/b.rs:5",
+            "locators alone are a valid evidence body for ground"
+        );
+        // Non-path-shaped or spaced anchors are rejected with the format taught.
+        for bad in ["x", "not a path", "noslashordot"] {
+            let err = compose_evidence(&[bad.into()], "e").unwrap_err().to_string();
+            assert!(err.contains("file anchor"), "got: {err}");
+        }
     }
 }

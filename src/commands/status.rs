@@ -44,6 +44,10 @@ pub fn run(printer: &Printer) -> Result<()> {
     };
 
     let gs = graph_state(&db)?;
+    // The raw `uninspected` histogram counts edge types the work queues
+    // deliberately don't serve (structural IMPLEMENTS, blocked proofs) — name
+    // them, so `uninspected_edges: 1, unresolved_edges: 0` reconciles itself.
+    let outside = crate::db::queries::uninspected_outside_queues(&db)?;
     // The travel format must move WITH graph changes — surface drift in-band
     // (status is an orientation command; the agent reads this, no repo
     // plumbing required). "fresh" | "stale" | "absent".
@@ -58,6 +62,10 @@ pub fn run(printer: &Printer) -> Result<()> {
         let mut v = serde_json::to_value(&report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            obj.insert(
+                "uninspected_outside_queues".to_string(),
+                serde_json::to_value(&outside)?,
+            );
             obj.insert("committed_export".to_string(), serde_json::json!(export_freshness));
             if export_freshness == "stale" {
                 obj.insert(
@@ -71,6 +79,13 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("{}", fmt_status(&report));
         println!();
         println!("  {}", fmt_pulse(&gs));
+        if outside.implements + outside.blocked_validations > 0 {
+            println!(
+                "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons).",
+                outside.implements + outside.blocked_validations,
+                outside.implements, outside.blocked_validations
+            );
+        }
         if export_freshness == "stale" {
             println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
         }
