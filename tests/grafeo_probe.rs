@@ -954,3 +954,142 @@ fn probe_read_only_concurrent() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+// ---------------------------------------------------------------------------
+// Probe 6e — the DAEMON CONTRACT, ASSERTED (not just observed). probe 6d had
+// one writer and only printed; a `loom serve` daemon's real load is MANY
+// agents writing concurrently on a PERSISTENT store. So: one persistent
+// GrafeoDB handle (the sole opener — cross-process is refused, probe 7), N
+// writer sessions on disjoint id ranges (the realistic multi-agent load:
+// different agents grounding different edges) + M reader sessions hammering
+// counts. Pins the two guarantees a daemon stands on, and MEASURES the open
+// question (do concurrent writers all commit, or must the daemon serialize
+// writes?). If this test ever fails, the daemon design assumption broke.
+// ---------------------------------------------------------------------------
+#[test]
+fn daemon_contract_concurrent_sessions_persistent() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    let dir = std::env::temp_dir().join(format!("grafeo-daemon-{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&dir).expect("create temp dir");
+    let path = dir.join("daemon.grafeo");
+
+    let db = Arc::new(
+        GrafeoDB::with_config(Config::persistent(&path)).expect("open persistent handle"),
+    );
+    {
+        let seed = db.session();
+        must(&seed, "INSERT (:T {id: 'seed'})");
+    }
+
+    const WRITERS: usize = 4;
+    const PER_WRITER: usize = 100;
+    const READERS: usize = 4;
+    const READS: usize = 200;
+
+    let write_ok = Arc::new(AtomicUsize::new(0));
+    let write_err = Arc::new(AtomicUsize::new(0));
+    let read_err = Arc::new(AtomicUsize::new(0));
+    let backwards = Arc::new(AtomicUsize::new(0));
+
+    let mut handles = Vec::new();
+    // Writers — disjoint id ranges, so no primary-key conflict: this measures
+    // whether grafeo lets independent writes from separate sessions proceed in
+    // parallel, which is exactly how a daemon would fan out agent writes.
+    for w in 0..WRITERS {
+        let db = Arc::clone(&db);
+        let ok = Arc::clone(&write_ok);
+        let err = Arc::clone(&write_err);
+        handles.push(std::thread::spawn(move || {
+            let s = db.session();
+            for i in 0..PER_WRITER {
+                match s.execute(&format!("INSERT (:T {{id: 'w{w}_{i}'}})")) {
+                    Ok(_) => {
+                        ok.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Err(_) => {
+                        err.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        }));
+    }
+    // Readers — snapshot isolation must hold: a reader's count never decreases
+    // mid-flight and a read never errors while writers commit.
+    for _ in 0..READERS {
+        let db = Arc::clone(&db);
+        let rerr = Arc::clone(&read_err);
+        let back = Arc::clone(&backwards);
+        handles.push(std::thread::spawn(move || {
+            let s = db.session();
+            let mut last = 0i64;
+            for _ in 0..READS {
+                match s.execute("MATCH (n:T) RETURN count(n) AS c") {
+                    Ok(r) => {
+                        let c = r
+                            .rows()
+                            .first()
+                            .map(|row| match &row[0] {
+                                Value::Int64(n) => *n,
+                                _ => -1,
+                            })
+                            .unwrap_or(-1);
+                        if c < last {
+                            back.fetch_add(1, Ordering::Relaxed);
+                        }
+                        last = c;
+                    }
+                    Err(_) => {
+                        rerr.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        }));
+    }
+    for h in handles {
+        h.join().expect("thread");
+    }
+
+    let final_count = {
+        let s = db.session();
+        rows(&s, "MATCH (n:T) RETURN count(n) AS c")
+            .ok()
+            .and_then(|r| {
+                r.first().map(|row| match &row[0] {
+                    Value::Int64(n) => *n,
+                    _ => -1,
+                })
+            })
+            .unwrap_or(-1)
+    };
+    let ok = write_ok.load(Ordering::Relaxed);
+    let werr = write_err.load(Ordering::Relaxed);
+    let rerr = read_err.load(Ordering::Relaxed);
+    let back = backwards.load(Ordering::Relaxed);
+    println!(
+        "PROBE daemon(persistent concurrency): VERDICT — writes ok {ok}/{} (err {werr}), read errors {rerr}, backwards snapshots {back}, final count {final_count}, seed+ok = {}",
+        WRITERS * PER_WRITER,
+        ok as i64 + 1
+    );
+
+    // Guarantee 1 — SNAPSHOT ISOLATION: concurrent readers never error and
+    // never observe the count regress while writers commit. This is the
+    // foundation a daemon serves reads on.
+    assert_eq!(rerr, 0, "readers errored under concurrent writes");
+    assert_eq!(
+        back, 0,
+        "a reader saw count() decrease — snapshot isolation broken"
+    );
+    // Guarantee 2 — CONSISTENCY/DURABILITY: exactly the writes that returned Ok
+    // are present afterwards (none torn, none phantom). If `werr > 0` the daemon
+    // must serialize writes; this assertion still must hold for whatever did
+    // commit.
+    assert_eq!(
+        final_count,
+        ok as i64 + 1,
+        "final count != seed + successful writes (lost or torn write)"
+    );
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
