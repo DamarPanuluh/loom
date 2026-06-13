@@ -1745,6 +1745,110 @@ mod tests {
         assert!(prove_candidates(&db).unwrap().is_empty());
     }
 
+    /// Hypotheses are a proof queue, not a parking lot. A single old proposal
+    /// or a swollen fresh queue surfaces as a teaching smell; proving/refuting
+    /// the stale item clears the finding.
+    #[test]
+    fn hypothesis_accumulation_smell_flags_stale_and_teaches_drain() {
+        let (db, _) = db_inited(0);
+        let mut h = hypothesis("h-old", "old redesign idea");
+        h.created_at = (chrono::Utc::now()
+            - chrono::Duration::days(HYPOTHESIS_STALE_DAYS + 1))
+        .to_rfc3339();
+        h.updated_at = h.created_at.clone();
+        insert_hypothesis(&db, &h).unwrap();
+
+        let smells = compute_smells(&db).unwrap().open;
+        let finding = smells
+            .iter()
+            .find(|s| s.kind == "hypothesis_accumulation")
+            .expect("stale proposed hypothesis should surface");
+        assert!(finding.summary.contains("1 proposed"), "{finding:?}");
+        assert!(
+            finding.evidence.contains(&format!("older than {}d", HYPOTHESIS_STALE_DAYS)),
+            "{}",
+            finding.evidence
+        );
+        assert!(
+            finding.remedy.contains("loom next --mode prove"),
+            "{}",
+            finding.remedy
+        );
+        assert_smell_teaching(finding);
+        assert!(
+            finding
+                .teaching
+                .principle
+                .contains("proof item, not long-term memory"),
+            "{:?}",
+            finding.teaching
+        );
+
+        update_hypothesis_verdict(
+            &db,
+            "h-old",
+            "refuted",
+            "read the code: the claimed split is no longer real",
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
+        let smells = compute_smells(&db).unwrap().open;
+        assert!(
+            !smells.iter().any(|s| s.kind == "hypothesis_accumulation"),
+            "refuted hypotheses leave the proposed backlog: {smells:?}"
+        );
+    }
+
+    #[test]
+    fn hypothesis_accumulation_smell_flags_bulk_proposed_queue() {
+        let (db, _) = db_inited(0);
+        let now = chrono::Utc::now().to_rfc3339();
+        for idx in 0..(HYPOTHESIS_BACKLOG_LIMIT - 1) {
+            let mut h = hypothesis(&format!("h-{idx}"), &format!("fresh idea {idx}"));
+            h.created_at = now.clone();
+            h.updated_at = now.clone();
+            insert_hypothesis(&db, &h).unwrap();
+        }
+        assert!(
+            !compute_smells(&db)
+                .unwrap()
+                .open
+                .iter()
+                .any(|s| s.kind == "hypothesis_accumulation"),
+            "below the fresh backlog threshold should stay quiet"
+        );
+
+        let mut h = hypothesis("h-limit", "fresh idea at threshold");
+        h.created_at = now.clone();
+        h.updated_at = now;
+        insert_hypothesis(&db, &h).unwrap();
+
+        let smells = compute_smells(&db).unwrap().open;
+        let finding = smells
+            .iter()
+            .find(|s| s.kind == "hypothesis_accumulation")
+            .expect("fresh queue at threshold should surface");
+        assert!(
+            finding.summary.contains(&format!(
+                "{} proposed",
+                HYPOTHESIS_BACKLOG_LIMIT
+            )),
+            "{}",
+            finding.summary
+        );
+        assert!(
+            finding.evidence.contains("without TARGETS"),
+            "{}",
+            finding.evidence
+        );
+        assert!(
+            finding.teaching.inspect.iter().any(|i| i.contains("hypothesis list")),
+            "{:?}",
+            finding.teaching
+        );
+    }
+
     /// The hypothesis plane travels with the export, and exports from OLDER
     /// binaries (no Hypothesis/TARGETS sections at all) still import — the
     /// sections are additive, same contract as optional props.

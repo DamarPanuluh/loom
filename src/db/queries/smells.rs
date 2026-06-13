@@ -37,6 +37,12 @@ pub const DUP_UNTAGGED_SIMILARITY: f64 = 0.30;
 /// Minimum shared tokens for the untagged fallback. This keeps one generic word
 /// from standing in for the missing vocabulary facet.
 pub const DUP_UNTAGGED_SHARED_TOKENS: usize = 2;
+/// Proposed hypotheses are useful pressure, but a large queue means the
+/// pre-decision plane is becoming a note dump instead of a proof pipeline.
+pub const HYPOTHESIS_BACKLOG_LIMIT: usize = 10;
+/// A proposed hypothesis older than this is stale enough to surface even when
+/// the queue is small. Non-RFC3339 timestamps (old tests/imports) are ignored.
+pub const HYPOTHESIS_STALE_DAYS: i64 = 14;
 /// Scatter thresholds are level-aware: a feature should be cohesive (few
 /// files); a component legitimately spans a directory; a system intent
 /// grounds to manifests and is never "scattered".
@@ -57,6 +63,7 @@ pub struct Smell {
     /// | scattered_intent | tangled_file | unmeasured_intents
     /// | undeclared_coupling | layering_violation | recurrent_trouble
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
+    /// | hypothesis_accumulation
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -253,6 +260,19 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             ],
             avoid: vec!["do not treat user_visible as proven by unit coverage alone".into()],
             done_when: "a consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable".into(),
+        },
+        "hypothesis_accumulation" => SmellTeaching {
+            principle: "A hypothesis is a falsifiable proof item, not long-term memory; accumulation teaches the next LLM to prove, reject, or adopt instead of stockpiling ideas.".into(),
+            inspect: vec![
+                "`loom next --mode prove` for the highest-blast-radius proposal".into(),
+                "`loom hypothesis list --status proposed` to batch the backlog".into(),
+                "target untargeted hypotheses before proving, or reject them if they are not actionable".into(),
+            ],
+            avoid: vec![
+                "do not add another hypothesis when existing proposals are unproven".into(),
+                "do not convert speculative notes into planned work before proof".into(),
+            ],
+            done_when: "the proposed backlog is below the threshold and no proposed hypothesis is stale; each old idea is supported, refuted, adopted, or rejected with evidence".into(),
         },
         _ => SmellTeaching {
             principle: "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.".into(),
@@ -1116,7 +1136,85 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
-    // 8. Happy path only — the behavioral vantage point: a feature group that
+    // 8. Hypothesis accumulation — the pre-decision plane turning into a note
+    //    dump. Proposed hypotheses are intentionally optional and non-gating
+    //    while small/fresh, but a stale or swollen queue means agents are adding
+    //    redesign ideas faster than they prove, reject, or adopt them. The
+    //    remedy is not a decision note; the terminal states live on the
+    //    hypothesis state machine itself.
+    {
+        let proposed = super::hypothesis::list_hypotheses(db, Some("proposed"))?;
+        if !proposed.is_empty() {
+            let now = chrono::Utc::now();
+            let stale: Vec<&crate::types::Hypothesis> = proposed
+                .iter()
+                .filter(|h| {
+                    chrono::DateTime::parse_from_rfc3339(&h.created_at)
+                        .map(|created| {
+                            now.signed_duration_since(created.with_timezone(&chrono::Utc))
+                                .num_days()
+                                >= HYPOTHESIS_STALE_DAYS
+                        })
+                        .unwrap_or(false)
+                })
+                .collect();
+            if proposed.len() >= HYPOTHESIS_BACKLOG_LIMIT || !stale.is_empty() {
+                let targeted: HashSet<String> = super::targets::list_all_targets(db)?
+                    .into_iter()
+                    .map(|t| t.hypothesis_id)
+                    .collect();
+                let untargeted = proposed
+                    .iter()
+                    .filter(|h| !targeted.contains(h.id.as_str()))
+                    .count();
+                let oldest = proposed
+                    .iter()
+                    .min_by(|a, b| {
+                        a.created_at
+                            .cmp(&b.created_at)
+                            .then_with(|| a.name.cmp(&b.name))
+                    })
+                    .expect("proposed is not empty");
+                let sample: Vec<&str> = proposed.iter().take(5).map(|h| h.name.as_str()).collect();
+                let stale_names: Vec<&str> =
+                    stale.iter().take(5).map(|h| h.name.as_str()).collect();
+                let stale_detail = if stale_names.is_empty() {
+                    "none".to_string()
+                } else {
+                    stale_names.join(" · ")
+                };
+                smells.push(Smell {
+                    kind: "hypothesis_accumulation".into(),
+                    score: proposed.len() as f64 + 3.0 * stale.len() as f64,
+                    summary: format!(
+                        "{} proposed hypothesis(es) are waiting for proof; {} stale, {} untargeted",
+                        proposed.len(),
+                        stale.len(),
+                        untargeted
+                    ),
+                    evidence: format!(
+                        "{} proposed hypothesis(es), {} older than {}d, {} without TARGETS; oldest is '{}' created at {}; examples: {}; stale examples: {}",
+                        proposed.len(),
+                        stale.len(),
+                        HYPOTHESIS_STALE_DAYS,
+                        untargeted,
+                        oldest.name,
+                        oldest.created_at,
+                        sample.join(" · "),
+                        stale_detail
+                    ),
+                    remedy: format!(
+                        "drain the pre-decision plane: `loom next --mode prove` then `loom hypothesis prove <id> --verdict supported|refuted --evidence \"…\"`; for supported claims, adopt or reject them (`loom hypothesis adopt|reject`); for untargeted claims, add TARGETS first (`loom hypothesis target <id> <intent>`). Green requires fewer than {limit} proposed hypotheses and none older than {days}d.",
+                        limit = HYPOTHESIS_BACKLOG_LIMIT,
+                        days = HYPOTHESIS_STALE_DAYS,
+                    ),
+                    teaching: teaching_for("hypothesis_accumulation"),
+                });
+            }
+        }
+    }
+
+    // 9. Happy path only — the behavioral vantage point: a feature group that
     //    declared its sunny-day intent (aspect=happy) but never realized and
     //    proved what failure or degradation look like. The happy aspect is the
     //    trigger; sad/fallback only clear the smell once they are implemented,
@@ -1235,7 +1333,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
-    // 9. Unused rule — a measuring stick connected to nothing at all.
+    // 10. Unused rule — a measuring stick connected to nothing at all.
     let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
     for r in rules {
         if !used.contains(r.id.as_str()) {
@@ -1253,7 +1351,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
-    // 10. Vocab drift — the registry policing itself: two registered terms
+    // 11. Vocab drift — the registry policing itself: two registered terms
     //     that read like the same word (edit distance / containment). The
     //     vocabulary's value is forced collision; synonym terms split the
     //     keyspace and silently halve the signal. Detection-and-merge is the
@@ -1294,7 +1392,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         }
     }
 
-    // 11. Unjourneyed surface — the consumer plane's completeness check: a
+    // 12. Unjourneyed surface — the consumer plane's completeness check: a
     //     user_visible intent with real code that NO saga exercises end-to-end.
     //     The product claims a consumer can see/feel it; no consumer journey
     //     ever proves it. Visibility is the key — this smell is what makes the

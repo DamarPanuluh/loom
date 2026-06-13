@@ -3,8 +3,10 @@
 //! State machine: proposed → supported | refuted → adopted | rejected.
 //! Separation of duties: anyone proposes, the ANALYZER lane proves (and the
 //! prover may not be the proposer), the BUILDER lane decides. A hypothesis is
-//! invisible to coverage/completeness/queues by construction — only adoption
-//! (which spawns ordinary planned intents) turns it into work.
+//! outside coverage/completeness by construction. `loom next --mode prove` and
+//! the `hypothesis_accumulation` smell keep the plane from becoming passive
+//! memory; only adoption (which spawns ordinary planned intents) turns it into
+//! implementation work.
 
 use anyhow::Result;
 use uuid::Uuid;
