@@ -42,6 +42,8 @@ const RIPPLE: &[&str] = &[
     "IMPLEMENTS locators that no longer occur in their file (renamed symbol) → needs_reverification, and reported — re-ground with a fresh locator",
     "files registered in the graph but missing on disk are reported — drop phantoms with `loom codefile remove <path>` or restore the file",
     "static imports are re-extracted per file — they feed `loom smells` (undeclared coupling, layering violations against the declared `loom layer order`) and discovery ranking",
+    "the ripple is SYMBOL-PRECISE: an edge flips only when its IMPLEMENTS locator targets a symbol whose body actually changed — a comment/whitespace/unrelated-symbol edit flips nothing (falls back to whole-file when it can't attribute the change)",
+    "the auto `transition` notes recording these flips are bounded per target (transition_cap, default 20) so the flip-flop log never bloats — `loom sync` trims it; tune with `loom note prune --set-cap N` (0 = off). `loom smells` also surfaces ADVISORY `cochange_coupling` (files that change together in git but whose intents aren't linked)",
 ];
 
 /// The role lanes: who does what, and which `loom next` mode serves the lane.
@@ -72,6 +74,12 @@ const ORCHESTRATION: &[&str] = &[
     "HANDOFF ORDER is a DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify)",
     "  → validator (prove) → quality (green); fixer on any failing/needs_change. Run these one at a",
     "  time or overlap where the graph allows — loom enforces the lane, never the timing.",
+    "PERFORMANCE — the daemon (OPT-IN): in a long session making MANY loom calls, start it ONCE —",
+    "  `loom serve &` then `export LOOM_DAEMON=1` — and every --json command skips the per-call",
+    "  DB-open (the dominant cost at scale; ~20ms+ each). SAFE: anything it can't serve (graph-",
+    "  releasing validate/saga, human/non-json mode, any error) transparently falls back to direct",
+    "  dispatch, so correctness NEVER depends on it; it drains + respawns itself when you rebuild",
+    "  loom. Leave LOOM_DAEMON unset for one-off/interactive use (zero daemon, zero risk).",
     "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
     "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
     "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
