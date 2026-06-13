@@ -393,12 +393,22 @@ loom note add --text <text> [--kind <kind>] [--intent <id> | --edge <id> | --fil
   the directed-handoff channel: an out-of-lane finding becomes a message the
   owning lane sees FIRST (`loom next` sorts addressed notes to the top of the
   item's notes). Notes surface in `loom next`, `loom intent show`, `loom edge show`.
-loom note prune
+loom note prune [--transitions] [--keep-per-target N] [--set-cap N] [--dry-run]
   Remove notes whose target no longer exists (deleted intent/hypothesis/edge)
   — the remedy `loom doctor` names for dangling note targets. Only
   unreachable notes are removed; history on live or retired nodes is never
   touched. (The hard-delete commands now prune their edges' notes themselves;
   this cleans up damage from older versions.)
+  --transitions ALSO compacts the low-signal transition log: keeps, per target,
+  the newest ROUTINE transitions plus EVERY `→ failing`/`→ needs_change` marker,
+  and drops the rest (the passing↔needs_reverification sync flip-flop). `loom
+  smells` findings and the align candidate set are unchanged — only align's
+  churn-count ranking input compresses. --keep-per-target overrides the per-run
+  ceiling (defaults to the graph's transition_cap). --set-cap persists that
+  ceiling (the value `loom sync` auto-trims to going forward; 0 = off = strict
+  append-only) and compacts now. --dry-run reports the drop without deleting.
+  `loom sync` enforces the cap automatically at the churn source, so the log
+  stays bounded without a manual prune.
 loom note list [--intent <id>] [--edge <id>] [--file <path|id>] [--kind <kind>] [--for <role>] [--limit N]
   --for <role> = the lane's inbox (only notes addressed to it). --limit keeps
   the NEWEST rows (append-only memory; the tail is the live context).
