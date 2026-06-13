@@ -135,15 +135,41 @@ pub fn parse_sync_cause(text: &str) -> Option<&str> {
         .strip_suffix(" changed")
 }
 
-/// All notes, newest last, optionally filtered (in Rust) by target id and/or
-/// kind. Scanning + filtering in Rust keeps this on the reliable query path.
+/// All notes, newest last, optionally filtered by target id and/or kind.
+///
+/// The `target_id` / `kind` predicates are pushed into grafeo's WHERE rather
+/// than applied as a post-scan Rust `retain`. On a mature graph the Note label
+/// holds thousands of append-only `transition` notes; a targeted or kinded
+/// lookup (`notes_for_target`, the align churn scans, per-target show views)
+/// would otherwise materialize the entire label into `Note` structs only to
+/// throw nearly all of them away. Node-property equality in WHERE is
+/// deterministic on grafeo 0.5.42 (`tests/grafeo_probe.rs`) and `$param`-bound
+/// (the broken-`id` shadow is relationship-only); `ORDER BY n.created_at`
+/// preserves the newest-last contract every caller relies on. The unfiltered
+/// call (`None, None`) still does the full scan — by design, its callers want
+/// every note.
 pub fn list_notes(
     db: &dyn LoomDb,
     target_id: Option<&str>,
     kind: Option<&str>,
 ) -> Result<Vec<Note>> {
+    let mut conds: Vec<String> = Vec::new();
+    let mut params: HashMap<String, Value> = HashMap::new();
+    if let Some(t) = target_id {
+        conds.push(format!("n.{} = $tid", prop::TARGET_ID));
+        params.insert("tid".to_string(), Value::from(t));
+    }
+    if let Some(k) = kind {
+        conds.push(format!("n.{} = $kind", prop::KIND));
+        params.insert("kind".to_string(), Value::from(k));
+    }
+    let where_clause = if conds.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {} ", conds.join(" AND "))
+    };
     let q = format!(
-        "MATCH (n:{lbl}) \
+        "MATCH (n:{lbl}) {where_clause}\
          RETURN n.{id}, n.{kind}, n.{text}, n.{author}, n.{tkind}, n.{tid}, n.{aud}, n.{created} \
          ORDER BY n.{created}",
         lbl = label::NOTE,
@@ -156,19 +182,17 @@ pub fn list_notes(
         aud = prop::AUDIENCE,
         created = prop::CREATED_AT,
     );
-    let result = db.execute(&q)?;
+    let result = if params.is_empty() {
+        db.execute(&q)?
+    } else {
+        db.execute_with_params(&q, params)?
+    };
     let cols = col_map(&result);
-    let mut notes: Vec<Note> = result
+    let notes: Vec<Note> = result
         .rows()
         .iter()
         .map(|row| row_to_note(row, &cols))
         .collect();
-    if let Some(t) = target_id {
-        notes.retain(|n| n.target_id == t);
-    }
-    if let Some(k) = kind {
-        notes.retain(|n| n.kind == k);
-    }
     Ok(notes)
 }
 

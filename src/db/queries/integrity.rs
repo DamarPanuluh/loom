@@ -17,7 +17,7 @@ use crate::types::{
 
 use super::row::i64_val;
 use super::snapshot::QuerySnapshot;
-use super::{list_all_targets, list_hypotheses, list_intents, list_notes};
+use super::{list_all_targets, list_hypotheses, list_intents};
 
 /// Outcome of a full integrity scan.
 #[derive(Debug)]
@@ -294,7 +294,7 @@ pub fn check_graph_from_snapshot(
     // snapshot omits persona-plane edges; using it here falsely flags their
     // transition notes as dangling.
     let edge_ids = collect_edge_ids(db)?;
-    for n in list_notes(db, None, None)? {
+    for n in query_snapshot.notes(db)? {
         if let Err(e) = n.kind.parse::<NoteKind>() {
             issues.push(format!(
                 "Note {} has invalid kind '{}' — {} (likely written by a different loom version; \

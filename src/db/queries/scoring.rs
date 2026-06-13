@@ -11,7 +11,6 @@ use crate::types::{
 };
 
 use super::intent::list_active_intents;
-use super::note::list_notes;
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 // Production scores from the *_from_snapshot variants; these DB-walking helpers
@@ -774,34 +773,36 @@ pub fn align_candidates_from_snapshot(
 ) -> Result<Vec<AlignCandidate>> {
     let intents = &snapshot.intents;
     let degrees = &snapshot.degrees;
-    let transition_notes = list_notes(db, None, Some("transition"))?;
-
+    // All notes once (the snapshot memoises the scan, so the smells + doctor
+    // passes in the same `loom next --all` / orientation command reuse it
+    // instead of each re-walking the multi-thousand-strong Note label),
+    // partitioned by kind in one pass. The Note label is ordered newest-last,
+    // so a later `insert` into the freshness maps overwrites with the latest
+    // stamp — the same "newest wins" the separate filtered scans relied on — and
+    // notes_by_target keeps transition notes in that same created-at order.
     let mut notes_by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
-    for note in &transition_notes {
-        notes_by_target
-            .entry(note.target_id.as_str())
-            .or_default()
-            .push(note);
-    }
-
-    // Bulk freshness stamps (list_notes returns newest LAST, so later inserts
-    // overwrite = latest stamp wins) — per-intent lookups here would be the
-    // same O(N·M) trap migrate.rs documents.
-    let confirm_notes = list_notes(db, None, Some("confirm"))?;
     let mut confirmed_at: HashMap<&str, &str> = HashMap::new();
-    for n in &confirm_notes {
-        confirmed_at.insert(n.target_id.as_str(), n.created_at.as_str());
-    }
-    let decision_notes = list_notes(db, None, Some("decision"))?;
     let mut redefined_at: HashMap<&str, &str> = HashMap::new();
-    for n in &decision_notes {
-        // `loom intent update --description` writes "redefined: …";
-        // `--description --reword` writes "reworded: …". BOTH reset the
-        // freshness clock (the meaning statement was just deliberately
-        // restated), only the former ripples claims. Renames are cosmetic —
-        // no stamp, no ripple, no clock reset.
-        if n.text.starts_with("redefined: ") || n.text.starts_with("reworded: ") {
-            redefined_at.insert(n.target_id.as_str(), n.created_at.as_str());
+    for n in snapshot.notes(db)? {
+        match n.kind.as_str() {
+            "transition" => notes_by_target
+                .entry(n.target_id.as_str())
+                .or_default()
+                .push(n),
+            "confirm" => {
+                confirmed_at.insert(n.target_id.as_str(), n.created_at.as_str());
+            }
+            // `loom intent update --description` writes "redefined: …";
+            // `--description --reword` writes "reworded: …". BOTH reset the
+            // freshness clock (the meaning statement was just deliberately
+            // restated), only the former ripples claims. Renames are cosmetic —
+            // no stamp, no ripple, no clock reset.
+            "decision"
+                if n.text.starts_with("redefined: ") || n.text.starts_with("reworded: ") =>
+            {
+                redefined_at.insert(n.target_id.as_str(), n.created_at.as_str());
+            }
+            _ => {}
         }
     }
 

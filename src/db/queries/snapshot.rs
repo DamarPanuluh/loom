@@ -1,14 +1,15 @@
 use anyhow::Result;
+use std::cell::OnceCell;
 use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
 use crate::types::{
-    CodeFile, Governs, Implements, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation,
+    CodeFile, Governs, Implements, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
 };
 
 use super::{
     list_active_intents, list_all_governs, list_all_hierarchy, list_all_implements,
-    list_all_validates, list_codefiles, list_relates_to, list_rules, list_validations,
+    list_all_validates, list_codefiles, list_notes, list_relates_to, list_rules, list_validations,
 };
 
 #[derive(Debug, Clone)]
@@ -24,6 +25,16 @@ pub struct QuerySnapshot {
     pub codefiles: Vec<CodeFile>,
     pub with_code: HashSet<String>,
     pub degrees: HashMap<String, i64>,
+    /// All notes (newest last), lazily loaded the first time a consumer asks.
+    /// The Note label holds thousands of append-only `transition` notes on a
+    /// mature graph; several point-in-time analyses over one snapshot want the
+    /// whole set (`compute_smells_from`, the doctor integrity pass, and — once
+    /// the graph is driven to green — the audit-gate `graph_state`). Loading it
+    /// once and sharing keeps a single `next --all` / orientation pass from
+    /// re-scanning the full label per consumer. Lazy so note-free snapshot
+    /// users (`report`, `coverage`, `hotspots`) never pay for it. Point-in-time
+    /// like every other field: the snapshot is a read view, not a live cursor.
+    notes: OnceCell<Vec<Note>>,
 }
 
 impl QuerySnapshot {
@@ -64,7 +75,21 @@ impl QuerySnapshot {
             codefiles,
             with_code,
             degrees,
+            notes: OnceCell::new(),
         })
+    }
+
+    /// All notes (newest last), loaded once per snapshot and memoised. Equivalent
+    /// to `list_notes(db, None, None)` for every caller, but a second consumer
+    /// holding the same snapshot reuses the first scan instead of re-walking the
+    /// (often thousands-strong) Note label. Single-threaded by construction —
+    /// loom is one command per process — so the `OnceCell` set never races.
+    pub fn notes(&self, db: &dyn LoomDb) -> Result<&[Note]> {
+        if self.notes.get().is_none() {
+            let loaded = list_notes(db, None, None)?;
+            let _ = self.notes.set(loaded);
+        }
+        Ok(self.notes.get().expect("just initialised"))
     }
 }
 

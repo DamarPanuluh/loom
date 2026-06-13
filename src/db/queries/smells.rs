@@ -21,8 +21,6 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
-
-use super::note::list_notes;
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
@@ -382,9 +380,9 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     // target id to its newest kind=decision note — the recorded "looked at it,
     // here's the call" that resolves a structural finding until the structure
     // changes again underneath it (recurrent_trouble set the pattern).
-    let all_notes = list_notes(db, None, None)?;
+    let all_notes = snapshot.notes(db)?;
     let mut last_decision: HashMap<&str, &crate::types::Note> = HashMap::new();
-    for n in &all_notes {
+    for n in all_notes {
         if n.kind == "decision" && !n.target_id.is_empty() {
             let e = last_decision.entry(n.target_id.as_str()).or_insert(n);
             if n.created_at > e.created_at {
@@ -1049,7 +1047,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
         let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
         let mut trouble_notes: HashMap<(String, String), Vec<&crate::types::Note>> = HashMap::new();
-        for n in &all_notes {
+        for n in all_notes {
             if n.kind == "transition"
                 && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
             {
@@ -1595,7 +1593,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             &snapshot.codefiles,
             intents,
             implements,
-            &all_notes,
+            all_notes,
         );
         if !report.actionable_symbol_gaps.is_empty() {
             let examples: Vec<String> = report
