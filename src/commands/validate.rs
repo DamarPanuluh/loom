@@ -200,7 +200,7 @@ fn execute_and_record(
                     .chain([format!("loom saga run {}", validation.name)])
                     .collect();
                 let reason = format!(
-                    "missing env value(s): {} — run `{}` (or re-mark when the target is available)",
+                    "missing env value(s): {} — bring up the live target the way this repo does (docker-compose / Makefile / scripts / README), then run `{}`; mark blocked only if it genuinely can't run yet",
                     missing.join(", "),
                     invocation
                 );

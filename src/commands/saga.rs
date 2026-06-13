@@ -351,8 +351,11 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
              The spec references them as {{{{ env.<NAME> }}}} — pass them on the command line:\n\
              \n  {invocation}\n\
              \n(The values point at the LIVE target the consumer talks to; loom never stores them \
-             in the graph.) Nothing was run or recorded. If the target cannot run yet at all, \
-             record that honestly instead:\n\
+             in the graph.) Nothing was run or recorded. If the target isn't up yet, bring it up the \
+             way THIS repo does — check docker-compose.yml, a Makefile/justfile target, scripts/, \
+             package.json scripts, or the README — then re-run the invocation above. ONLY if it \
+             genuinely cannot run yet (no provisioning in the repo, or a secret you lack) record \
+             that honestly instead:\n\
              \n  loom validation mark {name} --result blocked --reason \"waiting on <what>\"",
             name = spec.saga,
             missing = missing.join(", "),
