@@ -19,14 +19,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             set_cap,
             dry_run,
         } => {
-            // --set-cap persists the ceiling sync enforces, and implies a
-            // compaction now. So either flag turns transition compaction on.
-            let compact = transitions || set_cap.is_some();
-            // The keep used for THIS sweep: explicit override → the cap being
-            // set → the graph's current cap.
+            // The keep for THIS sweep: explicit override → the cap being set →
+            // the graph's current cap.
             let keep = keep_per_target
                 .or(set_cap)
                 .unwrap_or(crate::db::queries::get_transition_cap(&db)?);
+            // `0` sourced from the CAP means "off / unbounded", NEVER "drop all
+            // routine" — only an explicit `--keep-per-target 0` deliberately
+            // clears routine history. So compaction runs when requested AND the
+            // keep is positive (or an explicit zero was passed).
+            let compact_requested = transitions || set_cap.is_some();
+            let compact = compact_requested && (keep > 0 || keep_per_target == Some(0));
 
             // Dangling: notes whose target id resolves to nothing (the remedy
             // doctor names). Always swept — history on live/retired nodes is
@@ -51,6 +54,9 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 }
             }
             let verb = if dry_run { "Would prune" } else { "Pruned" };
+            // Compaction asked for but nothing to do because the cap is off and
+            // no explicit keep was given — explain rather than silently no-op.
+            let cap_off_noop = transitions && !compact && set_cap.is_none();
             // After a transition compaction the committed export drifted; point
             // there. Plain dangling prune stays anchored on the doctor re-check.
             let next_step = if compact && !churn.is_empty() {
@@ -70,6 +76,9 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                     "keep_per_target": keep,
                     "cap_set": set_cap,
                     "dry_run": dry_run,
+                    "compaction_skipped": if cap_off_noop {
+                        serde_json::json!("transition cap is off (0) — pass --keep-per-target <N> for a one-off sweep, or --set-cap <N> to enable it")
+                    } else { serde_json::Value::Null },
                     "next_step": next_step,
                 }));
             } else {
@@ -78,7 +87,10 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                     println!("✓ {v} transition cap to {cap} per target{}.",
                         if cap == 0 { " (off — strict append-only)" } else { " (`loom sync` enforces it)" });
                 }
-                if dangling.is_empty() && churn.is_empty() {
+                if cap_off_noop {
+                    println!("ⓘ Transition cap is off (0) — nothing compacted. Pass `--keep-per-target <N>` for a one-off sweep, or `--set-cap <N>` to enable the cap `loom sync` holds.");
+                }
+                if dangling.is_empty() && churn.is_empty() && !cap_off_noop {
                     println!("✓ Nothing to prune (no dangling notes{}).",
                         if compact { " or compactable transition history" } else { "" });
                 }
