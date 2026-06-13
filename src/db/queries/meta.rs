@@ -148,6 +148,53 @@ pub fn set_layer_order(db: &dyn LoomDb, order: &[String]) -> Result<()> {
     Ok(())
 }
 
+/// The default per-target ROUTINE-transition ceiling when the graph hasn't set
+/// one explicitly. Generous on purpose: it hard-bounds runaway churn (heavy
+/// flappers stop accumulating dozens of flip-flop notes) while keeping enough
+/// recent history that the align churn-count ranking barely shifts. Tune down
+/// (toward 3) for a smaller store, or set 0 to disable.
+pub const DEFAULT_TRANSITION_CAP: usize = 20;
+
+/// The per-target ROUTINE-transition ceiling for this graph: the stored
+/// `transition_cap`, or [`DEFAULT_TRANSITION_CAP`] when unset. `0` = off
+/// (strict append-only — sync never compacts).
+pub fn get_transition_cap(db: &dyn LoomDb) -> Result<usize> {
+    let q = format!(
+        "MATCH (m:{meta}) RETURN m.{p} AS c LIMIT 1",
+        meta = label::META,
+        p = prop::TRANSITION_CAP,
+    );
+    let result = db.execute(&q)?;
+    let cols = col_map(&result);
+    // Absent (older graphs) → the default; an explicit value (incl. 0) wins.
+    Ok(result
+        .rows()
+        .first()
+        .map(|row| {
+            let raw = str_val(get(row, &cols, "c"));
+            if raw.is_empty() {
+                DEFAULT_TRANSITION_CAP
+            } else {
+                raw.parse::<usize>().unwrap_or(DEFAULT_TRANSITION_CAP)
+            }
+        })
+        .unwrap_or(DEFAULT_TRANSITION_CAP))
+}
+
+/// Persist the per-target ROUTINE-transition ceiling. `0` disables compaction.
+pub fn set_transition_cap(db: &dyn LoomDb, cap: usize) -> Result<()> {
+    let cap_s = cap.to_string();
+    db.execute_with_params(
+        &format!(
+            "MATCH (m:{meta}) SET m.{p} = $cap",
+            meta = label::META,
+            p = prop::TRANSITION_CAP,
+        ),
+        super::row::sparams(&[("cap", cap_s.as_str())]),
+    )?;
+    Ok(())
+}
+
 /// Legacy v5 property: product domains doubled as architecture layers.
 /// New writes must use `layer_order`; this is read only for migration/import
 /// compatibility.

@@ -350,6 +350,29 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // Stamp the graph as reconciled against disk (freshness signal).
     set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
 
+    // Compaction: hold the per-target transition cap by trimming the routine
+    // churn this sync (and prior ones) appended — reusing the prune retention
+    // rule (newest `cap` ROUTINE transitions per target + EVERY regression
+    // marker). smells findings and the align candidate set are unchanged; only
+    // the passing↔needs_reverification flip-flop log shrinks. `cap == 0`
+    // disables it (strict append-only). One sweep at the churn source keeps the
+    // graph bounded without an external hook.
+    let transition_cap = crate::db::queries::get_transition_cap(&db)?;
+    let transitions_compacted = if transition_cap > 0 {
+        let stale = crate::db::queries::prunable_transition_notes(&db, transition_cap)?;
+        if !stale.is_empty() {
+            crate::db::with_transaction(&db, || {
+                for n in &stale {
+                    crate::db::queries::delete_note_by_id(&db, &n.id)?;
+                }
+                Ok(())
+            })?;
+        }
+        stale.len()
+    } else {
+        0
+    };
+
     let report = SyncReport {
         files_checked,
         files_changed,
@@ -362,6 +385,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         escaped_files,
         locators_stale,
         changes,
+        transitions_compacted,
     };
 
     // Bounded rendering: sync runs after every code churn, and a big rebase
@@ -505,6 +529,12 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             println!("  ✓ All files up to date — no edges need reverification.");
         } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
             println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
+        }
+        if report.transitions_compacted > 0 {
+            println!(
+                "  ⓘ Compacted {} low-signal transition note(s) (cap {} routine/target; regression markers kept). Tune with `loom note prune --set-cap <N>` (0 = off).",
+                report.transitions_compacted, transition_cap
+            );
         }
         crate::output::print_anchor(&db, &next_step)?;
     }

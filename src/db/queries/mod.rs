@@ -1629,6 +1629,23 @@ mod tests {
         assert!(!ids.contains("dec"), "authored notes are never transitions");
     }
 
+    /// The per-target transition cap defaults when unset, and an explicit value
+    /// (including 0 = off) persists and wins — the knob `loom sync` reads to
+    /// bound churn, and `loom note prune --set-cap` writes.
+    #[test]
+    fn transition_cap_defaults_and_persists() {
+        let (db, _ids) = db_inited(1);
+        assert_eq!(
+            get_transition_cap(&db).unwrap(),
+            DEFAULT_TRANSITION_CAP,
+            "unset reads the default"
+        );
+        set_transition_cap(&db, 3).unwrap();
+        assert_eq!(get_transition_cap(&db).unwrap(), 3);
+        set_transition_cap(&db, 0).unwrap();
+        assert_eq!(get_transition_cap(&db).unwrap(), 0, "0 is an explicit off, not unset");
+    }
+
     /// A v3 export (stored edge uuids; notes referencing them) upgrades in
     /// flight: the legacy edge id is dropped and edge-targeted notes are
     /// remapped to the derived v4 edge key.

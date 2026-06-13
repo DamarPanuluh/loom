@@ -1144,4 +1144,8 @@ pub struct SyncReport {
     /// Paths whose CONTENT changed this sync (the ripple's causes). The path
     /// IS the identity an agent acts on; ids/mtimes stay in the store.
     pub changes: Vec<String>,
+    /// Low-signal ROUTINE transition notes compacted away this sync to hold the
+    /// per-target `transition_cap` (regression markers + authored notes are
+    /// never touched). `0` when the cap is disabled or nothing exceeded it.
+    pub transitions_compacted: usize,
 }

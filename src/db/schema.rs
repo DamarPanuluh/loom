@@ -361,6 +361,13 @@ pub mod prop {
     /// order. Additive — NOT in the required-property table (absent on older
     /// graphs; travels in exports as a top-level field).
     pub const LAYER_ORDER: &str = "layer_order";
+
+    /// Per-target ceiling on ROUTINE transition notes — the FIFO bucket `loom
+    /// sync` trims to (regression markers and authored notes are never counted
+    /// or dropped). A LOCAL hygiene knob, not graph truth: additive, NOT in the
+    /// required-property table, and deliberately NOT exported (an imported graph
+    /// uses the default until re-tuned). Absent / `0` = off (strict append-only).
+    pub const TRANSITION_CAP: &str = "transition_cap";
 }
 
 // ---------------------------------------------------------------------------

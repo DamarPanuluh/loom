@@ -1401,16 +1401,24 @@ pub enum NoteCmd {
         loom note prune --transitions --keep-per-target 3 --dry-run")]
     Prune {
         /// Also compact transition history: keep, per target, the newest
-        /// --keep-per-target ROUTINE transitions plus every `→ failing` /
-        /// `→ needs_change` marker; drop the rest. `loom smells` findings and
-        /// the align candidate set are unchanged — only the sync flip-flop the
-        /// driving loop appends is removed.
+        /// ROUTINE transitions plus every `→ failing` / `→ needs_change`
+        /// marker; drop the rest. `loom smells` findings and the align
+        /// candidate set are unchanged — only the sync flip-flop is removed.
+        /// (`loom sync` does this automatically up to the graph's cap; this is
+        /// the manual / retroactive sweep.)
         #[arg(long)]
         transitions: bool,
 
-        /// Newest routine transitions to keep per target under --transitions.
-        #[arg(long, default_value_t = 3)]
-        keep_per_target: usize,
+        /// Newest routine transitions to keep per target for THIS sweep. Omit
+        /// to use the graph's transition_cap (the ceiling sync enforces).
+        #[arg(long)]
+        keep_per_target: Option<usize>,
+
+        /// Persist the graph's per-target transition cap — the ceiling `loom
+        /// sync` trims to going forward. 0 = off (strict append-only). Setting
+        /// it also compacts now to that ceiling.
+        #[arg(long)]
+        set_cap: Option<usize>,
 
         /// Report what would be removed without deleting anything.
         #[arg(long)]

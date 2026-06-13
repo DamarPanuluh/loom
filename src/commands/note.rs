@@ -16,30 +16,44 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
         NoteCmd::Prune {
             transitions,
             keep_per_target,
+            set_cap,
             dry_run,
         } => {
+            // --set-cap persists the ceiling sync enforces, and implies a
+            // compaction now. So either flag turns transition compaction on.
+            let compact = transitions || set_cap.is_some();
+            // The keep used for THIS sweep: explicit override → the cap being
+            // set → the graph's current cap.
+            let keep = keep_per_target
+                .or(set_cap)
+                .unwrap_or(crate::db::queries::get_transition_cap(&db)?);
+
             // Dangling: notes whose target id resolves to nothing (the remedy
             // doctor names). Always swept — history on live/retired nodes is
-            // never touched. --transitions additionally compacts the low-signal
-            // sync churn, keeping the recurrent_trouble signal + align set.
+            // never touched.
             let dangling = crate::db::queries::dangling_notes(&db)?;
-            let churn = if transitions {
-                crate::db::queries::prunable_transition_notes(&db, keep_per_target)?
+            let churn = if compact {
+                crate::db::queries::prunable_transition_notes(&db, keep)?
             } else {
                 Vec::new()
             };
-            if !dry_run && !(dangling.is_empty() && churn.is_empty()) {
-                crate::db::with_transaction(&db, || {
-                    for n in dangling.iter().chain(churn.iter()) {
-                        crate::db::queries::delete_note_by_id(&db, &n.id)?;
-                    }
-                    Ok(())
-                })?;
+            if !dry_run {
+                if let Some(cap) = set_cap {
+                    crate::db::queries::set_transition_cap(&db, cap)?;
+                }
+                if !(dangling.is_empty() && churn.is_empty()) {
+                    crate::db::with_transaction(&db, || {
+                        for n in dangling.iter().chain(churn.iter()) {
+                            crate::db::queries::delete_note_by_id(&db, &n.id)?;
+                        }
+                        Ok(())
+                    })?;
+                }
             }
             let verb = if dry_run { "Would prune" } else { "Pruned" };
             // After a transition compaction the committed export drifted; point
             // there. Plain dangling prune stays anchored on the doctor re-check.
-            let next_step = if transitions && !churn.is_empty() {
+            let next_step = if compact && !churn.is_empty() {
                 "`loom export` to refresh the committed graph, then `loom status`"
             } else {
                 "`loom doctor` re-checks integrity"
@@ -53,14 +67,20 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         "target_kind": n.target_kind, "target_id": n.target_id,
                     })).collect::<Vec<_>>(),
                     "transitions_pruned": churn.len(),
-                    "keep_per_target": keep_per_target,
+                    "keep_per_target": keep,
+                    "cap_set": set_cap,
                     "dry_run": dry_run,
                     "next_step": next_step,
                 }));
             } else {
+                if let Some(cap) = set_cap {
+                    let v = if dry_run { "Would set" } else { "Set" };
+                    println!("✓ {v} transition cap to {cap} per target{}.",
+                        if cap == 0 { " (off — strict append-only)" } else { " (`loom sync` enforces it)" });
+                }
                 if dangling.is_empty() && churn.is_empty() {
                     println!("✓ Nothing to prune (no dangling notes{}).",
-                        if transitions { " or compactable transition history" } else { "" });
+                        if compact { " or compactable transition history" } else { "" });
                 }
                 if !dangling.is_empty() {
                     println!("✓ {verb} {} dangling note(s) (targets no longer exist):", dangling.len());
@@ -71,13 +91,13 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         println!("    {m}");
                     }
                 }
-                if transitions {
+                if compact {
                     println!(
-                        "✓ {verb} {} low-signal transition note(s) — kept the newest {keep_per_target} per target + every regression marker (smells + align unchanged).",
+                        "✓ {verb} {} low-signal transition note(s) — kept the newest {keep} per target + every regression marker (smells + align unchanged).",
                         churn.len()
                     );
                 }
-                if !(dangling.is_empty() && churn.is_empty()) {
+                if set_cap.is_some() || !(dangling.is_empty() && churn.is_empty()) {
                     println!("  → Next: {next_step}");
                 }
             }
