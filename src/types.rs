@@ -864,6 +864,8 @@ pub struct ValidatesEdge {
     pub intent_id: String,
     pub validation_name: String,
     pub intent_name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
     // --- State ---
     pub inspection_status: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]

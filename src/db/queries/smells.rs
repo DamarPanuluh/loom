@@ -252,14 +252,14 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             done_when: "the look-alike terms are merged, or the remaining terms have names and definitions that no longer collide".into(),
         },
         "unjourneyed_surface" => SmellTeaching {
-            principle: "User-visible code needs consumer-journey proof; per-leaf tests do not prove the composed experience.".into(),
+            principle: "User-visible code needs passed consumer-journey proof; per-leaf tests and declared-but-unrun sagas do not prove the composed experience.".into(),
             inspect: vec![
                 "`loom saga list`".into(),
-                "inspect whether a saga step binds to this intent or its relevant tree path".into(),
-                "add/run a saga, mark visibility internal, or record why no journey can exercise it".into(),
+                "inspect whether a passed saga step binds to this intent or its relevant tree path".into(),
+                "add and pass a saga, mark visibility internal, or record why no journey can exercise it".into(),
             ],
             avoid: vec!["do not treat user_visible as proven by unit coverage alone".into()],
-            done_when: "a consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable".into(),
+            done_when: "a passed consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable".into(),
         },
         "hypothesis_accumulation" => SmellTeaching {
             principle: "A hypothesis is a falsifiable proof item, not long-term memory; accumulation teaches the next LLM to prove, reject, or adopt instead of stockpiling ideas.".into(),
@@ -1393,17 +1393,18 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     }
 
     // 12. Unjourneyed surface — the consumer plane's completeness check: a
-    //     user_visible intent with real code that NO saga exercises end-to-end.
-    //     The product claims a consumer can see/feel it; no consumer journey
-    //     ever proves it. Visibility is the key — this smell is what makes the
-    //     `user_visible` ruling load-bearing outside the align interview.
+    //     user_visible intent with real code that NO PASSED saga exercises
+    //     end-to-end. The product claims a consumer can see/feel it; no consumer
+    //     journey ever proves it. Visibility is the key — this smell is what
+    //     makes the `user_visible` ruling load-bearing outside the align
+    //     interview.
     //
     //     Two regimes, so a journey-less repo isn't flooded:
-    //     - ZERO sagas declared → ONE aggregate finding on the root intent
-    //       ("no consumer journey at all"), adjudicated by a decision note on
-    //       the root newer than the newest user_visible intent.
-    //     - ≥1 saga → per-intent findings; the instrument is in use, so each
-    //       gap is meaningful. Adjudicated by a decision note on the intent
+    //     - ZERO passed sagas → ONE aggregate finding on the root intent
+    //       ("no proven consumer journey at all"), adjudicated by a decision
+    //       note on the root newer than the newest user_visible intent.
+    //     - ≥1 passed saga → per-intent findings; the instrument is in use, so
+    //       each gap is meaningful. Adjudicated by a decision note on the intent
     //       newer than its last redefinition (updated_at).
     //
     //     Coverage propagates BOTH ways through the tree: a step bound at
@@ -1411,16 +1412,22 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //     and a journeyed leaf suppresses its ancestors' own findings
     //     (unjourneyed SIBLINGS still fire individually).
     {
-        let saga_ids: HashSet<&str> = snapshot
+        let all_saga_ids: HashSet<&str> = snapshot
             .validations
             .iter()
             .filter(|v| v.validation_type == "saga")
             .map(|v| v.id.as_str())
             .collect();
+        let passed_saga_ids: HashSet<&str> = snapshot
+            .validations
+            .iter()
+            .filter(|v| v.validation_type == "saga" && v.last_result == "passed")
+            .map(|v| v.id.as_str())
+            .collect();
         let journeyed: HashSet<&str> = snapshot
             .validates
             .iter()
-            .filter(|e| saga_ids.contains(e.validation_id.as_str()))
+            .filter(|e| passed_saga_ids.contains(e.validation_id.as_str()))
             .map(|e| e.intent_id.as_str())
             .collect();
         let mut covered: HashSet<&str> = journeyed.clone();
@@ -1466,10 +1473,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             })
             .collect();
 
-        if saga_ids.is_empty() {
+        if passed_saga_ids.is_empty() {
             if !candidates.is_empty() {
                 // The aggregate target: the system root (or any root) — "this
-                // product has no consumer surface" is a claim about the root.
+                // product has no proven consumer surface" is a claim about the root.
                 let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
                 let mut roots: Vec<&crate::types::Intent> = intents
                     .iter()
@@ -1483,17 +1490,25 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         .map(|i| i.created_at.as_str())
                         .max()
                         .unwrap_or("");
-                    if let Some(note) = adjudicated(root.id.as_str(), newest_uv) {
+                    let newest_saga_binding = snapshot
+                        .validates
+                        .iter()
+                        .filter(|e| all_saga_ids.contains(e.validation_id.as_str()))
+                        .map(|e| e.created_at.as_str())
+                        .max()
+                        .unwrap_or("");
+                    let newest_consumer_surface = std::cmp::max(newest_uv, newest_saga_binding);
+                    if let Some(note) = adjudicated(root.id.as_str(), newest_consumer_surface) {
                         adjudicated_out.push(AdjudicatedSmell {
                             kind: "unjourneyed_surface".into(),
                             summary: format!(
-                                "no consumer journey declared — {} user_visible intent(s) never exercised end-to-end",
+                                "no passed consumer journey — {} user_visible intent(s) never exercised end-to-end",
                                 candidates.len()
                             ),
                             ruling: note.text.clone(),
                             ruled_by: note.author.clone(),
                             ruled_at: note.created_at.clone(),
-                            reopens_when: "a new user_visible intent lands after the ruling (or a first saga is declared — per-intent gaps become visible)".into(),
+                            reopens_when: "a new user_visible intent or saga binding lands after the ruling (or a first saga passes — per-intent gaps become visible)".into(),
                             teaching: teaching_for("unjourneyed_surface"),
                         });
                     } else {
@@ -1503,11 +1518,11 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                             kind: "unjourneyed_surface".into(),
                             score: 3.0 + candidates.len() as f64,
                             summary: format!(
-                                "no consumer journey declared — {} user_visible intent(s) are never exercised end-to-end",
+                                "no passed consumer journey — {} user_visible intent(s) are never exercised end-to-end",
                                 candidates.len()
                             ),
                             evidence: format!(
-                                "the product claims these are consumer-visible, but no saga touches any intent: e.g. {}",
+                                "the product claims these are consumer-visible, but no passed saga touches any intent: e.g. {}",
                                 sample.join(" · ")
                             ),
                             remedy: format!(
@@ -1525,7 +1540,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "unjourneyed_surface".into(),
                         summary: format!(
-                            "'{}' is user_visible but no journey exercises it",
+                            "'{}' is user_visible but no passed journey exercises it",
                             i.name
                         ),
                         ruling: note.text.clone(),
@@ -1540,11 +1555,11 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     kind: "unjourneyed_surface".into(),
                     score: if i.abstraction_level == "component" { 5.0 } else { 4.0 },
                     summary: format!(
-                        "'{}' is user_visible but no consumer journey exercises it",
+                        "'{}' is user_visible but no passed consumer journey exercises it",
                         i.name
                     ),
                     evidence: format!(
-                        "a {}-level intent ruled user_visible, grounded in code, reached by no saga (directly or via the tree)",
+                        "a {}-level intent ruled user_visible, grounded in code, reached by no passed saga (directly or via the tree)",
                         i.abstraction_level
                     ),
                     remedy: format!(

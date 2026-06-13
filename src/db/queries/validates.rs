@@ -80,7 +80,7 @@ pub fn set_validates_status_for_validation(
 /// calling `list_validates_for_intent` N times.
 pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
     let q = "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent) \
-             RETURN e.inspection_status, e.notes, \
+             RETURN e.inspection_status, e.notes, e.created_at, \
                     v.id AS validation_id, v.name AS validation_name, \
                     i.id AS intent_id, i.name AS intent_name";
     let result = db.execute(q)?;
@@ -101,6 +101,7 @@ pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
                 intent_id,
                 validation_name: str_val(get(row, &cols, "validation_name")),
                 intent_name: str_val(get(row, &cols, "intent_name")),
+                created_at: str_val(get(row, &cols, "e.created_at")),
                 inspection_status: str_val(get(row, &cols, "e.inspection_status")),
                 notes: str_val(get(row, &cols, "e.notes")),
             }
@@ -112,7 +113,7 @@ pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
 pub fn list_validates_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<ValidatesEdge>> {
     let q = format!(
         "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent {{id: '{id}'}}) \
-         RETURN e.inspection_status, e.notes, \
+         RETURN e.inspection_status, e.notes, e.created_at, \
                 v.id AS validation_id, v.name AS validation_name, \
                 i.id AS intent_id, i.name AS intent_name",
         id = esc(intent_id)
@@ -135,6 +136,7 @@ pub fn list_validates_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
                 intent_id,
                 validation_name: str_val(get(row, &cols, "validation_name")),
                 intent_name: str_val(get(row, &cols, "intent_name")),
+                created_at: str_val(get(row, &cols, "e.created_at")),
                 inspection_status: str_val(get(row, &cols, "e.inspection_status")),
                 notes: str_val(get(row, &cols, "e.notes")),
             }

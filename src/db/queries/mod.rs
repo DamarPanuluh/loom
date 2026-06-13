@@ -3438,8 +3438,8 @@ mod tests {
     }
 
     /// The consumer plane's completeness check (unjourneyed_surface), both
-    /// regimes: zero sagas → ONE aggregate finding on the root, adjudicated by
-    /// a decision note there; ≥1 saga → per-intent findings with tree-aware
+    /// regimes: zero passed sagas → ONE aggregate finding on the root,
+    /// adjudicated by a decision note there; ≥1 passed saga → per-intent findings with tree-aware
     /// coverage (a journeyed sibling never covers its sibling), adjudicated
     /// per intent, re-opened by a redefinition. Untriaged visibility never
     /// fires — the smell is what makes the user_visible ruling load-bearing.
@@ -3464,7 +3464,7 @@ mod tests {
         set_intent_visibility(&db, &ids[1], "user_visible", "t1").unwrap();
         set_intent_visibility(&db, &ids[2], "user_visible", "t1").unwrap();
 
-        // Zero sagas → exactly ONE aggregate finding, targeting the root.
+        // Zero passed sagas → exactly ONE aggregate finding, targeting the root.
         let smells = compute_smells(&db).unwrap().open;
         let uj: Vec<&Smell> = smells
             .iter()
@@ -3472,7 +3472,7 @@ mod tests {
             .collect();
         assert_eq!(uj.len(), 1, "{smells:?}");
         assert!(
-            uj[0].summary.contains("no consumer journey"),
+            uj[0].summary.contains("no passed consumer journey"),
             "{}",
             uj[0].summary
         );
@@ -3492,9 +3492,8 @@ mod tests {
             .iter()
             .any(|a| a.kind == "unjourneyed_surface"));
 
-        // A saga arrives → per-intent regime. It journeys ids[1] only: ids[1]
-        // is covered (direct), ids[0] via ancestor roll-up, ids[2] — the
-        // unjourneyed SIBLING — fires individually.
+        // A not-run saga arrives but proves nothing yet: it must NOT cover any
+        // intent or switch into the per-intent regime.
         insert_validation(
             &db,
             &Validation {
@@ -3508,7 +3507,23 @@ mod tests {
             },
         )
         .unwrap();
-        insert_validates(&db, "sg0", &ids[1], "", "t2").unwrap();
+        insert_validates(&db, "sg0", &ids[1], "", "t9").unwrap();
+        let smells = compute_smells(&db).unwrap().open;
+        let uj: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| s.kind == "unjourneyed_surface")
+            .collect();
+        assert_eq!(uj.len(), 1, "{smells:?}");
+        assert!(
+            uj[0].summary.contains("no passed consumer journey"),
+            "a declared but unrun saga must not satisfy consumer journey coverage: {}",
+            uj[0].summary
+        );
+
+        // Once the saga passes, it journeys ids[1] only: ids[1] is covered
+        // (direct), ids[0] via ancestor roll-up, ids[2] — the unjourneyed
+        // SIBLING — fires individually.
+        update_validation_result(&db, "sg0", "passed", "t10").unwrap();
         let smells = compute_smells(&db).unwrap().open;
         let uj: Vec<&Smell> = smells
             .iter()
