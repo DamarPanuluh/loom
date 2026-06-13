@@ -81,6 +81,72 @@ pub fn content_hash(bytes: &[u8]) -> String {
     format!("{h:016x}")
 }
 
+/// Pairwise git co-change counts among a set of known repo-relative paths, plus
+/// how many of the scanned commits each path appears in. The evidence behind the
+/// `cochange_coupling` smell: files that keep changing together are coupled even
+/// when neither imports the other. Best-effort — returns empty on any failure
+/// (no git, not a repo, no history), so callers degrade silently.
+#[derive(Debug, Default)]
+pub struct CoChange {
+    /// (path_a, path_b) sorted → number of scanned commits that touched both.
+    pub pairs: std::collections::HashMap<(String, String), usize>,
+    /// path → number of scanned commits that touched it (the confidence denom).
+    pub individual: std::collections::HashMap<String, usize>,
+}
+
+/// Mine `git log` for evolutionary coupling among `paths`, over the last
+/// `last_n` non-merge commits. Only files in `paths` (the graph's CodeFiles)
+/// count, so the cost is bounded by history depth, not repo size.
+pub fn git_cochange(
+    root: &Path,
+    paths: &std::collections::HashSet<String>,
+    last_n: usize,
+) -> CoChange {
+    let mut cc = CoChange::default();
+    if paths.is_empty() {
+        return cc;
+    }
+    // `--format=%x00` prints only a NUL per commit, then --name-only lists its
+    // files. Splitting stdout on NUL yields one chunk of file paths per commit.
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .arg("log")
+        .arg("--no-merges")
+        .arg(format!("-n{last_n}"))
+        .arg("--name-only")
+        .arg("--format=%x00")
+        .output();
+    let Ok(output) = output else {
+        return cc;
+    };
+    if !output.status.success() {
+        return cc;
+    }
+    let text = String::from_utf8_lossy(&output.stdout);
+    for commit in text.split('\u{0}') {
+        let mut files: Vec<&str> = commit
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && paths.contains(*l))
+            .collect();
+        files.sort_unstable();
+        files.dedup();
+        for f in &files {
+            *cc.individual.entry((*f).to_string()).or_insert(0) += 1;
+        }
+        for i in 0..files.len() {
+            for j in (i + 1)..files.len() {
+                // files is sorted, so (i, j) is already the canonical order.
+                *cc.pairs
+                    .entry((files[i].to_string(), files[j].to_string()))
+                    .or_insert(0) += 1;
+            }
+        }
+    }
+    cc
+}
+
 /// Confine a registered path to the graph root: `.`/`..` fold lexically (the
 /// file may not exist yet, and a hostile path must never be probed), the
 /// result must stay under `root`, and the returned form is root-relative with
@@ -631,6 +697,25 @@ mod tests {
         assert!(locator_present("fn run() {}", "fn run"));
         assert!(locator_present("anything", "")); // file-level grounding
         assert!(!locator_present("fn walk() {}", "fn run"));
+    }
+
+    #[test]
+    fn git_cochange_degrades_without_a_repo() {
+        // A bare temp dir is not a git repo → `git log` fails → empty, no panic.
+        let dir = std::env::temp_dir().join(format!("loom-nogit-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut paths = std::collections::HashSet::new();
+        paths.insert("src/a.rs".to_string());
+        let cc = git_cochange(&dir, &paths, 100);
+        assert!(
+            cc.pairs.is_empty() && cc.individual.is_empty(),
+            "no git repo must degrade to empty"
+        );
+        // Empty path set short-circuits regardless of environment.
+        assert!(git_cochange(&dir, &std::collections::HashSet::new(), 100)
+            .pairs
+            .is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

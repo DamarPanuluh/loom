@@ -1648,6 +1648,43 @@ mod tests {
         assert_eq!(get_transition_cap(&db).unwrap(), 0, "0 is an explicit off, not unset");
     }
 
+    /// cochange_coupling: unlinked intents whose files co-change above the
+    /// threshold are suggested; a recorded RELATES_TO edge suppresses it; and a
+    /// below-threshold pair is ignored. (The git read is tested separately in
+    /// repo.rs — here we inject the co-change maps to test the suggestion logic.)
+    #[test]
+    fn cochange_suggestions_flag_unlinked_cochanging_intents() {
+        use std::collections::HashMap;
+        let (db, ids) = db_inited(2);
+        insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfb", "src/b.rs")).unwrap();
+        insert_implements(&db, &ids[0], "cfa", "fn a", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "cfb", "fn b", "", "t").unwrap();
+        let snap = QuerySnapshot::load(&db).unwrap();
+
+        let pairs: HashMap<(String, String), usize> =
+            [(("src/a.rs".to_string(), "src/b.rs".to_string()), 5)].into();
+        let individual: HashMap<String, usize> =
+            [("src/a.rs".to_string(), 5), ("src/b.rs".to_string(), 6)].into();
+
+        let s = cochange_suggestions(&snap, &pairs, &individual);
+        assert_eq!(s.len(), 1, "unlinked co-changing pair is suggested: {s:?}");
+        assert_eq!(s[0].kind, "cochange_coupling");
+
+        // A recorded relationship suppresses the suggestion.
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        let snap2 = QuerySnapshot::load(&db).unwrap();
+        assert!(
+            cochange_suggestions(&snap2, &pairs, &individual).is_empty(),
+            "a RELATES_TO-linked pair is not suggested"
+        );
+
+        // Below the co-change threshold → nothing.
+        let weak: HashMap<(String, String), usize> =
+            [(("src/a.rs".to_string(), "src/b.rs".to_string()), 2)].into();
+        assert!(cochange_suggestions(&snap, &weak, &individual).is_empty());
+    }
+
     /// A v3 export (stored edge uuids; notes referencing them) upgrades in
     /// flight: the legacy edge id is dropped and edge-targeted notes are
     /// remapped to the derived v4 edge key.

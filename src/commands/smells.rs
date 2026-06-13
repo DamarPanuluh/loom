@@ -11,7 +11,7 @@
 
 use anyhow::Result;
 
-use crate::db::queries::compute_smells;
+use crate::db::queries::{cochange_suggestions, compute_smells_from, QuerySnapshot};
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
@@ -20,7 +20,19 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
-    let report = compute_smells(&db)?;
+    let snapshot = QuerySnapshot::load(&db)?;
+    let report = compute_smells_from(&db, &snapshot)?;
+
+    // Advisory cochange_coupling suggestions: git-derived, command-only (the
+    // audit gate's `compute_smells_from` stays git-free and fast), never gate
+    // green. Bounded to recent history; degrades silently with no git.
+    let paths: std::collections::HashSet<String> =
+        snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
+    let cc = crate::repo::git_cochange(&cwd, &paths, 800);
+    let suggestions = cochange_suggestions(&snapshot, &cc.pairs, &cc.individual);
+    let suggestions_total = suggestions.len();
+    let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
+
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
@@ -41,7 +53,9 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
             "vocab_terms": registry,
             "coded_layers": coded_layers,
             "declared_layers": declared_layers,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it.",
+            "cochange_suggestions": suggestions_shown,
+            "cochange_suggestions_total": suggestions_total,
+            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` are ADVISORY (git evolutionary coupling) — they never gate green; explore or ignore.",
         }));
         return Ok(());
     }
@@ -74,6 +88,28 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
             total - smells.len(),
             total
         );
+    }
+    if !suggestions_shown.is_empty() {
+        println!();
+        println!(
+            "── co-change suggestions ({}) — ADVISORY (git evolutionary coupling; never gate green) ──",
+            suggestions_total
+        );
+        println!();
+        for s in &suggestions_shown {
+            println!("  [{}]  (score {:.1})", s.kind, s.score);
+            println!("    {}", s.summary);
+            println!("    evidence: {}", s.evidence);
+            println!("    remedy:   {}", s.remedy);
+            println!();
+        }
+        if suggestions_total > suggestions_shown.len() {
+            println!(
+                "  ({} more — `loom smells --limit {}`)",
+                suggestions_total - suggestions_shown.len(),
+                suggestions_total
+            );
+        }
     }
     if !adjudicated.is_empty() {
         println!();

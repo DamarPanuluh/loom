@@ -208,6 +208,16 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             avoid: vec!["do not add a relationship without naming the actual call/import contract".into()],
             done_when: "the coupling is grounded with evidence, marked as an issue to untangle, or the import is removed".into(),
         },
+        "cochange_coupling" => SmellTeaching {
+            principle: "Files that keep changing together are coupled even when neither imports the other — git history reveals the hidden contract static analysis misses. It is a SUGGESTION to investigate, not a defect: confirm the relationship or explain why the co-change is incidental.".into(),
+            inspect: vec![
+                "read both intents' criteria and the files named in evidence".into(),
+                "decide if they share a hidden contract (serializer/deserializer, schema/consumer, code/fixture) or just co-changed in a wide refactor".into(),
+                "`loom edge explore <a> <b>` to ground the relationship or mark it independent".into(),
+            ],
+            avoid: vec!["do not treat co-change as proof of a relationship without reading the code; a wide refactor couples files incidentally".into()],
+            done_when: "the pair has a grounded or independent RELATES_TO verdict (this is advisory — it never gates phase=complete)".into(),
+        },
         "layering_violation" => SmellTeaching {
             principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
             inspect: vec![
@@ -332,6 +342,11 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
 /// returned. That is what lets `graph_state` gate phase=complete on zero
 /// findings without inviting threshold-gaming: green means every suspicion
 /// was ANSWERED, not that every heuristic is happy.
+///
+/// Test-only convenience now: production callers (`graph_state`, `loom next
+/// --all`, the `loom smells` command) hold a snapshot already and call
+/// `compute_smells_from` directly.
+#[cfg(test)]
 pub fn compute_smells(db: &dyn LoomDb) -> Result<SmellReport> {
     let snapshot = QuerySnapshot::load(db)?;
     compute_smells_from(db, &snapshot)
@@ -1688,4 +1703,129 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         coded_layers,
         declared_layers,
     })
+}
+
+/// `cochange_coupling` suggestions — the ADVISORY, git-derived counterpart to
+/// `undeclared_coupling`. Intent pairs whose files keep changing together
+/// (temporal coupling) but that have no recorded RELATES_TO relationship.
+/// Computed OUTSIDE `compute_smells_from` (which is the green-gating, git-free
+/// audit path): these are hints to investigate, never gate `phase=complete`,
+/// and the git pass runs only in the `loom smells` command. Takes the raw
+/// co-change maps (from `repo::git_cochange`) so the logic is testable without
+/// a real repo. Empty when there's no history or nothing crosses the threshold.
+pub fn cochange_suggestions(
+    snapshot: &QuerySnapshot,
+    pairs: &HashMap<(String, String), usize>,
+    individual: &HashMap<String, usize>,
+) -> Vec<Smell> {
+    /// Co-change at least this many times before it's worth a look.
+    const MIN_COCHANGE: usize = 3;
+    /// And with at least this confidence: co-changes / min(individual changes).
+    /// Filters two churny files that merely overlap from a real "they move
+    /// together" contract.
+    const MIN_CONFIDENCE: f64 = 0.5;
+    const MAX_SUGGESTIONS: usize = 15;
+    if pairs.is_empty() {
+        return Vec::new();
+    }
+    let active: HashSet<&str> = snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let name_of: HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
+    let mut intents_on_file: HashMap<&str, Vec<&str>> = HashMap::new();
+    for im in &snapshot.implements {
+        intents_on_file
+            .entry(im.codefile_path.as_str())
+            .or_default()
+            .push(im.intent_id.as_str());
+    }
+    // Already-related pairs (RELATES_TO any status + HIERARCHY), both directions.
+    let mut linked: HashSet<(&str, &str)> = HashSet::new();
+    for e in &snapshot.relates {
+        linked.insert((e.from_id.as_str(), e.to_id.as_str()));
+        linked.insert((e.to_id.as_str(), e.from_id.as_str()));
+    }
+    for (p, c) in &snapshot.hierarchy {
+        linked.insert((p.as_str(), c.as_str()));
+        linked.insert((c.as_str(), p.as_str()));
+    }
+
+    // Accumulate per intent-pair: strongest co-change count, confidence, and a
+    // few example file pairs.
+    let mut acc: HashMap<(String, String), (usize, f64, Vec<String>)> = HashMap::new();
+    for ((fa, fb), &count) in pairs {
+        if count < MIN_COCHANGE {
+            continue;
+        }
+        let denom = (*individual.get(fa).unwrap_or(&count))
+            .min(*individual.get(fb).unwrap_or(&count))
+            .max(1);
+        let confidence = count as f64 / denom as f64;
+        if confidence < MIN_CONFIDENCE {
+            continue;
+        }
+        let (Some(owners_a), Some(owners_b)) = (
+            intents_on_file.get(fa.as_str()),
+            intents_on_file.get(fb.as_str()),
+        ) else {
+            continue;
+        };
+        for a in owners_a {
+            for b in owners_b {
+                if a == b
+                    || !active.contains(a)
+                    || !active.contains(b)
+                    || linked.contains(&(*a, *b))
+                {
+                    continue;
+                }
+                let key = if a < b {
+                    (a.to_string(), b.to_string())
+                } else {
+                    (b.to_string(), a.to_string())
+                };
+                let entry = acc.entry(key).or_insert((0, 0.0, Vec::new()));
+                entry.0 = entry.0.max(count);
+                if confidence > entry.1 {
+                    entry.1 = confidence;
+                }
+                let example = format!("{fa} ↔ {fb} ({count}×)");
+                if entry.2.len() < 3 && !entry.2.contains(&example) {
+                    entry.2.push(example);
+                }
+            }
+        }
+    }
+    let mut out: Vec<Smell> = acc
+        .into_iter()
+        .map(|((a, b), (count, confidence, examples))| {
+            let na = name_of.get(a.as_str()).copied().unwrap_or(a.as_str());
+            let nb = name_of.get(b.as_str()).copied().unwrap_or(b.as_str());
+            Smell {
+                kind: "cochange_coupling".into(),
+                score: count as f64 * confidence,
+                summary: format!(
+                    "'{na}' and '{nb}' keep changing together in git but have no recorded relationship"
+                ),
+                evidence: format!(
+                    "co-change: {} · confidence {:.0}%",
+                    examples.join(", "),
+                    confidence * 100.0
+                ),
+                remedy: format!(
+                    "loom edge explore {a} {b}  → history says they're coupled; ground the relationship or mark it independent"
+                ),
+                teaching: teaching_for("cochange_coupling"),
+            }
+        })
+        .collect();
+    out.sort_by(|x, y| {
+        y.score
+            .partial_cmp(&x.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    out.truncate(MAX_SUGGESTIONS);
+    out
 }
