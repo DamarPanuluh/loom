@@ -61,6 +61,21 @@ pub fn extract_physical_facts(rel_path: &str, content: &str) -> Option<PhysicalF
             .then_with(|| a.line_end.cmp(&b.line_end))
     });
     facts.symbol_facts.dedup_by(|a, b| a.label == b.label);
+    // Per-symbol body hash — the signal `loom sync` diffs to flip only the
+    // edges whose symbol actually changed. Hash the symbol's source LINES;
+    // sync matches symbols by label, so moving an unedited symbol (line shift)
+    // keeps the same hash and correctly reads as unchanged.
+    let lines: Vec<&str> = content.lines().collect();
+    for fact in &mut facts.symbol_facts {
+        let lo = fact.line_start.saturating_sub(1);
+        let hi = fact.line_end.min(lines.len());
+        let body = if lo < hi {
+            lines[lo..hi].join("\n")
+        } else {
+            String::new()
+        };
+        fact.body_hash = crate::repo::content_hash(body.as_bytes());
+    }
     Some(facts)
 }
 
@@ -365,6 +380,7 @@ fn rust_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<Sym
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
         is_test: path_is_test(rel_path) || rust_symbol_is_test(node, content),
+        body_hash: String::new(),
     })
 }
 
@@ -404,6 +420,7 @@ fn js_ts_symbol_fact(
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
         is_test: path_is_test(rel_path) || js_ts_name_is_test(text(node, content).unwrap_or("")),
+        body_hash: String::new(),
     })
 }
 
@@ -444,6 +461,7 @@ fn collect_js_ts_const_facts(
                                 line_start: child.start_position().row + 1,
                                 line_end: child.end_position().row + 1,
                                 is_test: path_is_test(rel_path) || name.starts_with("test"),
+                                body_hash: String::new(),
                             },
                         );
                     }
@@ -476,6 +494,7 @@ fn python_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<S
         line_end: node.end_position().row + 1,
         kind: kind.into(),
         name,
+        body_hash: String::new(),
     })
 }
 

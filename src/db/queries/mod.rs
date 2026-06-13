@@ -1403,6 +1403,7 @@ mod tests {
                     line_start: 10,
                     line_end: 12,
                     is_test: false,
+                    body_hash: String::new(),
                 },
                 SymbolFact {
                     label: "struct Worker".into(),
@@ -1412,6 +1413,7 @@ mod tests {
                     line_start: 20,
                     line_end: 24,
                     is_test: false,
+                    body_hash: String::new(),
                 },
             ],
         )
@@ -1908,6 +1910,7 @@ mod tests {
                 line_start: 3,
                 line_end: 8,
                 is_test: false,
+                body_hash: String::new(),
             }],
         )
         .unwrap();
@@ -3602,6 +3605,7 @@ mod tests {
                 line_start: 1,
                 line_end: 3,
                 is_test: false,
+                body_hash: String::new(),
             },
             SymbolFact {
                 label: "pub fn stop".into(),
@@ -3611,6 +3615,7 @@ mod tests {
                 line_start: 5,
                 line_end: 7,
                 is_test: false,
+                body_hash: String::new(),
             },
         ];
         cf.symbols = cf

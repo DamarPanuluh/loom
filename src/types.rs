@@ -525,6 +525,15 @@ pub struct SymbolFact {
     pub line_end: usize,
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub is_test: bool,
+    /// FNV-1a hash of this symbol's source lines — `loom sync`'s per-symbol
+    /// change detector. Lets sync flip only the IMPLEMENTS edges whose locator
+    /// targets a symbol whose BODY actually changed, instead of every edge on a
+    /// changed file (the transition-churn source). Empty on pre-upgrade graphs
+    /// and feature-light builds; sync falls back to whole-file flipping when
+    /// any compared fact lacks it. Self-heals — sync re-extracts symbol_facts
+    /// every run, so it populates on the first sync after upgrade.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub body_hash: String,
 }
 
 /// Named anti-pattern rule.

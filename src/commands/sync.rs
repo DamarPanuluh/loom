@@ -223,6 +223,22 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             .cloned()
             .unwrap_or_default();
 
+        // Symbol-level narrowing: flip only the intents whose IMPLEMENTS
+        // locator targets a symbol whose BODY actually changed (tree-sitter
+        // per-symbol hash diff vs the stored facts). `None` = can't attribute
+        // the change to specific symbols (non-UTF8, no symbol facts, a
+        // pre-upgrade graph without body hashes yet, or a change outside every
+        // symbol) → fall back to today's whole-file flip. Never under-flags.
+        let affected = affected_intents(&base, cf, text_contents.get(&cf.path), &all_implements);
+        let effective_ids: Vec<String> = match &affected {
+            None => intent_ids.clone(),
+            Some(set) => intent_ids
+                .iter()
+                .filter(|i| set.contains(i.as_str()))
+                .cloned()
+                .collect(),
+        };
+
         // This file's whole mutation unit commits atomically (see above):
         // fingerprint + ripple together, or neither.
         crate::db::with_transaction(&db, || {
@@ -237,7 +253,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             //    RELATES_TO). Each flip records a transition note naming the
             //    triggering file, so a stale edge explains itself in `loom edge
             //    show` / `loom next`.
-            for iid in intent_ids.iter().filter(|i| active.contains(*i)) {
+            for iid in effective_ids.iter().filter(|i| active.contains(*i)) {
                 relates_to_flagged += flag_relates_to_for_intent_with_indexes(
                     &db,
                     iid,
@@ -277,10 +293,12 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 )?;
             }
 
-            // 3. Invalidate Validation.last_result for those intents
+            // 3. Invalidate Validation.last_result for those intents (the same
+            //    symbol-narrowed set — a proof is only stale if the code it
+            //    covers actually changed).
             validations_invalidated += invalidate_validations_for_intents_with_indexes(
                 &db,
-                &intent_ids,
+                &effective_ids,
                 &validates_by_intent,
                 &validation_by_id,
                 &mut invalidated_validation_ids,
@@ -543,6 +561,91 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// Helper: which intents grounded in a changed file are ACTUALLY affected —
+// the symbol-level narrowing. Returns `None` to mean "can't attribute, flip the
+// whole file" (the conservative default that never under-flags), or `Some(set)`
+// of intent ids whose IMPLEMENTS locator on this file is file-level (empty) or
+// names a symbol whose body hash changed.
+// ---------------------------------------------------------------------------
+fn affected_intents(
+    base: &Path,
+    cf: &crate::types::CodeFile,
+    content: Option<&String>,
+    all_implements: &[crate::types::Implements],
+) -> Option<HashSet<String>> {
+    // No readable text (binary/non-UTF8) → can't diff symbols.
+    let content = content?;
+    // No prior symbol facts (never extracted) → nothing to diff against.
+    if cf.symbol_facts.is_empty() {
+        return None;
+    }
+    let facts = crate::repo::extract_physical_facts(base, &cf.path, content);
+    // Unsupported language / feature-light build (no tree-sitter) → whole-file.
+    if facts.symbol_facts.is_empty() {
+        return None;
+    }
+    // Need body hashes on BOTH sides; a pre-upgrade graph (or feature-light
+    // extraction) lacks them → fall back rather than mis-diff.
+    if cf
+        .symbol_facts
+        .iter()
+        .chain(facts.symbol_facts.iter())
+        .any(|f| f.body_hash.is_empty())
+    {
+        return None;
+    }
+    let old: HashMap<&str, &str> = cf
+        .symbol_facts
+        .iter()
+        .map(|f| (f.label.as_str(), f.body_hash.as_str()))
+        .collect();
+    let name_of: HashMap<&str, &str> = cf
+        .symbol_facts
+        .iter()
+        .chain(facts.symbol_facts.iter())
+        .map(|f| (f.label.as_str(), f.name.as_str()))
+        .collect();
+    // Changed = added, removed, or body hash differs (matched by label).
+    let mut changed: HashSet<&str> = HashSet::new();
+    for f in &facts.symbol_facts {
+        match old.get(f.label.as_str()) {
+            Some(h) if *h == f.body_hash.as_str() => {}
+            _ => {
+                changed.insert(f.label.as_str());
+            }
+        }
+    }
+    let new_labels: HashSet<&str> = facts.symbol_facts.iter().map(|f| f.label.as_str()).collect();
+    for lbl in old.keys() {
+        if !new_labels.contains(lbl) {
+            changed.insert(lbl);
+        }
+    }
+    // Content changed but NO symbol changed → the edit is outside every symbol
+    // (comments / whitespace / imports / module-level). Conservative: fall back
+    // to whole-file rather than risk missing a real behavior change.
+    if changed.is_empty() {
+        return None;
+    }
+    let changed_names: Vec<&str> = changed
+        .iter()
+        .filter_map(|lbl| name_of.get(lbl).copied())
+        .filter(|n| !n.is_empty())
+        .collect();
+    // An intent is affected iff one of its IMPLEMENTS edges on THIS file is
+    // file-level (empty locator) or names a changed symbol. Substring match
+    // mirrors `locator_present`; it over-flags rather than under-flags.
+    let mut affected = HashSet::new();
+    for im in all_implements.iter().filter(|im| im.codefile_id == cf.id) {
+        let loc = im.locator.trim();
+        if loc.is_empty() || changed_names.iter().any(|n| loc.contains(n)) {
+            affected.insert(im.intent_id.clone());
+        }
+    }
+    Some(affected)
+}
+
+// ---------------------------------------------------------------------------
 // Helper: flag RELATES_TO edges for one intent → needs_reverification
 // Returns count of edges updated.
 // ---------------------------------------------------------------------------
@@ -660,4 +763,93 @@ fn flag_targets_for_intent_with_indexes(
         }
     }
     Ok(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{CodeFile, Implements, SymbolFact};
+
+    fn cf(symbol_facts: Vec<SymbolFact>) -> CodeFile {
+        CodeFile {
+            id: "cf1".into(),
+            path: "src/foo.rs".into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: vec![],
+            symbols: vec![],
+            symbol_facts,
+            content_hash: String::new(),
+        }
+    }
+    fn imp(intent: &str, locator: &str) -> Implements {
+        Implements {
+            id: format!("imp:{intent}"),
+            intent_id: intent.into(),
+            codefile_id: "cf1".into(),
+            intent_name: intent.into(),
+            codefile_path: "src/foo.rs".into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: locator.into(),
+            notes: String::new(),
+            created_at: String::new(),
+        }
+    }
+
+    // `None` (whole-file fallback) whenever the change can't be attributed to
+    // symbols — holds in EVERY build. This is the --no-default-features safety
+    // net: feature-light extraction yields no symbol facts → fall back.
+    #[test]
+    fn affected_falls_back_without_prior_facts() {
+        let base = std::env::temp_dir();
+        let c = "fn a() {}\n".to_string();
+        assert!(affected_intents(&base, &cf(vec![]), Some(&c), &[]).is_none());
+    }
+    #[test]
+    fn affected_falls_back_without_content() {
+        assert!(affected_intents(&std::env::temp_dir(), &cf(vec![]), None, &[]).is_none());
+    }
+
+    // The narrowing itself needs tree-sitter to extract symbols.
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn affected_narrows_to_the_changed_symbol_only() {
+        let base = std::env::temp_dir();
+        let old = "fn a() {\n    1\n}\nfn b() {\n    2\n}\n";
+        let new = "fn a() {\n    999\n}\nfn b() {\n    2\n}\n"; // only a's body changed
+        let old_facts = crate::repo::extract_physical_facts(&base, "src/foo.rs", old).symbol_facts;
+        assert!(!old_facts.is_empty(), "tree-sitter extracted symbols");
+        let codefile = cf(old_facts);
+        let impls = vec![imp("ia", "fn a"), imp("ib", "fn b"), imp("ifile", "")];
+        let affected = affected_intents(&base, &codefile, Some(&new.to_string()), &impls)
+            .expect("symbol-level diff, not the whole-file fallback");
+        assert!(affected.contains("ia"), "intent on the changed symbol flips");
+        assert!(affected.contains("ifile"), "file-level grounding always flips");
+        assert!(
+            !affected.contains("ib"),
+            "intent on the UNCHANGED symbol must NOT flip — this is the win"
+        );
+    }
+
+    // Content changed but every symbol body is identical (a comment shifted the
+    // lines) → conservative whole-file fallback, never a silent miss.
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn affected_falls_back_when_change_is_outside_symbols() {
+        let base = std::env::temp_dir();
+        let old = "fn a() {\n    1\n}\n";
+        let new = "// added comment\nfn a() {\n    1\n}\n"; // a moves but its body is identical
+        let old_facts = crate::repo::extract_physical_facts(&base, "src/foo.rs", old).symbol_facts;
+        let codefile = cf(old_facts);
+        let impls = vec![imp("ia", "fn a")];
+        assert!(
+            affected_intents(&base, &codefile, Some(&new.to_string()), &impls).is_none(),
+            "no symbol body changed → fall back to whole-file (conservative)"
+        );
+    }
 }

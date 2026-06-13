@@ -463,6 +463,7 @@ mod tests {
             line_start: 1,
             line_end: 2,
             is_test,
+            body_hash: String::new(),
         }
     }
 
