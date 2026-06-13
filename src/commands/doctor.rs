@@ -8,14 +8,17 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, printer)
+}
 
-    let report = check_graph(&db)?;
+pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+    let report = check_graph(db)?;
 
     // Committed-export freshness (advisory — the hard gate is `loom export
     // --check`): when a travel-format file exists next to the graph, a doctor
     // run is a natural moment to notice it drifted.
     let mut hints = report.hints.clone();
-    if crate::db::queries::committed_export_stale(&db, &cwd)? == Some(true) {
+    if crate::db::queries::committed_export_stale(db, root)? == Some(true) {
         hints.push(
             "loom.graph.json is STALE vs the live graph — run `loom export` and commit it \
              alongside the code (verify any time with `loom export --check`; CI wiring is \

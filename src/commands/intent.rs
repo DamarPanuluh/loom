@@ -17,7 +17,15 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: IntentCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         IntentCmd::Add {
             name,
@@ -51,7 +59,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // repo this graph merely observes.
             if lifecycle != "implemented" {
                 crate::db::queries::ensure_owned(
-                    &db,
+                    db,
                     &format!("declare a '{lifecycle}' intent (a promise to change the code)"),
                 )?;
             }
@@ -66,7 +74,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // Tags are validated against the registry — unknown terms error
             // with the full registry inlined (the agent sees the menu at the
             // moment of choice). Empty = untagged, always honest.
-            let tags = crate::commands::vocab::validate_tags(&db, &tags)?;
+            let tags = crate::commands::vocab::validate_tags(db, &tags)?;
             let has_tags = !tags.is_empty();
             let tags = crate::db::queries::encode_tags(tags)?;
             let source_refs = sources.clone();
@@ -90,7 +98,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 updated_at: now,
             };
 
-            insert_intent(&db, &intent)?;
+            insert_intent(db, &intent)?;
 
             // Connecting the intent into the HIERARCHY tree is the FIRST step
             // (the vertical spine is what makes the graph complete). A `system`
@@ -107,7 +115,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // pick from and the intent arrived untagged. One line, never a nag
             // — tags stay optional at write time but matter once code is
             // grounded and the audit asks whether duplicate detection is armed.
-            let registry_size = crate::db::queries::list_vocab_terms(&db)?.len();
+            let registry_size = crate::db::queries::list_vocab_terms(db)?.len();
             let tag_step = (!has_tags && registry_size > 0).then(|| format!(
                 "Optional now, audit-relevant once grounded: tag it from the {registry_size}-term vocabulary (`loom vocab list`, then `loom intent tag add {id} <term>`) so duplicate-responsibility detection has its strongest signal."
             ));
@@ -142,8 +150,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // Confirmation is a *verdict* that the intent is valid — validator
             // lane, so the builder cannot ratify its own proposals.
             let by = gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let intent = get_intent(&db, &id)?.ok_or_else(|| {
+            let id = crate::db::queries::resolve_intent(db, &id)?;
+            let intent = get_intent(db, &id)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
                     id
@@ -171,14 +179,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // leaving the intent looking drift-suspect forever. The visibility
             // ruling is part of the same interview outcome ("this is internal,
             // stop asking"): splitting them would let one land without the other.
-            let found = crate::db::with_transaction(&db, || {
-                let found = confirm_intent(&db, &id, &now)?;
+            let found = crate::db::with_transaction(db, || {
+                let found = confirm_intent(db, &id, &now)?;
                 if found {
-                    crate::db::queries::record_confirmation(&db, &id, &by, &now)?;
+                    crate::db::queries::record_confirmation(db, &id, &by, &now)?;
                     if let Some(v) = visibility.as_deref() {
-                        crate::db::queries::set_intent_visibility(&db, &id, v, &now)?;
+                        crate::db::queries::set_intent_visibility(db, &id, v, &now)?;
                         crate::db::queries::insert_note(
-                            &db,
+                            db,
                             &crate::types::Note {
                                 id: Uuid::new_v4().to_string(),
                                 kind: "decision".into(),
@@ -212,11 +220,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     payload["visibility"] = serde_json::json!(v);
                 }
                 let payload =
-                    crate::output::with_anchor(payload, &db, "`loom next` serves the next item")?;
+                    crate::output::with_anchor(payload, db, "`loom next` serves the next item")?;
                 printer.print_json(&payload);
             } else {
                 println!("✓ Intent {} {}", id, confirmed_msg);
-                crate::output::print_anchor(&db, "`loom next` serves the next item")?;
+                crate::output::print_anchor(db, "`loom next` serves the next item")?;
             }
         }
 
@@ -253,12 +261,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // graph's owners.
             let by = gate::acting_in_lane("update an intent", &[role::BUILDER], None)?;
             crate::db::queries::ensure_owned(
-                &db,
+                db,
                 "update an intent (the design decision belongs to the graph's owners)",
             )?;
             gate::require_substantive("reason", &reason, "why the meaning moved")?;
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let intent = get_intent(&db, &id)?.ok_or_else(|| {
+            let id = crate::db::queries::resolve_intent(db, &id)?;
+            let intent = get_intent(db, &id)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
                     id
@@ -290,12 +298,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // a verdict nobody made. The flipped IMPLEMENTS grounding routes
             // the honest question — "does the code still do what this now
             // says?" — through the fix queue, where a real inspection decides.
-            let ripple = crate::db::with_transaction(&db, || {
-                crate::db::queries::update_intent_meaning(&db, &id, new_name, new_desc, &now)?;
+            let ripple = crate::db::with_transaction(db, || {
+                crate::db::queries::update_intent_meaning(db, &id, new_name, new_desc, &now)?;
                 if let Some(layer) = new_layer {
-                    set_intent_layer(&db, &id, layer, &now)?;
+                    set_intent_layer(db, &id, layer, &now)?;
                     crate::db::queries::insert_note(
-                        &db,
+                        db,
                         &crate::types::Note {
                             id: Uuid::new_v4().to_string(),
                             kind: "decision".into(),
@@ -323,7 +331,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 }
                 if let Some(n) = new_name {
                     crate::db::queries::insert_note(
-                        &db,
+                        db,
                         &crate::types::Note {
                             id: Uuid::new_v4().to_string(),
                             kind: "decision".into(),
@@ -347,7 +355,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         // exits the interview queue exactly like a
                         // redefinition does.
                         crate::db::queries::insert_note(
-                            &db,
+                            db,
                             &crate::types::Note {
                                 id: Uuid::new_v4().to_string(),
                                 kind: "decision".into(),
@@ -363,7 +371,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         return Ok(None);
                     }
                     crate::db::queries::insert_note(
-                        &db,
+                        db,
                         &crate::types::Note {
                             id: Uuid::new_v4().to_string(),
                             kind: "decision".into(),
@@ -381,10 +389,10 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                                // interview re-triages it). Cleared with the ripple, for
                                // the same reason the ripple exists.
                     if !intent.visibility.is_empty() {
-                        crate::db::queries::set_intent_visibility(&db, &id, "", &now)?;
+                        crate::db::queries::set_intent_visibility(db, &id, "", &now)?;
                     }
                     return Ok(Some(crate::db::queries::ripple_intent_redefinition(
-                        &db,
+                        db,
                         &id,
                         new_name.unwrap_or(&intent.name),
                         &now,
@@ -416,7 +424,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         "visibility_cleared": new_desc.is_some() && !reword && !intent.visibility.is_empty(),
                         "ripple": ripple,
                     }),
-                    &db,
+                    db,
                     next_step,
                 )?;
                 printer.print_json(&payload);
@@ -475,7 +483,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         println!("  No earned claims touched this intent — nothing to re-verify.");
                     }
                 }
-                crate::output::print_anchor(&db, next_step)?;
+                crate::output::print_anchor(db, next_step)?;
             }
         }
 
@@ -492,15 +500,15 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 None,
             )?;
             crate::db::queries::ensure_owned(
-                &db,
+                db,
                 "change an intent's lifecycle (a claim about building/changing the code)",
             )?;
             lifecycle
                 .parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let id = crate::db::queries::resolve_intent(db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
-            let found = set_intent_lifecycle(&db, &id, &lifecycle, &now)?;
+            let found = set_intent_lifecycle(db, &id, &lifecycle, &now)?;
             if !found {
                 anyhow::bail!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
@@ -519,7 +527,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     audience: String::new(),
                     created_at: now.clone(),
                 };
-                crate::db::queries::insert_note(&db, &note)?;
+                crate::db::queries::insert_note(db, &note)?;
             }
             // Always anchor (invariant 1): a lifecycle transition moves the
             // compass phase — most sharply the terminal needs_change→implemented
@@ -538,18 +546,18 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 let payload = serde_json::json!({
                     "status": "ok", "id": id, "lifecycle": lifecycle,
                 });
-                printer.print_json(&crate::output::with_anchor(payload, &db, next_step)?);
+                printer.print_json(&crate::output::with_anchor(payload, db, next_step)?);
             } else {
                 println!("✓ Intent {} → lifecycle '{}'", id, lifecycle);
-                crate::output::print_anchor(&db, next_step)?;
+                crate::output::print_anchor(db, next_step)?;
             }
         }
 
         IntentCmd::Delete { id } => {
             gate::acting_in_lane("delete an intent", &[role::BUILDER], None)?;
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let id = crate::db::queries::resolve_intent(db, &id)?;
             // Atomic: node, edges, and all their notes go together.
-            let deleted = crate::db::with_transaction(&db, || delete_intent(&db, &id))?;
+            let deleted = crate::db::with_transaction(db, || delete_intent(db, &id))?;
             if !deleted {
                 anyhow::bail!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
@@ -574,14 +582,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
         } => {
             gate::acting_in_lane("retire an intent", &[role::BUILDER], None)?;
             crate::db::queries::ensure_owned(
-                &db,
+                db,
                 "retire an intent (the design decision belongs to the graph's owners)",
             )?;
             gate::require_substantive("reason", &reason, "why this design was superseded")?;
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
+            let id = crate::db::queries::resolve_intent(db, &id)?;
             let successor = match &replaced_by {
                 Some(k) => {
-                    let sid = crate::db::queries::resolve_intent(&db, k)?;
+                    let sid = crate::db::queries::resolve_intent(db, k)?;
                     if sid == id {
                         anyhow::bail!("--replaced-by points at the intent being retired — pass a different successor or omit --replaced-by.");
                     }
@@ -590,13 +598,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 None => None,
             };
             // Fallout BEFORE the flip, so the report reflects this retirement.
-            let fallout = crate::db::queries::retire_fallout(&db, &id)?;
+            let fallout = crate::db::queries::retire_fallout(db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
             // Atomic: the status flip and its decision/lineage notes land
             // together or not at all — a half-retired intent (deprecated but
             // unexplained) would defeat the whole "history stays traceable" point.
-            if !crate::db::with_transaction(&db, || {
-                crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)
+            if !crate::db::with_transaction(db, || {
+                crate::db::queries::retire_intent(db, &id, &reason, successor.as_deref(), &now)
             })? {
                 anyhow::bail!(
                     "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).",
@@ -611,7 +619,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         "status": "ok", "id": id, "retired": true,
                         "replaced_by": successor, "fallout": fallout,
                     }),
-                    &db,
+                    db,
                     next_step,
                 )?;
                 printer.print_json(&payload);
@@ -643,7 +651,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 if f.edges_leaving_computation > 0 {
                     println!("  {} RELATES_TO edge(s) leave every queue/centrality computation (kept as history); verified ones are flagged, so living neighbours surface in `loom next --mode align` for the user to re-affirm.", f.edges_leaving_computation);
                 }
-                crate::output::print_anchor(&db, next_step)?;
+                crate::output::print_anchor(db, next_step)?;
             }
         }
 
@@ -665,7 +673,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 ),
                 None => None,
             };
-            let mut intents = list_intents(&db, status.as_deref(), level.as_deref())?;
+            let mut intents = list_intents(db, status.as_deref(), level.as_deref())?;
             let total = crate::output::apply_limit(&mut intents, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -704,11 +712,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             let now = chrono::Utc::now().to_rfc3339();
             match subcommand {
                 SourceCmd::Add { id, path } => {
-                    let id = crate::db::queries::resolve_intent(&db, &id)?;
-                    if !add_source_ref(&db, &id, &path, &now)? {
+                    let id = crate::db::queries::resolve_intent(db, &id)?;
+                    if !add_source_ref(db, &id, &path, &now)? {
                         anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
                     }
-                    let parsed = get_intent(&db, &id)?
+                    let parsed = get_intent(db, &id)?
                         .map(|i| i.source_refs)
                         .unwrap_or_default();
                     if printer.json {
@@ -723,8 +731,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     }
                 }
                 SourceCmd::Remove { id, path } => {
-                    let id = crate::db::queries::resolve_intent(&db, &id)?;
-                    match remove_source_ref(&db, &id, &path, &now)? {
+                    let id = crate::db::queries::resolve_intent(db, &id)?;
+                    match remove_source_ref(db, &id, &path, &now)? {
                         None => anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id),
                         Some(false) => anyhow::bail!(
                             "Intent {} has no source ref '{}' — `loom intent show {}` lists them.",
@@ -752,15 +760,15 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             let now = chrono::Utc::now().to_rfc3339();
             match subcommand {
                 TagCmd::Add { id, term } => {
-                    let id = crate::db::queries::resolve_intent(&db, &id)?;
-                    let intent = get_intent(&db, &id)?
+                    let id = crate::db::queries::resolve_intent(db, &id)?;
+                    let intent = get_intent(db, &id)?
                         .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id))?;
                     let mut tags = crate::db::queries::parse_tags(&intent)?;
                     tags.push(term);
                     // validate_tags normalizes, dedupes (idempotent re-add),
                     // enforces the cap, and nudges on unknown terms.
-                    let tags = crate::commands::vocab::validate_tags(&db, &tags)?;
-                    crate::db::queries::set_intent_tags(&db, &id, tags.clone(), &now)?;
+                    let tags = crate::commands::vocab::validate_tags(db, &tags)?;
+                    crate::db::queries::set_intent_tags(db, &id, tags.clone(), &now)?;
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "tags": tags,
@@ -772,8 +780,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     }
                 }
                 TagCmd::Remove { id, term } => {
-                    let id = crate::db::queries::resolve_intent(&db, &id)?;
-                    let intent = get_intent(&db, &id)?
+                    let id = crate::db::queries::resolve_intent(db, &id)?;
+                    let intent = get_intent(db, &id)?
                         .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id))?;
                     let term = crate::db::queries::normalize_term(&term)?;
                     let mut tags = crate::db::queries::parse_tags(&intent)?;
@@ -787,7 +795,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                             id
                         );
                     }
-                    crate::db::queries::set_intent_tags(&db, &id, tags.clone(), &now)?;
+                    crate::db::queries::set_intent_tags(db, &id, tags.clone(), &now)?;
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "removed": term, "tags": tags,
@@ -802,24 +810,24 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
         }
 
         IntentCmd::Show { id } => {
-            let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let intent = get_intent(&db, &id)?;
+            let id = crate::db::queries::resolve_intent(db, &id)?;
+            let intent = get_intent(db, &id)?;
             match intent {
                 None => anyhow::bail!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
                     id
                 ),
                 Some(ref i) => {
-                    let mut edges = edges_for_intent(&db, &id)?;
+                    let mut edges = edges_for_intent(db, &id)?;
                     let edges_total =
                         crate::output::apply_limit(&mut edges, crate::output::SECTION_CAP);
-                    let mut hierarchy = list_hierarchy_for_intent(&db, &id)?;
+                    let mut hierarchy = list_hierarchy_for_intent(db, &id)?;
                     let hierarchy_total =
                         crate::output::apply_limit(&mut hierarchy, crate::output::SECTION_CAP);
-                    let mut implements = list_implements_for_intent(&db, &id)?;
+                    let mut implements = list_implements_for_intent(db, &id)?;
                     let implements_total =
                         crate::output::apply_limit(&mut implements, crate::output::SECTION_CAP);
-                    let mut notes = notes_for_target(&db, &id)?;
+                    let mut notes = notes_for_target(db, &id)?;
                     let notes_total = notes.len();
                     if notes_total > crate::output::SECTION_CAP {
                         // notes_for_target returns oldest-first; keep the NEWEST.

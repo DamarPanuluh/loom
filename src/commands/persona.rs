@@ -19,7 +19,15 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: PersonaCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         // ----------------------------------------------------------------
         // loom persona add --name <n> --description <d>
@@ -37,7 +45,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
             )?;
 
             // Duplicate name guard.
-            if let Some(existing) = get_persona(&db, &name)? {
+            if let Some(existing) = get_persona(db, &name)? {
                 anyhow::bail!(
                     "Persona '{}' already exists (id: {}).\n  \
                      Use `loom persona show {}` to see its SERVES edges.",
@@ -56,19 +64,19 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 created_at: now.clone(),
                 updated_at: now,
             };
-            insert_persona(&db, &persona)?;
+            insert_persona(db, &persona)?;
 
             let next_step = format!(
                 "Link intents this persona relies on: loom persona serve {} <intent>",
                 persona.id
             );
             if printer.json {
-                let v = with_anchor(serde_json::to_value(&persona)?, &db, &next_step)?;
+                let v = with_anchor(serde_json::to_value(&persona)?, db, &next_step)?;
                 printer.print_json(&v);
             } else {
                 println!("✓ Persona added: {} ({})", persona.name, persona.id);
                 println!("  \"{}\"", persona.description);
-                print_anchor(&db, &next_step)?;
+                print_anchor(db, &next_step)?;
             }
         }
 
@@ -76,7 +84,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
         // loom persona list
         // ----------------------------------------------------------------
         PersonaCmd::List { limit } => {
-            let mut personas = list_personas(&db)?;
+            let mut personas = list_personas(db)?;
             let total = apply_limit(&mut personas, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -106,14 +114,14 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
         // loom persona show <id>
         // ----------------------------------------------------------------
         PersonaCmd::Show { id } => {
-            let persona_id = resolve_persona(&db, &id)?;
-            let persona = get_persona(&db, &persona_id)?.expect("resolved above");
+            let persona_id = resolve_persona(db, &id)?;
+            let persona = get_persona(db, &persona_id)?.expect("resolved above");
             // Bound the sub-sections (invariant 3): SERVES is many-to-many, so a
             // central persona can flood context. Cap each at SECTION_CAP and
             // report the true *_total, matching `loom hypothesis show`.
-            let mut serves = list_serves_for_persona(&db, &persona_id)?;
+            let mut serves = list_serves_for_persona(db, &persona_id)?;
             let serves_total = crate::output::apply_limit(&mut serves, crate::output::SECTION_CAP);
-            let mut journeys = list_journeys_for_persona(&db, &persona_id)?;
+            let mut journeys = list_journeys_for_persona(db, &persona_id)?;
             let journeys_total =
                 crate::output::apply_limit(&mut journeys, crate::output::SECTION_CAP);
             let fetch = format!("`loom persona show {} --json`", persona.id);
@@ -201,15 +209,15 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
             intent_id,
             subcommand,
         } => {
-            let persona_id = resolve_persona(&db, &persona_id)?;
-            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let persona_id = resolve_persona(db, &persona_id)?;
+            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
 
             match subcommand {
                 None => {
-                    let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
-                    let persona = get_persona(&db, &persona_id)?.expect("resolved above");
-                    let intent = get_intent(&db, &intent_id)?
+                    let edge = get_or_create_serves(db, &persona_id, &intent_id, &now)?;
+                    let persona = get_persona(db, &persona_id)?.expect("resolved above");
+                    let intent = get_intent(db, &intent_id)?
                         .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found.", intent_id))?;
 
                     if printer.json {
@@ -277,9 +285,9 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
 
-                    let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
+                    let edge = get_or_create_serves(db, &persona_id, &intent_id, &now)?;
                     update_serves_ground(
-                        &db,
+                        db,
                         &persona_id,
                         &intent_id,
                         &criterion,
@@ -299,7 +307,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     };
                     let next_step = "`loom next` for the next item.";
                     if printer.json {
-                        let v = with_anchor(serde_json::to_value(&updated)?, &db, next_step)?;
+                        let v = with_anchor(serde_json::to_value(&updated)?, db, next_step)?;
                         printer.print_json(&v);
                     } else {
                         println!(
@@ -309,7 +317,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                         if !updated.criterion.is_empty() {
                             println!("  criterion: {}", updated.criterion);
                         }
-                        print_anchor(&db, next_step)?;
+                        print_anchor(db, next_step)?;
                     }
                 }
 
@@ -334,9 +342,9 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
 
-                    let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
+                    let edge = get_or_create_serves(db, &persona_id, &intent_id, &now)?;
                     update_serves_issue(
-                        &db,
+                        db,
                         &persona_id,
                         &intent_id,
                         &criterion,
@@ -356,7 +364,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     };
                     let next_step = "`loom next --mode fix` to see failing edges.";
                     if printer.json {
-                        let v = with_anchor(serde_json::to_value(&updated)?, &db, next_step)?;
+                        let v = with_anchor(serde_json::to_value(&updated)?, db, next_step)?;
                         printer.print_json(&v);
                     } else {
                         println!(
@@ -364,7 +372,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                             updated.persona_name, updated.intent_name
                         );
                         println!("  evidence: {}", updated.evidence);
-                        print_anchor(&db, next_step)?;
+                        print_anchor(db, next_step)?;
                     }
                 }
 
@@ -377,8 +385,8 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                         &[role::ANALYZER],
                         inspected_by.as_deref(),
                     )?;
-                    let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
-                    update_serves_independent(&db, &persona_id, &intent_id, &notes, &by, &now)?;
+                    let edge = get_or_create_serves(db, &persona_id, &intent_id, &now)?;
+                    update_serves_independent(db, &persona_id, &intent_id, &notes, &by, &now)?;
                     let next_step = "`loom next` for the next item.";
                     if printer.json {
                         let v = with_anchor(
@@ -387,7 +395,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                                 "inspection_status": "independent",
                                 "notes": notes,
                             }),
-                            &db,
+                            db,
                             next_step,
                         )?;
                         printer.print_json(&v);
@@ -399,7 +407,7 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                         if !notes.is_empty() {
                             println!("  notes: {notes}");
                         }
-                        print_anchor(&db, next_step)?;
+                        print_anchor(db, next_step)?;
                     }
                 }
             }
@@ -412,21 +420,21 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
             persona_id,
             saga_id,
         } => {
-            let persona_id = resolve_persona(&db, &persona_id)?;
-            let validation_id = resolve_validation(&db, &saga_id)?;
+            let persona_id = resolve_persona(db, &persona_id)?;
+            let validation_id = resolve_validation(db, &saga_id)?;
             let now = chrono::Utc::now().to_rfc3339();
 
-            let edge = get_or_create_journeys(&db, &persona_id, &validation_id, &now)?;
+            let edge = get_or_create_journeys(db, &persona_id, &validation_id, &now)?;
             let next_step = format!("Run the saga: loom saga run {}", edge.validation_name);
             if printer.json {
-                let v = with_anchor(serde_json::to_value(&edge)?, &db, &next_step)?;
+                let v = with_anchor(serde_json::to_value(&edge)?, db, &next_step)?;
                 printer.print_json(&v);
             } else {
                 println!(
                     "✓ JOURNEYS: {} ↪ {}",
                     edge.persona_name, edge.validation_name
                 );
-                print_anchor(&db, &next_step)?;
+                print_anchor(db, &next_step)?;
             }
         }
     }

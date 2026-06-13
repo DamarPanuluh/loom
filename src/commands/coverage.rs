@@ -16,13 +16,16 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, printer)
+}
 
-    let disk = crate::repo::walk_files(&cwd)?;
-    let codefiles = list_codefiles(&db)?;
+pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+    let disk = crate::repo::walk_files(root)?;
+    let codefiles = list_codefiles(db)?;
     let registered: HashSet<String> = codefiles.iter().map(|c| c.path.clone()).collect();
-    let grounded: HashSet<String> = grounded_paths(&db)?.into_iter().collect();
+    let grounded: HashSet<String> = grounded_paths(db)?.into_iter().collect();
     let mut pattern_errors = Vec::new();
-    let patterns: Vec<glob::Pattern> = list_ignores(&db)?
+    let patterns: Vec<glob::Pattern> = list_ignores(db)?
         .into_iter()
         .filter_map(|i| match glob::Pattern::new(&i.pattern) {
             Ok(p) => Some(p),
@@ -35,7 +38,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     let is_ignored = |p: &str| patterns.iter().any(|pat| pat.matches(p));
     // Delegated subtrees: covered by a CHILD graph (federation), verified
     // against its committed export rather than blanket-excluded.
-    let delegations = list_delegations(&db)?;
+    let delegations = list_delegations(db)?;
     let delegation_pats: Vec<(glob::Pattern, &str)> = delegations
         .iter()
         .filter_map(|d| match glob::Pattern::new(&d.pattern) {
@@ -52,7 +55,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     let is_delegated = |p: &str| delegation_pats.iter().any(|(pat, _)| pat.matches(p));
     let missing_targets: Vec<&str> = delegations
         .iter()
-        .filter(|d| !cwd.join(&d.target).exists())
+        .filter(|d| !root.join(&d.target).exists())
         .map(|d| d.target.as_str())
         .collect();
 
@@ -79,8 +82,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     } else {
         covered as f64 / total as f64 * 100.0
     };
-    let symbol_diagnostics = symbol_diagnostics(&codefiles, &grounded, &db)?;
-    let symbol_accountability = compute_symbol_accountability(&db)?;
+    let symbol_diagnostics = symbol_diagnostics(&codefiles, &grounded, db)?;
+    let symbol_accountability = compute_symbol_accountability(db)?;
 
     if printer.json {
         let mut payload = serde_json::json!({

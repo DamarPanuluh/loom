@@ -65,14 +65,25 @@ Mitigation:
 - Connect → handshake (build-id) → route | spawn | fallback. State machine lives
   in the CLI entry path.
 
-## The prerequisite refactor (slice ⑥b)
+## The prerequisite refactor (slice ⑥b) — DONE
 
-Today every command's `run()` calls `GrafeoDb::open` itself — which would fail
-inside the daemon (the graph is already open/locked by the daemon). So commands
-must accept an **injected DB handle** (a provider) instead of opening their own.
-This is the bulk of the work: mechanical, but touches ~all command entry points.
-Tested independently (commands work against an injected handle) before any
-socket code.
+Every command's `run()` used to call `GrafeoDb::open` itself — which would fail
+inside the daemon (the graph is already open/locked). So 28 single-handle
+commands were split into `run_with_db(db: &GrafeoDb, root, …)` (the body) + a
+thin `run(…)` wrapper that opens-and-delegates. `run()` signatures are
+unchanged, so the dispatcher is untouched. Behavior-identical (verified: build,
+186 + 178 tests, every read command, a scratch write-persist test).
+
+**NOT daemon-servable — `validate` and `saga execute` are excluded** (left
+unsplit, on their original single-handle open/drop/reopen flow). These commands
+DELIBERATELY `drop` the graph mid-run to **release the lock** while running an
+external validation/saga (which may itself invoke `loom`); a lent, held-open
+handle would defeat that release and deadlock. They open at most one handle at a
+time and manage their own lifecycle. The daemon routes only the hot read /
+single-handle commands; graph-releasing commands run direct. (Lesson: a fan-out
+that mechanically split these introduced two simultaneous handles — caught by
+independent runtime review, not by the test suite, since the command layer is
+barely unit-tested. See [[proven-axis-overstatement]].)
 
 ## Slice plan
 

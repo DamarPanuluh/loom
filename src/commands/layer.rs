@@ -35,9 +35,18 @@ fn run_inner(cmd: LayerCmd, printer: &Printer, deprecated_alias: bool) -> Result
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_inner_with_db(&db, &cwd, cmd, printer, deprecated_alias)
+}
 
+pub fn run_inner_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: LayerCmd,
+    printer: &Printer,
+    deprecated_alias: bool,
+) -> Result<()> {
     let mut usage: HashMap<String, usize> = HashMap::new();
-    for i in list_active_intents(&db)? {
+    for i in list_active_intents(db)? {
         if !i.layer.is_empty() {
             *usage.entry(i.layer).or_insert(0) += 1;
         }
@@ -65,8 +74,8 @@ fn run_inner(cmd: LayerCmd, printer: &Printer, deprecated_alias: bool) -> Result
                     );
                 }
             }
-            let previous = get_layer_order(&db)?;
-            set_layer_order(&db, &layers)?;
+            let previous = get_layer_order(db)?;
+            set_layer_order(db, &layers)?;
             let unused: Vec<&str> = layers
                 .iter()
                 .filter(|layer| !usage.contains_key(layer.as_str()))
@@ -105,7 +114,7 @@ fn run_inner(cmd: LayerCmd, printer: &Printer, deprecated_alias: bool) -> Result
         }
 
         LayerCmd::List => {
-            let order = get_layer_order(&db)?;
+            let order = get_layer_order(db)?;
             let covered: HashSet<&str> = order.iter().map(String::as_str).collect();
             let mut uncovered: Vec<(&str, usize)> = usage
                 .iter()
@@ -148,8 +157,8 @@ fn run_inner(cmd: LayerCmd, printer: &Printer, deprecated_alias: bool) -> Result
 
         LayerCmd::Clear => {
             gate::acting_in_lane("clear the architecture layer order", &[role::BUILDER], None)?;
-            let previous = get_layer_order(&db)?;
-            set_layer_order(&db, &[])?;
+            let previous = get_layer_order(db)?;
+            set_layer_order(db, &[])?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "cleared": previous,

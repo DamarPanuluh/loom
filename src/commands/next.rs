@@ -16,11 +16,23 @@ use crate::output::{
 use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
 
 pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer) -> Result<()> {
+    let cwd = crate::db::resolve_root()?;
+    let db_file = ensure_initialized(&cwd)?;
+    let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, mode, all, take, compact, printer)
+}
+
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    mode: &str,
+    all: bool,
+    take: usize,
+    compact: bool,
+    printer: &Printer,
+) -> Result<()> {
     if all {
-        let cwd = crate::db::resolve_root()?;
-        let db_file = ensure_initialized(&cwd)?;
-        let db = GrafeoDb::open(&db_file)?;
-        return run_all(&db, printer);
+        return run_all(db, printer);
     }
     if mode == "triage" {
         anyhow::bail!(
@@ -63,27 +75,23 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         );
     }
 
-    let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-
     match mode {
-        "build" => return run_build(&db, printer),
-        "validate" => return run_validate(&db, printer),
-        "align" => return run_align(&db, printer),
+        "build" => return run_build(db, printer),
+        "validate" => return run_validate(db, printer),
+        "align" => return run_align(db, printer),
         "quality" => {
             return if take > 0 {
-                run_take_quality(&db, take, printer)
+                run_take_quality(db, take, printer)
             } else {
-                run_quality(&db, printer)
+                run_quality(db, printer)
             }
         }
-        "review" => return run_review(&db, printer),
-        "prove" => return run_prove(&db, printer),
+        "review" => return run_review(db, printer),
+        "prove" => return run_prove(db, printer),
         _ => {}
     }
 
-    let snapshot = QuerySnapshot::load(&db)?;
+    let snapshot = QuerySnapshot::load(db)?;
     let mut candidates = scored_candidates_from_snapshot(&snapshot, mode);
 
     // Discovery keeps going once every materialised edge is inspected: fall back
@@ -93,7 +101,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     }
 
     if candidates.is_empty() {
-        let gs = graph_state_from_snapshot(&db, &snapshot)?;
+        let gs = graph_state_from_snapshot(db, &snapshot)?;
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
@@ -117,8 +125,8 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
 
     // The bulk-read path: N compact items, one shared anchor.
     if take > 0 {
-        let gs = graph_state_from_snapshot(&db, &snapshot)?;
-        return run_take(&db, mode, &candidates, take, &gs, printer);
+        let gs = graph_state_from_snapshot(db, &snapshot)?;
+        return run_take(db, mode, &candidates, take, &gs, printer);
     }
 
     let (top_edge, score) = &candidates[0];
@@ -126,24 +134,24 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     // The projection path: verdict coordinates only — no validations, notes,
     // descriptions, or pulse (each elision names its dig command instead).
     if compact {
-        return run_compact(&db, mode, top_edge, *score, printer);
+        return run_compact(db, mode, top_edge, *score, printer);
     }
 
     // Fetch rich context for both intents
-    let intent_a = get_intent(&db, &top_edge.from_id)?.ok_or_else(|| {
+    let intent_a = get_intent(db, &top_edge.from_id)?.ok_or_else(|| {
         anyhow::anyhow!(
             "Intent '{}' not found in DB — graph inconsistency; run `loom doctor`.",
             top_edge.from_id
         )
     })?;
-    let intent_b_opt = get_intent(&db, &top_edge.to_id)?;
+    let intent_b_opt = get_intent(db, &top_edge.to_id)?;
 
     // IMPLEMENTS groundings for intent_a — projected to path/locator/status.
-    let mut implements_a = list_implements_for_intent(&db, &top_edge.from_id)?;
+    let mut implements_a = list_implements_for_intent(db, &top_edge.from_id)?;
     let implements_total = cap_section(&mut implements_a);
 
     // Fetch validations for intent_a (via VALIDATES)
-    let mut validations = validations_for_intent(&db, &top_edge.from_id)?;
+    let mut validations = validations_for_intent(db, &top_edge.from_id)?;
     let validations_total = cap_section(&mut validations);
 
     // discovery surfaces analyzer work. The fix queue SPLITS by what the item
@@ -161,10 +169,10 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     // both intents, so prior reasoning travels with the work item.
     let mut notes = Vec::new();
     if !top_edge.id.is_empty() {
-        notes.extend(notes_for_target(&db, &top_edge.id)?);
+        notes.extend(notes_for_target(db, &top_edge.id)?);
     }
-    notes.extend(notes_for_target(&db, &top_edge.from_id)?);
-    notes.extend(notes_for_target(&db, &top_edge.to_id)?);
+    notes.extend(notes_for_target(db, &top_edge.from_id)?);
+    notes.extend(notes_for_target(db, &top_edge.to_id)?);
     let (notes, notes_total) = note_surfaces(notes, role);
 
     // Build suggested action string
@@ -185,7 +193,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
         suggested_action,
     };
 
-    let gs = graph_state_from_snapshot(&db, &snapshot)?;
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;

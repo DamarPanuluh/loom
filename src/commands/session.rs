@@ -265,8 +265,13 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     let db_file = crate::db::ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
-    let snapshot = QuerySnapshot::load(&db)?;
-    let gs = graph_state_from_snapshot(&db, &snapshot)?;
+    run_with_db(&db, &cwd, printer)
+}
+
+pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+    let has_source = crate::repo::detect(root)?.has_source;
+    let snapshot = QuerySnapshot::load(db)?;
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     let broken = snapshot
         .relates
@@ -295,10 +300,10 @@ pub fn run(printer: &Printer) -> Result<()> {
     // Same agenda computation as `loom status` (the oscillation summary):
     // supported hypotheses still in the prove queue are the prover's, not the
     // user's — only the remainder awaits a ruling.
-    let prove = prove_candidates(&db)?;
+    let prove = prove_candidates(db)?;
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
-    let rulings = list_hypotheses(&db, Some("supported"))?
+    let rulings = list_hypotheses(db, Some("supported"))?
         .iter()
         .filter(|h| !in_prove.contains(h.id.as_str()))
         .count() as i64;
@@ -317,9 +322,9 @@ pub fn run(printer: &Printer) -> Result<()> {
             .count() as i64,
         broken,
         unexplored_pairs: gs.unexplored_pairs,
-        align: align_candidates(&db)?.len() as i64,
+        align: align_candidates(db)?.len() as i64,
         rulings,
-        blocked: uninspected_outside_queues(&db)?.blocked_validations,
+        blocked: uninspected_outside_queues(db)?.blocked_validations,
         sagas: snapshot
             .validations
             .iter()

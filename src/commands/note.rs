@@ -11,7 +11,15 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: NoteCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         NoteCmd::Prune {
             transitions,
@@ -23,7 +31,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             // the graph's current cap.
             let keep = keep_per_target
                 .or(set_cap)
-                .unwrap_or(crate::db::queries::get_transition_cap(&db)?);
+                .unwrap_or(crate::db::queries::get_transition_cap(db)?);
             // `0` sourced from the CAP means "off / unbounded", NEVER "drop all
             // routine" — only an explicit `--keep-per-target 0` deliberately
             // clears routine history. So compaction runs when requested AND the
@@ -34,20 +42,20 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             // Dangling: notes whose target id resolves to nothing (the remedy
             // doctor names). Always swept — history on live/retired nodes is
             // never touched.
-            let dangling = crate::db::queries::dangling_notes(&db)?;
+            let dangling = crate::db::queries::dangling_notes(db)?;
             let churn = if compact {
-                crate::db::queries::prunable_transition_notes(&db, keep)?
+                crate::db::queries::prunable_transition_notes(db, keep)?
             } else {
                 Vec::new()
             };
             if !dry_run {
                 if let Some(cap) = set_cap {
-                    crate::db::queries::set_transition_cap(&db, cap)?;
+                    crate::db::queries::set_transition_cap(db, cap)?;
                 }
                 if !(dangling.is_empty() && churn.is_empty()) {
-                    crate::db::with_transaction(&db, || {
+                    crate::db::with_transaction(db, || {
                         for n in dangling.iter().chain(churn.iter()) {
-                            crate::db::queries::delete_note_by_id(&db, &n.id)?;
+                            crate::db::queries::delete_note_by_id(db, &n.id)?;
                         }
                         Ok(())
                     })?;
@@ -138,10 +146,10 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             let (target_kind, target_id) = match (intent, edge, file) {
                 (Some(i), _, _) => (
                     "intent".to_string(),
-                    crate::db::queries::resolve_intent(&db, &i)?,
+                    crate::db::queries::resolve_intent(db, &i)?,
                 ),
                 (_, Some(e), _) => {
-                    if !crate::db::queries::edge_id_exists(&db, &e)? {
+                    if !crate::db::queries::edge_id_exists(db, &e)? {
                         anyhow::bail!(
                             "Edge '{}' not found. Use the derived edge id shown by `loom edge ...` commands, or run `loom doctor` to find dangling edge notes.",
                             e
@@ -150,7 +158,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                     ("edge".to_string(), e)
                 }
                 (_, _, Some(f)) => {
-                    let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
+                    let cf = crate::db::queries::get_codefile_by_id_or_path(db, &f)?
                         .ok_or_else(|| anyhow::anyhow!(
                             "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
                         ))?;
@@ -183,7 +191,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 audience,
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
-            insert_note(&db, &note)?;
+            insert_note(db, &note)?;
 
             if printer.json {
                 printer.print_json(&note);
@@ -217,12 +225,12 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
             let intent = match intent {
-                Some(i) => Some(crate::db::queries::resolve_intent(&db, &i)?),
+                Some(i) => Some(crate::db::queries::resolve_intent(db, &i)?),
                 None => None,
             };
             let file = match file {
                 Some(f) => Some(
-                    crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
+                    crate::db::queries::get_codefile_by_id_or_path(db, &f)?
                         .ok_or_else(|| anyhow::anyhow!(
                             "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
                         ))?
@@ -231,7 +239,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 None => None,
             };
             let target = intent.or(edge).or(file);
-            let mut notes = list_notes(&db, target.as_deref(), kind.as_deref())?;
+            let mut notes = list_notes(db, target.as_deref(), kind.as_deref())?;
             // The lane's inbox: only notes explicitly addressed to this role.
             if let Some(r) = &for_role {
                 notes.retain(|n| &n.audience == r);

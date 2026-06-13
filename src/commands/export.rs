@@ -12,8 +12,17 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, out, check, printer)
+}
 
-    let graph = export_graph(&db)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    out: &str,
+    check: bool,
+    printer: &Printer,
+) -> Result<()> {
+    let graph = export_graph(db)?;
     let pretty = serde_json::to_string_pretty(&graph)?;
 
     if check {
@@ -24,7 +33,7 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
         if out == "-" {
             anyhow::bail!("--check needs a file to compare against (not '-') — use `loom export --check loom.graph.json` or drop --check.");
         }
-        let on_disk = fs::read_to_string(cwd.join(out)).ok();
+        let on_disk = fs::read_to_string(root.join(out)).ok();
         let fresh = on_disk.as_deref() == Some(pretty.as_str());
         if printer.json {
             printer.print_json(&serde_json::json!({
@@ -56,7 +65,7 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
         println!("{pretty}");
         return Ok(());
     }
-    let target = cwd.join(out);
+    let target = root.join(out);
     let mut tmp = target.as_os_str().to_os_string();
     tmp.push(".tmp");
     let tmp = std::path::PathBuf::from(tmp);

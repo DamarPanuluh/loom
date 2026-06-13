@@ -15,7 +15,15 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: ValidationCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         ValidationCmd::Add {
             name,
@@ -48,15 +56,15 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 last_run: String::new(),
                 last_result: "not_run".to_string(),
             };
-            insert_validation(&db, &v)?;
+            insert_validation(db, &v)?;
 
             // A validation only proves something once it's attached to an intent.
             // Linking in one step (repeatable --intent) removes the most common
             // friction; otherwise we tell the driver exactly how to link it.
             let mut linked_intents: Vec<String> = Vec::new();
             for iid in &intent {
-                let iid = crate::db::queries::resolve_intent(&db, iid)?;
-                insert_validates(&db, &id, &iid, "", &now)?;
+                let iid = crate::db::queries::resolve_intent(db, iid)?;
+                insert_validates(db, &id, &iid, "", &now)?;
                 linked_intents.push(iid);
             }
 
@@ -142,11 +150,11 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 )?;
                 ev.to_string()
             };
-            let vid = resolve_validation(&db, &id)?;
-            let validation = get_validation(&db, &vid)?;
+            let vid = resolve_validation(db, &id)?;
+            let validation = get_validation(db, &vid)?;
             let now = chrono::Utc::now().to_rfc3339();
-            let n = crate::db::with_transaction(&db, || {
-                update_validation_result(&db, &vid, &res.to_string(), &now)?;
+            let n = crate::db::with_transaction(db, || {
+                update_validation_result(db, &vid, &res.to_string(), &now)?;
                 // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
                 // leaves the edge uninspected (no proof was produced — that's
                 // honest); the "blocked: <reason>" note distinguishes it from
@@ -156,7 +164,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                     ValidationResult::Failed => "failing",
                     _ => "uninspected",
                 };
-                let n = set_validates_status_for_validation(&db, &vid, status, &edge_note)?;
+                let n = set_validates_status_for_validation(db, &vid, status, &edge_note)?;
                 if res == ValidationResult::Passed {
                     if let Some(v) = &validation {
                         if let Some(hid) = v
@@ -165,8 +173,8 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                             .find_map(|line| line.strip_prefix("hypothesis:"))
                         {
                             let hid = hid.trim();
-                            if get_hypothesis(&db, hid)?.is_some_and(|h| h.status == "adopted") {
-                                set_hypothesis_status(&db, hid, "confirmed", &marker, &now)?;
+                            if get_hypothesis(db, hid)?.is_some_and(|h| h.status == "adopted") {
+                                set_hypothesis_status(db, hid, "confirmed", &marker, &now)?;
                             }
                         }
                     }
@@ -193,13 +201,13 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                         "Not linked yet: `loom edge validates {vid} <intent-id>`."
                     ));
                 }
-                printer.print_json(&crate::output::with_anchor(payload, &db, &next_step)?);
+                printer.print_json(&crate::output::with_anchor(payload, db, &next_step)?);
             } else {
                 println!("✓ Validation {vid} marked {res}  ({n} linked intent(s) updated)");
                 if n == 0 {
                     println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
                 }
-                crate::output::print_anchor(&db, &next_step)?;
+                crate::output::print_anchor(db, &next_step)?;
             }
         }
 
@@ -219,16 +227,16 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             if command.is_none() && description.is_none() {
                 anyhow::bail!("Nothing to update — pass --command and/or --description.");
             }
-            let vid = resolve_validation(&db, &id)?;
-            let command_changed = match (&command, get_validation(&db, &vid)?) {
+            let vid = resolve_validation(db, &id)?;
+            let command_changed = match (&command, get_validation(db, &vid)?) {
                 (Some(c), Some(v)) => *c != v.command,
                 _ => false,
             };
             // Atomic: the new definition and the proof reset land together —
             // a new command with the OLD green still attached would be a lie.
-            let reset_edges = crate::db::with_transaction(&db, || {
+            let reset_edges = crate::db::with_transaction(db, || {
                 update_validation_definition(
-                    &db,
+                    db,
                     &vid,
                     command.as_deref(),
                     description.as_deref(),
@@ -237,9 +245,9 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 // the proof so green is re-earned by actually running the new one.
                 let mut reset_edges = 0usize;
                 if command_changed {
-                    update_validation_result(&db, &vid, "not_run", "")?;
+                    update_validation_result(db, &vid, "not_run", "")?;
                     reset_edges = set_validates_status_for_validation(
-                        &db,
+                        db,
                         &vid,
                         "uninspected",
                         "command updated — proof must be re-run",
@@ -272,9 +280,9 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 ],
                 None,
             )?;
-            let vid = resolve_validation(&db, &id)?;
+            let vid = resolve_validation(db, &id)?;
             // Atomic: node, VALIDATES edges, and their notes go together.
-            if !crate::db::with_transaction(&db, || delete_validation(&db, &vid))? {
+            if !crate::db::with_transaction(db, || delete_validation(db, &vid))? {
                 anyhow::bail!(
                     "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
                     vid
@@ -293,7 +301,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
         }
 
         ValidationCmd::List { limit } => {
-            let mut validations = list_validations(&db)?;
+            let mut validations = list_validations(db)?;
             let total = crate::output::apply_limit(&mut validations, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -333,8 +341,8 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
         ValidationCmd::Show { id } => {
             // Same addressing as every other subcommand: id, exact name, or
             // unique name fragment.
-            let id = resolve_validation(&db, &id).unwrap_or(id);
-            match get_validation(&db, &id)? {
+            let id = resolve_validation(db, &id).unwrap_or(id);
+            match get_validation(db, &id)? {
                 None => anyhow::bail!(
                     "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
                     id

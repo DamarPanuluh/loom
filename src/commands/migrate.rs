@@ -46,8 +46,11 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, printer)
+}
 
-    let meta = crate::db::queries::get_meta(&db)?;
+pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) -> Result<()> {
+    let meta = crate::db::queries::get_meta(db)?;
     let found = meta.map(|m| m.version).unwrap_or_default();
 
     if found == SCHEMA_VERSION {
@@ -100,7 +103,7 @@ pub fn run(printer: &Printer) -> Result<()> {
 
         // Remap edge-targeted notes (node-keyed SET — reliable, idempotent,
         // auto-committed: see the module docs for why NOT one big transaction).
-        for n in crate::db::queries::list_notes(&db, None, None)? {
+        for n in crate::db::queries::list_notes(db, None, None)? {
             if n.target_kind != "edge" {
                 continue;
             }
@@ -158,13 +161,13 @@ pub fn run(printer: &Printer) -> Result<()> {
     }
 
     // ---- v5 → v6: product domain/layer split ----
-    let legacy_order = crate::db::queries::get_legacy_domain_order(&db)?;
+    let legacy_order = crate::db::queries::get_legacy_domain_order(db)?;
     let mut layers_populated = 0usize;
     let mut layer_order_migrated = false;
     let layer_source = if legacy_order.is_empty() {
         String::new()
     } else {
-        crate::db::queries::set_layer_order(&db, &legacy_order)?;
+        crate::db::queries::set_layer_order(db, &legacy_order)?;
         layer_order_migrated = true;
         "__copy_domain__".into()
     };

@@ -18,7 +18,15 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    cmd: DelegateCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         DelegateCmd::Add {
             pattern,
@@ -32,13 +40,13 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
             )?;
             glob::Pattern::new(&pattern)
                 .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {}", pattern, e))?;
-            if list_delegations(&db)?.iter().any(|d| d.pattern == pattern) {
+            if list_delegations(db)?.iter().any(|d| d.pattern == pattern) {
                 anyhow::bail!(
                     "Pattern '{}' is already delegated. Run `loom delegate list`.",
                     pattern
                 );
             }
-            let target_exists = cwd.join(&target).exists();
+            let target_exists = root.join(&target).exists();
             let d = Delegation {
                 id: Uuid::new_v4().to_string(),
                 pattern: pattern.clone(),
@@ -46,7 +54,7 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
                 author: by,
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
-            insert_delegation(&db, &d)?;
+            insert_delegation(db, &d)?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "delegation": d, "target_exists": target_exists,
@@ -63,7 +71,7 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
         }
 
         DelegateCmd::List => {
-            let ds = list_delegations(&db)?;
+            let ds = list_delegations(db)?;
             if printer.json {
                 let items: Vec<_> = ds
                     .iter()
@@ -71,7 +79,7 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
                         serde_json::json!({
                             "id": d.id, "pattern": d.pattern, "target": d.target,
                             "author": d.author, "created_at": d.created_at,
-                            "target_exists": cwd.join(&d.target).exists(),
+                            "target_exists": root.join(&d.target).exists(),
                         })
                     })
                     .collect();
@@ -84,7 +92,7 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
                 println!("(no delegations — this graph covers its whole tree itself)");
             } else {
                 for d in &ds {
-                    let mark = if cwd.join(&d.target).exists() {
+                    let mark = if root.join(&d.target).exists() {
                         "✓"
                     } else {
                         "✗ MISSING"

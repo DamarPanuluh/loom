@@ -11,7 +11,15 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: IgnoreCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         IgnoreCmd::Add {
             pattern,
@@ -25,7 +33,7 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
                 author: crate::agent::acting(author.as_deref()),
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
-            insert_ignore(&db, &ig)?;
+            insert_ignore(db, &ig)?;
             if printer.json {
                 printer.print_json(&ig);
             } else {
@@ -37,7 +45,7 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
             }
         }
         IgnoreCmd::List => {
-            let igs = list_ignores(&db)?;
+            let igs = list_ignores(db)?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "ignores": igs,

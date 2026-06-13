@@ -229,7 +229,15 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: RuleCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         RuleCmd::Add {
             name,
@@ -257,7 +265,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 inspection_effort: effort.clone().unwrap_or_default(),
                 severity,
             };
-            insert_rule(&db, &rule)?;
+            insert_rule(db, &rule)?;
 
             if printer.json {
                 printer.print_json(&rule);
@@ -276,7 +284,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 );
             };
             let existing: std::collections::HashSet<String> =
-                list_rules(&db)?.into_iter().map(|r| r.name).collect();
+                list_rules(db)?.into_iter().map(|r| r.name).collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
             for (name, severity, description, detection) in *rules {
@@ -292,7 +300,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     inspection_effort: pack_rule_effort(name).to_string(),
                     severity: (*severity).to_string(),
                 };
-                insert_rule(&db, &rule)?;
+                insert_rule(db, &rule)?;
                 created.push(rule);
             }
             if printer.json {
@@ -320,7 +328,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
         }
 
         RuleCmd::List { limit } => {
-            let mut rules = list_rules(&db)?;
+            let mut rules = list_rules(db)?;
             let total = crate::output::apply_limit(&mut rules, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -343,9 +351,9 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
         }
 
         RuleCmd::Check { intent_id } => {
-            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
             // Show all GOVERNS edges for this intent (grouped by inspection_status)
-            let governs = list_governs_for_intent(&db, &intent_id)?;
+            let governs = list_governs_for_intent(db, &intent_id)?;
             let failing: Vec<_> = governs
                 .iter()
                 .filter(|g| g.inspection_status == "failing")
@@ -423,8 +431,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             criterion,
         } => {
             gate::acting_in_lane("apply a quality rule", &[role::QUALITY], None)?;
-            let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
-            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let rule_id = crate::db::queries::resolve_rule(db, &rule_id)?;
+            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {
@@ -436,7 +444,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     "what compliance looks like for this rule on this intent",
                 )?;
             }
-            insert_governs(&db, &rule_id, &intent_id, crit, &now)?;
+            insert_governs(db, &rule_id, &intent_id, crit, &now)?;
             let edge_id =
                 crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
             if printer.json {
@@ -472,8 +480,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 &[role::QUALITY],
                 inspected_by.as_deref(),
             )?;
-            let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
-            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let rule_id = crate::db::queries::resolve_rule(db, &rule_id)?;
+            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!(
                     "Invalid --status '{}'. A verdict is passing (complies), failing (violates), \
@@ -500,16 +508,16 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
 
             let now = chrono::Utc::now().to_rfc3339();
             let mut found = update_governs_verdict(
-                &db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
             )?;
             let mut edge_created = false;
             if !found {
                 // A verdict IS a measurement — no separate `apply` step needed.
                 // Create the edge and record the verdict in one motion, so the
                 // unmeasured queue resolves with a single command.
-                insert_governs(&db, &rule_id, &intent_id, &criterion, &now)?;
+                insert_governs(db, &rule_id, &intent_id, &criterion, &now)?;
                 found = update_governs_verdict(
-                    &db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by,
+                    db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by,
                     &now,
                 )?;
                 edge_created = true;
@@ -544,7 +552,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                         "last_inspected":    now,
                         "edge_created":      edge_created,
                     }),
-                    &db,
+                    db,
                     &next_step,
                 )?);
             } else {
@@ -565,7 +573,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 );
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
-                crate::output::print_anchor(&db, &next_step)?;
+                crate::output::print_anchor(db, &next_step)?;
             }
         }
     }

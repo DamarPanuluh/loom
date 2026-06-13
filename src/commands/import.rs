@@ -12,8 +12,17 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, file, as_planned, printer)
+}
 
-    let raw = fs::read_to_string(cwd.join(file))
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    file: &str,
+    as_planned: bool,
+    printer: &Printer,
+) -> Result<()> {
+    let raw = fs::read_to_string(root.join(file))
         .map_err(|e| anyhow::anyhow!("Cannot read '{}': {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
     let data: serde_json::Value = serde_json::from_str(&raw)
         .map_err(|e| anyhow::anyhow!("'{}' is not valid JSON: {} — expects a `loom export` JSON (e.g. `loom import loom.graph.json`).", file, e))?;
@@ -25,12 +34,12 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     if let Some(items) = data.pointer("/nodes/CodeFile").and_then(|v| v.as_array()) {
         for item in items {
             if let Some(p) = item.get("path").and_then(|v| v.as_str()) {
-                if crate::repo::confine(&cwd, std::path::Path::new(p)).is_none() {
+                if crate::repo::confine(root, std::path::Path::new(p)).is_none() {
                     anyhow::bail!(
                         "Export contains CodeFile path '{}' that escapes the graph root {} — \
                          fix or remove the entry before importing.",
                         p,
-                        cwd.display()
+                        root.display()
                     );
                 }
             }
@@ -40,7 +49,7 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
     // Atomic restore: validation already rejects bad exports before writing
     // (two-phase), and the transaction closes the remaining hole — a crash or
     // write error midway can no longer leave a partial graph behind.
-    let report = crate::db::with_transaction(&db, || import_graph(&db, &data, as_planned))?;
+    let report = crate::db::with_transaction(db, || import_graph(db, &data, as_planned))?;
     let next_step = if as_planned {
         "`loom guide --mode port` for the re-realization loop, then `loom next --mode build`."
     } else {
@@ -52,20 +61,20 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
             "nodes": report.nodes, "edges": report.edges,
             "skipped_nodes": report.skipped_nodes, "skipped_edges": report.skipped_edges,
         });
-        printer.print_json(&crate::output::with_anchor(payload, &db, next_step)?);
+        printer.print_json(&crate::output::with_anchor(payload, db, next_step)?);
     } else if as_planned {
         println!(
             "✓ Design adopted from {file}  ({} nodes, {} edges; {} node(s) + {} edge(s) dropped — the old repo's files/groundings)",
             report.nodes, report.edges, report.skipped_nodes, report.skipped_edges
         );
         println!("  Every intent arrived lifecycle=planned; every proof not_run; verdict meta reset to uninspected.");
-        crate::output::print_anchor(&db, next_step)?;
+        crate::output::print_anchor(db, next_step)?;
     } else {
         println!(
             "✓ Graph imported from {file}  ({} nodes, {} edges)",
             report.nodes, report.edges
         );
-        crate::output::print_anchor(&db, next_step)?;
+        crate::output::print_anchor(db, next_step)?;
     }
     Ok(())
 }

@@ -19,16 +19,24 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, limit, printer)
+}
 
-    let snapshot = QuerySnapshot::load(&db)?;
-    let report = compute_smells_from(&db, &snapshot)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = QuerySnapshot::load(db)?;
+    let report = compute_smells_from(db, &snapshot)?;
 
     // Advisory cochange_coupling suggestions: git-derived, command-only (the
     // audit gate's `compute_smells_from` stays git-free and fast), never gate
     // green. Bounded to recent history; degrades silently with no git.
     let paths: std::collections::HashSet<String> =
         snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
-    let cc = crate::repo::git_cochange(&cwd, &paths, 800);
+    let cc = crate::repo::git_cochange(root, &paths, 800);
     let suggestions = cochange_suggestions(&snapshot, &cc.pairs, &cc.individual);
     let suggestions_total = suggestions.len();
     let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
@@ -36,7 +44,7 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
-    let registry = crate::db::queries::list_vocab_terms(&db)?.len();
+    let registry = crate::db::queries::list_vocab_terms(db)?.len();
     let mut smells = report.open;
     smells.truncate(limit);
     let adjudicated = report.adjudicated;

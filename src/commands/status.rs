@@ -13,10 +13,13 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, printer)
+}
 
+pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
     // One graph scan — every count below is derived from the snapshot instead
     // of re-querying nodes/edges (the scale benchmark's status hot path).
-    let snapshot = QuerySnapshot::load(&db)?;
+    let snapshot = QuerySnapshot::load(db)?;
 
     let total_intents = snapshot.intents.len() as i64;
     let total_codefiles = snapshot.codefiles.len() as i64;
@@ -52,19 +55,19 @@ pub fn run(printer: &Printer) -> Result<()> {
         open_issues: failing,
     };
 
-    let gs = graph_state_from_snapshot(&db, &snapshot)?;
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
     let align_count =
-        crate::db::queries::align_candidates_from_snapshot(&db, &snapshot)?.len() as i64;
-    let prove = crate::db::queries::prove_candidates(&db)?;
+        crate::db::queries::align_candidates_from_snapshot(db, &snapshot)?.len() as i64;
+    let prove = crate::db::queries::prove_candidates(db)?;
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
-    let adopt_count = crate::db::queries::list_hypotheses(&db, Some("supported"))?
+    let adopt_count = crate::db::queries::list_hypotheses(db, Some("supported"))?
         .iter()
         .filter(|h| !in_prove.contains(h.id.as_str()))
         .count() as i64;
     let human_gated = align_count + adopt_count + outside.blocked_validations;
-    let export_freshness = match crate::db::queries::committed_export_stale(&db, &cwd)? {
+    let export_freshness = match crate::db::queries::committed_export_stale(db, root)? {
         Some(true) => "stale",
         Some(false) => "fresh",
         None => "absent",

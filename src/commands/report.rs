@@ -13,14 +13,17 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, printer)
+}
 
+pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) -> Result<()> {
     // ---- Node counts ----
-    let total_intents = count_intents(&db)?;
-    let total_codefiles = count_codefiles(&db)?;
-    let total_validations = count_validations(&db)?;
+    let total_intents = count_intents(db)?;
+    let total_codefiles = count_codefiles(db)?;
+    let total_validations = count_validations(db)?;
 
     // ---- Edge inspection_status counts (all types combined) ----
-    let by_status = count_all_edges_by_inspection_status(&db)?;
+    let by_status = count_all_edges_by_inspection_status(db)?;
 
     let uninspected = *by_status.get("uninspected").unwrap_or(&0);
     let passing = *by_status.get("passing").unwrap_or(&0);
@@ -30,10 +33,10 @@ pub fn run(printer: &Printer) -> Result<()> {
     let total_edges = by_status.values().sum::<i64>();
 
     // ---- Validation quality ----
-    let pass_rate = validation_pass_rate(&db)?;
+    let pass_rate = validation_pass_rate(db)?;
     let (blocked_validations, validation_pass_rate_runnable) =
-        crate::db::queries::blocked_count_and_runnable_rate(&list_validations(&db)?);
-    let intents_no_val = intents_without_validations(&db)?;
+        crate::db::queries::blocked_count_and_runnable_rate(&list_validations(db)?);
+    let intents_no_val = intents_without_validations(db)?;
 
     let status = StatusReport {
         total_intents,
@@ -52,15 +55,15 @@ pub fn run(printer: &Printer) -> Result<()> {
         open_issues: failing,
     };
 
-    let top_intents = top_intents_by_centrality(&db, 5)?;
-    let failing_governs = list_all_failing_governs(&db)?;
-    let recent = recent_passing(&db, 10)?;
+    let top_intents = top_intents_by_centrality(db, 5)?;
+    let failing_governs = list_all_failing_governs(db)?;
+    let recent = recent_passing(db, 10)?;
 
-    let gaps = completeness_gaps(&db)?;
-    let vc = vertical_completeness(&db)?;
+    let gaps = completeness_gaps(db)?;
+    let vc = vertical_completeness(db)?;
     // Blocked proofs leave the validator queue (deliberate — they can't run),
     // so the report is where they stay visible until someone unblocks them.
-    let blocked: Vec<_> = list_validations(&db)?
+    let blocked: Vec<_> = list_validations(db)?
         .into_iter()
         .filter(|v| v.last_result == "blocked")
         .collect();

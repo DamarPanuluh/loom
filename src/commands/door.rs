@@ -89,10 +89,19 @@ pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, utterance, limit, printer)
+}
 
-    let (intents, _match_total) = find_intents(&db, utterance, limit)?;
-    let planes = door_matches(&db, utterance, limit)?;
-    let gs = graph_state(&db)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    utterance: &str,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let (intents, _match_total) = find_intents(db, utterance, limit)?;
+    let planes = door_matches(db, utterance, limit)?;
+    let gs = graph_state(db)?;
     let nothing_known = intents.is_empty()
         && planes.vocab.is_empty()
         && planes.sagas.is_empty()

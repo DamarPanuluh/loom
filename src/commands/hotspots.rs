@@ -14,9 +14,17 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, limit, printer)
+}
 
-    let central = top_intents_by_centrality(&db, limit)?;
-    let tangled = tangled_files(&db, limit)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let central = top_intents_by_centrality(db, limit)?;
+    let tangled = tangled_files(db, limit)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({

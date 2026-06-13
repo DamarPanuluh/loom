@@ -26,8 +26,18 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     let db_file = ensure_initialized(&base)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &base, path, printer)
+}
 
-    let codefiles = list_codefiles(&db)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    _path: &str,
+    printer: &Printer,
+) -> Result<()> {
+    let base = root;
+
+    let codefiles = list_codefiles(db)?;
     let files_checked = codefiles.len();
     let now = chrono::Utc::now().to_rfc3339();
 
@@ -44,7 +54,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut non_utf8_files: HashSet<String> = HashSet::new();
     let mut active_intents: Option<HashSet<String>> = None;
 
-    let all_implements = list_all_implements(&db)?;
+    let all_implements = list_all_implements(db)?;
     let mut intents_by_codefile: HashMap<&str, Vec<String>> = HashMap::new();
     for im in &all_implements {
         intents_by_codefile
@@ -52,8 +62,8 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             .or_default()
             .push(im.intent_id.clone());
     }
-    let all_validates = list_all_validates(&db)?;
-    let all_validations = list_validations(&db)?;
+    let all_validates = list_all_validates(db)?;
+    let all_validations = list_validations(db)?;
     let mut validates_by_intent: HashMap<&str, Vec<&crate::types::ValidatesEdge>> = HashMap::new();
     for e in &all_validates {
         validates_by_intent
@@ -65,7 +75,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         all_validations.iter().map(|v| (v.id.as_str(), v)).collect();
     let mut invalidated_validation_ids: HashSet<String> = HashSet::new();
 
-    let all_relates = list_relates_to(&db, None)?;
+    let all_relates = list_relates_to(db, None)?;
     let mut relates_by_intent: HashMap<&str, Vec<&crate::types::RelatesTo>> = HashMap::new();
     for edge in &all_relates {
         relates_by_intent
@@ -77,7 +87,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             .or_default()
             .push(edge);
     }
-    let all_governs = list_all_governs(&db)?;
+    let all_governs = list_all_governs(db)?;
     let mut governs_by_intent: HashMap<&str, Vec<&crate::types::Governs>> = HashMap::new();
     for edge in &all_governs {
         governs_by_intent
@@ -85,7 +95,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             .or_default()
             .push(edge);
     }
-    let all_targets = list_all_targets(&db)?;
+    let all_targets = list_all_targets(db)?;
     let mut targets_by_intent: HashMap<&str, Vec<&crate::types::TargetsEdge>> = HashMap::new();
     for edge in &all_targets {
         targets_by_intent
@@ -93,7 +103,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             .or_default()
             .push(edge);
     }
-    let all_serves = list_all_serves(&db)?;
+    let all_serves = list_all_serves(db)?;
     let mut serves_by_intent: HashMap<&str, Vec<&crate::types::ServesEdge>> = HashMap::new();
     for edge in &all_serves {
         serves_by_intent
@@ -193,11 +203,11 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // quiet upkeep, not a change.
         let hash_updated = new_hash != cf.content_hash;
         if hash_updated && !changed {
-            update_codefile_hash(&db, &cf.id, &new_hash)?;
+            update_codefile_hash(db, &cf.id, &new_hash)?;
         }
         if !changed {
             if mtime_str != cf.last_modified {
-                update_codefile_mtime(&db, &cf.id, &mtime_str)?;
+                update_codefile_mtime(db, &cf.id, &mtime_str)?;
             }
             continue;
         }
@@ -209,7 +219,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         // design — flipping them would resurrect work nobody owns.
         if active_intents.is_none() {
             active_intents = Some(
-                crate::db::queries::list_active_intents(&db)?
+                crate::db::queries::list_active_intents(db)?
                     .into_iter()
                     .map(|i| i.id)
                     .collect(),
@@ -241,9 +251,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
         // This file's whole mutation unit commits atomically (see above):
         // fingerprint + ripple together, or neither.
-        crate::db::with_transaction(&db, || {
+        crate::db::with_transaction(db, || {
             // 1. Update CodeFile content fingerprint + last_modified
-            update_codefile_hash_and_mtime(&db, &cf.id, &new_hash, &mtime_str)?;
+            update_codefile_hash_and_mtime(db, &cf.id, &new_hash, &mtime_str)?;
 
             // 2. One-hop propagation: use the IMPLEMENTS edges (read-only, as an
             //    index) to find intents grounded in this file, and flag THEIR
@@ -255,7 +265,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             //    show` / `loom next`.
             for iid in effective_ids.iter().filter(|i| active.contains(*i)) {
                 relates_to_flagged += flag_relates_to_for_intent_with_indexes(
-                    &db,
+                    db,
                     iid,
                     &cause,
                     &now,
@@ -265,7 +275,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 // A passing quality verdict is a claim about the old code — flip
                 // it to needs_reverification so green is re-earned.
                 targets_flagged += flag_targets_for_intent_with_indexes(
-                    &db,
+                    db,
                     iid,
                     &cause,
                     &now,
@@ -276,7 +286,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 // persona — flip it so the serving claim is re-verified against
                 // the changed code.
                 serves_flagged += flag_serves_for_intent(
-                    &db,
+                    db,
                     iid,
                     &cause,
                     &now,
@@ -284,7 +294,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                     &mut serves_edges_flagged_ids,
                 )?;
                 governs_flagged += flag_governs_for_intent_with_indexes(
-                    &db,
+                    db,
                     iid,
                     &cause,
                     &now,
@@ -297,7 +307,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             //    symbol-narrowed set — a proof is only stale if the code it
             //    covers actually changed).
             validations_invalidated += invalidate_validations_for_intents_with_indexes(
-                &db,
+                db,
                 &effective_ids,
                 &validates_by_intent,
                 &validation_by_id,
@@ -323,13 +333,13 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         if let Some(content) = text_contents.get(&cf.path) {
             let facts = crate::repo::extract_physical_facts(&base, &cf.path, content);
             if facts.imports != cf.imports {
-                update_codefile_imports(&db, &cf.id, &facts.imports)?;
+                update_codefile_imports(db, &cf.id, &facts.imports)?;
             }
             if facts.symbols != cf.symbols {
-                update_codefile_symbols(&db, &cf.id, &facts.symbols)?;
+                update_codefile_symbols(db, &cf.id, &facts.symbols)?;
             }
             if facts.symbol_facts != cf.symbol_facts {
-                update_codefile_symbol_facts(&db, &cf.id, &facts.symbol_facts)?;
+                update_codefile_symbol_facts(db, &cf.id, &facts.symbol_facts)?;
             }
         } else if non_utf8_files.contains(&cf.path) {
             // Present but unreadable as text (binary/non-UTF8). Never skip
@@ -366,7 +376,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     }
 
     // Stamp the graph as reconciled against disk (freshness signal).
-    set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
+    set_last_synced(db, &chrono::Utc::now().to_rfc3339())?;
 
     // Compaction: hold the per-target transition cap by trimming the routine
     // churn this sync (and prior ones) appended — reusing the prune retention
@@ -375,13 +385,13 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // the passing↔needs_reverification flip-flop log shrinks. `cap == 0`
     // disables it (strict append-only). One sweep at the churn source keeps the
     // graph bounded without an external hook.
-    let transition_cap = crate::db::queries::get_transition_cap(&db)?;
+    let transition_cap = crate::db::queries::get_transition_cap(db)?;
     let transitions_compacted = if transition_cap > 0 {
-        let stale = crate::db::queries::prunable_transition_notes(&db, transition_cap)?;
+        let stale = crate::db::queries::prunable_transition_notes(db, transition_cap)?;
         if !stale.is_empty() {
-            crate::db::with_transaction(&db, || {
+            crate::db::with_transaction(db, || {
                 for n in &stale {
-                    crate::db::queries::delete_note_by_id(&db, &n.id)?;
+                    crate::db::queries::delete_note_by_id(db, &n.id)?;
                 }
                 Ok(())
             })?;
@@ -453,7 +463,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             }
             obj.insert(total_key.to_string(), total.into());
         }
-        printer.print_json(&crate::output::with_anchor(v, &db, &next_step)?);
+        printer.print_json(&crate::output::with_anchor(v, db, &next_step)?);
     } else {
         println!("── loom sync ────────────────────────────────────────────────────────");
         println!("  Files checked:                 {}", report.files_checked);
@@ -554,7 +564,7 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                 report.transitions_compacted, transition_cap
             );
         }
-        crate::output::print_anchor(&db, &next_step)?;
+        crate::output::print_anchor(db, &next_step)?;
     }
 
     Ok(())

@@ -8,16 +8,25 @@ pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
-    let intent_id = &crate::db::queries::resolve_intent(&db, intent_id)?;
+    run_with_db(&db, &cwd, intent_id, printer)
+}
 
-    let intent = get_intent(&db, intent_id)?.ok_or_else(|| {
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    intent_id: &str,
+    printer: &Printer,
+) -> Result<()> {
+    let intent_id = &crate::db::queries::resolve_intent(db, intent_id)?;
+
+    let intent = get_intent(db, intent_id)?.ok_or_else(|| {
         anyhow::anyhow!(
             "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
             intent_id
         )
     })?;
 
-    let edges = unresolved_edges_for_intent(&db, intent_id)?;
+    let edges = unresolved_edges_for_intent(db, intent_id)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({

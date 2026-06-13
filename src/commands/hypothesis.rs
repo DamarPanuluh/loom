@@ -28,7 +28,15 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: HypothesisCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         HypothesisCmd::Add {
             name,
@@ -69,12 +77,12 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 created_at: now.clone(),
                 updated_at: now.clone(),
             };
-            insert_hypothesis(&db, &h)?;
+            insert_hypothesis(db, &h)?;
 
             let mut linked = Vec::new();
             for t in &targets {
-                let iid = resolve_intent(&db, t)?;
-                insert_targets(&db, &id, &iid, &now)?;
+                let iid = resolve_intent(db, t)?;
+                insert_targets(db, &id, &iid, &now)?;
                 linked.push(iid);
             }
 
@@ -99,13 +107,13 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
         }
 
         HypothesisCmd::Target { hypothesis, intent } => {
-            let hid = resolve_hypothesis(&db, &hypothesis)?;
-            let iid = resolve_intent(&db, &intent)?;
-            if crate::db::queries::get_targets_between(&db, &hid, &iid)?.is_some() {
+            let hid = resolve_hypothesis(db, &hypothesis)?;
+            let iid = resolve_intent(db, &intent)?;
+            if crate::db::queries::get_targets_between(db, &hid, &iid)?.is_some() {
                 anyhow::bail!("Hypothesis already targets that intent — `loom hypothesis show {hid}` lists current targets.");
             }
             let now = chrono::Utc::now().to_rfc3339();
-            insert_targets(&db, &hid, &iid, &now)?;
+            insert_targets(db, &hid, &iid, &now)?;
             let next_step = format!(
                 "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} …` when evidence is ready"
             );
@@ -144,8 +152,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 &evidence,
                 "what was actually found while checking the claim against the code",
             )?;
-            let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+            let hid = resolve_hypothesis(db, &id)?;
+            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -182,10 +190,10 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             // mutation) land together or not at all — matches the Adopt path
             // and the multi-statement-mutation rule. A mid-loop failure must
             // not leave the hypothesis flipped over half-stamped targets.
-            crate::db::with_transaction(&db, || {
-                update_hypothesis_verdict(&db, &hid, &verdict, &evidence, &prover, &now)?;
+            crate::db::with_transaction(db, || {
+                update_hypothesis_verdict(db, &hid, &verdict, &evidence, &prover, &now)?;
                 set_targets_status_for_hypothesis(
-                    &db,
+                    db,
                     &hid,
                     target_status,
                     "hypothesis proof establishes whether this target is affected",
@@ -223,11 +231,11 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             // builder lane, owned custody only.
             let by = gate::acting_in_lane("adopt a hypothesis", &[role::BUILDER], None)?;
             crate::db::queries::ensure_owned(
-                &db,
+                db,
                 "adopt a hypothesis (a promise to change the code)",
             )?;
-            let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+            let hid = resolve_hypothesis(db, &id)?;
+            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -263,8 +271,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             let mut spawned_ids = Vec::new();
             let mut spawned_names = Vec::new();
             for s in &spawned {
-                let iid = resolve_intent(&db, s)?;
-                let i = crate::db::queries::get_intent(&db, &iid)?
+                let iid = resolve_intent(db, s)?;
+                let i = crate::db::queries::get_intent(db, &iid)?
                     .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list`; for --spawned the intent must exist first.", iid))?;
                 spawned_ids.push(iid);
                 spawned_names.push(i.name);
@@ -274,8 +282,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             // Atomic conversion: the status flip, the lineage notes (both
             // directions), the outcome Validation, and its VALIDATES links
             // are ONE decision — half an adoption is worse than none.
-            crate::db::with_transaction(&db, || {
-                set_hypothesis_status(&db, &hid, "adopted", &by, &now)?;
+            crate::db::with_transaction(db, || {
+                set_hypothesis_status(db, &hid, "adopted", &by, &now)?;
 
                 // Lineage, both directions. On the hypothesis: what it became. On
                 // each spawned intent: where it came from + the predicted outcome —
@@ -300,7 +308,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     text.push_str(&format!(" — {r}"));
                 }
                 insert_note(
-                    &db,
+                    db,
                     &Note {
                         id: Uuid::new_v4().to_string(),
                         kind: "decision".to_string(),
@@ -315,7 +323,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 if !spawned_ids.is_empty() {
                     let validation_id = Uuid::new_v4().to_string();
                     insert_validation(
-                        &db,
+                        db,
                         &Validation {
                             id: validation_id.clone(),
                             name: format!("hypothesis outcome: {}", h.name),
@@ -331,7 +339,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     )?;
                     for iid in &spawned_ids {
                         insert_validates(
-                            &db,
+                            db,
                             &validation_id,
                             iid,
                             "hypothesis outcome proof",
@@ -341,7 +349,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 }
 
                 for iid in &spawned_ids {
-                    insert_note(&db, &Note {
+                    insert_note(db, &Note {
                     id: Uuid::new_v4().to_string(),
                     kind: "decision".to_string(),
                     text: format!(
@@ -380,8 +388,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 &reason,
                 "why this hypothesis is not being pursued",
             )?;
-            let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+            let hid = resolve_hypothesis(db, &id)?;
+            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -396,9 +404,9 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 );
             }
             let now = chrono::Utc::now().to_rfc3339();
-            set_hypothesis_status(&db, &hid, "rejected", &by, &now)?;
+            set_hypothesis_status(db, &hid, "rejected", &by, &now)?;
             insert_note(
-                &db,
+                db,
                 &Note {
                     id: Uuid::new_v4().to_string(),
                     kind: "decision".to_string(),
@@ -426,7 +434,7 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 s.parse::<HypothesisStatus>()
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
-            let mut hs = list_hypotheses(&db, status.as_deref())?;
+            let mut hs = list_hypotheses(db, status.as_deref())?;
             let total = crate::output::apply_limit(&mut hs, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -465,16 +473,16 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
         }
 
         HypothesisCmd::Show { id } => {
-            let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+            let hid = resolve_hypothesis(db, &id)?;
+            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
                 )
             })?;
-            let targets = list_targets_for_hypothesis(&db, &hid)?;
+            let targets = list_targets_for_hypothesis(db, &hid)?;
             let targets_total = targets.len();
-            let mut notes = notes_for_target(&db, &hid)?;
+            let mut notes = notes_for_target(db, &hid)?;
             let notes_total = notes.len();
             if notes_total > crate::output::SECTION_CAP {
                 // notes come oldest-first; keep the NEWEST.

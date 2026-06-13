@@ -12,8 +12,17 @@ pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, query, limit, printer)
+}
 
-    let (hits, match_total) = find_intents(&db, query, limit)?;
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    query: &str,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let (hits, match_total) = find_intents(db, query, limit)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({

@@ -69,7 +69,15 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, &input, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    input: &str,
+    printer: &Printer,
+) -> Result<()> {
     let mut results: Vec<serde_json::Value> = Vec::new();
     let mut ok = 0usize;
     let mut failed = 0usize;
@@ -83,7 +91,7 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
         // Per-LINE transaction (not per batch): the contract is "continue past
         // failed lines", so the batch is never all-or-nothing — but one line's
         // verdict and its transition note must land together or not at all.
-        match crate::db::with_transaction(&db, || apply_line(&db, line)) {
+        match crate::db::with_transaction(db, || apply_line(db, line)) {
             Ok(desc) => {
                 ok += 1;
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
@@ -102,7 +110,7 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     // hand back fresh state + the next move — never leave the agent to call
     // `loom status` to learn where it now stands. Fire BEFORE the failed>0
     // bail so a success-bearing partial still anchors.
-    let gs = crate::db::queries::graph_state(&db)?;
+    let gs = crate::db::queries::graph_state(db)?;
     let next_step = if failed == 0 {
         gs.next_action.clone()
     } else {

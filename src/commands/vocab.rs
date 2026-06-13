@@ -31,7 +31,15 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    _root: &std::path::Path,
+    cmd: VocabCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         VocabCmd::Add { term, why, author } => {
             let agent =
@@ -42,7 +50,7 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 &why,
                 "what the term covers AND what it does not (name the neighbouring term)",
             )?;
-            if let Some(existing) = get_vocab_term(&db, &term)? {
+            if let Some(existing) = get_vocab_term(db, &term)? {
                 anyhow::bail!(
                     "Term '{}' is already registered: \"{}\"\n\
                      Use it directly: loom intent tag add <intent> {}",
@@ -55,7 +63,7 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             // No force flag: if it is genuinely distinct, a name that doesn't
             // read like the neighbour is strictly better — keys must be
             // distinguishable to be worth colliding on.
-            let terms = list_vocab_terms(&db)?;
+            let terms = list_vocab_terms(db)?;
             if let Some(twin) = terms.iter().find(|t| terms_look_alike(&term, &t.name)) {
                 anyhow::bail!(
                     "'{}' reads like the registered term '{}' (\"{}\").\n\
@@ -74,7 +82,7 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 author: agent,
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
-            insert_vocab_term(&db, &vt)?;
+            insert_vocab_term(db, &vt)?;
             let size = terms.len() + 1;
             if printer.json {
                 let mut v = serde_json::to_value(&vt)?;
@@ -111,8 +119,8 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
         }
 
         VocabCmd::List => {
-            let terms = list_vocab_terms(&db)?;
-            let counts = tag_counts(&list_active_intents(&db)?)?;
+            let terms = list_vocab_terms(db)?;
+            let counts = tag_counts(&list_active_intents(db)?)?;
             if printer.json {
                 let items: Vec<serde_json::Value> = terms
                     .iter()
@@ -145,9 +153,9 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
 
         VocabCmd::Suggest { limit } => {
             // Read-only (no lane gate): mine THIS graph for candidate keys.
-            let snapshot = crate::db::queries::QuerySnapshot::load(&db)?;
+            let snapshot = crate::db::queries::QuerySnapshot::load(db)?;
             let registered: std::collections::HashSet<String> =
-                list_vocab_terms(&db)?.into_iter().map(|t| t.name).collect();
+                list_vocab_terms(db)?.into_iter().map(|t| t.name).collect();
             let mut suggestions =
                 crate::db::queries::suggest_vocab_terms(&snapshot.intents, &registered, 2);
             let total = crate::output::apply_limit(&mut suggestions, limit);
@@ -233,12 +241,12 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             if from == to {
                 anyhow::bail!("'{from}' and '{to}' are the same term — pick two distinct terms (`loom vocab list`).");
             }
-            if get_vocab_term(&db, &from)?.is_none() {
+            if get_vocab_term(db, &from)?.is_none() {
                 anyhow::bail!(
                     "Term '{from}' is not registered — `loom vocab list` shows the registry."
                 );
             }
-            if get_vocab_term(&db, &to)?.is_none() {
+            if get_vocab_term(db, &to)?.is_none() {
                 anyhow::bail!(
                     "Target term '{to}' is not registered — merge dissolves '{from}' INTO an existing term; register '{to}' first if it should exist."
                 );
@@ -248,7 +256,7 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             // SPLIT (some intents retagged, the old term still registered) —
             // exactly the drift the command exists to converge.
             let retagged =
-                crate::db::with_transaction(&db, || merge_vocab_terms(&db, &from, &to, &now))?;
+                crate::db::with_transaction(db, || merge_vocab_terms(db, &from, &to, &now))?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "from": from, "to": to, "retagged_intents": retagged,

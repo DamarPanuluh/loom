@@ -15,7 +15,15 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
+    run_with_db(&db, &cwd, cmd, printer)
+}
 
+pub fn run_with_db(
+    db: &GrafeoDb,
+    root: &std::path::Path,
+    cmd: CodefileCmd,
+    printer: &Printer,
+) -> Result<()> {
     match cmd {
         CodefileCmd::Add { path, language } => {
             crate::gate::acting_in_lane(
@@ -49,7 +57,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             };
 
             let existing: HashSet<String> =
-                list_codefiles(&db)?.into_iter().map(|c| c.path).collect();
+                list_codefiles(db)?.into_iter().map(|c| c.path).collect();
 
             let mut added: Vec<CodeFile> = Vec::new();
             let mut skipped = 0usize;
@@ -57,19 +65,19 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 // Normalize against the graph root: `..`-escapes and outside
                 // paths are rejected, absolute-under-root comes back relative
                 // (the stored convention — paths must travel across machines).
-                let Some(p) = crate::repo::confine(&cwd, std::path::Path::new(&p)) else {
+                let Some(p) = crate::repo::confine(root, std::path::Path::new(&p)) else {
                     anyhow::bail!(
                         "Path '{}' escapes the graph root {} — register files inside the \
                          repository (paths are stored root-relative).",
                         p,
-                        cwd.display()
+                        root.display()
                     );
                 };
                 if existing.contains(&p) {
                     skipped += 1;
                     continue;
                 }
-                let abs_path = cwd.join(&p);
+                let abs_path = root.join(&p);
                 let last_modified = crate::repo::mtime_rfc3339(&abs_path).ok_or_else(|| {
                     anyhow::anyhow!(
                         "Cannot read mtime for {} — restore the file or remove the registration \
@@ -99,7 +107,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     symbol_facts: Vec::new(), // populated by `loom sync`
                     content_hash,
                 };
-                insert_codefile(&db, &cf)?;
+                insert_codefile(db, &cf)?;
                 added.push(cf);
             }
 
@@ -145,7 +153,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
         }
 
         CodefileCmd::Show { path_or_id } => {
-            let Some(cf) = get_codefile_by_id_or_path(&db, &path_or_id)? else {
+            let Some(cf) = get_codefile_by_id_or_path(db, &path_or_id)? else {
                 anyhow::bail!(
                     "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
                     path_or_id
@@ -154,13 +162,13 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             // The ownership view: every intent claiming this file (via
             // IMPLEMENTS), each with its abstraction level so cross-cutting
             // claims read differently from a feature owning its home file.
-            let claims: Vec<_> = list_all_implements(&db)?
+            let claims: Vec<_> = list_all_implements(db)?
                 .into_iter()
                 .filter(|im| im.codefile_id == cf.id)
                 .collect();
             let mut owners = Vec::new();
             for im in &claims {
-                let intent = get_intent(&db, &im.intent_id)?;
+                let intent = get_intent(db, &im.intent_id)?;
                 let (level, lifecycle) = intent
                     .map(|i| (i.abstraction_level, i.lifecycle))
                     .unwrap_or_default();
@@ -177,7 +185,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let mut rules: Vec<serde_json::Value> = Vec::new();
             let mut seen_rules = HashSet::new();
             for im in &claims {
-                for g in list_governs_for_intent(&db, &im.intent_id)? {
+                for g in list_governs_for_intent(db, &im.intent_id)? {
                     if seen_rules.insert(format!("{}|{}", g.rule_id, g.intent_id)) {
                         rules.push(serde_json::json!({
                             "rule": g.rule_name,
@@ -191,7 +199,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let tangled = claims.len() >= crate::db::queries::smells::TANGLE_INTENTS;
             // Notes targeting the file itself — where a tangled_file
             // adjudication (`loom note add --file … --kind decision`) lives.
-            let notes = crate::db::queries::notes_for_target(&db, &cf.id)?;
+            let notes = crate::db::queries::notes_for_target(db, &cf.id)?;
             // Sections inside show are bounded (SECTION_CAP) in human mode;
             // the full view is one command away.
             let fetch = format!("`loom codefile show {} --json`", cf.path);
@@ -251,7 +259,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                         } else {
                             format!("  @ {}", im.locator)
                         };
-                        let intent = get_intent(&db, &im.intent_id)?;
+                        let intent = get_intent(db, &im.intent_id)?;
                         let level = intent.map(|i| i.abstraction_level).unwrap_or_default();
                         println!(
                             "  [{:<13}] {}{}  ({})",
@@ -328,8 +336,8 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 None,
             )?;
             // Atomic: node, IMPLEMENTS edges, and their notes go together.
-            let removed = crate::db::with_transaction(&db, || {
-                crate::db::queries::delete_codefile(&db, &path_or_id)
+            let removed = crate::db::with_transaction(db, || {
+                crate::db::queries::delete_codefile(db, &path_or_id)
             })?;
             let Some(cf) = removed else {
                 anyhow::bail!(
@@ -356,7 +364,7 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
         }
 
         CodefileCmd::List { limit } => {
-            let mut files = list_codefiles(&db)?;
+            let mut files = list_codefiles(db)?;
             let total = crate::output::apply_limit(&mut files, limit);
             if printer.json {
                 printer.print_json(&serde_json::json!({
