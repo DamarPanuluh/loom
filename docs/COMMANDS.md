@@ -414,6 +414,16 @@ loom vocab add <term> --why "<contrastive definition>"
 loom vocab list
   The registry: every term with usage count + definition — the menu agents
   pick from when tagging.
+loom vocab suggest [--limit N]
+  Candidate terms mined from THIS graph's OWN intents — tokens shared across ≥2
+  intents and not yet registered, ranked by collision potential (generic words
+  and over-ubiquitous tokens filtered out). The low-friction way to ARM
+  duplicate-responsibility detection on an untagged graph: loom can't know your
+  codebase's vocabulary, so it surfaces what already recurs in it. Read-only;
+  surfaces the armed/unarmed coverage (`X of Y coded intents tagged`) and names
+  the register→tag→re-smell next step. loom proposes the KEY; the contrastive
+  `--why` stays your judgment. The `duplicate_detection_unarmed` smell points
+  here.
 loom vocab merge <from> <to>
   Converge drift: every intent carrying <from> is retagged to <to> (deduped),
   <from> is deleted. One sweep, nothing to re-inspect — terms are keys, not

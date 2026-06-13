@@ -408,7 +408,7 @@ Quality         rule add|list|apply|check|verdict · rule seed <iso5055|mobile|w
 Validation      validation add|mark|update|delete|list · validate <id>|--all · saga add|run|list
 Pre-decision    hypothesis add|target|prove|adopt|reject|list|show
 Personas        persona add|list|show · persona serve {ground|issue|independent} · persona journey
-Vocab & layers  vocab add|list|merge · layer order|list|clear   (`domain` = deprecated alias of `layer`)
+Vocab & layers  vocab add|list|suggest|merge · layer order|list|clear   (`domain` = deprecated alias of `layer`)
 Memory & hatch  note add|prune|list · ignore add|list · delegate add|list
 ```
 
