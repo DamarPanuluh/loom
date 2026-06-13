@@ -79,6 +79,36 @@ mod tests {
     use crate::db::{GrafeoDb, LoomDb};
     use crate::types::{CodeFile, Ignore, Intent, Note, QualityRule, Validation};
 
+    fn assert_smell_teaching(s: &Smell) {
+        assert!(!s.teaching.principle.trim().is_empty(), "{s:?}");
+        assert!(!s.teaching.inspect.is_empty(), "{s:?}");
+        assert!(
+            s.teaching.inspect.iter().all(|i| !i.trim().is_empty()),
+            "{s:?}"
+        );
+        assert!(!s.teaching.avoid.is_empty(), "{s:?}");
+        assert!(
+            s.teaching.avoid.iter().all(|i| !i.trim().is_empty()),
+            "{s:?}"
+        );
+        assert!(!s.teaching.done_when.trim().is_empty(), "{s:?}");
+    }
+
+    fn assert_adjudicated_teaching(s: &AdjudicatedSmell) {
+        assert!(!s.teaching.principle.trim().is_empty(), "{s:?}");
+        assert!(!s.teaching.inspect.is_empty(), "{s:?}");
+        assert!(
+            s.teaching.inspect.iter().all(|i| !i.trim().is_empty()),
+            "{s:?}"
+        );
+        assert!(!s.teaching.avoid.is_empty(), "{s:?}");
+        assert!(
+            s.teaching.avoid.iter().all(|i| !i.trim().is_empty()),
+            "{s:?}"
+        );
+        assert!(!s.teaching.done_when.trim().is_empty(), "{s:?}");
+    }
+
     fn intent(id: &str, name: &str) -> Intent {
         Intent {
             id:                id.to_string(),
@@ -788,6 +818,34 @@ mod tests {
             rec[0].evidence.contains("the last at t3"),
             "evidence must carry the last regression timestamp: {}", rec[0].evidence
         );
+        assert!(
+            rec[0]
+                .evidence
+                .contains("recent regressions: t3 passing → failing by llm:analyzer"),
+            "{}",
+            rec[0].evidence
+        );
+        assert!(
+            rec[0]
+                .evidence
+                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            "{}",
+            rec[0].evidence
+        );
+        assert_smell_teaching(rec[0]);
+        assert!(
+            rec[0].teaching.principle.contains("patching again is suspect"),
+            "{:?}",
+            rec[0].teaching
+        );
+        assert!(
+            rec[0]
+                .teaching
+                .inspect
+                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            "{:?}",
+            rec[0].teaching
+        );
 
         // Terminal state: a decision note NEWER than the last regression marks
         // the recurrence addressed — finding resolves, history stays intact.
@@ -795,10 +853,24 @@ mod tests {
         decision.text = "redesigned the criterion; root cause was X".into();
         decision.created_at = "t4".into(); // after the t3 regression
         insert_note(&db, &decision).unwrap();
-        let smells = compute_smells(&db).unwrap().open;
+        let report = compute_smells(&db).unwrap();
+        let smells = &report.open;
         assert!(
             !smells.iter().any(|s| s.kind == "recurrent_trouble"),
             "a decision newer than the last regression must resolve the finding: {smells:?}"
+        );
+        let adj = report
+            .adjudicated
+            .iter()
+            .find(|s| s.kind == "recurrent_trouble")
+            .expect("resolved recurrent trouble should retain its ruling");
+        assert_adjudicated_teaching(adj);
+        assert!(
+            adj.teaching
+                .inspect
+                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            "{:?}",
+            adj.teaching
         );
 
         // …but a NEW regression after the decision re-flags it.
@@ -2012,6 +2084,7 @@ mod tests {
         assert!(!report.open.iter().any(|s| s.kind == "tangled_file"));
         let adj = report.adjudicated.iter().find(|a| a.kind == "tangled_file")
             .expect("suppressed finding must surface with its ruling");
+        assert_adjudicated_teaching(adj);
         assert_eq!(adj.ruled_at, "t2");
         assert!(adj.summary.contains("3 distinct intents"), "{}", adj.summary);
         assert!(adj.reopens_when.contains("IMPLEMENTS claim"), "{}", adj.reopens_when);
@@ -2365,6 +2438,9 @@ mod tests {
         assert!(kinds.contains(&"overlapping_ownership"), "{kinds:?}");
         assert!(kinds.contains(&"unmeasured_intents"), "{kinds:?}");
         assert!(kinds.contains(&"unused_rule"), "{kinds:?}");
+        for smell in &smells {
+            assert_smell_teaching(smell);
+        }
 
         // Recording the relationships/verdicts silences the smells.
         get_or_create_relates_to(&db, "t1", "t2", "t").unwrap();

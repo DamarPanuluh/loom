@@ -66,6 +66,9 @@ pub struct Smell {
     pub evidence: String,
     /// The exact command sequence that resolves or refutes it.
     pub remedy: String,
+    /// LLM-facing teaching: why this smell matters, what to inspect, what to
+    /// avoid, and what "done" means.
+    pub teaching: SmellTeaching,
 }
 
 /// A finding the detector WOULD raise, suppressed by a recorded ruling — the
@@ -84,6 +87,16 @@ pub struct AdjudicatedSmell {
     pub ruled_at: String,
     /// The structural change that voids this ruling and re-opens the finding.
     pub reopens_when: String,
+    /// The same LLM-facing lesson as the open finding would carry.
+    pub teaching: SmellTeaching,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SmellTeaching {
+    pub principle: String,
+    pub inspect: Vec<String>,
+    pub avoid: Vec<String>,
+    pub done_when: String,
 }
 
 /// What the instrument actually measured: open suspicions AND the suppressed
@@ -106,6 +119,166 @@ pub struct SmellReport {
     /// = the layering instrument is unarmed, and the report must say so.
     pub coded_layers: usize,
     pub declared_layers: usize,
+}
+
+fn teaching_for(kind: &str) -> SmellTeaching {
+    match kind {
+        "twin_intents" => SmellTeaching {
+            principle: "Similar wording is a suspicion, not proof; inspect both meanings and code before merging or declaring independence.".into(),
+            inspect: vec![
+                "read both intent criteria and descriptions".into(),
+                "inspect each intent's groundings before recording the edge verdict".into(),
+                "use `loom edge explore <a> <b>` only after evidence is checked".into(),
+            ],
+            avoid: vec!["do not merge or mark independent from name similarity alone".into()],
+            done_when: "a RELATES_TO verdict explains the real relationship, or a proven merge hypothesis replaces one responsibility with one intent".into(),
+        },
+        "duplicated_responsibility" => SmellTeaching {
+            principle: "Duplicate responsibility hides when unrelated files implement the same idea; tags and lexical fallback only point to where inspection must happen.".into(),
+            inspect: vec![
+                "compare both intents' criteria, tags, and grounded code".into(),
+                "check whether the two implementations should share one owner or remain explicitly independent".into(),
+                "record the result with `loom edge explore <a> <b>`".into(),
+            ],
+            avoid: vec!["do not treat a tag or token collision as proof without reading the code".into()],
+            done_when: "the pair has a grounded/independent relationship, or a proven merge hypothesis removes the duplicated ownership".into(),
+        },
+        "duplicate_detection_unarmed" => SmellTeaching {
+            principle: "A quiet duplicate audit is weak when coded intents lack registered vocabulary tags; the lexical fallback is not equivalent to bounded terms.".into(),
+            inspect: vec![
+                "`loom vocab list`".into(),
+                "review untagged coded intents and assign precise registered terms".into(),
+                "`loom smells` after tagging to re-run duplicate detection".into(),
+            ],
+            avoid: vec!["do not accept a no-duplicate result while most coded intents are untagged".into()],
+            done_when: "coded intents are tagged enough for duplicate detection, or a root decision records why the remaining blind spot is accepted".into(),
+        },
+        "overlapping_ownership" => SmellTeaching {
+            principle: "Two intents claiming the same file need an explicit ownership contract; shared code is physical evidence of a relationship.".into(),
+            inspect: vec![
+                "`loom codefile show <path>` for the shared file".into(),
+                "read the shared file once and decide what each intent owns".into(),
+                "`loom edge explore <a> <b>` to ground or refute the relationship".into(),
+            ],
+            avoid: vec!["do not leave shared-file ownership implicit".into()],
+            done_when: "the intents have a grounded relationship, an independent verdict, or one grounding is moved to the correct owner".into(),
+        },
+        "scattered_intent" => SmellTeaching {
+            principle: "A scattered intent usually means the graph intent is too broad; split intent meaning before proposing code movement.".into(),
+            inspect: vec![
+                "read the directory clusters in the evidence".into(),
+                "`loom intent show <intent>` to inspect all groundings".into(),
+                "look for cohesive child responsibilities along the file clusters".into(),
+            ],
+            avoid: vec!["do not start a code refactor before proving the graph split or design problem".into()],
+            done_when: "groundings are moved to cohesive child intents, or a newer decision explains why this spread is deliberate".into(),
+        },
+        "tangled_file" => SmellTeaching {
+            principle: "A tangled file may be deliberate coordination or a real split candidate; code splitting is redesign work and should be proven first.".into(),
+            inspect: vec![
+                "`loom codefile show <path>`".into(),
+                "read the listed intent owners and the shared transaction/module boundary".into(),
+                "if splitting is needed, propose it through `loom hypothesis add`".into(),
+            ],
+            avoid: vec!["do not split a coordinator file just to silence the smell".into()],
+            done_when: "cohabitation has a current decision note, or an adopted/proven hypothesis restructures ownership".into(),
+        },
+        "unmeasured_intents" => SmellTeaching {
+            principle: "A quality rule only matters where it has been honestly held against coded behavior; independent is a valid measured result.".into(),
+            inspect: vec![
+                "`loom next --mode quality`".into(),
+                "measure at the highest honest component altitude before dropping to leaves".into(),
+                "record passing, failing, or independent with concrete evidence".into(),
+            ],
+            avoid: vec!["do not stamp broad rules across leaves with vacuous evidence".into()],
+            done_when: "the rule has GOVERNS verdicts directly or via honest ancestor coverage for every coded intent it should measure".into(),
+        },
+        "undeclared_coupling" => SmellTeaching {
+            principle: "Static imports are executable evidence that two owned responsibilities touch; the semantic graph must either declare or remove that coupling.".into(),
+            inspect: vec![
+                "read the importing and imported files named in evidence".into(),
+                "inspect the two owning intents' criteria".into(),
+                "`loom edge explore <a> <b>` to ground the contract or record the issue".into(),
+            ],
+            avoid: vec!["do not add a relationship without naming the actual call/import contract".into()],
+            done_when: "the coupling is grounded with evidence, marked as an issue to untangle, or the import is removed".into(),
+        },
+        "layering_violation" => SmellTeaching {
+            principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
+            inspect: vec![
+                "`loom layer list`".into(),
+                "read the upward import named in evidence".into(),
+                "decide whether to invert, extract lower shared code, redeclare layers, or record a deliberate exception".into(),
+            ],
+            avoid: vec!["do not silence an up-dependency by adding RELATES_TO; direction is a separate norm".into()],
+            done_when: "the dependency points down, the layer order is corrected, or a current decision on the importing intent justifies the exception".into(),
+        },
+        "recurrent_trouble" => recurrent_teaching("edge", "<id>"),
+        "happy_path_only" => SmellTeaching {
+            principle: "Failure and degradation behavior are real only when realized, grounded, and proven; naming sad/fallback children is not enough.".into(),
+            inspect: vec![
+                "inspect the parent's aspect-tagged children".into(),
+                "check lifecycle, IMPLEMENTS groundings, and passed validations for sad/fallback paths".into(),
+                "add or prove the missing path, or record why it is not applicable".into(),
+            ],
+            avoid: vec!["do not clear failure-path debt with planned or unproven child intents".into()],
+            done_when: "sad and fallback paths are implemented, grounded, and directly proven, or a current decision explains why they are not required".into(),
+        },
+        "unused_rule" => SmellTeaching {
+            principle: "A rule connected to nothing is not a quality bar; it is dormant policy text.".into(),
+            inspect: vec![
+                "`loom rule list`".into(),
+                "find the highest honest intent surface the rule should govern".into(),
+                "apply it with `loom rule verdict` or delete it if it was a mistake".into(),
+            ],
+            avoid: vec!["do not keep unused rules as implied standards".into()],
+            done_when: "the rule governs at least one relevant intent, or it is removed as unused policy".into(),
+        },
+        "vocab_drift" => SmellTeaching {
+            principle: "Near-synonym vocabulary terms split the collision signal that duplicate detection depends on.".into(),
+            inspect: vec![
+                "`loom vocab list`".into(),
+                "compare the two term definitions and their tagged intents".into(),
+                "merge synonyms or rename/retag to make the distinction sharp".into(),
+            ],
+            avoid: vec!["do not let agents choose between look-alike terms for the same concept".into()],
+            done_when: "the look-alike terms are merged, or the remaining terms have names and definitions that no longer collide".into(),
+        },
+        "unjourneyed_surface" => SmellTeaching {
+            principle: "User-visible code needs consumer-journey proof; per-leaf tests do not prove the composed experience.".into(),
+            inspect: vec![
+                "`loom saga list`".into(),
+                "inspect whether a saga step binds to this intent or its relevant tree path".into(),
+                "add/run a saga, mark visibility internal, or record why no journey can exercise it".into(),
+            ],
+            avoid: vec!["do not treat user_visible as proven by unit coverage alone".into()],
+            done_when: "a consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable".into(),
+        },
+        _ => SmellTeaching {
+            principle: "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.".into(),
+            inspect: vec!["read the evidence and run the remedy command with concrete evidence".into()],
+            avoid: vec!["do not silence the finding without a structural fix or decision note".into()],
+            done_when: "the finding is fixed or adjudicated through its remedy".into(),
+        },
+    }
+}
+
+fn recurrent_teaching(target_kind: &str, target_id: &str) -> SmellTeaching {
+    let selector = if target_kind == "intent" {
+        format!("--intent {target_id}")
+    } else {
+        format!("--edge {target_id}")
+    };
+    SmellTeaching {
+        principle: "Repeated failing/needs_change transitions mean the criterion, design boundary, or ownership model is wrong; patching again is suspect.".into(),
+        inspect: vec![
+            format!("loom note list {selector} --kind transition --limit 0"),
+            "read the last failed criterion/evidence for the same target".into(),
+            "identify the stable root cause before proposing another fix".into(),
+        ],
+        avoid: vec!["do not apply another narrow patch without a hypothesis explaining why recurrence will stop".into()],
+        done_when: "a proven/adopted redesign or decision note newer than the last regression explains why the target will not keep regressing".into(),
+    }
 }
 
 /// Jaccard similarity of two token sets (0.0 when either is empty).
@@ -256,6 +429,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
                         a = a.id, b = b.id
                     ),
+                    teaching: teaching_for("twin_intents"),
                 });
             }
         }
@@ -336,6 +510,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
                         a = a.id, b = b.id
                     ),
+                    teaching: teaching_for("duplicated_responsibility"),
                 });
                 continue;
             }
@@ -369,6 +544,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
                         a = a.id, b = b.id
                     ),
+                    teaching: teaching_for("duplicated_responsibility"),
                 });
             }
         }
@@ -430,6 +606,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         reopens_when:
                             "a new or newly grounded untagged coded intent lands after the ruling"
                                 .into(),
+                        teaching: teaching_for("duplicate_detection_unarmed"),
                     });
                 } else {
                     smells.push(Smell {
@@ -447,6 +624,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         } else {
                             "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --intent <root> --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
                         },
+                        teaching: teaching_for("duplicate_detection_unarmed"),
                     });
                 }
             }
@@ -483,6 +661,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "loom edge explore {} {}  → who owns what? ground the contract or mark independent with why",
                         a.id, b.id
                     ),
+                    teaching: teaching_for("overlapping_ownership"),
                 });
             }
         }
@@ -512,6 +691,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
                     reopens_when: "a new grounding lands on this intent".into(),
+                    teaching: teaching_for("scattered_intent"),
                 });
                 continue;
             }
@@ -550,6 +730,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --intent {id} --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
                     id = i.id
                 ),
+                teaching: teaching_for("scattered_intent"),
             });
         }
     }
@@ -573,6 +754,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
                     reopens_when: "a new IMPLEMENTS claim lands on this file".into(),
+                    teaching: teaching_for("tangled_file"),
                 });
                 continue;
             }
@@ -590,6 +772,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; if the cohabitation is DELIBERATE, record it: `loom note add --file {path} --kind decision --text \"<why these intents share a home>\"` resolves this finding (a new claim re-opens it)",
                     n = distinct.len(),
                 ),
+                teaching: teaching_for("tangled_file"),
             });
         }
     }
@@ -659,6 +842,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite",
                 r.id
             ),
+            teaching: teaching_for("unmeasured_intents"),
         });
     }
 
@@ -712,6 +896,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
                     a, b
                 ),
+                teaching: teaching_for("undeclared_coupling"),
             });
         }
     }
@@ -794,6 +979,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         ruled_by: note.author.clone(),
                         ruled_at: note.created_at.clone(),
                         reopens_when: "a new grounding lands on the importing intent".into(),
+                        teaching: teaching_for("layering_violation"),
                     });
                     continue;
                 }
@@ -810,6 +996,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     remedy: format!(
                         "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
                     ),
+                    teaching: teaching_for("layering_violation"),
                 });
             }
         }
@@ -827,12 +1014,14 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     {
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
         let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
+        let mut trouble_notes: HashMap<(String, String), Vec<&crate::types::Note>> = HashMap::new();
         for n in &all_notes {
             if n.kind == "transition"
                 && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
             {
                 let key = (n.target_kind.clone(), n.target_id.clone());
                 *trouble.entry(key.clone()).or_insert(0) += 1;
+                trouble_notes.entry(key.clone()).or_default().push(n);
                 let e = last_trouble.entry(key).or_default();
                 if n.created_at > *e {
                     *e = n.created_at.clone();
@@ -871,6 +1060,26 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 .get(&(kind.clone(), id.clone()))
                 .map(String::as_str)
                 .unwrap_or("");
+            let mut recent = trouble_notes
+                .get(&(kind.clone(), id.clone()))
+                .cloned()
+                .unwrap_or_default();
+            recent.sort_by(|a, b| {
+                b.created_at
+                    .cmp(&a.created_at)
+                    .then_with(|| b.text.cmp(&a.text))
+            });
+            let recent_detail = recent
+                .iter()
+                .take(3)
+                .map(|n| format!("{} {} by {}", n.created_at, n.text, n.author))
+                .collect::<Vec<_>>()
+                .join(" · ");
+            let history_cmd = if kind == "intent" {
+                format!("loom note list --intent {id} --kind transition --limit 0")
+            } else {
+                format!("loom note list --edge {id} --kind transition --limit 0")
+            };
             // Addressed: a decision note recorded after the last regression.
             if let Some(d) = last_decision.get(id.as_str()) {
                 if d.created_at.as_str() > last {
@@ -882,6 +1091,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         ruled_at: d.created_at.clone(),
                         reopens_when:
                             "another failing/needs_change transition lands after the ruling".into(),
+                        teaching: recurrent_teaching(&kind, &id),
                     });
                     continue;
                 }
@@ -894,13 +1104,14 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     label, count
                 ),
                 evidence: format!(
-                    "{count} transition(s) to failing/needs_change, the last at {last}; full history: `loom note list --kind transition`"
+                    "{count} transition(s) to failing/needs_change, the last at {last}; recent regressions: {recent_detail}; full history: `{history_cmd}`"
                 ),
                 remedy: format!(
                     "recurring breakage means the criterion or the design is wrong — propose the redesign instead of patching again: `loom hypothesis add --name \"…\" --claim \"<what keeps regressing and the structural why>\" --proposal \"<the redesign>\" --predicted-outcome \"<no failing/needs_change transition after the next N syncs>\"{target}` (proven → adopted → planned intents); once addressed, `loom note add{nt} --kind decision --text \"<what was redesigned and why it won't recur>\"` resolves this finding (a decision newer than the last regression; history stays intact)",
                     target = if kind == "intent" { format!(" --target {id}") } else { String::new() },
                     nt = if kind == "intent" { format!(" --intent {id}") } else { format!(" --edge {id}") },
                 ),
+                teaching: recurrent_teaching(&kind, &id),
             });
         }
     }
@@ -988,6 +1199,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
                     reopens_when: "a new aspect-tagged child lands under this intent".into(),
+                    teaching: teaching_for("happy_path_only"),
                 });
                 continue;
             }
@@ -1018,6 +1230,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "realize and prove the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
                     m = missing.join("/")
                 ),
+                teaching: teaching_for("happy_path_only"),
             });
         }
     }
@@ -1035,6 +1248,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     "apply it where it belongs (loom rule apply {} <intent-id>) or delete it if it was a mistake",
                     r.id
                 ),
+                teaching: teaching_for("unused_rule"),
             });
         }
     }
@@ -1074,6 +1288,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely distinct concepts the NAMES must stop reading alike — register a sharper term (`loom vocab add`), retag its intents (`loom intent tag`), then merge the look-alike away",
                         drop.name, keep.name, drop.name
                     ),
+                    teaching: teaching_for("vocab_drift"),
                 });
             }
         }
@@ -1181,6 +1396,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                             ruled_by: note.author.clone(),
                             ruled_at: note.created_at.clone(),
                             reopens_when: "a new user_visible intent lands after the ruling (or a first saga is declared — per-intent gaps become visible)".into(),
+                            teaching: teaching_for("unjourneyed_surface"),
                         });
                     } else {
                         let sample: Vec<&str> =
@@ -1200,6 +1416,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                                 "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --intent {} --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
                                 root.id
                             ),
+                            teaching: teaching_for("unjourneyed_surface"),
                         });
                     }
                 }
@@ -1217,6 +1434,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         ruled_by: note.author.clone(),
                         ruled_at: note.created_at.clone(),
                         reopens_when: "the intent is redefined after the ruling".into(),
+                        teaching: teaching_for("unjourneyed_surface"),
                     });
                     continue;
                 }
@@ -1235,6 +1453,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --intent {id} --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
                         id = i.id
                     ),
+                    teaching: teaching_for("unjourneyed_surface"),
                 });
             }
         }

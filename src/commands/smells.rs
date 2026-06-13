@@ -62,6 +62,10 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
         println!("    {}", s.summary);
         println!("    evidence: {}", s.evidence);
         println!("    remedy:   {}", s.remedy);
+        println!("    teaches:  {}", s.teaching.principle);
+        println!("    inspect:  {}", s.teaching.inspect.join(" · "));
+        println!("    avoid:    {}", s.teaching.avoid.join(" · "));
+        println!("    done:     {}", s.teaching.done_when);
         println!();
     }
     if total > smells.len() {
@@ -87,6 +91,8 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
                 a.ruling
             );
             println!("    re-opens when: {}", a.reopens_when);
+            println!("    teaches: {}", a.teaching.principle);
+            println!("    done:    {}", a.teaching.done_when);
             println!();
         }
         println!("  A ruling you disagree with is overruled through the work, not the ledger:");
