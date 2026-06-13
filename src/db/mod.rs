@@ -42,8 +42,14 @@ pub struct GrafeoDb {
     // Declared before `_inner` so the session is dropped first, before the
     // database handle runs its own teardown.
     session: Session,
-    // Keep the database handle alive for the process lifetime.
-    _inner: GrafeoDB,
+    // Keep the database handle alive for the process lifetime. An Arc so the
+    // `loom serve` daemon can hold ONE open handle (the sole lock-holder) and
+    // hand each connection thread its OWN `GrafeoDb` over a fresh session —
+    // grafeo's in-process MVCC makes concurrent sessions on one persistent
+    // handle safe (tests/grafeo_probe.rs::daemon_contract_concurrent_sessions_persistent).
+    // In the single-process path nothing shares it: one Arc, one session,
+    // dropped at process exit — behaviour-identical to the owned-value design.
+    _inner: std::sync::Arc<GrafeoDB>,
 }
 
 impl GrafeoDb {
@@ -59,6 +65,7 @@ impl GrafeoDb {
                 e
             )
         })?;
+        let db = std::sync::Arc::new(db);
         let session = db.session();
         Ok(Self {
             session,
@@ -66,10 +73,29 @@ impl GrafeoDb {
         })
     }
 
+    /// The shared open handle behind this `GrafeoDb` — the daemon holds onto it
+    /// for the process lifetime and spawns per-connection sessions from it via
+    /// [`GrafeoDb::from_handle`]. (No clone of the underlying store; just the Arc.)
+    pub fn handle(&self) -> std::sync::Arc<GrafeoDB> {
+        std::sync::Arc::clone(&self._inner)
+    }
+
+    /// Build a fresh `GrafeoDb` (its own `Session`) over an already-open shared
+    /// handle. The daemon calls this once per accepted connection: a per-thread
+    /// session over the single locked handle. Read-your-writes holds within
+    /// each session; grafeo MVCC keeps concurrent sessions isolated.
+    pub fn from_handle(handle: std::sync::Arc<GrafeoDB>) -> Self {
+        let session = handle.session();
+        Self {
+            session,
+            _inner: handle,
+        }
+    }
+
     /// In-memory database — used by the test suite.
     #[cfg(test)]
     pub fn in_memory() -> Self {
-        let db = GrafeoDB::new_in_memory();
+        let db = std::sync::Arc::new(GrafeoDB::new_in_memory());
         let session = db.session();
         Self {
             session,

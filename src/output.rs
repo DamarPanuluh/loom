@@ -2,11 +2,53 @@ use serde::Serialize;
 
 pub struct Printer {
     pub json: bool,
+    /// When `Some`, JSON output is APPENDED to this buffer instead of being
+    /// `println!`-ed to process stdout. The `loom serve` daemon uses this to
+    /// capture a command's rendered output per-request and ship it back over
+    /// the socket — process stdout can't be captured per-connection without
+    /// racing concurrent threads. `None` (the only state in the direct path)
+    /// is byte-identical to printing straight to stdout.
+    capture: Option<std::cell::RefCell<String>>,
 }
 
 impl Printer {
+    /// Direct mode: writes straight to process stdout (unchanged behaviour).
     pub fn new(json: bool) -> Self {
-        Self { json }
+        Self {
+            json,
+            capture: None,
+        }
+    }
+
+    /// Capturing mode (daemon-only): every stdout write in JSON mode is folded
+    /// into an internal buffer instead of hitting the terminal. Read it back
+    /// with [`Printer::captured`].
+    pub fn capturing(json: bool) -> Self {
+        Self {
+            json,
+            capture: Some(std::cell::RefCell::new(String::new())),
+        }
+    }
+
+    /// The captured buffer (daemon-only). `None` for a direct-mode printer —
+    /// nothing was captured because everything went straight to stdout.
+    pub fn captured(&self) -> Option<String> {
+        self.capture.as_ref().map(|c| c.borrow().clone())
+    }
+
+    /// Emit one line of already-rendered output: append it (plus a newline) to
+    /// the capture buffer when capturing, else `println!` to stdout. The single
+    /// stdout chokepoint — every other writer (`print_json`, the human anchor
+    /// when capturing) routes through here so capture mode stays consistent.
+    fn emit_line(&self, line: &str) {
+        match &self.capture {
+            Some(buf) => {
+                let mut b = buf.borrow_mut();
+                b.push_str(line);
+                b.push('\n');
+            }
+            None => println!("{line}"),
+        }
     }
 
     pub fn print_json<T: Serialize>(&self, value: &T) {
@@ -16,7 +58,7 @@ impl Printer {
             serde_json::to_string(&serde_json::json!({ "error": e.to_string() }))
                 .expect("serializing JSON error object cannot fail")
         });
-        println!("{rendered}");
+        self.emit_line(&rendered);
     }
 }
 

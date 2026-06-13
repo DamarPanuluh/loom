@@ -38,6 +38,97 @@ pub mod validate;
 pub mod validation;
 pub mod vocab;
 
+/// The outcome of a `dispatch_with_db` attempt — the daemon's routing verdict.
+/// `Ran` means the command is servable and was executed against the held
+/// handle (its `Result` is the command's own outcome). `NotServable` is the
+/// sentinel the daemon turns into a `fallback` reply: the client then runs the
+/// command via the ordinary direct-open `dispatch`. Graph-releasing commands
+/// (validate, saga) and lifecycle commands that open their own graph (init,
+/// migrate's path, …) and anything lacking a `run_with_db` are NotServable.
+pub enum DispatchOutcome {
+    Ran(Result<()>),
+    NotServable,
+}
+
+/// Daemon dispatch: run a command against an ALREADY-OPEN shared handle,
+/// routing each servable command to its `*::run_with_db` variant (the body
+/// that does NOT open its own graph). Mirrors `dispatch`'s match arm-for-arm
+/// for every command that has a `run_with_db`; everything else returns
+/// `NotServable` so the client falls back to direct dispatch.
+///
+/// `--graph` is honoured here too (the daemon process resolves its own root,
+/// but a client may still carry the flag); `cli.json` is guaranteed true by
+/// the caller (the daemon only serves JSON requests).
+pub fn dispatch_with_db(
+    db: &crate::db::GrafeoDb,
+    root: &std::path::Path,
+    cli: Cli,
+    printer: &Printer,
+) -> DispatchOutcome {
+    if let Some(g) = &cli.graph {
+        crate::db::set_explicit_graph(g);
+    }
+    let command = match cli.command {
+        // Bare `loom` (orientation) opens no graph — safe and cheap to serve.
+        Some(c) => c,
+        None => return DispatchOutcome::Ran(orient(printer)),
+    };
+    use DispatchOutcome::{NotServable, Ran};
+    match command {
+        // ---- Servable: every command with a `run_with_db` body --------------
+        Command::Status                     => Ran(status::run_with_db(db, root, printer)),
+        Command::Intent      { subcommand } => Ran(intent::run_with_db(db, root, subcommand, printer)),
+        Command::Edge        { subcommand } => Ran(edge::run_with_db(db, root, subcommand, printer)),
+        Command::Next        { mode, all, take, compact } =>
+            Ran(next::run_with_db(db, root, &mode, all, take, compact, printer)),
+        Command::Cluster     { intent_id }  => Ran(cluster::run_with_db(db, root, &intent_id, printer)),
+        Command::Rule        { subcommand } => Ran(rule::run_with_db(db, root, subcommand, printer)),
+        Command::Codefile    { subcommand } => Ran(codefile::run_with_db(db, root, subcommand, printer)),
+        Command::Validation  { subcommand } => Ran(validation::run_with_db(db, root, subcommand, printer)),
+        Command::Hypothesis  { subcommand } => Ran(hypothesis::run_with_db(db, root, subcommand, printer)),
+        Command::Note        { subcommand } => Ran(note::run_with_db(db, root, subcommand, printer)),
+        Command::Vocab       { subcommand } => Ran(vocab::run_with_db(db, root, subcommand, printer)),
+        Command::Layer       { subcommand } => Ran(layer::run_inner_with_db(db, root, subcommand, printer, false)),
+        Command::Persona     { subcommand } => Ran(persona::run_with_db(db, root, subcommand, printer)),
+        Command::Sync        { path }       => Ran(sync::run_with_db(db, root, &path, printer)),
+        Command::Report                     => Ran(report::run_with_db(db, root, printer)),
+        Command::Batch       { file }       => Ran(batch::run_with_db(db, root, &file, printer)),
+        Command::Doctor                     => Ran(doctor::run_with_db(db, root, printer)),
+        Command::Migrate                    => Ran(migrate::run_with_db(db, root, printer)),
+        Command::Find        { query, limit } => Ran(find::run_with_db(db, root, &query, limit, printer)),
+        Command::Door        { utterance, limit } => Ran(door::run_with_db(db, root, &utterance, limit, printer)),
+        Command::Session                    => Ran(session::run_with_db(db, root, printer)),
+        Command::Hotspots    { limit }      => Ran(hotspots::run_with_db(db, root, limit, printer)),
+        Command::Smells      { limit }      => Ran(smells::run_with_db(db, root, limit, printer)),
+        Command::Coverage                   => Ran(coverage::run_with_db(db, root, printer)),
+        Command::Ignore      { subcommand } => Ran(ignore::run_with_db(db, root, subcommand, printer)),
+        Command::Delegate    { subcommand } => Ran(delegate::run_with_db(db, root, subcommand, printer)),
+        Command::Export      { path, out, check } => {
+            let out = path.or(out).unwrap_or_else(|| "loom.graph.json".to_string());
+            Ran(export::run_with_db(db, root, &out, check, printer))
+        }
+        Command::Import      { file, as_planned } => Ran(import::run_with_db(db, root, &file, as_planned, printer)),
+
+        // ---- NOT servable: fall back to direct dispatch ---------------------
+        // Graph-releasing (drop the handle mid-run to free the lock for an
+        // external process that may itself invoke loom) — a held-open handle
+        // would deadlock:
+        Command::Validate { .. } => NotServable,
+        Command::Saga     { .. } => NotServable,
+        // Open/own their own graph lifecycle or read no held graph at all:
+        Command::Init   { .. } => NotServable,
+        Command::Guide  { .. } => NotServable,
+        Command::Schema        => NotServable,
+        Command::Domain { .. } => NotServable, // deprecated alias; runs direct
+        Command::Detect        => NotServable,
+        // The daemon never serves a `serve` request (the client routes `serve`
+        // before the daemon check) — but be exhaustive: fall back if one arrives.
+        Command::Serve { .. }  => NotServable,
+        // An unrecognized token: let direct dispatch teach (it bails with help).
+        Command::Unknown(_)    => NotServable,
+    }
+}
+
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
     if let Some(g) = &cli.graph {
@@ -92,6 +183,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             export::run(&out, check, &printer)
         }
         Command::Import      { file, as_planned } => import::run(&file, as_planned, &printer),
+        Command::Serve       { idle_secs }  => crate::serve::serve(&crate::db::resolve_root()?, idle_secs),
         Command::Unknown(tokens) => teach_unknown(&tokens),
     }
 }

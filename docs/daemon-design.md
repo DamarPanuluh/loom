@@ -88,13 +88,48 @@ barely unit-tested. See [[proven-axis-overstatement]].)
 ## Slice plan
 
 - **⑥a build-identity** — `build.rs` git stamp in `loom --version`. *(done)*
-- **⑥b DB-acquisition refactor** — commands lend a held handle; direct path
-  injects a freshly-opened one (behavior-identical today).
-- **⑥c `loom serve`** — socket loop + transport + build-id handshake + drain.
-- **⑥d routing + lifecycle** — CLI connect→route|spawn|fallback; idle timeout;
-  stale cleanup.
-- **⑥e tests** — parity (daemon result == direct result, per command), latency
-  (vs the open floor), version-skew (binary swap retires the stale daemon).
+- **⑥b DB-acquisition refactor** — 28 commands lend a held handle. *(done)*
+- **⑥c–e `loom serve` + routing + tests** — `src/serve.rs`: Printer capture,
+  threaded socket serve loop dispatching `run_with_db` against an `Arc<GrafeoDB>`
+  handle (per-connection sessions — the proven MVCC pattern), exe-content-hash
+  skew handshake + drain/respawn, lazy-spawn/idle-timeout lifecycle, and the
+  client connect→route|spawn|fallback path. *(done — built via workflow, then
+  hardened on two review-found defects, see below)*
+
+## ⑥c verification + the defects independent review caught
+
+Built via an adversarial workflow (build → review on fallback/skew/concurrency
+lenses + live smoke). Parity is **byte-identical** (servable `--json` via daemon
+== direct, same SHA256); per-request capture buffers and per-thread sessions are
+race-free (review-confirmed). The review + smoke caught **two correctness
+defects the 191-test suite missed** (the command layer is barely unit-tested):
+
+1. **Client had no read timeout** → a wedged daemon (accepts, never replies)
+   hung the client forever instead of falling back. Fixed: `connect_client`
+   applies a 30s read/write timeout to every client stream → timeout → Err →
+   fallback. The "never a correctness dependency" guarantee rests on this.
+2. **Human-mode / non-served under a live daemon broke** (`loom status` with no
+   `--json` → "locked by another process") — the direct path bailed without
+   freeing the daemon's held lock. Fixed: `try_client` now, on ANY direct path
+   (human, non-json, `LOOM_DAEMON` unset), drains a *live* daemon first (a
+   crashed one already released the lock via OS flock-on-death). Verified live:
+   human `status` under a daemon drains it and runs direct, rc=0.
+
+## Known limitations (acceptable for an OPT-IN layer; the direct default is unaffected)
+
+- **Durability on hard kill**: writes via the daemon flush to disk on CLEAN exit
+  (drain / idle-timeout / normal shutdown) — and a clean drain fires on ANY
+  direct access, so writes flush frequently. A hard SIGKILL with unflushed
+  writes loses them (same risk class as killing the single-process CLI
+  mid-write). Future hardening: flush after each mutating request. Verified:
+  write-via-daemon → drain → persisted on disk.
+- **Skew boot-window**: `binary_identity` is frozen once at daemon startup; if
+  the binary is swapped in the sub-second window *between exec and that read*,
+  identity binds to the new bytes while running old logic. Narrow; fallback
+  covers correctness.
+- **Deep repo roots**: `.loom/daemon.sock` can exceed the unix `sockaddr_un`
+  length (~104 bytes on macOS) under a very deep root → bind fails → client
+  falls back to direct.
 
 ## Test plan (⑥e)
 

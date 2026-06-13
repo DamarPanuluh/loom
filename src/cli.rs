@@ -412,6 +412,19 @@ pub enum Command {
         as_planned: bool,
     },
 
+    /// The OPT-IN daemon: hold the graph open and serve client requests over a
+    /// Unix socket, amortizing the per-call DB-open floor for a heavy
+    /// multi-agent session. Started lazily by a client when `LOOM_DAEMON=1`;
+    /// rarely run by hand. Drains + exits after `--idle-secs` of no traffic,
+    /// releasing the lock. The daemon is a PERFORMANCE layer only — clients
+    /// fall back to direct open on any failure, so behaviour never depends on it.
+    Serve {
+        /// Drain and exit after this many seconds with no connection (so a
+        /// daemon never squats on a repo's graph). Default: 5 minutes.
+        #[arg(long, default_value_t = 300)]
+        idle_secs: u64,
+    },
+
     // The universal catch-all: ANY unrecognized top-level token lands here
     // (verb-without-noun, synonym guess, typo) and `commands::teach_unknown`
     // answers with the real invocation — agents reach for `loom update` /
@@ -424,6 +437,22 @@ pub enum Command {
 // ---------------------------------------------------------------------------
 // Parse-error teaching — every command's EXAMPLE doubles as its error message
 // ---------------------------------------------------------------------------
+
+impl Cli {
+    /// Parse a post-binary argument vector (what `std::env::args().skip(1)`
+    /// yields, i.e. WITHOUT the program name) into a `Cli`. The `loom serve`
+    /// daemon uses this to re-parse a client's `argv` against the SAME clap
+    /// definition the direct path uses — so daemon and client never disagree
+    /// about argument semantics. A synthetic program name is prepended because
+    /// clap's `try_parse_from` treats the first element as `argv[0]`. Returns
+    /// clap's error unchanged on a parse failure (the daemon turns it into a
+    /// `fallback`, so the client surfaces the real teaching error via the
+    /// direct path).
+    pub fn try_parse_from_argv(argv: &[String]) -> Result<Cli, clap::Error> {
+        let with_prog = std::iter::once("loom".to_string()).chain(argv.iter().cloned());
+        Cli::try_parse_from(with_prog)
+    }
+}
 
 /// Parse argv; on ANY syntax failure, append the failing command's EXAMPLE
 /// block (its after_help) plus a guide pointer before exiting. Clap's stock
