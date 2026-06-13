@@ -705,6 +705,7 @@ fn default_intent(id: &str) -> Intent {
         aspect: String::new(),
         tags: Vec::new(),
         visibility: String::new(),
+        boundary: String::new(),
         lifecycle: String::new(),
         created_at: String::new(),
         updated_at: String::new(),

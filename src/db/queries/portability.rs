@@ -24,6 +24,7 @@ fn node_props(lbl: &str) -> Vec<&'static str> {
     if lbl == label::INTENT {
         props.push(prop::TAGS);
         props.push(prop::VISIBILITY);
+        props.push(prop::BOUNDARY);
     }
     if lbl == label::CODE_FILE {
         props.push(prop::IMPORTS);
@@ -55,6 +56,7 @@ fn is_optional_prop(p: &str) -> bool {
             || x == prop::AUDIENCE
             || x == prop::TAGS
             || x == prop::VISIBILITY
+            || x == prop::BOUNDARY
             || x == prop::LAYER
     )
 }

@@ -124,6 +124,7 @@ mod tests {
             aspect: String::new(),
             tags: Vec::new(),
             visibility: String::new(),
+            boundary: String::new(),
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),
@@ -137,6 +138,33 @@ mod tests {
             insert_intent(&db, &intent(id, &format!("I{i}"))).unwrap();
         }
         (db, ids)
+    }
+
+    /// The boundary facet survives insert→read, the setter mutates it, an
+    /// empty value clears it, and a typo can't silently mislabel a contract
+    /// surface (the closed set is enforced at the query layer).
+    #[test]
+    fn boundary_facet_round_trips_and_validates() {
+        let db = GrafeoDb::in_memory();
+        let mut i = intent("b0", "exposes an API");
+        i.boundary = "inbound".to_string();
+        insert_intent(&db, &i).unwrap();
+        assert_eq!(get_intent(&db, "b0").unwrap().unwrap().boundary, "inbound");
+
+        // Setter mutates within the closed set.
+        assert!(set_intent_boundary(&db, "b0", "outbound", "t1").unwrap());
+        assert_eq!(get_intent(&db, "b0").unwrap().unwrap().boundary, "outbound");
+
+        // Empty clears (internal, no crossing) — never "keep a bad value".
+        assert!(set_intent_boundary(&db, "b0", "", "t2").unwrap());
+        assert_eq!(get_intent(&db, "b0").unwrap().unwrap().boundary, "");
+
+        // A typo is rejected, not stored.
+        assert!(set_intent_boundary(&db, "b0", "inboud", "t3").is_err());
+        assert_eq!(get_intent(&db, "b0").unwrap().unwrap().boundary, "");
+
+        // Unknown intent reports not-found (Ok(false)), not a spurious error.
+        assert!(!set_intent_boundary(&db, "nope", "inbound", "t4").unwrap());
     }
 
     /// Regression: creating an edge and reading it back used to fail
@@ -1459,6 +1487,7 @@ mod tests {
         .unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
         set_intent_visibility(&db, &ids[0], "internal", "t2").unwrap();
+        set_intent_boundary(&db, &ids[0], "inbound", "t2").unwrap();
 
         let export = export_graph(&db).unwrap();
         let again = export_graph(&db).unwrap();
@@ -1491,6 +1520,10 @@ mod tests {
         assert_eq!(
             i0.visibility, "internal",
             "the audience ruling survives the trip"
+        );
+        assert_eq!(
+            i0.boundary, "inbound",
+            "the boundary facet survives the trip (the cross-repo contract handle)"
         );
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export, false).is_err());
@@ -5498,6 +5531,7 @@ mod escaping {
             aspect: String::new(),
             tags: Vec::new(),
             visibility: String::new(),
+            boundary: String::new(),
             lifecycle: "implemented".into(),
             created_at: "t".into(),
             updated_at: "t".into(),

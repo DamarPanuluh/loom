@@ -273,6 +273,13 @@ pub mod prop {
     /// audience is unknown again). NOT in the required-property table
     /// (additive; absent on intents from older graphs).
     pub const VISIBILITY: &str = "visibility";
+    /// Intent: relationship to the system boundary — "inbound" (exposes a
+    /// surface the outside world calls; a provider contract) | "outbound"
+    /// (calls an external system; a consumer dependency) | "" (internal —
+    /// does not cross the boundary). Owner: builder (a construction-time fact
+    /// about the intent, like `aspect`/`layer`). NOT in the required-property
+    /// table (additive; absent on intents from older graphs, reads as "").
+    pub const BOUNDARY: &str = "boundary";
     // CodeFile
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";

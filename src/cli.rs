@@ -636,6 +636,13 @@ pub enum IntentCmd {
         /// excluded from the user interview until redefined.
         #[arg(long, default_value = "")]
         visibility: String,
+
+        /// Relationship to the system boundary: inbound (exposes a surface the
+        /// outside world calls — a provider contract) | outbound (calls an
+        /// external system — a consumer dependency). Omit for internal intents
+        /// that don't cross the boundary.
+        #[arg(long, default_value = "")]
+        boundary: String,
     },
 
     /// Confirm an intent (status = confirmed) AND stamp a freshness note —
@@ -675,6 +682,11 @@ pub enum IntentCmd {
         /// New architecture layer (metadata — no ripple).
         #[arg(long)]
         layer: Option<String>,
+
+        /// Set/clear the boundary facet (inbound | outbound | "" to clear).
+        /// Metadata — no ripple, like --layer. Records a decision note.
+        #[arg(long)]
+        boundary: Option<String>,
 
         /// New meaning statement (REDEFINITION — ripples staleness one hop,
         /// and clears the visibility ruling: the new meaning's audience is

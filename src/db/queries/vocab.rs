@@ -412,6 +412,7 @@ mod suggest_tests {
             aspect: String::new(),
             tags: Vec::new(),
             visibility: String::new(),
+            boundary: String::new(),
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),

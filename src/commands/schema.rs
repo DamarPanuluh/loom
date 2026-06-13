@@ -101,6 +101,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         },
         "lifecycle": ["planned", "implemented", "needs_change"],
         "visibility": ["user_visible", "internal"],
+        "boundary": {"values": ["inbound", "outbound"], "meaning": "inbound: exposes a surface the outside world calls (a provider contract) · outbound: calls an external system (a consumer dependency) · unset: internal, no boundary crossing. Surfaced in work items so traversal knows a change here is contract-affecting."},
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo", "transition", "confirm"],
         "severity": ["warning", "error"],
@@ -179,6 +180,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
     println!("  lifecycle:         planned | implemented | needs_change");
     println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");
+    println!("  boundary:          inbound (exposes a surface the outside world calls — provider contract) | outbound (calls an external system — consumer dependency) | (unset = internal, no crossing)");
     println!("  note_kind:         justification | commentary | idea | question | decision | todo | transition (auto: verdict history) | confirm (auto: `loom intent confirm` stamp)");
     println!("  severity:          warning | error");
     println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");

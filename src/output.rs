@@ -310,6 +310,12 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
     } else {
         format!("\n  visibility:  {}", i.visibility)
     };
+    // Boundary renders only when set — internal intents aren't worth a line.
+    let boundary_line = if i.boundary.is_empty() {
+        String::new()
+    } else {
+        format!("\n  boundary:    {}", i.boundary)
+    };
     let lifecycle = if i.lifecycle.is_empty() {
         "implemented"
     } else {
@@ -321,9 +327,9 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
         format!("\n  layer:       {}", i.layer)
     };
     format!(
-        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}{}\n  status:      {}\n  lifecycle:   {}{}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
+        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}{}\n  status:      {}\n  lifecycle:   {}{}{}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
         i.id, i.name, i.abstraction_level, i.domain, layer_line, i.status, lifecycle, aspect_line, tags_line,
-        visibility_line, i.description, refs_str, i.created_at, i.updated_at
+        visibility_line, boundary_line, i.description, refs_str, i.created_at, i.updated_at
     )
 }
 
@@ -347,6 +353,11 @@ pub fn fmt_intent_surface(i: &crate::types::IntentSurface) -> String {
     ));
     if !i.aspect.is_empty() {
         s.push_str(&format!("\n  aspect:      {}", i.aspect));
+    }
+    // Boundary surfaces in the work item: the driver sees "this crosses into
+    // the outside world" before touching the code, without re-deriving it.
+    if !i.boundary.is_empty() {
+        s.push_str(&format!("\n  boundary:    {}", i.boundary));
     }
     if !i.tags.is_empty() {
         s.push_str(&format!("\n  tags:        {}", i.tags.join(", ")));
@@ -507,6 +518,7 @@ mod tests {
             aspect: String::new(),
             tags: vec!["enforcement".to_string()],
             visibility: String::new(),
+            boundary: "inbound".to_string(),
             lifecycle: "implemented".to_string(),
             created_at: "t0".to_string(),
             updated_at: "t0".to_string(),
@@ -515,6 +527,8 @@ mod tests {
         let rendered = fmt_intent(&intent);
         assert!(rendered.contains("src/a.rs, docs/SPEC.md"), "{rendered}");
         assert!(rendered.contains("tags:        enforcement"), "{rendered}");
+        // A set boundary renders; an unset one stays off the card.
+        assert!(rendered.contains("boundary:    inbound"), "{rendered}");
     }
 
     #[test]

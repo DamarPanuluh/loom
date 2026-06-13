@@ -478,6 +478,17 @@ pub struct Intent {
     /// leave the align queue until redefined.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub visibility: String,
+    /// Relationship to the system boundary: inbound (this intent EXPOSES a
+    /// surface the outside world calls — an HTTP handler, public API, webhook
+    /// receiver: a provider contract others depend on) | outbound (this intent
+    /// CALLS an external system — an HTTP client, third-party SDK, publish: a
+    /// consumer dependency on someone else's contract) | "" (internal — does
+    /// not cross the boundary). Traversal context: when the driver pulls this
+    /// intent it sees that these files cross into the outside world, so a
+    /// change here is contract-affecting, not local. Additive — absent on
+    /// intents from older graphs (reads as "").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub boundary: String,
     /// Implementation lifecycle: planned | implemented | needs_change.
     pub lifecycle: String,
     pub created_at: String,
@@ -949,6 +960,10 @@ pub struct IntentSurface {
     pub lifecycle: String,
     #[serde(skip_serializing_if = "String::is_empty")]
     pub aspect: String,
+    /// inbound | outbound | "" — surfaced so the driver sees a boundary crossing
+    /// while traversing, without re-deriving it from the code.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub boundary: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -972,6 +987,7 @@ impl From<&Intent> for IntentSurface {
                 i.lifecycle.clone()
             },
             aspect: i.aspect.clone(),
+            boundary: i.boundary.clone(),
             tags: i.tags.clone(),
             sources: i.source_refs.clone(),
         }

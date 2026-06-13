@@ -397,6 +397,7 @@ mod tests {
                 aspect: String::new(),
                 tags: Vec::new(),
                 visibility: String::new(),
+                boundary: String::new(),
                 lifecycle: "implemented".into(),
                 created_at: "t".into(),
                 updated_at: "t".into(),

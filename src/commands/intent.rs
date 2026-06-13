@@ -5,7 +5,7 @@ use crate::cli::{IntentCmd, SourceCmd, TagCmd};
 use crate::db::queries::{
     add_source_ref, confirm_intent, delete_intent, edges_for_intent, get_intent, insert_intent,
     list_hierarchy_for_intent, list_implements_for_intent, list_intents, notes_for_target,
-    remove_source_ref, set_intent_layer, set_intent_lifecycle,
+    remove_source_ref, set_intent_boundary, set_intent_layer, set_intent_lifecycle,
 };
 use crate::db::schema::role;
 use crate::db::{ensure_initialized, GrafeoDb};
@@ -38,6 +38,7 @@ pub fn run_with_db(
             sources,
             tags,
             visibility,
+            boundary,
         } => {
             gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
             // Validate and canonicalize abstraction level + lifecycle.
@@ -70,6 +71,14 @@ pub fn run_with_db(
                      untriaged — the align interview triages it."
                 );
             }
+            if !matches!(boundary.as_str(), "" | "inbound" | "outbound") {
+                anyhow::bail!(
+                    "Invalid --boundary '{boundary}'. Valid: inbound (exposes a surface the \
+                     outside world calls — a provider contract) | outbound (calls an external \
+                     system — a consumer dependency). Omit for internal intents that don't \
+                     cross the boundary."
+                );
+            }
 
             // Tags are validated against the registry — unknown terms error
             // with the full registry inlined (the agent sees the menu at the
@@ -93,6 +102,7 @@ pub fn run_with_db(
                 aspect,
                 tags,
                 visibility,
+                boundary,
                 lifecycle,
                 created_at: now.clone(),
                 updated_at: now,
@@ -232,6 +242,7 @@ pub fn run_with_db(
             id,
             name,
             layer,
+            boundary,
             description,
             reword,
             reason,
@@ -280,10 +291,11 @@ pub fn run_with_db(
             }
             let new_name = name.as_deref().filter(|n| *n != intent.name);
             let new_layer = layer.as_deref().filter(|l| *l != intent.layer);
+            let new_boundary = boundary.as_deref().filter(|b| *b != intent.boundary);
             let new_desc = description.as_deref().filter(|d| *d != intent.description);
-            if new_name.is_none() && new_layer.is_none() && new_desc.is_none() {
+            if new_name.is_none() && new_layer.is_none() && new_boundary.is_none() && new_desc.is_none() {
                 anyhow::bail!(
-                    "Nothing to change: pass --name, --layer, and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
+                    "Nothing to change: pass --name, --layer, --boundary, and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
                     id
                 );
             }
@@ -318,6 +330,38 @@ pub fn run_with_db(
                                     "<undeclared>"
                                 } else {
                                     layer
+                                },
+                                reason
+                            ),
+                            author: by.clone(),
+                            target_kind: "intent".into(),
+                            target_id: id.clone(),
+                            audience: String::new(),
+                            created_at: now.clone(),
+                        },
+                    )?;
+                }
+                if let Some(boundary) = new_boundary {
+                    // Metadata, no ripple — like --layer. set_intent_boundary
+                    // validates the closed set; a bad value bails and the
+                    // transaction rolls back.
+                    set_intent_boundary(db, &id, boundary, &now)?;
+                    crate::db::queries::insert_note(
+                        db,
+                        &crate::types::Note {
+                            id: Uuid::new_v4().to_string(),
+                            kind: "decision".into(),
+                            text: format!(
+                                "boundary changed: '{}' → '{}' ({})",
+                                if intent.boundary.is_empty() {
+                                    "<internal>"
+                                } else {
+                                    &intent.boundary
+                                },
+                                if boundary.is_empty() {
+                                    "<internal>"
+                                } else {
+                                    boundary
                                 },
                                 reason
                             ),

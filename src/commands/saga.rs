@@ -634,6 +634,9 @@ fn resolve_step_intents(
                             tags: Vec::new(),
                             // A consumer-journey step is consumer-visible by construction.
                             visibility: "user_visible".to_string(),
+                            // Boundary left unset — the builder rules inbound/outbound
+                            // when sharpening this stub (no silent inference).
+                            boundary: String::new(),
                             lifecycle: "planned".to_string(),
                             created_at: now.to_string(),
                             updated_at: now.to_string(),

@@ -434,6 +434,7 @@ mod tests {
             aspect: "happy".into(),
             tags: Vec::new(),
             visibility: "internal".into(),
+            boundary: String::new(),
             lifecycle: "implemented".into(),
             created_at: "t".into(),
             updated_at: "t".into(),

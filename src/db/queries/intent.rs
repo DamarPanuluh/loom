@@ -16,7 +16,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
         "INSERT (:Intent {id: $id, name: $name, description: $desc, \
          abstraction_level: $level, domain: $domain, layer: $layer, source_refs: $refs, \
          status: $status, aspect: $aspect, tags: $tags, visibility: $vis, \
-         lifecycle: $lifecycle, created_at: $created, updated_at: $updated})",
+         boundary: $boundary, lifecycle: $lifecycle, created_at: $created, updated_at: $updated})",
         {
             let mut p = super::row::sparams(&[
                 ("id", &intent.id),
@@ -28,6 +28,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
                 ("status", &intent.status),
                 ("aspect", &intent.aspect),
                 ("vis", &intent.visibility),
+                ("boundary", &intent.boundary),
                 ("lifecycle", &intent.lifecycle),
                 ("created", &intent.created_at),
                 ("updated", &intent.updated_at),
@@ -193,7 +194,7 @@ pub fn get_intent(db: &dyn LoomDb, id: &str) -> Result<Option<Intent>> {
     let q = format!(
         "MATCH (n:Intent {{id: '{}'}}) \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, n.layer, \
-                n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
+                n.source_refs, n.status, n.aspect, n.tags, n.visibility, n.boundary, \
                 n.lifecycle, n.created_at, n.updated_at",
         esc(id)
     );
@@ -222,7 +223,7 @@ pub fn list_intents(
     let q = format!(
         "MATCH (n:Intent){} \
          RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, n.layer, \
-                n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
+                n.source_refs, n.status, n.aspect, n.tags, n.visibility, n.boundary, \
                 n.lifecycle, n.created_at, n.updated_at \
          ORDER BY n.name",
         where_clause
@@ -457,6 +458,33 @@ pub fn set_intent_layer(db: &dyn LoomDb, id: &str, layer: &str, updated_at: &str
     db.execute_with_params(
         "MATCH (n:Intent {id: $id}) SET n.layer = $layer, n.updated_at = $updated",
         super::row::sparams(&[("id", id), ("layer", layer), ("updated", updated_at)]),
+    )?;
+    Ok(true)
+}
+
+/// Set an intent's boundary facet (inbound | outbound | "" to clear). Pure
+/// metadata, like `set_intent_layer` — no ripple (a boundary is a fact about
+/// where the intent sits, not a claim earned against code). Validates the
+/// closed set so a typo can't silently mislabel a contract surface.
+pub fn set_intent_boundary(
+    db: &dyn LoomDb,
+    id: &str,
+    boundary: &str,
+    updated_at: &str,
+) -> Result<bool> {
+    if !matches!(boundary, "" | "inbound" | "outbound") {
+        anyhow::bail!(
+            "Invalid boundary '{boundary}'. Valid: inbound (exposes a surface the outside \
+             world calls — a provider contract) | outbound (calls an external system — a \
+             consumer dependency) | \"\" to clear (internal, no boundary crossing)."
+        );
+    }
+    if get_intent(db, id)?.is_none() {
+        return Ok(false);
+    }
+    db.execute_with_params(
+        "MATCH (n:Intent {id: $id}) SET n.boundary = $boundary, n.updated_at = $updated",
+        super::row::sparams(&[("id", id), ("boundary", boundary), ("updated", updated_at)]),
     )?;
     Ok(true)
 }
@@ -739,6 +767,8 @@ fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {
         tags: super::row::list_val(get(row, cols, "n.tags")),
         // Additive: Null on intents from older graphs reads as "" (untriaged).
         visibility: str_val(get(row, cols, "n.visibility")),
+        // Additive: Null on intents from older graphs reads as "" (internal).
+        boundary: str_val(get(row, cols, "n.boundary")),
         lifecycle: str_val(get(row, cols, "n.lifecycle")),
         created_at: str_val(get(row, cols, "n.created_at")),
         updated_at: str_val(get(row, cols, "n.updated_at")),
