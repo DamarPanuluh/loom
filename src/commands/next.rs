@@ -5,7 +5,7 @@ use crate::db::queries::{
     compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
     list_hierarchy_for_intent, list_implements_for_intent, notes_for_target, parse_sync_cause,
     quality_candidates_from_snapshot, review_candidates_from_snapshot,
-    scored_candidates_from_snapshot, unexplored_pairs_scored,
+    scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
     validate_candidates_from_snapshot, validations_for_intent, vertical_completeness_from_snapshot,
     QuerySnapshot,
 };
@@ -89,7 +89,7 @@ pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer)
     // Discovery keeps going once every materialised edge is inspected: fall back
     // to intent pairs that have no edge yet, so the N×N grid gets explored.
     if candidates.is_empty() && mode == "discovery" {
-        candidates = unexplored_pairs_scored(&db)?;
+        candidates = unexplored_pairs_scored_from_snapshot(&snapshot)?;
     }
 
     if candidates.is_empty() {

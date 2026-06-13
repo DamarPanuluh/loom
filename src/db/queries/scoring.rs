@@ -964,6 +964,13 @@ pub fn count_unexplored_pairs_from(
     (intent_count * (intent_count - 1) / 2 - linked.len() as i64).max(0)
 }
 
+/// Test-only convenience that loads the graph itself; production callers reuse
+/// a snapshot they already hold via [`unexplored_pairs_scored_from_snapshot`].
+#[cfg(test)]
+pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>> {
+    unexplored_pairs_scored_from_snapshot(&QuerySnapshot::load(db)?)
+}
+
 /// Intent pairs that have NO RELATES_TO edge between them yet, returned as
 /// synthetic "unexplored" candidates. Scored by combined centrality PLUS a
 /// suspicion bonus — pairs that share implemented files, read alike, or live
@@ -971,11 +978,17 @@ pub fn count_unexplored_pairs_from(
 /// (or a split-brain), so the analyzer is pointed at them first instead of
 /// grinding a flat N×N grid. The why travels in the synthetic edge's `notes`
 /// so `loom next` can display it.
-pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>> {
+///
+/// Takes a snapshot the caller already loaded — the `loom next` discovery
+/// fall-through holds one, and a snapshot is a point-in-time read view, so
+/// reusing it is identical to loading a fresh graph here (one read-only command
+/// never loads the same graph twice).
+pub fn unexplored_pairs_scored_from_snapshot(
+    snapshot: &QuerySnapshot,
+) -> Result<Vec<(RelatesTo, f64)>> {
     use super::smells::jaccard;
 
-    let snapshot = QuerySnapshot::load(db)?;
-    let discovery = DiscoverySnapshot::from_query(&snapshot)?;
+    let discovery = DiscoverySnapshot::from_query(snapshot)?;
     let linked: std::collections::HashSet<(&str, &str)> = discovery
         .linked
         .iter()
