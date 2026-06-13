@@ -824,6 +824,21 @@ pub enum VocabCmd {
     /// List the registry: every term with its usage count and definition.
     List,
 
+    /// Mine THIS graph's own intents for candidate vocabulary terms — tokens
+    /// that recur across ≥2 intents and aren't registered yet, ranked by how
+    /// many share each (collision potential). The low-friction way to ARM
+    /// duplicate-responsibility detection on an untagged graph: loom can't know
+    /// your codebase's vocabulary, so it surfaces what already recurs in it.
+    /// Register the ones that name a real shared responsibility, then tag —
+    /// loom suggests the KEY; the contrastive `--why` stays your judgment.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom vocab suggest --limit 20")]
+    Suggest {
+        /// Max candidates to show (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
     /// Merge term <from> into term <to>: every intent carrying <from> is
     /// retagged to <to>, then <from> is deleted. One sweep, nothing to
     /// re-inspect — this is how vocab drift converges.

@@ -311,3 +311,161 @@ pub fn nearest_terms<'a>(
     });
     ranked.into_iter().map(|(t, usage, _)| (t, usage)).collect()
 }
+
+// ---------------------------------------------------------------------------
+// Suggesting terms — arm the registry from the graph's OWN vocabulary
+// ---------------------------------------------------------------------------
+
+/// A candidate vocabulary term mined from the graph's own intents.
+#[derive(Debug, Clone)]
+pub struct VocabSuggestion {
+    /// The token, already a valid key (`tokenize` yields lowercase alphanumerics).
+    pub term: String,
+    /// Distinct active intents whose name/description contains the token —
+    /// the collision potential (1 is useless, which is why the floor is 2).
+    pub intent_count: usize,
+    /// A few example intent names (alphabetical, capped) for the surface.
+    pub examples: Vec<String>,
+}
+
+/// Candidate vocabulary terms mined from the graph's own intents: tokens that
+/// recur across `>= min_intents` active intents and aren't already registered,
+/// ranked by how many intents share them (collision potential) then by term.
+///
+/// Deliberately reuses the SAME tokenization the `duplicated_responsibility`
+/// lexical fallback keys on, so registering the top suggestions arms exactly
+/// that detector with bounded terms. loom proposes the KEY only — the
+/// contrastive definition stays the operator's judgment, because a registry of
+/// precise, distinguishable keys is the entire value (a canned generic pack
+/// would inject terms this codebase never uses and dilute every collision).
+pub fn suggest_vocab_terms(
+    intents: &[Intent],
+    registered: &std::collections::HashSet<String>,
+    min_intents: usize,
+) -> Vec<VocabSuggestion> {
+    // Generic words that clear the shared tokenizer's small stoplist but name no
+    // responsibility, so they make useless keys. Kept LOCAL to suggestion: the
+    // duplicate-detector's lexical fallback reads the shared tokenizer, which we
+    // must not perturb — this only declutters the human-facing candidate list.
+    const NOISE: &[&str] = &[
+        "every", "only", "also", "when", "then", "than", "each", "any", "may", "must", "use",
+        "used", "uses", "such", "what", "which", "while", "where", "here", "there", "been",
+        "being", "were", "your", "you", "their", "them", "they",
+    ];
+    let mut by_token: HashMap<String, Vec<String>> = HashMap::new();
+    for intent in intents {
+        // `tokenize` returns a set, so each intent contributes a token once.
+        for tok in super::snapshot::tokenize(&format!("{} {}", intent.name, intent.description)) {
+            if registered.contains(&tok) || NOISE.contains(&tok.as_str()) {
+                continue;
+            }
+            by_token.entry(tok).or_default().push(intent.name.clone());
+        }
+    }
+    // Ubiquity cap: a token in a large fraction of intents collides with
+    // everything and discriminates nothing (the same reason tags are capped at
+    // 3 — broad keys say nothing). Only applied once there are enough intents to
+    // take a meaningful fraction of; below that, every recurring token is worth
+    // surfacing.
+    let cap = if intents.len() >= 12 {
+        intents.len() / 4
+    } else {
+        usize::MAX
+    };
+    let mut out: Vec<VocabSuggestion> = by_token
+        .into_iter()
+        .filter(|(_, names)| names.len() >= min_intents && names.len() <= cap)
+        .map(|(term, mut names)| {
+            let intent_count = names.len();
+            names.sort();
+            names.truncate(3);
+            VocabSuggestion {
+                term,
+                intent_count,
+                examples: names,
+            }
+        })
+        .collect();
+    out.sort_by(|a, b| {
+        b.intent_count
+            .cmp(&a.intent_count)
+            .then_with(|| a.term.cmp(&b.term))
+    });
+    out
+}
+
+#[cfg(test)]
+mod suggest_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    fn intent(name: &str, desc: &str) -> Intent {
+        Intent {
+            id: name.to_string(),
+            name: name.to_string(),
+            description: desc.to_string(),
+            abstraction_level: "feature".to_string(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".to_string(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: String::new(),
+            lifecycle: "implemented".to_string(),
+            created_at: "t0".to_string(),
+            updated_at: "t0".to_string(),
+        }
+    }
+
+    #[test]
+    fn suggests_recurring_tokens_ranked_by_shared_intents() {
+        let intents = vec![
+            intent("store records", "persistence layer"),
+            intent("reload store", "persistence reload path"),
+            intent("public router", "routing of requests"),
+        ];
+        let none = HashSet::new();
+        let got = suggest_vocab_terms(&intents, &none, 2);
+        // "store" (2 intents) and "persistence" (2) recur; "routing"/"router"
+        // appear once → excluded by the min-2 floor.
+        let terms: Vec<&str> = got.iter().map(|s| s.term.as_str()).collect();
+        assert!(terms.contains(&"store"), "got {terms:?}");
+        assert!(terms.contains(&"persistence"), "got {terms:?}");
+        assert!(!terms.contains(&"routing"), "got {terms:?}");
+        // Every survivor recurs across at least the floor.
+        assert!(got.iter().all(|s| s.intent_count >= 2));
+    }
+
+    #[test]
+    fn ubiquitous_tokens_are_capped_out() {
+        // 12 intents: "common" in all 12 (collides with everything → useless
+        // key), "shared" in 3. The cap (len/4 = 3) keeps "shared", drops
+        // "common"; "only" is generic noise and never surfaces.
+        let mut intents: Vec<Intent> = (0..12)
+            .map(|i| intent(&format!("intent {i} common only"), ""))
+            .collect();
+        for i in intents.iter_mut().take(3) {
+            i.description = "shared".to_string();
+        }
+        let none = HashSet::new();
+        let got = suggest_vocab_terms(&intents, &none, 2);
+        let terms: Vec<&str> = got.iter().map(|s| s.term.as_str()).collect();
+        assert!(terms.contains(&"shared"), "got {terms:?}");
+        assert!(!terms.contains(&"common"), "ubiquitous token survived: {terms:?}");
+        assert!(!terms.contains(&"only"), "noise word survived: {terms:?}");
+    }
+
+    #[test]
+    fn already_registered_terms_are_not_resuggested() {
+        let intents = vec![
+            intent("store records", "persistence"),
+            intent("reload store", "persistence"),
+        ];
+        let registered: HashSet<String> = ["store".to_string()].into_iter().collect();
+        let got = suggest_vocab_terms(&intents, &registered, 2);
+        let terms: Vec<&str> = got.iter().map(|s| s.term.as_str()).collect();
+        assert!(!terms.contains(&"store"), "registered term resuggested: {terms:?}");
+        assert!(terms.contains(&"persistence"));
+    }
+}

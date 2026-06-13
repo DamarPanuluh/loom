@@ -151,8 +151,8 @@ fn teaching_for(kind: &str) -> SmellTeaching {
         "duplicate_detection_unarmed" => SmellTeaching {
             principle: "A quiet duplicate audit is weak when coded intents lack registered vocabulary tags; the lexical fallback is not equivalent to bounded terms.".into(),
             inspect: vec![
-                "`loom vocab list`".into(),
-                "review untagged coded intents and assign precise registered terms".into(),
+                "`loom vocab suggest` — candidate terms mined from THIS graph's own intents (loom can't know your codebase's vocabulary), ranked by collision potential".into(),
+                "register the ones that name a real shared responsibility (`loom vocab add <term> --why …`) and tag coded intents with them (`loom intent tag add <intent> <term>`)".into(),
                 "`loom smells` after tagging to re-run duplicate detection".into(),
             ],
             avoid: vec!["do not accept a no-duplicate result while most coded intents are untagged".into()],

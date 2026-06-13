@@ -186,7 +186,7 @@ impl DiscoverySnapshot {
     }
 }
 
-fn tokenize(text: &str) -> HashSet<String> {
+pub(crate) fn tokenize(text: &str) -> HashSet<String> {
     const STOP: &[&str] = &[
         "the", "and", "via", "with", "for", "that", "this", "from", "into", "are", "its", "all",
         "one", "not", "has", "have", "can", "per",

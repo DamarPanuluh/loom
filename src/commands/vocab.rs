@@ -143,6 +143,89 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             }
         }
 
+        VocabCmd::Suggest { limit } => {
+            // Read-only (no lane gate): mine THIS graph for candidate keys.
+            let snapshot = crate::db::queries::QuerySnapshot::load(&db)?;
+            let registered: std::collections::HashSet<String> =
+                list_vocab_terms(&db)?.into_iter().map(|t| t.name).collect();
+            let mut suggestions =
+                crate::db::queries::suggest_vocab_terms(&snapshot.intents, &registered, 2);
+            let total = crate::output::apply_limit(&mut suggestions, limit);
+
+            // Coverage context — "is the duplicate detector armed?": coded
+            // intents (≥1 IMPLEMENTS) and how many carry ≥1 tag.
+            let coded: Vec<&crate::types::Intent> = snapshot
+                .intents
+                .iter()
+                .filter(|i| snapshot.with_code.contains(&i.id))
+                .collect();
+            let coded_count = coded.len();
+            let tagged_count = coded
+                .iter()
+                .filter(|i| {
+                    crate::db::queries::parse_tags(i)
+                        .map(|t| !t.is_empty())
+                        .unwrap_or(false)
+                })
+                .count();
+            let armed_note = if coded_count == 0 {
+                String::new()
+            } else if tagged_count == 0 {
+                format!("0 of {coded_count} coded intent(s) tagged — duplicate detection is UNARMED (lexical fallback only); `loom smells` shows it")
+            } else {
+                format!("{tagged_count} of {coded_count} coded intent(s) tagged — tag more to strengthen duplicate detection (`loom smells`)")
+            };
+
+            if printer.json {
+                let items: Vec<serde_json::Value> = suggestions
+                    .iter()
+                    .map(|s| {
+                        serde_json::json!({
+                            "term": s.term,
+                            "intents": s.intent_count,
+                            "examples": s.examples,
+                        })
+                    })
+                    .collect();
+                printer.print_json(&serde_json::json!({
+                    "suggestions": items,
+                    "total": total,
+                    "truncated": total > suggestions.len(),
+                    "coded_intents": coded_count,
+                    "tagged_coded_intents": tagged_count,
+                    "next_step": "register the ones that name a real shared responsibility: `loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"`, then `loom intent tag add <intent> <term>`; re-run `loom smells`",
+                }));
+            } else if suggestions.is_empty() {
+                println!("(no recurring terms found — too few or too distinct intents; tags stay optional)");
+                if !armed_note.is_empty() {
+                    println!("  {armed_note}");
+                }
+            } else {
+                println!("Candidate vocabulary terms — mined from THIS graph's intents, ranked by how many share each (collision potential):\n");
+                println!("  {:<22} {:>7}  {}", "term", "intents", "examples");
+                for s in &suggestions {
+                    println!(
+                        "  {:<22} {:>7}  {}",
+                        s.term,
+                        s.intent_count,
+                        s.examples.join(", ")
+                    );
+                }
+                if let Some(m) = crate::output::more_marker(
+                    total,
+                    suggestions.len(),
+                    "loom vocab suggest --limit 0",
+                ) {
+                    println!("  {m}");
+                }
+                println!();
+                if !armed_note.is_empty() {
+                    println!("  {armed_note}");
+                }
+                println!("  → register one: loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\", then loom intent tag add <intent> <term>");
+            }
+        }
+
         VocabCmd::Merge { from, to } => {
             gate::acting_in_lane("merge vocab terms", &[role::BUILDER], None)?;
             let from = normalize_term(&from)?;
