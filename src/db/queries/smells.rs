@@ -31,6 +31,12 @@ pub const TWIN_SIMILARITY: f64 = 0.4;
 /// suspicion: one near-unique shared term (2 carriers → 0.5) or several
 /// moderately rare ones. Broad spammed terms decay toward zero on their own.
 pub const DUP_TAG_WEIGHT: f64 = 0.5;
+/// Untagged fallback: when bounded vocabulary is absent on either side, strong
+/// description overlap can still flag disjoint coded responsibility.
+pub const DUP_UNTAGGED_SIMILARITY: f64 = 0.30;
+/// Minimum shared tokens for the untagged fallback. This keeps one generic word
+/// from standing in for the missing vocabulary facet.
+pub const DUP_UNTAGGED_SHARED_TOKENS: usize = 2;
 /// Scatter thresholds are level-aware: a feature should be cohesive (few
 /// files); a component legitimately spans a directory; a system intent
 /// grounds to manifests and is never "scattered".
@@ -50,7 +56,7 @@ pub struct Smell {
     /// twin_intents | duplicated_responsibility | overlapping_ownership
     /// | scattered_intent | tangled_file | unmeasured_intents
     /// | undeclared_coupling | layering_violation | recurrent_trouble
-    /// | unused_rule | happy_path_only | vocab_drift
+    /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -87,13 +93,10 @@ pub struct AdjudicatedSmell {
 pub struct SmellReport {
     pub open: Vec<Smell>,
     pub adjudicated: Vec<AdjudicatedSmell>,
-    /// Blind-spot disclosure for `duplicated_responsibility`: tags are
-    /// positive evidence only, so a coded intent with no registered tag can
-    /// never collide. `coded_intents` counts active intents with ≥1
-    /// IMPLEMENTS edge; `tagged_coded_intents` how many of those carry ≥1
-    /// tag. The gap is the slice of the pair-space the detector cannot see —
-    /// "no findings" and "no findings, but the instrument is half-blind"
-    /// must never look alike (same lesson as `adjudicated`).
+    /// Coverage disclosure for `duplicated_responsibility`: tag collisions are
+    /// the strongest signal, and untagged coded intents fall back to a weaker
+    /// lexical detector. `coded_intents` counts active intents with ≥1
+    /// IMPLEMENTS edge; `tagged_coded_intents` how many of those carry ≥1 tag.
     pub coded_intents: usize,
     pub tagged_coded_intents: usize,
     /// Blind-spot disclosure for `layering_violation`: the detector judges
@@ -195,6 +198,12 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     }
     let cf_id_of: HashMap<&str, &str> =
         snapshot.codefiles.iter().map(|cf| (cf.path.as_str(), cf.id.as_str())).collect();
+    let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
+    let mut roots: Vec<&crate::types::Intent> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
+        .collect();
+    roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
     // Adjudicated: a decision on `target` newer than the structure's newest
     // change at `anchor` ("" = no structural timestamp recorded). Returns the
     // ruling note — suppressed findings surface WITH their ruling, never
@@ -248,8 +257,9 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //     other detector misses: lexical twins need shared wording,
     //     overlapping_ownership needs a shared file, undeclared_coupling needs
     //     an import — same responsibility implemented twice in unrelated code
-    //     has none of those. Tags are positive evidence only: untagged intents
-    //     never fire this.
+    //     has none of those. Tags remain the strongest signal, but an untagged
+    //     coded pair gets a stricter lexical fallback so missing tags do not
+    //     make the detector entirely blind.
     for i in 0..intents.len() {
         for j in (i + 1)..intents.len() {
             let (a, b) = (&intents[i], &intents[j]);
@@ -258,22 +268,13 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             {
                 continue;
             }
-            let (Some(ta), Some(tb)) = (
-                discovery.tags_by_intent.get(a.id.as_str()),
-                discovery.tags_by_intent.get(b.id.as_str()),
-            ) else {
-                continue;
-            };
-            let (weight, shared_terms) =
-                super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
-            if weight < DUP_TAG_WEIGHT {
-                continue;
-            }
             // Physical separation: no shared file, no import between their code.
-            let (fa, fb) = (
-                discovery.files_of.get(a.id.as_str()).cloned().unwrap_or_default(),
-                discovery.files_of.get(b.id.as_str()).cloned().unwrap_or_default(),
-            );
+            let (Some(fa), Some(fb)) = (
+                discovery.files_of.get(a.id.as_str()),
+                discovery.files_of.get(b.id.as_str()),
+            ) else {
+                continue; // duplicate implementation requires real code on both sides
+            };
             if fa.intersection(&fb).next().is_some() {
                 continue; // overlapping_ownership owns this case
             }
@@ -284,27 +285,153 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if imports {
                 continue; // undeclared_coupling owns this case
             }
-            let term_detail = shared_terms
+            let empty_tags: &[String] = &[];
+            let ta = discovery
+                .tags_by_intent
+                .get(a.id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or(empty_tags);
+            let tb = discovery
+                .tags_by_intent
+                .get(b.id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or(empty_tags);
+            let (weight, shared_terms) =
+                super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
+            if weight >= DUP_TAG_WEIGHT {
+                let term_detail = shared_terms
+                    .iter()
+                    .map(|t| format!("'{}' ({} intents carry it)", t, discovery.tag_counts.get(t).copied().unwrap_or(1)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                smells.push(Smell {
+                    kind: "duplicated_responsibility".into(),
+                    score: weight * 8.0,
+                    summary: format!(
+                        "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
+                        a.name, b.name
+                    ),
+                    evidence: format!(
+                        "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
+                        term_detail, weight
+                    ),
+                    remedy: format!(
+                        "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
+                        a = a.id, b = b.id
+                    ),
+                });
+                continue;
+            }
+            if ta.is_empty() || tb.is_empty() {
+                let shared_tokens: Vec<String> = toks[a.id.as_str()]
+                    .intersection(&toks[b.id.as_str()])
+                    .cloned()
+                    .collect();
+                let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
+                if sim < DUP_UNTAGGED_SIMILARITY
+                    || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
+                {
+                    continue;
+                }
+                let mut shared_tokens = shared_tokens;
+                shared_tokens.sort();
+                smells.push(Smell {
+                    kind: "duplicated_responsibility".into(),
+                    score: 2.0 + sim * 8.0,
+                    summary: format!(
+                        "'{}' and '{}' read alike, are under-tagged, and live in unrelated code — same responsibility twice?",
+                        a.name, b.name
+                    ),
+                    evidence: format!(
+                        "untagged lexical fallback: name+description similarity {:.2} with shared token(s) {}; tag coverage is {} vs {}; groundings are disjoint with no import between them",
+                        sim,
+                        shared_tokens.join(", "),
+                        if ta.is_empty() { "none" } else { "present" },
+                        if tb.is_empty() { "none" } else { "present" },
+                    ),
+                    remedy: format!(
+                        "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
+                        a = a.id, b = b.id
+                    ),
+                });
+            }
+        }
+    }
+
+    // 1c. Duplicate detector coverage — tags are still optional at write time,
+    //     but once an intent has code, untagged coverage is audit-relevant. The
+    //     lexical fallback above is deliberately weaker than bounded vocabulary;
+    //     this aggregate finding keeps "fallback only" from looking as strong as
+    //     registered terms. A root decision may consciously accept the remaining
+    //     blind spot, but a newly grounded untagged coded intent re-opens it.
+    {
+        let coded: Vec<&crate::types::Intent> = intents
+            .iter()
+            .filter(|i| files_of.contains_key(i.id.as_str()))
+            .collect();
+        if coded.len() >= 2 {
+            let untagged: Vec<&crate::types::Intent> = coded
                 .iter()
-                .map(|t| format!("'{}' ({} intents carry it)", t, discovery.tag_counts.get(t).copied().unwrap_or(1)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            smells.push(Smell {
-                kind: "duplicated_responsibility".into(),
-                score: weight * 8.0,
-                summary: format!(
-                    "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
-                    a.name, b.name
-                ),
-                evidence: format!(
-                    "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
-                    term_detail, weight
-                ),
-                remedy: format!(
-                    "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
-                    a = a.id, b = b.id
-                ),
-            });
+                .copied()
+                .filter(|i| {
+                    discovery
+                        .tags_by_intent
+                        .get(i.id.as_str())
+                        .map(|t| t.is_empty())
+                        .unwrap_or(true)
+                })
+                .collect();
+            if !untagged.is_empty() {
+                let registry = super::vocab::list_vocab_terms(db)?.len();
+                let newest_untagged_grounding = untagged
+                    .iter()
+                    .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
+                    .max()
+                    .unwrap_or("");
+                let sample: Vec<&str> = untagged.iter().take(5).map(|i| i.name.as_str()).collect();
+                let summary = if registry == 0 {
+                    format!(
+                        "duplicated-responsibility tag detector is unarmed: no vocabulary and {} coded intent(s) are untagged",
+                        untagged.len()
+                    )
+                } else {
+                    format!(
+                        "duplicated-responsibility tag detector is under-armed: {} of {} coded intent(s) are untagged",
+                        untagged.len(),
+                        coded.len()
+                    )
+                };
+                let adjudicated_note = roots
+                    .first()
+                    .and_then(|root| adjudicated(root.id.as_str(), newest_untagged_grounding));
+                if let Some(note) = adjudicated_note {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "duplicate_detection_unarmed".into(),
+                        summary,
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "a new or newly grounded untagged coded intent lands after the ruling".into(),
+                    });
+                } else {
+                    smells.push(Smell {
+                        kind: "duplicate_detection_unarmed".into(),
+                        score: 4.0 + untagged.len() as f64,
+                        summary,
+                        evidence: format!(
+                            "{} of {} coded intent(s) have no registered tag; fallback lexical matching is weaker than bounded vocabulary. Examples: {}",
+                            untagged.len(),
+                            coded.len(),
+                            sample.join(" · ")
+                        ),
+                        remedy: if registry == 0 {
+                            "seed the bounded vocabulary (`loom vocab add <term> --why \"covers X, not Y\"`), then tag coded intents with `loom intent tag add <intent> <term>`; if the remaining blind spot is deliberate, record it on the graph root with `loom note add --intent <root> --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+                        } else {
+                            "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --intent <root> --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+                        },
+                    });
+                }
+            }
         }
     }
 
@@ -1033,9 +1160,9 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             .then_with(|| a.remedy.cmp(&b.remedy))
     });
     adjudicated_out.sort_by(|a, b| a.ruled_at.cmp(&b.ruled_at).then_with(|| a.summary.cmp(&b.summary)));
-    // The instrument's own coverage: duplicated_responsibility collides on
-    // registered tags only (positive evidence — see 1b), so the report
-    // carries how much of the coded surface is actually visible to it.
+    // The instrument's own coverage: registered tags are the strongest
+    // duplicated_responsibility signal, so the report carries how much of the
+    // coded surface has that high-signal coverage.
     let coded_intents = intents.iter().filter(|i| files_of.contains_key(i.id.as_str())).count();
     let tagged_coded_intents = intents
         .iter()

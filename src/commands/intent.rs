@@ -88,10 +88,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             };
             // The tag affordance, in-band: only when there IS a registry to
             // pick from and the intent arrived untagged. One line, never a nag
-            // — tags stay optional.
+            // — tags stay optional at write time but matter once code is
+            // grounded and the audit asks whether duplicate detection is armed.
             let registry_size = crate::db::queries::list_vocab_terms(&db)?.len();
             let tag_step = (!has_tags && registry_size > 0).then(|| format!(
-                "Optional: tag it from the {registry_size}-term vocabulary (`loom vocab list`, then `loom intent tag add {id} <term>`) so duplicate-responsibility detection can see it."
+                "Optional now, audit-relevant once grounded: tag it from the {registry_size}-term vocabulary (`loom vocab list`, then `loom intent tag add {id} <term>`) so duplicate-responsibility detection has its strongest signal."
             ));
 
             if printer.json {

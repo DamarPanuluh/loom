@@ -81,22 +81,22 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
         println!("  propose the change (`loom hypothesis add … --target <intent>`) — adoption");
         println!("  restructures the graph and the ruling's subject with it.");
     }
-    // The instrument's own blind spot, disclosed next to its readings:
-    // duplicated_responsibility collides on registered tags only, so a quiet
-    // report with untagged coded intents is NOT evidence of no duplication.
+    // The instrument's own coverage, disclosed next to its readings:
+    // duplicated_responsibility has a weak lexical fallback for untagged coded
+    // pairs, but registered tags are still the high-signal detector.
     let blind = coded - tagged;
     if coded >= 2 && blind > 0 {
         println!();
         if registry == 0 {
             println!("  ⚠ duplicated_responsibility is unarmed: no vocabulary registered, and");
-            println!("    {blind} of {coded} coded intent(s) are untagged — same-responsibility pairs in");
-            println!("    unrelated code are invisible to every detector here. Seed terms");
-            println!("    (`loom vocab add`), then tag (`loom intent tag add <intent> <term>`).");
+            println!("    {blind} of {coded} coded intent(s) are untagged — only the weaker lexical");
+            println!("    fallback can catch same-responsibility pairs in unrelated code. Seed");
+            println!("    terms (`loom vocab add`), then tag (`loom intent tag add <intent> <term>`).");
         } else {
-            println!("  ⚠ blind spot: {blind} of {coded} coded intent(s) carry no registered tag —");
-            println!("    duplicated_responsibility cannot see pairs involving them (tags are");
-            println!("    positive evidence only). `loom vocab list` shows the registry; tag with");
-            println!("    `loom intent tag add <intent> <term>`.");
+            println!("  ⚠ under-armed: {blind} of {coded} coded intent(s) carry no registered tag —");
+            println!("    duplicated_responsibility falls back to lexical similarity for those");
+            println!("    pairs, but tag collisions are stronger. `loom vocab list` shows the");
+            println!("    registry; tag with `loom intent tag add <intent> <term>`.");
         }
     }
     // Same doctrine for the layering instrument: domains in use but no

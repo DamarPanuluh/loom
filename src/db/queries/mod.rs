@@ -406,6 +406,10 @@ mod tests {
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_vocab_term(&db, &term("core", "complete-graph fixture responsibility")).unwrap();
+        for id in &ids {
+            tag_intent(&db, id, &["core"]);
+        }
 
         assert!(scored_candidates(&db, "discovery").unwrap().is_empty(), "next has discovery work");
         assert!(unexplored_pairs_scored(&db).unwrap().is_empty(), "unexplored pairs remain");
@@ -666,6 +670,9 @@ mod tests {
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
+        insert_vocab_term(&db, &term("core", "complete-graph fixture responsibility")).unwrap();
+        tag_intent(&db, &ids[0], &["core"]);
+        tag_intent(&db, &ids[1], &["core"]);
         assert_coherent(&db, "realized, unproven");
 
         // failing relationship → fix
@@ -725,6 +732,7 @@ mod tests {
         get_or_create_relates_to(&db, &ids[1], id2, "t4").unwrap();
         update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", "", 0.9, "llm", "t4").unwrap();
         insert_implements(&db, id2, "cf", "fn z", "", "t4").unwrap();
+        tag_intent(&db, id2, &["core"]);
         insert_validates(&db, "v0", id2, "", "t4").unwrap();
         insert_governs(&db, "r0", id2, "", "t4").unwrap();
         update_governs_verdict(&db, "r0", id2, "passing",
@@ -802,12 +810,11 @@ mod tests {
         );
     }
 
-    /// The smells report disclosing its own blind spot: duplicated_responsibility
-    /// collides on registered tags only (positive evidence), so the report
-    /// counts how much of the coded surface the detector can actually see —
-    /// untagged coded intents can never fire it.
+    /// The smells report discloses high-signal coverage for
+    /// duplicated_responsibility: tag collisions are stronger than the lexical
+    /// fallback, so callers can show how much coded surface is tagged.
     #[test]
-    fn smell_report_counts_tag_blind_spot() {
+    fn smell_report_counts_tag_coverage() {
         let (db, _) = db_inited(0);
         let mut a = intent("a", "alpha engine");
         a.tags = vec!["authz".into()];
@@ -2537,6 +2544,132 @@ mod tests {
         let dup_pairs: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility"
             && s.remedy.contains(&ids[2]) && s.remedy.contains(&ids[3])).collect();
         assert!(dup_pairs.is_empty(), "shared-file pair must route to overlapping_ownership: {smells:?}");
+    }
+
+    #[test]
+    fn duplicated_responsibility_falls_back_for_untagged_disjoint_code() {
+        let (db, ids) = db_with_intents(2);
+        update_intent_meaning(
+            &db,
+            &ids[0],
+            Some("mail retry backoff"),
+            Some("retry delivery with exponential backoff after transient failure"),
+            "t0",
+        ).unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[1],
+            Some("job retry backoff"),
+            Some("retry delivery with exponential backoff after transient failure"),
+            "t0",
+        ).unwrap();
+        insert_codefile(&db, &codefile("f0", "src/mail_retry.rs")).unwrap();
+        insert_codefile(&db, &codefile("f1", "src/job_retry.rs")).unwrap();
+        insert_implements(&db, &ids[0], "f0", "", "", "t").unwrap();
+        insert_implements(&db, &ids[1], "f1", "", "", "t").unwrap();
+
+        let smells = compute_smells(&db).unwrap().open;
+        let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
+        assert_eq!(dup.len(), 1, "{smells:?}");
+        assert!(dup[0].evidence.contains("untagged lexical fallback"), "{}", dup[0].evidence);
+        assert!(dup[0].evidence.contains("retry"), "{}", dup[0].evidence);
+        assert!(dup[0].evidence.contains("backoff"), "{}", dup[0].evidence);
+
+        get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
+        let smells = compute_smells(&db).unwrap().open;
+        assert!(
+            !smells.iter().any(|s| s.kind == "duplicated_responsibility"),
+            "{smells:?}"
+        );
+    }
+
+    #[test]
+    fn duplicated_responsibility_fallback_requires_coded_disjoint_unimported_pairs() {
+        let (db, ids) = db_with_intents(6);
+        update_intent_meaning(&db, &ids[0], Some("orphan reserve rebuild"), Some("reserve rebuild orphan queue"), "t").unwrap();
+        update_intent_meaning(&db, &ids[1], Some("orphan reserve rebuild"), Some("reserve rebuild orphan queue"), "t").unwrap();
+        update_intent_meaning(&db, &ids[2], Some("shared export render"), Some("shared export render stream"), "t").unwrap();
+        update_intent_meaning(&db, &ids[3], Some("shared export render"), Some("shared export render stream"), "t").unwrap();
+        update_intent_meaning(&db, &ids[4], Some("cache hydrate loader"), Some("cache hydrate loader refresh"), "t").unwrap();
+        update_intent_meaning(&db, &ids[5], Some("cache hydrate loader"), Some("cache hydrate loader refresh"), "t").unwrap();
+        insert_codefile(&db, &codefile("shared", "src/shared.rs")).unwrap();
+        insert_codefile(&db, &codefile("from", "src/from.rs")).unwrap();
+        insert_codefile(&db, &codefile("to", "src/to.rs")).unwrap();
+        insert_implements(&db, &ids[2], "shared", "", "", "t").unwrap();
+        insert_implements(&db, &ids[3], "shared", "", "", "t").unwrap();
+        insert_implements(&db, &ids[4], "from", "", "", "t").unwrap();
+        insert_implements(&db, &ids[5], "to", "", "", "t").unwrap();
+        update_codefile_imports(&db, "from", &["src/to.rs".to_string()]).unwrap();
+
+        let smells = compute_smells(&db).unwrap().open;
+        for pair in [(&ids[0], &ids[1]), (&ids[2], &ids[3]), (&ids[4], &ids[5])] {
+            assert!(
+                !smells.iter().any(|s| {
+                    s.kind == "duplicated_responsibility"
+                        && s.remedy.contains(pair.0)
+                        && s.remedy.contains(pair.1)
+                }),
+                "pair {pair:?} must not route to duplicated_responsibility: {smells:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn duplicate_detection_unarmed_fires_clears_and_adjudicates() {
+        let (db, ids) = db_with_intents(3);
+        insert_vocab_term(&db, &term("alpha", "first responsibility")).unwrap();
+        insert_vocab_term(&db, &term("beta", "second responsibility")).unwrap();
+        for (idx, id) in ids.iter().enumerate() {
+            let cfid = format!("cf{idx}");
+            insert_codefile(&db, &codefile(&cfid, &format!("src/f{idx}.rs"))).unwrap();
+            insert_implements(&db, id, &cfid, "", "", "t1").unwrap();
+        }
+
+        let report = compute_smells(&db).unwrap();
+        let unarmed: Vec<&Smell> =
+            report.open.iter().filter(|s| s.kind == "duplicate_detection_unarmed").collect();
+        assert_eq!(unarmed.len(), 1, "{:?}", report.open);
+        assert!(unarmed[0].evidence.contains("3 of 3 coded intent(s)"), "{}", unarmed[0].evidence);
+
+        for id in &ids {
+            tag_intent(&db, id, &["alpha"]);
+        }
+        let report = compute_smells(&db).unwrap();
+        assert!(
+            !report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            "{:?}",
+            report.open
+        );
+
+        set_intent_tags(&db, &ids[2], Vec::new(), "t2").unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(
+            report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            "{:?}",
+            report.open
+        );
+
+        insert_note(&db, &note_at("n-dupe-coverage", "decision", "intent", &ids[0], "t3")).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(
+            !report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            "{:?}",
+            report.open
+        );
+        assert!(
+            report.adjudicated.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            "{:?}",
+            report.adjudicated
+        );
+
+        insert_codefile(&db, &codefile("cf-new", "src/new.rs")).unwrap();
+        insert_implements(&db, &ids[2], "cf-new", "", "", "t4").unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(
+            report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            "{:?}",
+            report.open
+        );
     }
 
     #[test]
