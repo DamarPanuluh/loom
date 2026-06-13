@@ -863,21 +863,46 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     }
 
     // 8. Happy path only — the behavioral vantage point: a feature group that
-    //    declared its sunny-day intent (aspect=happy) but never said what
-    //    failure or degradation look like. Aspect-tagged siblings are the
-    //    mechanical signal; the LLM decides whether sad/fallback are real
-    //    requirements here or honestly N/A (record that as a decision note).
+    //    declared its sunny-day intent (aspect=happy) but never realized and
+    //    proved what failure or degradation look like. The happy aspect is the
+    //    trigger; sad/fallback only clear the smell once they are implemented,
+    //    grounded, and directly proven. The LLM still decides whether
+    //    sad/fallback are real requirements here or honestly N/A (record that
+    //    as a decision note).
     {
         let mut child_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
+        let mut satisfied_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
         let mut newest_aspect_child: HashMap<&str, &str> = HashMap::new();
         let by_id: HashMap<&str, &crate::types::Intent> =
             intents.iter().map(|i| (i.id.as_str(), i)).collect();
+        let passed_validation_ids: HashSet<&str> = snapshot
+            .validations
+            .iter()
+            .filter(|v| v.last_result == "passed")
+            .map(|v| v.id.as_str())
+            .collect();
+        let directly_proven_intents: HashSet<&str> = snapshot
+            .validates
+            .iter()
+            .filter(|e| passed_validation_ids.contains(e.validation_id.as_str()))
+            .map(|e| e.intent_id.as_str())
+            .collect();
         for (p, c) in hierarchy {
             let Some(child) = by_id.get(c.as_str()) else { continue };
             if child.aspect.is_empty() {
                 continue;
             }
             child_aspects.entry(p.as_str()).or_default().insert(child.aspect.as_str());
+            if matches!(child.aspect.as_str(), "sad" | "fallback")
+                && child.lifecycle == "implemented"
+                && files_of.contains_key(child.id.as_str())
+                && directly_proven_intents.contains(child.id.as_str())
+            {
+                satisfied_aspects
+                    .entry(p.as_str())
+                    .or_default()
+                    .insert(child.aspect.as_str());
+            }
             let e = newest_aspect_child.entry(p.as_str()).or_default();
             if child.created_at.as_str() > *e {
                 *e = &child.created_at;
@@ -887,9 +912,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if !aspects.contains("happy") {
                 continue;
             }
+            let satisfied = satisfied_aspects.get(parent_id);
             let missing: Vec<&str> = ["sad", "fallback"]
                 .iter()
-                .filter(|a| !aspects.contains(*a))
+                .filter(|a| !satisfied.is_some_and(|s| s.contains(*a)))
                 .copied()
                 .collect();
             if missing.is_empty() {
@@ -902,7 +928,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if let Some(note) = adjudicated(parent_id, newest_aspect_child.get(parent_id).copied().unwrap_or("")) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "happy_path_only".into(),
-                    summary: format!("'{}' declares a happy path but no {} behavior", pname, missing.join("/")),
+                    summary: format!("'{}' declares a happy path but no realized+proven {} behavior", pname, missing.join("/")),
                     ruling: note.text.clone(),
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
@@ -914,20 +940,27 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 kind: "happy_path_only".into(),
                 score: 2.0 + 2.0 * missing.len() as f64,
                 summary: format!(
-                    "'{}' declares a happy path but no {} behavior",
+                    "'{}' declares a happy path but no realized+proven {} behavior",
                     pname,
                     missing.join("/")
                 ),
                 evidence: format!(
-                    "children carry aspects {{{}}} — failure/degradation behavior is undeclared, so nothing verifies it",
+                    "children carry aspects {{{}}}; realized+proven sad/fallback aspects {{{}}} — failure/degradation behavior is not implemented, grounded, and directly proven",
                     {
                         let mut v: Vec<&str> = aspects.iter().copied().collect();
+                        v.sort();
+                        v.join(", ")
+                    },
+                    {
+                        let mut v: Vec<&str> = satisfied
+                            .map(|s| s.iter().copied().collect())
+                            .unwrap_or_else(Vec::new);
                         v.sort();
                         v.join(", ")
                     }
                 ),
                 remedy: format!(
-                    "declare the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child> and ground it; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
+                    "realize and prove the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
                     m = missing.join("/")
                 ),
             });

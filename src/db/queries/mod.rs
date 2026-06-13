@@ -77,7 +77,7 @@ pub use validation::*;
 mod tests {
     use super::*;
     use crate::db::{GrafeoDb, LoomDb};
-    use crate::types::{CodeFile, Ignore, Intent, Note, QualityRule};
+    use crate::types::{CodeFile, Ignore, Intent, Note, QualityRule, Validation};
 
     fn intent(id: &str, name: &str) -> Intent {
         Intent {
@@ -1918,8 +1918,8 @@ mod tests {
     }
 
     /// The behavioral vantage point: a parent whose children declare a happy
-    /// aspect but no sad/fallback sibling is a happy_path_only smell; adding
-    /// the missing aspect children clears it.
+    /// aspect but no realized+proven sad/fallback sibling is a happy_path_only
+    /// smell; adding bare aspect children is not enough.
     #[test]
     fn happy_path_only_smell_flags_and_clears() {
         let (db, ids) = db_inited(1);
@@ -1928,19 +1928,63 @@ mod tests {
         insert_intent(&db, &happy).unwrap();
         insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
 
-        let smells = compute_smells(&db).unwrap().open;
-        let found = smells.iter().find(|s| s.kind == "happy_path_only");
-        assert!(found.is_some(), "{smells:?}");
-        assert!(found.unwrap().summary.contains("sad/fallback"), "{:?}", found.unwrap().summary);
+        let missing = |needle: &str| {
+            let smells = compute_smells(&db).unwrap().open;
+            let found = smells.iter().find(|s| s.kind == "happy_path_only").cloned();
+            assert!(found.is_some(), "{smells:?}");
+            let found = found.unwrap();
+            assert!(found.summary.contains(needle), "expected '{needle}' in {:?}", found.summary);
+            found
+        };
+
+        missing("sad/fallback");
 
         let mut sad = intent("sad-child", "login fails cleanly");
         sad.aspect = "sad".into();
+        sad.lifecycle = "planned".into();
         insert_intent(&db, &sad).unwrap();
         insert_hierarchy(&db, &ids[0], "sad-child", "", "t").unwrap();
         let mut fb = intent("fb-child", "login degrades gracefully");
         fb.aspect = "fallback".into();
         insert_intent(&db, &fb).unwrap();
         insert_hierarchy(&db, &ids[0], "fb-child", "", "t").unwrap();
+        let finding = missing("sad/fallback");
+        assert!(
+            finding.evidence.contains("realized+proven sad/fallback aspects {}"),
+            "{}",
+            finding.evidence
+        );
+
+        set_intent_lifecycle(&db, "sad-child", "implemented", "t1").unwrap();
+        insert_codefile(&db, &codefile("sad-cf", "src/sad.rs")).unwrap();
+        insert_implements(&db, "sad-child", "sad-cf", "fn sad", "", "t2").unwrap();
+        missing("sad/fallback");
+
+        insert_validation(&db, &Validation {
+            id: "sad-v".into(), name: "sad proof".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: String::new(), last_result: "not_run".into(),
+        }).unwrap();
+        insert_validates(&db, "sad-v", "sad-child", "", "t3").unwrap();
+        missing("sad/fallback");
+        update_validation_result(&db, "sad-v", "failed", "t4").unwrap();
+        missing("sad/fallback");
+        update_validation_result(&db, "sad-v", "passed", "t5").unwrap();
+        let finding = missing("fallback");
+        assert!(
+            !finding.summary.contains("sad/fallback"),
+            "sad is satisfied once implemented, grounded, and directly proven: {}",
+            finding.summary
+        );
+
+        insert_codefile(&db, &codefile("fb-cf", "src/fallback.rs")).unwrap();
+        insert_implements(&db, "fb-child", "fb-cf", "fn fallback", "", "t6").unwrap();
+        insert_validation(&db, &Validation {
+            id: "fb-v".into(), name: "fallback proof".into(), description: String::new(),
+            validation_type: "test".into(), command: "true".into(),
+            last_run: String::new(), last_result: "passed".into(),
+        }).unwrap();
+        insert_validates(&db, "fb-v", "fb-child", "", "t7").unwrap();
         let smells = compute_smells(&db).unwrap().open;
         assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
     }
