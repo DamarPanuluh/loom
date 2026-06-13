@@ -609,12 +609,14 @@ pub fn ripple_intent_redefinition(
     // TARGETS: a supported hypothesis was proven against the old claim text.
     for t in super::targets::list_all_targets(db)? {
         if t.intent_id == intent_id && t.inspection_status == "passing" {
+            // Flip status ONLY — the cause travels via record_sync_flip's
+            // transition note (matching the RELATES_TO/GOVERNS ripple); writing
+            // e.notes would clobber an existing adjudication.
             db.execute(&format!(
                 "MATCH (h:Hypothesis {{id: '{hid}'}})-[e:TARGETS]->(i:Intent {{id: '{iid}'}}) \
-                 SET e.inspection_status = 'needs_reverification', e.notes = '{notes}'",
+                 SET e.inspection_status = 'needs_reverification'",
                 hid = esc(&t.hypothesis_id),
                 iid = esc(intent_id),
-                notes = esc(&format!("stale: {cause}")),
             ))?;
             super::note::record_sync_flip(
                 db,
@@ -697,15 +699,27 @@ pub fn delete_intent(db: &dyn LoomDb, id: &str) -> Result<bool> {
     Ok(true)
 }
 
-/// Return all intents that have zero VALIDATES edges pointing to them.
+/// Active, implemented LEAF intents with zero VALIDATES edges — the honest
+/// "no proof object" risk set. Scoped to the validator queue's own selection
+/// (`validate_selection`): deprecated (retired) design, planned (unbuilt)
+/// intents, and parents (which inherit proof from their leaves) are NOT risky,
+/// and counting them made `loom report` disagree with `loom status` and label
+/// retired design [RISKY]. Mirrors `intents_without_validations_count_from_snapshot`
+/// (stats.rs) — keep the two predicates identical.
 pub fn intents_without_validations(db: &dyn LoomDb) -> Result<Vec<Intent>> {
     let validated: std::collections::HashSet<String> = super::validates::list_all_validates(db)?
         .into_iter()
         .map(|e| e.intent_id)
         .collect();
-    Ok(list_intents(db, None, None)?
+    let parents: std::collections::HashSet<String> = super::hierarchy::list_all_hierarchy(db)?
         .into_iter()
-        .filter(|intent| !validated.contains(&intent.id))
+        .map(|(parent, _child)| parent)
+        .collect();
+    Ok(list_active_intents(db)?
+        .into_iter()
+        .filter(|i| i.lifecycle == "implemented")
+        .filter(|i| !parents.contains(&i.id))
+        .filter(|i| !validated.contains(&i.id))
         .collect())
 }
 

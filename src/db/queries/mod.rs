@@ -4105,7 +4105,12 @@ mod tests {
         )
         .unwrap();
 
-        let hits = find_intents(&db, "ripple staleness", 5).unwrap();
+        let (hits, match_total) = find_intents(&db, "ripple staleness", 5).unwrap();
+        assert_eq!(
+            match_total,
+            hits.len(),
+            "fewer than limit matches → total equals shown (not truncated)"
+        );
         assert_eq!(
             hits[0].intent.id, "sync",
             "most relevant intent must rank first"
@@ -4124,6 +4129,7 @@ mod tests {
         assert!(
             find_intents(&db, "qwertyuiop zxcvbn", 5)
                 .unwrap()
+                .0
                 .is_empty(),
             "a miss is an empty result, not an error"
         );

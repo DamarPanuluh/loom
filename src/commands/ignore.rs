@@ -39,7 +39,11 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
         IgnoreCmd::List => {
             let igs = list_ignores(&db)?;
             if printer.json {
-                printer.print_json(&igs);
+                printer.print_json(&serde_json::json!({
+                    "ignores": igs,
+                    "total": igs.len(),
+                    "truncated": false,
+                }));
             } else if igs.is_empty() {
                 println!(
                     "(no ignore patterns — every non-gitignored file must be mapped or excluded)"

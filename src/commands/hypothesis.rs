@@ -173,21 +173,28 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 );
             }
             let now = chrono::Utc::now().to_rfc3339();
-            update_hypothesis_verdict(&db, &hid, &verdict, &evidence, &prover, &now)?;
             let target_status = if verdict == "supported" {
                 "passing"
             } else {
                 "independent"
             };
-            set_targets_status_for_hypothesis(
-                &db,
-                &hid,
-                target_status,
-                "hypothesis proof establishes whether this target is affected",
-                &evidence,
-                &prover,
-                &now,
-            )?;
+            // Atomic: the verdict and every TARGETS stamp (a (2+N)-statement
+            // mutation) land together or not at all — matches the Adopt path
+            // and the multi-statement-mutation rule. A mid-loop failure must
+            // not leave the hypothesis flipped over half-stamped targets.
+            crate::db::with_transaction(&db, || {
+                update_hypothesis_verdict(&db, &hid, &verdict, &evidence, &prover, &now)?;
+                set_targets_status_for_hypothesis(
+                    &db,
+                    &hid,
+                    target_status,
+                    "hypothesis proof establishes whether this target is affected",
+                    &evidence,
+                    &prover,
+                    &now,
+                )?;
+                Ok(())
+            })?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": hid, "verdict": verdict,

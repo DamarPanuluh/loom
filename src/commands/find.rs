@@ -13,12 +13,15 @@ pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
-    let hits = find_intents(&db, query, limit)?;
+    let (hits, match_total) = find_intents(&db, query, limit)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({
             "query": query,
-            "total": hits.len(),
+            // total = pre-truncation matches; truncated distinguishes
+            // "5 of 5" from "5 of 40" (list-envelope convention).
+            "total": match_total,
+            "truncated": match_total > hits.len(),
             "hits": hits.iter().map(|h| serde_json::json!({
                 "id": h.intent.id,
                 "name": h.intent.name,
@@ -97,6 +100,14 @@ pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
                 h.stale_edges
             );
         }
+    }
+    if let Some(m) = crate::output::more_marker(
+        match_total,
+        hits.len(),
+        &format!("`loom find \"{query}\" --limit 0` for all matches"),
+    ) {
+        println!();
+        println!("  {m}");
     }
     Ok(())
 }

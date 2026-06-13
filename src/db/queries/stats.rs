@@ -635,9 +635,19 @@ pub fn intents_without_validations_count_from_snapshot(snapshot: &QuerySnapshot)
         .iter()
         .map(|e| e.intent_id.as_str())
         .collect();
+    // Parents inherit proof from their leaves — mirror of
+    // `intents_without_validations` (intent.rs): active, implemented LEAVES only,
+    // so this status count never disagrees with `loom report`/the validate queue.
+    let parents: std::collections::HashSet<&str> = snapshot
+        .hierarchy
+        .iter()
+        .map(|(parent, _child)| parent.as_str())
+        .collect();
     snapshot
         .intents
         .iter()
+        .filter(|i| i.lifecycle == "implemented")
+        .filter(|i| !parents.contains(i.id.as_str()))
         .filter(|i| !validated.contains(i.id.as_str()))
         .count() as i64
 }

@@ -126,7 +126,11 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                         })
                     })
                     .collect();
-                printer.print_json(&items);
+                printer.print_json(&serde_json::json!({
+                    "terms": items,
+                    "total": items.len(),
+                    "truncated": false,
+                }));
             } else if terms.is_empty() {
                 println!("(empty registry — tags are optional, but registered terms let duplicate-responsibility detection see across unrelated files)");
                 println!("  → loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"");

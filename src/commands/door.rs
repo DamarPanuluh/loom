@@ -90,7 +90,7 @@ pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
 
-    let intents = find_intents(&db, utterance, limit)?;
+    let (intents, _match_total) = find_intents(&db, utterance, limit)?;
     let planes = door_matches(&db, utterance, limit)?;
     let gs = graph_state(&db)?;
     let nothing_known = intents.is_empty()

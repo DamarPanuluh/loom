@@ -10,14 +10,21 @@ use crate::types::{
     Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
 };
 
-use super::governs::{list_all_governs, list_governs_for_intent};
-use super::hierarchy::list_all_hierarchy;
+use super::governs::list_governs_for_intent;
 use super::implements::list_implements_for_intent;
 use super::intent::list_active_intents;
 use super::note::list_notes;
-use super::relates_to::{edges_for_intent, list_relates_to};
+use super::relates_to::edges_for_intent;
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
+// Production scores from the *_from_snapshot variants; these DB-walking helpers
+// now feed only the #[cfg(test)] candidate functions.
+#[cfg(test)]
+use super::governs::list_all_governs;
+#[cfg(test)]
+use super::hierarchy::list_all_hierarchy;
+#[cfg(test)]
+use super::relates_to::list_relates_to;
 /// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan.
 /// Two deliberate exclusions, both pushed into the query:
 /// - `independent` edges: a VERIFIED ABSENCE of relationship gives closure to
@@ -55,20 +62,10 @@ pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
 /// Formula: degree(a) + degree(b) + urgency(status) - age_penalty(last_inspected)
 /// mode: "discovery" (uninspected) | "fix" (failing + needs_reverification)
 ///
-/// `degrees` is an optional pre-built degree map (from `all_intent_degrees`); pass
-/// `None` and it is built here. Callers that already have the map (e.g. `run_all`)
-/// should pass it in to avoid a redundant pair of queries.
+/// Test-only: production scores from `scored_candidates_from_snapshot` (one
+/// shared snapshot drives both the queue and the compass).
 #[cfg(test)]
 pub fn scored_candidates(db: &dyn LoomDb, mode: &str) -> Result<Vec<(RelatesTo, f64)>> {
-    scored_candidates_with_degrees(db, mode, None)
-}
-
-#[cfg(test)]
-pub fn scored_candidates_with_degrees(
-    db: &dyn LoomDb,
-    mode: &str,
-    prebuilt_degrees: Option<&HashMap<String, i64>>,
-) -> Result<Vec<(RelatesTo, f64)>> {
     let mut candidates = match mode {
         "fix" => {
             let mut v = list_relates_to(db, Some("failing"))?;
@@ -95,13 +92,7 @@ pub fn scored_candidates_with_degrees(
     }
 
     // Build degrees once for all candidates rather than 2 queries per unique endpoint.
-    let owned;
-    let degrees: &HashMap<String, i64> = if let Some(d) = prebuilt_degrees {
-        d
-    } else {
-        owned = all_intent_degrees(db)?;
-        &owned
-    };
+    let degrees = all_intent_degrees(db)?;
 
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
     let now = chrono::Utc::now();
@@ -210,14 +201,9 @@ pub struct BuildCandidate {
 /// (the children are in the queue); once all children are implemented the
 /// parent surfaces as a roll-up. `needs_change` intents always surface
 /// (component-level refactors are legitimate work at any altitude).
+/// Test-only: production builds from `build_candidates_from_snapshot`.
+#[cfg(test)]
 pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
-    build_candidates_with_degrees(db, None)
-}
-
-pub fn build_candidates_with_degrees(
-    db: &dyn LoomDb,
-    prebuilt_degrees: Option<&HashMap<String, i64>>,
-) -> Result<Vec<BuildCandidate>> {
     let intents = list_active_intents(db)?;
     let lifecycle_of: HashMap<&str, &str> = intents
         .iter()
@@ -261,13 +247,7 @@ pub fn build_candidates_with_degrees(
     }
 
     // One bulk degree query instead of 2×N per-intent queries.
-    let owned;
-    let degrees = if let Some(d) = prebuilt_degrees {
-        d
-    } else {
-        owned = all_intent_degrees(db)?;
-        &owned
-    };
+    let degrees = all_intent_degrees(db)?;
 
     let mut scored: Vec<BuildCandidate> = pending
         .into_iter()
@@ -373,23 +353,12 @@ pub enum ReviewCandidate {
     Governs(Governs),
 }
 
+/// Test-only: production reviews from `review_candidates_from_snapshot`.
+#[cfg(test)]
 pub fn review_candidates(db: &dyn LoomDb) -> Result<Vec<(ReviewCandidate, f64)>> {
-    review_candidates_with_degrees(db, None)
-}
-
-pub fn review_candidates_with_degrees(
-    db: &dyn LoomDb,
-    prebuilt_degrees: Option<&HashMap<String, i64>>,
-) -> Result<Vec<(ReviewCandidate, f64)>> {
     let active: std::collections::HashSet<String> =
         list_active_intents(db)?.into_iter().map(|i| i.id).collect();
-    let owned;
-    let degrees = if let Some(d) = prebuilt_degrees {
-        d
-    } else {
-        owned = all_intent_degrees(db)?;
-        &owned
-    };
+    let degrees = all_intent_degrees(db)?;
     let needs_review = |status: &str, confidence: f64| {
         matches!(status, "passing" | "failing" | "independent")
             && confidence > 0.0
@@ -545,23 +514,9 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
 /// apply; a verdict at component altitude covers descendants).
 #[cfg(test)]
 pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
-    quality_candidates_with_degrees(db, None)
-}
-
-#[cfg(test)]
-pub fn quality_candidates_with_degrees(
-    db: &dyn LoomDb,
-    prebuilt_degrees: Option<&HashMap<String, i64>>,
-) -> Result<Vec<(Governs, f64)>> {
     // Bulk-load all degrees once; both the GOVERNS loop and the normative-coverage
     // queue need degrees, so this replaces up to 2×(governs + queue) queries.
-    let owned;
-    let degrees = if let Some(d) = prebuilt_degrees {
-        d
-    } else {
-        owned = all_intent_degrees(db)?;
-        &owned
-    };
+    let degrees = all_intent_degrees(db)?;
     let active: std::collections::HashSet<String> =
         list_active_intents(db)?.into_iter().map(|i| i.id).collect();
 
@@ -668,6 +623,8 @@ pub fn quality_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Govern
 /// (`graph_state` routes phase=validate on its emptiness) — the two can never
 /// disagree the way edge-state counts and last_result-based selection once
 /// did (phase=validate with an empty validator queue).
+/// Test-only DB wrapper; production validates from `validate_selection_from_snapshot`.
+#[cfg(test)]
 pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>> {
     let snapshot = QuerySnapshot::load(db)?;
     Ok(validate_selection_from_snapshot(&snapshot))
@@ -746,26 +703,15 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
 /// Intents with weak or absent proof, scored by centrality + urgency — the
 /// worklist for `loom next --mode validate`. Selection logic lives in
 /// `validate_selection` (shared with the compass).
+/// Test-only: production validates from `validate_candidates_from_snapshot`.
+#[cfg(test)]
 pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
-    validate_candidates_with_degrees(db, None)
-}
-
-pub fn validate_candidates_with_degrees(
-    db: &dyn LoomDb,
-    prebuilt_degrees: Option<&HashMap<String, i64>>,
-) -> Result<Vec<ValidateCandidate>> {
     let selected = validate_selection(db)?;
     if selected.is_empty() {
         return Ok(Vec::new());
     }
     // One bulk degree query instead of 2×N per-intent queries.
-    let owned;
-    let degrees = if let Some(d) = prebuilt_degrees {
-        d
-    } else {
-        owned = all_intent_degrees(db)?;
-        &owned
-    };
+    let degrees = all_intent_degrees(db)?;
     let mut scored: Vec<ValidateCandidate> = selected
         .into_iter()
         .map(|(intent, urgency, reason)| {

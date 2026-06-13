@@ -1343,7 +1343,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 summary: format!("rule '{}' governs nothing", r.name),
                 evidence: "a quality rule with zero GOVERNS edges measures nothing".into(),
                 remedy: format!(
-                    "apply it where it belongs (loom rule apply {} <intent-id>) or delete it if it was a mistake",
+                    "loom rule verdict {} <intent-id> --status passing|failing|independent --criterion … --evidence … (the verdict creates the edge and measures it in one step; independent = the rule does not apply) — or delete it if it was a mistake",
                     r.id
                 ),
                 teaching: teaching_for("unused_rule"),

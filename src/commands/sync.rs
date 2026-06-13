@@ -597,12 +597,15 @@ fn flag_targets_for_intent_with_indexes(
     };
     for edge in edges {
         if edge.inspection_status == "passing" && already_flagged.insert(edge.id.clone()) {
+            // Match the RELATES_TO/GOVERNS ripple: flip status ONLY. The
+            // staleness cause travels via record_sync_flip's transition note
+            // below — writing it into e.notes would clobber any adjudication
+            // a prover left there.
             db.execute(&format!(
                 "MATCH (h:Hypothesis {{id: '{hid}'}})-[e:TARGETS]->(i:Intent {{id: '{iid}'}}) \
-                 SET e.inspection_status = 'needs_reverification', e.notes = '{notes}'",
+                 SET e.inspection_status = 'needs_reverification'",
                 hid = esc(&edge.hypothesis_id),
                 iid = esc(&edge.intent_id),
-                notes = esc(&format!("stale: {cause}")),
             ))?;
             if !cause.is_empty() {
                 record_sync_flip(

@@ -76,7 +76,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     };
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let mut payload = serde_json::json!({
             "total_files":           total,
             "grounded":              grounded_n,
             "delegated":             delegated_n,
@@ -88,7 +88,15 @@ pub fn run(printer: &Printer) -> Result<()> {
             "unaccounted_files":     unaccounted,
             "delegation_targets_missing": missing_targets,
             "pattern_errors":        pattern_errors,
-        }));
+        });
+        // Parity (invariant 2): carry the human remediation into json so the
+        // --json-driven agent isn't left to infer the next move.
+        if !unaccounted.is_empty() {
+            payload["note"] = serde_json::json!(
+                "unaccounted files: map with `loom codefile add` + `loom edge implement`, or exclude with `loom ignore add <glob> --reason …`"
+            );
+        }
+        printer.print_json(&payload);
         return Ok(());
     }
 
@@ -123,8 +131,10 @@ pub fn run(printer: &Printer) -> Result<()> {
         for f in ungrounded.iter().take(40) {
             println!("  ? {}", f);
         }
-        if ungrounded.len() > 40 {
-            println!("  … and {} more", ungrounded.len() - 40);
+        if let Some(m) =
+            crate::output::more_marker(ungrounded.len(), 40, "`loom coverage --json` for the full list")
+        {
+            println!("  {m}");
         }
     }
     if !unaccounted.is_empty() {
@@ -133,8 +143,10 @@ pub fn run(printer: &Printer) -> Result<()> {
         for f in unaccounted.iter().take(40) {
             println!("  - {}", f);
         }
-        if unaccounted.len() > 40 {
-            println!("  … and {} more", unaccounted.len() - 40);
+        if let Some(m) =
+            crate::output::more_marker(unaccounted.len(), 40, "`loom coverage --json` for the full list")
+        {
+            println!("  {m}");
         }
     }
     if unaccounted.is_empty() && ungrounded.is_empty() {

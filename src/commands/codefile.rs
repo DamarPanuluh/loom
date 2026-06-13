@@ -196,17 +196,26 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let cap = crate::output::SECTION_CAP;
 
             if printer.json {
+                // Bound the sub-sections (invariant 3): a central file can own
+                // many intents and accumulate many notes — cap each at
+                // SECTION_CAP (notes keeping the NEWEST) and report the true
+                // *_total so the agent knows to dig, matching `loom intent show`.
+                let owners_json: Vec<_> = owners.iter().take(cap).collect();
+                let rules_json: Vec<_> = rules.iter().take(cap).collect();
+                let imports_json: Vec<_> = imports.iter().take(cap).collect();
+                let notes_json: Vec<_> =
+                    notes.iter().skip(notes.len().saturating_sub(cap)).collect();
                 printer.print_json(&serde_json::json!({
                     "codefile": cf,
-                    "owners": owners,
+                    "owners": owners_json,
                     "owner_count": owners.len(),
                     "owners_total": owners.len(),
                     "tangled": tangled,
-                    "governing_rules": rules,
+                    "governing_rules": rules_json,
                     "governing_rules_total": rules.len(),
-                    "imports": imports,
+                    "imports": imports_json,
                     "imports_total": imports.len(),
-                    "notes": notes,
+                    "notes": notes_json,
                     "notes_total": notes.len(),
                 }));
             } else {

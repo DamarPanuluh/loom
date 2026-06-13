@@ -91,11 +91,12 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     println!("  {:<36}  {}", p.id, p.name);
                     println!("    {}", p.description);
                 }
-                if total > personas.len() {
-                    println!(
-                        "  … +{} more — loom persona list --limit 0",
-                        total - personas.len()
-                    );
+                if let Some(m) = crate::output::more_marker(
+                    total,
+                    personas.len(),
+                    "loom persona list --limit 0",
+                ) {
+                    println!("  {m}");
                 }
                 println!("\n  → loom persona show <id>   to see a persona's SERVES edges");
             }
@@ -107,14 +108,23 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
         PersonaCmd::Show { id } => {
             let persona_id = resolve_persona(&db, &id)?;
             let persona = get_persona(&db, &persona_id)?.expect("resolved above");
-            let serves = list_serves_for_persona(&db, &persona_id)?;
-            let journeys = list_journeys_for_persona(&db, &persona_id)?;
+            // Bound the sub-sections (invariant 3): SERVES is many-to-many, so a
+            // central persona can flood context. Cap each at SECTION_CAP and
+            // report the true *_total, matching `loom hypothesis show`.
+            let mut serves = list_serves_for_persona(&db, &persona_id)?;
+            let serves_total = crate::output::apply_limit(&mut serves, crate::output::SECTION_CAP);
+            let mut journeys = list_journeys_for_persona(&db, &persona_id)?;
+            let journeys_total =
+                crate::output::apply_limit(&mut journeys, crate::output::SECTION_CAP);
+            let fetch = format!("`loom persona show {} --json`", persona.id);
 
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "persona": persona,
                     "serves": serves,
+                    "serves_total": serves_total,
                     "journeys": journeys,
+                    "journeys_total": journeys_total,
                 }));
             } else {
                 println!("── Persona ────────────────────────────────────────────────────────");
@@ -126,8 +136,8 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 println!();
                 println!(
                     "── SERVES ({} intent{}) ──────────────────────────────────────────",
-                    serves.len(),
-                    if serves.len() == 1 { "" } else { "s" }
+                    serves_total,
+                    if serves_total == 1 { "" } else { "s" }
                 );
                 if serves.is_empty() {
                     println!(
@@ -148,13 +158,16 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                             println!("      criterion: {}", e.criterion);
                         }
                     }
+                    if let Some(m) = crate::output::more_marker(serves_total, serves.len(), &fetch) {
+                        println!("  {m}");
+                    }
                 }
 
                 println!();
                 println!(
                     "── JOURNEYS ({} saga{}) ──────────────────────────────────────────",
-                    journeys.len(),
-                    if journeys.len() == 1 { "" } else { "s" }
+                    journeys_total,
+                    if journeys_total == 1 { "" } else { "s" }
                 );
                 if journeys.is_empty() {
                     println!(
@@ -164,6 +177,11 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 } else {
                     for j in &journeys {
                         println!("  ↪ {}", j.validation_name);
+                    }
+                    if let Some(m) =
+                        crate::output::more_marker(journeys_total, journeys.len(), &fetch)
+                    {
+                        println!("  {m}");
                     }
                 }
 

@@ -346,28 +346,50 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             // Show all GOVERNS edges for this intent (grouped by inspection_status)
             let governs = list_governs_for_intent(&db, &intent_id)?;
+            let failing: Vec<_> = governs
+                .iter()
+                .filter(|g| g.inspection_status == "failing")
+                .collect();
+            let passing: Vec<_> = governs
+                .iter()
+                .filter(|g| g.inspection_status == "passing")
+                .collect();
+            let uninspected: Vec<_> = governs
+                .iter()
+                .filter(|g| g.inspection_status == "uninspected")
+                .collect();
+            // The one-step verdict doctrine: `loom rule verdict` creates the
+            // GOVERNS edge AND measures it in one command (never the dead
+            // uninspected state that `rule apply`/`edge govern` manufacture).
+            let measure_hint = format!(
+                "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …",
+                intent_id
+            );
             if printer.json {
-                printer.print_json(&governs);
+                // Parity: same grouped counts the human branch shows, plus the
+                // empty-case corrective command (invariant 2).
+                let mut payload = serde_json::json!({
+                    "governs": governs,
+                    "total": governs.len(),
+                    "failing": failing.len(),
+                    "passing": passing.len(),
+                    "uninspected": uninspected.len(),
+                    "truncated": false,
+                });
+                if governs.is_empty() {
+                    payload["note"] = serde_json::json!(format!(
+                        "no rules measured against this intent — {measure_hint}"
+                    ));
+                }
+                printer.print_json(&payload);
             } else if governs.is_empty() {
                 println!(
-                    "No GOVERNS edges for intent '{}' — no rules applied.",
+                    "No GOVERNS edges for intent '{}' — no rules measured.",
                     intent_id
                 );
-                println!("  → Apply a rule: loom edge govern <rule-id> {}", intent_id);
+                println!("  → Measure a rule against it: {measure_hint}");
+                println!("    (the verdict creates the edge and measures it in one step; independent = the rule does not apply)");
             } else {
-                let failing: Vec<_> = governs
-                    .iter()
-                    .filter(|g| g.inspection_status == "failing")
-                    .collect();
-                let passing: Vec<_> = governs
-                    .iter()
-                    .filter(|g| g.inspection_status == "passing")
-                    .collect();
-                let uninspected: Vec<_> = governs
-                    .iter()
-                    .filter(|g| g.inspection_status == "uninspected")
-                    .collect();
-
                 println!(
                     "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected",
                     intent_id,

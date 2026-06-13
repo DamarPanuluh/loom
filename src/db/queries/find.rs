@@ -68,17 +68,19 @@ pub struct FindHit {
 
 /// BM25 over active intents' names and descriptions (+ domain/layer, folded
 /// into the description field). Returns at most `limit` hits with score > 0,
-/// ranked descending; ties break on name for deterministic output.
-pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<FindHit>> {
+/// ranked descending (ties break on name for deterministic output), PLUS the
+/// pre-truncation match count so callers can signal "showing N of M" rather
+/// than letting a capped list read as exhaustive.
+pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<(Vec<FindHit>, usize)> {
     let terms = tokenize(query);
     if terms.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), 0));
     }
 
     let intents = list_active_intents(db)?;
     let n = intents.len();
     if n == 0 {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), 0));
     }
 
     // Per-document token lists for the two scored fields.
@@ -141,6 +143,7 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.1.name.cmp(&b.1.name))
     });
+    let match_total = scored.len();
     scored.truncate(limit);
 
     // Hydrate only the winners — context is fetched for ≤ limit intents.
@@ -185,7 +188,7 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
             stale_edges,
         });
     }
-    Ok(hits)
+    Ok((hits, match_total))
 }
 
 /// How many claims touching this intent went stale (needs_reverification)

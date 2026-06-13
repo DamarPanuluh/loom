@@ -206,8 +206,12 @@ pub fn run(printer: &Printer) -> Result<()> {
         for n in vc.unrealized_leaves.iter().take(40) {
             println!("      - {}", n);
         }
-        if vc.unrealized_leaves.len() > 40 {
-            println!("      … and {} more", vc.unrealized_leaves.len() - 40);
+        if let Some(m) = crate::output::more_marker(
+            vc.unrealized_leaves.len(),
+            40,
+            "`loom report --json` for the full list",
+        ) {
+            println!("      {m}");
         }
         println!("    → `loom edge implement <intent> <codefile>` or decompose with `loom edge hierarchy`.");
     }
@@ -216,8 +220,12 @@ pub fn run(printer: &Printer) -> Result<()> {
         for p in vc.unreached_codefiles.iter().take(40) {
             println!("      - {}", p);
         }
-        if vc.unreached_codefiles.len() > 40 {
-            println!("      … and {} more", vc.unreached_codefiles.len() - 40);
+        if let Some(m) = crate::output::more_marker(
+            vc.unreached_codefiles.len(),
+            40,
+            "`loom report --json` for the full list",
+        ) {
+            println!("      {m}");
         }
         println!("    → ground them (`loom edge implement`) or drop the CodeFile.");
     }
@@ -227,6 +235,13 @@ pub fn run(printer: &Printer) -> Result<()> {
         );
         for n in vc.non_system_roots.iter().take(40) {
             println!("      - {}", n);
+        }
+        if let Some(m) = crate::output::more_marker(
+            vc.non_system_roots.len(),
+            40,
+            "`loom report --json` for the full list",
+        ) {
+            println!("      {m}");
         }
     }
     if vc.complete {

@@ -100,18 +100,12 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
 
             let audience = match &for_role {
                 Some(r) => {
-                    use crate::db::schema::role;
-                    if ![
-                        role::BUILDER,
-                        role::ANALYZER,
-                        role::FIXER,
-                        role::VALIDATOR,
-                        role::QUALITY,
-                    ]
-                    .contains(&r.as_str())
-                    {
+                    // The canonical lane set (gate.rs reads the same constant) —
+                    // tracks automatically if a 6th role is ever added.
+                    if !crate::db::schema::ROLES.contains(&r.as_str()) {
                         anyhow::bail!(
-                            "--for must be a lane: builder | analyzer | fixer | validator | quality (got '{r}')."
+                            "--for must be a lane: {roles} (got '{r}').",
+                            roles = crate::db::schema::ROLES.join(" | ")
                         );
                     }
                     r.clone()

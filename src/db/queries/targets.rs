@@ -137,12 +137,14 @@ pub fn flag_targets_for_intent(
     let mut count = 0usize;
     for t in list_all_targets(db)? {
         if t.intent_id == intent_id && t.inspection_status == "passing" {
+            // Flip status ONLY — the cause travels via record_sync_flip's
+            // transition note (matching the RELATES_TO/GOVERNS ripple); writing
+            // e.notes would clobber an existing adjudication.
             db.execute(&format!(
                 "MATCH (h:Hypothesis {{id: '{hid}'}})-[e:TARGETS]->(i:Intent {{id: '{iid}'}}) \
-                 SET e.inspection_status = 'needs_reverification', e.notes = '{notes}'",
+                 SET e.inspection_status = 'needs_reverification'",
                 hid = esc(&t.hypothesis_id),
                 iid = esc(intent_id),
-                notes = esc(&format!("stale: {cause}")),
             ))?;
             if !cause.is_empty() {
                 super::note::record_sync_flip(

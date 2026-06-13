@@ -521,21 +521,27 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 };
                 crate::db::queries::insert_note(&db, &note)?;
             }
-            let next_step = (lifecycle == "planned" || lifecycle == "needs_change")
-                .then_some("`loom next --mode build` will surface it.");
+            // Always anchor (invariant 1): a lifecycle transition moves the
+            // compass phase — most sharply the terminal needs_change→implemented
+            // fixer transition, which previously printed no guidance at all.
+            // Hint per destination state.
+            let next_step = match lifecycle.as_str() {
+                "planned" | "needs_change" => "`loom next --mode build` will surface it.",
+                // An implemented leaf without a passed validation routes to the
+                // validate queue (stats.rs) — point there.
+                "implemented" => {
+                    "if this leaf is fully grounded, prove it: `loom next --mode validate`"
+                }
+                _ => "`loom next` serves the next item",
+            };
             if printer.json {
-                let mut payload = serde_json::json!({
+                let payload = serde_json::json!({
                     "status": "ok", "id": id, "lifecycle": lifecycle,
                 });
-                if let Some(ns) = next_step {
-                    payload["next_step"] = serde_json::json!(ns);
-                }
-                printer.print_json(&payload);
+                printer.print_json(&crate::output::with_anchor(payload, &db, next_step)?);
             } else {
                 println!("✓ Intent {} → lifecycle '{}'", id, lifecycle);
-                if let Some(ns) = next_step {
-                    println!("  → Next: {ns}");
-                }
+                crate::output::print_anchor(&db, next_step)?;
             }
         }
 

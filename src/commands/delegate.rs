@@ -75,7 +75,11 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
                         })
                     })
                     .collect();
-                printer.print_json(&items);
+                printer.print_json(&serde_json::json!({
+                    "delegations": items,
+                    "total": items.len(),
+                    "truncated": false,
+                }));
             } else if ds.is_empty() {
                 println!("(no delegations — this graph covers its whole tree itself)");
             } else {

@@ -123,8 +123,12 @@ loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--ta
   - Suggested action
   No second lookup needed. LLM can act immediately.
 
-loom intent add --name --description --level [--domain] [--source ...]
+loom intent add --name --description --level [--domain] [--layer] [--source ...]
 loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...] [--visibility user_visible|internal]
+  --domain = product/business facet (auth, billing) — discovery/scoring, NO
+  layering effect. --layer = ARCHITECTURE layer (presentation, application,
+  storage) — the input `loom layer order` ranks and `layering_violation` reads
+  (schema v6 split these two; pre-v6 `--domain` armed layering).
 loom intent confirm <id> [--visibility user_visible|internal]
   Ratify the meaning (status → confirmed) AND stamp a freshness note (kind=
   confirm, append-only — alignment history travels in the export). Re-confirming
@@ -294,6 +298,23 @@ loom saga list
   invocation in the error and nothing stamped — and `loom validate` records it
   as `blocked` (environment-not-ready), never as a failed proof.
 
+loom persona add --name <name> --description "<who they are>" [--author <agent>]
+  Register an audience segment — the "as a [X]" of user stories (the consumer
+  plane). Builder lane.
+loom persona list [--limit N]
+loom persona show <persona-id>
+  The persona with its SERVES edges (each with inspection status) and JOURNEYS
+  (saga proofs bound to its path). Sub-sections cap at SECTION_CAP.
+loom persona serve <persona-id> <intent-id> [ground|issue|independent …]
+  The SERVES edge — "does this intent actually serve this persona?" Bare:
+  creates the edge (uninspected) and prints context. With ground/issue/
+  independent: records the verdict (analyzer lane; the same criterion/evidence/
+  confidence gates as any inspectable edge). independent = it does NOT serve them.
+loom persona journey <persona-id> <saga-id>
+  Bind a saga (Validation of type=saga) to the persona — a structural JOURNEYS
+  edge: "this end-to-end proof exercises this persona's path." No verdict; the
+  saga's own run is the evidence.
+
 loom rule add --name --description --severity [--effort low|mid|high]
   --effort = how much capability INSPECTING this rule needs (pack rules ship
   annotated: secrets-scan low, atomicity high, default mid). Travels into
@@ -398,19 +419,27 @@ loom vocab merge <from> <to>
   <from> is deleted. One sweep, nothing to re-inspect — terms are keys, not
   inspectable claims. The `vocab_drift` smell emits this command.
 
-loom domain order <top> … <bottom>
-  Declare the architecture's layer order, top layer first (builder lane;
+loom layer order <top> … <bottom>
+  Declare the architecture's LAYER order, top layer first (builder lane;
   REPLACES any previous order — one atomic list on the LoomMeta sentinel,
   travels in exports and ports). This is the normative input the
-  `layering_violation` smell judges imports against: a domain earlier in the
-  order may depend on later ones, never the reverse. Domains not in the order
-  are exempt — declare only what you mean to enforce (the same positive-
-  evidence-only stance as tags).
-loom domain list
-  The declared order with per-domain intent counts, plus domains in use that
-  the order does not cover (exempt).
-loom domain clear
+  `layering_violation` smell judges imports against: an intent in a layer
+  earlier in the order may depend on later ones, never the reverse (a recorded
+  RELATES_TO does not excuse direction). The smell reads each intent's `layer`
+  field — set with `loom intent add --layer …`. Layers not in the order, and
+  intents with no `--layer`, are exempt — declare only what you mean to enforce
+  (the same positive-evidence-only stance as tags). NOTE (schema v6): this is
+  about ARCHITECTURE layers, split out from product `--domain` — `--domain`
+  (auth, billing) is a business-facet label with NO layering effect.
+loom layer list
+  The declared order with per-layer intent counts, plus layers in use that the
+  order does not cover (exempt from the smell).
+loom layer clear
   Remove the order — layering_violation goes silent.
+loom domain order|list|clear
+  DEPRECATED alias of `loom layer` (one compatibility window). Old invocations
+  still declare the layer order, but product `--domain` labels no longer arm
+  layering. Prefer `loom layer`.
 
 loom doctor
   Verify graph integrity against the declared schema (src/db/schema.rs):
@@ -538,11 +567,11 @@ loom smells [--limit N]
   `loom smells` also discloses the blind spot — how many coded intents carry
   no registered tag and are therefore invisible to this detector),
   layering violation (code owned by a LOWER layer imports code owned by a
-  HIGHER layer per the declared `loom domain order` — direction always
+  HIGHER layer per the declared `loom layer order` — direction always
   existed in the physical plane; the declared order is what makes it
   judgeable. A recorded RELATES_TO edge does NOT excuse direction —
   undeclared coupling asks "is the contact declared?", this asks "does it
-  point the right way?"; undeclared domains are exempt; a kind=decision note
+  point the right way?"; undeclared layers are exempt; a kind=decision note
   on the importing intent newer than its newest grounding records "this
   layer may reach up" and resolves it, a new grounding re-flags),
   vocab drift (two registered terms that read like the same word — remedy is

@@ -531,7 +531,11 @@ fn list(printer: &Printer) -> Result<()> {
                 })
             })
             .collect();
-        printer.print_json(&rows);
+        printer.print_json(&serde_json::json!({
+            "sagas": rows,
+            "total": rows.len(),
+            "truncated": false,
+        }));
     } else if sagas.is_empty() {
         println!("(no sagas registered — `loom saga add <spec.yaml>`)");
     } else {

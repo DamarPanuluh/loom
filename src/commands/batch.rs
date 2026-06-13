@@ -97,10 +97,23 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
         }
     }
 
+    // Anchor the drain (invariant 1): the bulk path is exactly where
+    // `loom next --take` funnels agents, so a 50-line cross-phase drain must
+    // hand back fresh state + the next move — never leave the agent to call
+    // `loom status` to learn where it now stands. Fire BEFORE the failed>0
+    // bail so a success-bearing partial still anchors.
+    let gs = crate::db::queries::graph_state(&db)?;
+    let next_step = if failed == 0 {
+        gs.next_action.clone()
+    } else {
+        format!("fix the {failed} rejected line(s) above and re-run `loom batch`")
+    };
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": if failed == 0 { "ok" } else { "partial" },
             "ok": ok, "failed": failed, "results": results,
+            "next_step": next_step,
+            "graph_state": crate::output::pulse_json(&gs),
         }));
     } else {
         for r in &results {
@@ -120,6 +133,8 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
         }
         println!();
         println!("  {ok} applied, {failed} failed.");
+        println!("  → Next: {next_step}");
+        println!("  {}", crate::output::fmt_pulse(&gs));
     }
     if failed > 0 {
         anyhow::bail!(

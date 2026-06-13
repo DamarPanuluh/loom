@@ -18,7 +18,7 @@ The graph spans three planes:
 
 Edges connect planes. The graph is only useful when all three planes are populated and connected.
 
-## Node types (6)
+## Node types (10)
 
 ### Intent
 The core node. Everything orbits this.
@@ -27,11 +27,24 @@ id                  STRING (uuid)
 name                STRING
 description         STRING
 abstraction_level   STRING  -- "feature" | "component" | "system" | "cross_cutting"
-domain              STRING  -- free grouping label; `loom domain order` ranks
-                               domains into layers, and imports pointing UP
-                               that order surface as layering_violation
+domain              STRING  -- product/business facet label only (auth, billing);
+                               a free grouping key. NO layering effect — v6 split
+                               architecture direction out into `layer` below.
+layer               STRING  -- architecture-direction grouping (presentation,
+                               application, storage). `loom layer order <top> …
+                               <bottom>` ranks layers; imports pointing UP that
+                               order surface as layering_violation. The smell
+                               reads `layer`, not `domain`.
 source_refs         LIST    -- file paths (native list since schema v5)
 status              STRING  -- "proposed" | "confirmed" | "deprecated"
+lifecycle           STRING  -- "planned" | "implemented" | "needs_change" — the
+                               axis the build/fix queues route on (default
+                               implemented)
+aspect              STRING  -- path-coverage facet ("happy" | "sad" | "fallback"
+                               | …); a parent with a happy child but no sad/
+                               fallback sibling trips the happy_path_only smell
+visibility          STRING  -- "user_visible" | "internal" | (unset = untriaged;
+                               the align interview triages it)
 created_at          STRING
 updated_at          STRING
 tags                LIST    -- registered VocabTerm names (≤3, sorted; empty/absent
@@ -141,7 +154,31 @@ author       STRING
 created_at   STRING
 ```
 
-## Edge types (6)
+### Persona
+A named audience segment — the "as a [X]" of user stories (the consumer plane).
+SERVES edges verify which intents actually serve it; JOURNEYS edges bind saga
+proofs to its end-to-end path. Personas turn "who is this for?" into an
+inspectable claim and connect runtime proofs to the audience they protect.
+```
+id           STRING (uuid)
+name         STRING
+description  STRING
+author       STRING
+created_at   STRING
+updated_at   STRING
+```
+
+### Note · Ignore · Delegation (infrastructure nodes)
+Not planes — bookkeeping the CLI hangs off the graph.
+- **Note** — append-only free-text memory (justification | commentary | idea |
+  question | decision | todo, plus auto `transition`/`confirm`); targets an
+  intent, edge, or codefile. `--for <role>` makes it a lane handoff.
+- **Ignore** — a coverage-exclusion glob with a recorded reason (the honest
+  escape hatch for generated/vendor/out-of-scope files).
+- **Delegation** — a subtree owned by another loom graph (monorepo/federation):
+  `loom coverage` treats matching files as covered by the child's committed export.
+
+## Edge types (8)
 
 Design principle: edge **type** describes the nature of the relationship (structural, stable). Edge **state** describes what we know about it (epistemological, mutable).
 
@@ -165,13 +202,24 @@ Which intents an improvement hypothesis would touch. Carries the full
 inspectable-edge meta (criterion/confidence/evidence/…), defaults `uninspected`
 — per-target grounding and sync staleness are the v3 slice of the plane.
 
+### SERVES (Persona → Intent)
+An inspectable claim that this intent actually serves that audience segment.
+Carries the full inspectable-edge meta (criterion/confidence/evidence/…),
+defaults `uninspected` — "does it serve them?" is earned, not assumed.
+
+### JOURNEYS (Persona → Validation)
+A structural binding from an audience segment to a saga proof exercising its
+end-to-end path. No inspection_status (like HIERARCHY, it's structural) — it
+connects the persona to runtime evidence its journey works.
+
 ## State machine (on the INSPECTABLE edges)
 
 `inspection_status` is the heartbeat — on the edges that represent a *claim
 verified against code*: RELATES_TO (analyzer), IMPLEMENTS (analyzer), GOVERNS
-(quality), VALIDATES (validator). As of schema **v3**, HIERARCHY does NOT carry
-one: it's a structural tree edge, enforced at insert (unique parent, no cycles),
-never "inspected".
+(quality), VALIDATES (validator), TARGETS (analyzer), SERVES (analyzer). As of
+schema **v3**, HIERARCHY does NOT carry one: it's a structural tree edge,
+enforced at insert (unique parent, no cycles), never "inspected" — and neither
+does JOURNEYS (Persona → Validation, structural).
 
 ```
 uninspected          declared but never verified against actual code
@@ -359,12 +407,13 @@ Code            codefile add|list|show|remove
 Quality         rule add|list|apply|check|verdict · rule seed <iso5055|mobile|web-ui|service|data|concurrency>
 Validation      validation add|mark|update|delete|list · validate <id>|--all · saga add|run|list
 Pre-decision    hypothesis add|target|prove|adopt|reject|list|show
-Vocab & layers  vocab add|list|merge · domain order|list|clear
+Personas        persona add|list|show · persona serve {ground|issue|independent} · persona journey
+Vocab & layers  vocab add|list|merge · layer order|list|clear   (`domain` = deprecated alias of `layer`)
 Memory & hatch  note add|prune|list · ignore add|list · delegate add|list
 ```
 
-Edge ids are DERIVED from endpoints — `rt:<a>:<b>` (`hy`/`imp`/`gov`/`val`/`tgt` prefixes
-for the other types), never stored, stable across export/import. Intents and rules are
+Edge ids are DERIVED from endpoints — `rt:<a>:<b>` (`hy`/`imp`/`gov`/`val`/`tgt`/`srv`/`jrn`
+prefixes for the other types), never stored, stable across export/import. Intents and rules are
 addressable by id, exact name, or unique name fragment.
 
 GRAPH TARGETING: every command resolves its graph via `--graph <path>` >
@@ -504,9 +553,19 @@ src/
 │       ├── governs.rs      GOVERNS edge
 │       ├── targets.rs      TARGETS edge (hypothesis → affected intents)
 │       ├── validates.rs    VALIDATES edge
-│       ├── scoring.rs      priority scoring + discovery candidates (loom next)
+│       ├── persona.rs      Persona node queries (the consumer plane's audience)
+│       ├── serves.rs       SERVES edge (Persona → Intent, inspectable)
+│       ├── journeys.rs     JOURNEYS edge (Persona → Validation, structural)
+│       ├── delegation.rs   Delegation node (federation: subtree owned by a child graph)
+│       ├── scoring.rs      priority scoring + per-mode candidate selection (snapshot-based
+│       │                   in production; cfg(test) DB variants mirror it) (loom next)
+│       ├── snapshot.rs     QuerySnapshot — one graph load feeding scoring/stats/compass
+│       │                   coherently (the production read path; no per-query reloads)
 │       ├── find.rs         BM25 keyword search over intents (loom find)
+│       ├── smells.rs       derived problem signals (split-brain, scatter, tangle,
+│       │                   layering, vocab drift, …) with per-finding remedy (loom smells)
 │       ├── stats.rs        counts / centrality / graph_state pulse / completeness gaps
+│       ├── portability.rs  deterministic export/import travel format (loom export/import)
 │       └── integrity.rs    graph integrity checks (loom doctor)
 └── commands/
     ├── init.rs           loom init
@@ -524,6 +583,10 @@ src/
     ├── note.rs           loom note *
     ├── rule.rs           loom rule *
     ├── saga.rs           loom saga * (consumer-plane proofs: declare, run, stamp the path)
+    ├── batch.rs          loom batch (bulk JSONL verdicts — the post-sync drain)
+    ├── persona.rs        loom persona * (audience segments + SERVES/JOURNEYS edges)
+    ├── layer.rs          loom layer order|list|clear (architecture dependency direction)
+    ├── domain.rs         loom domain (DEPRECATED alias of `loom layer`)
     ├── report.rs         loom report (+ completeness gaps)
     ├── doctor.rs         loom doctor
     ├── guide.rs          loom guide
@@ -533,8 +596,13 @@ src/
     ├── session.rs        loom session (turn zero: ask-the-user playbook + offer menu)
     ├── hotspots.rs       loom hotspots
     ├── coverage.rs       loom coverage
+    ├── smells.rs         loom smells (derived suspicions; OPEN findings gate green)
     ├── detect.rs         loom detect
-    └── ignore.rs         loom ignore *
+    ├── ignore.rs         loom ignore *
+    ├── delegate.rs       loom delegate (federation: hand a subtree to a child graph)
+    ├── migrate.rs        loom migrate (in-place schema upgrade, crash-safe)
+    ├── export.rs         loom export [--check] (commit the graph as deterministic JSON)
+    └── import.rs         loom import (rebuild a graph from an export)
 ```
 
 ## Build

@@ -1,11 +1,11 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    align_candidates, build_candidates, build_candidates_from_snapshot, check_graph_from_snapshot,
+    align_candidates, build_candidates_from_snapshot, check_graph_from_snapshot,
     compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
     list_hierarchy_for_intent, list_implements_for_intent, notes_for_target, parse_sync_cause,
     quality_candidates_from_snapshot, review_candidates_from_snapshot,
-    scored_candidates_from_snapshot, unexplored_pairs_scored, validate_candidates,
+    scored_candidates_from_snapshot, unexplored_pairs_scored,
     validate_candidates_from_snapshot, validations_for_intent, vertical_completeness_from_snapshot,
     QuerySnapshot,
 };
@@ -1059,8 +1059,12 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         db,
         "work the build queue (there is nothing to build in someone else's repo)",
     )?;
-    let candidates = build_candidates(db)?;
-    let gs = graph_state(db)?;
+    // ONE snapshot feeds both the queue and the pulse (production uses the
+    // same snapshot scoring as the compass — coherence by construction — and
+    // avoids a second full graph load).
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = build_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1196,8 +1200,11 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = validate_candidates(db)?;
-    let gs = graph_state(db)?;
+    // ONE snapshot for both the queue and the pulse (shares the compass's
+    // validate_selection scoring; no second full graph load).
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = validate_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1317,6 +1324,37 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             );
         }
         if let Some(m) = more_marker(validations_total, validations.len(), "loom validation list") {
+            println!("  {m}");
+        }
+        println!();
+    }
+    // Notes targeting this intent (parity with json, which already ships them;
+    // addressed-to-validator handoffs surface first via note_surfaces).
+    if !notes.is_empty() {
+        if notes_total > notes.len() {
+            println!(
+                "── Notes ({}, showing {}) ─────────────────────────────────────────",
+                notes_total,
+                notes.len()
+            );
+        } else {
+            println!(
+                "── Notes ({}) ──────────────────────────────────────────────────────",
+                notes.len()
+            );
+        }
+        for n in &notes {
+            if n.times > 1 {
+                println!("  [{}] {}  ({}, ×{})", n.kind, n.text, n.author, n.times);
+            } else {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
+        }
+        if let Some(m) = more_marker(
+            notes_total,
+            notes.len(),
+            &format!("loom note list --intent {}", c.intent.id),
+        ) {
             println!("  {m}");
         }
         println!();
@@ -1828,9 +1866,11 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
 // ---------------------------------------------------------------------------
 
 fn run_review(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    use crate::db::queries::{review_candidates, ReviewCandidate, REVIEW_CONFIDENCE};
-    let candidates = review_candidates(db)?;
-    let gs = graph_state(db)?;
+    use crate::db::queries::{ReviewCandidate, REVIEW_CONFIDENCE};
+    // ONE snapshot for both the queue and the pulse (no second full graph load).
+    let snapshot = QuerySnapshot::load(db)?;
+    let candidates = review_candidates_from_snapshot(&snapshot);
+    let gs = graph_state_from_snapshot(db, &snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
