@@ -63,7 +63,7 @@ pub struct Smell {
     /// | scattered_intent | tangled_file | unmeasured_intents
     /// | undeclared_coupling | layering_violation | recurrent_trouble
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
-    /// | hypothesis_accumulation
+    /// | hypothesis_accumulation | symbol_accountability_gap
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -273,6 +273,20 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "do not convert speculative notes into planned work before proof".into(),
             ],
             done_when: "the proposed backlog is below the threshold and no proposed hypothesis is stale; each old idea is supported, refuted, adopted, or rejected with evidence".into(),
+        },
+        "symbol_accountability_gap" => SmellTeaching {
+            principle: "Behavior-significant symbols should be owned, accepted, or turned into explicit work; raw helper coverage is not the target.".into(),
+            inspect: vec![
+                "`loom coverage --json` and read actionable_symbol_gaps".into(),
+                "`loom codefile show <path>` for each top gap before changing graph ownership".into(),
+                "decide whether the symbol needs a precise locator, a split intent, or a decision note accepting broad ownership".into(),
+            ],
+            avoid: vec![
+                "do not chase 100% raw symbol coverage".into(),
+                "do not create intents for every private helper".into(),
+                "do not bulk-ground symbols without checking intent meaning".into(),
+            ],
+            done_when: "actionable symbol gaps are grounded with precise locators, accepted with a current decision note, or converted into real intent split/build work".into(),
         },
         _ => SmellTeaching {
             principle: "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.".into(),
@@ -1569,6 +1583,64 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     teaching: teaching_for("unjourneyed_surface"),
                 });
             }
+        }
+    }
+
+    // 14. Symbol accountability — raw symbol coverage is noisy, but public or
+    // risky-file symbols without precise ownership are real accountability
+    // gaps. This detector consumes the same structural instrument that
+    // `loom coverage` renders in detail.
+    {
+        let report = super::symbol_accountability::symbol_accountability_from_parts_with_notes(
+            &snapshot.codefiles,
+            intents,
+            implements,
+            &all_notes,
+        );
+        if !report.actionable_symbol_gaps.is_empty() {
+            let examples: Vec<String> = report
+                .actionable_symbol_gaps
+                .iter()
+                .take(5)
+                .map(|gap| format!("{} @ {}:{}", gap.label, gap.path, gap.line_start))
+                .collect();
+            smells.push(Smell {
+                kind: "symbol_accountability_gap".into(),
+                score: 6.0 + report.actionable_symbol_gaps.len() as f64,
+                summary: format!(
+                    "{} open actionable symbol gap(s): behavior-significant symbols lack precise ownership",
+                    report.actionable_symbol_gaps.len()
+                ),
+                evidence: format!(
+                    "symbol accountability: {} required, {} grounded, {} accepted, {} adjudicated, {} raw gap(s), {} open gap(s). Examples: {}",
+                    report.summary.required,
+                    report.summary.grounded,
+                    report.summary.accepted,
+                    report.summary.adjudicated,
+                    report.summary.raw_actionable_gaps,
+                    report.summary.actionable_gaps,
+                    examples.join(" · ")
+                ),
+                remedy: "Use `loom coverage --json` → actionable_symbol_gaps. For each top gap, inspect `loom codefile show <path>`, then refine the right IMPLEMENTS locator, split/add the behavior intent, or record a current decision note on the file/owning intent accepting broad ownership.".into(),
+                teaching: teaching_for("symbol_accountability_gap"),
+            });
+        } else if let Some(gap) = report
+            .adjudicated_symbol_gaps
+            .iter()
+            .max_by_key(|gap| gap.ruled_at.as_str())
+        {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "symbol_accountability_gap".into(),
+                summary: format!(
+                    "{} raw symbol gap(s) accepted by current decision notes",
+                    report.summary.raw_actionable_gaps
+                ),
+                ruling: gap.ruling.clone(),
+                ruled_by: gap.ruled_by.clone(),
+                ruled_at: gap.ruled_at.clone(),
+                reopens_when: gap.reopens_when.clone(),
+                teaching: teaching_for("symbol_accountability_gap"),
+            });
         }
     }
 

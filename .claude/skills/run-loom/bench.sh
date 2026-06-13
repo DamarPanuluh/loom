@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# A pinned session must not leak into the throwaway benchmark graph.
+unset LOOM_GRAPH
+
 N=${1:-500}
 E=${2:-1000}
 LIMIT=${3:-2}
@@ -24,6 +27,10 @@ elif [ -x "$REPO_ROOT/target/debug/loom" ]; then
 else
     LOOM="loom"
 fi
+case "$LOOM" in
+    /*) ;;
+    *) LOOM="$REPO_ROOT/$LOOM" ;;
+esac
 
 # Strict throwaway dir — fail if mktemp fails, never cd back to cwd.
 T=$(mktemp -d) || { echo "ERROR: mktemp -d failed" >&2; exit 1; }

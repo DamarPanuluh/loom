@@ -919,7 +919,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
     // The user↔intent drift queue: meanings to re-affirm WITH the user. The
     // graph cannot read heads — this queue is human-gated by definition.
-    let align = crate::db::queries::align_candidates(db)?;
+    let align = crate::db::queries::align_candidates_from_snapshot(db, &snapshot)?;
     if !align.is_empty() {
         queues.push(serde_json::json!({
             "queue": "align", "role": "validator", "gate": "human", "optional": true,

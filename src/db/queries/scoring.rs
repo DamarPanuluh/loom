@@ -10,11 +10,8 @@ use crate::types::{
     Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
 };
 
-use super::governs::list_governs_for_intent;
-use super::implements::list_implements_for_intent;
 use super::intent::list_active_intents;
 use super::note::list_notes;
-use super::relates_to::edges_for_intent;
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 // Production scores from the *_from_snapshot variants; these DB-walking helpers
@@ -764,8 +761,19 @@ pub const ALIGN_GRACE_DAYS: f64 = 30.0;
 /// ripple its own edges and bounce the just-ratified intent straight back to
 /// the top of the queue.
 pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
-    let intents = list_active_intents(db)?;
-    let degrees = all_intent_degrees(db)?;
+    let snapshot = QuerySnapshot::load(db)?;
+    align_candidates_from_snapshot(db, &snapshot)
+}
+
+/// Snapshot-reusing form for callers that already hold one (`loom status`,
+/// `loom next --all`). Avoids per-intent edge lookups — the hot-path trap on
+/// large graphs.
+pub fn align_candidates_from_snapshot(
+    db: &dyn LoomDb,
+    snapshot: &QuerySnapshot,
+) -> Result<Vec<AlignCandidate>> {
+    let intents = &snapshot.intents;
+    let degrees = &snapshot.degrees;
     let transition_notes = list_notes(db, None, Some("transition"))?;
 
     let mut notes_by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
@@ -797,6 +805,32 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
         }
     }
 
+    // Index every inspectable edge id by intent — one pass over the snapshot
+    // instead of 3×N DB round-trips (`edges_for_intent` et al.).
+    let mut edge_ids_by_intent: HashMap<&str, HashSet<&str>> = HashMap::new();
+    for edge in &snapshot.relates {
+        edge_ids_by_intent
+            .entry(edge.from_id.as_str())
+            .or_default()
+            .insert(edge.id.as_str());
+        edge_ids_by_intent
+            .entry(edge.to_id.as_str())
+            .or_default()
+            .insert(edge.id.as_str());
+    }
+    for edge in &snapshot.governs {
+        edge_ids_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .insert(edge.id.as_str());
+    }
+    for edge in &snapshot.implements {
+        edge_ids_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .insert(edge.id.as_str());
+    }
+
     let mut candidates = Vec::new();
     for intent in intents {
         // "This is internal, don't ask the user again": a recorded
@@ -816,20 +850,14 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
             (a, b) => a.into_iter().chain(b).max().unwrap(),
         };
 
-        let mut edge_ids: HashSet<String> = HashSet::new();
-        for edge in edges_for_intent(db, &intent.id)? {
-            edge_ids.insert(edge.id);
-        }
-        for edge in list_governs_for_intent(db, &intent.id)? {
-            edge_ids.insert(edge.id);
-        }
-        for edge in list_implements_for_intent(db, &intent.id)? {
-            edge_ids.insert(edge.id);
-        }
+        let edge_ids = edge_ids_by_intent
+            .get(intent.id.as_str())
+            .map(|s| s.iter().copied().collect::<HashSet<_>>())
+            .unwrap_or_default();
 
         let mut churn_since_confirm = 0;
         for edge_id in &edge_ids {
-            if let Some(notes) = notes_by_target.get(edge_id.as_str()) {
+            if let Some(notes) = notes_by_target.get(*edge_id) {
                 churn_since_confirm += notes
                     .iter()
                     .filter(|note| {
@@ -841,7 +869,7 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
             }
         }
 
-        let degree = *degrees.get(&intent.id).unwrap_or(&0);
+        let degree = *degrees.get(intent.id.as_str()).unwrap_or(&0);
         let age_days = DateTime::parse_from_rfc3339(baseline)
             .ok()
             .map(|at| {
@@ -858,7 +886,7 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
             (1.0 + churn_since_confirm as f64) * (1.0 + (degree as f64).ln_1p()) + age_days / 90.0;
 
         candidates.push(AlignCandidate {
-            intent,
+            intent: intent.clone(),
             last_confirmed,
             churn_since_confirm,
             degree,

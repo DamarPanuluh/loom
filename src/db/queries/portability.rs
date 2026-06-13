@@ -27,6 +27,8 @@ fn node_props(lbl: &str) -> Vec<&'static str> {
     }
     if lbl == label::CODE_FILE {
         props.push(prop::IMPORTS);
+        props.push(prop::SYMBOLS);
+        props.push(prop::SYMBOL_FACTS);
         props.push(prop::CONTENT_HASH);
     }
     if lbl == label::QUALITY_RULE {
@@ -46,6 +48,8 @@ fn is_optional_prop(p: &str) -> bool {
     matches!(
         p,
         x if x == prop::IMPORTS
+            || x == prop::SYMBOLS
+            || x == prop::SYMBOL_FACTS
             || x == prop::CONTENT_HASH
             || x == prop::INSPECTION_EFFORT
             || x == prop::AUDIENCE
@@ -96,7 +100,11 @@ fn is_numeric(p: &str) -> bool {
 /// imported as list literals. Pre-v5 exports carry these as JSON-encoded
 /// strings — the import shim parses them.
 fn is_list(p: &str) -> bool {
-    p == prop::SOURCE_REFS || p == prop::TAGS || p == prop::IMPORTS
+    p == prop::SOURCE_REFS
+        || p == prop::TAGS
+        || p == prop::IMPORTS
+        || p == prop::SYMBOLS
+        || p == prop::SYMBOL_FACTS
 }
 
 fn grafeo_to_json(v: &grafeo::Value, numeric: bool) -> J {
@@ -266,6 +274,8 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
     //   JSON-encoded strings and are parsed into native lists (see `is_list`).
     // - v5 → v6: product domain and architecture layer split; missing
     //   Intent.layer imports as "" unless a legacy domain_order is present.
+    // - v6 → v7: CodeFile.symbols is additive; missing symbols import as [].
+    // - v7 → v8: CodeFile.symbol_facts is additive; missing facts import as [].
     let upgrading_v3 = ver == "3";
     let legacy_layer_order: Vec<String> = data
         .get("layer_order")
@@ -275,10 +285,10 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
         .unwrap_or_default();
     let use_domain_as_layer =
         ver == "5" && data.get("layer_order").is_none() && !legacy_layer_order.is_empty();
-    if ver != schema::SCHEMA_VERSION && !matches!(ver, "3" | "4" | "5") {
+    if ver != schema::SCHEMA_VERSION && !matches!(ver, "3" | "4" | "5" | "6" | "7") {
         anyhow::bail!(
             "Export schema version '{}' does not match this loom ('{}'), and no upgrade \
-             path exists for it (v3/v4/v5 exports upgrade automatically).",
+             path exists for it (v3/v4/v5/v6/v7 exports upgrade automatically).",
             ver,
             schema::SCHEMA_VERSION
         );

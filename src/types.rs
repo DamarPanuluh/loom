@@ -497,12 +497,34 @@ pub struct CodeFile {
     /// `loom sync`; native list in the store as of schema v5).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imports: Vec<String>,
+    /// Canonical top-level symbols this file declares (extracted by
+    /// `loom sync`; diagnostic physical evidence as of schema v7).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub symbols: Vec<String>,
+    /// Rich top-level symbol facts used by symbol-accountability diagnostics
+    /// (stored as a list of JSON strings in the graph as of schema v8).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub symbol_facts: Vec<SymbolFact>,
     /// Content hash (FNV-1a 64, hex) of the file's bytes — `loom sync`'s change
     /// detector. mtime alone false-flags on checkout/rebase (mtime churns,
     /// content doesn't); the hash makes "changed" mean the bytes changed.
     /// Empty on never-synced/pre-upgrade graphs (sync falls back to mtime once).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub content_hash: String,
+}
+
+/// A top-level syntax symbol extracted from a CodeFile.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SymbolFact {
+    pub label: String,
+    pub name: String,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub visibility: String,
+    pub line_start: usize,
+    pub line_end: usize,
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub is_test: bool,
 }
 
 /// Named anti-pattern rule.
@@ -880,6 +902,10 @@ pub struct ValidatesEdge {
 
 fn f64_is_zero(v: &f64) -> bool {
     *v == 0.0
+}
+
+fn bool_is_false(v: &bool) -> bool {
+    !*v
 }
 
 /// "unknown" is the historical placeholder default — as empty as "".

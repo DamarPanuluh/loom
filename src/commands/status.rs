@@ -50,7 +50,8 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     let gs = graph_state_from_snapshot(&db, &snapshot)?;
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
-    let align_count = crate::db::queries::align_candidates(&db)?.len() as i64;
+    let align_count =
+        crate::db::queries::align_candidates_from_snapshot(&db, &snapshot)?.len() as i64;
     let prove = crate::db::queries::prove_candidates(&db)?;
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();

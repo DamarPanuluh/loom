@@ -8,6 +8,7 @@ use crate::db::queries::{
     list_all_implements, list_all_serves, list_all_targets, list_all_validates, list_codefiles,
     list_relates_to, list_validations, record_sync_flip, set_last_synced, update_codefile_hash,
     update_codefile_hash_and_mtime, update_codefile_imports, update_codefile_mtime,
+    update_codefile_symbol_facts, update_codefile_symbols,
 };
 use crate::db::schema::esc;
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
@@ -290,8 +291,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     }
 
     // 4. Grounding-truth pass over every file present on disk:
-    //    a) re-extract static imports (the physical-plane evidence that
-    //       smells/discovery reconcile against the semantic graph), and
+    //    a) re-extract static imports + top-level symbols (physical-plane
+    //       evidence that diagnostics/smells/discovery reconcile against the
+    //       semantic graph), and
     //    b) verify every IMPLEMENTS locator still occurs in its file —
     //       a renamed symbol must not leave a grounding silently pointing
     //       at nothing.
@@ -301,9 +303,15 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let mut locators_stale: Vec<String> = Vec::new();
     for cf in &codefiles {
         if let Some(content) = text_contents.get(&cf.path) {
-            let imports = crate::repo::extract_imports(&base, &cf.path, content);
-            if imports != cf.imports {
-                update_codefile_imports(&db, &cf.id, &imports)?;
+            let facts = crate::repo::extract_physical_facts(&base, &cf.path, content);
+            if facts.imports != cf.imports {
+                update_codefile_imports(&db, &cf.id, &facts.imports)?;
+            }
+            if facts.symbols != cf.symbols {
+                update_codefile_symbols(&db, &cf.id, &facts.symbols)?;
+            }
+            if facts.symbol_facts != cf.symbol_facts {
+                update_codefile_symbol_facts(&db, &cf.id, &facts.symbol_facts)?;
             }
         } else if non_utf8_files.contains(&cf.path) {
             // Present but unreadable as text (binary/non-UTF8). Never skip

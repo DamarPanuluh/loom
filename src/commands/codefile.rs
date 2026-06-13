@@ -94,7 +94,9 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     // `loom sync` is a no-op and only genuine later edits ripple
                     // needs_reverification.
                     last_modified,
-                    imports: Vec::new(), // populated by `loom sync`
+                    imports: Vec::new(),      // populated by `loom sync`
+                    symbols: Vec::new(),      // populated by `loom sync`
+                    symbol_facts: Vec::new(), // populated by `loom sync`
                     content_hash,
                 };
                 insert_codefile(&db, &cf)?;

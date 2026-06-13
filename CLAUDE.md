@@ -458,6 +458,8 @@ VERTICAL (binding):
   - Every implemented LEAF intent is realized: ≥1 IMPLEMENTS edge.
   - Every CodeFile is reached by ≥1 IMPLEMENTS.
   - On disk: `loom coverage` reports nothing unaccounted.
+  - Symbol accountability has no open actionable gaps once it reaches the
+    audit gate; raw helper/test symbol coverage is diagnostic, not the target.
   → surfaced as `vertically_complete` in graph_state; details in
     queries/completeness.rs (vertical_completeness), `loom report`, `loom doctor`.
 
@@ -612,10 +614,16 @@ cd /Users/laptopdp/Developer/damarpanuluh/loom
 cargo build
 ```
 
-The `grafeo-engine` crate statically links at build time. First build is slow.
+The `grafeo-engine` crate statically links at build time, and the default
+tree-sitter grammar crates compile C sources. First build is slow; release
+builds are slower with `lto = "fat"`. Install a working C compiler for the
+default build, or use `cargo build --no-default-features` for the dependency-
+light heuristic import path.
 
 Run `cargo test` for the query-layer regression suite (in `db/queries/mod.rs`),
-which covers the relationship reliability rule below.
+which covers the relationship reliability rule below. Also run
+`cargo test --no-default-features` before release changes that touch sync or
+import extraction so the fallback path stays green.
 
 ## Key design decisions (why, not just what)
 

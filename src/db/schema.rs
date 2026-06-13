@@ -64,14 +64,27 @@
 /// `layering_violation` now reads `Intent.layer` against LoomMeta.layer_order;
 /// the old LoomMeta.domain_order is accepted only as legacy migration/import
 /// input. Product domain remains discovery/search/scoring metadata.
-pub const SCHEMA_VERSION: &str = "6";
+///
+/// v7: `CodeFile.symbols` records tree-sitter-derived top-level physical
+/// symbols as an additive diagnostic fact. It is not required for doctor green.
+///
+/// v8: `CodeFile.symbol_facts` records rich symbol metadata for accountability
+/// diagnostics. It is additive and not required for doctor green.
+pub const SCHEMA_VERSION: &str = "8";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
 /// LLM knows which fields are lists (native since v5) or numbers without
 /// guessing from examples.
 pub fn prop_type(p: &str) -> &'static str {
     match p {
-        x if x == prop::TAGS || x == prop::SOURCE_REFS || x == prop::IMPORTS => "list",
+        x if x == prop::TAGS
+            || x == prop::SOURCE_REFS
+            || x == prop::IMPORTS
+            || x == prop::SYMBOLS
+            || x == prop::SYMBOL_FACTS =>
+        {
+            "list"
+        }
         x if x == prop::CONFIDENCE || x == prop::PRIORITY_SCORE => "float",
         _ => "string",
     }
@@ -269,6 +282,14 @@ pub mod prop {
     /// undeclared-coupling reconciliation. NOT in the required-property table
     /// (additive in v3; absent on older graphs until the next sync).
     pub const IMPORTS: &str = "imports";
+    /// CodeFile: native list of canonical top-level syntax symbols extracted
+    /// by `loom sync` (e.g. `fn run`, `class User`). Diagnostic only; not part
+    /// of the green condition and NOT in the required-property table.
+    pub const SYMBOLS: &str = "symbols";
+    /// CodeFile: native list of JSON-encoded SymbolFact objects (label, name,
+    /// kind, visibility, source lines, test flag). Diagnostic/accountability
+    /// only and NOT in the required-property table.
+    pub const SYMBOL_FACTS: &str = "symbol_facts";
     /// CodeFile: FNV-1a 64 hex hash of the file's bytes — `loom sync`'s change
     /// detector (mtime false-flags on checkout; content is the truth). NOT in
     /// the required-property table (additive; absent until the next sync).

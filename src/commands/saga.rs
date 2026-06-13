@@ -196,6 +196,8 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
                         language: "yaml".to_string(),
                         last_modified,
                         imports: Vec::new(),
+                        symbols: Vec::new(),
+                        symbol_facts: Vec::new(),
                         content_hash,
                     },
                 )?;

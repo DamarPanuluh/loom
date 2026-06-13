@@ -37,6 +37,7 @@ pub mod serves;
 pub mod smells;
 pub mod snapshot;
 pub mod stats;
+pub mod symbol_accountability;
 pub mod targets;
 pub mod validates;
 pub mod validation;
@@ -68,6 +69,7 @@ pub use serves::*;
 pub use smells::*;
 pub use snapshot::*;
 pub use stats::*;
+pub use symbol_accountability::*;
 pub use targets::*;
 pub use validates::*;
 pub use validation::*;
@@ -77,7 +79,7 @@ pub use vocab::*;
 mod tests {
     use super::*;
     use crate::db::{GrafeoDb, LoomDb};
-    use crate::types::{CodeFile, Ignore, Intent, Note, QualityRule, Validation};
+    use crate::types::{CodeFile, Ignore, Intent, Note, QualityRule, SymbolFact, Validation};
 
     fn assert_smell_teaching(s: &Smell) {
         assert!(!s.teaching.principle.trim().is_empty(), "{s:?}");
@@ -508,6 +510,8 @@ mod tests {
             language: "rust".into(),
             last_modified: "".into(),
             imports: Vec::new(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
             content_hash: "".into(),
         }
     }
@@ -1381,6 +1385,37 @@ mod tests {
         insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         update_codefile_imports(&db, "cf", &["src/y.rs".to_string()]).unwrap();
+        update_codefile_symbols(
+            &db,
+            "cf",
+            &["fn x".to_string(), "struct Worker".to_string()],
+        )
+        .unwrap();
+        update_codefile_symbol_facts(
+            &db,
+            "cf",
+            &[
+                SymbolFact {
+                    label: "pub fn x".into(),
+                    name: "x".into(),
+                    kind: "fn".into(),
+                    visibility: "public".into(),
+                    line_start: 10,
+                    line_end: 12,
+                    is_test: false,
+                },
+                SymbolFact {
+                    label: "struct Worker".into(),
+                    name: "Worker".into(),
+                    kind: "struct".into(),
+                    visibility: "private".into(),
+                    line_start: 20,
+                    line_end: 24,
+                    is_test: false,
+                },
+            ],
+        )
+        .unwrap();
         insert_implements(&db, &ids[1], "cf", "fn x", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(
@@ -1443,6 +1478,13 @@ mod tests {
         assert!((e.confidence - 0.8).abs() < 1e-9);
         let cf = list_codefiles(&db2).unwrap();
         assert_eq!(cf[0].imports, vec!["src/y.rs".to_string()]);
+        assert_eq!(
+            cf[0].symbols,
+            vec!["fn x".to_string(), "struct Worker".to_string()]
+        );
+        assert_eq!(cf[0].symbol_facts.len(), 2);
+        assert_eq!(cf[0].symbol_facts[0].label, "pub fn x");
+        assert_eq!(cf[0].symbol_facts[0].visibility, "public");
         let i0 = get_intent(&db2, &ids[0]).unwrap().unwrap();
         assert_eq!(
             i0.visibility, "internal",
@@ -1450,6 +1492,53 @@ mod tests {
         );
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export, false).is_err());
+
+        // A v6 export without symbols/facts imports forward; both default empty.
+        let mut old = export.clone();
+        old["schema_version"] = serde_json::json!("6");
+        for cf in old["nodes"]["CodeFile"].as_array_mut().unwrap() {
+            cf.as_object_mut().unwrap().remove("symbols");
+            cf.as_object_mut().unwrap().remove("symbol_facts");
+        }
+        let db3 = GrafeoDb::in_memory();
+        db3.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-old",
+            "old",
+            "owned",
+        ))
+        .unwrap();
+        import_graph(&db3, &old, false).unwrap();
+        let imported = list_codefiles(&db3).unwrap();
+        assert!(imported[0].symbols.is_empty());
+        assert!(
+            imported[0].symbol_facts.is_empty(),
+            "absent symbol facts are additive, not a malformed export"
+        );
+
+        // A v7 export may have compact symbols but no rich facts.
+        let mut v7 = export.clone();
+        v7["schema_version"] = serde_json::json!("7");
+        for cf in v7["nodes"]["CodeFile"].as_array_mut().unwrap() {
+            cf.as_object_mut().unwrap().remove("symbol_facts");
+        }
+        let db4 = GrafeoDb::in_memory();
+        db4.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-v7",
+            "old-v7",
+            "owned",
+        ))
+        .unwrap();
+        import_graph(&db4, &v7, false).unwrap();
+        let imported = list_codefiles(&db4).unwrap();
+        assert_eq!(
+            imported[0].symbols,
+            vec!["fn x".to_string(), "struct Worker".to_string()]
+        );
+        assert!(imported[0].symbol_facts.is_empty());
     }
 
     /// Hard-deleting a node prunes the notes on its edges too (derived keys
@@ -1730,6 +1819,42 @@ mod tests {
         // deterministic + content-sensitive
         assert_eq!(h, crate::repo::content_hash(b"fn main() {}"));
         assert_ne!(h, crate::repo::content_hash(b"fn main() { }"));
+    }
+
+    /// CodeFile.symbols is an additive native-list physical fact populated by
+    /// sync and preserved in the store.
+    #[test]
+    fn codefile_symbols_roundtrip() {
+        let (db, _) = db_with_intents(0);
+        insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
+        assert!(list_codefiles(&db).unwrap()[0].symbols.is_empty());
+        update_codefile_symbols(
+            &db,
+            "cf",
+            &["class User".to_string(), "function build".to_string()],
+        )
+        .unwrap();
+        assert_eq!(
+            list_codefiles(&db).unwrap()[0].symbols,
+            vec!["class User".to_string(), "function build".to_string()]
+        );
+        update_codefile_symbol_facts(
+            &db,
+            "cf",
+            &[SymbolFact {
+                label: "export class User".into(),
+                name: "User".into(),
+                kind: "class".into(),
+                visibility: "public".into(),
+                line_start: 3,
+                line_end: 8,
+                is_test: false,
+            }],
+        )
+        .unwrap();
+        let cf = list_codefiles(&db).unwrap();
+        assert_eq!(cf[0].symbol_facts[0].name, "User");
+        assert_eq!(cf[0].symbol_facts[0].line_start, 3);
     }
 
     /// A sync flip explains itself: the transition note names the changed file.
@@ -3399,6 +3524,67 @@ mod tests {
             .open
             .iter()
             .any(|s| s.kind == "scattered_intent"));
+    }
+
+    /// Symbol accountability is an audit smell, not a raw coverage gate: it
+    /// opens for behavior-significant symbols without precise ownership and a
+    /// current file/intent decision can accept broad ownership until structure
+    /// changes again.
+    #[test]
+    fn symbol_accountability_gap_decision_note_resolves_and_reflags() {
+        let (db, ids) = db_inited(2);
+        let mut cf = codefile("cf", "pkg/a.py");
+        cf.symbol_facts = vec![
+            SymbolFact {
+                label: "pub fn run".into(),
+                name: "run".into(),
+                kind: "fn".into(),
+                visibility: "public".into(),
+                line_start: 1,
+                line_end: 3,
+                is_test: false,
+            },
+            SymbolFact {
+                label: "pub fn stop".into(),
+                name: "stop".into(),
+                kind: "fn".into(),
+                visibility: "public".into(),
+                line_start: 5,
+                line_end: 7,
+                is_test: false,
+            },
+        ];
+        cf.symbols = cf
+            .symbol_facts
+            .iter()
+            .map(|fact| fact.label.clone())
+            .collect();
+        insert_codefile(&db, &cf).unwrap();
+        insert_implements(&db, &ids[0], "cf", "", "", "t1").unwrap();
+
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "symbol_accountability_gap"));
+
+        insert_note(&db, &note_at("nd", "decision", "codefile", "cf", "t2")).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(!report
+            .open
+            .iter()
+            .any(|s| s.kind == "symbol_accountability_gap"));
+        assert!(report
+            .adjudicated
+            .iter()
+            .any(|s| s.kind == "symbol_accountability_gap"));
+
+        insert_implements(&db, &ids[1], "cf", "pub fn run", "", "t3").unwrap();
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "symbol_accountability_gap"));
     }
 
     /// Adjudication terminal state for happy_path_only: a decision note on

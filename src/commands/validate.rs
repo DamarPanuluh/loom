@@ -327,11 +327,12 @@ fn run_validation_command(
     cwd: &std::path::Path,
     timeout_secs: u64,
 ) -> Result<CommandOutcome> {
-    let mut child = StdCommand::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(cwd)
-        .spawn()?;
+    let mut cmd = StdCommand::new("sh");
+    cmd.arg("-c").arg(command).current_dir(cwd);
+    // Throwaway-graph proofs (temp-dir init/import) must not inherit a pinned
+    // session — LOOM_GRAPH beats cwd and would mutate the driver's graph.
+    cmd.env_remove("LOOM_GRAPH");
+    let mut child = cmd.spawn()?;
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
     loop {

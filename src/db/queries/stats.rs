@@ -220,10 +220,15 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // is surfaced by `loom report`, not the compass. (Counting all edge types
     // here would tell the user to run `loom next` for work it can't action.)
     let all_relates = &snapshot.relates;
+    let active_ids: std::collections::HashSet<&str> =
+        all_intents.iter().map(|i| i.id.as_str()).collect();
     let mut rt_uninspected = 0;
     let mut rt_failing = 0;
     let mut rt_needs_rev = 0;
     for e in all_relates {
+        if !active_ids.contains(e.from_id.as_str()) || !active_ids.contains(e.to_id.as_str()) {
+            continue;
+        }
         match e.inspection_status.as_str() {
             "uninspected" => rt_uninspected += 1,
             "failing" => rt_failing += 1,

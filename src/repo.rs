@@ -311,18 +311,51 @@ pub fn locator_present(content: &str, locator: &str) -> bool {
 /// This is the physical-plane evidence smells reconciles against the semantic
 /// graph (undeclared coupling), so false negatives are fine; false positives
 /// are not.
+#[allow(dead_code)]
 pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
-    let push_if_file = |cand: String, found: &mut Vec<String>| {
-        let norm = normalize(&cand);
-        if !norm.is_empty()
-            && norm != rel_path
-            && root.join(&norm).is_file()
-            && !found.contains(&norm)
-        {
-            found.push(norm);
-        }
-    };
+    extract_physical_facts(root, rel_path, content).imports
+}
+
+/// Top-level canonical syntax symbols in `rel_path`. Empty in feature-light
+/// builds or unsupported languages; this is diagnostic physical evidence only.
+#[allow(dead_code)]
+pub fn extract_symbols(rel_path: &str, content: &str) -> Vec<String> {
+    #[cfg(feature = "treesitter")]
+    if let Some(facts) = crate::ts_imports::extract_physical_facts(rel_path, content) {
+        return facts.symbols;
+    }
+    let _ = rel_path;
+    let _ = content;
+    Vec::new()
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct PhysicalFacts {
+    pub imports: Vec<String>,
+    pub symbols: Vec<String>,
+    pub symbol_facts: Vec<crate::types::SymbolFact>,
+}
+
+pub(crate) fn extract_physical_facts(root: &Path, rel_path: &str, content: &str) -> PhysicalFacts {
+    #[cfg(feature = "treesitter")]
+    if let Some(facts) = crate::ts_imports::extract_physical_facts(rel_path, content) {
+        return PhysicalFacts {
+            imports: resolve_import_specifiers(root, rel_path, &facts.import_specifiers),
+            symbols: facts.symbols,
+            symbol_facts: facts.symbol_facts,
+        };
+    }
+    PhysicalFacts {
+        imports: extract_imports_heuristic(root, rel_path, content),
+        symbols: Vec::new(),
+        symbol_facts: Vec::new(),
+    }
+}
+
+/// The original dependency-free scanner. It stays compiled in every build as
+/// the universal fallback for unsupported languages and `--no-default-features`.
+pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &str) -> Vec<String> {
+    let mut specs: Vec<String> = Vec::new();
 
     let ext = Path::new(rel_path)
         .extension()
@@ -342,8 +375,7 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                     if let Some(name) = rest.strip_suffix(';') {
                         let name = name.trim();
                         if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                            push_if_file(format!("{dir}/{name}.rs"), &mut found);
-                            push_if_file(format!("{dir}/{name}/mod.rs"), &mut found);
+                            push_unique(&mut specs, format!("mod:{name}"));
                         }
                     }
                 }
@@ -353,12 +385,8 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                         .chars()
                         .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == ':')
                         .collect();
-                    let segs: Vec<&str> = path_part.split("::").filter(|s| !s.is_empty()).collect();
-                    let mut acc = String::from("src");
-                    for seg in &segs {
-                        acc = format!("{acc}/{seg}");
-                        push_if_file(format!("{acc}.rs"), &mut found);
-                        push_if_file(format!("{acc}/mod.rs"), &mut found);
+                    if !path_part.is_empty() {
+                        push_unique(&mut specs, format!("crate::{path_part}"));
                     }
                 }
             }
@@ -382,14 +410,7 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                         if !spec.starts_with('.') {
                             continue; // package import, not a repo file
                         }
-                        let base = format!("{dir}/{spec}");
-                        push_if_file(base.clone(), &mut found);
-                        for e in [".ts", ".tsx", ".js", ".jsx", ".mjs"] {
-                            push_if_file(format!("{base}{e}"), &mut found);
-                        }
-                        for e in ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"] {
-                            push_if_file(format!("{base}{e}"), &mut found);
-                        }
+                        push_unique(&mut specs, spec);
                     }
                 }
             }
@@ -409,7 +430,7 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                     })
                 };
                 if let Some((m, _)) = module {
-                    let (mut base, name) = if let Some(stripped) = m.strip_prefix('.') {
+                    let (base, name) = if let Some(stripped) = m.strip_prefix('.') {
                         // relative: each extra leading dot climbs a directory
                         let ups = stripped.chars().take_while(|c| *c == '.').count();
                         let name = stripped.trim_start_matches('.');
@@ -424,19 +445,138 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                     } else {
                         (String::new(), m)
                     };
-                    if base.is_empty() {
-                        base = ".".into();
-                    }
-                    let as_path = name.replace('.', "/");
-                    push_if_file(format!("{base}/{as_path}.py"), &mut found);
-                    push_if_file(format!("{base}/{as_path}/__init__.py"), &mut found);
+                    let spec = if base.is_empty() {
+                        name
+                    } else if name.is_empty() {
+                        base
+                    } else if base == "." {
+                        name
+                    } else {
+                        format!("{base}.{name}")
+                    };
+                    push_unique(&mut specs, spec);
                 }
             }
         }
         _ => {}
     }
+    resolve_import_specifiers(root, rel_path, &specs)
+}
+
+fn resolve_import_specifiers(root: &Path, rel_path: &str, specs: &[String]) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    let ext = Path::new(rel_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let dir = Path::new(rel_path)
+        .parent()
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_default();
+
+    for spec in specs {
+        match ext {
+            "rs" => resolve_rust_spec(root, rel_path, &dir, spec, &mut found),
+            "ts" | "tsx" | "js" | "jsx" | "mjs" => {
+                resolve_js_spec(root, rel_path, &dir, spec, &mut found)
+            }
+            "py" => resolve_python_spec(root, rel_path, &dir, spec, &mut found),
+            _ => {}
+        }
+    }
     found.sort();
     found
+}
+
+fn resolve_rust_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &mut Vec<String>) {
+    if let Some(name) = spec.strip_prefix("mod:") {
+        if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            push_if_file(root, rel_path, found, format!("{dir}/{name}.rs"));
+            push_if_file(root, rel_path, found, format!("{dir}/{name}/mod.rs"));
+        }
+        return;
+    }
+
+    let Some(path_part) = spec.strip_prefix("crate::") else {
+        return;
+    };
+    let segs: Vec<&str> = path_part.split("::").filter(|s| !s.is_empty()).collect();
+    let mut acc = String::from("src");
+    for seg in &segs {
+        if !seg.chars().all(|c| c.is_alphanumeric() || c == '_') {
+            return;
+        }
+        acc = format!("{acc}/{seg}");
+        push_if_file(root, rel_path, found, format!("{acc}.rs"));
+        push_if_file(root, rel_path, found, format!("{acc}/mod.rs"));
+    }
+}
+
+fn resolve_js_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &mut Vec<String>) {
+    if !spec.starts_with('.') {
+        return;
+    }
+    let base = format!("{dir}/{spec}");
+    push_if_file(root, rel_path, found, base.clone());
+    for e in [".ts", ".tsx", ".js", ".jsx", ".mjs"] {
+        push_if_file(root, rel_path, found, format!("{base}{e}"));
+    }
+    for e in ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"] {
+        push_if_file(root, rel_path, found, format!("{base}{e}"));
+    }
+}
+
+fn resolve_python_spec(
+    root: &Path,
+    rel_path: &str,
+    dir: &str,
+    spec: &str,
+    found: &mut Vec<String>,
+) {
+    let (mut base, name) = if let Some(stripped) = spec.strip_prefix('.') {
+        // relative imports: one leading dot is the current package; each
+        // additional dot climbs one directory.
+        let ups = stripped.chars().take_while(|c| *c == '.').count();
+        let name = stripped.trim_start_matches('.');
+        let mut d = dir.to_string();
+        for _ in 0..ups {
+            d = Path::new(&d)
+                .parent()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+        }
+        (d, name.to_string())
+    } else {
+        (String::new(), spec.to_string())
+    };
+    if base.is_empty() {
+        base = ".".into();
+    }
+    if name.is_empty() {
+        return;
+    }
+    let as_path = name.replace('.', "/");
+    push_if_file(root, rel_path, found, format!("{base}/{as_path}.py"));
+    push_if_file(
+        root,
+        rel_path,
+        found,
+        format!("{base}/{as_path}/__init__.py"),
+    );
+}
+
+fn push_if_file(root: &Path, rel_path: &str, found: &mut Vec<String>, cand: String) {
+    let norm = normalize(&cand);
+    if !norm.is_empty() && norm != rel_path && root.join(&norm).is_file() && !found.contains(&norm)
+    {
+        found.push(norm);
+    }
+}
+
+fn push_unique(out: &mut Vec<String>, item: String) {
+    if !item.is_empty() && !out.contains(&item) {
+        out.push(item);
+    }
 }
 
 /// Normalize `a/./b/../c` → `a/c` and strip leading `./`.
@@ -591,5 +731,311 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn heuristic_imports_rust_js_python() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-heur-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("src/db")).unwrap();
+        fs::create_dir_all(dir.join("web")).unwrap();
+        fs::create_dir_all(dir.join("pkg")).unwrap();
+        fs::write(dir.join("src/db/mod.rs"), "").unwrap();
+        fs::write(dir.join("src/db/schema.rs"), "").unwrap();
+        fs::write(dir.join("src/gate.rs"), "").unwrap();
+        fs::write(
+            dir.join("src/main.rs"),
+            "mod gate;\nuse crate::db::schema::esc;\n",
+        )
+        .unwrap();
+        fs::write(dir.join("web/util.ts"), "").unwrap();
+        fs::write(
+            dir.join("web/app.ts"),
+            "import {x} from './util';\nimport pkg from 'react';\n",
+        )
+        .unwrap();
+        fs::write(dir.join("pkg/helper.py"), "").unwrap();
+        fs::write(
+            dir.join("pkg/main.py"),
+            "from .helper import thing\nimport os\n",
+        )
+        .unwrap();
+
+        let rs = extract_imports_heuristic(
+            &dir,
+            "src/main.rs",
+            &fs::read_to_string(dir.join("src/main.rs")).unwrap(),
+        );
+        assert!(rs.contains(&"src/gate.rs".to_string()), "{rs:?}");
+        assert!(rs.contains(&"src/db/mod.rs".to_string()), "{rs:?}");
+        assert!(rs.contains(&"src/db/schema.rs".to_string()), "{rs:?}");
+
+        let ts = extract_imports_heuristic(
+            &dir,
+            "web/app.ts",
+            &fs::read_to_string(dir.join("web/app.ts")).unwrap(),
+        );
+        assert_eq!(ts, vec!["web/util.ts".to_string()]);
+
+        let py = extract_imports_heuristic(
+            &dir,
+            "pkg/main.py",
+            &fs::read_to_string(dir.join("pkg/main.py")).unwrap(),
+        );
+        assert_eq!(py, vec!["pkg/helper.py".to_string()]);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_rust_extracts_grouped_and_reexport_imports() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-rs-ts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("src/db")).unwrap();
+        fs::create_dir_all(dir.join("src/foo/bar")).unwrap();
+        fs::write(dir.join("src/a.rs"), "").unwrap();
+        fs::write(dir.join("src/b.rs"), "").unwrap();
+        fs::write(dir.join("src/db/schema.rs"), "").unwrap();
+        fs::write(dir.join("src/db/queries.rs"), "").unwrap();
+        fs::write(dir.join("src/foo.rs"), "").unwrap();
+        fs::write(dir.join("src/foo/bar.rs"), "").unwrap();
+        fs::write(dir.join("src/reexport.rs"), "").unwrap();
+        fs::write(
+            dir.join("src/main.rs"),
+            r#"
+                use crate::db::{schema::esc, queries};
+                pub use crate::{
+                    a,
+                    b as bee,
+                    foo::{self, bar::Baz},
+                };
+                pub use crate::reexport::Thing as Alias;
+            "#,
+        )
+        .unwrap();
+
+        let imports = extract_imports(
+            &dir,
+            "src/main.rs",
+            &fs::read_to_string(dir.join("src/main.rs")).unwrap(),
+        );
+        for expected in [
+            "src/a.rs",
+            "src/b.rs",
+            "src/db/queries.rs",
+            "src/db/schema.rs",
+            "src/foo.rs",
+            "src/foo/bar.rs",
+            "src/reexport.rs",
+        ] {
+            assert!(imports.contains(&expected.to_string()), "{imports:?}");
+        }
+
+        let heuristic = extract_imports_heuristic(
+            &dir,
+            "src/main.rs",
+            &fs::read_to_string(dir.join("src/main.rs")).unwrap(),
+        );
+        assert!(
+            imports.len() > heuristic.len(),
+            "tree-sitter should cover grouped imports missed by the line scanner: ts={imports:?} heuristic={heuristic:?}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imports() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-js-ts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("web/lib")).unwrap();
+        fs::write(dir.join("web/lib/util.ts"), "").unwrap();
+        fs::write(dir.join("web/lib/barrel.ts"), "").unwrap();
+        fs::write(dir.join("web/lib/lazy.ts"), "").unwrap();
+        fs::write(dir.join("web/lib/legacy.js"), "").unwrap();
+        fs::write(
+            dir.join("web/app.ts"),
+            r#"
+                import {
+                    helper,
+                } from "./lib/util";
+                export { helper as again } from "./lib/barrel";
+                const legacy = require("./lib/legacy");
+                const lazy = import("./lib/lazy");
+                import react from "react";
+            "#,
+        )
+        .unwrap();
+
+        let imports = extract_imports(
+            &dir,
+            "web/app.ts",
+            &fs::read_to_string(dir.join("web/app.ts")).unwrap(),
+        );
+        assert_eq!(
+            imports,
+            vec![
+                "web/lib/barrel.ts".to_string(),
+                "web/lib/lazy.ts".to_string(),
+                "web/lib/legacy.js".to_string(),
+                "web/lib/util.ts".to_string(),
+            ]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_python_extracts_parenthesized_and_relative_imports() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-py-ts-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("pkg")).unwrap();
+        fs::write(dir.join("pkg/helpers.py"), "").unwrap();
+        fs::write(dir.join("pkg/sibling.py"), "").unwrap();
+        fs::write(dir.join("pkg/core.py"), "").unwrap();
+        fs::write(
+            dir.join("pkg/main.py"),
+            r#"
+                from .helpers import (
+                    one,
+                    two,
+                )
+                from . import sibling
+                import pkg.core as core
+                from __future__ import annotations
+            "#,
+        )
+        .unwrap();
+
+        let imports = extract_imports(
+            &dir,
+            "pkg/main.py",
+            &fs::read_to_string(dir.join("pkg/main.py")).unwrap(),
+        );
+        assert_eq!(
+            imports,
+            vec![
+                "pkg/core.py".to_string(),
+                "pkg/helpers.py".to_string(),
+                "pkg/sibling.py".to_string(),
+            ]
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_rust_extracts_top_level_symbols() {
+        let content = r#"
+                pub struct User { id: String }
+                enum State { Ready }
+                trait Render { fn render(&self); }
+                type Id = String;
+                const LIMIT: usize = 10;
+                static NAME: &str = "loom";
+                macro_rules! route { () => {} }
+                impl Render for User {
+                    fn render(&self) {}
+                }
+                fn build() {
+                    fn local() {}
+                }
+                mod nested {
+                    pub fn inside() {}
+                }
+                #[test]
+                fn tests_it() {}
+            "#;
+        let symbols = extract_symbols("src/lib.rs", content);
+        for expected in [
+            "const LIMIT",
+            "enum State",
+            "fn build",
+            "impl Render for User",
+            "macro route",
+            "pub fn inside",
+            "pub struct User",
+            "static NAME",
+            "trait Render",
+            "type Id",
+        ] {
+            assert!(symbols.contains(&expected.to_string()), "{symbols:?}");
+        }
+        assert!(!symbols.contains(&"fn render".to_string()), "{symbols:?}");
+        assert!(!symbols.contains(&"fn local".to_string()), "{symbols:?}");
+
+        let facts = extract_physical_facts(Path::new("."), "src/lib.rs", content);
+        let user = facts
+            .symbol_facts
+            .iter()
+            .find(|fact| fact.name == "User")
+            .unwrap();
+        assert_eq!(user.visibility, "public");
+        assert!(user.line_start > 0);
+        let test = facts
+            .symbol_facts
+            .iter()
+            .find(|fact| fact.name == "tests_it")
+            .unwrap();
+        assert!(test.is_test, "{test:?}");
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_js_ts_extracts_top_level_symbols() {
+        let symbols = extract_symbols(
+            "web/app.ts",
+            r#"
+                export interface User { id: string }
+                export type Id = string;
+                export enum Mode { On }
+                export class Widget { render() {} }
+                export function makeWidget() {}
+                export const alpha = 1, beta = 2;
+                let notConst = 3;
+                function outer() {
+                    const local = 1;
+                }
+            "#,
+        );
+        assert_eq!(
+            symbols,
+            vec![
+                "export class Widget".to_string(),
+                "export const alpha".to_string(),
+                "export const beta".to_string(),
+                "export enum Mode".to_string(),
+                "export function makeWidget".to_string(),
+                "export interface User".to_string(),
+                "export type Id".to_string(),
+                "function outer".to_string(),
+            ]
+        );
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_python_extracts_top_level_symbols() {
+        let symbols = extract_symbols(
+            "pkg/app.py",
+            r#"
+                class User:
+                    def method(self):
+                        pass
+
+                def build():
+                    def local():
+                        pass
+                    return User()
+            "#,
+        );
+        assert_eq!(
+            symbols,
+            vec!["class User".to_string(), "def build".to_string()]
+        );
     }
 }

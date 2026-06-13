@@ -1,12 +1,12 @@
 //! CodeFile node queries.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use grafeo::Value;
 use std::collections::HashMap;
 
 use crate::db::schema::esc;
 use crate::db::LoomDb;
-use crate::types::CodeFile;
+use crate::types::{CodeFile, SymbolFact};
 
 use super::row::{col_map, get, str_val};
 
@@ -19,9 +19,12 @@ pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
         ("hash", &cf.content_hash),
     ]);
     p.insert("imports".into(), super::row::list_param(&cf.imports));
+    p.insert("symbols".into(), super::row::list_param(&cf.symbols));
+    p.insert("symbol_facts".into(), symbol_facts_param(&cf.symbol_facts)?);
     db.execute_with_params(
         "INSERT (:CodeFile {id: $id, path: $path, language: $lang, \
-         last_modified: $mtime, imports: $imports, content_hash: $hash})",
+         last_modified: $mtime, imports: $imports, symbols: $symbols, \
+         symbol_facts: $symbol_facts, content_hash: $hash})",
         p,
     )?;
     Ok(())
@@ -30,15 +33,15 @@ pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
 pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
     let q = "MATCH (cf:CodeFile) \
              RETURN cf.id, cf.path, cf.language, cf.last_modified, cf.imports, \
-                    cf.content_hash \
+                    cf.symbols, cf.symbol_facts, cf.content_hash \
              ORDER BY cf.path";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result
+    result
         .rows()
         .iter()
         .map(|row| row_to_codefile(row, &cols))
-        .collect())
+        .collect()
 }
 
 /// Store the content fingerprint (see `repo::content_hash`) on a CodeFile —
@@ -87,6 +90,40 @@ pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports: &[String]) ->
     Ok(())
 }
 
+/// Store the top-level syntax symbol list (native list of canonical labels) on
+/// a CodeFile — written by `loom sync`, read by coverage diagnostics.
+pub fn update_codefile_symbols(db: &dyn LoomDb, id: &str, symbols: &[String]) -> Result<()> {
+    let mut p = super::row::sparams(&[("id", id)]);
+    p.insert("symbols".into(), super::row::list_param(symbols));
+    db.execute_with_params(
+        &format!(
+            "MATCH (cf:CodeFile {{id: $id}}) SET cf.{symbols} = $symbols",
+            symbols = crate::db::schema::prop::SYMBOLS,
+        ),
+        p,
+    )?;
+    Ok(())
+}
+
+/// Store parsed top-level symbol facts as JSON strings in a native list. This
+/// keeps the CodeFile node additive while preserving typed diagnostics in Rust.
+pub fn update_codefile_symbol_facts(
+    db: &dyn LoomDb,
+    id: &str,
+    symbol_facts: &[SymbolFact],
+) -> Result<()> {
+    let mut p = super::row::sparams(&[("id", id)]);
+    p.insert("symbol_facts".into(), symbol_facts_param(symbol_facts)?);
+    db.execute_with_params(
+        &format!(
+            "MATCH (cf:CodeFile {{id: $id}}) SET cf.{symbol_facts} = $symbol_facts",
+            symbol_facts = crate::db::schema::prop::SYMBOL_FACTS,
+        ),
+        p,
+    )?;
+    Ok(())
+}
+
 pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<()> {
     db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.last_modified = '{}'",
@@ -122,13 +159,33 @@ pub fn delete_codefile(db: &dyn LoomDb, key: &str) -> Result<Option<CodeFile>> {
     Ok(Some(cf))
 }
 
-fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
-    CodeFile {
+fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> Result<CodeFile> {
+    Ok(CodeFile {
         id: str_val(get(row, cols, "cf.id")),
         path: str_val(get(row, cols, "cf.path")),
         language: str_val(get(row, cols, "cf.language")),
         last_modified: str_val(get(row, cols, "cf.last_modified")),
         imports: super::row::list_val(get(row, cols, "cf.imports")),
+        symbols: super::row::list_val(get(row, cols, "cf.symbols")),
+        symbol_facts: symbol_facts_val(get(row, cols, "cf.symbol_facts"))?,
         content_hash: str_val(get(row, cols, "cf.content_hash")),
-    }
+    })
+}
+
+fn symbol_facts_param(symbol_facts: &[SymbolFact]) -> Result<Value> {
+    let items = symbol_facts
+        .iter()
+        .map(|fact| serde_json::to_string(fact).context("serialize CodeFile.symbol_facts item"))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(super::row::list_param(&items))
+}
+
+fn symbol_facts_val(v: &Value) -> Result<Vec<SymbolFact>> {
+    super::row::list_val(v)
+        .into_iter()
+        .map(|s| {
+            serde_json::from_str(&s)
+                .with_context(|| format!("parse CodeFile.symbol_facts item `{s}`"))
+        })
+        .collect()
 }

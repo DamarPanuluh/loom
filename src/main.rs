@@ -8,6 +8,8 @@ mod gate;
 mod output;
 mod repo;
 mod saga;
+#[cfg(feature = "treesitter")]
+mod ts_imports;
 mod types;
 
 fn main() -> Result<()> {

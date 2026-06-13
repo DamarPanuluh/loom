@@ -11,6 +11,13 @@
 //! Intent.domain into Intent.layer and move the order to `layer_order`.
 //! Without a declared order, keep layer empty.
 //!
+//! v6 → v7: `CodeFile.symbols` is an additive native-list physical fact.
+//! Missing symbols are backfilled as [] and populated by the next `loom sync`.
+//!
+//! v7 → v8: `CodeFile.symbol_facts` is an additive native-list of JSON
+//! SymbolFact objects. Missing facts are backfilled as [] and populated by the
+//! next `loom sync`.
+//!
 //! Idempotent: a current graph reports "already current" and exits 0.
 //!
 //! Crash-safety comes from IDEMPOTENCE + ORDER, not a transaction: every note
@@ -55,9 +62,9 @@ pub fn run(printer: &Printer) -> Result<()> {
         }
         return Ok(());
     }
-    if !matches!(found.as_str(), "3" | "4" | "5") {
+    if !matches!(found.as_str(), "3" | "4" | "5" | "6" | "7") {
         anyhow::bail!(
-            "Graph reports schema version '{found}' — this loom upgrades v3/v4/v5 graphs to v{SCHEMA_VERSION}. \
+            "Graph reports schema version '{found}' — this loom upgrades v3/v4/v5/v6/v7 graphs to v{SCHEMA_VERSION}. \
              For older graphs, export with the loom version that wrote them and `loom import` the export here."
         );
     }
@@ -181,6 +188,33 @@ pub fn run(printer: &Printer) -> Result<()> {
         layers_populated += 1;
     }
 
+    // ---- v6 → v7: CodeFile.symbols additive list backfill ----
+    let mut symbols_backfilled = 0usize;
+    let rows = db.execute("MATCH (n:CodeFile) WHERE n.symbols IS NULL RETURN n.id")?;
+    for row in rows.rows() {
+        let id = str_of(&row[0]);
+        let mut p: HashMap<String, Value> = HashMap::new();
+        p.insert("id".into(), Value::String(id.into()));
+        p.insert("symbols".into(), list_value(Vec::new()));
+        db.execute_with_params("MATCH (n:CodeFile {id: $id}) SET n.symbols = $symbols", p)?;
+        symbols_backfilled += 1;
+    }
+
+    // ---- v7 → v8: CodeFile.symbol_facts additive list backfill ----
+    let mut symbol_facts_backfilled = 0usize;
+    let rows = db.execute("MATCH (n:CodeFile) WHERE n.symbol_facts IS NULL RETURN n.id")?;
+    for row in rows.rows() {
+        let id = str_of(&row[0]);
+        let mut p: HashMap<String, Value> = HashMap::new();
+        p.insert("id".into(), Value::String(id.into()));
+        p.insert("symbol_facts".into(), list_value(Vec::new()));
+        db.execute_with_params(
+            "MATCH (n:CodeFile {id: $id}) SET n.symbol_facts = $symbol_facts",
+            p,
+        )?;
+        symbol_facts_backfilled += 1;
+    }
+
     // Stamp the new version LAST — the completion marker. Anything that died
     // before this line leaves the graph reporting the OLD version; re-running
     // finishes the remainder (every step above skips already-converted data).
@@ -199,6 +233,8 @@ pub fn run(printer: &Printer) -> Result<()> {
             "list_props_converted": nodes_listified,
             "layers_populated": layers_populated,
             "legacy_domain_order_migrated": layer_order_migrated,
+            "symbols_backfilled": symbols_backfilled,
+            "symbol_facts_backfilled": symbol_facts_backfilled,
             "next_step": next_step,
         }));
     } else {
@@ -208,6 +244,8 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("  list props converted:   {nodes_listified}");
         println!("  layers populated:       {layers_populated}");
         println!("  legacy order migrated:  {layer_order_migrated}");
+        println!("  symbols backfilled:     {symbols_backfilled}");
+        println!("  symbol facts backfilled:{symbol_facts_backfilled}");
         println!("  → Next: {next_step}");
     }
     Ok(())
