@@ -14,8 +14,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     let disk = crate::repo::walk_files(&cwd)?;
-    let registered: HashSet<String> =
-        list_codefiles(&db)?.into_iter().map(|c| c.path).collect();
+    let registered: HashSet<String> = list_codefiles(&db)?.into_iter().map(|c| c.path).collect();
     let grounded: HashSet<String> = grounded_paths(&db)?.into_iter().collect();
     let mut pattern_errors = Vec::new();
     let patterns: Vec<glob::Pattern> = list_ignores(&db)?
@@ -37,7 +36,10 @@ pub fn run(printer: &Printer) -> Result<()> {
         .filter_map(|d| match glob::Pattern::new(&d.pattern) {
             Ok(p) => Some((p, d.target.as_str())),
             Err(e) => {
-                pattern_errors.push(format!("delegation '{}' -> '{}': {}", d.pattern, d.target, e));
+                pattern_errors.push(format!(
+                    "delegation '{}' -> '{}': {}",
+                    d.pattern, d.target, e
+                ));
                 None
             }
         })
@@ -67,7 +69,11 @@ pub fn run(printer: &Printer) -> Result<()> {
     }
     let total = disk.len();
     let covered = grounded_n + excluded_n + delegated_n;
-    let pct = if total == 0 { 100.0 } else { covered as f64 / total as f64 * 100.0 };
+    let pct = if total == 0 {
+        100.0
+    } else {
+        covered as f64 / total as f64 * 100.0
+    };
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -102,8 +108,14 @@ pub fn run(printer: &Printer) -> Result<()> {
             println!("      - {}", e);
         }
     }
-    println!("  unexplained (registered, no intent): {}", ungrounded.len());
-    println!("  unaccounted (not mapped, not excluded): {}", unaccounted.len());
+    println!(
+        "  unexplained (registered, no intent): {}",
+        ungrounded.len()
+    );
+    println!(
+        "  unaccounted (not mapped, not excluded): {}",
+        unaccounted.len()
+    );
 
     if !ungrounded.is_empty() {
         println!();
@@ -127,7 +139,9 @@ pub fn run(printer: &Printer) -> Result<()> {
     }
     if unaccounted.is_empty() && ungrounded.is_empty() {
         println!();
-        println!("  ✓ Every file is grounded in an intent or explicitly excluded — nothing missed.");
+        println!(
+            "  ✓ Every file is grounded in an intent or explicitly excluded — nothing missed."
+        );
     }
     Ok(())
 }

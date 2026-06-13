@@ -238,7 +238,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // two once disagreed (a multi-intent validation's passed run left sibling
     // edges uninspected → phase=validate with an empty queue). Edge counts
     // below feed only the `unresolved` tally.
-    let validate_backlog = validate_selection_from_snapshot(&snapshot);
+    let validate_backlog = validate_selection_from_snapshot(snapshot);
     let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
     let v_no_proof = validate_backlog
         .iter()
@@ -321,7 +321,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     let horizontally_explored = unexplored_pairs == 0 && rt_uninspected == 0 && rt_needs_rev == 0;
 
     // --- The 360° coverage vector ---------------------------------------
-    let nc = normative_coverage_from_snapshot(&snapshot);
+    let nc = normative_coverage_from_snapshot(snapshot);
     let rules_count = snapshot.rules.len() as i64;
 
     let is_parent: std::collections::HashSet<&str> =
@@ -486,7 +486,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         // fix). Computed lazily: only graphs that cleared every other gate
         // pay for the O(N²) scan, and at this point every pair is linked, so
         // the pairwise detectors short-circuit.
-        let open_findings = compute_smells_from(db, &snapshot)?.open.len();
+        let open_findings = compute_smells_from(db, snapshot)?.open.len();
         if open_findings > 0 {
             ("audit", format!(
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."

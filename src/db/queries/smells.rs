@@ -480,7 +480,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             ) else {
                 continue; // duplicate implementation requires real code on both sides
             };
-            if fa.intersection(&fb).next().is_some() {
+            if fa.intersection(fb).next().is_some() {
                 continue; // overlapping_ownership owns this case
             }
             let imports = fa
@@ -1319,7 +1319,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     {
                         let mut v: Vec<&str> = satisfied
                             .map(|s| s.iter().copied().collect())
-                            .unwrap_or_else(Vec::new);
+                            .unwrap_or_default();
                         v.sort();
                         v.join(", ")
                     }

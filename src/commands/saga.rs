@@ -35,8 +35,11 @@ use crate::types::{CodeFile, Intent, Validation};
 
 pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
     match cmd {
-        SagaCmd::Add { file, spawn_missing, under } =>
-            add(&file, spawn_missing, under.as_deref(), printer),
+        SagaCmd::Add {
+            file,
+            spawn_missing,
+            under,
+        } => add(&file, spawn_missing, under.as_deref(), printer),
         SagaCmd::Run { saga } => execute(&saga, printer),
         SagaCmd::List => list(printer),
     }
@@ -65,7 +68,8 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
             None,
         )?;
         crate::db::queries::ensure_owned(
-            &db, "spawn planned intents from a journey (a promise to build the code)",
+            &db,
+            "spawn planned intents from a journey (a promise to build the code)",
         )?;
     }
     // Resolve the spawn parent up front — a bad --under fails before anything lands.
@@ -84,110 +88,129 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
     let required_env = crate::saga::spec::required_env(&spec);
     let (validation_id, created, linked, path_edges, registered_spec, step_intents, spawned) =
         crate::db::with_transaction(&db, || {
-    // Resolve every step's intent binding first — a typo fails the add, not a
-    // run three weeks later. With --spawn-missing, an unmatched binding spawns
-    // a planned feature instead (ambiguity still fails: never mint a twin).
-    let (step_intents, spawned) =
-        resolve_step_intents(&db, &spec, spawn_missing, parent_id.as_deref(), &now)?;
-    // The Validation node, keyed by the saga's name. Re-adding reconciles.
-    let existing = list_validations(&db)?
-        .into_iter()
-        .find(|v| v.name == spec.saga);
-    let command = format!("loom saga run {rel}");
-    let env_line = if required_env.is_empty() {
-        String::new()
-    } else {
-        // Travels in the node so list/show/next surface the dependency without
-        // re-parsing the spec: a saga consumes a LIVE target, and the values
-        // are passed at invocation, never stored in the graph.
-        format!("\nrequires env: {}", required_env.join(", "))
-    };
-    let description = format!(
+            // Resolve every step's intent binding first — a typo fails the add, not a
+            // run three weeks later. With --spawn-missing, an unmatched binding spawns
+            // a planned feature instead (ambiguity still fails: never mint a twin).
+            let (step_intents, spawned) =
+                resolve_step_intents(&db, &spec, spawn_missing, parent_id.as_deref(), &now)?;
+            // The Validation node, keyed by the saga's name. Re-adding reconciles.
+            let existing = list_validations(&db)?
+                .into_iter()
+                .find(|v| v.name == spec.saga);
+            let command = format!("loom saga run {rel}");
+            let env_line = if required_env.is_empty() {
+                String::new()
+            } else {
+                // Travels in the node so list/show/next surface the dependency without
+                // re-parsing the spec: a saga consumes a LIVE target, and the values
+                // are passed at invocation, never stored in the graph.
+                format!("\nrequires env: {}", required_env.join(", "))
+            };
+            let description = format!(
         "{}{}Consumer saga proof — {} step(s), run by the built-in engine.\nspec:{rel}{env_line}",
         spec.description.trim(),
         if spec.description.trim().is_empty() { "" } else { "\n" },
         spec.steps.len(),
     );
-    let (validation_id, created) = match existing {
-        Some(v) => {
-            if v.validation_type != "saga" {
-                anyhow::bail!(
+            let (validation_id, created) = match existing {
+                Some(v) => {
+                    if v.validation_type != "saga" {
+                        anyhow::bail!(
                     "A validation named '{}' already exists with type '{}'. \
                      Saga names share the validation namespace — rename the saga or that validation.",
                     spec.saga, v.validation_type
                 );
+                    }
+                    crate::db::queries::update_validation_definition(
+                        &db,
+                        &v.id,
+                        Some(&command),
+                        Some(&description),
+                    )?;
+                    (v.id, false)
+                }
+                None => {
+                    let id = Uuid::new_v4().to_string();
+                    insert_validation(
+                        &db,
+                        &Validation {
+                            id: id.clone(),
+                            name: spec.saga.clone(),
+                            description,
+                            validation_type: "saga".to_string(),
+                            command,
+                            last_run: String::new(),
+                            last_result: "not_run".to_string(),
+                        },
+                    )?;
+                    (id, true)
+                }
+            };
+
+            // VALIDATES: one edge per distinct step intent (missing ones only).
+            let already: std::collections::HashSet<String> = list_all_validates(&db)?
+                .into_iter()
+                .filter(|e| e.validation_id == validation_id)
+                .map(|e| e.intent_id)
+                .collect();
+            let mut linked = 0usize;
+            let mut seen = std::collections::HashSet::new();
+            for (iid, _) in &step_intents {
+                if seen.insert(iid.clone()) && !already.contains(iid) {
+                    insert_validates(&db, &validation_id, iid, "", &now)?;
+                    linked += 1;
+                }
             }
-            crate::db::queries::update_validation_definition(
-                &db, &v.id, Some(&command), Some(&description),
-            )?;
-            (v.id, false)
-        }
-        None => {
-            let id = Uuid::new_v4().to_string();
-            insert_validation(&db, &Validation {
-                id: id.clone(),
-                name: spec.saga.clone(),
-                description,
-                validation_type: "saga".to_string(),
-                command,
-                last_run: String::new(),
-                last_result: "not_run".to_string(),
-            })?;
-            (id, true)
-        }
-    };
 
-    // VALIDATES: one edge per distinct step intent (missing ones only).
-    let already: std::collections::HashSet<String> = list_all_validates(&db)?
-        .into_iter()
-        .filter(|e| e.validation_id == validation_id)
-        .map(|e| e.intent_id)
-        .collect();
-    let mut linked = 0usize;
-    let mut seen = std::collections::HashSet::new();
-    for (iid, _) in &step_intents {
-        if seen.insert(iid.clone()) && !already.contains(iid) {
-            insert_validates(&db, &validation_id, iid, "", &now)?;
-            linked += 1;
-        }
-    }
+            // The intent path: RELATES_TO between consecutive distinct step intents,
+            // created uninspected — declaring the path is structure; green is earned
+            // by running.
+            let mut path_edges = 0usize;
+            for pair in step_intents.windows(2) {
+                let (a, b) = (&pair[0].0, &pair[1].0);
+                if a != b {
+                    get_or_create_relates_to(&db, a, b, &now)?;
+                    path_edges += 1;
+                }
+            }
 
-    // The intent path: RELATES_TO between consecutive distinct step intents,
-    // created uninspected — declaring the path is structure; green is earned
-    // by running.
-    let mut path_edges = 0usize;
-    for pair in step_intents.windows(2) {
-        let (a, b) = (&pair[0].0, &pair[1].0);
-        if a != b {
-            get_or_create_relates_to(&db, a, b, &now)?;
-            path_edges += 1;
-        }
-    }
-
-    // The spec itself is part of the graph's physical plane.
-    let mut registered_spec = false;
-    if get_codefile_by_id_or_path(&db, &rel)?.is_none() {
-        let abs = cwd.join(&rel);
-        let last_modified = crate::repo::mtime_rfc3339(&abs).ok_or_else(|| anyhow::anyhow!(
+            // The spec itself is part of the graph's physical plane.
+            let mut registered_spec = false;
+            if get_codefile_by_id_or_path(&db, &rel)?.is_none() {
+                let abs = cwd.join(&rel);
+                let last_modified = crate::repo::mtime_rfc3339(&abs).ok_or_else(|| {
+                    anyhow::anyhow!(
             "Cannot read mtime for {} — ensure the spec file exists under the graph root, \
              or re-register: `loom saga add <file>`.",
             abs.display()
-        ))?;
-        let content_hash = std::fs::read(&abs)
-            .map(|b| crate::repo::content_hash(&b))
-            .with_context(|| format!("Cannot read bytes for {}", abs.display()))?;
-        insert_codefile(&db, &CodeFile {
-            id: Uuid::new_v4().to_string(),
-            path: rel.clone(),
-            language: "yaml".to_string(),
-            last_modified,
-            imports: Vec::new(),
-            content_hash,
+        )
+                })?;
+                let content_hash = std::fs::read(&abs)
+                    .map(|b| crate::repo::content_hash(&b))
+                    .with_context(|| format!("Cannot read bytes for {}", abs.display()))?;
+                insert_codefile(
+                    &db,
+                    &CodeFile {
+                        id: Uuid::new_v4().to_string(),
+                        path: rel.clone(),
+                        language: "yaml".to_string(),
+                        last_modified,
+                        imports: Vec::new(),
+                        content_hash,
+                    },
+                )?;
+                registered_spec = true;
+            }
+            Ok((
+                validation_id,
+                created,
+                linked,
+                path_edges,
+                registered_spec,
+                step_intents,
+                spawned,
+            ))
         })?;
-        registered_spec = true;
-    }
-    Ok((validation_id, created, linked, path_edges, registered_spec, step_intents, spawned))
-    })?;
 
     if printer.json {
         let mut next_steps = Vec::new();
@@ -197,7 +220,10 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
                 spawned.len()
             ));
         }
-        next_steps.push(format!("Run it: `{}`.", run_invocation(&spec.saga, &required_env)));
+        next_steps.push(format!(
+            "Run it: `{}`.",
+            run_invocation(&spec.saga, &required_env)
+        ));
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "saga": spec.saga,
@@ -233,7 +259,9 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
                 println!("    + '{}' ({})", name, id);
             }
             if under.is_none() {
-                println!("    ⚠ spawned as roots — link them: `loom edge hierarchy <parent> <child>`");
+                println!(
+                    "    ⚠ spawned as roots — link them: `loom edge hierarchy <parent> <child>`"
+                );
             }
         }
         println!("  VALIDATES edges added: {linked} · path RELATES_TO ensured: {path_edges}");
@@ -246,7 +274,10 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
                 required_env.join(", ")
             );
         }
-        println!("  → Run it: `{}`", run_invocation(&spec.saga, &required_env));
+        println!(
+            "  → Run it: `{}`",
+            run_invocation(&spec.saga, &required_env)
+        );
     }
     Ok(())
 }
@@ -256,11 +287,7 @@ fn add(file: &str, spawn_missing: bool, under: Option<&str>, printer: &Printer) 
 // ---------------------------------------------------------------------------
 
 fn execute(arg: &str, printer: &Printer) -> Result<()> {
-    let agent = crate::gate::acting_in_lane(
-        "run a saga proof",
-        &[role::VALIDATOR],
-        None,
-    )?;
+    let agent = crate::gate::acting_in_lane("run a saga proof", &[role::VALIDATOR], None)?;
     let cwd = crate::db::resolve_root()?;
     let db_file = ensure_initialized(&cwd)?;
     let db = GrafeoDb::open(&db_file)?;
@@ -270,20 +297,25 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
         relative_to_root(arg, &cwd)?
     } else {
         let vid = resolve_validation(&db, arg)?;
-        let v = get_validation(&db, &vid)?
-            .ok_or_else(|| anyhow::anyhow!(
+        let v = get_validation(&db, &vid)?.ok_or_else(|| {
+            anyhow::anyhow!(
                 "Validation '{vid}' not found. Run `loom saga list` (or `loom validation list`)."
-            ))?;
+            )
+        })?;
         if v.validation_type != "saga" {
             anyhow::bail!(
                 "'{}' is a {} validation, not a saga. Run it via `loom validate <intent>`.",
-                v.name, v.validation_type
+                v.name,
+                v.validation_type
             );
         }
-        let recorded = spec_path_of(&v).ok_or_else(|| anyhow::anyhow!(
-            "Saga validation '{}' has no `spec:` line in its description — \
-             re-register it: `loom saga add <file>`.", v.name
-        ))?;
+        let recorded = spec_path_of(&v).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Saga validation '{}' has no `spec:` line in its description — \
+             re-register it: `loom saga add <file>`.",
+                v.name
+            )
+        })?;
         relative_to_root(&recorded, &cwd).with_context(|| {
             format!(
                 "Saga validation '{}' records spec path '{}'. Re-register it with `loom saga add <file>` using a file under the graph root.",
@@ -296,10 +328,12 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
     let validation = list_validations(&db)?
         .into_iter()
         .find(|v| v.name == spec.saga && v.validation_type == "saga")
-        .ok_or_else(|| anyhow::anyhow!(
-            "Saga '{}' is not registered in the graph yet. Run `loom saga add {rel}` first.",
-            spec.saga
-        ))?;
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Saga '{}' is not registered in the graph yet. Run `loom saga add {rel}` first.",
+                spec.saga
+            )
+        })?;
     // The RUN path never spawns: an unmatched binding here means the graph
     // changed under the spec — re-register via `loom saga add`.
     let (step_intents, _) = resolve_step_intents(&db, &spec, false, None, "")?;
@@ -374,14 +408,18 @@ fn execute(arg: &str, printer: &Printer) -> Result<()> {
                     report.saga, o_a.step, o_a.name, o_a.method, o_a.url,
                     o_b.step, o_b.name, o_b.method, o_b.url,
                 );
-                stamp_relates_to_runtime(&db, a_id, b_id, "passing", &criterion, &evidence, 0.95, &agent, &now)?;
+                stamp_relates_to_runtime(
+                    &db, a_id, b_id, "passing", &criterion, &evidence, 0.95, &agent, &now,
+                )?;
                 stamped_passing += 1;
             } else if o_a.passed && !o_b.passed {
                 let evidence = format!(
                     "runtime: saga '{}' run {now}: step {} ('{}' {} {}) failed — {}",
                     report.saga, o_b.step, o_b.name, o_b.method, o_b.url, o_b.detail,
                 );
-                stamp_relates_to_runtime(&db, a_id, b_id, "failing", &criterion, &evidence, 0.95, &agent, &now)?;
+                stamp_relates_to_runtime(
+                    &db, a_id, b_id, "failing", &criterion, &evidence, 0.95, &agent, &now,
+                )?;
                 stamped_failing += 1;
             }
         }
@@ -417,20 +455,27 @@ fn print_report(
         "the failing edge carries the evidence: `loom next --mode fix` will serve it.".to_string()
     };
     if printer.json {
-        printer.print_json(&crate::output::with_anchor(serde_json::json!({
-            "saga": report.saga,
-            "result": if report.passed { "passed" } else { "failed" },
-            "executed": report.executed,
-            "total_steps": report.total_steps,
-            "steps": report.outcomes,
-            "relates_to_stamped_passing": stamped_passing,
-            "relates_to_stamped_failing": stamped_failing,
-        }), db, &next_step)?);
+        printer.print_json(&crate::output::with_anchor(
+            serde_json::json!({
+                "saga": report.saga,
+                "result": if report.passed { "passed" } else { "failed" },
+                "executed": report.executed,
+                "total_steps": report.total_steps,
+                "steps": report.outcomes,
+                "relates_to_stamped_passing": stamped_passing,
+                "relates_to_stamped_failing": stamped_failing,
+            }),
+            db,
+            &next_step,
+        )?);
         return Ok(());
     }
     for o in &report.outcomes {
         let mark = if o.passed { "✓" } else { "✗" };
-        println!("  {} {}. {} ({} {}) — {}", mark, o.step, o.name, o.method, o.url, o.detail);
+        println!(
+            "  {} {}. {} ({} {}) — {}",
+            mark, o.step, o.name, o.method, o.url, o.detail
+        );
         for (var, val) in &o.captured {
             println!("      captured {var} = {val}");
         }
@@ -472,20 +517,28 @@ fn list(printer: &Printer) -> Result<()> {
         .filter(|v| v.validation_type == "saga")
         .collect();
     if printer.json {
-        let rows: Vec<serde_json::Value> = sagas.iter().map(|v| serde_json::json!({
-            "id": v.id,
-            "name": v.name,
-            "spec": spec_path_of(v),
-            "requires_env": required_env_of(v),
-            "run_with": run_invocation(&v.name, &required_env_of(v)),
-            "last_result": v.last_result,
-            "last_run": v.last_run,
-        })).collect();
+        let rows: Vec<serde_json::Value> = sagas
+            .iter()
+            .map(|v| {
+                serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "spec": spec_path_of(v),
+                    "requires_env": required_env_of(v),
+                    "run_with": run_invocation(&v.name, &required_env_of(v)),
+                    "last_result": v.last_result,
+                    "last_run": v.last_run,
+                })
+            })
+            .collect();
         printer.print_json(&rows);
     } else if sagas.is_empty() {
         println!("(no sagas registered — `loom saga add <spec.yaml>`)");
     } else {
-        println!("  {:<10}  {:<28}  {:<32}  last run", "RESULT", "NAME", "SPEC");
+        println!(
+            "  {:<10}  {:<28}  {:<32}  last run",
+            "RESULT", "NAME", "SPEC"
+        );
         println!("  {}", "-".repeat(96));
         for v in &sagas {
             println!(
@@ -493,7 +546,11 @@ fn list(printer: &Printer) -> Result<()> {
                 v.last_result,
                 v.name,
                 spec_path_of(v).unwrap_or_else(|| "?".to_string()),
-                if v.last_run.is_empty() { "(never)" } else { &v.last_run },
+                if v.last_run.is_empty() {
+                    "(never)"
+                } else {
+                    &v.last_run
+                },
             );
             let env = required_env_of(v);
             if !env.is_empty() {
@@ -508,6 +565,8 @@ fn list(printer: &Printer) -> Result<()> {
 // helpers
 // ---------------------------------------------------------------------------
 
+type StepIntentBindings = (Vec<(String, String)>, Vec<(String, String)>);
+
 /// Resolve each step's `intent:` binding to (intent_id, intent_name), in step
 /// order. Fails on the first unknown/ambiguous binding, naming the step —
 /// unless `spawn_missing`, where an UNMATCHED binding (zero candidates; an
@@ -521,7 +580,7 @@ fn resolve_step_intents(
     spawn_missing: bool,
     parent_id: Option<&str>,
     now: &str,
-) -> Result<(Vec<(String, String)>, Vec<(String, String)>)> {
+) -> Result<StepIntentBindings> {
     let mut out = Vec::with_capacity(spec.steps.len());
     let mut spawned: Vec<(String, String)> = Vec::new();
     for (i, step) in spec.steps.iter().enumerate() {
@@ -535,55 +594,66 @@ fn resolve_step_intents(
         let resolved = try_resolve_intent(db, key).with_context(|| {
             format!("step {} ('{}'): intent binding '{}'", i + 1, step.name, key)
         })?;
-        let iid = match resolved {
-            Some(iid) => iid,
-            // Two steps narrating the same new behavior reuse one spawn even
-            // if the transaction's reads don't see its writes yet.
-            None if spawned.iter().any(|(_, n)| n.eq_ignore_ascii_case(key)) => spawned
-                .iter()
-                .find(|(_, n)| n.eq_ignore_ascii_case(key))
-                .map(|(id, _)| id.clone())
-                .unwrap(),
-            None if spawn_missing => {
-                let id = Uuid::new_v4().to_string();
-                insert_intent(db, &Intent {
-                    id: id.clone(),
-                    name: key.to_string(),
-                    description: format!(
+        let iid =
+            match resolved {
+                Some(iid) => iid,
+                // Two steps narrating the same new behavior reuse one spawn even
+                // if the transaction's reads don't see its writes yet.
+                None if spawned.iter().any(|(_, n)| n.eq_ignore_ascii_case(key)) => spawned
+                    .iter()
+                    .find(|(_, n)| n.eq_ignore_ascii_case(key))
+                    .map(|(id, _)| id.clone())
+                    .unwrap(),
+                None if spawn_missing => {
+                    let id = Uuid::new_v4().to_string();
+                    insert_intent(
+                        db,
+                        &Intent {
+                            id: id.clone(),
+                            name: key.to_string(),
+                            description: format!(
                         "Journey '{}' step {}: {} — {} {}. Spawned from the narrated journey; \
                          sharpen into a falsifiable criterion when realizing.",
                         spec.saga, i + 1, step.name, step.request.method, step.request.url
                     ),
-                    abstraction_level: "feature".to_string(),
-                    domain: String::new(),
-                    layer: String::new(),
-                    source_refs: Vec::new(),
-                    status: "proposed".to_string(),
-                    aspect: String::new(),
-                    tags: Vec::new(),
-                    // A consumer-journey step is consumer-visible by construction.
-                    visibility: "user_visible".to_string(),
-                    lifecycle: "planned".to_string(),
-                    created_at: now.to_string(),
-                    updated_at: now.to_string(),
-                })?;
-                if let Some(p) = parent_id {
-                    insert_hierarchy(db, p, &id, "", now)?;
+                            abstraction_level: "feature".to_string(),
+                            domain: String::new(),
+                            layer: String::new(),
+                            source_refs: Vec::new(),
+                            status: "proposed".to_string(),
+                            aspect: String::new(),
+                            tags: Vec::new(),
+                            // A consumer-journey step is consumer-visible by construction.
+                            visibility: "user_visible".to_string(),
+                            lifecycle: "planned".to_string(),
+                            created_at: now.to_string(),
+                            updated_at: now.to_string(),
+                        },
+                    )?;
+                    if let Some(p) = parent_id {
+                        insert_hierarchy(db, p, &id, "", now)?;
+                    }
+                    spawned.push((id.clone(), key.to_string()));
+                    id
                 }
-                spawned.push((id.clone(), key.to_string()));
-                id
-            }
-            None => anyhow::bail!(
+                None => {
+                    anyhow::bail!(
                 "step {} ('{}'): cannot resolve intent '{}' — every step binds to an intent. \
                  Create it first (`loom intent add`), or let the journey spawn it: re-run with \
                  `--spawn-missing [--under <parent>]` (unmatched steps become planned, \
                  user_visible features the build queue realizes).",
                 i + 1, step.name, step.intent
-            ),
-        };
+            )
+                }
+            };
         let name = get_intent(db, &iid)?
             .map(|x| x.name)
-            .or_else(|| spawned.iter().find(|(sid, _)| *sid == iid).map(|(_, n)| n.clone()))
+            .or_else(|| {
+                spawned
+                    .iter()
+                    .find(|(sid, _)| *sid == iid)
+                    .map(|(_, n)| n.clone())
+            })
             .unwrap_or_else(|| iid.clone());
         out.push((iid, name));
     }
@@ -611,7 +681,12 @@ pub fn required_env_of(v: &Validation) -> Vec<String> {
     v.description
         .lines()
         .find_map(|l| l.strip_prefix("requires env:"))
-        .map(|s| s.split(',').map(|x| x.trim().to_string()).filter(|x| !x.is_empty()).collect())
+        .map(|s| {
+            s.split(',')
+                .map(|x| x.trim().to_string())
+                .filter(|x| !x.is_empty())
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -624,8 +699,8 @@ fn relative_to_root(file: &str, root: &std::path::Path) -> Result<String> {
     } else {
         std::env::current_dir()?.join(file)
     };
-    let abs = std::fs::canonicalize(&abs)
-        .with_context(|| format!("Saga spec '{}' not found", file))?;
+    let abs =
+        std::fs::canonicalize(&abs).with_context(|| format!("Saga spec '{}' not found", file))?;
     let root_canon = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
     let rel = abs.strip_prefix(&root_canon).with_context(|| {
         format!(

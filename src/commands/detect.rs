@@ -19,7 +19,11 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  source files:   {}", d.source_files);
     println!(
         "  stacks:         {}",
-        if d.stacks.is_empty() { "(none detected)".to_string() } else { d.stacks.join(", ") }
+        if d.stacks.is_empty() {
+            "(none detected)".to_string()
+        } else {
+            d.stacks.join(", ")
+        }
     );
     if d.top_languages.is_empty() {
         println!("  top languages:  (none)");

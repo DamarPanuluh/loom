@@ -43,7 +43,6 @@ pub(crate) fn known_bare_role(agent: &str) -> Option<&'static str> {
     ROLES.iter().copied().find(|r| r.eq_ignore_ascii_case(bare))
 }
 
-
 /// The `loom next` mode that serves a role's lane — used in lane-violation
 /// errors to point the agent back at its own queue.
 pub fn mode_for_role(r: &str) -> Option<&'static str> {
@@ -115,9 +114,26 @@ pub const MIN_SUBSTANTIVE_LEN: usize = 10;
 
 /// Inputs that read as "I filled the slot" rather than "I inspected the code".
 pub const PLACEHOLDERS: &[&str] = &[
-    "todo", "tbd", "n/a", "na", "none", "null", "unknown", "x", "xxx", "...",
-    "criterion", "evidence", "notes", "<text>", "<criterion>", "<evidence>",
-    "<notes>", "<why unrelated>", "?", "-",
+    "todo",
+    "tbd",
+    "n/a",
+    "na",
+    "none",
+    "null",
+    "unknown",
+    "x",
+    "xxx",
+    "...",
+    "criterion",
+    "evidence",
+    "notes",
+    "<text>",
+    "<criterion>",
+    "<evidence>",
+    "<notes>",
+    "<why unrelated>",
+    "?",
+    "-",
 ];
 
 /// True when a recorded value is empty or a known placeholder — used by both
@@ -167,7 +183,10 @@ pub fn compose_evidence(locators: &[String], evidence: &str) -> Result<String> {
     let mut anchors = Vec::with_capacity(locators.len());
     for l in locators {
         let l = l.trim();
-        if l.len() < 3 || l.chars().any(char::is_whitespace) || !(l.contains('/') || l.contains('.')) {
+        if l.len() < 3
+            || l.chars().any(char::is_whitespace)
+            || !(l.contains('/') || l.contains('.'))
+        {
             anyhow::bail!(
                 "--evidence-locator must be a file anchor like `src/db/queries/stats.rs:299-340` \
                  (path, optionally `:line` or `:start-end`; no spaces). Got: '{l}'."
@@ -208,9 +227,12 @@ mod tests {
     fn declared_role_is_held_to_its_lane() {
         // In lane.
         assert!(enforce_lane("ground an edge", &[role::ANALYZER], "llm:analyzer").is_ok());
-        assert!(
-            enforce_lane("mark a lifecycle", &[role::BUILDER, role::FIXER], "llm:fixer").is_ok()
-        );
+        assert!(enforce_lane(
+            "mark a lifecycle",
+            &[role::BUILDER, role::FIXER],
+            "llm:fixer"
+        )
+        .is_ok());
         // Out of lane.
         let err = enforce_lane("ground an edge", &[role::ANALYZER], "llm:builder")
             .unwrap_err()
@@ -260,7 +282,10 @@ mod tests {
     #[test]
     fn compose_evidence_folds_locators() {
         // No locators → passthrough, byte-for-byte.
-        assert_eq!(compose_evidence(&[], "found it in the parser").unwrap(), "found it in the parser");
+        assert_eq!(
+            compose_evidence(&[], "found it in the parser").unwrap(),
+            "found it in the parser"
+        );
         // Locators prefix the prose with parseable anchors.
         assert_eq!(
             compose_evidence(&["src/a.rs:10-20".into()], "the call path exists").unwrap(),
@@ -273,7 +298,9 @@ mod tests {
         );
         // Non-path-shaped or spaced anchors are rejected with the format taught.
         for bad in ["x", "not a path", "noslashordot"] {
-            let err = compose_evidence(&[bad.into()], "e").unwrap_err().to_string();
+            let err = compose_evidence(&[bad.into()], "e")
+                .unwrap_err()
+                .to_string();
             assert!(err.contains("file anchor"), "got: {err}");
         }
     }

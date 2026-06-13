@@ -27,16 +27,18 @@ pub fn insert_targets(
            e.last_inspected = '', e.inspected_by = '', e.notes = '', \
            e.created_at = $now \
          RETURN e.inspection_status",
-        super::row::sparams(&[
-            ("hid", hypothesis_id), ("iid", intent_id), ("now", now),
-        ]),
+        super::row::sparams(&[("hid", hypothesis_id), ("iid", intent_id), ("now", now)]),
     )?;
     if r.rows().is_empty() {
         let check_h = db.execute(&format!(
-            "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id", esc(hypothesis_id)
+            "MATCH (h:Hypothesis {{id: '{}'}}) RETURN h.id",
+            esc(hypothesis_id)
         ))?;
         if check_h.rows().is_empty() {
-            anyhow::bail!("Hypothesis '{}' not found — `loom hypothesis list`.", hypothesis_id);
+            anyhow::bail!(
+                "Hypothesis '{}' not found — `loom hypothesis list`.",
+                hypothesis_id
+            );
         }
         anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
@@ -69,7 +71,11 @@ pub fn list_targets_for_hypothesis(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_targets(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_targets(row, &cols))
+        .collect())
 }
 
 /// Scan every TARGETS edge (doctor audit + sync ripple index).
@@ -81,7 +87,11 @@ pub fn list_all_targets(db: &dyn LoomDb) -> Result<Vec<TargetsEdge>> {
                     i.id AS intent_id, i.name AS intent_name";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_targets(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_targets(row, &cols))
+        .collect())
 }
 
 pub fn set_targets_status_for_hypothesis(
@@ -136,7 +146,13 @@ pub fn flag_targets_for_intent(
             ))?;
             if !cause.is_empty() {
                 super::note::record_sync_flip(
-                    db, "edge", &t.id, "passing", "needs_reverification", cause, now,
+                    db,
+                    "edge",
+                    &t.id,
+                    "passing",
+                    "needs_reverification",
+                    cause,
+                    now,
                 )?;
             }
             count += 1;
@@ -149,17 +165,21 @@ fn row_to_targets(row: &[Value], cols: &HashMap<&str, usize>) -> TargetsEdge {
     let hypothesis_id = str_val(get(row, cols, "hypothesis_id"));
     let intent_id = str_val(get(row, cols, "intent_id"));
     TargetsEdge {
-        id:                crate::db::schema::edge_key(crate::db::schema::edge::TARGETS, &hypothesis_id, &intent_id),
+        id: crate::db::schema::edge_key(
+            crate::db::schema::edge::TARGETS,
+            &hypothesis_id,
+            &intent_id,
+        ),
         hypothesis_id,
         intent_id,
-        hypothesis_name:   str_val(get(row, cols, "hypothesis_name")),
-        intent_name:       str_val(get(row, cols, "intent_name")),
+        hypothesis_name: str_val(get(row, cols, "hypothesis_name")),
+        intent_name: str_val(get(row, cols, "intent_name")),
         inspection_status: str_val(get(row, cols, "e.inspection_status")),
-        criterion:         str_val(get(row, cols, "e.criterion")),
-        confidence:        f64_val(get(row, cols, "e.confidence")),
-        evidence:          str_val(get(row, cols, "e.evidence")),
-        last_inspected:    str_val(get(row, cols, "e.last_inspected")),
-        inspected_by:      str_val(get(row, cols, "e.inspected_by")),
-        notes:             str_val(get(row, cols, "e.notes")),
+        criterion: str_val(get(row, cols, "e.criterion")),
+        confidence: f64_val(get(row, cols, "e.confidence")),
+        evidence: str_val(get(row, cols, "e.evidence")),
+        last_inspected: str_val(get(row, cols, "e.last_inspected")),
+        inspected_by: str_val(get(row, cols, "e.inspected_by")),
+        notes: str_val(get(row, cols, "e.notes")),
     }
 }

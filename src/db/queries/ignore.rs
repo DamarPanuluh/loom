@@ -22,10 +22,16 @@ pub fn insert_ignore(db: &dyn LoomDb, ig: &Ignore) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute_with_params(&q, super::row::sparams(&[
-        ("id", &ig.id), ("pattern", &ig.pattern), ("reason", &ig.reason),
-        ("author", &ig.author), ("created", &ig.created_at),
-    ]))?;
+    db.execute_with_params(
+        &q,
+        super::row::sparams(&[
+            ("id", &ig.id),
+            ("pattern", &ig.pattern),
+            ("reason", &ig.reason),
+            ("author", &ig.author),
+            ("created", &ig.created_at),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -42,15 +48,19 @@ pub fn list_ignores(db: &dyn LoomDb) -> Result<Vec<Ignore>> {
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_ignore(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_ignore(row, &cols))
+        .collect())
 }
 
 fn row_to_ignore(row: &[Value], cols: &HashMap<&str, usize>) -> Ignore {
     Ignore {
-        id:         str_val(get(row, cols, "n.id")),
-        pattern:    str_val(get(row, cols, "n.pattern")),
-        reason:     str_val(get(row, cols, "n.reason")),
-        author:     str_val(get(row, cols, "n.author")),
+        id: str_val(get(row, cols, "n.id")),
+        pattern: str_val(get(row, cols, "n.pattern")),
+        reason: str_val(get(row, cols, "n.reason")),
+        author: str_val(get(row, cols, "n.author")),
         created_at: str_val(get(row, cols, "n.created_at")),
     }
 }

@@ -45,7 +45,9 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
             println!("  Run `loom export` and commit the result.");
         }
         if !fresh {
-            anyhow::bail!("export file is stale or missing — run `loom export` and commit the result.");
+            anyhow::bail!(
+                "export file is stale or missing — run `loom export` and commit the result."
+            );
         }
         return Ok(());
     }
@@ -61,8 +63,24 @@ pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     fs::write(&tmp, &pretty)?;
     fs::rename(&tmp, &target)?;
 
-    let nodes: usize = graph["nodes"].as_object().map(|m| m.values().filter_map(|v| v.as_array()).map(|a| a.len()).sum()).unwrap_or(0);
-    let edges: usize = graph["edges"].as_object().map(|m| m.values().filter_map(|v| v.as_array()).map(|a| a.len()).sum()).unwrap_or(0);
+    let nodes: usize = graph["nodes"]
+        .as_object()
+        .map(|m| {
+            m.values()
+                .filter_map(|v| v.as_array())
+                .map(|a| a.len())
+                .sum()
+        })
+        .unwrap_or(0);
+    let edges: usize = graph["edges"]
+        .as_object()
+        .map(|m| {
+            m.values()
+                .filter_map(|v| v.as_array())
+                .map(|a| a.len())
+                .sum()
+        })
+        .unwrap_or(0);
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok", "out": out, "nodes": nodes, "edges": edges,

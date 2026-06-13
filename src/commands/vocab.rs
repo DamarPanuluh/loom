@@ -13,9 +13,8 @@ use uuid::Uuid;
 
 use crate::cli::VocabCmd;
 use crate::db::queries::{
-    get_vocab_term, insert_vocab_term, list_active_intents, list_vocab_terms,
-    merge_vocab_terms, nearest_terms, normalize_term, tag_counts, terms_look_alike,
-    MAX_TAGS_PER_INTENT,
+    get_vocab_term, insert_vocab_term, list_active_intents, list_vocab_terms, merge_vocab_terms,
+    nearest_terms, normalize_term, tag_counts, terms_look_alike, MAX_TAGS_PER_INTENT,
 };
 use crate::db::schema::role;
 use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
@@ -35,7 +34,8 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
 
     match cmd {
         VocabCmd::Add { term, why, author } => {
-            let agent = gate::acting_in_lane("register a vocab term", &[role::BUILDER], author.as_deref())?;
+            let agent =
+                gate::acting_in_lane("register a vocab term", &[role::BUILDER], author.as_deref())?;
             let term = normalize_term(&term)?;
             gate::require_substantive(
                 "why",
@@ -46,7 +46,9 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 anyhow::bail!(
                     "Term '{}' is already registered: \"{}\"\n\
                      Use it directly: loom intent tag add <intent> {}",
-                    term, existing.description, term
+                    term,
+                    existing.description,
+                    term
                 );
             }
             // A new term that reads like an existing one is drift at the door.
@@ -59,15 +61,18 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                     "'{}' reads like the registered term '{}' (\"{}\").\n\
                      Either use '{}', or pick a name that doesn't look like it — \
                      synonym terms split the keyspace and intents stop colliding.",
-                    term, twin.name, twin.description, twin.name
+                    term,
+                    twin.name,
+                    twin.description,
+                    twin.name
                 );
             }
             let vt = VocabTerm {
-                id:          Uuid::new_v4().to_string(),
-                name:        term.clone(),
+                id: Uuid::new_v4().to_string(),
+                name: term.clone(),
                 description: why,
-                author:      agent,
-                created_at:  chrono::Utc::now().to_rfc3339(),
+                author: agent,
+                created_at: chrono::Utc::now().to_rfc3339(),
             };
             insert_vocab_term(&db, &vt)?;
             let size = terms.len() + 1;
@@ -75,9 +80,13 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 let mut v = serde_json::to_value(&vt)?;
                 if let Some(obj) = v.as_object_mut() {
                     obj.insert("registry_size".into(), serde_json::json!(size));
-                    obj.insert("next_step".into(), serde_json::json!(format!(
-                        "Tag intents with it: loom intent tag add <intent> {}", vt.name
-                    )));
+                    obj.insert(
+                        "next_step".into(),
+                        serde_json::json!(format!(
+                            "Tag intents with it: loom intent tag add <intent> {}",
+                            vt.name
+                        )),
+                    );
                     if size > REGISTRY_SOFT_CAP {
                         obj.insert("warning".into(), serde_json::json!(format!(
                             "registry has {size} terms — past ~{REGISTRY_SOFT_CAP} agents can't hold it in context and stop colliding; run `loom smells` (vocab_drift) and merge"
@@ -88,7 +97,10 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             } else {
                 println!("✓ Vocab term registered: {}", vt.name);
                 println!("  \"{}\"", vt.description);
-                println!("  → Tag intents with it: loom intent tag add <intent> {}", vt.name);
+                println!(
+                    "  → Tag intents with it: loom intent tag add <intent> {}",
+                    vt.name
+                );
                 if size > REGISTRY_SOFT_CAP {
                     println!(
                         "  ⚠ registry now holds {size} terms — past ~{REGISTRY_SOFT_CAP} the list stops fitting in an \
@@ -135,7 +147,9 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
                 anyhow::bail!("'{from}' and '{to}' are the same term — pick two distinct terms (`loom vocab list`).");
             }
             if get_vocab_term(&db, &from)?.is_none() {
-                anyhow::bail!("Term '{from}' is not registered — `loom vocab list` shows the registry.");
+                anyhow::bail!(
+                    "Term '{from}' is not registered — `loom vocab list` shows the registry."
+                );
             }
             if get_vocab_term(&db, &to)?.is_none() {
                 anyhow::bail!(
@@ -146,9 +160,8 @@ pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
             // Atomic: a merge that dies midway would leave the keyspace
             // SPLIT (some intents retagged, the old term still registered) —
             // exactly the drift the command exists to converge.
-            let retagged = crate::db::with_transaction(&db, || {
-                merge_vocab_terms(&db, &from, &to, &now)
-            })?;
+            let retagged =
+                crate::db::with_transaction(&db, || merge_vocab_terms(&db, &from, &to, &now))?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "from": from, "to": to, "retagged_intents": retagged,
@@ -175,7 +188,10 @@ pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
     if raw.is_empty() {
         return Ok(Vec::new());
     }
-    let mut tags = raw.iter().map(|t| normalize_term(t)).collect::<Result<Vec<_>>>()?;
+    let mut tags = raw
+        .iter()
+        .map(|t| normalize_term(t))
+        .collect::<Result<Vec<_>>>()?;
     tags.sort();
     tags.dedup();
     if tags.len() > MAX_TAGS_PER_INTENT {
@@ -209,7 +225,11 @@ pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
             .collect();
         let elided = registry.len().saturating_sub(60);
         registry.truncate(60);
-        let more = if elided > 0 { format!(" +{elided} more") } else { String::new() };
+        let more = if elided > 0 {
+            format!(" +{elided} more")
+        } else {
+            String::new()
+        };
         anyhow::bail!(
             "No registered term '{t}'. Nearest:\n{}\n\
              registry ({} terms): {}{}\n\
@@ -227,17 +247,28 @@ pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::validate_tags;
-    use crate::db::queries::{insert_vocab_term, set_intent_tags, insert_intent};
+    use crate::db::queries::{insert_intent, insert_vocab_term, set_intent_tags};
     use crate::db::GrafeoDb;
     use crate::types::{Intent, VocabTerm};
 
     fn db_with_registry() -> GrafeoDb {
         let db = GrafeoDb::in_memory();
-        for (name, desc) in [("authz", "permission checks"), ("retry", "re-attempts"), ("cache", "derived data")] {
-            insert_vocab_term(&db, &VocabTerm {
-                id: format!("vt-{name}"), name: name.into(), description: desc.into(),
-                author: "llm".into(), created_at: "t".into(),
-            }).unwrap();
+        for (name, desc) in [
+            ("authz", "permission checks"),
+            ("retry", "re-attempts"),
+            ("cache", "derived data"),
+        ] {
+            insert_vocab_term(
+                &db,
+                &VocabTerm {
+                    id: format!("vt-{name}"),
+                    name: name.into(),
+                    description: desc.into(),
+                    author: "llm".into(),
+                    created_at: "t".into(),
+                },
+            )
+            .unwrap();
         }
         db
     }
@@ -247,28 +278,57 @@ mod tests {
         let db = db_with_registry();
         let tags = validate_tags(&db, &[" Retry ".into(), "retry".into(), "authz".into()]).unwrap();
         assert_eq!(tags, vec!["authz".to_string(), "retry".to_string()]);
-        assert!(validate_tags(&db, &[]).unwrap().is_empty(), "untagged is always valid");
+        assert!(
+            validate_tags(&db, &[]).unwrap().is_empty(),
+            "untagged is always valid"
+        );
     }
 
     #[test]
     fn unknown_term_error_is_the_affordance() {
         let db = db_with_registry();
         // Make usage counts visible in the inline registry.
-        insert_intent(&db, &Intent {
-            id: "i0".into(), name: "n".into(), description: "d".into(),
-            abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
-            layer: String::new(),
-            status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
-            visibility: String::new(),
-            lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into(),
-        }).unwrap();
+        insert_intent(
+            &db,
+            &Intent {
+                id: "i0".into(),
+                name: "n".into(),
+                description: "d".into(),
+                abstraction_level: "feature".into(),
+                domain: "d".into(),
+                source_refs: Vec::new(),
+                layer: String::new(),
+                status: "proposed".into(),
+                aspect: String::new(),
+                tags: Vec::new(),
+                visibility: String::new(),
+                lifecycle: "implemented".into(),
+                created_at: "t".into(),
+                updated_at: "t".into(),
+            },
+        )
+        .unwrap();
         set_intent_tags(&db, "i0", vec!["retry".into()], "t").unwrap();
 
-        let err = validate_tags(&db, &["retrying".into()]).unwrap_err().to_string();
-        assert!(err.contains("retry (1 intent(s))"), "nearest with usage:\n{err}");
-        assert!(err.contains("registry (3 terms)"), "full menu inline:\n{err}");
-        assert!(err.contains("loom vocab add retrying"), "registration path:\n{err}");
-        assert!(err.contains("optional"), "abstaining must stay legitimate:\n{err}");
+        let err = validate_tags(&db, &["retrying".into()])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("retry (1 intent(s))"),
+            "nearest with usage:\n{err}"
+        );
+        assert!(
+            err.contains("registry (3 terms)"),
+            "full menu inline:\n{err}"
+        );
+        assert!(
+            err.contains("loom vocab add retrying"),
+            "registration path:\n{err}"
+        );
+        assert!(
+            err.contains("optional"),
+            "abstaining must stay legitimate:\n{err}"
+        );
     }
 
     #[test]
@@ -276,8 +336,15 @@ mod tests {
         let db = db_with_registry();
         let err = validate_tags(
             &db,
-            &["authz".into(), "retry".into(), "cache".into(), "extra".into()],
-        ).unwrap_err().to_string();
+            &[
+                "authz".into(),
+                "retry".into(),
+                "cache".into(),
+                "extra".into(),
+            ],
+        )
+        .unwrap_err()
+        .to_string();
         assert!(err.contains("cap is 3"), "{err}");
     }
 }

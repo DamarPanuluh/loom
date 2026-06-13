@@ -2,12 +2,12 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::ValidationCmd;
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     delete_validation, get_hypothesis, get_validation, insert_validates, insert_validation,
-    list_validations, resolve_validation, set_hypothesis_status, set_validates_status_for_validation,
-    update_validation_definition, update_validation_result,
+    list_validations, resolve_validation, set_hypothesis_status,
+    set_validates_status_for_validation, update_validation_definition, update_validation_result,
 };
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 use crate::types::{Validation, ValidationResult};
 
@@ -17,26 +17,36 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        ValidationCmd::Add { name, description, validation_type, command, intent } => {
+        ValidationCmd::Add {
+            name,
+            description,
+            validation_type,
+            command,
+            intent,
+        } => {
             crate::gate::acting_in_lane(
                 "add a validation",
-                &[crate::db::schema::role::BUILDER, crate::db::schema::role::VALIDATOR],
+                &[
+                    crate::db::schema::role::BUILDER,
+                    crate::db::schema::role::VALIDATOR,
+                ],
                 None,
             )?;
             // Validate type
-            validation_type.parse::<crate::types::ValidationType>()
+            validation_type
+                .parse::<crate::types::ValidationType>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             let now = chrono::Utc::now().to_rfc3339();
             let id = Uuid::new_v4().to_string();
             let v = Validation {
-                id:              id.clone(),
-                name:            name.clone(),
-                description:     description.unwrap_or_default(),
+                id: id.clone(),
+                name: name.clone(),
+                description: description.unwrap_or_default(),
                 validation_type: validation_type.clone(),
-                command:         command.unwrap_or_default(),
-                last_run:        String::new(),
-                last_result:     "not_run".to_string(),
+                command: command.unwrap_or_default(),
+                last_run: String::new(),
+                last_result: "not_run".to_string(),
             };
             insert_validation(&db, &v)?;
 
@@ -54,15 +64,28 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 let mut val = serde_json::to_value(&v)?;
                 if let Some(obj) = val.as_object_mut() {
                     if linked_intents.is_empty() {
-                        obj.insert("next_steps".to_string(), serde_json::json!([
-                            format!("Link it to an intent: `loom edge validates {} <intent-id>`.", id),
-                            "Then run it: `loom validate <intent-id>`.",
-                        ]));
+                        obj.insert(
+                            "next_steps".to_string(),
+                            serde_json::json!([
+                                format!(
+                                    "Link it to an intent: `loom edge validates {} <intent-id>`.",
+                                    id
+                                ),
+                                "Then run it: `loom validate <intent-id>`.",
+                            ]),
+                        );
                     } else {
-                        obj.insert("linked_intents".to_string(), serde_json::json!(linked_intents));
-                        obj.insert("next_steps".to_string(), serde_json::json!([
-                            format!("Run it: `loom validate {}`.", linked_intents[0]),
-                        ]));
+                        obj.insert(
+                            "linked_intents".to_string(),
+                            serde_json::json!(linked_intents),
+                        );
+                        obj.insert(
+                            "next_steps".to_string(),
+                            serde_json::json!([format!(
+                                "Run it: `loom validate {}`.",
+                                linked_intents[0]
+                            ),]),
+                        );
                     }
                 }
                 printer.print_json(&val);
@@ -81,7 +104,12 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        ValidationCmd::Mark { id, result, evidence, reason } => {
+        ValidationCmd::Mark {
+            id,
+            result,
+            evidence,
+            reason,
+        } => {
             let marker = crate::gate::acting_in_lane(
                 "mark a validation result",
                 &[crate::db::schema::role::VALIDATOR],
@@ -100,13 +128,17 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             let edge_note = if res == ValidationResult::Blocked {
                 let r = reason.as_deref().unwrap_or("");
                 crate::gate::require_substantive(
-                    "reason", r, "why this proof cannot run yet (what it is waiting on)",
+                    "reason",
+                    r,
+                    "why this proof cannot run yet (what it is waiting on)",
                 )?;
                 format!("blocked: {r}")
             } else {
                 let ev = evidence.as_deref().unwrap_or("");
                 crate::gate::require_substantive(
-                    "evidence", ev, "what you checked to reach this verdict",
+                    "evidence",
+                    ev,
+                    "what you checked to reach this verdict",
                 )?;
                 ev.to_string()
             };
@@ -133,9 +165,7 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                             .find_map(|line| line.strip_prefix("hypothesis:"))
                         {
                             let hid = hid.trim();
-                            if get_hypothesis(&db, hid)?
-                                .is_some_and(|h| h.status == "adopted")
-                            {
+                            if get_hypothesis(&db, hid)?.is_some_and(|h| h.status == "adopted") {
                                 set_hypothesis_status(&db, hid, "confirmed", &marker, &now)?;
                             }
                         }
@@ -173,10 +203,17 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        ValidationCmd::Update { id, command, description } => {
+        ValidationCmd::Update {
+            id,
+            command,
+            description,
+        } => {
             crate::gate::acting_in_lane(
                 "update a validation definition",
-                &[crate::db::schema::role::BUILDER, crate::db::schema::role::VALIDATOR],
+                &[
+                    crate::db::schema::role::BUILDER,
+                    crate::db::schema::role::VALIDATOR,
+                ],
                 None,
             )?;
             if command.is_none() && description.is_none() {
@@ -190,14 +227,22 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
             // Atomic: the new definition and the proof reset land together —
             // a new command with the OLD green still attached would be a lie.
             let reset_edges = crate::db::with_transaction(&db, || {
-                update_validation_definition(&db, &vid, command.as_deref(), description.as_deref())?;
+                update_validation_definition(
+                    &db,
+                    &vid,
+                    command.as_deref(),
+                    description.as_deref(),
+                )?;
                 // The old result proved the OLD command — a changed command resets
                 // the proof so green is re-earned by actually running the new one.
                 let mut reset_edges = 0usize;
                 if command_changed {
                     update_validation_result(&db, &vid, "not_run", "")?;
                     reset_edges = set_validates_status_for_validation(
-                        &db, &vid, "uninspected", "command updated — proof must be re-run",
+                        &db,
+                        &vid,
+                        "uninspected",
+                        "command updated — proof must be re-run",
                     )?;
                 }
                 Ok(reset_edges)
@@ -221,7 +266,10 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
         ValidationCmd::Delete { id } => {
             crate::gate::acting_in_lane(
                 "delete a validation",
-                &[crate::db::schema::role::BUILDER, crate::db::schema::role::VALIDATOR],
+                &[
+                    crate::db::schema::role::BUILDER,
+                    crate::db::schema::role::VALIDATOR,
+                ],
                 None,
             )?;
             let vid = resolve_validation(&db, &id)?;
@@ -259,21 +307,23 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
                 println!(
                     "  {result:<8}  {vtype:<14}  {name:<40}  id",
                     result = "RESULT",
-                    vtype  = "TYPE",
-                    name   = "NAME",
+                    vtype = "TYPE",
+                    name = "NAME",
                 );
                 println!("  {}", "-".repeat(100));
                 for v in &validations {
                     println!(
                         "  [{result:<8}]  {vtype:<14}  {name:<40}  {id}",
                         result = v.last_result,
-                        vtype  = v.validation_type,
-                        name   = v.name,
-                        id     = v.id,
+                        vtype = v.validation_type,
+                        name = v.name,
+                        id = v.id,
                     );
                 }
                 if let Some(m) = crate::output::more_marker(
-                    total, validations.len(), "`loom validation list --limit 0`",
+                    total,
+                    validations.len(),
+                    "`loom validation list --limit 0`",
                 ) {
                     println!("  {m}");
                 }

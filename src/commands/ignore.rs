@@ -13,12 +13,16 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        IgnoreCmd::Add { pattern, reason, author } => {
+        IgnoreCmd::Add {
+            pattern,
+            reason,
+            author,
+        } => {
             let ig = Ignore {
-                id:         Uuid::new_v4().to_string(),
+                id: Uuid::new_v4().to_string(),
                 pattern,
                 reason,
-                author:     crate::agent::acting(author.as_deref()),
+                author: crate::agent::acting(author.as_deref()),
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
             insert_ignore(&db, &ig)?;
@@ -27,7 +31,9 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
             } else {
                 println!("✓ Ignore pattern added: {}", ig.pattern);
                 println!("  reason: {}", ig.reason);
-                println!("  → Affects `loom coverage`; files matching this pattern count as excluded.");
+                println!(
+                    "  → Affects `loom coverage`; files matching this pattern count as excluded."
+                );
             }
         }
         IgnoreCmd::List => {
@@ -35,7 +41,9 @@ pub fn run(cmd: IgnoreCmd, printer: &Printer) -> Result<()> {
             if printer.json {
                 printer.print_json(&igs);
             } else if igs.is_empty() {
-                println!("(no ignore patterns — every non-gitignored file must be mapped or excluded)");
+                println!(
+                    "(no ignore patterns — every non-gitignored file must be mapped or excluded)"
+                );
             } else {
                 for i in &igs {
                     println!("  {:<30}  — {}  ({})", i.pattern, i.reason, i.author);

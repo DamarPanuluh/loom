@@ -35,13 +35,23 @@ pub fn insert_hypothesis(db: &dyn LoomDb, h: &Hypothesis) -> Result<()> {
         created = prop::CREATED_AT,
         updated = prop::UPDATED_AT,
     );
-    db.execute_with_params(&q, super::row::sparams(&[
-        ("id", &h.id), ("name", &h.name), ("claim", &h.claim),
-        ("proposal", &h.proposal), ("outcome", &h.predicted_outcome),
-        ("status", &h.status), ("author", &h.author), ("evidence", &h.evidence),
-        ("by", &h.inspected_by), ("last", &h.last_inspected),
-        ("created", &h.created_at), ("updated", &h.updated_at),
-    ]))?;
+    db.execute_with_params(
+        &q,
+        super::row::sparams(&[
+            ("id", &h.id),
+            ("name", &h.name),
+            ("claim", &h.claim),
+            ("proposal", &h.proposal),
+            ("outcome", &h.predicted_outcome),
+            ("status", &h.status),
+            ("author", &h.author),
+            ("evidence", &h.evidence),
+            ("by", &h.inspected_by),
+            ("last", &h.last_inspected),
+            ("created", &h.created_at),
+            ("updated", &h.updated_at),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -53,7 +63,10 @@ pub fn get_hypothesis(db: &dyn LoomDb, id: &str) -> Result<Option<Hypothesis>> {
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().first().map(|row| row_to_hypothesis(row, &cols)))
+    Ok(result
+        .rows()
+        .first()
+        .map(|row| row_to_hypothesis(row, &cols)))
 }
 
 /// Resolve a hypothesis key (exact id, exact name, or unique name fragment) —
@@ -68,7 +81,10 @@ pub fn resolve_hypothesis(db: &dyn LoomDb, key: &str) -> Result<String> {
     if exact.len() == 1 {
         return Ok(exact[0].id.clone());
     }
-    let subs: Vec<_> = hs.iter().filter(|h| h.name.to_lowercase().contains(&kl)).collect();
+    let subs: Vec<_> = hs
+        .iter()
+        .filter(|h| h.name.to_lowercase().contains(&kl))
+        .collect();
     match subs.len() {
         1 => Ok(subs[0].id.clone()),
         0 => anyhow::bail!(
@@ -77,7 +93,8 @@ pub fn resolve_hypothesis(db: &dyn LoomDb, key: &str) -> Result<String> {
         ),
         _ => anyhow::bail!(
             "'{}' is ambiguous — matches {} hypotheses. Use the id (`loom hypothesis list`).",
-            key, subs.len()
+            key,
+            subs.len()
         ),
     }
 }
@@ -91,8 +108,11 @@ pub fn list_hypotheses(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Hypo
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    let mut hs: Vec<Hypothesis> =
-        result.rows().iter().map(|row| row_to_hypothesis(row, &cols)).collect();
+    let mut hs: Vec<Hypothesis> = result
+        .rows()
+        .iter()
+        .map(|row| row_to_hypothesis(row, &cols))
+        .collect();
     if let Some(s) = status {
         hs.retain(|h| h.status == s);
     }
@@ -116,7 +136,10 @@ pub fn prove_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
     let mut targets_by_h: std::collections::HashMap<String, Vec<crate::types::TargetsEdge>> =
         std::collections::HashMap::new();
     for t in super::targets::list_all_targets(db)? {
-        targets_by_h.entry(t.hypothesis_id.clone()).or_default().push(t);
+        targets_by_h
+            .entry(t.hypothesis_id.clone())
+            .or_default()
+            .push(t);
     }
     let degrees = super::scoring::all_intent_degrees(db)?;
     let mut out: Vec<(Hypothesis, f64)> = Vec::new();
@@ -125,7 +148,8 @@ pub fn prove_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
         let due = match h.status.as_str() {
             "proposed" => true,
             "supported" => targets.is_some_and(|ts| {
-                ts.iter().any(|t| t.inspection_status == "needs_reverification")
+                ts.iter()
+                    .any(|t| t.inspection_status == "needs_reverification")
             }),
             _ => false,
         };
@@ -133,7 +157,11 @@ pub fn prove_candidates(db: &dyn LoomDb) -> Result<Vec<(Hypothesis, f64)>> {
             continue;
         }
         let reach: i64 = targets
-            .map(|ts| ts.iter().map(|t| degrees.get(&t.intent_id).copied().unwrap_or(0)).sum())
+            .map(|ts| {
+                ts.iter()
+                    .map(|t| degrees.get(&t.intent_id).copied().unwrap_or(0))
+                    .sum()
+            })
             .unwrap_or(0);
         out.push((h, 1.0 + reach as f64));
     }
@@ -173,11 +201,22 @@ pub fn update_hypothesis_verdict(
             upd = prop::UPDATED_AT,
         ),
         super::row::sparams(&[
-            ("id", id), ("status", status), ("evidence", evidence),
-            ("by", inspected_by), ("now", now),
+            ("id", id),
+            ("status", status),
+            ("evidence", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "hypothesis", id, &prev.status, status, inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "hypothesis",
+        id,
+        &prev.status,
+        status,
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -209,17 +248,17 @@ pub fn set_hypothesis_status(
 
 fn row_to_hypothesis(row: &[Value], cols: &HashMap<&str, usize>) -> Hypothesis {
     Hypothesis {
-        id:                str_val(get(row, cols, "h.id")),
-        name:              str_val(get(row, cols, "h.name")),
-        claim:             str_val(get(row, cols, "h.claim")),
-        proposal:          str_val(get(row, cols, "h.proposal")),
+        id: str_val(get(row, cols, "h.id")),
+        name: str_val(get(row, cols, "h.name")),
+        claim: str_val(get(row, cols, "h.claim")),
+        proposal: str_val(get(row, cols, "h.proposal")),
         predicted_outcome: str_val(get(row, cols, "h.predicted_outcome")),
-        status:            str_val(get(row, cols, "h.status")),
-        author:            str_val(get(row, cols, "h.author")),
-        evidence:          str_val(get(row, cols, "h.evidence")),
-        inspected_by:      str_val(get(row, cols, "h.inspected_by")),
-        last_inspected:    str_val(get(row, cols, "h.last_inspected")),
-        created_at:        str_val(get(row, cols, "h.created_at")),
-        updated_at:        str_val(get(row, cols, "h.updated_at")),
+        status: str_val(get(row, cols, "h.status")),
+        author: str_val(get(row, cols, "h.author")),
+        evidence: str_val(get(row, cols, "h.evidence")),
+        inspected_by: str_val(get(row, cols, "h.inspected_by")),
+        last_inspected: str_val(get(row, cols, "h.last_inspected")),
+        created_at: str_val(get(row, cols, "h.created_at")),
+        updated_at: str_val(get(row, cols, "h.updated_at")),
     }
 }

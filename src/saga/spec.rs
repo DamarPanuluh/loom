@@ -133,8 +133,8 @@ pub fn load_spec(yaml: &str, origin: &str) -> Result<SagaSpec> {
             yaml.len()
         );
     }
-    let spec: SagaSpec = serde_yaml::from_str(yaml)
-        .with_context(|| format!("Invalid saga spec: {origin}"))?;
+    let spec: SagaSpec =
+        serde_yaml::from_str(yaml).with_context(|| format!("Invalid saga spec: {origin}"))?;
     if spec.saga.trim().is_empty() {
         anyhow::bail!("{origin}: `saga:` (the name) must not be empty.");
     }
@@ -154,7 +154,11 @@ pub fn load_spec(yaml: &str, origin: &str) -> Result<SagaSpec> {
         }
         let m = step.request.method.to_uppercase();
         if !METHODS.contains(&m.as_str()) {
-            anyhow::bail!("{at}: unknown method '{}'. Valid: {}.", step.request.method, METHODS.join(", "));
+            anyhow::bail!(
+                "{at}: unknown method '{}'. Valid: {}.",
+                step.request.method,
+                METHODS.join(", ")
+            );
         }
         if step.request.json.is_some() && step.request.body.is_some() {
             anyhow::bail!("{at}: `json` and `body` are mutually exclusive.");
@@ -209,7 +213,9 @@ pub fn interpolate(template: &str, vars: &BTreeMap<String, String>) -> Result<St
         let name = after[..end].trim();
         if let Some(env_name) = name.strip_prefix("env.") {
             let v = std::env::var(env_name).map_err(|_| {
-                anyhow::anyhow!("Template references '{{{{ env.{env_name} }}}}' but ${env_name} is not set.")
+                anyhow::anyhow!(
+                    "Template references '{{{{ env.{env_name} }}}}' but ${env_name} is not set."
+                )
             })?;
             out.push_str(&v);
         } else {
@@ -294,7 +300,10 @@ pub fn interpolate_json(
     Ok(match value {
         Value::String(s) => Value::String(interpolate(s, vars)?),
         Value::Array(items) => Value::Array(
-            items.iter().map(|v| interpolate_json(v, vars)).collect::<Result<_>>()?,
+            items
+                .iter()
+                .map(|v| interpolate_json(v, vars))
+                .collect::<Result<_>>()?,
         ),
         Value::Object(map) => Value::Object(
             map.iter()
@@ -359,9 +368,15 @@ steps:
 
     #[test]
     fn rejects_zero_timeout() {
-        let bad = GOOD.replace("saga: checkout-flow", "saga: checkout-flow\ntimeout_secs: 0");
+        let bad = GOOD.replace(
+            "saga: checkout-flow",
+            "saga: checkout-flow\ntimeout_secs: 0",
+        );
         let err = format!("{:#}", load_spec(&bad, "t").unwrap_err());
-        assert!(err.contains("`timeout_secs:` must be at least 1 second"), "got: {err}");
+        assert!(
+            err.contains("`timeout_secs:` must be at least 1 second"),
+            "got: {err}"
+        );
     }
 
     #[test]
@@ -411,7 +426,10 @@ steps:
         );
         // Unknown variable names which steps could provide are listed.
         let err = interpolate("{{ nope }}", &vars).unwrap_err().to_string();
-        assert!(err.contains("no such variable") && err.contains("cart_id"), "got: {err}");
+        assert!(
+            err.contains("no such variable") && err.contains("cart_id"),
+            "got: {err}"
+        );
         // Unclosed braces are an error, not silent passthrough.
         assert!(interpolate("{{ oops", &vars).is_err());
     }
@@ -436,6 +454,9 @@ steps:
         vars.insert("user".to_string(), "alice".to_string());
         let body = serde_json::json!({"owner": "{{ user }}", "n": 3, "tags": ["{{ user }}"]});
         let out = interpolate_json(&body, &vars).unwrap();
-        assert_eq!(out, serde_json::json!({"owner": "alice", "n": 3, "tags": ["alice"]}));
+        assert_eq!(
+            out,
+            serde_json::json!({"owner": "alice", "n": 3, "tags": ["alice"]})
+        );
     }
 }

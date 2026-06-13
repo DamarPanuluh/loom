@@ -27,10 +27,16 @@ pub fn insert_delegation(db: &dyn LoomDb, d: &Delegation) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute_with_params(&q, super::row::sparams(&[
-        ("id", &d.id), ("pattern", &d.pattern), ("target", &d.target),
-        ("author", &d.author), ("created", &d.created_at),
-    ]))?;
+    db.execute_with_params(
+        &q,
+        super::row::sparams(&[
+            ("id", &d.id),
+            ("pattern", &d.pattern),
+            ("target", &d.target),
+            ("author", &d.author),
+            ("created", &d.created_at),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -47,15 +53,19 @@ pub fn list_delegations(db: &dyn LoomDb) -> Result<Vec<Delegation>> {
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_delegation(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_delegation(row, &cols))
+        .collect())
 }
 
 fn row_to_delegation(row: &[Value], cols: &HashMap<&str, usize>) -> Delegation {
     Delegation {
-        id:         str_val(get(row, cols, "n.id")),
-        pattern:    str_val(get(row, cols, "n.pattern")),
-        target:     str_val(get(row, cols, "n.target")),
-        author:     str_val(get(row, cols, "n.author")),
+        id: str_val(get(row, cols, "n.id")),
+        pattern: str_val(get(row, cols, "n.pattern")),
+        target: str_val(get(row, cols, "n.target")),
+        author: str_val(get(row, cols, "n.author")),
         created_at: str_val(get(row, cols, "n.created_at")),
     }
 }

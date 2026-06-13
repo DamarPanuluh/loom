@@ -24,14 +24,15 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // loom persona add --name <n> --description <d>
         // ----------------------------------------------------------------
-        PersonaCmd::Add { name, description, author } => {
-            let agent = gate::acting_in_lane(
-                "add a persona",
-                &[role::BUILDER],
-                author.as_deref(),
-            )?;
+        PersonaCmd::Add {
+            name,
+            description,
+            author,
+        } => {
+            let agent = gate::acting_in_lane("add a persona", &[role::BUILDER], author.as_deref())?;
             gate::require_substantive(
-                "description", &description,
+                "description",
+                &description,
                 "who this persona is and what distinguishes them from other audience segments",
             )?;
 
@@ -40,7 +41,9 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 anyhow::bail!(
                     "Persona '{}' already exists (id: {}).\n  \
                      Use `loom persona show {}` to see its SERVES edges.",
-                    existing.name, existing.id, existing.id
+                    existing.name,
+                    existing.id,
+                    existing.id
                 );
             }
 
@@ -89,7 +92,10 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     println!("    {}", p.description);
                 }
                 if total > personas.len() {
-                    println!("  … +{} more — loom persona list --limit 0", total - personas.len());
+                    println!(
+                        "  … +{} more — loom persona list --limit 0",
+                        total - personas.len()
+                    );
                 }
                 println!("\n  → loom persona show <id>   to see a persona's SERVES edges");
             }
@@ -118,18 +124,24 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 println!("  Added:  {}", persona.created_at);
 
                 println!();
-                println!("── SERVES ({} intent{}) ──────────────────────────────────────────",
-                    serves.len(), if serves.len() == 1 { "" } else { "s" });
+                println!(
+                    "── SERVES ({} intent{}) ──────────────────────────────────────────",
+                    serves.len(),
+                    if serves.len() == 1 { "" } else { "s" }
+                );
                 if serves.is_empty() {
-                    println!("  (none — link intents: loom persona serve {} <intent>)", persona.id);
+                    println!(
+                        "  (none — link intents: loom persona serve {} <intent>)",
+                        persona.id
+                    );
                 } else {
                     for e in &serves {
                         let icon = match e.inspection_status.as_str() {
-                            "passing"              => "✓",
-                            "failing"              => "✗",
-                            "independent"          => "–",
+                            "passing" => "✓",
+                            "failing" => "✗",
+                            "independent" => "–",
                             "needs_reverification" => "~",
-                            _                      => "?",
+                            _ => "?",
                         };
                         println!("  {icon} [{}]  {}", e.inspection_status, e.intent_name);
                         if !e.criterion.is_empty() {
@@ -139,10 +151,16 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 }
 
                 println!();
-                println!("── JOURNEYS ({} saga{}) ──────────────────────────────────────────",
-                    journeys.len(), if journeys.len() == 1 { "" } else { "s" });
+                println!(
+                    "── JOURNEYS ({} saga{}) ──────────────────────────────────────────",
+                    journeys.len(),
+                    if journeys.len() == 1 { "" } else { "s" }
+                );
                 if journeys.is_empty() {
-                    println!("  (none — link a saga: loom persona journey {} <saga-validation-id>)", persona.id);
+                    println!(
+                        "  (none — link a saga: loom persona journey {} <saga-validation-id>)",
+                        persona.id
+                    );
                 } else {
                     for j in &journeys {
                         println!("  ↪ {}", j.validation_name);
@@ -150,23 +168,30 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                 }
 
                 println!();
-                println!("  → loom persona serve {} <intent>   inspect/verify a SERVES edge", persona.id);
+                println!(
+                    "  → loom persona serve {} <intent>   inspect/verify a SERVES edge",
+                    persona.id
+                );
             }
         }
 
         // ----------------------------------------------------------------
         // loom persona serve <persona> <intent> [ground|issue|independent]
         // ----------------------------------------------------------------
-        PersonaCmd::Serve { persona_id, intent_id, subcommand } => {
+        PersonaCmd::Serve {
+            persona_id,
+            intent_id,
+            subcommand,
+        } => {
             let persona_id = resolve_persona(&db, &persona_id)?;
-            let intent_id  = crate::db::queries::resolve_intent(&db, &intent_id)?;
+            let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
 
             match subcommand {
                 None => {
                     let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
                     let persona = get_persona(&db, &persona_id)?.expect("resolved above");
-                    let intent  = get_intent(&db, &intent_id)?
+                    let intent = get_intent(&db, &intent_id)?
                         .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found.", intent_id))?;
 
                     if printer.json {
@@ -176,14 +201,20 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                             "intent":  intent,
                         }));
                     } else {
-                        println!("── Persona ───────────────────────────────────────────────────────");
+                        println!(
+                            "── Persona ───────────────────────────────────────────────────────"
+                        );
                         println!("  {} — {}", persona.name, persona.description);
                         println!();
-                        println!("── Intent ────────────────────────────────────────────────────────");
+                        println!(
+                            "── Intent ────────────────────────────────────────────────────────"
+                        );
                         println!("  {} ({})", intent.name, intent.abstraction_level);
                         println!("  {}", intent.description);
                         println!();
-                        println!("── SERVES edge ───────────────────────────────────────────────────");
+                        println!(
+                            "── SERVES edge ───────────────────────────────────────────────────"
+                        );
                         println!("  status:   {}", edge.inspection_status);
                         if !edge.criterion.is_empty() {
                             println!("  criterion: {}", edge.criterion);
@@ -205,14 +236,21 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Ground { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Ground {
+                    criterion,
+                    evidence,
+                    evidence_locator,
+                    confidence,
+                    inspected_by,
+                }) => {
                     let by = gate::acting_in_lane(
                         "ground a SERVES edge",
                         &[role::ANALYZER, role::FIXER],
                         inspected_by.as_deref(),
                     )?;
                     gate::require_substantive(
-                        "criterion", &criterion,
+                        "criterion",
+                        &criterion,
                         "what 'serving this persona' looks like for this intent",
                     )?;
                     if !evidence.trim().is_empty() {
@@ -222,7 +260,16 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     gate::require_confidence(confidence)?;
 
                     let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
-                    update_serves_ground(&db, &persona_id, &intent_id, &criterion, &evidence, confidence, &by, &now)?;
+                    update_serves_ground(
+                        &db,
+                        &persona_id,
+                        &intent_id,
+                        &criterion,
+                        &evidence,
+                        confidence,
+                        &by,
+                        &now,
+                    )?;
                     let updated = crate::types::ServesEdge {
                         inspection_status: "passing".to_string(),
                         criterion,
@@ -237,7 +284,10 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                         let v = with_anchor(serde_json::to_value(&updated)?, &db, next_step)?;
                         printer.print_json(&v);
                     } else {
-                        println!("✓ SERVES edge: {} → {} → passing", updated.persona_name, updated.intent_name);
+                        println!(
+                            "✓ SERVES edge: {} → {} → passing",
+                            updated.persona_name, updated.intent_name
+                        );
                         if !updated.criterion.is_empty() {
                             println!("  criterion: {}", updated.criterion);
                         }
@@ -245,19 +295,38 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Issue { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Issue {
+                    criterion,
+                    evidence,
+                    evidence_locator,
+                    confidence,
+                    inspected_by,
+                }) => {
                     let by = gate::acting_in_lane(
                         "issue a SERVES edge",
                         &[role::ANALYZER],
                         inspected_by.as_deref(),
                     )?;
-                    gate::require_substantive("criterion", &criterion, "the failing serving criterion")?;
+                    gate::require_substantive(
+                        "criterion",
+                        &criterion,
+                        "the failing serving criterion",
+                    )?;
                     gate::require_substantive("evidence", &evidence, "what was found to be wrong")?;
                     let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
 
                     let edge = get_or_create_serves(&db, &persona_id, &intent_id, &now)?;
-                    update_serves_issue(&db, &persona_id, &intent_id, &criterion, &evidence, confidence, &by, &now)?;
+                    update_serves_issue(
+                        &db,
+                        &persona_id,
+                        &intent_id,
+                        &criterion,
+                        &evidence,
+                        confidence,
+                        &by,
+                        &now,
+                    )?;
                     let updated = crate::types::ServesEdge {
                         inspection_status: "failing".to_string(),
                         criterion,
@@ -272,13 +341,19 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                         let v = with_anchor(serde_json::to_value(&updated)?, &db, next_step)?;
                         printer.print_json(&v);
                     } else {
-                        println!("✗ SERVES edge: {} → {} → failing", updated.persona_name, updated.intent_name);
+                        println!(
+                            "✗ SERVES edge: {} → {} → failing",
+                            updated.persona_name, updated.intent_name
+                        );
                         println!("  evidence: {}", updated.evidence);
                         print_anchor(&db, next_step)?;
                     }
                 }
 
-                Some(ExploreSubCmd::Independent { notes, inspected_by }) => {
+                Some(ExploreSubCmd::Independent {
+                    notes,
+                    inspected_by,
+                }) => {
                     let by = gate::acting_in_lane(
                         "mark SERVES independent",
                         &[role::ANALYZER],
@@ -288,14 +363,21 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
                     update_serves_independent(&db, &persona_id, &intent_id, &notes, &by, &now)?;
                     let next_step = "`loom next` for the next item.";
                     if printer.json {
-                        let v = with_anchor(serde_json::json!({
-                            "edge_id": edge.id,
-                            "inspection_status": "independent",
-                            "notes": notes,
-                        }), &db, next_step)?;
+                        let v = with_anchor(
+                            serde_json::json!({
+                                "edge_id": edge.id,
+                                "inspection_status": "independent",
+                                "notes": notes,
+                            }),
+                            &db,
+                            next_step,
+                        )?;
                         printer.print_json(&v);
                     } else {
-                        println!("– SERVES edge: {} → {} → independent", edge.persona_name, edge.intent_name);
+                        println!(
+                            "– SERVES edge: {} → {} → independent",
+                            edge.persona_name, edge.intent_name
+                        );
                         if !notes.is_empty() {
                             println!("  notes: {notes}");
                         }
@@ -308,21 +390,24 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // loom persona journey <persona> <saga>
         // ----------------------------------------------------------------
-        PersonaCmd::Journey { persona_id, saga_id } => {
-            let persona_id     = resolve_persona(&db, &persona_id)?;
-            let validation_id  = resolve_validation(&db, &saga_id)?;
+        PersonaCmd::Journey {
+            persona_id,
+            saga_id,
+        } => {
+            let persona_id = resolve_persona(&db, &persona_id)?;
+            let validation_id = resolve_validation(&db, &saga_id)?;
             let now = chrono::Utc::now().to_rfc3339();
 
             let edge = get_or_create_journeys(&db, &persona_id, &validation_id, &now)?;
-            let next_step = format!(
-                "Run the saga: loom saga run {}",
-                edge.validation_name
-            );
+            let next_step = format!("Run the saga: loom saga run {}", edge.validation_name);
             if printer.json {
                 let v = with_anchor(serde_json::to_value(&edge)?, &db, &next_step)?;
                 printer.print_json(&v);
             } else {
-                println!("✓ JOURNEYS: {} ↪ {}", edge.persona_name, edge.validation_name);
+                println!(
+                    "✓ JOURNEYS: {} ↪ {}",
+                    edge.persona_name, edge.validation_name
+                );
                 print_anchor(&db, &next_step)?;
             }
         }

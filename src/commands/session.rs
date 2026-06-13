@@ -179,7 +179,8 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
     menu.push(Offer {
         ask: "Or should I just get to work?".into(),
         why: "everything currently queued is drainable without you".into(),
-        then: "loom status → loom next --mode <lane>  (user-gated queues wait for your next session)",
+        then:
+            "loom status → loom next --mode <lane>  (user-gated queues wait for your next session)",
     });
     (menu, recommended)
 }
@@ -271,9 +272,24 @@ pub fn run(printer: &Printer) -> Result<()> {
         .relates
         .iter()
         .map(|e| e.inspection_status.as_str())
-        .chain(snapshot.implements.iter().map(|e| e.inspection_status.as_str()))
-        .chain(snapshot.governs.iter().map(|e| e.inspection_status.as_str()))
-        .chain(snapshot.validates.iter().map(|e| e.inspection_status.as_str()))
+        .chain(
+            snapshot
+                .implements
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .governs
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .validates
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
         .filter(|s| *s == "failing" || *s == "needs_reverification")
         .count() as i64;
     // Same agenda computation as `loom status` (the oscillation summary):
@@ -289,15 +305,26 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     let counts = SessionCounts {
         intents: gs.intents,
-        planned: snapshot.intents.iter().filter(|i| i.lifecycle == "planned").count() as i64,
-        needs_change: snapshot.intents.iter().filter(|i| i.lifecycle == "needs_change").count()
-            as i64,
+        planned: snapshot
+            .intents
+            .iter()
+            .filter(|i| i.lifecycle == "planned")
+            .count() as i64,
+        needs_change: snapshot
+            .intents
+            .iter()
+            .filter(|i| i.lifecycle == "needs_change")
+            .count() as i64,
         broken,
         unexplored_pairs: gs.unexplored_pairs,
         align: align_candidates(&db)?.len() as i64,
         rulings,
         blocked: uninspected_outside_queues(&db)?.blocked_validations,
-        sagas: snapshot.validations.iter().filter(|v| v.validation_type == "saga").count() as i64,
+        sagas: snapshot
+            .validations
+            .iter()
+            .filter(|v| v.validation_type == "saga")
+            .count() as i64,
         phase: gs.phase.clone(),
         has_source,
     };
@@ -416,7 +443,9 @@ mod tests {
         let (menu, rec) = offers_uninitialized(true, true);
         assert!(menu[rec].then.contains("loom import"));
         let (menu, rec) = offers_uninitialized(true, false);
-        assert!(menu[rec].then.contains("loom init . → loom guide --mode brownfield"));
+        assert!(menu[rec]
+            .then
+            .contains("loom init . → loom guide --mode brownfield"));
         let (menu, rec) = offers_uninitialized(false, false);
         assert!(menu[rec].then.contains("--mode seed"));
     }

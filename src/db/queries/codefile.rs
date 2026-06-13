@@ -27,7 +27,6 @@ pub fn insert_codefile(db: &dyn LoomDb, cf: &CodeFile) -> Result<()> {
     Ok(())
 }
 
-
 pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
     let q = "MATCH (cf:CodeFile) \
              RETURN cf.id, cf.path, cf.language, cf.last_modified, cf.imports, \
@@ -35,7 +34,11 @@ pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
              ORDER BY cf.path";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_codefile(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_codefile(row, &cols))
+        .collect())
 }
 
 /// Store the content fingerprint (see `repo::content_hash`) on a CodeFile —
@@ -43,7 +46,8 @@ pub fn list_codefiles(db: &dyn LoomDb) -> Result<Vec<CodeFile>> {
 pub fn update_codefile_hash(db: &dyn LoomDb, id: &str, hash: &str) -> Result<()> {
     db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{h} = '{}'",
-        esc(id), esc(hash),
+        esc(id),
+        esc(hash),
         h = crate::db::schema::prop::CONTENT_HASH,
     ))?;
     Ok(())
@@ -60,7 +64,9 @@ pub fn update_codefile_hash_and_mtime(
 ) -> Result<()> {
     db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.{h} = '{}', cf.last_modified = '{}'",
-        esc(id), esc(hash), esc(mtime),
+        esc(id),
+        esc(hash),
+        esc(mtime),
         h = crate::db::schema::prop::CONTENT_HASH,
     ))?;
     Ok(())
@@ -84,7 +90,8 @@ pub fn update_codefile_imports(db: &dyn LoomDb, id: &str, imports: &[String]) ->
 pub fn update_codefile_mtime(db: &dyn LoomDb, id: &str, mtime: &str) -> Result<()> {
     db.execute(&format!(
         "MATCH (cf:CodeFile {{id: '{}'}}) SET cf.last_modified = '{}'",
-        esc(id), esc(mtime)
+        esc(id),
+        esc(mtime)
     ))?;
     Ok(())
 }
@@ -117,11 +124,11 @@ pub fn delete_codefile(db: &dyn LoomDb, key: &str) -> Result<Option<CodeFile>> {
 
 fn row_to_codefile(row: &[Value], cols: &HashMap<&str, usize>) -> CodeFile {
     CodeFile {
-        id:            str_val(get(row, cols, "cf.id")),
-        path:          str_val(get(row, cols, "cf.path")),
-        language:      str_val(get(row, cols, "cf.language")),
+        id: str_val(get(row, cols, "cf.id")),
+        path: str_val(get(row, cols, "cf.path")),
+        language: str_val(get(row, cols, "cf.language")),
         last_modified: str_val(get(row, cols, "cf.last_modified")),
-        imports:       super::row::list_val(get(row, cols, "cf.imports")),
-        content_hash:  str_val(get(row, cols, "cf.content_hash")),
+        imports: super::row::list_val(get(row, cols, "cf.imports")),
+        content_hash: str_val(get(row, cols, "cf.content_hash")),
     }
 }

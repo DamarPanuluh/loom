@@ -69,8 +69,10 @@ pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
         is_parent.insert(p.as_str());
     }
 
-    let name_of: HashMap<&str, &str> =
-        intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
+    let name_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
     let resolve = |id: &str| name_of.get(id).copied().unwrap_or(id).to_string();
 
     let mut multi_parent: Vec<String> = parent_count
@@ -82,8 +84,14 @@ pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
 
     let cycle = has_cycle(&hier);
 
-    let roots: Vec<&Intent> = intents.iter().filter(|i| !is_child.contains(i.id.as_str())).collect();
-    let leaves: Vec<&Intent> = intents.iter().filter(|i| !is_parent.contains(i.id.as_str())).collect();
+    let roots: Vec<&Intent> = intents
+        .iter()
+        .filter(|i| !is_child.contains(i.id.as_str()))
+        .collect();
+    let leaves: Vec<&Intent> = intents
+        .iter()
+        .filter(|i| !is_parent.contains(i.id.as_str()))
+        .collect();
 
     let mut non_system_roots: Vec<String> = roots
         .iter()
@@ -148,8 +156,10 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         is_parent.insert(p.as_str());
     }
 
-    let name_of: HashMap<&str, &str> =
-        intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
+    let name_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
     let resolve = |id: &str| name_of.get(id).copied().unwrap_or(id).to_string();
 
     let mut multi_parent: Vec<String> = parent_count
@@ -161,8 +171,14 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
 
     let cycle = has_cycle(hier);
 
-    let roots: Vec<&Intent> = intents.iter().filter(|i| !is_child.contains(i.id.as_str())).collect();
-    let leaves: Vec<&Intent> = intents.iter().filter(|i| !is_parent.contains(i.id.as_str())).collect();
+    let roots: Vec<&Intent> = intents
+        .iter()
+        .filter(|i| !is_child.contains(i.id.as_str()))
+        .collect();
+    let leaves: Vec<&Intent> = intents
+        .iter()
+        .filter(|i| !is_parent.contains(i.id.as_str()))
+        .collect();
 
     let mut non_system_roots: Vec<String> = roots
         .iter()

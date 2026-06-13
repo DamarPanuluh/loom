@@ -20,7 +20,11 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        DelegateCmd::Add { pattern, target, author } => {
+        DelegateCmd::Add {
+            pattern,
+            target,
+            author,
+        } => {
             let by = crate::gate::acting_in_lane(
                 "delegate a subtree",
                 &[crate::db::schema::role::BUILDER],
@@ -36,10 +40,10 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
             }
             let target_exists = cwd.join(&target).exists();
             let d = Delegation {
-                id:         Uuid::new_v4().to_string(),
-                pattern:    pattern.clone(),
-                target:     target.clone(),
-                author:     by,
+                id: Uuid::new_v4().to_string(),
+                pattern: pattern.clone(),
+                target: target.clone(),
+                author: by,
                 created_at: chrono::Utc::now().to_rfc3339(),
             };
             insert_delegation(&db, &d)?;
@@ -61,19 +65,32 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
         DelegateCmd::List => {
             let ds = list_delegations(&db)?;
             if printer.json {
-                let items: Vec<_> = ds.iter().map(|d| serde_json::json!({
-                    "id": d.id, "pattern": d.pattern, "target": d.target,
-                    "author": d.author, "created_at": d.created_at,
-                    "target_exists": cwd.join(&d.target).exists(),
-                })).collect();
+                let items: Vec<_> = ds
+                    .iter()
+                    .map(|d| {
+                        serde_json::json!({
+                            "id": d.id, "pattern": d.pattern, "target": d.target,
+                            "author": d.author, "created_at": d.created_at,
+                            "target_exists": cwd.join(&d.target).exists(),
+                        })
+                    })
+                    .collect();
                 printer.print_json(&items);
             } else if ds.is_empty() {
                 println!("(no delegations — this graph covers its whole tree itself)");
             } else {
                 for d in &ds {
-                    let mark = if cwd.join(&d.target).exists() { "✓" } else { "✗ MISSING" };
-                    println!("  {pattern:<35} → {target}  [{mark}]  ({author})",
-                        pattern = d.pattern, target = d.target, author = d.author);
+                    let mark = if cwd.join(&d.target).exists() {
+                        "✓"
+                    } else {
+                        "✗ MISSING"
+                    };
+                    println!(
+                        "  {pattern:<35} → {target}  [{mark}]  ({author})",
+                        pattern = d.pattern,
+                        target = d.target,
+                        author = d.author
+                    );
                 }
             }
         }

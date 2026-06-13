@@ -5,17 +5,20 @@
 
 use anyhow::Result;
 
-use crate::db::schema::{prop_type, required_edge_props, required_node_props, EDGE_TYPES, NODE_LABELS, ROLES, SCHEMA_VERSION};
+use crate::db::schema::{
+    prop_type, required_edge_props, required_node_props, EDGE_TYPES, NODE_LABELS, ROLES,
+    SCHEMA_VERSION,
+};
 use crate::output::Printer;
 
 /// One-line description of what each agent role is responsible for.
 fn role_desc(role: &str) -> &'static str {
     match role {
-        "builder"   => "Constructs the graph: intents, hierarchy, codefiles, implements.",
-        "analyzer"  => "Grounds edges: criterion, evidence, confidence, inspection_status.",
-        "fixer"     => "Resolves failing edges + needs_change intents (transitions status).",
+        "builder" => "Constructs the graph: intents, hierarchy, codefiles, implements.",
+        "analyzer" => "Grounds edges: criterion, evidence, confidence, inspection_status.",
+        "fixer" => "Resolves failing edges + needs_change intents (transitions status).",
         "validator" => "Proves it works: runs validations, confirms intents, VALIDATES verdict.",
-        "quality"   => "The green gate: quality rules + GOVERNS verdicts.",
+        "quality" => "The green gate: quality rules + GOVERNS verdicts.",
         _ => "",
     }
 }
@@ -59,22 +62,28 @@ const STATES: &[(&str, &str)] = &[
 ];
 
 pub fn run(printer: &Printer) -> Result<()> {
-    let field_json = |(name, owner): &(&str, &str)| serde_json::json!({
-        "name": name, "populated_by": owner, "type": prop_type(name),
-    });
+    let field_json = |(name, owner): &(&str, &str)| {
+        serde_json::json!({
+            "name": name, "populated_by": owner, "type": prop_type(name),
+        })
+    };
     let nodes: Vec<serde_json::Value> = NODE_LABELS
         .iter()
-        .map(|&l| serde_json::json!({
-            "label": l, "description": node_desc(l),
-            "properties": required_node_props(l).iter().map(field_json).collect::<Vec<_>>(),
-        }))
+        .map(|&l| {
+            serde_json::json!({
+                "label": l, "description": node_desc(l),
+                "properties": required_node_props(l).iter().map(field_json).collect::<Vec<_>>(),
+            })
+        })
         .collect();
     let edges: Vec<serde_json::Value> = EDGE_TYPES
         .iter()
-        .map(|&e| serde_json::json!({
-            "type": e, "description": edge_desc(e),
-            "properties": required_edge_props(e).iter().map(field_json).collect::<Vec<_>>(),
-        }))
+        .map(|&e| {
+            serde_json::json!({
+                "type": e, "description": edge_desc(e),
+                "properties": required_edge_props(e).iter().map(field_json).collect::<Vec<_>>(),
+            })
+        })
         .collect();
     let roles: Vec<serde_json::Value> = ROLES
         .iter()
@@ -125,13 +134,18 @@ pub fn run(printer: &Printer) -> Result<()> {
             .join(", ")
     };
 
-    println!("── loom schema (v{}) ─────────────────────────────────────────────────", SCHEMA_VERSION);
+    println!(
+        "── loom schema (v{}) ─────────────────────────────────────────────────",
+        SCHEMA_VERSION
+    );
     println!();
     println!("Fields are shown as  name [owning-role]  — the role responsible for filling it");
     println!("(non-string fields carry a :type — list fields read and write as real arrays).");
     println!();
     println!("Edge identity is DERIVED, never stored: <prefix>:<from-id>:<to-id> —");
-    println!("  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS");
+    println!(
+        "  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS"
+    );
     println!("  srv=SERVES     jrn=JOURNEYS.");
     println!("  Stable across export/import; it is the id `loom edge show` and notes reference.");
     println!();

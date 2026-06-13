@@ -40,7 +40,10 @@ pub fn run(limit: usize, printer: &Printer) -> Result<()> {
         println!("  (no RELATES_TO edges yet — centrality is 0 across the board)");
     } else {
         for c in &central {
-            println!("  degree {:>3}  [{}]  {}  ({})", c.degree, c.intent.abstraction_level, c.intent.name, c.intent.id);
+            println!(
+                "  degree {:>3}  [{}]  {}  ({})",
+                c.degree, c.intent.abstraction_level, c.intent.name, c.intent.id
+            );
         }
     }
     println!();

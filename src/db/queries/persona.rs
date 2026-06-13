@@ -14,11 +14,11 @@ pub fn insert_persona(db: &dyn LoomDb, p: &Persona) -> Result<()> {
     db.execute(&format!(
         "INSERT (:{label} {{id: '{id}', name: '{name}', description: '{desc}', \
          author: '{author}', created_at: '{created}', updated_at: '{updated}'}})",
-        label   = crate::db::schema::label::PERSONA,
-        id      = esc(&p.id),
-        name    = esc(&p.name),
-        desc    = esc(&p.description),
-        author  = esc(&p.author),
+        label = crate::db::schema::label::PERSONA,
+        id = esc(&p.id),
+        name = esc(&p.name),
+        desc = esc(&p.description),
+        author = esc(&p.author),
         created = esc(&p.created_at),
         updated = esc(&p.updated_at),
     ))?;
@@ -85,16 +85,19 @@ pub fn list_personas(db: &dyn LoomDb) -> Result<Vec<Persona>> {
          ORDER BY p.name",
     )?;
     let cols = col_map(&r);
-    Ok(r.rows().iter().map(|row| row_to_persona(row, &cols)).collect())
+    Ok(r.rows()
+        .iter()
+        .map(|row| row_to_persona(row, &cols))
+        .collect())
 }
 
 fn row_to_persona(row: &[Value], cols: &HashMap<&str, usize>) -> Persona {
     Persona {
-        id:          str_val(get(row, cols, "p.id")),
-        name:        str_val(get(row, cols, "p.name")),
+        id: str_val(get(row, cols, "p.id")),
+        name: str_val(get(row, cols, "p.name")),
         description: str_val(get(row, cols, "p.description")),
-        author:      str_val(get(row, cols, "p.author")),
-        created_at:  str_val(get(row, cols, "p.created_at")),
-        updated_at:  str_val(get(row, cols, "p.updated_at")),
+        author: str_val(get(row, cols, "p.author")),
+        created_at: str_val(get(row, cols, "p.created_at")),
+        updated_at: str_val(get(row, cols, "p.updated_at")),
     }
 }

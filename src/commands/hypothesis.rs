@@ -30,7 +30,14 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        HypothesisCmd::Add { name, claim, proposal, predicted_outcome, targets, author } => {
+        HypothesisCmd::Add {
+            name,
+            claim,
+            proposal,
+            predicted_outcome,
+            targets,
+            author,
+        } => {
             // Proposing is open to every lane (like notes) — but never vacuous:
             // an unfalsifiable claim or an unmeasurable prediction is a wishlist
             // entry, not a hypothesis.
@@ -41,25 +48,26 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             )?;
             gate::require_substantive("proposal", &proposal, "the change being proposed")?;
             gate::require_substantive(
-                "predicted-outcome", &predicted_outcome,
+                "predicted-outcome",
+                &predicted_outcome,
                 "the measurable result if adopted (the post-implementation acceptance contract)",
             )?;
 
             let now = chrono::Utc::now().to_rfc3339();
             let id = Uuid::new_v4().to_string();
             let h = Hypothesis {
-                id:                id.clone(),
-                name:              name.clone(),
+                id: id.clone(),
+                name: name.clone(),
                 claim,
                 proposal,
                 predicted_outcome,
-                status:            "proposed".to_string(),
-                author:            author.clone(),
-                evidence:          String::new(),
-                inspected_by:      String::new(),
-                last_inspected:    String::new(),
-                created_at:        now.clone(),
-                updated_at:        now.clone(),
+                status: "proposed".to_string(),
+                author: author.clone(),
+                evidence: String::new(),
+                inspected_by: String::new(),
+                last_inspected: String::new(),
+                created_at: now.clone(),
+                updated_at: now.clone(),
             };
             insert_hypothesis(&db, &h)?;
 
@@ -112,7 +120,12 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        HypothesisCmd::Prove { id, verdict, evidence, inspected_by } => {
+        HypothesisCmd::Prove {
+            id,
+            verdict,
+            evidence,
+            inspected_by,
+        } => {
             // Proving is analyzer work: read the code, check the claim.
             let prover = gate::acting_in_lane(
                 "prove a hypothesis",
@@ -127,17 +140,23 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 );
             }
             gate::require_substantive(
-                "evidence", &evidence,
+                "evidence",
+                &evidence,
                 "what was actually found while checking the claim against the code",
             )?;
             let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
+            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+                    hid
+                )
+            })?;
             if matches!(h.status.as_str(), "adopted" | "confirmed" | "rejected") {
                 anyhow::bail!(
                     "Hypothesis '{}' is already decided ({}) — the decision is recorded; \
                      propose a new hypothesis instead of re-litigating this one.",
-                    h.name, h.status
+                    h.name,
+                    h.status
                 );
             }
             // Proposer ≠ prover. Only enforceable when both declare roles —
@@ -155,7 +174,11 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
             let now = chrono::Utc::now().to_rfc3339();
             update_hypothesis_verdict(&db, &hid, &verdict, &evidence, &prover, &now)?;
-            let target_status = if verdict == "supported" { "passing" } else { "independent" };
+            let target_status = if verdict == "supported" {
+                "passing"
+            } else {
+                "independent"
+            };
             set_targets_status_for_hypothesis(
                 &db,
                 &hid,
@@ -184,21 +207,31 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        HypothesisCmd::Adopt { id, spawned, reason } => {
+        HypothesisCmd::Adopt {
+            id,
+            spawned,
+            reason,
+        } => {
             // Adoption converts speculation into a promise to change the code —
             // builder lane, owned custody only.
             let by = gate::acting_in_lane("adopt a hypothesis", &[role::BUILDER], None)?;
             crate::db::queries::ensure_owned(
-                &db, "adopt a hypothesis (a promise to change the code)",
+                &db,
+                "adopt a hypothesis (a promise to change the code)",
             )?;
             let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
+            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+                    hid
+                )
+            })?;
             if h.status != "supported" {
                 anyhow::bail!(
                     "Only a SUPPORTED hypothesis can be adopted — '{}' is '{}'. \
                      {}",
-                    h.name, h.status,
+                    h.name,
+                    h.status,
                     if h.status == "proposed" {
                         format!("Prove it first: `loom hypothesis prove {hid} --verdict … --evidence \"…\"`.")
                     } else {
@@ -215,7 +248,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     );
                 };
                 gate::require_substantive(
-                    "reason", r,
+                    "reason",
+                    r,
                     "how this adoption converts into work when no spawned intent is linked",
                 )?;
             }
@@ -234,66 +268,73 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             // directions), the outcome Validation, and its VALIDATES links
             // are ONE decision — half an adoption is worse than none.
             crate::db::with_transaction(&db, || {
-            set_hypothesis_status(&db, &hid, "adopted", &by, &now)?;
+                set_hypothesis_status(&db, &hid, "adopted", &by, &now)?;
 
-            // Lineage, both directions. On the hypothesis: what it became. On
-            // each spawned intent: where it came from + the predicted outcome —
-            // the acceptance contract the validator will eventually prove.
-            let mut text = format!(
-                "adopted{}",
-                if spawned_names.is_empty() {
-                    String::new()
-                } else {
-                    format!(
-                        ": spawned {}",
-                        spawned_ids
-                            .iter()
-                            .zip(&spawned_names)
-                            .map(|(i, n)| format!("'{n}' ({i})"))
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
+                // Lineage, both directions. On the hypothesis: what it became. On
+                // each spawned intent: where it came from + the predicted outcome —
+                // the acceptance contract the validator will eventually prove.
+                let mut text = format!(
+                    "adopted{}",
+                    if spawned_names.is_empty() {
+                        String::new()
+                    } else {
+                        format!(
+                            ": spawned {}",
+                            spawned_ids
+                                .iter()
+                                .zip(&spawned_names)
+                                .map(|(i, n)| format!("'{n}' ({i})"))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                );
+                if let Some(ref r) = reason {
+                    text.push_str(&format!(" — {r}"));
                 }
-            );
-            if let Some(ref r) = reason {
-                text.push_str(&format!(" — {r}"));
-            }
-            insert_note(&db, &Note {
-                id: Uuid::new_v4().to_string(),
-                kind: "decision".to_string(),
-                text,
-                author: by.clone(),
-                target_kind: "hypothesis".to_string(),
-                target_id: hid.clone(),
-                audience: String::new(),
-                created_at: now.clone(),
-            })?;
-            if !spawned_ids.is_empty() {
-                let validation_id = Uuid::new_v4().to_string();
-                insert_validation(&db, &Validation {
-                    id: validation_id.clone(),
-                    name: format!("hypothesis outcome: {}", h.name),
-                    description: format!(
-                        "hypothesis:{}\nPredicted outcome to verify after adoption: {}",
-                        hid, h.predicted_outcome
-                    ),
-                    validation_type: "manual_check".to_string(),
-                    command: String::new(),
-                    last_run: String::new(),
-                    last_result: "not_run".to_string(),
-                })?;
-                for iid in &spawned_ids {
-                    insert_validates(
-                        &db, &validation_id,
-                        iid,
-                        "hypothesis outcome proof",
-                        &now,
+                insert_note(
+                    &db,
+                    &Note {
+                        id: Uuid::new_v4().to_string(),
+                        kind: "decision".to_string(),
+                        text,
+                        author: by.clone(),
+                        target_kind: "hypothesis".to_string(),
+                        target_id: hid.clone(),
+                        audience: String::new(),
+                        created_at: now.clone(),
+                    },
+                )?;
+                if !spawned_ids.is_empty() {
+                    let validation_id = Uuid::new_v4().to_string();
+                    insert_validation(
+                        &db,
+                        &Validation {
+                            id: validation_id.clone(),
+                            name: format!("hypothesis outcome: {}", h.name),
+                            description: format!(
+                                "hypothesis:{}\nPredicted outcome to verify after adoption: {}",
+                                hid, h.predicted_outcome
+                            ),
+                            validation_type: "manual_check".to_string(),
+                            command: String::new(),
+                            last_run: String::new(),
+                            last_result: "not_run".to_string(),
+                        },
                     )?;
+                    for iid in &spawned_ids {
+                        insert_validates(
+                            &db,
+                            &validation_id,
+                            iid,
+                            "hypothesis outcome proof",
+                            &now,
+                        )?;
+                    }
                 }
-            }
 
-            for iid in &spawned_ids {
-                insert_note(&db, &Note {
+                for iid in &spawned_ids {
+                    insert_note(&db, &Note {
                     id: Uuid::new_v4().to_string(),
                     kind: "decision".to_string(),
                     text: format!(
@@ -306,8 +347,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     audience: String::new(),
                     created_at: now.clone(),
                 })?;
-            }
-            Ok(())
+                }
+                Ok(())
             })?;
 
             if printer.json {
@@ -327,10 +368,18 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
 
         HypothesisCmd::Reject { id, reason } => {
             let by = gate::acting_in_lane("reject a hypothesis", &[role::BUILDER], None)?;
-            gate::require_substantive("reason", &reason, "why this hypothesis is not being pursued")?;
+            gate::require_substantive(
+                "reason",
+                &reason,
+                "why this hypothesis is not being pursued",
+            )?;
             let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
+            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+                    hid
+                )
+            })?;
             if matches!(h.status.as_str(), "adopted" | "confirmed") {
                 anyhow::bail!(
                     "Hypothesis '{}' was adopted — its spawned intents are real work now. \
@@ -341,16 +390,19 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
             }
             let now = chrono::Utc::now().to_rfc3339();
             set_hypothesis_status(&db, &hid, "rejected", &by, &now)?;
-            insert_note(&db, &Note {
-                id: Uuid::new_v4().to_string(),
-                kind: "decision".to_string(),
-                text: format!("rejected: {reason}"),
-                author: by,
-                target_kind: "hypothesis".to_string(),
-                target_id: hid.clone(),
-                audience: String::new(),
-                created_at: now,
-            })?;
+            insert_note(
+                &db,
+                &Note {
+                    id: Uuid::new_v4().to_string(),
+                    kind: "decision".to_string(),
+                    text: format!("rejected: {reason}"),
+                    author: by,
+                    target_kind: "hypothesis".to_string(),
+                    target_id: hid.clone(),
+                    audience: String::new(),
+                    created_at: now,
+                },
+            )?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": hid, "rejected": true,
@@ -364,7 +416,8 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
 
         HypothesisCmd::List { status, limit } => {
             if let Some(ref s) = status {
-                s.parse::<HypothesisStatus>().map_err(|e| anyhow::anyhow!("{}", e))?;
+                s.parse::<HypothesisStatus>()
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
             let mut hs = list_hypotheses(&db, status.as_deref())?;
             let total = crate::output::apply_limit(&mut hs, limit);
@@ -375,17 +428,30 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                     "truncated": hs.len() < total,
                 }));
             } else if hs.is_empty() {
-                println!("(no hypotheses{})", status.map(|s| format!(" with status '{s}'")).unwrap_or_default());
+                println!(
+                    "(no hypotheses{})",
+                    status
+                        .map(|s| format!(" with status '{s}'"))
+                        .unwrap_or_default()
+                );
             } else {
-                println!("  {status:>10}   {name:<40}  id", status = "STATUS", name = "NAME");
+                println!(
+                    "  {status:>10}   {name:<40}  id",
+                    status = "STATUS",
+                    name = "NAME"
+                );
                 println!("  {}", "-".repeat(90));
                 for h in &hs {
                     println!(
                         "  [{status:>10}]  {name:<40}  {id}",
-                        status = h.status, name = h.name, id = h.id
+                        status = h.status,
+                        name = h.name,
+                        id = h.id
                     );
                 }
-                if let Some(m) = crate::output::more_marker(total, hs.len(), "loom hypothesis list --limit 0") {
+                if let Some(m) =
+                    crate::output::more_marker(total, hs.len(), "loom hypothesis list --limit 0")
+                {
                     println!("  {m}");
                 }
             }
@@ -393,8 +459,12 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
 
         HypothesisCmd::Show { id } => {
             let hid = resolve_hypothesis(&db, &id)?;
-            let h = get_hypothesis(&db, &hid)?
-                .ok_or_else(|| anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid))?;
+            let h = get_hypothesis(&db, &hid)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+                    hid
+                )
+            })?;
             let targets = list_targets_for_hypothesis(&db, &hid)?;
             let targets_total = targets.len();
             let mut notes = notes_for_target(&db, &hid)?;
@@ -415,27 +485,46 @@ pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
                 println!("── Hypothesis ─────────────────────────────────────────────────────");
                 println!("{}", fmt_hypothesis(&h));
                 println!();
-                println!("── Targets ({}) ─────────────────────────────────────────────────────", targets_total);
+                println!(
+                    "── Targets ({}) ─────────────────────────────────────────────────────",
+                    targets_total
+                );
                 if targets.is_empty() {
-                    println!("  (none — `loom hypothesis target {hid} <intent>` links affected intents)");
+                    println!(
+                        "  (none — `loom hypothesis target {hid} <intent>` links affected intents)"
+                    );
                 } else {
                     for t in targets.iter().take(crate::output::SECTION_CAP) {
-                        println!("  → {}  [{}]  ({})", t.intent_name, t.inspection_status, t.intent_id);
+                        println!(
+                            "  → {}  [{}]  ({})",
+                            t.intent_name, t.inspection_status, t.intent_id
+                        );
                     }
                     let shown = targets.len().min(crate::output::SECTION_CAP);
-                    if let Some(m) = crate::output::more_marker(targets_total, shown, &format!("full list: loom hypothesis show {hid} --json")) {
+                    if let Some(m) = crate::output::more_marker(
+                        targets_total,
+                        shown,
+                        &format!("full list: loom hypothesis show {hid} --json"),
+                    ) {
                         println!("  {m}");
                     }
                 }
                 println!();
-                println!("── Notes ({}) ───────────────────────────────────────────────────────", notes_total);
+                println!(
+                    "── Notes ({}) ───────────────────────────────────────────────────────",
+                    notes_total
+                );
                 if notes.is_empty() {
                     println!("  (none)");
                 } else {
                     for n in &notes {
                         println!("  [{}] {}  ({})", n.kind, n.text, n.author);
                     }
-                    if let Some(m) = crate::output::more_marker(notes_total, notes.len(), &format!("loom note list --edge {hid}")) {
+                    if let Some(m) = crate::output::more_marker(
+                        notes_total,
+                        notes.len(),
+                        &format!("loom note list --edge {hid}"),
+                    ) {
                         println!("  {m}");
                     }
                 }
@@ -451,7 +540,11 @@ fn fmt_hypothesis(h: &Hypothesis) -> String {
     } else {
         format!("{} by {}", h.last_inspected, h.inspected_by)
     };
-    let evidence = if h.evidence.is_empty() { "(none yet)" } else { &h.evidence };
+    let evidence = if h.evidence.is_empty() {
+        "(none yet)"
+    } else {
+        &h.evidence
+    };
     format!(
         "  id:                {}\n  name:              {}\n  status:            {}\n  author:            {}\
          \n  claim:             {}\n  proposal:          {}\n  predicted_outcome: {}\

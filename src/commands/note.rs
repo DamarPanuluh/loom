@@ -35,25 +35,50 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             } else if dangling.is_empty() {
                 println!("✓ No dangling notes — nothing to prune.");
             } else {
-                println!("✓ Pruned {} dangling note(s) (targets no longer exist):", dangling.len());
+                println!(
+                    "✓ Pruned {} dangling note(s) (targets no longer exist):",
+                    dangling.len()
+                );
                 for n in dangling.iter().take(20) {
-                    println!("    {} [{}] → missing {} '{}'", n.id, n.kind, n.target_kind, n.target_id);
+                    println!(
+                        "    {} [{}] → missing {} '{}'",
+                        n.id, n.kind, n.target_kind, n.target_id
+                    );
                 }
-                if let Some(m) = crate::output::more_marker(dangling.len(), 20, "loom doctor --json") {
+                if let Some(m) =
+                    crate::output::more_marker(dangling.len(), 20, "loom doctor --json")
+                {
                     println!("    {m}");
                 }
                 println!("  → Next: {next_step}");
             }
         }
 
-        NoteCmd::Add { text, kind, intent, edge, file, author, for_role } => {
+        NoteCmd::Add {
+            text,
+            kind,
+            intent,
+            edge,
+            file,
+            author,
+            for_role,
+        } => {
             // Validate the kind against the vocabulary.
-            kind.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
-            if [intent.is_some(), edge.is_some(), file.is_some()].iter().filter(|b| **b).count() > 1 {
+            kind.parse::<NoteKind>()
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            if [intent.is_some(), edge.is_some(), file.is_some()]
+                .iter()
+                .filter(|b| **b)
+                .count()
+                > 1
+            {
                 anyhow::bail!("A note targets an intent OR an edge OR a code file, not several.");
             }
             let (target_kind, target_id) = match (intent, edge, file) {
-                (Some(i), _, _) => ("intent".to_string(), crate::db::queries::resolve_intent(&db, &i)?),
+                (Some(i), _, _) => (
+                    "intent".to_string(),
+                    crate::db::queries::resolve_intent(&db, &i)?,
+                ),
                 (_, Some(e), _) => {
                     if !crate::db::queries::edge_id_exists(&db, &e)? {
                         anyhow::bail!(
@@ -62,7 +87,7 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         );
                     }
                     ("edge".to_string(), e)
-                },
+                }
                 (_, _, Some(f)) => {
                     let cf = crate::db::queries::get_codefile_by_id_or_path(&db, &f)?
                         .ok_or_else(|| anyhow::anyhow!(
@@ -76,8 +101,14 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             let audience = match &for_role {
                 Some(r) => {
                     use crate::db::schema::role;
-                    if ![role::BUILDER, role::ANALYZER, role::FIXER, role::VALIDATOR, role::QUALITY]
-                        .contains(&r.as_str())
+                    if ![
+                        role::BUILDER,
+                        role::ANALYZER,
+                        role::FIXER,
+                        role::VALIDATOR,
+                        role::QUALITY,
+                    ]
+                    .contains(&r.as_str())
                     {
                         anyhow::bail!(
                             "--for must be a lane: builder | analyzer | fixer | validator | quality (got '{r}')."
@@ -88,22 +119,29 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                 None => String::new(),
             };
             let note = Note {
-                id:          Uuid::new_v4().to_string(),
+                id: Uuid::new_v4().to_string(),
                 kind,
                 text,
-                author:      crate::agent::acting(author.as_deref()),
+                author: crate::agent::acting(author.as_deref()),
                 target_kind,
                 target_id,
                 audience,
-                created_at:  chrono::Utc::now().to_rfc3339(),
+                created_at: chrono::Utc::now().to_rfc3339(),
             };
             insert_note(&db, &note)?;
 
             if printer.json {
                 printer.print_json(&note);
             } else {
-                println!("✓ Note added  [{}]{}", note.kind,
-                    if note.audience.is_empty() { String::new() } else { format!("  → for {}", note.audience) });
+                println!(
+                    "✓ Note added  [{}]{}",
+                    note.kind,
+                    if note.audience.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  → for {}", note.audience)
+                    }
+                );
                 if note.target_kind != "none" {
                     println!("  on {} {}", note.target_kind, note.target_id);
                 }
@@ -111,9 +149,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        NoteCmd::List { intent, edge, file, kind, for_role, limit } => {
+        NoteCmd::List {
+            intent,
+            edge,
+            file,
+            kind,
+            for_role,
+            limit,
+        } => {
             if let Some(ref k) = kind {
-                k.parse::<NoteKind>().map_err(|e| anyhow::anyhow!("{}", e))?;
+                k.parse::<NoteKind>()
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
             let intent = match intent {
                 Some(i) => Some(crate::db::queries::resolve_intent(&db, &i)?),
@@ -156,11 +202,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         let short = &n.target_id[..n.target_id.len().min(8)];
                         format!("{} {}", n.target_kind, short)
                     };
-                    let aud = if n.audience.is_empty() { String::new() } else { format!(" → for {}", n.audience) };
+                    let aud = if n.audience.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" → for {}", n.audience)
+                    };
                     println!("  [{:<13}]{} {}", n.kind, aud, n.text);
                     println!("      ({} · {})", n.author, tgt);
                 }
-                if let Some(m) = crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`") {
+                if let Some(m) =
+                    crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`")
+                {
                     println!("  {}", m);
                 }
             }

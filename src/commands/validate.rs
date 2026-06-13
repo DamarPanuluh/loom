@@ -3,12 +3,11 @@ use std::process::Command as StdCommand;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
-    get_intent, get_validation, list_validates_for_intent,
-    update_validation_result,
+    get_intent, get_validation, list_validates_for_intent, update_validation_result,
 };
 use crate::db::schema::esc;
+use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::output::Printer;
 use crate::types::ValidationResult;
 
@@ -26,11 +25,12 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
     let intent_id = &crate::db::queries::resolve_intent(&db, intent_id)?;
 
     // Ensure intent exists
-    get_intent(&db, intent_id)?
-        .ok_or_else(|| anyhow::anyhow!(
+    get_intent(&db, intent_id)?.ok_or_else(|| {
+        anyhow::anyhow!(
             "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
             intent_id
-        ))?;
+        )
+    })?;
 
     // Get all VALIDATES edges for this intent
     let validates_edges = list_validates_for_intent(&db, intent_id)?;
@@ -50,7 +50,10 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
         } else {
             println!("No validation nodes linked to intent '{}'.", intent_id);
             println!("  → Add one:  loom validation add --name \"...\" --type test --command \"cargo test ...\"");
-            println!("  → Link it:  loom edge validates <validation-id> {}", intent_id);
+            println!(
+                "  → Link it:  loom edge validates <validation-id> {}",
+                intent_id
+            );
         }
         return Ok(());
     }
@@ -68,7 +71,12 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
     }
 
     execute_and_record(
-        &db_file, &cwd, db, &to_run, timeout_secs, printer,
+        &db_file,
+        &cwd,
+        db,
+        &to_run,
+        timeout_secs,
+        printer,
         ("intent_id", serde_json::json!(intent_id)),
     )
 }
@@ -101,7 +109,9 @@ pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
                 "message": "Nothing pending — every proof has a recorded result (passed/failed/blocked).",
             }));
         } else {
-            println!("✓ Nothing pending — every proof has a recorded result (passed/failed/blocked).");
+            println!(
+                "✓ Nothing pending — every proof has a recorded result (passed/failed/blocked)."
+            );
         }
         return Ok(());
     }
@@ -110,7 +120,12 @@ pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
     }
 
     execute_and_record(
-        &db_file, &cwd, db, &to_run, timeout_secs, printer,
+        &db_file,
+        &cwd,
+        db,
+        &to_run,
+        timeout_secs,
+        printer,
         ("scope", serde_json::json!("all")),
     )
 }
@@ -149,7 +164,10 @@ fn execute_and_record(
                 "reason":        "marked blocked — see its VALIDATES edge notes for why",
             }));
             if !printer.json {
-                println!("  ⊘ {} [blocked — re-mark with `loom validation mark` when unblocked]", validation.name);
+                println!(
+                    "  ⊘ {} [blocked — re-mark with `loom validation mark` when unblocked]",
+                    validation.name
+                );
             }
             continue;
         }
@@ -161,8 +179,10 @@ fn execute_and_record(
                 "reason":        "no command defined — record by hand: `loom validation mark`",
             }));
             if !printer.json {
-                println!("  - {} [skipped — no command; record by hand: `loom validation mark {}`]",
-                    validation.name, validation.id);
+                println!(
+                    "  - {} [skipped — no command; record by hand: `loom validation mark {}`]",
+                    validation.name, validation.id
+                );
             }
             continue;
         }
@@ -173,7 +193,7 @@ fn execute_and_record(
         // the command anyway would record a dishonest failure and send the
         // driver chasing a phantom code bug.
         if validation.validation_type == "saga" {
-            if let Some(missing) = saga_missing_env(&cwd, validation) {
+            if let Some(missing) = saga_missing_env(cwd, validation) {
                 let invocation: String = missing
                     .iter()
                     .map(|v| format!("{v}=<value> "))
@@ -181,7 +201,8 @@ fn execute_and_record(
                     .collect();
                 let reason = format!(
                     "missing env value(s): {} — run `{}` (or re-mark when the target is available)",
-                    missing.join(", "), invocation
+                    missing.join(", "),
+                    invocation
                 );
                 outcomes.push((validation.id.clone(), "blocked".to_string()));
                 blocked_notes.push((validation.id.clone(), format!("blocked: {reason}")));
@@ -199,7 +220,7 @@ fn execute_and_record(
         }
 
         // Run the command via sh -c so shell features work (e.g. cargo test --test foo)
-        let exit_status = run_validation_command(&validation.command, &cwd, timeout_secs);
+        let exit_status = run_validation_command(&validation.command, cwd, timeout_secs);
 
         let (result, detail) = match exit_status {
             Ok(CommandOutcome::Exited(s)) if s.success() => {
@@ -212,7 +233,10 @@ fn execute_and_record(
             }
             Ok(CommandOutcome::TimedOut) => {
                 failed += 1;
-                (ValidationResult::Failed, Some(format!("timed out after {timeout_secs}s")))
+                (
+                    ValidationResult::Failed,
+                    Some(format!("timed out after {timeout_secs}s")),
+                )
             }
             Err(e) => {
                 failed += 1;
@@ -251,7 +275,7 @@ fn execute_and_record(
 
     // Phase 3 (DB reopened): persist results on the Validation nodes and the
     // VALIDATES edges.
-    let db = GrafeoDb::open(&db_file)?;
+    let db = GrafeoDb::open(db_file)?;
     crate::db::with_transaction(&db, || {
         for (vid, new_result) in &outcomes {
             update_validation_result(&db, vid, new_result, &now)?;
@@ -274,12 +298,16 @@ fn execute_and_record(
     };
     if printer.json {
         let (scope_key, scope_val) = scope;
-        printer.print_json(&crate::output::with_anchor(serde_json::json!({
-            scope_key:   scope_val,
-            "passed":    passed,
-            "failed":    failed,
-            "results":   results,
-        }), &db, next_step)?);
+        printer.print_json(&crate::output::with_anchor(
+            serde_json::json!({
+                scope_key:   scope_val,
+                "passed":    passed,
+                "failed":    failed,
+                "results":   results,
+            }),
+            &db,
+            next_step,
+        )?);
     } else {
         println!();
         println!("  Summary: {}/{} passed", passed, passed + failed);
@@ -326,14 +354,15 @@ fn run_validation_command(
 /// For a saga validation: the env vars its spec needs that this process
 /// doesn't have, or None when there's nothing missing / the spec can't be
 /// read (then the command runs and fails loudly on its own).
-fn saga_missing_env(
-    root: &std::path::Path,
-    v: &crate::types::Validation,
-) -> Option<Vec<String>> {
+fn saga_missing_env(root: &std::path::Path, v: &crate::types::Validation) -> Option<Vec<String>> {
     let rel = crate::commands::saga::spec_path_of(v)?;
     let spec = crate::saga::spec::load_spec_file(&root.join(rel)).ok()?;
     let missing = crate::saga::spec::missing_env(&spec);
-    if missing.is_empty() { None } else { Some(missing) }
+    if missing.is_empty() {
+        None
+    } else {
+        Some(missing)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -346,9 +375,9 @@ fn set_validates_edge_status(
     validation_result: &str,
 ) -> Result<()> {
     let new_status = match validation_result {
-        "passed"  => "passing",
-        "failed"  => "failing",
-        _         => "uninspected",
+        "passed" => "passing",
+        "failed" => "failing",
+        _ => "uninspected",
     };
     // The proof run belongs to the VALIDATION, not to the (validation, intent)
     // pair: one command ran once, and its result proves (or fails) every intent
@@ -360,7 +389,8 @@ fn set_validates_edge_status(
     db.execute(&format!(
         "MATCH (v:Validation {{id: '{vid}'}})-[e:VALIDATES]->(:Intent) \
          SET e.inspection_status = '{status}'",
-        vid = esc(validation_id), status = new_status
+        vid = esc(validation_id),
+        status = new_status
     ))?;
     Ok(())
 }

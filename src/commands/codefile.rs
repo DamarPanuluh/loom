@@ -3,11 +3,11 @@ use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::cli::CodefileCmd;
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    get_codefile_by_id_or_path, get_intent, insert_codefile, list_all_implements,
-    list_codefiles, list_governs_for_intent,
+    get_codefile_by_id_or_path, get_intent, insert_codefile, list_all_implements, list_codefiles,
+    list_governs_for_intent,
 };
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 use crate::types::CodeFile;
 
@@ -29,14 +29,18 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
             let is_glob = path.contains('*') || path.contains('?') || path.contains('[');
             let targets: Vec<String> = if is_glob {
                 let mut v = Vec::new();
-                for entry in glob::glob(&path).map_err(|e| anyhow::anyhow!(
-                    "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
-                    path, e
-                ))? {
-                    if let Ok(p) = entry {
-                        if p.is_file() {
-                            v.push(p.display().to_string());
-                        }
+                for p in glob::glob(&path)
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
+                            path,
+                            e
+                        )
+                    })?
+                    .flatten()
+                {
+                    if p.is_file() {
+                        v.push(p.display().to_string());
                     }
                 }
                 v
@@ -57,7 +61,8 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     anyhow::bail!(
                         "Path '{}' escapes the graph root {} — register files inside the \
                          repository (paths are stored root-relative).",
-                        p, cwd.display()
+                        p,
+                        cwd.display()
                     );
                 };
                 if existing.contains(&p) {
@@ -82,14 +87,14 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                         )
                     })?;
                 let cf = CodeFile {
-                    id:            Uuid::new_v4().to_string(),
-                    path:          p.clone(),
-                    language:      language.clone().unwrap_or_else(|| detect_language(&p)),
+                    id: Uuid::new_v4().to_string(),
+                    path: p.clone(),
+                    language: language.clone().unwrap_or_else(|| detect_language(&p)),
                     // Stamp the current mtime + content fingerprint so the first
                     // `loom sync` is a no-op and only genuine later edits ripple
                     // needs_reverification.
                     last_modified,
-                    imports:       Vec::new(), // populated by `loom sync`
+                    imports: Vec::new(), // populated by `loom sync`
                     content_hash,
                 };
                 insert_codefile(&db, &cf)?;
@@ -123,7 +128,11 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 println!("  language: {}", cf.language);
                 println!("  → Next: ground an intent to it — `loom edge implement <intent> {} --locator \"<symbol>\"` (symbol as it appears in the file, e.g. `def foo`/`fn foo`)", cf.id);
             } else {
-                println!("✓ Registered {} code file(s) ({} already present, skipped).", added.len(), skipped);
+                println!(
+                    "✓ Registered {} code file(s) ({} already present, skipped).",
+                    added.len(),
+                    skipped
+                );
                 for cf in &added {
                     println!("  + {} [{}]", cf.path, cf.language);
                 }
@@ -204,22 +213,43 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 println!("── CodeFile ───────────────────────────────────────────────────────");
                 println!("  path:      {}", cf.path);
                 println!("  language:  {}", cf.language);
-                println!("  modified:  {}", if cf.last_modified.is_empty() { "(never synced)" } else { &cf.last_modified });
+                println!(
+                    "  modified:  {}",
+                    if cf.last_modified.is_empty() {
+                        "(never synced)"
+                    } else {
+                        &cf.last_modified
+                    }
+                );
                 println!("  id:        {}", cf.id);
                 println!();
-                println!("── Owned by ({} intent(s)){} ────────────────────────────────────────",
+                println!(
+                    "── Owned by ({} intent(s)){} ────────────────────────────────────────",
                     owners.len(),
-                    if tangled { "  ⚠ TANGLED" } else { "" });
+                    if tangled { "  ⚠ TANGLED" } else { "" }
+                );
                 if claims.is_empty() {
-                    println!("  (none — unexplained code; ground it: `loom edge implement <intent> {}`)", cf.path);
+                    println!(
+                        "  (none — unexplained code; ground it: `loom edge implement <intent> {}`)",
+                        cf.path
+                    );
                 } else {
                     for im in claims.iter().take(cap) {
-                        let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
+                        let loc = if im.locator.is_empty() {
+                            String::new()
+                        } else {
+                            format!("  @ {}", im.locator)
+                        };
                         let intent = get_intent(&db, &im.intent_id)?;
                         let level = intent.map(|i| i.abstraction_level).unwrap_or_default();
-                        println!("  [{:<13}] {}{}  ({})", level, im.intent_name, loc, im.intent_id);
+                        println!(
+                            "  [{:<13}] {}{}  ({})",
+                            level, im.intent_name, loc, im.intent_id
+                        );
                     }
-                    if let Some(m) = crate::output::more_marker(claims.len(), claims.len().min(cap), &fetch) {
+                    if let Some(m) =
+                        crate::output::more_marker(claims.len(), claims.len().min(cap), &fetch)
+                    {
                         println!("  {m}");
                     }
                 }
@@ -234,32 +264,46 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     println!("  (none)");
                 } else {
                     for r in rules.iter().take(cap) {
-                        println!("  [{:<20}] {}  (via '{}')",
+                        println!(
+                            "  [{:<20}] {}  (via '{}')",
                             r["inspection_status"].as_str().unwrap_or(""),
                             r["rule"].as_str().unwrap_or(""),
-                            r["via_intent"].as_str().unwrap_or(""));
+                            r["via_intent"].as_str().unwrap_or("")
+                        );
                     }
-                    if let Some(m) = crate::output::more_marker(rules.len(), rules.len().min(cap), &fetch) {
+                    if let Some(m) =
+                        crate::output::more_marker(rules.len(), rules.len().min(cap), &fetch)
+                    {
                         println!("  {m}");
                     }
                 }
                 if !imports.is_empty() {
                     println!();
-                    println!("── Imports ({}) ─────────────────────────────────────────────────────", imports.len());
+                    println!(
+                        "── Imports ({}) ─────────────────────────────────────────────────────",
+                        imports.len()
+                    );
                     for i in imports.iter().take(cap) {
                         println!("  → {}", i);
                     }
-                    if let Some(m) = crate::output::more_marker(imports.len(), imports.len().min(cap), &fetch) {
+                    if let Some(m) =
+                        crate::output::more_marker(imports.len(), imports.len().min(cap), &fetch)
+                    {
                         println!("  {m}");
                     }
                 }
                 if !notes.is_empty() {
                     println!();
-                    println!("── Notes ({}) ───────────────────────────────────────────────────────", notes.len());
+                    println!(
+                        "── Notes ({}) ───────────────────────────────────────────────────────",
+                        notes.len()
+                    );
                     for n in notes.iter().rev().take(cap) {
                         println!("  [{}] {}  ({})", n.kind, n.text, n.author);
                     }
-                    if let Some(m) = crate::output::more_marker(notes.len(), notes.len().min(cap), &fetch) {
+                    if let Some(m) =
+                        crate::output::more_marker(notes.len(), notes.len().min(cap), &fetch)
+                    {
                         println!("  {m}");
                     }
                 }
@@ -290,8 +334,13 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                                 only here are unrealized again — `loom status` will route to ground.",
                 }));
             } else {
-                println!("✓ CodeFile removed (with its IMPLEMENTS edges): {}", cf.path);
-                println!("  Intents grounded only here are unrealized again — check `loom status`.");
+                println!(
+                    "✓ CodeFile removed (with its IMPLEMENTS edges): {}",
+                    cf.path
+                );
+                println!(
+                    "  Intents grounded only here are unrealized again — check `loom status`."
+                );
             }
         }
 
@@ -310,8 +359,8 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                 println!(
                     "  {language:<15}  {mtime:<26}  {path:<50}  id",
                     language = "LANGUAGE",
-                    mtime    = "LAST MODIFIED",
-                    path     = "PATH",
+                    mtime = "LAST MODIFIED",
+                    path = "PATH",
                 );
                 println!("  {}", "-".repeat(110));
                 for cf in &files {
@@ -322,15 +371,15 @@ pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
                     };
                     println!(
                         "  {lang:<15}  {mtime:<26}  {path:<50}  {id}",
-                        lang  = cf.language,
+                        lang = cf.language,
                         mtime = mtime,
-                        path  = cf.path,
-                        id    = cf.id,
+                        path = cf.path,
+                        id = cf.id,
                     );
                 }
-                if let Some(m) = crate::output::more_marker(
-                    total, files.len(), "`loom codefile list --limit 0`",
-                ) {
+                if let Some(m) =
+                    crate::output::more_marker(total, files.len(), "`loom codefile list --limit 0`")
+                {
                     println!("  {m}");
                 }
             }
@@ -346,24 +395,24 @@ fn detect_language(path: &str) -> String {
         .and_then(|e| e.to_str())
         .unwrap_or("");
     match ext {
-        "rs"               => "rust",
-        "ts" | "tsx"       => "typescript",
+        "rs" => "rust",
+        "ts" | "tsx" => "typescript",
         "js" | "jsx" | "mjs" => "javascript",
-        "py"               => "python",
-        "go"               => "go",
-        "java"             => "java",
-        "kt"               => "kotlin",
-        "swift"            => "swift",
-        "c" | "h"          => "c",
+        "py" => "python",
+        "go" => "go",
+        "java" => "java",
+        "kt" => "kotlin",
+        "swift" => "swift",
+        "c" | "h" => "c",
         "cpp" | "cc" | "cxx" | "hpp" => "cpp",
-        "cs"               => "csharp",
-        "rb"               => "ruby",
-        "php"              => "php",
-        "sh" | "bash"      => "shell",
-        "sql"              => "sql",
-        "html" | "htm"     => "html",
-        "css" | "scss"     => "css",
-        _                  => "unknown",
+        "cs" => "csharp",
+        "rb" => "ruby",
+        "php" => "php",
+        "sh" | "bash" => "shell",
+        "sql" => "sql",
+        "html" | "htm" => "html",
+        "css" | "scss" => "css",
+        _ => "unknown",
     }
     .to_string()
 }

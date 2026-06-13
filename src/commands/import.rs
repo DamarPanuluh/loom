@@ -29,7 +29,8 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
                     anyhow::bail!(
                         "Export contains CodeFile path '{}' that escapes the graph root {} — \
                          fix or remove the entry before importing.",
-                        p, cwd.display()
+                        p,
+                        cwd.display()
                     );
                 }
             }
@@ -60,7 +61,10 @@ pub fn run(file: &str, as_planned: bool, printer: &Printer) -> Result<()> {
         println!("  Every intent arrived lifecycle=planned; every proof not_run; verdict meta reset to uninspected.");
         crate::output::print_anchor(&db, next_step)?;
     } else {
-        println!("✓ Graph imported from {file}  ({} nodes, {} edges)", report.nodes, report.edges);
+        println!(
+            "✓ Graph imported from {file}  ({} nodes, {} edges)",
+            report.nodes, report.edges
+        );
         crate::output::print_anchor(&db, next_step)?;
     }
     Ok(())

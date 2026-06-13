@@ -91,7 +91,8 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
         })
         .collect();
 
-    let avg = |field: fn(&(Vec<String>, Vec<String>)) -> &Vec<String>| -> f64 {
+    type IntentTokenFields = (Vec<String>, Vec<String>);
+    let avg = |field: fn(&IntentTokenFields) -> &Vec<String>| -> f64 {
         let total: usize = docs.iter().map(|d| field(d).len()).sum();
         (total as f64 / n as f64).max(1.0)
     };
@@ -265,7 +266,7 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
             .into_iter()
             .filter_map(|t| {
                 let matched = overlap(&format!("{} {}", t.name, t.description));
-                (!matched.is_empty()).then(|| PlaneHit {
+                (!matched.is_empty()).then_some(PlaneHit {
                     id: t.id,
                     name: t.name,
                     detail: t.description,

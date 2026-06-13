@@ -17,14 +17,16 @@ pub fn insert_hierarchy(
 ) -> Result<()> {
     let verify_q = format!(
         "MATCH (a:Intent {{id: '{}'}}), (b:Intent {{id: '{}'}}) RETURN a.id, b.id",
-        esc(parent_id), esc(child_id)
+        esc(parent_id),
+        esc(child_id)
     );
     if db.execute(&verify_q)?.rows().is_empty() {
         anyhow::bail!(
             "Cannot create HIERARCHY: one or both intents not found.\n\
              parent id: {}\nchild id: {} — `loom intent list` to verify; \
              `loom intent add` if missing.",
-            parent_id, child_id
+            parent_id,
+            child_id
         );
     }
 
@@ -39,14 +41,17 @@ pub fn insert_hierarchy(
                 "HIERARCHY {} -> {} already exists. Already recorded — \
                  `loom intent show {}` displays the tree; cross-cutting \
                  relationships belong in `loom edge explore`.",
-                parent_id, child_id, child_id
+                parent_id,
+                child_id,
+                child_id
             );
         }
         anyhow::bail!(
             "Cannot add parent: intent '{}' already has parent '{}'.\n\
              HIERARCHY is a tree — each intent has exactly one parent. Use \
              `loom edge explore` (RELATES_TO) for cross-cutting links.",
-            child_id, p
+            child_id,
+            p
         );
     }
     // Cycle check: a cycle would form iff the new child can already reach the new
@@ -57,7 +62,8 @@ pub fn insert_hierarchy(
              already an ancestor of the parent). Choose a different parent; if the \
              relationship is cross-cutting rather than structural, record it with \
              `loom edge explore` instead.",
-            parent_id, child_id
+            parent_id,
+            child_id
         );
     }
 
@@ -65,10 +71,10 @@ pub fn insert_hierarchy(
         "MATCH (a:Intent {{id: '{par}'}}), (b:Intent {{id: '{chi}'}}) \
          INSERT (a)-[:HIERARCHY {{\
            notes: '{notes}', created_at: '{now}'}}]->(b)",
-        par   = esc(parent_id),
-        chi   = esc(child_id),
+        par = esc(parent_id),
+        chi = esc(child_id),
         notes = esc(notes),
-        now   = esc(now),
+        now = esc(now),
     ))?;
     Ok(())
 }
@@ -98,12 +104,16 @@ pub fn list_hierarchy_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
             let parent_id = str_val(get(row, &cols, "parent_id"));
             let child_id = str_val(get(row, &cols, "child_id"));
             edges.push(Hierarchy {
-                id:               crate::db::schema::edge_key(crate::db::schema::edge::HIERARCHY, &parent_id, &child_id),
+                id: crate::db::schema::edge_key(
+                    crate::db::schema::edge::HIERARCHY,
+                    &parent_id,
+                    &child_id,
+                ),
                 parent_id,
                 child_id,
-                parent_name:      str_val(get(row, &cols, "parent_name")),
-                child_name:       str_val(get(row, &cols, "child_name")),
-                notes:            str_val(get(row, &cols, "e.notes")),
+                parent_name: str_val(get(row, &cols, "parent_name")),
+                child_name: str_val(get(row, &cols, "child_name")),
+                notes: str_val(get(row, &cols, "e.notes")),
             });
         }
     }
@@ -116,9 +126,7 @@ pub fn list_hierarchy_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec
 /// (reliable — never matches on the relationship's own properties). The basis
 /// for every tree-shape check.
 pub fn list_all_hierarchy(db: &dyn LoomDb) -> Result<Vec<(String, String)>> {
-    let r = db.execute(
-        "MATCH (p:Intent)-[e:HIERARCHY]->(c:Intent) RETURN p.id AS p, c.id AS c",
-    )?;
+    let r = db.execute("MATCH (p:Intent)-[e:HIERARCHY]->(c:Intent) RETURN p.id AS p, c.id AS c")?;
     let cols = col_map(&r);
     Ok(r.rows()
         .iter()

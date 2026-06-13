@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
-use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::db::queries::{
     flag_serves_for_intent, invalidate_validations_for_intents_with_indexes, list_all_governs,
     list_all_implements, list_all_serves, list_all_targets, list_all_validates, list_codefiles,
@@ -11,6 +10,7 @@ use crate::db::queries::{
     update_codefile_hash_and_mtime, update_codefile_imports, update_codefile_mtime,
 };
 use crate::db::schema::esc;
+use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
 use crate::output::Printer;
 use crate::types::SyncReport;
 
@@ -18,7 +18,9 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let base = if path == "." {
         crate::db::resolve_root()?
     } else {
-        Path::new(path).canonicalize().unwrap_or_else(|_| Path::new(path).to_path_buf())
+        Path::new(path)
+            .canonicalize()
+            .unwrap_or_else(|_| Path::new(path).to_path_buf())
     };
 
     let db_file = ensure_initialized(&base)?;
@@ -53,7 +55,10 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let all_validations = list_validations(&db)?;
     let mut validates_by_intent: HashMap<&str, Vec<&crate::types::ValidatesEdge>> = HashMap::new();
     for e in &all_validates {
-        validates_by_intent.entry(e.intent_id.as_str()).or_default().push(e);
+        validates_by_intent
+            .entry(e.intent_id.as_str())
+            .or_default()
+            .push(e);
     }
     let validation_by_id: HashMap<&str, &crate::types::Validation> =
         all_validations.iter().map(|v| (v.id.as_str(), v)).collect();
@@ -62,23 +67,38 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let all_relates = list_relates_to(&db, None)?;
     let mut relates_by_intent: HashMap<&str, Vec<&crate::types::RelatesTo>> = HashMap::new();
     for edge in &all_relates {
-        relates_by_intent.entry(edge.from_id.as_str()).or_default().push(edge);
-        relates_by_intent.entry(edge.to_id.as_str()).or_default().push(edge);
+        relates_by_intent
+            .entry(edge.from_id.as_str())
+            .or_default()
+            .push(edge);
+        relates_by_intent
+            .entry(edge.to_id.as_str())
+            .or_default()
+            .push(edge);
     }
     let all_governs = list_all_governs(&db)?;
     let mut governs_by_intent: HashMap<&str, Vec<&crate::types::Governs>> = HashMap::new();
     for edge in &all_governs {
-        governs_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+        governs_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .push(edge);
     }
     let all_targets = list_all_targets(&db)?;
     let mut targets_by_intent: HashMap<&str, Vec<&crate::types::TargetsEdge>> = HashMap::new();
     for edge in &all_targets {
-        targets_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+        targets_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .push(edge);
     }
     let all_serves = list_all_serves(&db)?;
     let mut serves_by_intent: HashMap<&str, Vec<&crate::types::ServesEdge>> = HashMap::new();
     for edge in &all_serves {
-        serves_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+        serves_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .push(edge);
     }
     let mut related_edges_flagged: HashSet<String> = HashSet::new();
     let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
@@ -194,8 +214,13 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
                     .collect(),
             );
         }
-        let active = active_intents.as_ref().expect("active intents loaded above");
-        let intent_ids = intents_by_codefile.get(cf.id.as_str()).cloned().unwrap_or_default();
+        let active = active_intents
+            .as_ref()
+            .expect("active intents loaded above");
+        let intent_ids = intents_by_codefile
+            .get(cf.id.as_str())
+            .cloned()
+            .unwrap_or_default();
 
         // This file's whole mutation unit commits atomically (see above):
         // fingerprint + ripple together, or neither.
@@ -317,7 +342,6 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // Stamp the graph as reconciled against disk (freshness signal).
     set_last_synced(&db, &chrono::Utc::now().to_rfc3339())?;
 
-
     let report = SyncReport {
         files_checked,
         files_changed,
@@ -336,14 +360,21 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     // can list hundreds of files — flooding the context window evicts the
     // driving agent's plan. Counts stay exact; lists are capped.
     const REPORT_CAP: usize = 20;
-    let next_step = if report.files_changed == 0 && report.missing_files.is_empty() && report.escaped_files.is_empty() {
+    let next_step = if report.files_changed == 0
+        && report.missing_files.is_empty()
+        && report.escaped_files.is_empty()
+    {
         "`loom status` (or `loom next --all` for closeout)".to_string()
     } else {
         format!(
             "`loom next --mode fix{}` to re-inspect flagged edges{}",
             // A big flagged queue is exactly what the bulk read exists for:
             // grouped by staling file + one `loom batch` per group.
-            if report.relates_to_edges_flagged > 10 { " --take 20" } else { "" },
+            if report.relates_to_edges_flagged > 10 {
+                " --take 20"
+            } else {
+                ""
+            },
             if report.governs_edges_flagged > 0 {
                 ", and `loom next --mode quality` to re-earn flagged quality green."
             } else {
@@ -354,14 +385,19 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     if printer.json {
         let mut v = serde_json::to_value(&report)?;
-        let obj = v.as_object_mut().expect("SyncReport serializes to an object");
+        let obj = v
+            .as_object_mut()
+            .expect("SyncReport serializes to an object");
         for (key, total_key) in [
             ("changes", "changes_total"),
             ("missing_files", "missing_files_total"),
             ("escaped_files", "escaped_files_total"),
             ("locators_stale", "locators_stale_total"),
         ] {
-            let total = obj.get(key).and_then(|a| a.as_array()).map_or(0, |a| a.len());
+            let total = obj
+                .get(key)
+                .and_then(|a| a.as_array())
+                .map_or(0, |a| a.len());
             if let Some(arr) = obj.get_mut(key).and_then(|a| a.as_array_mut()) {
                 arr.truncate(REPORT_CAP);
             }
@@ -372,39 +408,68 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
         println!("── loom sync ────────────────────────────────────────────────────────");
         println!("  Files checked:                 {}", report.files_checked);
         println!("  Files changed since last sync: {}", report.files_changed);
-        println!("  RELATES_TO edges flagged:      {}", report.relates_to_edges_flagged);
-        println!("  GOVERNS verdicts flagged:      {}", report.governs_edges_flagged);
-        println!("  TARGETS edges flagged:         {}", report.targets_edges_flagged);
-        println!("  SERVES edges flagged:          {}", report.serves_edges_flagged);
-        println!("  Validations invalidated:       {}", report.validations_invalidated);
+        println!(
+            "  RELATES_TO edges flagged:      {}",
+            report.relates_to_edges_flagged
+        );
+        println!(
+            "  GOVERNS verdicts flagged:      {}",
+            report.governs_edges_flagged
+        );
+        println!(
+            "  TARGETS edges flagged:         {}",
+            report.targets_edges_flagged
+        );
+        println!(
+            "  SERVES edges flagged:          {}",
+            report.serves_edges_flagged
+        );
+        println!(
+            "  Validations invalidated:       {}",
+            report.validations_invalidated
+        );
         if !report.changes.is_empty() {
             println!();
             println!("  Changed files ({}):", report.changes.len());
             for c in report.changes.iter().take(REPORT_CAP) {
                 println!("    {c}");
             }
-            if let Some(m) = crate::output::more_marker(report.changes.len(), REPORT_CAP, "`loom next --mode fix`") {
+            if let Some(m) = crate::output::more_marker(
+                report.changes.len(),
+                REPORT_CAP,
+                "`loom next --mode fix`",
+            ) {
                 println!("    {m}");
             }
         }
         if !report.missing_files.is_empty() {
             println!();
-            println!("  ⚠ Registered files MISSING on disk ({} — deleted/renamed?):", report.missing_files.len());
+            println!(
+                "  ⚠ Registered files MISSING on disk ({} — deleted/renamed?):",
+                report.missing_files.len()
+            );
             for p in report.missing_files.iter().take(REPORT_CAP) {
                 println!("    {}", p);
             }
-            if let Some(m) = crate::output::more_marker(report.missing_files.len(), REPORT_CAP, "`loom report`") {
+            if let Some(m) =
+                crate::output::more_marker(report.missing_files.len(), REPORT_CAP, "`loom report`")
+            {
                 println!("    {m}");
             }
             println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
         }
         if !report.escaped_files.is_empty() {
             println!();
-            println!("  ⚠ Registered paths ESCAPING the graph root ({} — refused to read):", report.escaped_files.len());
+            println!(
+                "  ⚠ Registered paths ESCAPING the graph root ({} — refused to read):",
+                report.escaped_files.len()
+            );
             for p in report.escaped_files.iter().take(REPORT_CAP) {
                 println!("    {}", p);
             }
-            if let Some(m) = crate::output::more_marker(report.escaped_files.len(), REPORT_CAP, "`loom report`") {
+            if let Some(m) =
+                crate::output::more_marker(report.escaped_files.len(), REPORT_CAP, "`loom report`")
+            {
                 println!("    {m}");
             }
             println!("    → `loom codefile remove <path>` — files outside the repository cannot be tracked.");
@@ -415,13 +480,20 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
             for l in report.locators_stale.iter().take(REPORT_CAP) {
                 println!("    {}", l);
             }
-            if let Some(m) = crate::output::more_marker(report.locators_stale.len(), REPORT_CAP, "`loom next --mode fix`") {
+            if let Some(m) = crate::output::more_marker(
+                report.locators_stale.len(),
+                REPORT_CAP,
+                "`loom next --mode fix`",
+            ) {
                 println!("    {m}");
             }
             println!("    → re-ground: `loom edge implement <intent> <path> --locator \"<current symbol>\"`.");
         }
         println!();
-        if report.files_changed == 0 && report.missing_files.is_empty() && report.escaped_files.is_empty() {
+        if report.files_changed == 0
+            && report.missing_files.is_empty()
+            && report.escaped_files.is_empty()
+        {
             println!("  ✓ All files up to date — no edges need reverification.");
         } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
             println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
@@ -431,7 +503,6 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
 
     Ok(())
 }
-
 
 // ---------------------------------------------------------------------------
 // Helper: flag RELATES_TO edges for one intent → needs_reverification
@@ -458,11 +529,16 @@ fn flag_relates_to_for_intent_with_indexes(
                 "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
                  SET r.inspection_status = 'needs_reverification'",
                 from = esc(&edge.from_id),
-                to   = esc(&edge.to_id),
+                to = esc(&edge.to_id),
             ))?;
             record_sync_flip(
-                db, "edge", &edge.id, &edge.inspection_status,
-                "needs_reverification", cause, now,
+                db,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                cause,
+                now,
             )?;
             count += 1;
         }
@@ -492,7 +568,13 @@ fn flag_governs_for_intent_with_indexes(
             ))?;
             if !cause.is_empty() {
                 record_sync_flip(
-                    db, "edge", &edge.id, "passing", "needs_reverification", cause, now,
+                    db,
+                    "edge",
+                    &edge.id,
+                    "passing",
+                    "needs_reverification",
+                    cause,
+                    now,
                 )?;
             }
             count += 1;
@@ -524,7 +606,13 @@ fn flag_targets_for_intent_with_indexes(
             ))?;
             if !cause.is_empty() {
                 record_sync_flip(
-                    db, "edge", &edge.id, "passing", "needs_reverification", cause, now,
+                    db,
+                    "edge",
+                    &edge.id,
+                    "passing",
+                    "needs_reverification",
+                    cause,
+                    now,
                 )?;
             }
             count += 1;

@@ -13,8 +13,11 @@ pub fn insert_rule(db: &dyn LoomDb, rule: &QualityRule) -> Result<()> {
         "INSERT (:QualityRule {id: $id, name: $name, description: $desc, \
          detection_logic: $logic, severity: $sev, inspection_effort: $eff})",
         super::row::sparams(&[
-            ("id", &rule.id), ("name", &rule.name), ("desc", &rule.description),
-            ("logic", &rule.detection_logic), ("sev", &rule.severity),
+            ("id", &rule.id),
+            ("name", &rule.name),
+            ("desc", &rule.description),
+            ("logic", &rule.detection_logic),
+            ("sev", &rule.severity),
             ("eff", &rule.inspection_effort),
         ]),
     )?;
@@ -30,11 +33,17 @@ pub fn resolve_rule(db: &dyn LoomDb, key: &str) -> Result<String> {
         return Ok(key.to_string());
     }
     let kl = key.to_lowercase();
-    let exact: Vec<_> = rules.iter().filter(|r| r.name.to_lowercase() == kl).collect();
+    let exact: Vec<_> = rules
+        .iter()
+        .filter(|r| r.name.to_lowercase() == kl)
+        .collect();
     if exact.len() == 1 {
         return Ok(exact[0].id.clone());
     }
-    let subs: Vec<_> = rules.iter().filter(|r| r.name.to_lowercase().contains(&kl)).collect();
+    let subs: Vec<_> = rules
+        .iter()
+        .filter(|r| r.name.to_lowercase().contains(&kl))
+        .collect();
     match subs.len() {
         1 => Ok(subs[0].id.clone()),
         0 => anyhow::bail!(
@@ -51,13 +60,16 @@ pub fn resolve_rule(db: &dyn LoomDb, key: &str) -> Result<String> {
                 .map(|r| format!("'{}'", r.name))
                 .collect::<Vec<_>>()
                 .join(", ");
-            if let Some(m) = crate::output::more_marker(subs.len(), subs.len().min(cap), "`loom rule list`") {
+            if let Some(m) =
+                crate::output::more_marker(subs.len(), subs.len().min(cap), "`loom rule list`")
+            {
                 shown.push_str(", ");
                 shown.push_str(&m);
             }
             anyhow::bail!(
                 "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
-                key, shown
+                key,
+                shown
             )
         }
     }
@@ -70,14 +82,18 @@ pub fn list_rules(db: &dyn LoomDb) -> Result<Vec<QualityRule>> {
              ORDER BY r.name";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| QualityRule {
-        id:              str_val(get(row, &cols, "r.id")),
-        name:            str_val(get(row, &cols, "r.name")),
-        description:     str_val(get(row, &cols, "r.description")),
-        detection_logic: str_val(get(row, &cols, "r.detection_logic")),
-        severity:        str_val(get(row, &cols, "r.severity")),
-        // Optional field — absent on rules created before the effort axis;
-        // "" reads as mid everywhere.
-        inspection_effort: str_val(get(row, &cols, "r.inspection_effort")),
-    }).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| QualityRule {
+            id: str_val(get(row, &cols, "r.id")),
+            name: str_val(get(row, &cols, "r.name")),
+            description: str_val(get(row, &cols, "r.description")),
+            detection_logic: str_val(get(row, &cols, "r.detection_logic")),
+            severity: str_val(get(row, &cols, "r.severity")),
+            // Optional field — absent on rules created before the effort axis;
+            // "" reads as mid everywhere.
+            inspection_effort: str_val(get(row, &cols, "r.inspection_effort")),
+        })
+        .collect())
 }

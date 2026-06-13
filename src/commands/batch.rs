@@ -38,13 +38,13 @@
 use anyhow::Result;
 use std::io::Read;
 
-use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     get_governs_between, get_or_create_relates_to, insert_governs, resolve_intent, resolve_rule,
     update_governs_verdict, update_relates_to_ground, update_relates_to_independent,
     update_relates_to_issue,
 };
+use crate::db::schema::role;
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::Printer;
 
@@ -90,7 +90,9 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
             }
             Err(e) => {
                 failed += 1;
-                results.push(serde_json::json!({"line": n, "status": "error", "error": e.to_string()}));
+                results.push(
+                    serde_json::json!({"line": n, "status": "error", "error": e.to_string()}),
+                );
             }
         }
     }
@@ -103,16 +105,27 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     } else {
         for r in &results {
             if r["status"] == "ok" {
-                println!("  ✓ line {}: {}", r["line"], r["applied"].as_str().unwrap_or(""));
+                println!(
+                    "  ✓ line {}: {}",
+                    r["line"],
+                    r["applied"].as_str().unwrap_or("")
+                );
             } else {
-                println!("  ✗ line {}: {}", r["line"], r["error"].as_str().unwrap_or(""));
+                println!(
+                    "  ✗ line {}: {}",
+                    r["line"],
+                    r["error"].as_str().unwrap_or("")
+                );
             }
         }
         println!();
         println!("  {ok} applied, {failed} failed.");
     }
     if failed > 0 {
-        anyhow::bail!("{failed} of {} batch op(s) failed — see per-line results above.", ok + failed);
+        anyhow::bail!(
+            "{failed} of {} batch op(s) failed — see per-line results above.",
+            ok + failed
+        );
     }
     Ok(())
 }
@@ -120,21 +133,25 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
 /// Apply one JSONL op through the SAME query functions and gates the
 /// single-shot commands use. Returns a one-line description of what happened.
 fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
-    let v: serde_json::Value = serde_json::from_str(line)
-        .map_err(|e| anyhow::anyhow!("not valid JSON: {e} — each line must be ONE JSON object: {{\"op\": \"<name>\", …}}"))?;
-    let op = v
-        .get("op")
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| anyhow::anyhow!(
+    let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
+        anyhow::anyhow!(
+            "not valid JSON: {e} — each line must be ONE JSON object: {{\"op\": \"<name>\", …}}"
+        )
+    })?;
+    let op = v.get("op").and_then(|x| x.as_str()).ok_or_else(|| {
+        anyhow::anyhow!(
             "missing or non-string field 'op' — each line must be ONE JSON object: \
              {{\"op\": \"<name>\", …}} (ground | issue | independent | rule_verdict)"
-        ))?;
+        )
+    })?;
     let now = chrono::Utc::now().to_rfc3339();
 
     match op {
         "ground" => {
             let by = gate::acting_in_lane(
-                "ground a RELATES_TO edge", &[role::ANALYZER, role::FIXER], None,
+                "ground a RELATES_TO edge",
+                &[role::ANALYZER, role::FIXER],
+                None,
             )?;
             let a = resolve_intent(db, str_field(&v, op, "a")?)?;
             let b = resolve_intent(db, str_field(&v, op, "b")?)?;
@@ -143,24 +160,37 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
             gate::require_substantive(
-                "criterion", criterion,
+                "criterion",
+                criterion,
                 "the falsifiable coexistence criterion this edge was checked against",
             )?;
             // Optional on ground: what was found + file/line anchors.
             let evidence = v.get("evidence").and_then(|x| x.as_str()).unwrap_or("");
             if !evidence.trim().is_empty() {
                 gate::require_substantive(
-                    "evidence", evidence,
+                    "evidence",
+                    evidence,
                     "what the inspection actually found (file/symbol + the observation)",
                 )?;
             }
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            update_relates_to_ground(db, &edge.from_id, &edge.to_id, criterion, &evidence, confidence, &by, &now)?;
+            update_relates_to_ground(
+                db,
+                &edge.from_id,
+                &edge.to_id,
+                criterion,
+                &evidence,
+                confidence,
+                &by,
+                &now,
+            )?;
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
         "issue" => {
             let by = gate::acting_in_lane(
-                "record an issue on a RELATES_TO edge", &[role::ANALYZER, role::FIXER], None,
+                "record an issue on a RELATES_TO edge",
+                &[role::ANALYZER, role::FIXER],
+                None,
             )?;
             let a = resolve_intent(db, str_field(&v, op, "a")?)?;
             let b = resolve_intent(db, str_field(&v, op, "b")?)?;
@@ -171,19 +201,33 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
-            gate::require_substantive("criterion", criterion, "the criterion the code was checked against")?;
-            update_relates_to_issue(db, &edge.from_id, &edge.to_id, criterion, &evidence, confidence, &by, &now)?;
+            gate::require_substantive(
+                "criterion",
+                criterion,
+                "the criterion the code was checked against",
+            )?;
+            update_relates_to_issue(
+                db,
+                &edge.from_id,
+                &edge.to_id,
+                criterion,
+                &evidence,
+                confidence,
+                &by,
+                &now,
+            )?;
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
         "independent" => {
-            let by = gate::acting_in_lane(
-                "confirm two intents independent", &[role::ANALYZER], None,
-            )?;
+            let by =
+                gate::acting_in_lane("confirm two intents independent", &[role::ANALYZER], None)?;
             let a = resolve_intent(db, str_field(&v, op, "a")?)?;
             let b = resolve_intent(db, str_field(&v, op, "b")?)?;
             let notes = str_field(&v, op, "notes")?;
             gate::require_substantive(
-                "notes", notes, "why these two intents have no meaningful relationship",
+                "notes",
+                notes,
+                "why these two intents have no meaningful relationship",
             )?;
             let edge = get_or_create_relates_to(db, &a, &b, &now)?;
             update_relates_to_independent(db, &edge.from_id, &edge.to_id, notes, &by, &now)?;
@@ -203,12 +247,18 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive(
-                "criterion", criterion, "what compliance looks like for this rule on this intent",
+                "criterion",
+                criterion,
+                "what compliance looks like for this rule on this intent",
             )?;
             gate::require_substantive(
-                "evidence", evidence,
-                if status == "independent" { "why this rule does not apply to this intent" }
-                else { "what was actually found in the code during inspection" },
+                "evidence",
+                evidence,
+                if status == "independent" {
+                    "why this rule does not apply to this intent"
+                } else {
+                    "what was actually found in the code during inspection"
+                },
             )?;
             gate::require_confidence(confidence)?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
@@ -225,9 +275,9 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             }
             Ok(format!("rule_verdict {status}: {rule} → {intent}"))
         }
-        other => anyhow::bail!(
-            "unknown op '{other}' (ground | issue | independent | rule_verdict)"
-        ),
+        other => {
+            anyhow::bail!("unknown op '{other}' (ground | issue | independent | rule_verdict)")
+        }
     }
 }
 
@@ -258,9 +308,10 @@ fn str_field<'a>(v: &'a serde_json::Value, op: &str, key: &str) -> Result<&'a st
 fn locators_field(v: &serde_json::Value) -> Vec<String> {
     match v.get("evidence_locator") {
         Some(serde_json::Value::String(s)) => vec![s.clone()],
-        Some(serde_json::Value::Array(a)) => {
-            a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()
-        }
+        Some(serde_json::Value::Array(a)) => a
+            .iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect(),
         _ => Vec::new(),
     }
 }
@@ -296,7 +347,10 @@ mod tests {
     #[test]
     fn criterion_explicit_beats_stored_beats_error() {
         let explicit = serde_json::json!({"criterion": "explicit text"});
-        assert_eq!(criterion_or_stored(&explicit, "ground", "stored").unwrap(), "explicit text");
+        assert_eq!(
+            criterion_or_stored(&explicit, "ground", "stored").unwrap(),
+            "explicit text"
+        );
 
         let omitted = serde_json::json!({"op": "ground"});
         assert_eq!(
@@ -326,7 +380,9 @@ mod tests {
             vec!["src/a.rs:1-9".to_string()]
         );
         assert_eq!(
-            locators_field(&serde_json::json!({"evidence_locator": ["src/a.rs:1-9", "src/b.rs:3"]})),
+            locators_field(
+                &serde_json::json!({"evidence_locator": ["src/a.rs:1-9", "src/b.rs:3"]})
+            ),
             vec!["src/a.rs:1-9".to_string(), "src/b.rs:3".to_string()]
         );
         assert!(locators_field(&serde_json::json!({"op": "ground"})).is_empty());

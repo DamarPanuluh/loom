@@ -17,9 +17,13 @@ pub fn insert_validation(db: &dyn LoomDb, v: &Validation) -> Result<()> {
          validation_type: $vtype, command: $cmd, \
          last_run: $lrun, last_result: $lres})",
         super::row::sparams(&[
-            ("id", &v.id), ("name", &v.name), ("desc", &v.description),
-            ("vtype", &v.validation_type), ("cmd", &v.command),
-            ("lrun", &v.last_run), ("lres", &v.last_result),
+            ("id", &v.id),
+            ("name", &v.name),
+            ("desc", &v.description),
+            ("vtype", &v.validation_type),
+            ("cmd", &v.command),
+            ("lrun", &v.last_run),
+            ("lres", &v.last_result),
         ]),
     )?;
     Ok(())
@@ -34,7 +38,10 @@ pub fn get_validation(db: &dyn LoomDb, id: &str) -> Result<Option<Validation>> {
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().first().map(|row| row_to_validation(row, &cols)))
+    Ok(result
+        .rows()
+        .first()
+        .map(|row| row_to_validation(row, &cols)))
 }
 
 /// Resolve a validation key (exact id, exact name, or unique name fragment) to
@@ -49,7 +56,10 @@ pub fn resolve_validation(db: &dyn LoomDb, key: &str) -> Result<String> {
     if exact.len() == 1 {
         return Ok(exact[0].id.clone());
     }
-    let subs: Vec<_> = vs.iter().filter(|v| v.name.to_lowercase().contains(&kl)).collect();
+    let subs: Vec<_> = vs
+        .iter()
+        .filter(|v| v.name.to_lowercase().contains(&kl))
+        .collect();
     match subs.len() {
         1 => Ok(subs[0].id.clone()),
         0 => anyhow::bail!(
@@ -58,7 +68,8 @@ pub fn resolve_validation(db: &dyn LoomDb, key: &str) -> Result<String> {
         ),
         _ => anyhow::bail!(
             "'{}' is ambiguous — matches {} validations. Use the id (`loom validation list`).",
-            key, subs.len()
+            key,
+            subs.len()
         ),
     }
 }
@@ -70,7 +81,11 @@ pub fn list_validations(db: &dyn LoomDb) -> Result<Vec<Validation>> {
              ORDER BY v.name";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_validation(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_validation(row, &cols))
+        .collect())
 }
 
 pub fn update_validation_result(
@@ -80,7 +95,8 @@ pub fn update_validation_result(
     last_run: &str,
 ) -> Result<bool> {
     let check = db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(id)
+        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
@@ -88,7 +104,9 @@ pub fn update_validation_result(
     db.execute(&format!(
         "MATCH (v:Validation {{id: '{}'}}) \
          SET v.last_result = '{}', v.last_run = '{}'",
-        esc(id), esc(last_result), esc(last_run)
+        esc(id),
+        esc(last_result),
+        esc(last_run)
     ))?;
     Ok(true)
 }
@@ -117,7 +135,8 @@ pub fn update_validation_definition(
         return Ok(get_validation(db, id)?.is_some());
     }
     let check = db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(id)
+        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
@@ -135,7 +154,8 @@ pub fn update_validation_definition(
 /// again, which the validate queue surfaces. Returns false if not found.
 pub fn delete_validation(db: &dyn LoomDb, id: &str) -> Result<bool> {
     let check = db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(id)
+        "MATCH (v:Validation {{id: '{}'}}) RETURN v.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
@@ -156,7 +176,8 @@ pub fn delete_validation(db: &dyn LoomDb, id: &str) -> Result<bool> {
         }
     }
     db.execute(&format!(
-        "MATCH (v:Validation {{id: '{}'}}) DETACH DELETE v", esc(id)
+        "MATCH (v:Validation {{id: '{}'}}) DETACH DELETE v",
+        esc(id)
     ))?;
     // VALIDATES edges died with the node — prune their notes (derived edge
     // keys embed the validation id).
@@ -166,12 +187,12 @@ pub fn delete_validation(db: &dyn LoomDb, id: &str) -> Result<bool> {
 
 fn row_to_validation(row: &[Value], cols: &HashMap<&str, usize>) -> Validation {
     Validation {
-        id:              str_val(get(row, cols, "v.id")),
-        name:            str_val(get(row, cols, "v.name")),
-        description:     str_val(get(row, cols, "v.description")),
+        id: str_val(get(row, cols, "v.id")),
+        name: str_val(get(row, cols, "v.name")),
+        description: str_val(get(row, cols, "v.description")),
         validation_type: str_val(get(row, cols, "v.validation_type")),
-        command:         str_val(get(row, cols, "v.command")),
-        last_run:        str_val(get(row, cols, "v.last_run")),
-        last_result:     str_val(get(row, cols, "v.last_result")),
+        command: str_val(get(row, cols, "v.command")),
+        last_run: str_val(get(row, cols, "v.last_run")),
+        last_result: str_val(get(row, cols, "v.last_result")),
     }
 }

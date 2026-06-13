@@ -34,13 +34,13 @@ pub mod relates_to;
 pub mod rule;
 pub mod scoring;
 pub mod serves;
-pub mod snapshot;
 pub mod smells;
+pub mod snapshot;
 pub mod stats;
 pub mod targets;
 pub mod validates;
-pub mod vocab;
 pub mod validation;
+pub mod vocab;
 
 // Flat re-export: callers use `crate::db::queries::<fn>` regardless of which
 // submodule a query lives in. `row` stays internal — only the submodules need
@@ -65,13 +65,13 @@ pub use relates_to::*;
 pub use rule::*;
 pub use scoring::*;
 pub use serves::*;
-pub use snapshot::*;
 pub use smells::*;
+pub use snapshot::*;
 pub use stats::*;
 pub use targets::*;
 pub use validates::*;
-pub use vocab::*;
 pub use validation::*;
+pub use vocab::*;
 
 #[cfg(test)]
 mod tests {
@@ -111,20 +111,20 @@ mod tests {
 
     fn intent(id: &str, name: &str) -> Intent {
         Intent {
-            id:                id.to_string(),
-            name:              name.to_string(),
-            description:       "d".to_string(),
+            id: id.to_string(),
+            name: name.to_string(),
+            description: "d".to_string(),
             abstraction_level: "feature".to_string(),
-            domain:            "test".to_string(),
-            layer:             String::new(),
-            source_refs:       Vec::new(),
-            status:            "proposed".to_string(),
-            aspect:            String::new(),
-            tags:              Vec::new(),
-            visibility:        String::new(),
-            lifecycle:         "implemented".to_string(),
-            created_at:        "t0".to_string(),
-            updated_at:        "t0".to_string(),
+            domain: "test".to_string(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "proposed".to_string(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: String::new(),
+            lifecycle: "implemented".to_string(),
+            created_at: "t0".to_string(),
+            updated_at: "t0".to_string(),
         }
     }
 
@@ -157,8 +157,14 @@ mod tests {
         let all = list_relates_to(&db, None).unwrap();
         assert_eq!(all.len(), created.len(), "list lost edges");
         for (eid, from, to) in &created {
-            assert!(get_relates_to(&db, eid).unwrap().is_some(), "edge {eid} missing by id");
-            assert!(get_relates_to_between(&db, from, to).unwrap().is_some(), "edge {from}->{to} missing by endpoints");
+            assert!(
+                get_relates_to(&db, eid).unwrap().is_some(),
+                "edge {eid} missing by id"
+            );
+            assert!(
+                get_relates_to_between(&db, from, to).unwrap().is_some(),
+                "edge {from}->{to} missing by endpoints"
+            );
         }
     }
 
@@ -183,14 +189,31 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
 
-        assert!(update_relates_to_ground(&db, &ids[0], &ids[1], "crit", "checked at src/x.rs:1-9", 0.9, "llm", "t").unwrap());
-        let e0 = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        assert!(update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "crit",
+            "checked at src/x.rs:1-9",
+            0.9,
+            "llm",
+            "t"
+        )
+        .unwrap());
+        let e0 = get_relates_to_between(&db, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         assert_eq!(e0.inspection_status, "passing");
         assert_eq!(e0.criterion, "crit");
-        assert_eq!(e0.evidence, "checked at src/x.rs:1-9", "ground records what was found");
+        assert_eq!(
+            e0.evidence, "checked at src/x.rs:1-9",
+            "ground records what was found"
+        );
         assert!((e0.confidence - 0.9).abs() < 1e-9);
 
-        assert!(update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap());
+        assert!(
+            update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap()
+        );
         let failing = list_relates_to(&db, Some("failing")).unwrap();
         assert_eq!(failing.len(), 1);
         assert_eq!(failing[0].evidence, "ev");
@@ -200,9 +223,14 @@ mod tests {
         // failure evidence behind the new green (evidence belongs to the
         // verdict that recorded it).
         assert!(update_relates_to_ground(&db, &ids[0], &ids[2], "c", "", 0.9, "llm", "t").unwrap());
-        let regrounded = get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap();
+        let regrounded = get_relates_to_between(&db, &ids[0], &ids[2])
+            .unwrap()
+            .unwrap();
         assert_eq!(regrounded.inspection_status, "passing");
-        assert_eq!(regrounded.evidence, "", "stale failing evidence cleared on re-ground");
+        assert_eq!(
+            regrounded.evidence, "",
+            "stale failing evidence cleared on re-ground"
+        );
     }
 
     /// independent is a state on RELATES_TO, not a separate edge.
@@ -210,8 +238,12 @@ mod tests {
     fn independent_persists() {
         let (db, ids) = db_with_intents(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        assert!(update_relates_to_independent(&db, &ids[0], &ids[1], "unrelated", "llm", "t").unwrap());
-        let e = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        assert!(
+            update_relates_to_independent(&db, &ids[0], &ids[1], "unrelated", "llm", "t").unwrap()
+        );
+        let e = get_relates_to_between(&db, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         assert_eq!(e.inspection_status, "independent");
         assert_eq!(e.notes, "unrelated");
     }
@@ -227,11 +259,25 @@ mod tests {
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
         update_relates_to_issue(&db, &ids[0], &ids[2], "c", "ev", 0.9, "llm", "t").unwrap();
 
-        let e1 = get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap();
+        let e1 = get_relates_to_between(&db, &ids[0], &ids[2])
+            .unwrap()
+            .unwrap();
         assert!(fix_edge(&db, &e1.id, "fixed", "llm:fixer", "t").unwrap());
 
-        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap().inspection_status, "passing");
-        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().inspection_status, "needs_reverification");
+        assert_eq!(
+            get_relates_to_between(&db, &ids[0], &ids[2])
+                .unwrap()
+                .unwrap()
+                .inspection_status,
+            "passing"
+        );
+        assert_eq!(
+            get_relates_to_between(&db, &ids[0], &ids[1])
+                .unwrap()
+                .unwrap()
+                .inspection_status,
+            "needs_reverification"
+        );
     }
 
     /// Discovery surfaces existing uninspected edges; when none remain it falls
@@ -243,7 +289,9 @@ mod tests {
 
         let pairs = unexplored_pairs_scored(&db).unwrap();
         assert_eq!(pairs.len(), 3); // C(3,2)
-        assert!(pairs.iter().all(|(e, _)| e.inspection_status == "unexplored" && e.id.is_empty()));
+        assert!(pairs
+            .iter()
+            .all(|(e, _)| e.inspection_status == "unexplored" && e.id.is_empty()));
 
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         assert_eq!(unexplored_pairs_scored(&db).unwrap().len(), 2);
@@ -254,14 +302,14 @@ mod tests {
 
     fn note(id: &str, kind: &str, tk: &str, tid: &str) -> Note {
         Note {
-            id:          id.to_string(),
-            kind:        kind.to_string(),
-            text:        "t".to_string(),
-            author:      "llm".to_string(),
+            id: id.to_string(),
+            kind: kind.to_string(),
+            text: "t".to_string(),
+            author: "llm".to_string(),
             target_kind: tk.to_string(),
-            target_id:   tid.to_string(),
-            audience:    String::new(),
-            created_at:  "t0".to_string(),
+            target_id: tid.to_string(),
+            audience: String::new(),
+            created_at: "t0".to_string(),
         }
     }
 
@@ -295,13 +343,24 @@ mod tests {
     #[test]
     fn sync_flip_cause_round_trips() {
         let db = GrafeoDb::in_memory();
-        record_sync_flip(&db, "edge", "e1", "passing", "needs_reverification",
-            "src/db/mod.rs changed", "t1").unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            "e1",
+            "passing",
+            "needs_reverification",
+            "src/db/mod.rs changed",
+            "t1",
+        )
+        .unwrap();
         let n = &notes_for_target(&db, "e1").unwrap()[0];
         assert_eq!(parse_sync_cause(&n.text), Some("src/db/mod.rs"));
         // Verdict transitions and free-form causes are NOT file groups.
         assert_eq!(parse_sync_cause("passing → failing"), None);
-        assert_eq!(parse_sync_cause("? → needs_reverification (sync: locator missing)"), None);
+        assert_eq!(
+            parse_sync_cause("? → needs_reverification (sync: locator missing)"),
+            None
+        );
     }
 
     // --- doctor / integrity ---
@@ -309,18 +368,31 @@ mod tests {
     /// Init helper that also writes the LoomMeta sentinel doctor expects.
     fn db_inited(n: usize) -> (GrafeoDb, Vec<String>) {
         let (db, ids) = db_with_intents(n);
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned"))
-            .unwrap();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-test",
+            "testgraph",
+            "owned",
+        ))
+        .unwrap();
         (db, ids)
     }
 
     #[test]
     fn ignore_round_trip() {
         let db = GrafeoDb::in_memory();
-        insert_ignore(&db, &Ignore {
-            id: "ig1".into(), pattern: "fixtures/**".into(), reason: "fixtures".into(),
-            author: "llm".into(), created_at: "t".into(),
-        }).unwrap();
+        insert_ignore(
+            &db,
+            &Ignore {
+                id: "ig1".into(),
+                pattern: "fixtures/**".into(),
+                reason: "fixtures".into(),
+                author: "llm".into(),
+                created_at: "t".into(),
+            },
+        )
+        .unwrap();
         let list = list_ignores(&db).unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].pattern, "fixtures/**");
@@ -333,12 +405,29 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // The criterion must be substantive — doctor audits verdicts for
         // vacuous criteria (the write-time gate enforces the same rule).
-        update_relates_to_ground(&db, &ids[0], &ids[1], "both intents persist via the same session", "", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "both intents persist via the same session",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
         insert_note(&db, &note("n1", "idea", "intent", &ids[0])).unwrap();
-        insert_ignore(&db, &Ignore {
-            id: "ig1".into(), pattern: "fixtures/**".into(), reason: "fixtures".into(),
-            author: "llm".into(), created_at: "t".into(),
-        }).unwrap();
+        insert_ignore(
+            &db,
+            &Ignore {
+                id: "ig1".into(),
+                pattern: "fixtures/**".into(),
+                reason: "fixtures".into(),
+                author: "llm".into(),
+                created_at: "t".into(),
+            },
+        )
+        .unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(rep.healthy(), "expected healthy, issues: {:?}", rep.issues);
     }
@@ -354,7 +443,9 @@ mod tests {
         .unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(
-            rep.issues.iter().any(|i| i.contains("missing property 'status'")),
+            rep.issues
+                .iter()
+                .any(|i| i.contains("missing property 'status'")),
             "issues: {:?}",
             rep.issues
         );
@@ -374,7 +465,9 @@ mod tests {
         .unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(
-            rep.issues.iter().any(|i| i.contains("missing property 'inspection_status'")),
+            rep.issues
+                .iter()
+                .any(|i| i.contains("missing property 'inspection_status'")),
             "issues: {:?}",
             rep.issues
         );
@@ -409,7 +502,14 @@ mod tests {
     }
 
     fn codefile(id: &str, path: &str) -> CodeFile {
-        CodeFile { id: id.into(), path: path.into(), language: "rust".into(), last_modified: "".into(), imports: Vec::new(), content_hash: "".into() }
+        CodeFile {
+            id: id.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: "".into(),
+            imports: Vec::new(),
+            content_hash: "".into(),
+        }
     }
 
     /// IMPLEMENTS is a structural grounding assertion → defaults to `passing`,
@@ -417,7 +517,14 @@ mod tests {
     #[test]
     fn implements_defaults_passing() {
         let (db, ids) = db_with_intents(1);
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned")).unwrap();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-test",
+            "testgraph",
+            "owned",
+        ))
+        .unwrap();
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
@@ -442,19 +549,41 @@ mod tests {
             tag_intent(&db, id, &["core"]);
         }
 
-        assert!(scored_candidates(&db, "discovery").unwrap().is_empty(), "next has discovery work");
-        assert!(unexplored_pairs_scored(&db).unwrap().is_empty(), "unexplored pairs remain");
+        assert!(
+            scored_candidates(&db, "discovery").unwrap().is_empty(),
+            "next has discovery work"
+        );
+        assert!(
+            unexplored_pairs_scored(&db).unwrap().is_empty(),
+            "unexplored pairs remain"
+        );
         let gs = graph_state(&db).unwrap();
-        assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
+        assert!(
+            gs.vertically_complete,
+            "spine should be complete: {:?}",
+            vertical_completeness(&db).unwrap()
+        );
         assert!(gs.horizontally_explored, "grid should be explored");
         // Unproven implemented leaves route to validate first (handoff order).
-        assert_eq!(gs.phase, "validate", "unproven leaves route to validate, got '{}'", gs.phase);
+        assert_eq!(
+            gs.phase, "validate",
+            "unproven leaves route to validate, got '{}'",
+            gs.phase
+        );
         use crate::types::Validation;
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         for id in ids.iter() {
             insert_validates(&db, "v0", id, "", "t").unwrap();
         }
@@ -462,28 +591,59 @@ mod tests {
         // 360°: an EMPTY normative plane blocks `complete` — coded intents with
         // zero measuring sticks route to quality (seed a pack).
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "quality", "no rules + coded intents should route to quality, got '{}'", gs.phase);
-        assert_eq!(gs.coverage.measured_pairs.total, 0, "no rules → no measuring surface");
+        assert_eq!(
+            gs.phase, "quality",
+            "no rules + coded intents should route to quality, got '{}'",
+            gs.phase
+        );
+        assert_eq!(
+            gs.coverage.measured_pairs.total, 0,
+            "no rules → no measuring surface"
+        );
 
         // Seed one rule and measure BOTH coded intents (verdict creates the
         // edge — the one-command path) → now genuinely complete.
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "quality", "unmeasured pairs should route to quality");
+        assert_eq!(
+            gs.phase, "quality",
+            "unmeasured pairs should route to quality"
+        );
         assert_eq!(gs.coverage.measured_pairs.total, 2);
         for id in &ids {
             insert_governs(&db, "r0", id, "", "t").unwrap();
-            update_governs_verdict(&db, "r0", id, "passing",
-                "criterion text long enough", "evidence text long enough",
-                0.9, "llm:quality", "t").unwrap();
+            update_governs_verdict(
+                &db,
+                "r0",
+                id,
+                "passing",
+                "criterion text long enough",
+                "evidence text long enough",
+                0.9,
+                "llm:quality",
+                "t",
+            )
+            .unwrap();
         }
         // Measured + proven + grounded + explored → genuinely complete.
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.coverage.measured_pairs.covered, 2);
-        assert_eq!(gs.phase, "complete", "compass said '{}' but next is empty", gs.phase);
+        assert_eq!(
+            gs.phase, "complete",
+            "compass said '{}' but next is empty",
+            gs.phase
+        );
     }
 
     /// The stricter completeness model: an implemented leaf intent with no code
@@ -520,7 +680,11 @@ mod tests {
         insert_implements(&db, &ids[0], "cf0", "fn x", "", "t").unwrap();
 
         let vc = vertical_completeness(&db).unwrap();
-        assert_eq!(vc.unreached_codefiles, vec!["src/orphan.rs".to_string()], "{vc:?}");
+        assert_eq!(
+            vc.unreached_codefiles,
+            vec!["src/orphan.rs".to_string()],
+            "{vc:?}"
+        );
         assert!(!vc.complete);
     }
 
@@ -529,7 +693,7 @@ mod tests {
     #[test]
     fn hierarchy_enforces_tree_shape() {
         let (db, ids) = db_with_intents(3); // a, b, c
-        // a -> b is fine.
+                                            // a -> b is fine.
         insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         // a -> b again: duplicate, rejected.
         assert!(insert_hierarchy(&db, &ids[0], &ids[1], "", "t").is_err());
@@ -543,11 +707,28 @@ mod tests {
         assert!(insert_hierarchy(&db, &ids[2], &ids[0], "", "t").is_err());
 
         let all = list_all_hierarchy(&db).unwrap();
-        assert_eq!(all.len(), 2, "only the two valid edges should exist: {all:?}");
+        assert_eq!(
+            all.len(),
+            2,
+            "only the two valid edges should exist: {all:?}"
+        );
         // Tree is well-formed → doctor sees no hierarchy issues.
-        db.execute(&crate::db::schema::insert_meta(crate::db::schema::SCHEMA_VERSION, "t", "g-test", "testgraph", "owned")).unwrap();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-test",
+            "testgraph",
+            "owned",
+        ))
+        .unwrap();
         let rep = check_graph(&db).unwrap();
-        assert!(!rep.issues.iter().any(|i| i.contains("HIERARCHY") || i.contains("parent")), "{:?}", rep.issues);
+        assert!(
+            !rep.issues
+                .iter()
+                .any(|i| i.contains("HIERARCHY") || i.contains("parent")),
+            "{:?}",
+            rep.issues
+        );
     }
 
     /// Non-leaf intents (have children) are realized through their children, so
@@ -578,7 +759,10 @@ mod tests {
 
         let bc = build_candidates(&db).unwrap();
         assert_eq!(bc.len(), 2);
-        assert_eq!(bc[0].intent.lifecycle, "needs_change", "needs_change should outrank planned");
+        assert_eq!(
+            bc[0].intent.lifecycle, "needs_change",
+            "needs_change should outrank planned"
+        );
         assert_eq!(bc[1].intent.lifecycle, "planned");
         assert_eq!(graph_state(&db).unwrap().phase, "build");
 
@@ -596,9 +780,13 @@ mod tests {
         use crate::types::Validation;
         let (db, ids) = db_inited(2);
         let v = Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "manual_check".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
+            id: "v0".into(),
+            name: "smoke".into(),
+            description: String::new(),
+            validation_type: "manual_check".into(),
+            command: "true".into(),
+            last_run: String::new(),
+            last_result: "not_run".into(),
         };
         insert_validation(&db, &v).unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
@@ -607,7 +795,11 @@ mod tests {
         assert_eq!(linked.len(), 1);
         assert_eq!(linked[0].id, "v0");
         // ids[0] now has a validation; ids[1] still doesn't.
-        let no_val: Vec<_> = intents_without_validations(&db).unwrap().into_iter().map(|i| i.id).collect();
+        let no_val: Vec<_> = intents_without_validations(&db)
+            .unwrap()
+            .into_iter()
+            .map(|i| i.id)
+            .collect();
         assert!(!no_val.contains(&ids[0]));
         assert!(no_val.contains(&ids[1]));
     }
@@ -624,25 +816,51 @@ mod tests {
         // validate (missing proof routes there first — handoff order).
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
-            detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no_god_objects".into(),
+                description: "d".into(),
+                detection_logic: "many concerns in one unit".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "no god objects", "t").unwrap();
 
         let gov = list_governs_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(gov.len(), 1);
-        assert_eq!(gov[0].inspection_status, "uninspected", "green must be earned");
+        assert_eq!(
+            gov[0].inspection_status, "uninspected",
+            "green must be earned"
+        );
         assert_eq!(gov[0].confidence, 0.0);
         let gs = graph_state(&db).unwrap();
-        assert!(gs.vertically_complete, "spine should be complete: {:?}", vertical_completeness(&db).unwrap());
-        assert_eq!(gs.phase, "quality", "uninspected quality gate should drive the quality lane");
+        assert!(
+            gs.vertically_complete,
+            "spine should be complete: {:?}",
+            vertical_completeness(&db).unwrap()
+        );
+        assert_eq!(
+            gs.phase, "quality",
+            "uninspected quality gate should drive the quality lane"
+        );
     }
 
     /// THE COHERENCE INVARIANT: whenever the compass names an actionable
@@ -658,32 +876,58 @@ mod tests {
         fn assert_coherent(db: &GrafeoDb, step: &str) {
             let gs = graph_state(db).unwrap();
             match gs.phase.as_str() {
-                "build" => assert!(!build_candidates(db).unwrap().is_empty(),
-                    "[{step}] phase=build but build queue empty"),
-                "fix" => assert!(!scored_candidates(db, "fix").unwrap().is_empty(),
-                    "[{step}] phase=fix but fix queue empty"),
-                "validate" => assert!(!validate_candidates(db).unwrap().is_empty(),
-                    "[{step}] phase=validate but validator queue empty"),
+                "build" => assert!(
+                    !build_candidates(db).unwrap().is_empty(),
+                    "[{step}] phase=build but build queue empty"
+                ),
+                "fix" => assert!(
+                    !scored_candidates(db, "fix").unwrap().is_empty(),
+                    "[{step}] phase=fix but fix queue empty"
+                ),
+                "validate" => assert!(
+                    !validate_candidates(db).unwrap().is_empty(),
+                    "[{step}] phase=validate but validator queue empty"
+                ),
                 "quality" => {
                     // phase=quality with an empty queue is legal ONLY as the
                     // "normative plane empty — seed a pack" prompt.
                     let q = quality_candidates(db).unwrap();
                     let rules = list_rules(db).unwrap();
-                    assert!(!q.is_empty() || rules.is_empty(),
-                        "[{step}] phase=quality, rules exist, but quality queue empty");
+                    assert!(
+                        !q.is_empty() || rules.is_empty(),
+                        "[{step}] phase=quality, rules exist, but quality queue empty"
+                    );
                 }
                 "discovery" => assert!(
                     !scored_candidates(db, "discovery").unwrap().is_empty()
                         || !unexplored_pairs_scored(db).unwrap().is_empty(),
-                    "[{step}] phase=discovery but nothing to discover"),
-                "audit" => assert!(!compute_smells(db).unwrap().open.is_empty(),
-                    "[{step}] phase=audit but no open findings"),
+                    "[{step}] phase=discovery but nothing to discover"
+                ),
+                "audit" => assert!(
+                    !compute_smells(db).unwrap().open.is_empty(),
+                    "[{step}] phase=audit but no open findings"
+                ),
                 "complete" => {
-                    assert!(build_candidates(db).unwrap().is_empty(), "[{step}] complete with build work");
-                    assert!(scored_candidates(db, "fix").unwrap().is_empty(), "[{step}] complete with fix work");
-                    assert!(validate_candidates(db).unwrap().is_empty(), "[{step}] complete with validate work");
-                    assert!(quality_candidates(db).unwrap().is_empty(), "[{step}] complete with quality work");
-                    assert!(compute_smells(db).unwrap().open.is_empty(), "[{step}] complete with open findings");
+                    assert!(
+                        build_candidates(db).unwrap().is_empty(),
+                        "[{step}] complete with build work"
+                    );
+                    assert!(
+                        scored_candidates(db, "fix").unwrap().is_empty(),
+                        "[{step}] complete with fix work"
+                    );
+                    assert!(
+                        validate_candidates(db).unwrap().is_empty(),
+                        "[{step}] complete with validate work"
+                    );
+                    assert!(
+                        quality_candidates(db).unwrap().is_empty(),
+                        "[{step}] complete with quality work"
+                    );
+                    assert!(
+                        compute_smells(db).unwrap().open.is_empty(),
+                        "[{step}] complete with open findings"
+                    );
                 }
                 _ => {}
             }
@@ -708,18 +952,45 @@ mod tests {
 
         // failing relationship → fix
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough",
-            "evidence long enough", 0.9, "llm:analyzer", "t").unwrap();
+        update_relates_to_issue(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "evidence long enough",
+            0.9,
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
         assert_coherent(&db, "failing edge");
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
 
         // unproven leaves → validate
         assert_coherent(&db, "grounded, unproven");
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
@@ -727,27 +998,57 @@ mod tests {
         assert_coherent(&db, "proven, no rules");
 
         // unmeasured pairs → quality with a non-empty queue
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         assert_coherent(&db, "unmeasured rule");
         for id in &ids {
             insert_governs(&db, "r0", id, "", "t").unwrap();
-            update_governs_verdict(&db, "r0", id, "passing",
-                "criterion text long enough", "evidence text long enough",
-                0.9, "llm:quality", "t").unwrap();
+            update_governs_verdict(
+                &db,
+                "r0",
+                id,
+                "passing",
+                "criterion text long enough",
+                "evidence text long enough",
+                0.9,
+                "llm:quality",
+                "t",
+            )
+            .unwrap();
         }
 
         // stale GOVERNS → quality (historically: queue had it, compass didn't)
         let flagged = flag_governs_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
         assert_eq!(flagged, 1);
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "quality", "stale GOVERNS green must drive the compass, got '{}'", gs.phase);
+        assert_eq!(
+            gs.phase, "quality",
+            "stale GOVERNS green must drive the compass, got '{}'",
+            gs.phase
+        );
         assert_coherent(&db, "stale GOVERNS");
-        update_governs_verdict(&db, "r0", &ids[0], "passing",
-            "criterion text long enough", "evidence text long enough",
-            0.9, "llm:quality", "t3").unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "criterion text long enough",
+            "evidence text long enough",
+            0.9,
+            "llm:quality",
+            "t3",
+        )
+        .unwrap();
 
         // everything addressed → complete
         let gs = graph_state(&db).unwrap();
@@ -759,25 +1060,62 @@ mod tests {
         let id2 = "intent-2";
         insert_intent(&db, &intent(id2, "I2")).unwrap();
         get_or_create_relates_to(&db, &ids[0], id2, "t4").unwrap();
-        update_relates_to_ground(&db, &ids[0], id2, "criterion long enough", "", 0.9, "llm", "t4").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            id2,
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t4",
+        )
+        .unwrap();
         get_or_create_relates_to(&db, &ids[1], id2, "t4").unwrap();
-        update_relates_to_ground(&db, &ids[1], id2, "criterion long enough", "", 0.9, "llm", "t4").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[1],
+            id2,
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t4",
+        )
+        .unwrap();
         insert_implements(&db, id2, "cf", "fn z", "", "t4").unwrap();
         tag_intent(&db, id2, &["core"]);
         insert_validates(&db, "v0", id2, "", "t4").unwrap();
         insert_governs(&db, "r0", id2, "", "t4").unwrap();
-        update_governs_verdict(&db, "r0", id2, "passing",
-            "criterion text long enough", "evidence text long enough",
-            0.9, "llm:quality", "t4").unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            id2,
+            "passing",
+            "criterion text long enough",
+            "evidence text long enough",
+            0.9,
+            "llm:quality",
+            "t4",
+        )
+        .unwrap();
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "audit", "an open finding must gate green, got '{}'", gs.phase);
+        assert_eq!(
+            gs.phase, "audit",
+            "an open finding must gate green, got '{}'",
+            gs.phase
+        );
         assert_coherent(&db, "open finding");
 
         // Adjudicate it: a decision note on the FILE, newer than its newest
         // claim — refuting a suspicion is as valuable as fixing it.
         insert_note(&db, &note_at("nd0", "decision", "codefile", "cf", "t9")).unwrap();
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "complete", "adjudicated finding must clear the gate, got '{}'", gs.phase);
+        assert_eq!(
+            gs.phase, "complete",
+            "adjudicated finding must clear the gate, got '{}'",
+            gs.phase
+        );
         assert_coherent(&db, "adjudicated complete");
 
         // The pre-decision plane never gates green, but rotting proposals must
@@ -785,12 +1123,21 @@ mod tests {
         // the prove queue (the only push surface the plane has).
         insert_hypothesis(&db, &hypothesis("h-pending", "split the scoring module")).unwrap();
         let gs = graph_state(&db).unwrap();
-        assert_eq!(gs.phase, "complete", "a proposed hypothesis must NOT gate green, got '{}'", gs.phase);
+        assert_eq!(
+            gs.phase, "complete",
+            "a proposed hypothesis must NOT gate green, got '{}'",
+            gs.phase
+        );
         assert!(
             gs.next_action.contains("1 proposed hypothesis"),
-            "complete message must disclose pending proofs: {}", gs.next_action
+            "complete message must disclose pending proofs: {}",
+            gs.next_action
         );
-        assert!(gs.next_action.contains("--mode prove"), "{}", gs.next_action);
+        assert!(
+            gs.next_action.contains("--mode prove"),
+            "{}",
+            gs.next_action
+        );
         assert_coherent(&db, "complete with pending proposal");
     }
 
@@ -801,22 +1148,59 @@ mod tests {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // fail → fix → fail again: two regressions.
-        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence one", 0.9, "llm:analyzer", "t1").unwrap();
-        let e = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        update_relates_to_issue(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "evidence one",
+            0.9,
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
+        let e = get_relates_to_between(&db, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         fix_edge(&db, &e.id, "patched once", "llm:fixer", "t2").unwrap();
-        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence two", 0.9, "llm:analyzer", "t3").unwrap();
+        update_relates_to_issue(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "evidence two",
+            0.9,
+            "llm:analyzer",
+            "t3",
+        )
+        .unwrap();
 
         let transitions = list_notes(&db, Some(&e.id), Some("transition")).unwrap();
-        assert!(transitions.len() >= 3, "every verdict change recorded: {transitions:?}");
+        assert!(
+            transitions.len() >= 3,
+            "every verdict change recorded: {transitions:?}"
+        );
 
         let smells = compute_smells(&db).unwrap().open;
-        let rec: Vec<_> = smells.iter().filter(|s| s.kind == "recurrent_trouble").collect();
+        let rec: Vec<_> = smells
+            .iter()
+            .filter(|s| s.kind == "recurrent_trouble")
+            .collect();
         assert_eq!(rec.len(), 1, "{smells:?}");
-        assert!(rec[0].summary.contains("regressed 2 times"), "{}", rec[0].summary);
-        assert!(rec[0].evidence.contains("2 transition(s)"), "{}", rec[0].evidence);
+        assert!(
+            rec[0].summary.contains("regressed 2 times"),
+            "{}",
+            rec[0].summary
+        );
+        assert!(
+            rec[0].evidence.contains("2 transition(s)"),
+            "{}",
+            rec[0].evidence
+        );
         assert!(
             rec[0].evidence.contains("the last at t3"),
-            "evidence must carry the last regression timestamp: {}", rec[0].evidence
+            "evidence must carry the last regression timestamp: {}",
+            rec[0].evidence
         );
         assert!(
             rec[0]
@@ -826,23 +1210,27 @@ mod tests {
             rec[0].evidence
         );
         assert!(
-            rec[0]
-                .evidence
-                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            rec[0].evidence.contains(&format!(
+                "loom note list --edge {} --kind transition --limit 0",
+                e.id
+            )),
             "{}",
             rec[0].evidence
         );
         assert_smell_teaching(rec[0]);
         assert!(
-            rec[0].teaching.principle.contains("patching again is suspect"),
+            rec[0]
+                .teaching
+                .principle
+                .contains("patching again is suspect"),
             "{:?}",
             rec[0].teaching
         );
         assert!(
-            rec[0]
-                .teaching
-                .inspect
-                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            rec[0].teaching.inspect.contains(&format!(
+                "loom note list --edge {} --kind transition --limit 0",
+                e.id
+            )),
             "{:?}",
             rec[0].teaching
         );
@@ -866,16 +1254,27 @@ mod tests {
             .expect("resolved recurrent trouble should retain its ruling");
         assert_adjudicated_teaching(adj);
         assert!(
-            adj.teaching
-                .inspect
-                .contains(&format!("loom note list --edge {} --kind transition --limit 0", e.id)),
+            adj.teaching.inspect.contains(&format!(
+                "loom note list --edge {} --kind transition --limit 0",
+                e.id
+            )),
             "{:?}",
             adj.teaching
         );
 
         // …but a NEW regression after the decision re-flags it.
         fix_edge(&db, &e.id, "patched again", "llm:fixer", "t5").unwrap();
-        update_relates_to_issue(&db, &ids[0], &ids[1], "criterion long enough", "evidence three", 0.9, "llm:analyzer", "t6").unwrap();
+        update_relates_to_issue(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "evidence three",
+            0.9,
+            "llm:analyzer",
+            "t6",
+        )
+        .unwrap();
         let smells = compute_smells(&db).unwrap().open;
         assert!(
             smells.iter().any(|s| s.kind == "recurrent_trouble"),
@@ -903,14 +1302,26 @@ mod tests {
         insert_implements(&db, "b", "cfb", "", "", "t").unwrap();
 
         let report = compute_smells(&db).unwrap();
-        assert_eq!(report.coded_intents, 2, "only intents with IMPLEMENTS count");
-        assert_eq!(report.tagged_coded_intents, 1, "only the tagged coded intent counts");
-        assert_eq!(report.coded_layers, 1, "distinct layers across coded intents");
+        assert_eq!(
+            report.coded_intents, 2,
+            "only intents with IMPLEMENTS count"
+        );
+        assert_eq!(
+            report.tagged_coded_intents, 1,
+            "only the tagged coded intent counts"
+        );
+        assert_eq!(
+            report.coded_layers, 1,
+            "distinct layers across coded intents"
+        );
         assert_eq!(report.declared_layers, 0, "no order declared yet");
 
         set_layer_order(&db, &["presentation".into(), "storage".into()]).unwrap();
         let report = compute_smells(&db).unwrap();
-        assert_eq!(report.declared_layers, 2, "the report reflects the armed instrument");
+        assert_eq!(
+            report.declared_layers, 2,
+            "the report reflects the armed instrument"
+        );
     }
 
     /// Undeclared coupling: file A imports file B, their owning intents have no
@@ -928,17 +1339,38 @@ mod tests {
         update_codefile_imports(&db, "cfa", &["src/b.rs".to_string()]).unwrap();
 
         let smells = compute_smells(&db).unwrap().open;
-        assert!(smells.iter().any(|s| s.kind == "undeclared_coupling"
-            && s.evidence.contains("src/a.rs → src/b.rs")), "{smells:?}");
+        assert!(
+            smells
+                .iter()
+                .any(|s| s.kind == "undeclared_coupling"
+                    && s.evidence.contains("src/a.rs → src/b.rs")),
+            "{smells:?}"
+        );
         let pairs = unexplored_pairs_scored(&db).unwrap();
-        assert!(pairs[0].0.notes.contains("imports each other"), "{}", pairs[0].0.notes);
+        assert!(
+            pairs[0].0.notes.contains("imports each other"),
+            "{}",
+            pairs[0].0.notes
+        );
 
         get_or_create_relates_to(&db, "a", "b", "t").unwrap();
-        update_relates_to_ground(&db, "a", "b", "alpha calls beta through its public surface", "", 0.9, "llm:analyzer", "t").unwrap();
-        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "undeclared_coupling"));
+        update_relates_to_ground(
+            &db,
+            "a",
+            "b",
+            "alpha calls beta through its public surface",
+            "",
+            0.9,
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
+        assert!(!compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "undeclared_coupling"));
     }
-
-
 
     /// Portability: export is deterministic, and an import into a fresh graph
     /// reproduces every node and edge with its meta intact.
@@ -951,17 +1383,43 @@ mod tests {
         update_codefile_imports(&db, "cf", &["src/y.rs".to_string()]).unwrap();
         insert_implements(&db, &ids[1], "cf", "fn x", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "parent and child coexist by design", "", 0.8, "llm:analyzer", "t").unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no_sql".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "parent and child coexist by design",
+            "",
+            0.8,
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no_sql".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[1], "", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
         set_intent_visibility(&db, &ids[0], "internal", "t2").unwrap();
 
@@ -977,14 +1435,19 @@ mod tests {
         let report = import_graph(&db2, &export, false).unwrap();
         assert!(report.nodes >= 5 && report.edges >= 5, "{report:?}");
         // Spot-check fidelity: verdict meta and imports survive the trip.
-        let e = get_relates_to_between(&db2, &ids[0], &ids[1]).unwrap().unwrap();
+        let e = get_relates_to_between(&db2, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         assert_eq!(e.inspection_status, "passing");
         assert_eq!(e.criterion, "parent and child coexist by design");
         assert!((e.confidence - 0.8).abs() < 1e-9);
         let cf = list_codefiles(&db2).unwrap();
         assert_eq!(cf[0].imports, vec!["src/y.rs".to_string()]);
         let i0 = get_intent(&db2, &ids[0]).unwrap().unwrap();
-        assert_eq!(i0.visibility, "internal", "the audience ruling survives the trip");
+        assert_eq!(
+            i0.visibility, "internal",
+            "the audience ruling survives the trip"
+        );
         // Re-import into the same graph must refuse (restoration, not merge).
         assert!(import_graph(&db2, &export, false).is_err());
     }
@@ -997,17 +1460,36 @@ mod tests {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Grounding records a transition note targeting the edge.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "pair coexists by design here", "", 0.9, "llm:analyzer", "t").unwrap();
-        let key = crate::db::schema::edge_key(
-            crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
-        assert!(!notes_for_target(&db, &key).unwrap().is_empty(), "transition note exists");
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "pair coexists by design here",
+            "",
+            0.9,
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
+        let key =
+            crate::db::schema::edge_key(crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
+        assert!(
+            !notes_for_target(&db, &key).unwrap().is_empty(),
+            "transition note exists"
+        );
 
         // A pre-existing orphan (simulates v3-era damage).
-        insert_note(&db, &note("orphan", "question", "edge", "rt:ghost-a:ghost-b")).unwrap();
+        insert_note(
+            &db,
+            &note("orphan", "question", "edge", "rt:ghost-a:ghost-b"),
+        )
+        .unwrap();
 
         delete_intent(&db, &ids[0]).unwrap();
-        assert!(notes_for_target(&db, &key).unwrap().is_empty(),
-            "edge notes must die with the edge");
+        assert!(
+            notes_for_target(&db, &key).unwrap().is_empty(),
+            "edge notes must die with the edge"
+        );
 
         let dangling = dangling_notes(&db).unwrap();
         assert_eq!(dangling.len(), 1, "{dangling:?}");
@@ -1047,15 +1529,20 @@ mod tests {
 
         let db2 = GrafeoDb::in_memory();
         import_graph(&db2, &export, false).unwrap();
-        let derived = crate::db::schema::edge_key(
-            crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
+        let derived =
+            crate::db::schema::edge_key(crate::db::schema::edge::RELATES_TO, &ids[0], &ids[1]);
         let notes = list_notes(&db2, None, None).unwrap();
         let n = notes.iter().find(|n| n.target_kind == "edge").unwrap();
-        assert_eq!(n.target_id, derived, "edge-targeted note must remap to the derived key");
+        assert_eq!(
+            n.target_id, derived,
+            "edge-targeted note must remap to the derived key"
+        );
         // v5 upgrade: stringified list props arrive as native lists.
         let re_export = export_graph(&db2).unwrap();
-        assert!(re_export["nodes"]["Intent"][0]["source_refs"].is_array(),
-            "list props must re-export as real arrays after the upgrade");
+        assert!(
+            re_export["nodes"]["Intent"][0]["source_refs"].is_array(),
+            "list props must re-export as real arrays after the upgrade"
+        );
 
         // A version with no upgrade path still rejects loudly.
         export["schema_version"] = serde_json::json!("2");
@@ -1073,7 +1560,9 @@ mod tests {
             "edges": {},
         });
 
-        let err = import_graph(&db, &malformed, false).unwrap_err().to_string();
+        let err = import_graph(&db, &malformed, false)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("missing `nodes.Intent` array"), "{err}");
     }
 
@@ -1109,7 +1598,10 @@ mod tests {
 
         let counted = count_unexplored_pairs(&db).unwrap();
         let enumerated = unexplored_pairs_scored(&db).unwrap().len() as i64;
-        assert_eq!(counted, enumerated, "cheap count must equal full enumeration");
+        assert_eq!(
+            counted, enumerated,
+            "cheap count must equal full enumeration"
+        );
         assert_eq!(counted, 8); // 10 − {0,1} − {2,3}
     }
     /// The discovery numbers must ADD UP: explored_pairs.total ==
@@ -1136,7 +1628,10 @@ mod tests {
         let gs = graph_state(&db).unwrap();
         let ax = &gs.coverage.explored_pairs;
         assert_eq!((ax.covered, ax.total), (1, 3), "active-only grid");
-        assert_eq!(gs.unexplored_pairs, 1, "pair 0×2 is the only unexplored one");
+        assert_eq!(
+            gs.unexplored_pairs, 1,
+            "pair 0×2 is the only unexplored one"
+        );
         // The identity an agent reconciles by hand: total = covered + pending + unexplored.
         assert_eq!(ax.total, ax.covered + 1 + gs.unexplored_pairs);
     }
@@ -1148,19 +1643,39 @@ mod tests {
     fn blocked_validation_leaves_queue_and_survives_sync() {
         use crate::types::Validation;
         let (db, ids) = db_inited(1);
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "external smoke".into(), description: String::new(),
-            validation_type: "manual_check".into(), command: String::new(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "external smoke".into(),
+                description: String::new(),
+                validation_type: "manual_check".into(),
+                command: String::new(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         // not_run → in the validator queue
-        assert!(validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+        assert!(validate_candidates(&db)
+            .unwrap()
+            .iter()
+            .any(|c| c.intent.id == ids[0]));
 
         update_validation_result(&db, "v0", "blocked", "t1").unwrap();
-        set_validates_status_for_validation(&db, "v0", "uninspected", "blocked: needs a live target URL").unwrap();
+        set_validates_status_for_validation(
+            &db,
+            "v0",
+            "uninspected",
+            "blocked: needs a live target URL",
+        )
+        .unwrap();
         // blocked → out of the queue, compass no longer routes to validate
-        assert!(!validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+        assert!(!validate_candidates(&db)
+            .unwrap()
+            .iter()
+            .any(|c| c.intent.id == ids[0]));
         assert_ne!(graph_state(&db).unwrap().phase, "validate");
 
         // a code change doesn't unblock it (and doesn't erase the state)
@@ -1168,7 +1683,10 @@ mod tests {
         insert_implements(&db, &ids[0], "cf", "", "", "t").unwrap();
         let n = invalidate_validations_for_codefile(&db, "cf").unwrap();
         assert_eq!(n, 0, "blocked proofs are not flipped to not_run");
-        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "blocked");
+        assert_eq!(
+            get_validation(&db, "v0").unwrap().unwrap().last_result,
+            "blocked"
+        );
     }
 
     /// `intent source add/remove` — source_refs is editable after creation
@@ -1182,13 +1700,23 @@ mod tests {
         assert!(add_source_ref(&db, &ids[0], "docs/CONTRACT.md", "t1").unwrap());
         assert!(add_source_ref(&db, &ids[0], "src/main.rs", "t2").unwrap());
         assert!(add_source_ref(&db, &ids[0], "docs/CONTRACT.md", "t3").unwrap()); // idempotent
-        assert_eq!(refs(&db), vec!["docs/CONTRACT.md".to_string(), "src/main.rs".to_string()]);
-        assert_eq!(remove_source_ref(&db, &ids[0], "src/main.rs", "t4").unwrap(), Some(true));
-        assert_eq!(remove_source_ref(&db, &ids[0], "src/main.rs", "t5").unwrap(), Some(false));
+        assert_eq!(
+            refs(&db),
+            vec!["docs/CONTRACT.md".to_string(), "src/main.rs".to_string()]
+        );
+        assert_eq!(
+            remove_source_ref(&db, &ids[0], "src/main.rs", "t4").unwrap(),
+            Some(true)
+        );
+        assert_eq!(
+            remove_source_ref(&db, &ids[0], "src/main.rs", "t5").unwrap(),
+            Some(false)
+        );
         assert_eq!(refs(&db), vec!["docs/CONTRACT.md".to_string()]);
-        assert!(remove_source_ref(&db, "ghost", "x", "t6").unwrap().is_none());
+        assert!(remove_source_ref(&db, "ghost", "x", "t6")
+            .unwrap()
+            .is_none());
     }
-
 
     /// The content fingerprint round-trips and is the sync change baseline.
     #[test]
@@ -1208,12 +1736,24 @@ mod tests {
     #[test]
     fn sync_flip_note_names_the_cause() {
         let (db, ids) = db_with_intents(1);
-        record_sync_flip(&db, "edge", "e0", "passing", "needs_reverification",
-            "src/db/mod.rs changed", "t").unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            "e0",
+            "passing",
+            "needs_reverification",
+            "src/db/mod.rs changed",
+            "t",
+        )
+        .unwrap();
         let notes = notes_for_target(&db, "e0").unwrap();
         assert_eq!(notes.len(), 1);
         assert_eq!(notes[0].kind, "transition");
-        assert!(notes[0].text.contains("(sync: src/db/mod.rs changed)"), "{}", notes[0].text);
+        assert!(
+            notes[0].text.contains("(sync: src/db/mod.rs changed)"),
+            "{}",
+            notes[0].text
+        );
         // …and it never reads as a verdict regression to the recurrence smell.
         assert!(!notes[0].text.ends_with("→ failing"));
         let _ = ids;
@@ -1227,18 +1767,39 @@ mod tests {
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Verdict recorded with the 0.0 default — query layer permits it; the
         // command-layer gate normally prevents it; doctor must catch it.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.0, "llm", "t1").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "a real, falsifiable criterion",
+            "",
+            0.0,
+            "llm",
+            "t1",
+        )
+        .unwrap();
         let rep = check_graph(&db).unwrap();
-        assert!(rep.issues.iter().any(|i| i.contains("confidence 0.0")), "{:?}", rep.issues);
+        assert!(
+            rep.issues.iter().any(|i| i.contains("confidence 0.0")),
+            "{:?}",
+            rep.issues
+        );
 
         // Erase the timestamp behind the verdict → second flavour of the same lie.
         db.execute(&format!(
             "MATCH (a:Intent {{id: '{}'}})-[r:RELATES_TO]->(b:Intent {{id: '{}'}}) \
              SET r.last_inspected = '', r.confidence = 0.9",
             ids[0], ids[1]
-        )).unwrap();
+        ))
+        .unwrap();
         let rep = check_graph(&db).unwrap();
-        assert!(rep.issues.iter().any(|i| i.contains("last_inspected is empty")), "{:?}", rep.issues);
+        assert!(
+            rep.issues
+                .iter()
+                .any(|i| i.contains("last_inspected is empty")),
+            "{:?}",
+            rep.issues
+        );
     }
 
     /// Solo-mode provenance is legal but worth a nudge: all-bare verdicts →
@@ -1247,14 +1808,42 @@ mod tests {
     fn doctor_hints_solo_mode_provenance() {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.9, "llm", "t1").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "a real, falsifiable criterion",
+            "",
+            0.9,
+            "llm",
+            "t1",
+        )
+        .unwrap();
         let rep = check_graph(&db).unwrap();
-        assert!(rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
+        assert!(
+            rep.hints.iter().any(|h| h.contains("solo mode")),
+            "{:?}",
+            rep.hints
+        );
         assert!(rep.healthy(), "hints never fail doctor: {:?}", rep.issues);
 
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a real, falsifiable criterion", "", 0.9, "llm:analyzer", "t2").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "a real, falsifiable criterion",
+            "",
+            0.9,
+            "llm:analyzer",
+            "t2",
+        )
+        .unwrap();
         let rep = check_graph(&db).unwrap();
-        assert!(!rep.hints.iter().any(|h| h.contains("solo mode")), "{:?}", rep.hints);
+        assert!(
+            !rep.hints.iter().any(|h| h.contains("solo mode")),
+            "{:?}",
+            rep.hints
+        );
     }
 
     /// Federation: a graph has an identity that travels with its export, and a
@@ -1263,11 +1852,22 @@ mod tests {
     fn graph_identity_travels_through_export_import() {
         let (db, _) = db_with_intents(1);
         db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-grid", "grid", "observed",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-grid",
+            "grid",
+            "observed",
+        ))
+        .unwrap();
         let m = get_meta(&db).unwrap().unwrap();
-        assert_eq!((m.graph_id.as_str(), m.graph_name.as_str(), m.custody.as_str()),
-                   ("g-grid", "grid", "observed"));
+        assert_eq!(
+            (
+                m.graph_id.as_str(),
+                m.graph_name.as_str(),
+                m.custody.as_str()
+            ),
+            ("g-grid", "grid", "observed")
+        );
         assert!(m.observed());
 
         let export = export_graph(&db).unwrap();
@@ -1278,11 +1878,19 @@ mod tests {
         // Fresh init elsewhere gets a placeholder identity; import adopts.
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-fresh", "fresh", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-fresh",
+            "fresh",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
         let m2 = get_meta(&db2).unwrap().unwrap();
-        assert_eq!(m2.graph_id, "g-grid", "restore adopts the exported identity");
+        assert_eq!(
+            m2.graph_id, "g-grid",
+            "restore adopts the exported identity"
+        );
         assert_eq!(m2.custody, "observed");
     }
 
@@ -1298,27 +1906,67 @@ mod tests {
         insert_codefile(&db, &codefile("cf", "src/old_lang.rs")).unwrap();
         insert_implements(&db, &ids[1], "cf", "fn old", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "parent rolls up the child's contract", "", 0.9, "llm", "t").unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "parent rolls up the child's contract",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[1], "", "t").unwrap();
-        update_governs_verdict(&db, "r0", &ids[1], "passing",
-            "criterion text long enough", "evidence from the OLD code",
-            0.9, "llm:quality", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "cargo test old".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[1],
+            "passing",
+            "criterion text long enough",
+            "evidence from the OLD code",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "cargo test old".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         let export = export_graph(&db).unwrap();
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-target", "target", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-target",
+            "target",
+            "owned",
+        ))
+        .unwrap();
         let report = import_graph(&db2, &export, true).unwrap();
         assert!(report.skipped_nodes >= 1, "codefile dropped: {report:?}");
         assert!(report.skipped_edges >= 1, "grounding dropped: {report:?}");
@@ -1332,7 +1980,9 @@ mod tests {
             assert!(list_implements_for_intent(&db2, &i.id).unwrap().is_empty());
         }
         // The contract travels; the old proof does not.
-        let e = get_relates_to_between(&db2, &ids[0], &ids[1]).unwrap().unwrap();
+        let e = get_relates_to_between(&db2, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         assert_eq!(e.inspection_status, "uninspected");
         assert_eq!(e.criterion, "parent rolls up the child's contract");
         assert!(e.evidence.is_empty(), "old-code evidence must not travel");
@@ -1340,8 +1990,14 @@ mod tests {
         assert_eq!(g.inspection_status, "uninspected");
         assert!(g.evidence.is_empty());
         let v = get_validation(&db2, "v0").unwrap().unwrap();
-        assert_eq!(v.last_result, "not_run", "the proof is a spec to re-express");
-        assert_eq!(v.command, "cargo test old", "the command text travels as the spec");
+        assert_eq!(
+            v.last_result, "not_run",
+            "the proof is a spec to re-express"
+        );
+        assert_eq!(
+            v.command, "cargo test old",
+            "the command text travels as the spec"
+        );
         // The port lands as a buildable design: the build queue is full.
         assert!(!build_candidates(&db2).unwrap().is_empty());
     }
@@ -1363,11 +2019,19 @@ mod tests {
         insert_implements(&db, &ids[1], "cf-shared", "fn a", "", "t").unwrap();
         insert_implements(&db, &ids[2], "cf-shared", "fn b", "", "t").unwrap();
         get_or_create_relates_to(&db, &ids[1], &ids[2], "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "old-proof".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "old-proof".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[1], "", "t").unwrap();
 
         // Fallout names exactly the triggered work.
@@ -1377,26 +2041,58 @@ mod tests {
         assert_eq!(f.edges_leaving_computation, 1);
         assert!(f.orphaned_children.is_empty());
 
-        assert!(retire_intent(&db, &ids[1], "superseded by a new decomposition", Some(&ids[2]), "t2").unwrap());
+        assert!(retire_intent(
+            &db,
+            &ids[1],
+            "superseded by a new decomposition",
+            Some(&ids[2]),
+            "t2"
+        )
+        .unwrap());
 
         // History: node + edges + a decision note naming the successor remain.
         let i = get_intent(&db, &ids[1]).unwrap().unwrap();
         assert_eq!(i.status, "deprecated");
         let notes = list_notes(&db, Some(&ids[1]), Some("decision")).unwrap();
-        assert!(notes.iter().any(|n| n.text.contains("replaced by")), "{notes:?}");
+        assert!(
+            notes.iter().any(|n| n.text.contains("replaced by")),
+            "{notes:?}"
+        );
 
         // Computation: the retired intent is gone from every number.
-        assert!(list_active_intents(&db).unwrap().iter().all(|i| i.id != ids[1]));
-        assert!(scored_candidates(&db, "discovery").unwrap().iter()
-            .all(|(e, _)| e.from_id != ids[1] && e.to_id != ids[1]), "queues drop its edges");
-        assert!(!all_intent_degrees(&db).unwrap().contains_key(&ids[1]), "centrality drops it");
-        assert!(validate_selection(&db).unwrap().iter().all(|(i, _, _)| i.id != ids[1]),
-            "its proofs stop nagging the validator");
+        assert!(list_active_intents(&db)
+            .unwrap()
+            .iter()
+            .all(|i| i.id != ids[1]));
+        assert!(
+            scored_candidates(&db, "discovery")
+                .unwrap()
+                .iter()
+                .all(|(e, _)| e.from_id != ids[1] && e.to_id != ids[1]),
+            "queues drop its edges"
+        );
+        assert!(
+            !all_intent_degrees(&db).unwrap().contains_key(&ids[1]),
+            "centrality drops it"
+        );
+        assert!(
+            validate_selection(&db)
+                .unwrap()
+                .iter()
+                .all(|(i, _, _)| i.id != ids[1]),
+            "its proofs stop nagging the validator"
+        );
         let vc = vertical_completeness(&db).unwrap();
-        assert!(vc.unreached_codefiles.contains(&"src/only_old.rs".to_string()),
-            "the solely-owned file surfaces as a gap: {vc:?}");
-        assert!(!vc.unreached_codefiles.contains(&"src/shared.rs".to_string()),
-            "the shared file stays reached via the sibling");
+        assert!(
+            vc.unreached_codefiles
+                .contains(&"src/only_old.rs".to_string()),
+            "the solely-owned file surfaces as a gap: {vc:?}"
+        );
+        assert!(
+            !vc.unreached_codefiles
+                .contains(&"src/shared.rs".to_string()),
+            "the shared file stays reached via the sibling"
+        );
         let gs = graph_state(&db).unwrap();
         assert_eq!(gs.intents, 2, "pulse counts active intents only");
     }
@@ -1412,51 +2108,140 @@ mod tests {
         let (db, ids) = db_with_intents(3);
         // RELATES_TO: one passing, one independent — both flip.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
-        update_relates_to_independent(&db, &ids[0], &ids[2], "verified: nothing shared", "llm", "t").unwrap();
+        update_relates_to_independent(
+            &db,
+            &ids[0],
+            &ids[2],
+            "verified: nothing shared",
+            "llm",
+            "t",
+        )
+        .unwrap();
         // IMPLEMENTS: passing by construction.
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         // GOVERNS: passing verdict.
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
-        update_governs_verdict(&db, "r0", &ids[0], "passing",
-            "criterion text long enough", "evidence text long enough", 0.9, "llm:quality", "t").unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "criterion text long enough",
+            "evidence text long enough",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
         // Proofs: one passed (flips), one blocked (keeps its reason).
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "proof".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "proof".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v1".into(), name: "blocked-proof".into(), description: String::new(),
-            validation_type: "manual_check".into(), command: String::new(),
-            last_run: String::new(), last_result: "blocked".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v1".into(),
+                name: "blocked-proof".into(),
+                description: String::new(),
+                validation_type: "manual_check".into(),
+                command: String::new(),
+                last_run: String::new(),
+                last_result: "blocked".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v1", &ids[0], "", "t").unwrap();
 
-        assert!(update_intent_meaning(&db, &ids[0], None, Some("routing now includes host matching"), "t2").unwrap());
+        assert!(update_intent_meaning(
+            &db,
+            &ids[0],
+            None,
+            Some("routing now includes host matching"),
+            "t2"
+        )
+        .unwrap());
         let r = ripple_intent_redefinition(&db, &ids[0], "I0", "t2").unwrap();
 
-        assert_eq!(get_intent(&db, &ids[0]).unwrap().unwrap().description, "routing now includes host matching");
+        assert_eq!(
+            get_intent(&db, &ids[0]).unwrap().unwrap().description,
+            "routing now includes host matching"
+        );
         assert_eq!(r.relates_to_flagged, 2, "passing AND independent flip");
         assert_eq!(r.implements_flagged, 1);
         assert_eq!(r.governs_flagged, 1);
         assert_eq!(r.validations_invalidated, 1, "blocked proof untouched");
-        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().inspection_status, "needs_reverification");
-        assert_eq!(get_relates_to_between(&db, &ids[0], &ids[2]).unwrap().unwrap().inspection_status, "needs_reverification");
-        assert_eq!(list_implements_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "needs_reverification");
-        assert_eq!(list_governs_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "needs_reverification");
-        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "not_run");
-        assert_eq!(get_validation(&db, "v1").unwrap().unwrap().last_result, "blocked");
+        assert_eq!(
+            get_relates_to_between(&db, &ids[0], &ids[1])
+                .unwrap()
+                .unwrap()
+                .inspection_status,
+            "needs_reverification"
+        );
+        assert_eq!(
+            get_relates_to_between(&db, &ids[0], &ids[2])
+                .unwrap()
+                .unwrap()
+                .inspection_status,
+            "needs_reverification"
+        );
+        assert_eq!(
+            list_implements_for_intent(&db, &ids[0]).unwrap()[0].inspection_status,
+            "needs_reverification"
+        );
+        assert_eq!(
+            list_governs_for_intent(&db, &ids[0]).unwrap()[0].inspection_status,
+            "needs_reverification"
+        );
+        assert_eq!(
+            get_validation(&db, "v0").unwrap().unwrap().last_result,
+            "not_run"
+        );
+        assert_eq!(
+            get_validation(&db, "v1").unwrap().unwrap().last_result,
+            "blocked"
+        );
         // The flip notes carry the redefinition cause, but never pollute the
         // hot-FILE grouping (`parse_sync_cause` is for "<path> changed" only).
-        let edge_id = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap().id;
+        let edge_id = get_relates_to_between(&db, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap()
+            .id;
         let n = &notes_for_target(&db, &edge_id).unwrap().pop().unwrap();
         assert!(n.text.contains("intent 'I0' redefined"), "{}", n.text);
         assert_eq!(parse_sync_cause(&n.text), None);
@@ -1472,11 +2257,23 @@ mod tests {
         let (db, ids) = db_with_intents(1);
         assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap(), None);
         record_confirmation(&db, &ids[0], "human", "t1").unwrap();
-        assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap().as_deref(), Some("t1"));
+        assert_eq!(
+            last_confirmed_at(&db, &ids[0]).unwrap().as_deref(),
+            Some("t1")
+        );
         record_confirmation(&db, &ids[0], "human", "t3").unwrap();
-        assert_eq!(last_confirmed_at(&db, &ids[0]).unwrap().as_deref(), Some("t3"), "newest stamp wins");
+        assert_eq!(
+            last_confirmed_at(&db, &ids[0]).unwrap().as_deref(),
+            Some("t3"),
+            "newest stamp wins"
+        );
         // Both events remain — alignment history, not a mutable field.
-        assert_eq!(list_notes(&db, Some(&ids[0]), Some("confirm")).unwrap().len(), 2);
+        assert_eq!(
+            list_notes(&db, Some(&ids[0]), Some("confirm"))
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     /// Centrality counts REAL relationships only: `independent` edges give the
@@ -1485,15 +2282,39 @@ mod tests {
     fn degree_excludes_independent_edges() {
         let (db, ids) = db_inited(3);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
-        update_relates_to_independent(&db, &ids[0], &ids[2],
-            "verified: no shared surface at all between these", "llm", "t").unwrap();
+        update_relates_to_independent(
+            &db,
+            &ids[0],
+            &ids[2],
+            "verified: no shared surface at all between these",
+            "llm",
+            "t",
+        )
+        .unwrap();
 
         let d = all_intent_degrees(&db).unwrap();
-        assert_eq!(*d.get(&ids[0]).unwrap_or(&0), 1, "independent edge must not count");
+        assert_eq!(
+            *d.get(&ids[0]).unwrap_or(&0),
+            1,
+            "independent edge must not count"
+        );
         assert_eq!(*d.get(&ids[1]).unwrap_or(&0), 1);
-        assert!(!d.contains_key(&ids[2]), "only an independent edge → zero centrality");
+        assert!(
+            !d.contains_key(&ids[2]),
+            "only an independent edge → zero centrality"
+        );
     }
 
     /// The review queue — confidence is the coordination channel between
@@ -1505,28 +2326,73 @@ mod tests {
         let (db, ids) = db_inited(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // A scout grounds with HONEST uncertainty.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "names overlap but the call path was not traced", "", 0.45, "llm:analyzer", "t").unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
-            inspection_effort: "high".into(),
-        }).unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "names overlap but the call path was not traced",
+            "",
+            0.45,
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: "high".into(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
-        update_governs_verdict(&db, "r0", &ids[0], "passing",
-            "criterion text long enough", "evidence text long enough",
-            0.5, "llm:quality", "t").unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "criterion text long enough",
+            "evidence text long enough",
+            0.5,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
 
         let rc = review_candidates(&db).unwrap();
         assert_eq!(rc.len(), 2, "both uncertain verdicts surface: {}", rc.len());
 
         // Reviewer confirms the edge with real confidence → off the queue.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "traced: a calls b's parser in fn run", "", 0.9, "llm:analyzer", "t2").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "traced: a calls b's parser in fn run",
+            "",
+            0.9,
+            "llm:analyzer",
+            "t2",
+        )
+        .unwrap();
         let rc = review_candidates(&db).unwrap();
         assert_eq!(rc.len(), 1, "confirmed edge resolved");
         assert!(matches!(rc[0].0, ReviewCandidate::Governs(_)));
-        update_governs_verdict(&db, "r0", &ids[0], "passing",
-            "criterion text long enough", "re-inspected: holds with specifics",
-            0.85, "llm:quality", "t3").unwrap();
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "criterion text long enough",
+            "re-inspected: holds with specifics",
+            0.85,
+            "llm:quality",
+            "t3",
+        )
+        .unwrap();
         assert!(review_candidates(&db).unwrap().is_empty(), "queue drains");
     }
 
@@ -1536,24 +2402,43 @@ mod tests {
     #[test]
     fn audience_and_effort_round_trip_and_stay_optional() {
         let (db, ids) = db_inited(1);
-        insert_note(&db, &Note {
-            id: "n0".into(), kind: "todo".into(),
-            text: "locator broke in src/x.rs — re-ground it".into(),
-            author: "llm:analyzer".into(), target_kind: "intent".into(),
-            target_id: ids[0].clone(), audience: "builder".into(),
-            created_at: "t".into(),
-        }).unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(),
-            inspection_effort: "low".into(),
-        }).unwrap();
+        insert_note(
+            &db,
+            &Note {
+                id: "n0".into(),
+                kind: "todo".into(),
+                text: "locator broke in src/x.rs — re-ground it".into(),
+                author: "llm:analyzer".into(),
+                target_kind: "intent".into(),
+                target_id: ids[0].clone(),
+                audience: "builder".into(),
+                created_at: "t".into(),
+            },
+        )
+        .unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: "low".into(),
+            },
+        )
+        .unwrap();
 
         let export = export_graph(&db).unwrap();
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-2",
+            "two",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
         let n = list_notes(&db2, Some(&ids[0]), None).unwrap();
         assert!(n.iter().any(|x| x.audience == "builder"), "{n:?}");
@@ -1570,8 +2455,13 @@ mod tests {
         }
         let db3 = GrafeoDb::in_memory();
         db3.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-3",
+            "three",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db3, &old, false).unwrap();
         assert_eq!(list_rules(&db3).unwrap()[0].inspection_effort, "");
     }
@@ -1582,9 +2472,16 @@ mod tests {
     fn custody_gate_blocks_observed_graphs() {
         let (db, _) = db_with_intents(0);
         db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-x", "vendor-sdk", "observed",
-        )).unwrap();
-        let err = ensure_owned(&db, "mark an edge fixed").unwrap_err().to_string();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-x",
+            "vendor-sdk",
+            "observed",
+        ))
+        .unwrap();
+        let err = ensure_owned(&db, "mark an edge fixed")
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("OBSERVES"), "{err}");
         assert!(err.contains("vendor-sdk"), "names the graph: {err}");
 
@@ -1597,11 +2494,17 @@ mod tests {
     fn delegation_roundtrip() {
         use crate::types::Delegation;
         let (db, _) = db_inited(0);
-        insert_delegation(&db, &Delegation {
-            id: "d0".into(), pattern: "services/grid/**".into(),
-            target: "services/grid/loom.graph.json".into(),
-            author: "llm:builder".into(), created_at: "t".into(),
-        }).unwrap();
+        insert_delegation(
+            &db,
+            &Delegation {
+                id: "d0".into(),
+                pattern: "services/grid/**".into(),
+                target: "services/grid/loom.graph.json".into(),
+                author: "llm:builder".into(),
+                created_at: "t".into(),
+            },
+        )
+        .unwrap();
         let ds = list_delegations(&db).unwrap();
         assert_eq!(ds.len(), 1);
         assert_eq!(ds[0].pattern, "services/grid/**");
@@ -1612,14 +2515,18 @@ mod tests {
 
     fn hypothesis(id: &str, name: &str) -> crate::types::Hypothesis {
         crate::types::Hypothesis {
-            id: id.into(), name: name.into(),
+            id: id.into(),
+            name: name.into(),
             claim: "scoring.rs serves four unrelated intents".into(),
             proposal: "extract discovery ranking into its own module".into(),
             predicted_outcome: "scoring.rs under 300 lines, tangled-file smell gone".into(),
-            status: "proposed".into(), author: "llm:quality".into(),
-            evidence: String::new(), inspected_by: String::new(),
+            status: "proposed".into(),
+            author: "llm:quality".into(),
+            evidence: String::new(),
+            inspected_by: String::new(),
             last_inspected: String::new(),
-            created_at: "t0".into(), updated_at: "t0".into(),
+            created_at: "t0".into(),
+            updated_at: "t0".into(),
         }
     }
 
@@ -1634,7 +2541,10 @@ mod tests {
 
         // Retrievable by id, by exact name, by unique fragment.
         assert!(get_hypothesis(&db, "h0").unwrap().is_some());
-        assert_eq!(resolve_hypothesis(&db, "split the scoring module").unwrap(), "h0");
+        assert_eq!(
+            resolve_hypothesis(&db, "split the scoring module").unwrap(),
+            "h0"
+        );
         assert_eq!(resolve_hypothesis(&db, "scoring").unwrap(), "h0");
 
         // TARGETS edges, endpoint-matched.
@@ -1647,10 +2557,14 @@ mod tests {
 
         // Proof verdict: status + evidence + provenance + transition note.
         update_hypothesis_verdict(
-            &db, "h0", "supported",
+            &db,
+            "h0",
+            "supported",
             "read scoring.rs: ranking shares no types with priority scoring",
-            "llm:analyzer", "t1",
-        ).unwrap();
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
         let h = get_hypothesis(&db, "h0").unwrap().unwrap();
         assert_eq!(h.status, "supported");
         assert_eq!(h.inspected_by, "llm:analyzer");
@@ -1659,12 +2573,19 @@ mod tests {
 
         // Decision: adopted, with its own transition note.
         set_hypothesis_status(&db, "h0", "adopted", "llm:builder", "t2").unwrap();
-        assert_eq!(get_hypothesis(&db, "h0").unwrap().unwrap().status, "adopted");
+        assert_eq!(
+            get_hypothesis(&db, "h0").unwrap().unwrap().status,
+            "adopted"
+        );
         let notes = notes_for_target(&db, "h0").unwrap();
         let transitions: Vec<_> = notes.iter().filter(|n| n.kind == "transition").collect();
         assert_eq!(transitions.len(), 2, "{notes:?}");
-        assert!(transitions.iter().any(|n| n.text.contains("proposed → supported")));
-        assert!(transitions.iter().any(|n| n.text.contains("supported → adopted")));
+        assert!(transitions
+            .iter()
+            .any(|n| n.text.contains("proposed → supported")));
+        assert!(transitions
+            .iter()
+            .any(|n| n.text.contains("supported → adopted")));
 
         // Status filter.
         assert_eq!(list_hypotheses(&db, Some("adopted")).unwrap().len(), 1);
@@ -1680,7 +2601,17 @@ mod tests {
         // Make intent 0 central: real RELATES_TO edges to the other three.
         for j in 1..4 {
             get_or_create_relates_to(&db, &ids[0], &ids[j], "t").unwrap();
-            update_relates_to_ground(&db, &ids[0], &ids[j], "they cooperate via a stable contract", "", 0.9, "llm", "t").unwrap();
+            update_relates_to_ground(
+                &db,
+                &ids[0],
+                &ids[j],
+                "they cooperate via a stable contract",
+                "",
+                0.9,
+                "llm",
+                "t",
+            )
+            .unwrap();
         }
         let mut h_central = hypothesis("h-central", "touches the hub");
         h_central.created_at = "t2".into();
@@ -1694,12 +2625,23 @@ mod tests {
 
         let q = prove_candidates(&db).unwrap();
         assert_eq!(q.len(), 3);
-        assert_eq!(q[0].0.id, "h-central", "hub-targeting proposal first: {q:?}");
+        assert_eq!(
+            q[0].0.id, "h-central",
+            "hub-targeting proposal first: {q:?}"
+        );
         assert!(q[0].1 > q[1].1);
         assert_eq!(q[2].0.id, "h-untargeted", "untargeted still surfaces, last");
 
         // A proven hypothesis leaves the prove queue.
-        update_hypothesis_verdict(&db, "h-central", "supported", "checked: the hub is real", "llm:analyzer", "t3").unwrap();
+        update_hypothesis_verdict(
+            &db,
+            "h-central",
+            "supported",
+            "checked: the hub is real",
+            "llm:analyzer",
+            "t3",
+        )
+        .unwrap();
         let q = prove_candidates(&db).unwrap();
         assert_eq!(q.len(), 2);
         assert!(q.iter().all(|(h, _)| h.status == "proposed"));
@@ -1716,16 +2658,33 @@ mod tests {
         insert_targets(&db, "h0", &ids[0], "t").unwrap();
 
         // Prove it (what `loom hypothesis prove` does): node verdict + stamp.
-        update_hypothesis_verdict(&db, "h0", "supported", "checked against the code", "llm:analyzer", "t1").unwrap();
+        update_hypothesis_verdict(
+            &db,
+            "h0",
+            "supported",
+            "checked against the code",
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
         set_targets_status_for_hypothesis(
-            &db, "h0", "passing",
+            &db,
+            "h0",
+            "passing",
             "hypothesis proof establishes whether this target is affected",
-            "checked against the code", "llm:analyzer", "t1",
-        ).unwrap();
-        assert!(prove_candidates(&db).unwrap().is_empty(), "fresh support is not prove-queue work");
+            "checked against the code",
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
+        assert!(
+            prove_candidates(&db).unwrap().is_empty(),
+            "fresh support is not prove-queue work"
+        );
 
         // Target code changes — the ripple flips the passing TARGETS edge.
-        let flipped = targets::flag_targets_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
+        let flipped =
+            targets::flag_targets_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
         assert_eq!(flipped, 1);
         let ts = list_targets_for_hypothesis(&db, "h0").unwrap();
         assert_eq!(ts[0].inspection_status, "needs_reverification");
@@ -1736,12 +2695,25 @@ mod tests {
         assert_eq!(q[0].0.status, "supported");
 
         // Re-proving re-stamps the edges and clears the queue.
-        update_hypothesis_verdict(&db, "h0", "supported", "still holds after the change", "llm:analyzer", "t3").unwrap();
+        update_hypothesis_verdict(
+            &db,
+            "h0",
+            "supported",
+            "still holds after the change",
+            "llm:analyzer",
+            "t3",
+        )
+        .unwrap();
         set_targets_status_for_hypothesis(
-            &db, "h0", "passing",
+            &db,
+            "h0",
+            "passing",
             "hypothesis proof establishes whether this target is affected",
-            "still holds after the change", "llm:analyzer", "t3",
-        ).unwrap();
+            "still holds after the change",
+            "llm:analyzer",
+            "t3",
+        )
+        .unwrap();
         assert!(prove_candidates(&db).unwrap().is_empty());
     }
 
@@ -1752,9 +2724,8 @@ mod tests {
     fn hypothesis_accumulation_smell_flags_stale_and_teaches_drain() {
         let (db, _) = db_inited(0);
         let mut h = hypothesis("h-old", "old redesign idea");
-        h.created_at = (chrono::Utc::now()
-            - chrono::Duration::days(HYPOTHESIS_STALE_DAYS + 1))
-        .to_rfc3339();
+        h.created_at =
+            (chrono::Utc::now() - chrono::Duration::days(HYPOTHESIS_STALE_DAYS + 1)).to_rfc3339();
         h.updated_at = h.created_at.clone();
         insert_hypothesis(&db, &h).unwrap();
 
@@ -1765,7 +2736,9 @@ mod tests {
             .expect("stale proposed hypothesis should surface");
         assert!(finding.summary.contains("1 proposed"), "{finding:?}");
         assert!(
-            finding.evidence.contains(&format!("older than {}d", HYPOTHESIS_STALE_DAYS)),
+            finding
+                .evidence
+                .contains(&format!("older than {}d", HYPOTHESIS_STALE_DAYS)),
             "{}",
             finding.evidence
         );
@@ -1830,10 +2803,9 @@ mod tests {
             .find(|s| s.kind == "hypothesis_accumulation")
             .expect("fresh queue at threshold should surface");
         assert!(
-            finding.summary.contains(&format!(
-                "{} proposed",
-                HYPOTHESIS_BACKLOG_LIMIT
-            )),
+            finding
+                .summary
+                .contains(&format!("{} proposed", HYPOTHESIS_BACKLOG_LIMIT)),
             "{}",
             finding.summary
         );
@@ -1843,7 +2815,11 @@ mod tests {
             finding.evidence
         );
         assert!(
-            finding.teaching.inspect.iter().any(|i| i.contains("hypothesis list")),
+            finding
+                .teaching
+                .inspect
+                .iter()
+                .any(|i| i.contains("hypothesis list")),
             "{:?}",
             finding.teaching
         );
@@ -1864,8 +2840,13 @@ mod tests {
 
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-2",
+            "two",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
         let h = get_hypothesis(&db2, "h0").unwrap().unwrap();
         assert_eq!(h.claim, "scoring.rs serves four unrelated intents");
@@ -1877,8 +2858,13 @@ mod tests {
         old["edges"].as_object_mut().unwrap().remove("TARGETS");
         let db3 = GrafeoDb::in_memory();
         db3.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-3",
+            "three",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db3, &old, false).unwrap();
         assert!(list_hypotheses(&db3, None).unwrap().is_empty());
     }
@@ -1890,7 +2876,15 @@ mod tests {
     fn import_as_planned_resets_hypothesis_proofs() {
         let (db, ids) = db_inited(1);
         insert_hypothesis(&db, &hypothesis("h0", "split the scoring module")).unwrap();
-        update_hypothesis_verdict(&db, "h0", "supported", "checked against old repo", "llm:analyzer", "t1").unwrap();
+        update_hypothesis_verdict(
+            &db,
+            "h0",
+            "supported",
+            "checked against old repo",
+            "llm:analyzer",
+            "t1",
+        )
+        .unwrap();
         insert_hypothesis(&db, &hypothesis("h1", "kill the cd fallback")).unwrap();
         set_hypothesis_status(&db, "h1", "rejected", "llm:builder", "t1").unwrap();
         insert_hypothesis(&db, &hypothesis("h2", "thread graph snapshots")).unwrap();
@@ -1900,8 +2894,13 @@ mod tests {
         let export = export_graph(&db).unwrap();
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "port", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-2",
+            "port",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, true).unwrap();
 
         let h0 = get_hypothesis(&db2, "h0").unwrap().unwrap();
@@ -1911,7 +2910,10 @@ mod tests {
         let h1 = get_hypothesis(&db2, "h1").unwrap().unwrap();
         assert_eq!(h1.status, "rejected", "decisions are lineage and stay");
         let h2 = get_hypothesis(&db2, "h2").unwrap().unwrap();
-        assert_eq!(h2.status, "adopted", "confirmed resets to adopted: the outcome was verified against OLD code");
+        assert_eq!(
+            h2.status, "adopted",
+            "confirmed resets to adopted: the outcome was verified against OLD code"
+        );
         // TARGETS edges travel (intents travel) but arrive uninspected.
         let ts = list_targets_for_hypothesis(&db2, "h0").unwrap();
         assert_eq!(ts.len(), 1);
@@ -1931,24 +2933,50 @@ mod tests {
             insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
             insert_implements(&db, iid, &format!("cf{k}"), "", "", "t").unwrap();
         }
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no-eval".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no-eval".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "error".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
         update_governs_verdict(
-            &db, "r0", &ids[0], "passing", "no dynamic evaluation in this component",
-            "workspace clippy denial covers the whole subtree", 0.9, "llm:quality", "t",
-        ).unwrap();
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "no dynamic evaluation in this component",
+            "workspace clippy denial covers the whole subtree",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
 
-        let unmeasured: Vec<_> = compute_smells(&db).unwrap().open
+        let unmeasured: Vec<_> = compute_smells(&db)
+            .unwrap()
+            .open
             .into_iter()
             .filter(|s| s.kind == "unmeasured_intents")
             .collect();
         assert_eq!(unmeasured.len(), 1, "one rule → one finding");
         let f = &unmeasured[0];
-        assert!(f.summary.contains("1 intent(s)"), "child covered by ancestor: {}", f.summary);
-        assert!(f.evidence.contains("I2"), "only the uncovered sibling flags: {}", f.evidence);
+        assert!(
+            f.summary.contains("1 intent(s)"),
+            "child covered by ancestor: {}",
+            f.summary
+        );
+        assert!(
+            f.evidence.contains("I2"),
+            "only the uncovered sibling flags: {}",
+            f.evidence
+        );
     }
 
     /// `loom validation update`: a corrected command resets the proof (the old
@@ -1958,29 +2986,54 @@ mod tests {
     fn validation_update_resets_proof_and_delete_removes_it() {
         use crate::types::Validation;
         let (db, ids) = db_with_intents(1);
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "ledger write".into(), description: String::new(),
-            validation_type: "test".into(), command: "cargo test -p wrong-pkg".into(),
-            last_run: "t".into(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "ledger write".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "cargo test -p wrong-pkg".into(),
+                last_run: "t".into(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         set_validates_status_for_validation(&db, "v0", "passing", "ran green").unwrap();
 
         // The command-layer flow: definition updated, then proof reset.
-        assert!(update_validation_definition(&db, "v0", Some("cargo test -p right-pkg"), None).unwrap());
+        assert!(
+            update_validation_definition(&db, "v0", Some("cargo test -p right-pkg"), None).unwrap()
+        );
         update_validation_result(&db, "v0", "not_run", "").unwrap();
-        set_validates_status_for_validation(&db, "v0", "uninspected", "command updated — proof must be re-run").unwrap();
+        set_validates_status_for_validation(
+            &db,
+            "v0",
+            "uninspected",
+            "command updated — proof must be re-run",
+        )
+        .unwrap();
         let v = get_validation(&db, "v0").unwrap().unwrap();
         assert_eq!(v.command, "cargo test -p right-pkg");
         assert_eq!(v.last_result, "not_run");
-        assert_eq!(list_validates_for_intent(&db, &ids[0]).unwrap()[0].inspection_status, "uninspected");
+        assert_eq!(
+            list_validates_for_intent(&db, &ids[0]).unwrap()[0].inspection_status,
+            "uninspected"
+        );
         // …and the intent is back on the validator queue.
-        assert!(validate_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+        assert!(validate_candidates(&db)
+            .unwrap()
+            .iter()
+            .any(|c| c.intent.id == ids[0]));
 
         assert!(delete_validation(&db, "v0").unwrap());
         assert!(get_validation(&db, "v0").unwrap().is_none());
         assert!(list_validates_for_intent(&db, &ids[0]).unwrap().is_empty());
-        assert!(!delete_validation(&db, "v0").unwrap(), "second delete reports not-found");
+        assert!(
+            !delete_validation(&db, "v0").unwrap(),
+            "second delete reports not-found"
+        );
     }
 
     /// `loom validation mark` path: a manual_check with no command can be given a
@@ -1989,17 +3042,29 @@ mod tests {
     fn validation_mark_records_manual_verdict() {
         use crate::types::Validation;
         let (db, ids) = db_inited(1);
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "manual smoke".into(), description: String::new(),
-            validation_type: "manual_check".into(), command: String::new(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "manual smoke".into(),
+                description: String::new(),
+                validation_type: "manual_check".into(),
+                command: String::new(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
 
         update_validation_result(&db, "v0", "passed", "t").unwrap();
-        let n = set_validates_status_for_validation(&db, "v0", "passing", "checked by hand").unwrap();
+        let n =
+            set_validates_status_for_validation(&db, "v0", "passing", "checked by hand").unwrap();
         assert_eq!(n, 1);
-        assert_eq!(get_validation(&db, "v0").unwrap().unwrap().last_result, "passed");
+        assert_eq!(
+            get_validation(&db, "v0").unwrap().unwrap().last_result,
+            "passed"
+        );
         let edges = list_validates_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(edges[0].inspection_status, "passing");
         assert_eq!(edges[0].notes, "checked by hand");
@@ -2009,7 +3074,14 @@ mod tests {
     #[test]
     fn doctor_flags_version_mismatch() {
         let (db, _) = db_with_intents(0);
-        db.execute(&crate::db::schema::insert_meta("999", "t", "g-test", "testgraph", "owned")).unwrap();
+        db.execute(&crate::db::schema::insert_meta(
+            "999",
+            "t",
+            "g-test",
+            "testgraph",
+            "owned",
+        ))
+        .unwrap();
         let rep = check_graph(&db).unwrap();
         assert!(!rep.version_ok, "expected version mismatch");
         assert!(!rep.healthy());
@@ -2021,10 +3093,18 @@ mod tests {
     #[test]
     fn governs_verdict_round_trip_and_quality_queue() {
         let (db, ids) = db_inited(1);
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no_god_objects".into(), description: "d".into(),
-            detection_logic: "many concerns in one unit".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no_god_objects".into(),
+                description: "d".into(),
+                detection_logic: "many concerns in one unit".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
 
         // Uninspected GOVERNS is quality work.
@@ -2034,17 +3114,31 @@ mod tests {
 
         // No edge between an unknown pair → verdict reports not-found.
         assert!(!update_governs_verdict(
-            &db, "r0", "nope", "passing", "criterion text long enough", "evidence", 0.9,
-            "llm:quality", "t1",
-        ).unwrap());
+            &db,
+            "r0",
+            "nope",
+            "passing",
+            "criterion text long enough",
+            "evidence",
+            0.9,
+            "llm:quality",
+            "t1",
+        )
+        .unwrap());
 
         // Record the verdict and read it back via a scan.
         assert!(update_governs_verdict(
-            &db, "r0", &ids[0], "passing",
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
             "each module owns exactly one concern",
             "reviewed src/x.rs: single concern per unit",
-            0.85, "llm:quality", "t1",
-        ).unwrap());
+            0.85,
+            "llm:quality",
+            "t1",
+        )
+        .unwrap());
         let g = get_governs_between(&db, "r0", &ids[0]).unwrap().unwrap();
         assert_eq!(g.inspection_status, "passing");
         assert_eq!(g.criterion, "each module owns exactly one concern");
@@ -2068,19 +3162,41 @@ mod tests {
         insert_codefile(&db, &codefile("cf", "src/x.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         insert_implements(&db, &ids[1], "cf", "fn y", "", "t").unwrap();
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "stick".into(), description: "d".into(),
-            detection_logic: "what to look for".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "stick".into(),
+                description: "d".into(),
+                detection_logic: "what to look for".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
 
         let qc = quality_candidates(&db).unwrap();
-        let unmeasured: Vec<_> =
-            qc.iter().filter(|(g, _)| g.inspection_status == "unmeasured").collect();
-        assert_eq!(unmeasured.len(), 1, "only the subtree top surfaces: {:?}",
-            qc.iter().map(|(g, _)| (g.intent_id.clone(), g.inspection_status.clone())).collect::<Vec<_>>());
+        let unmeasured: Vec<_> = qc
+            .iter()
+            .filter(|(g, _)| g.inspection_status == "unmeasured")
+            .collect();
+        assert_eq!(
+            unmeasured.len(),
+            1,
+            "only the subtree top surfaces: {:?}",
+            qc.iter()
+                .map(|(g, _)| (g.intent_id.clone(), g.inspection_status.clone()))
+                .collect::<Vec<_>>()
+        );
         assert_eq!(unmeasured[0].0.intent_id, ids[0]);
-        assert!(unmeasured[0].0.id.is_empty(), "no edge yet — the verdict creates it");
-        assert!(unmeasured[0].0.notes.contains("what to look for"), "detection logic travels with the item");
+        assert!(
+            unmeasured[0].0.id.is_empty(),
+            "no edge yet — the verdict creates it"
+        );
+        assert!(
+            unmeasured[0].0.notes.contains("what to look for"),
+            "detection logic travels with the item"
+        );
 
         let nc = normative_coverage(&db).unwrap();
         assert_eq!(nc.intents_with_code, 2);
@@ -2088,10 +3204,22 @@ mod tests {
 
         // A verdict at the parent covers the child by inheritance → queue dry.
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
-        update_governs_verdict(&db, "r0", &ids[0], "passing",
-            "criterion text long enough", "evidence text long enough",
-            0.9, "llm:quality", "t").unwrap();
-        assert!(quality_candidates(&db).unwrap().is_empty(), "component verdict covers descendants");
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "criterion text long enough",
+            "evidence text long enough",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
+        assert!(
+            quality_candidates(&db).unwrap().is_empty(),
+            "component verdict covers descendants"
+        );
         assert_eq!(normative_coverage(&db).unwrap().measured_pairs, 2);
     }
 
@@ -2111,7 +3239,11 @@ mod tests {
             let found = smells.iter().find(|s| s.kind == "happy_path_only").cloned();
             assert!(found.is_some(), "{smells:?}");
             let found = found.unwrap();
-            assert!(found.summary.contains(needle), "expected '{needle}' in {:?}", found.summary);
+            assert!(
+                found.summary.contains(needle),
+                "expected '{needle}' in {:?}",
+                found.summary
+            );
             found
         };
 
@@ -2128,7 +3260,9 @@ mod tests {
         insert_hierarchy(&db, &ids[0], "fb-child", "", "t").unwrap();
         let finding = missing("sad/fallback");
         assert!(
-            finding.evidence.contains("realized+proven sad/fallback aspects {}"),
+            finding
+                .evidence
+                .contains("realized+proven sad/fallback aspects {}"),
             "{}",
             finding.evidence
         );
@@ -2138,11 +3272,19 @@ mod tests {
         insert_implements(&db, "sad-child", "sad-cf", "fn sad", "", "t2").unwrap();
         missing("sad/fallback");
 
-        insert_validation(&db, &Validation {
-            id: "sad-v".into(), name: "sad proof".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "sad-v".into(),
+                name: "sad proof".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "sad-v", "sad-child", "", "t3").unwrap();
         missing("sad/fallback");
         update_validation_result(&db, "sad-v", "failed", "t4").unwrap();
@@ -2157,14 +3299,25 @@ mod tests {
 
         insert_codefile(&db, &codefile("fb-cf", "src/fallback.rs")).unwrap();
         insert_implements(&db, "fb-child", "fb-cf", "fn fallback", "", "t6").unwrap();
-        insert_validation(&db, &Validation {
-            id: "fb-v".into(), name: "fallback proof".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "passed".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "fb-v".into(),
+                name: "fallback proof".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "passed".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "fb-v", "fb-child", "", "t7").unwrap();
         let smells = compute_smells(&db).unwrap().open;
-        assert!(!smells.iter().any(|s| s.kind == "happy_path_only"), "{smells:?}");
+        assert!(
+            !smells.iter().any(|s| s.kind == "happy_path_only"),
+            "{smells:?}"
+        );
     }
 
     /// Adjudication terminal state for tangled_file: a decision note on the
@@ -2177,7 +3330,11 @@ mod tests {
         for id in ids.iter().take(3) {
             insert_implements(&db, id, "cf", "fn f", "", "t1").unwrap();
         }
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "tangled_file"));
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "tangled_file"));
 
         // Decision newer than every claim → adjudicated: the finding leaves
         // `open` but surfaces in `adjudicated` WITH its ruling — "no findings"
@@ -2186,12 +3343,23 @@ mod tests {
         insert_note(&db, &note_at("nd", "decision", "codefile", "cf", "t2")).unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(!report.open.iter().any(|s| s.kind == "tangled_file"));
-        let adj = report.adjudicated.iter().find(|a| a.kind == "tangled_file")
+        let adj = report
+            .adjudicated
+            .iter()
+            .find(|a| a.kind == "tangled_file")
             .expect("suppressed finding must surface with its ruling");
         assert_adjudicated_teaching(adj);
         assert_eq!(adj.ruled_at, "t2");
-        assert!(adj.summary.contains("3 distinct intents"), "{}", adj.summary);
-        assert!(adj.reopens_when.contains("IMPLEMENTS claim"), "{}", adj.reopens_when);
+        assert!(
+            adj.summary.contains("3 distinct intents"),
+            "{}",
+            adj.summary
+        );
+        assert!(
+            adj.reopens_when.contains("IMPLEMENTS claim"),
+            "{}",
+            adj.reopens_when
+        );
 
         // A NEW claim after the decision re-opens the question (and the
         // adjudication entry disappears — it no longer suppresses anything).
@@ -2211,14 +3379,26 @@ mod tests {
             insert_codefile(&db, &codefile(&format!("cf{k}"), &format!("src/f{k}.rs"))).unwrap();
             insert_implements(&db, &ids[0], &format!("cf{k}"), "fn f", "", "t1").unwrap();
         }
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "scattered_intent"));
 
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
-        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
+        assert!(!compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "scattered_intent"));
 
         insert_codefile(&db, &codefile("cf4", "src/f4.rs")).unwrap();
         insert_implements(&db, &ids[0], "cf4", "fn f", "", "t3").unwrap();
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "scattered_intent"));
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "scattered_intent"));
     }
 
     /// Adjudication terminal state for happy_path_only: a decision note on
@@ -2232,17 +3412,29 @@ mod tests {
         happy.created_at = "t1".into();
         insert_intent(&db, &happy).unwrap();
         insert_hierarchy(&db, &ids[0], "happy-child", "", "t").unwrap();
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "happy_path_only"));
 
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t2")).unwrap();
-        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
+        assert!(!compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "happy_path_only"));
 
         let mut edge_case = intent("edge-child", "login rejects malformed input");
         edge_case.aspect = "edge_case".into();
         edge_case.created_at = "t3".into();
         insert_intent(&db, &edge_case).unwrap();
         insert_hierarchy(&db, &ids[0], "edge-child", "", "t").unwrap();
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "happy_path_only"));
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "happy_path_only"));
     }
 
     /// The consumer plane's completeness check (unjourneyed_surface), both
@@ -2263,36 +3455,65 @@ mod tests {
         insert_implements(&db, &ids[2], "cf2", "fn b", "", "t").unwrap();
 
         // Untriaged visibility → silent.
-        assert!(!compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "unjourneyed_surface"));
+        assert!(!compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "unjourneyed_surface"));
 
         set_intent_visibility(&db, &ids[1], "user_visible", "t1").unwrap();
         set_intent_visibility(&db, &ids[2], "user_visible", "t1").unwrap();
 
         // Zero sagas → exactly ONE aggregate finding, targeting the root.
         let smells = compute_smells(&db).unwrap().open;
-        let uj: Vec<&Smell> = smells.iter().filter(|s| s.kind == "unjourneyed_surface").collect();
+        let uj: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| s.kind == "unjourneyed_surface")
+            .collect();
         assert_eq!(uj.len(), 1, "{smells:?}");
-        assert!(uj[0].summary.contains("no consumer journey"), "{}", uj[0].summary);
-        assert!(uj[0].remedy.contains(&ids[0]), "aggregate remedy targets the root: {}", uj[0].remedy);
+        assert!(
+            uj[0].summary.contains("no consumer journey"),
+            "{}",
+            uj[0].summary
+        );
+        assert!(
+            uj[0].remedy.contains(&ids[0]),
+            "aggregate remedy targets the root: {}",
+            uj[0].remedy
+        );
 
         // A decision note on the root (newer than the newest user_visible
         // intent) adjudicates the aggregate — visible WITH its ruling.
         insert_note(&db, &note_at("nd", "decision", "intent", &ids[0], "t8")).unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(!report.open.iter().any(|s| s.kind == "unjourneyed_surface"));
-        assert!(report.adjudicated.iter().any(|a| a.kind == "unjourneyed_surface"));
+        assert!(report
+            .adjudicated
+            .iter()
+            .any(|a| a.kind == "unjourneyed_surface"));
 
         // A saga arrives → per-intent regime. It journeys ids[1] only: ids[1]
         // is covered (direct), ids[0] via ancestor roll-up, ids[2] — the
         // unjourneyed SIBLING — fires individually.
-        insert_validation(&db, &Validation {
-            id: "sg0".into(), name: "first journey".into(), description: String::new(),
-            validation_type: "saga".into(), command: "loom saga run j.yaml".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "sg0".into(),
+                name: "first journey".into(),
+                description: String::new(),
+                validation_type: "saga".into(),
+                command: "loom saga run j.yaml".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "sg0", &ids[1], "", "t2").unwrap();
         let smells = compute_smells(&db).unwrap().open;
-        let uj: Vec<&Smell> = smells.iter().filter(|s| s.kind == "unjourneyed_surface").collect();
+        let uj: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| s.kind == "unjourneyed_surface")
+            .collect();
         assert_eq!(uj.len(), 1, "{smells:?}");
         assert!(uj[0].summary.contains("I2"), "{}", uj[0].summary);
 
@@ -2300,12 +3521,25 @@ mod tests {
         insert_note(&db, &note_at("nd2", "decision", "intent", &ids[2], "t9")).unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(!report.open.iter().any(|s| s.kind == "unjourneyed_surface"));
-        assert!(report.adjudicated.iter().any(|a| a.kind == "unjourneyed_surface"
-            && a.summary.contains("I2")));
+        assert!(report
+            .adjudicated
+            .iter()
+            .any(|a| a.kind == "unjourneyed_surface" && a.summary.contains("I2")));
 
         // A redefinition after the ruling re-opens the question.
-        assert!(update_intent_meaning(&db, &ids[2], None, Some("checkout now also handles refunds"), "t9b").unwrap());
-        assert!(compute_smells(&db).unwrap().open.iter().any(|s| s.kind == "unjourneyed_surface"));
+        assert!(update_intent_meaning(
+            &db,
+            &ids[2],
+            None,
+            Some("checkout now also handles refunds"),
+            "t9b"
+        )
+        .unwrap());
+        assert!(compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .any(|s| s.kind == "unjourneyed_surface"));
     }
 
     /// `try_resolve_intent` is the spawn guard for the journey-first saga
@@ -2315,7 +3549,10 @@ mod tests {
     fn try_resolve_distinguishes_missing_from_ambiguous() {
         let (db, _) = db_with_intents(2); // names I0, I1 — fragment "I" is ambiguous
         assert_eq!(try_resolve_intent(&db, "no-such-intent").unwrap(), None);
-        assert_eq!(try_resolve_intent(&db, "I0").unwrap(), Some("intent-0".to_string()));
+        assert_eq!(
+            try_resolve_intent(&db, "I0").unwrap(),
+            Some("intent-0".to_string())
+        );
         let err = try_resolve_intent(&db, "I").unwrap_err().to_string();
         assert!(err.contains("ambiguous"), "got: {err}");
     }
@@ -2341,11 +3578,19 @@ mod tests {
         // Explore the pair, prove one leaf — the axes move.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         update_relates_to_ground(&db, &ids[0], &ids[1], "c", "", 0.9, "llm", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[0], "", "t").unwrap();
         update_validation_result(&db, "v0", "passed", "t1").unwrap();
 
@@ -2364,20 +3609,37 @@ mod tests {
         let (db, ids) = db_inited(3); // 0: parent, 1: leaf-no-proof, 2: leaf-with-proof
         insert_hierarchy(&db, &ids[0], &ids[1], "", "t").unwrap();
         insert_hierarchy(&db, &ids[0], &ids[2], "", "t").unwrap();
-        insert_validation(&db, &Validation {
-            id: "v0".into(), name: "smoke".into(), description: String::new(),
-            validation_type: "test".into(), command: "true".into(),
-            last_run: String::new(), last_result: "not_run".into(),
-        }).unwrap();
+        insert_validation(
+            &db,
+            &Validation {
+                id: "v0".into(),
+                name: "smoke".into(),
+                description: String::new(),
+                validation_type: "test".into(),
+                command: "true".into(),
+                last_run: String::new(),
+                last_result: "not_run".into(),
+            },
+        )
+        .unwrap();
         insert_validates(&db, "v0", &ids[2], "", "t").unwrap();
 
         let vc = validate_candidates(&db).unwrap();
         let by_id: std::collections::HashMap<&str, &ValidateCandidate> =
             vc.iter().map(|c| (c.intent.id.as_str(), c)).collect();
-        assert!(by_id.contains_key(ids[1].as_str()), "leaf without proof must surface: {vc:?}");
+        assert!(
+            by_id.contains_key(ids[1].as_str()),
+            "leaf without proof must surface: {vc:?}"
+        );
         assert!(by_id[ids[1].as_str()].reason.contains("no proof"));
-        assert!(by_id.contains_key(ids[2].as_str()), "unrun proof must surface");
-        assert!(!by_id.contains_key(ids[0].as_str()), "parents are proven via children");
+        assert!(
+            by_id.contains_key(ids[2].as_str()),
+            "unrun proof must surface"
+        );
+        assert!(
+            !by_id.contains_key(ids[0].as_str()),
+            "parents are proven via children"
+        );
 
         // Failing proof outranks everything.
         update_validation_result(&db, "v0", "failed", "t1").unwrap();
@@ -2405,7 +3667,10 @@ mod tests {
 
         let bc = build_candidates(&db).unwrap();
         let surfaced: Vec<&str> = bc.iter().map(|c| c.intent.id.as_str()).collect();
-        assert!(!surfaced.contains(&ids[0].as_str()), "parent must wait for children: {surfaced:?}");
+        assert!(
+            !surfaced.contains(&ids[0].as_str()),
+            "parent must wait for children: {surfaced:?}"
+        );
         assert_eq!(surfaced.len(), 2, "both leaf children queue");
         assert!(bc.iter().all(|c| !c.rollup), "leaves are real build work");
 
@@ -2414,14 +3679,20 @@ mod tests {
         let bc = build_candidates(&db).unwrap();
         assert_eq!(bc.len(), 1);
         assert_eq!(bc[0].intent.id, ids[0]);
-        assert!(bc[0].rollup, "parent with implemented children is a roll-up");
+        assert!(
+            bc[0].rollup,
+            "parent with implemented children is a roll-up"
+        );
 
         // needs_change surfaces at ANY altitude (component refactors are real).
         set_intent_lifecycle(&db, &ids[0], "needs_change", "t").unwrap();
         set_intent_lifecycle(&db, &ids[1], "planned", "t").unwrap();
         let bc = build_candidates(&db).unwrap();
         let surfaced: Vec<&str> = bc.iter().map(|c| c.intent.id.as_str()).collect();
-        assert!(surfaced.contains(&ids[0].as_str()), "needs_change parent must surface: {surfaced:?}");
+        assert!(
+            surfaced.contains(&ids[0].as_str()),
+            "needs_change parent must surface: {surfaced:?}"
+        );
     }
 
     /// Quality ripple: when code implementing an intent changes, its *passing*
@@ -2431,20 +3702,44 @@ mod tests {
     fn governs_ripple_invalidates_passing_verdicts() {
         let (db, ids) = db_inited(1);
         for (rid, name) in [("r0", "no_eval"), ("r1", "no_uncaught")] {
-            insert_rule(&db, &QualityRule {
-                id: rid.into(), name: name.into(), description: "d".into(),
-                detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
-            }).unwrap();
+            insert_rule(
+                &db,
+                &QualityRule {
+                    id: rid.into(),
+                    name: name.into(),
+                    description: "d".into(),
+                    detection_logic: "dl".into(),
+                    severity: "error".into(),
+                    inspection_effort: String::new(),
+                },
+            )
+            .unwrap();
             insert_governs(&db, rid, &ids[0], "", "t").unwrap();
         }
         update_governs_verdict(
-            &db, "r0", &ids[0], "passing", "no dynamic evaluation anywhere",
-            "grep: no eval usage", 0.9, "llm:quality", "t",
-        ).unwrap();
+            &db,
+            "r0",
+            &ids[0],
+            "passing",
+            "no dynamic evaluation anywhere",
+            "grep: no eval usage",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
         update_governs_verdict(
-            &db, "r1", &ids[0], "failing", "no uncaught exceptions escape",
-            "bare JSON.parse at parser.js:1", 0.9, "llm:quality", "t",
-        ).unwrap();
+            &db,
+            "r1",
+            &ids[0],
+            "failing",
+            "no uncaught exceptions escape",
+            "bare JSON.parse at parser.js:1",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
 
         let flagged = flag_governs_for_intent(&db, &ids[0], "src/x.rs changed", "t2").unwrap();
         assert_eq!(flagged, 1, "only the passing verdict goes stale");
@@ -2453,8 +3748,10 @@ mod tests {
         assert_eq!(g0.inspection_status, "needs_reverification");
         assert_eq!(g1.inspection_status, "failing", "open work stays open");
         // The stale verdict is back on the quality queue.
-        assert!(quality_candidates(&db).unwrap().iter().any(|(g, _)|
-            g.rule_id == "r0" && g.inspection_status == "needs_reverification"));
+        assert!(quality_candidates(&db)
+            .unwrap()
+            .iter()
+            .any(|(g, _)| g.rule_id == "r0" && g.inspection_status == "needs_reverification"));
     }
 
     /// IMPLEMENTS is unique per (intent, codefile) pair — re-grounding the same
@@ -2467,7 +3764,11 @@ mod tests {
         insert_implements(&db, &ids[0], "cf", "fn y", "other", "t2").unwrap();
         let imps = list_implements_for_intent(&db, &ids[0]).unwrap();
         assert_eq!(imps.len(), 1, "duplicate IMPLEMENTS must not be created");
-        assert_eq!(imps[0].id, format!("imp:{}:cf", ids[0]), "first grounding wins");
+        assert_eq!(
+            imps[0].id,
+            format!("imp:{}:cf", ids[0]),
+            "first grounding wins"
+        );
     }
 
     /// delete_implements is the ungrounding half of insert: endpoint-matched,
@@ -2479,7 +3780,10 @@ mod tests {
         insert_implements(&db, &ids[0], "cf", "fn x", "", "t").unwrap();
         assert!(vertical_completeness(&db).unwrap().complete);
         assert!(delete_implements(&db, &ids[0], "cf").unwrap());
-        assert!(!delete_implements(&db, &ids[0], "cf").unwrap(), "second delete is a no-op");
+        assert!(
+            !delete_implements(&db, &ids[0], "cf").unwrap(),
+            "second delete is a no-op"
+        );
         assert!(list_implements_for_intent(&db, &ids[0]).unwrap().is_empty());
         assert!(!vertical_completeness(&db).unwrap().complete);
     }
@@ -2514,16 +3818,26 @@ mod tests {
     fn smells_surface_twins_overlap_and_unmeasured() {
         let (db, _) = db_inited(0);
         // Twins: same level, near-identical wording, no edge.
-        insert_intent(&db, &Intent {
-            id: "t1".into(), name: "parse markdown input".into(),
-            description: "turns markdown text into an AST for rendering".into(),
-            ..intent("t1", "x")
-        }).unwrap();
-        insert_intent(&db, &Intent {
-            id: "t2".into(), name: "markdown input parsing".into(),
-            description: "turns markdown text into an AST tree".into(),
-            ..intent("t2", "x")
-        }).unwrap();
+        insert_intent(
+            &db,
+            &Intent {
+                id: "t1".into(),
+                name: "parse markdown input".into(),
+                description: "turns markdown text into an AST for rendering".into(),
+                ..intent("t1", "x")
+            },
+        )
+        .unwrap();
+        insert_intent(
+            &db,
+            &Intent {
+                id: "t2".into(),
+                name: "markdown input parsing".into(),
+                description: "turns markdown text into an AST tree".into(),
+                ..intent("t2", "x")
+            },
+        )
+        .unwrap();
         // Overlap: two unrelated intents grounded in the same file.
         insert_intent(&db, &intent("o1", "alpha responsibility")).unwrap();
         insert_intent(&db, &intent("o2", "beta duty")).unwrap();
@@ -2531,10 +3845,18 @@ mod tests {
         insert_implements(&db, "o1", "cf", "", "", "t").unwrap();
         insert_implements(&db, "o2", "cf", "", "", "t").unwrap();
         // A rule that has never been considered against o1/o2, and an unused one.
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no_panics".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "error".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no_panics".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "error".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
 
         let smells = compute_smells(&db).unwrap().open;
         let kinds: Vec<&str> = smells.iter().map(|s| s.kind.as_str()).collect();
@@ -2548,17 +3870,45 @@ mod tests {
 
         // Recording the relationships/verdicts silences the smells.
         get_or_create_relates_to(&db, "t1", "t2", "t").unwrap();
-        update_relates_to_independent(&db, "t1", "t2", "twin in name only — verified distinct", "llm:analyzer", "t").unwrap();
+        update_relates_to_independent(
+            &db,
+            "t1",
+            "t2",
+            "twin in name only — verified distinct",
+            "llm:analyzer",
+            "t",
+        )
+        .unwrap();
         get_or_create_relates_to(&db, "o1", "o2", "t").unwrap();
         insert_governs(&db, "r0", "o1", "", "t").unwrap();
         insert_governs(&db, "r0", "o2", "", "t").unwrap();
-        update_governs_verdict(&db, "r0", "o2", "independent",
+        update_governs_verdict(
+            &db,
+            "r0",
+            "o2",
+            "independent",
             "panic-freedom criterion does not constrain beta",
-            "beta duty has no execution path that can panic", 0.9, "llm:quality", "t").unwrap();
-        let kinds: Vec<String> = compute_smells(&db).unwrap().open.iter().map(|s| s.kind.clone()).collect();
+            "beta duty has no execution path that can panic",
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
+        let kinds: Vec<String> = compute_smells(&db)
+            .unwrap()
+            .open
+            .iter()
+            .map(|s| s.kind.clone())
+            .collect();
         assert!(!kinds.contains(&"twin_intents".to_string()), "{kinds:?}");
-        assert!(!kinds.contains(&"overlapping_ownership".to_string()), "{kinds:?}");
-        assert!(!kinds.contains(&"unmeasured_intents".to_string()), "{kinds:?}");
+        assert!(
+            !kinds.contains(&"overlapping_ownership".to_string()),
+            "{kinds:?}"
+        );
+        assert!(
+            !kinds.contains(&"unmeasured_intents".to_string()),
+            "{kinds:?}"
+        );
         assert!(!kinds.contains(&"unused_rule".to_string()), "{kinds:?}");
     }
 
@@ -2577,9 +3927,17 @@ mod tests {
         let pairs = unexplored_pairs_scored(&db).unwrap();
         let top = &pairs[0].0;
         let pair_ids = [top.from_id.as_str(), top.to_id.as_str()];
-        assert!(pair_ids.contains(&"a") && pair_ids.contains(&"b"),
-            "shared-file pair should rank first: {} × {}", top.from_name, top.to_name);
-        assert!(top.notes.contains("share 1 implemented file"), "{}", top.notes);
+        assert!(
+            pair_ids.contains(&"a") && pair_ids.contains(&"b"),
+            "shared-file pair should rank first: {} × {}",
+            top.from_name,
+            top.to_name
+        );
+        assert!(
+            top.notes.contains("share 1 implemented file"),
+            "{}",
+            top.notes
+        );
     }
 
     /// GOVERNS `independent` = measured, rule does not apply: a valid verdict
@@ -2587,20 +3945,49 @@ mod tests {
     #[test]
     fn governs_independent_verdict_is_terminal_and_audited() {
         let (db, ids) = db_inited(1);
-        insert_rule(&db, &QualityRule {
-            id: "r0".into(), name: "no_sql".into(), description: "d".into(),
-            detection_logic: "dl".into(), severity: "warning".into(), inspection_effort: String::new(),
-        }).unwrap();
+        insert_rule(
+            &db,
+            &QualityRule {
+                id: "r0".into(),
+                name: "no_sql".into(),
+                description: "d".into(),
+                detection_logic: "dl".into(),
+                severity: "warning".into(),
+                inspection_effort: String::new(),
+            },
+        )
+        .unwrap();
         insert_governs(&db, "r0", &ids[0], "", "t").unwrap();
-        update_governs_verdict(&db, "r0", &ids[0], "independent",
+        update_governs_verdict(
+            &db,
+            "r0",
+            &ids[0],
+            "independent",
             "criterion would be: no raw SQL strings constructed",
             "this intent touches no datastore at all — the rule has no surface here",
-            0.9, "llm:quality", "t").unwrap();
+            0.9,
+            "llm:quality",
+            "t",
+        )
+        .unwrap();
 
-        assert!(quality_candidates(&db).unwrap().is_empty(), "independent is not open work");
+        assert!(
+            quality_candidates(&db).unwrap().is_empty(),
+            "independent is not open work"
+        );
         let rep = check_graph(&db).unwrap();
-        assert!(rep.issues.iter().all(|i| !i.contains("invalid inspection_status")), "{:?}", rep.issues);
-        assert!(rep.issues.iter().all(|i| !i.contains("records no why")), "{:?}", rep.issues);
+        assert!(
+            rep.issues
+                .iter()
+                .all(|i| !i.contains("invalid inspection_status")),
+            "{:?}",
+            rep.issues
+        );
+        assert!(
+            rep.issues.iter().all(|i| !i.contains("records no why")),
+            "{:?}",
+            rep.issues
+        );
     }
 
     /// Doctor audits the trust layer: a verdict recorded by an out-of-lane role,
@@ -2611,15 +3998,37 @@ mod tests {
         let (db, ids) = db_inited(3);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         // Builder green-lighting its own work + absurd confidence.
-        update_relates_to_ground(&db, &ids[0], &ids[1], "a perfectly substantive criterion", "", 7.3, "llm:builder", "t").unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "a perfectly substantive criterion",
+            "",
+            7.3,
+            "llm:builder",
+            "t",
+        )
+        .unwrap();
         // Independence with no why (empty notes).
         get_or_create_relates_to(&db, &ids[0], &ids[2], "t").unwrap();
         update_relates_to_independent(&db, &ids[0], &ids[2], "", "llm:analyzer", "t").unwrap();
 
         let rep = check_graph(&db).unwrap();
-        assert!(rep.issues.iter().any(|i| i.contains("out of lane")), "{:?}", rep.issues);
-        assert!(rep.issues.iter().any(|i| i.contains("outside [0.0, 1.0]")), "{:?}", rep.issues);
-        assert!(rep.issues.iter().any(|i| i.contains("records no why")), "{:?}", rep.issues);
+        assert!(
+            rep.issues.iter().any(|i| i.contains("out of lane")),
+            "{:?}",
+            rep.issues
+        );
+        assert!(
+            rep.issues.iter().any(|i| i.contains("outside [0.0, 1.0]")),
+            "{:?}",
+            rep.issues
+        );
+        assert!(
+            rep.issues.iter().any(|i| i.contains("records no why")),
+            "{:?}",
+            rep.issues
+        );
         assert!(!rep.healthy());
     }
 
@@ -2636,13 +4045,41 @@ mod tests {
             i
         };
         insert_intent(&db, &mk("root", "loom core", "the whole system")).unwrap();
-        insert_intent(&db, &mk("sync", "sync ripple engine",
-            "detects content changes and propagates staleness to neighbor edges")).unwrap();
-        insert_intent(&db, &mk("queue", "priority work queue",
-            "returns the highest priority work item with full context")).unwrap();
-        insert_intent(&db, &mk("old", "legacy ripple walker",
-            "ripple ripple ripple — superseded design")).unwrap();
-        retire_intent(&db, "old", "superseded by the sync ripple engine", Some("sync"), "t1").unwrap();
+        insert_intent(
+            &db,
+            &mk(
+                "sync",
+                "sync ripple engine",
+                "detects content changes and propagates staleness to neighbor edges",
+            ),
+        )
+        .unwrap();
+        insert_intent(
+            &db,
+            &mk(
+                "queue",
+                "priority work queue",
+                "returns the highest priority work item with full context",
+            ),
+        )
+        .unwrap();
+        insert_intent(
+            &db,
+            &mk(
+                "old",
+                "legacy ripple walker",
+                "ripple ripple ripple — superseded design",
+            ),
+        )
+        .unwrap();
+        retire_intent(
+            &db,
+            "old",
+            "superseded by the sync ripple engine",
+            Some("sync"),
+            "t1",
+        )
+        .unwrap();
         insert_hierarchy(&db, "root", "sync", "", "t0").unwrap();
         insert_codefile(&db, &codefile("cf", "src/sync.rs")).unwrap();
         insert_implements(&db, "sync", "cf", "fn run", "", "t0").unwrap();
@@ -2650,18 +4087,31 @@ mod tests {
         db.execute(
             "MATCH (a:Intent {id: 'sync'})-[r:RELATES_TO]->(b:Intent {id: 'queue'}) \
              SET r.inspection_status = 'needs_reverification'",
-        ).unwrap();
+        )
+        .unwrap();
 
         let hits = find_intents(&db, "ripple staleness", 5).unwrap();
-        assert_eq!(hits[0].intent.id, "sync", "most relevant intent must rank first");
-        assert!(hits.iter().all(|h| h.intent.id != "old"),
-            "deprecated intents must be invisible to find");
+        assert_eq!(
+            hits[0].intent.id, "sync",
+            "most relevant intent must rank first"
+        );
+        assert!(
+            hits.iter().all(|h| h.intent.id != "old"),
+            "deprecated intents must be invisible to find"
+        );
         let top = &hits[0];
         assert_eq!(top.parent_chain, vec!["loom core".to_string()]);
-        assert_eq!(top.groundings, vec![("src/sync.rs".to_string(), "fn run".to_string())]);
+        assert_eq!(
+            top.groundings,
+            vec![("src/sync.rs".to_string(), "fn run".to_string())]
+        );
         assert_eq!(top.stale_edges, 1, "freshness must count the stale claim");
-        assert!(find_intents(&db, "qwertyuiop zxcvbn", 5).unwrap().is_empty(),
-            "a miss is an empty result, not an error");
+        assert!(
+            find_intents(&db, "qwertyuiop zxcvbn", 5)
+                .unwrap()
+                .is_empty(),
+            "a miss is an empty result, not an error"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2670,11 +4120,11 @@ mod tests {
 
     fn term(name: &str, desc: &str) -> crate::types::VocabTerm {
         crate::types::VocabTerm {
-            id:          format!("vt-{name}"),
-            name:        name.to_string(),
+            id: format!("vt-{name}"),
+            name: name.to_string(),
             description: desc.to_string(),
-            author:      "llm".to_string(),
-            created_at:  "t0".to_string(),
+            author: "llm".to_string(),
+            created_at: "t0".to_string(),
         }
     }
 
@@ -2687,15 +4137,24 @@ mod tests {
         let (db, ids) = db_with_intents(3);
         insert_vocab_term(&db, &term("retry", "re-attempt after failure")).unwrap();
         insert_vocab_term(&db, &term("retries", "duplicate of retry")).unwrap();
-        assert_eq!(get_vocab_term(&db, "retry").unwrap().unwrap().description, "re-attempt after failure");
+        assert_eq!(
+            get_vocab_term(&db, "retry").unwrap().unwrap().description,
+            "re-attempt after failure"
+        );
 
         tag_intent(&db, &ids[0], &["retries"]);
         tag_intent(&db, &ids[1], &["retries", "retry"]); // merge must dedupe
         tag_intent(&db, &ids[2], &["retry"]);
 
         let retagged = merge_vocab_terms(&db, "retries", "retry", "t2").unwrap();
-        assert_eq!(retagged, 2, "only carriers of the dissolved term are touched");
-        assert!(get_vocab_term(&db, "retries").unwrap().is_none(), "dissolved term deleted");
+        assert_eq!(
+            retagged, 2,
+            "only carriers of the dissolved term are touched"
+        );
+        assert!(
+            get_vocab_term(&db, "retries").unwrap().is_none(),
+            "dissolved term deleted"
+        );
         for id in &ids {
             let tags = parse_tags(&get_intent(&db, id).unwrap().unwrap()).unwrap();
             assert_eq!(tags, vec!["retry".to_string()], "intent {id}: {tags:?}");
@@ -2707,14 +4166,20 @@ mod tests {
     #[test]
     fn term_keys_are_normalized_and_drift_is_recognizable() {
         assert_eq!(normalize_term("  AuthN ").unwrap(), "authn");
-        assert!(normalize_term("two words").is_err(), "whitespace is not a key");
+        assert!(
+            normalize_term("two words").is_err(),
+            "whitespace is not a key"
+        );
         assert!(normalize_term("").is_err());
 
         assert!(terms_look_alike("auth", "authn"), "containment");
         assert!(terms_look_alike("retry", "retries"), "plural via stemming");
         assert!(terms_look_alike("color", "colour"), "small edit distance");
         assert!(!terms_look_alike("retry", "retry"), "identity is not drift");
-        assert!(!terms_look_alike("authz", "cache"), "distinct keys stay distinct");
+        assert!(
+            !terms_look_alike("authz", "cache"),
+            "distinct keys stay distinct"
+        );
         // Deliberate limitation: morphological drift only — semantic synonyms
         // ('authn'/'authentication') are caught by the inlined registry at tag
         // time and the agent's judgment, not by string distance.
@@ -2751,7 +4216,10 @@ mod tests {
         insert_implements(&db, &ids[1], "f1", "", "", "t").unwrap();
 
         let smells = compute_smells(&db).unwrap().open;
-        let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
+        let dup: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| s.kind == "duplicated_responsibility")
+            .collect();
         assert_eq!(dup.len(), 1, "{smells:?}");
         assert!(dup[0].evidence.contains("backoff"), "{}", dup[0].evidence);
         assert!(dup[0].remedy.contains(&ids[0]) && dup[0].remedy.contains(&ids[1]));
@@ -2759,7 +4227,10 @@ mod tests {
         // A recorded relationship silences it — the suspicion did its job.
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t").unwrap();
         let smells = compute_smells(&db).unwrap().open;
-        assert!(!smells.iter().any(|s| s.kind == "duplicated_responsibility"), "{smells:?}");
+        assert!(
+            !smells.iter().any(|s| s.kind == "duplicated_responsibility"),
+            "{smells:?}"
+        );
 
         // A shared file belongs to overlapping_ownership, not this detector.
         tag_intent(&db, &ids[2], &["backoff"]);
@@ -2767,9 +4238,18 @@ mod tests {
         insert_implements(&db, &ids[2], "f0", "", "", "t").unwrap();
         insert_implements(&db, &ids[3], "f0", "", "", "t").unwrap();
         let smells = compute_smells(&db).unwrap().open;
-        let dup_pairs: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility"
-            && s.remedy.contains(&ids[2]) && s.remedy.contains(&ids[3])).collect();
-        assert!(dup_pairs.is_empty(), "shared-file pair must route to overlapping_ownership: {smells:?}");
+        let dup_pairs: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| {
+                s.kind == "duplicated_responsibility"
+                    && s.remedy.contains(&ids[2])
+                    && s.remedy.contains(&ids[3])
+            })
+            .collect();
+        assert!(
+            dup_pairs.is_empty(),
+            "shared-file pair must route to overlapping_ownership: {smells:?}"
+        );
     }
 
     #[test]
@@ -2781,23 +4261,32 @@ mod tests {
             Some("mail retry backoff"),
             Some("retry delivery with exponential backoff after transient failure"),
             "t0",
-        ).unwrap();
+        )
+        .unwrap();
         update_intent_meaning(
             &db,
             &ids[1],
             Some("job retry backoff"),
             Some("retry delivery with exponential backoff after transient failure"),
             "t0",
-        ).unwrap();
+        )
+        .unwrap();
         insert_codefile(&db, &codefile("f0", "src/mail_retry.rs")).unwrap();
         insert_codefile(&db, &codefile("f1", "src/job_retry.rs")).unwrap();
         insert_implements(&db, &ids[0], "f0", "", "", "t").unwrap();
         insert_implements(&db, &ids[1], "f1", "", "", "t").unwrap();
 
         let smells = compute_smells(&db).unwrap().open;
-        let dup: Vec<&Smell> = smells.iter().filter(|s| s.kind == "duplicated_responsibility").collect();
+        let dup: Vec<&Smell> = smells
+            .iter()
+            .filter(|s| s.kind == "duplicated_responsibility")
+            .collect();
         assert_eq!(dup.len(), 1, "{smells:?}");
-        assert!(dup[0].evidence.contains("untagged lexical fallback"), "{}", dup[0].evidence);
+        assert!(
+            dup[0].evidence.contains("untagged lexical fallback"),
+            "{}",
+            dup[0].evidence
+        );
         assert!(dup[0].evidence.contains("retry"), "{}", dup[0].evidence);
         assert!(dup[0].evidence.contains("backoff"), "{}", dup[0].evidence);
 
@@ -2812,12 +4301,54 @@ mod tests {
     #[test]
     fn duplicated_responsibility_fallback_requires_coded_disjoint_unimported_pairs() {
         let (db, ids) = db_with_intents(6);
-        update_intent_meaning(&db, &ids[0], Some("orphan reserve rebuild"), Some("reserve rebuild orphan queue"), "t").unwrap();
-        update_intent_meaning(&db, &ids[1], Some("orphan reserve rebuild"), Some("reserve rebuild orphan queue"), "t").unwrap();
-        update_intent_meaning(&db, &ids[2], Some("shared export render"), Some("shared export render stream"), "t").unwrap();
-        update_intent_meaning(&db, &ids[3], Some("shared export render"), Some("shared export render stream"), "t").unwrap();
-        update_intent_meaning(&db, &ids[4], Some("cache hydrate loader"), Some("cache hydrate loader refresh"), "t").unwrap();
-        update_intent_meaning(&db, &ids[5], Some("cache hydrate loader"), Some("cache hydrate loader refresh"), "t").unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[0],
+            Some("orphan reserve rebuild"),
+            Some("reserve rebuild orphan queue"),
+            "t",
+        )
+        .unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[1],
+            Some("orphan reserve rebuild"),
+            Some("reserve rebuild orphan queue"),
+            "t",
+        )
+        .unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[2],
+            Some("shared export render"),
+            Some("shared export render stream"),
+            "t",
+        )
+        .unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[3],
+            Some("shared export render"),
+            Some("shared export render stream"),
+            "t",
+        )
+        .unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[4],
+            Some("cache hydrate loader"),
+            Some("cache hydrate loader refresh"),
+            "t",
+        )
+        .unwrap();
+        update_intent_meaning(
+            &db,
+            &ids[5],
+            Some("cache hydrate loader"),
+            Some("cache hydrate loader refresh"),
+            "t",
+        )
+        .unwrap();
         insert_codefile(&db, &codefile("shared", "src/shared.rs")).unwrap();
         insert_codefile(&db, &codefile("from", "src/from.rs")).unwrap();
         insert_codefile(&db, &codefile("to", "src/to.rs")).unwrap();
@@ -2852,17 +4383,27 @@ mod tests {
         }
 
         let report = compute_smells(&db).unwrap();
-        let unarmed: Vec<&Smell> =
-            report.open.iter().filter(|s| s.kind == "duplicate_detection_unarmed").collect();
+        let unarmed: Vec<&Smell> = report
+            .open
+            .iter()
+            .filter(|s| s.kind == "duplicate_detection_unarmed")
+            .collect();
         assert_eq!(unarmed.len(), 1, "{:?}", report.open);
-        assert!(unarmed[0].evidence.contains("3 of 3 coded intent(s)"), "{}", unarmed[0].evidence);
+        assert!(
+            unarmed[0].evidence.contains("3 of 3 coded intent(s)"),
+            "{}",
+            unarmed[0].evidence
+        );
 
         for id in &ids {
             tag_intent(&db, id, &["alpha"]);
         }
         let report = compute_smells(&db).unwrap();
         assert!(
-            !report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            !report
+                .open
+                .iter()
+                .any(|s| s.kind == "duplicate_detection_unarmed"),
             "{:?}",
             report.open
         );
@@ -2870,20 +4411,33 @@ mod tests {
         set_intent_tags(&db, &ids[2], Vec::new(), "t2").unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(
-            report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            report
+                .open
+                .iter()
+                .any(|s| s.kind == "duplicate_detection_unarmed"),
             "{:?}",
             report.open
         );
 
-        insert_note(&db, &note_at("n-dupe-coverage", "decision", "intent", &ids[0], "t3")).unwrap();
+        insert_note(
+            &db,
+            &note_at("n-dupe-coverage", "decision", "intent", &ids[0], "t3"),
+        )
+        .unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(
-            !report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            !report
+                .open
+                .iter()
+                .any(|s| s.kind == "duplicate_detection_unarmed"),
             "{:?}",
             report.open
         );
         assert!(
-            report.adjudicated.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            report
+                .adjudicated
+                .iter()
+                .any(|s| s.kind == "duplicate_detection_unarmed"),
             "{:?}",
             report.adjudicated
         );
@@ -2892,7 +4446,10 @@ mod tests {
         insert_implements(&db, &ids[2], "cf-new", "", "", "t4").unwrap();
         let report = compute_smells(&db).unwrap();
         assert!(
-            report.open.iter().any(|s| s.kind == "duplicate_detection_unarmed"),
+            report
+                .open
+                .iter()
+                .any(|s| s.kind == "duplicate_detection_unarmed"),
             "{:?}",
             report.open
         );
@@ -2912,8 +4469,14 @@ mod tests {
         assert_eq!(drift.len(), 1, "{smells:?}");
         // Equal usage (1 vs 1): the tie keeps the first-ranked ('authn' here by
         // ua >= ub) — what matters is the remedy is a concrete merge command.
-        assert!(drift[0].remedy.contains("loom vocab merge"), "{}", drift[0].remedy);
-        assert!(!smells.iter().any(|s| s.kind == "vocab_drift" && s.summary.contains("cache")));
+        assert!(
+            drift[0].remedy.contains("loom vocab merge"),
+            "{}",
+            drift[0].remedy
+        );
+        assert!(!smells
+            .iter()
+            .any(|s| s.kind == "vocab_drift" && s.summary.contains("cache")));
     }
 
     #[test]
@@ -2927,8 +4490,15 @@ mod tests {
         let top = &pairs[0].0;
         let tagged_pair = (top.from_id == ids[0] && top.to_id == ids[1])
             || (top.from_id == ids[1] && top.to_id == ids[0]);
-        assert!(tagged_pair, "tag collision must outrank untagged pairs: {pairs:?}");
-        assert!(top.notes.contains("lineage"), "the why must travel: {}", top.notes);
+        assert!(
+            tagged_pair,
+            "tag collision must outrank untagged pairs: {pairs:?}"
+        );
+        assert!(
+            top.notes.contains("lineage"),
+            "the why must travel: {}",
+            top.notes
+        );
     }
 
     #[test]
@@ -2942,8 +4512,13 @@ mod tests {
 
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-2",
+            "two",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
         assert_eq!(list_vocab_terms(&db2).unwrap().len(), 1);
         let tags = parse_tags(&get_intent(&db2, &ids[0]).unwrap().unwrap()).unwrap();
@@ -2957,12 +4532,20 @@ mod tests {
         }
         let db3 = GrafeoDb::in_memory();
         db3.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-3",
+            "three",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db3, &old, false).unwrap();
         assert!(list_vocab_terms(&db3).unwrap().is_empty());
         let tags = parse_tags(&get_intent(&db3, &ids[0]).unwrap().unwrap()).unwrap();
-        assert!(tags.is_empty(), "absent tags read as untagged, never an error");
+        assert!(
+            tags.is_empty(),
+            "absent tags read as untagged, never an error"
+        );
     }
 
     /// The declared layer order is one atomic list on the meta sentinel:
@@ -2970,13 +4553,23 @@ mod tests {
     #[test]
     fn layer_order_round_trip_replace_and_clear() {
         let (db, _) = db_inited(0);
-        assert!(get_layer_order(&db).unwrap().is_empty(), "fresh graph has no order");
+        assert!(
+            get_layer_order(&db).unwrap().is_empty(),
+            "fresh graph has no order"
+        );
         set_layer_order(&db, &["cli".into(), "app".into(), "db".into()]).unwrap();
         assert_eq!(get_layer_order(&db).unwrap(), vec!["cli", "app", "db"]);
         set_layer_order(&db, &["ui".into(), "core".into()]).unwrap();
-        assert_eq!(get_layer_order(&db).unwrap(), vec!["ui", "core"], "order replaces whole");
+        assert_eq!(
+            get_layer_order(&db).unwrap(),
+            vec!["ui", "core"],
+            "order replaces whole"
+        );
         set_layer_order(&db, &[]).unwrap();
-        assert!(get_layer_order(&db).unwrap().is_empty(), "clear empties the order");
+        assert!(
+            get_layer_order(&db).unwrap().is_empty(),
+            "clear empties the order"
+        );
     }
 
     /// Layering: an import pointing UP the declared order is flagged; down
@@ -3011,40 +4604,93 @@ mod tests {
         update_codefile_imports(&db, "cfm", &["src/ui.rs".to_string()]).unwrap(); // exempt
 
         let lv = |r: &SmellReport| {
-            r.open.iter().filter(|s| s.kind == "layering_violation").count()
+            r.open
+                .iter()
+                .filter(|s| s.kind == "layering_violation")
+                .count()
         };
-        assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "no order declared → silent");
+        assert_eq!(
+            lv(&compute_smells(&db).unwrap()),
+            0,
+            "no order declared → silent"
+        );
 
         set_layer_order(&db, &["presentation".into(), "storage".into()]).unwrap();
         let report = compute_smells(&db).unwrap();
-        assert_eq!(lv(&report), 1, "only the up-import is flagged: {:?}", report.open);
-        let s = report.open.iter().find(|s| s.kind == "layering_violation").unwrap();
-        assert!(s.summary.contains("'storage adapters' (storage)"), "{}", s.summary);
-        assert!(s.evidence.contains("src/infra.rs → src/ui.rs"), "{}", s.evidence);
+        assert_eq!(
+            lv(&report),
+            1,
+            "only the up-import is flagged: {:?}",
+            report.open
+        );
+        let s = report
+            .open
+            .iter()
+            .find(|s| s.kind == "layering_violation")
+            .unwrap();
+        assert!(
+            s.summary.contains("'storage adapters' (storage)"),
+            "{}",
+            s.summary
+        );
+        assert!(
+            s.evidence.contains("src/infra.rs → src/ui.rs"),
+            "{}",
+            s.evidence
+        );
 
         // A recorded relationship does not excuse direction.
         get_or_create_relates_to(&db, "infra", "ui", "t").unwrap();
-        update_relates_to_ground(&db, "infra", "ui", "criterion long enough", "", 0.9, "llm", "t")
-            .unwrap();
-        assert_eq!(lv(&compute_smells(&db).unwrap()), 1, "a RELATES_TO edge must not silence it");
+        update_relates_to_ground(
+            &db,
+            "infra",
+            "ui",
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t",
+        )
+        .unwrap();
+        assert_eq!(
+            lv(&compute_smells(&db).unwrap()),
+            1,
+            "a RELATES_TO edge must not silence it"
+        );
 
         // Terminal state: decision on the importing intent, newer than its
         // newest grounding — the finding moves to the adjudicated surface.
         insert_note(&db, &note_at("nd", "decision", "intent", "infra", "t2")).unwrap();
         let report = compute_smells(&db).unwrap();
-        assert_eq!(lv(&report), 0, "a decision newer than the grounding resolves it");
+        assert_eq!(
+            lv(&report),
+            0,
+            "a decision newer than the grounding resolves it"
+        );
         assert!(
-            report.adjudicated.iter().any(|a| a.kind == "layering_violation"),
-            "suppressed finding must surface WITH its ruling: {:?}", report.adjudicated
+            report
+                .adjudicated
+                .iter()
+                .any(|a| a.kind == "layering_violation"),
+            "suppressed finding must surface WITH its ruling: {:?}",
+            report.adjudicated
         );
 
         // A new grounding on the importing intent re-opens the question.
         insert_codefile(&db, &codefile("cfi2", "src/infra2.rs")).unwrap();
         insert_implements(&db, "infra", "cfi2", "", "", "t3").unwrap();
-        assert_eq!(lv(&compute_smells(&db).unwrap()), 1, "a new grounding must re-open it");
+        assert_eq!(
+            lv(&compute_smells(&db).unwrap()),
+            1,
+            "a new grounding must re-open it"
+        );
 
         set_layer_order(&db, &[]).unwrap();
-        assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "clearing the order silences it");
+        assert_eq!(
+            lv(&compute_smells(&db).unwrap()),
+            0,
+            "clearing the order silences it"
+        );
     }
 
     #[test]
@@ -3082,26 +4728,52 @@ mod tests {
 
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-2",
+            "two",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
-        assert_eq!(get_layer_order(&db2).unwrap(), vec!["app", "db"], "restore adopts the order");
+        assert_eq!(
+            get_layer_order(&db2).unwrap(),
+            vec!["app", "db"],
+            "restore adopts the order"
+        );
 
         let db3 = GrafeoDb::in_memory();
         db3.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-3",
+            "three",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db3, &export, true).unwrap();
-        assert_eq!(get_layer_order(&db3).unwrap(), vec!["app", "db"], "a port keeps the design");
+        assert_eq!(
+            get_layer_order(&db3).unwrap(),
+            vec!["app", "db"],
+            "a port keeps the design"
+        );
 
         let mut old = export.clone();
         old.as_object_mut().unwrap().remove("layer_order");
         let db4 = GrafeoDb::in_memory();
         db4.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g-4", "four", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g-4",
+            "four",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db4, &old, false).unwrap();
-        assert!(get_layer_order(&db4).unwrap().is_empty(), "older exports read as no order");
+        assert!(
+            get_layer_order(&db4).unwrap().is_empty(),
+            "older exports read as no order"
+        );
     }
 
     #[test]
@@ -3109,20 +4781,29 @@ mod tests {
         let (db, ids) = db_inited(1);
         let id = ids[0].clone();
         let now = "t1";
-        db.execute("MATCH (n:Intent) SET n.domain = 'storage', n.layer = ''").unwrap();
+        db.execute("MATCH (n:Intent) SET n.domain = 'storage', n.layer = ''")
+            .unwrap();
         let mut export = export_graph(&db).unwrap();
         let obj = export.as_object_mut().unwrap();
         obj.insert("schema_version".into(), serde_json::json!("5"));
         obj.remove("layer_order");
-        obj.insert("domain_order".into(), serde_json::json!(["presentation", "storage"]));
+        obj.insert(
+            "domain_order".into(),
+            serde_json::json!(["presentation", "storage"]),
+        );
         for intent in obj["nodes"]["Intent"].as_array_mut().unwrap() {
             intent.as_object_mut().unwrap().remove("layer");
         }
 
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, now, "g-legacy", "legacy", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            now,
+            "g-legacy",
+            "legacy",
+            "owned",
+        ))
+        .unwrap();
         import_graph(&db2, &export, false).unwrap();
         assert_eq!(
             get_layer_order(&db2).unwrap(),
@@ -3131,7 +4812,10 @@ mod tests {
         );
         let imported = get_intent(&db2, &id).unwrap().unwrap();
         assert_eq!(imported.domain, "storage", "product domain is preserved");
-        assert_eq!(imported.layer, "storage", "v5 domain copies into layer only when domain_order proved layer semantics");
+        assert_eq!(
+            imported.layer, "storage",
+            "v5 domain copies into layer only when domain_order proved layer semantics"
+        );
     }
 
     #[test]
@@ -3141,17 +4825,27 @@ mod tests {
         tag_intent(&db, &ids[0], &["good", "ghost"]); // ghost is unregistered
         let report = check_graph(&db).unwrap();
         assert!(
-            report.issues.iter().any(|i| i.contains("ghost") && i.contains("VocabTerm")),
-            "{:?}", report.issues
+            report
+                .issues
+                .iter()
+                .any(|i| i.contains("ghost") && i.contains("VocabTerm")),
+            "{:?}",
+            report.issues
         );
         // Over the cap: bypasses the command gate by writing directly — doctor
         // must still catch it (defense in depth, like every other audit).
-        set_intent_tags(&db, &ids[1],
-            vec!["good".into(), "a1".into(), "a2".into(), "a3".into()], "t").unwrap();
+        set_intent_tags(
+            &db,
+            &ids[1],
+            vec!["good".into(), "a1".into(), "a2".into(), "a3".into()],
+            "t",
+        )
+        .unwrap();
         let report = check_graph(&db).unwrap();
         assert!(
             report.issues.iter().any(|i| i.contains("4 tags")),
-            "{:?}", report.issues
+            "{:?}",
+            report.issues
         );
     }
 
@@ -3159,8 +4853,20 @@ mod tests {
     fn align_ranks_churned_unconfirmed_intent_first() {
         let (db, ids) = db_with_intents(2);
         let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        let confirm_a = note_at("confirm-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z");
-        let confirm_b = note_at("confirm-b", "confirm", "intent", &ids[1], "2026-01-03T00:00:00Z");
+        let confirm_a = note_at(
+            "confirm-a",
+            "confirm",
+            "intent",
+            &ids[0],
+            "2026-01-01T00:00:00Z",
+        );
+        let confirm_b = note_at(
+            "confirm-b",
+            "confirm",
+            "intent",
+            &ids[1],
+            "2026-01-03T00:00:00Z",
+        );
         insert_note(&db, &confirm_a).unwrap();
         insert_note(&db, &confirm_b).unwrap();
         record_sync_flip(
@@ -3171,7 +4877,8 @@ mod tests {
             "needs_reverification",
             "src/lib.rs changed",
             "2026-01-02T00:00:00Z",
-        ).unwrap();
+        )
+        .unwrap();
 
         let candidates = align_candidates(&db).unwrap();
         assert_eq!(candidates[0].intent.id, ids[0]);
@@ -3184,7 +4891,17 @@ mod tests {
         let (db, ids) = db_with_intents(2);
         // An old confirm admits ids[1] through the grace sweep — a quiet,
         // freshly-stated intent is (correctly) not a drift suspect at all.
-        insert_note(&db, &note_at("confirm-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+        insert_note(
+            &db,
+            &note_at(
+                "confirm-b",
+                "confirm",
+                "intent",
+                &ids[1],
+                "2026-01-01T00:00:00Z",
+            ),
+        )
+        .unwrap();
         retire_intent(&db, &ids[0], "superseded", None, "2026-01-02T00:00:00Z").unwrap();
 
         let candidates = align_candidates(&db).unwrap();
@@ -3200,13 +4917,33 @@ mod tests {
         let (db, ids) = db_with_intents(2);
         let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
         let yesterday = (chrono::Utc::now() - chrono::Duration::days(1)).to_rfc3339();
-        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], &yesterday)).unwrap();
-        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], &yesterday)).unwrap();
-        assert!(align_candidates(&db).unwrap().is_empty(), "fresh + quiet = empty queue");
+        insert_note(
+            &db,
+            &note_at("c-a", "confirm", "intent", &ids[0], &yesterday),
+        )
+        .unwrap();
+        insert_note(
+            &db,
+            &note_at("c-b", "confirm", "intent", &ids[1], &yesterday),
+        )
+        .unwrap();
+        assert!(
+            align_candidates(&db).unwrap().is_empty(),
+            "fresh + quiet = empty queue"
+        );
 
         // Code churns under the shared edge → both meanings are suspects again.
         let now = chrono::Utc::now().to_rfc3339();
-        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification", "src/lib.rs changed", &now).unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            &edge.id,
+            "passing",
+            "needs_reverification",
+            "src/lib.rs changed",
+            &now,
+        )
+        .unwrap();
         let candidates = align_candidates(&db).unwrap();
         assert_eq!(candidates.len(), 2);
         assert!(candidates.iter().all(|c| c.churn_since_confirm == 1));
@@ -3219,16 +4956,35 @@ mod tests {
     fn retirement_ripples_drift_suspicion_to_neighbours() {
         let (db, ids) = db_with_intents(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "2026-01-01T00:00:00Z").unwrap();
-        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "2026-01-01T00:00:00Z",
+        )
+        .unwrap();
+        insert_note(
+            &db,
+            &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
 
         retire_intent(&db, &ids[0], "superseded", None, "2026-01-02T00:00:00Z").unwrap();
 
-        let edge = get_relates_to_between(&db, &ids[0], &ids[1]).unwrap().unwrap();
+        let edge = get_relates_to_between(&db, &ids[0], &ids[1])
+            .unwrap()
+            .unwrap();
         assert_eq!(edge.inspection_status, "needs_reverification");
         let candidates = align_candidates(&db).unwrap();
         let neighbour = candidates.iter().find(|c| c.intent.id == ids[1]).unwrap();
-        assert_eq!(neighbour.churn_since_confirm, 1, "the retirement flip counts as churn");
+        assert_eq!(
+            neighbour.churn_since_confirm, 1,
+            "the retirement flip counts as churn"
+        );
         // The cause is on record, but never pollutes the hot-FILE grouping.
         let n = notes_for_target(&db, &edge.id).unwrap().pop().unwrap();
         assert!(n.text.contains("intent 'I0' retired"), "{}", n.text);
@@ -3244,9 +5000,27 @@ mod tests {
     fn redefinition_resets_own_align_clock_but_churns_neighbours() {
         let (db, ids) = db_with_intents(2);
         get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        update_relates_to_ground(&db, &ids[0], &ids[1], "criterion long enough", "", 0.9, "llm", "t1").unwrap();
-        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
-        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
+        update_relates_to_ground(
+            &db,
+            &ids[0],
+            &ids[1],
+            "criterion long enough",
+            "",
+            0.9,
+            "llm",
+            "t1",
+        )
+        .unwrap();
+        insert_note(
+            &db,
+            &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
+        insert_note(
+            &db,
+            &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
 
         // The command transaction lands the decision note and the ripple with
         // ONE timestamp; mirror that here.
@@ -3258,9 +5032,15 @@ mod tests {
 
         let candidates = align_candidates(&db).unwrap();
         let own = candidates.iter().find(|c| c.intent.id == ids[0]).unwrap();
-        assert_eq!(own.churn_since_confirm, 0, "own ripple must not count against the new wording");
+        assert_eq!(
+            own.churn_since_confirm, 0,
+            "own ripple must not count against the new wording"
+        );
         let neighbour = candidates.iter().find(|c| c.intent.id == ids[1]).unwrap();
-        assert_eq!(neighbour.churn_since_confirm, 1, "neighbour's confirm predates the redefinition");
+        assert_eq!(
+            neighbour.churn_since_confirm, 1,
+            "neighbour's confirm predates the redefinition"
+        );
     }
 
     #[test]
@@ -3275,8 +5055,15 @@ mod tests {
             "needs_reverification",
             "src/lib.rs changed",
             "2026-01-01T00:00:00Z",
-        ).unwrap();
-        let confirm = note_at("confirm-after", "confirm", "intent", &ids[0], "2026-01-02T00:00:00Z");
+        )
+        .unwrap();
+        let confirm = note_at(
+            "confirm-after",
+            "confirm",
+            "intent",
+            &ids[0],
+            "2026-01-02T00:00:00Z",
+        );
         insert_note(&db, &confirm).unwrap();
 
         let candidates = align_candidates(&db).unwrap();
@@ -3290,20 +5077,46 @@ mod tests {
     fn align_skips_internal_until_ruling_cleared() {
         let (db, ids) = db_with_intents(2);
         let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
-        insert_note(&db, &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z")).unwrap();
-        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification",
-            "src/lib.rs changed", "2026-01-02T00:00:00Z").unwrap();
-        assert_eq!(align_candidates(&db).unwrap().len(), 2, "both churned → both suspects");
+        insert_note(
+            &db,
+            &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
+        insert_note(
+            &db,
+            &note_at("c-b", "confirm", "intent", &ids[1], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            &edge.id,
+            "passing",
+            "needs_reverification",
+            "src/lib.rs changed",
+            "2026-01-02T00:00:00Z",
+        )
+        .unwrap();
+        assert_eq!(
+            align_candidates(&db).unwrap().len(),
+            2,
+            "both churned → both suspects"
+        );
 
         set_intent_visibility(&db, &ids[0], "internal", "2026-01-03T00:00:00Z").unwrap();
         let candidates = align_candidates(&db).unwrap();
-        assert!(candidates.iter().all(|c| c.intent.id != ids[0]), "internal leaves the interview");
+        assert!(
+            candidates.iter().all(|c| c.intent.id != ids[0]),
+            "internal leaves the interview"
+        );
         assert!(candidates.iter().any(|c| c.intent.id == ids[1]));
 
         // A redefinition clears the ruling ("" = untriaged) — back in the queue.
         set_intent_visibility(&db, &ids[0], "", "2026-01-04T00:00:00Z").unwrap();
-        assert!(align_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0]));
+        assert!(align_candidates(&db)
+            .unwrap()
+            .iter()
+            .any(|c| c.intent.id == ids[0]));
     }
 
     /// The "terminology confusing, keep concept" outcome: a `--reword` stamp
@@ -3314,11 +5127,26 @@ mod tests {
     fn reworded_stamp_resets_align_clock() {
         let (db, ids) = db_with_intents(2);
         let edge = get_or_create_relates_to(&db, &ids[0], &ids[1], "t0").unwrap();
-        insert_note(&db, &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z")).unwrap();
-        record_sync_flip(&db, "edge", &edge.id, "passing", "needs_reverification",
-            "src/lib.rs changed", "2026-01-02T00:00:00Z").unwrap();
+        insert_note(
+            &db,
+            &note_at("c-a", "confirm", "intent", &ids[0], "2026-01-01T00:00:00Z"),
+        )
+        .unwrap();
+        record_sync_flip(
+            &db,
+            "edge",
+            &edge.id,
+            "passing",
+            "needs_reverification",
+            "src/lib.rs changed",
+            "2026-01-02T00:00:00Z",
+        )
+        .unwrap();
         assert!(
-            align_candidates(&db).unwrap().iter().any(|c| c.intent.id == ids[0] && c.churn_since_confirm == 1),
+            align_candidates(&db)
+                .unwrap()
+                .iter()
+                .any(|c| c.intent.id == ids[0] && c.churn_since_confirm == 1),
             "churned under an old confirm → suspect"
         );
 
@@ -3328,7 +5156,10 @@ mod tests {
         insert_note(&db, &reword).unwrap();
 
         assert!(
-            align_candidates(&db).unwrap().iter().all(|c| c.intent.id != ids[0]),
+            align_candidates(&db)
+                .unwrap()
+                .iter()
+                .all(|c| c.intent.id != ids[0]),
             "fresh reword + no churn since = out of the queue"
         );
     }
@@ -3347,12 +5178,22 @@ mod escaping {
     use crate::types::Intent;
 
     fn mk(id: &str, desc: &str) -> Intent {
-        Intent { id: id.into(), name: "n".into(), description: desc.into(),
-            abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
+        Intent {
+            id: id.into(),
+            name: "n".into(),
+            description: desc.into(),
+            abstraction_level: "feature".into(),
+            domain: "d".into(),
+            source_refs: Vec::new(),
             layer: String::new(),
-            status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
+            status: "proposed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
             visibility: String::new(),
-            lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
     }
 
     #[test]
@@ -3364,11 +5205,12 @@ mod escaping {
             "g-test",
             "testgraph",
             "owned",
-        )).unwrap();
+        ))
+        .unwrap();
         let nasty = [
             "O'Brien",
             "\"double\" quote",
-            "back\\slash",            // a literal backslash
+            "back\\slash", // a literal backslash
             "trailing\\",
             "quote'and\\back",
             "'; MATCH (n) DETACH DELETE n; //",
@@ -3385,7 +5227,10 @@ mod escaping {
             assert_eq!(&got.description, d, "round-trip mismatch for input {k:?}");
             set_identity(&db, "g-test", d, "owned").unwrap();
             let meta = get_meta(&db).unwrap().expect("must read meta back");
-            assert_eq!(&meta.graph_name, d, "esc/interpolation round-trip mismatch for input {k:?}");
+            assert_eq!(
+                &meta.graph_name, d,
+                "esc/interpolation round-trip mismatch for input {k:?}"
+            );
         }
         // also a real newline byte and a real tab byte
         let id = "real_ctrl";
@@ -3394,7 +5239,10 @@ line2	end";
         insert_intent(&db, &mk(id, d)).unwrap();
         let got = get_intent(&db, id).unwrap().unwrap();
         assert_eq!(got.description, d, "real control chars must round-trip");
-        println!("ESC_ROUNDTRIP ok for {} adversarial inputs", nasty.len() + 1);
+        println!(
+            "ESC_ROUNDTRIP ok for {} adversarial inputs",
+            nasty.len() + 1
+        );
     }
 }
 /// Proves grafeo's parameter-binding path (`execute_with_params`, `$name`
@@ -3406,7 +5254,10 @@ mod parameterized_queries {
     use grafeo::{GrafeoDB, Value};
     use std::collections::HashMap;
     fn p(pairs: &[(&str, &str)]) -> HashMap<String, Value> {
-        pairs.iter().map(|(k, v)| (k.to_string(), Value::from(*v))).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), Value::from(*v)))
+            .collect()
     }
     #[test]
     fn params_reliable_for_loom_shapes() {
@@ -3415,25 +5266,42 @@ mod parameterized_queries {
         let n = 8;
         let ids: Vec<String> = (0..n).map(|i| format!("i{i}")).collect();
         for id in &ids {
-            s.execute_with_params("INSERT (:Intent {id: $id, status: $st})",
-                p(&[("id", id), ("st", "proposed")])).unwrap();
+            s.execute_with_params(
+                "INSERT (:Intent {id: $id, status: $st})",
+                p(&[("id", id), ("st", "proposed")]),
+            )
+            .unwrap();
         }
         let (mut k, mut fails) = (0, 0);
         for i in 0..n {
             for j in (i + 1)..n {
-                let eid = format!("e{k}"); k += 1;
+                let eid = format!("e{k}");
+                k += 1;
                 s.execute_with_params(
                     "MATCH (a:Intent {id:$from}),(b:Intent {id:$to}) \
                      INSERT (a)-[:RELATES_TO {id:$eid, inspection_status:$st}]->(b)",
-                    p(&[("from", &ids[i]), ("to", &ids[j]), ("eid", &eid), ("st", "uninspected")])).unwrap();
+                    p(&[
+                        ("from", &ids[i]),
+                        ("to", &ids[j]),
+                        ("eid", &eid),
+                        ("st", "uninspected"),
+                    ]),
+                )
+                .unwrap();
                 s.execute_with_params(
                     "MATCH (a:Intent {id:$from})-[r:RELATES_TO]->(b:Intent {id:$to}) SET r.inspection_status=$st",
                     p(&[("from", &ids[i]), ("to", &ids[j]), ("st", "passing")])).unwrap();
                 let r = s.execute_with_params(
                     "MATCH (a:Intent {id:$from})-[r:RELATES_TO]->(b:Intent {id:$to}) RETURN r.id AS x, r.inspection_status AS st",
                     p(&[("from", &ids[i]), ("to", &ids[j])])).unwrap();
-                let ok = r.rows().first().map(|row| matches!(&row[1], Value::String(s) if s.to_string()=="passing")).unwrap_or(false);
-                if !ok { fails += 1; }
+                let ok = r
+                    .rows()
+                    .first()
+                    .map(|row| matches!(&row[1], Value::String(s) if s.to_string()=="passing"))
+                    .unwrap_or(false);
+                if !ok {
+                    fails += 1;
+                }
             }
         }
         println!("PARAM_SPIKE edges={k} fails={fails}");

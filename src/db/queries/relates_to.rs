@@ -39,11 +39,14 @@ pub fn get_relates_to_between(
                 a.id AS from_id, a.name AS from_name, \
                 b.id AS to_id, b.name AS to_name",
         from = esc(from_id),
-        to   = esc(to_id),
+        to = esc(to_id),
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().first().map(|row| row_to_relates_to(row, &cols)))
+    Ok(result
+        .rows()
+        .first()
+        .map(|row| row_to_relates_to(row, &cols)))
 }
 
 pub fn get_or_create_relates_to(
@@ -70,8 +73,8 @@ pub fn get_or_create_relates_to(
                 a.id AS from_id, a.name AS from_name, \
                 b.id AS to_id, b.name AS to_name",
         from = esc(from_id),
-        to   = esc(to_id),
-        now  = esc(now),
+        to = esc(to_id),
+        now = esc(now),
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
@@ -83,15 +86,13 @@ pub fn get_or_create_relates_to(
              intent-a id: {}\n\
              intent-b id: {}\n\
              Run `loom intent list` to see available intents.",
-            from_id, to_id
+            from_id,
+            to_id
         ),
     }
 }
 
-pub fn list_relates_to(
-    db: &dyn LoomDb,
-    status_filter: Option<&str>,
-) -> Result<Vec<RelatesTo>> {
+pub fn list_relates_to(db: &dyn LoomDb, status_filter: Option<&str>) -> Result<Vec<RelatesTo>> {
     // The status filter is pushed into the query: edge-property EQUALITY
     // filtering is deterministic on grafeo 0.5.42 (50/50 set-then-filter
     // cycles, in-memory and persistent — tests/grafeo_probe.rs). Only the
@@ -113,8 +114,11 @@ pub fn list_relates_to(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    let mut edges: Vec<RelatesTo> =
-        result.rows().iter().map(|row| row_to_relates_to(row, &cols)).collect();
+    let mut edges: Vec<RelatesTo> = result
+        .rows()
+        .iter()
+        .map(|row| row_to_relates_to(row, &cols))
+        .collect();
     if let Some(s) = status_filter {
         edges.retain(|e| e.inspection_status == s);
     }
@@ -130,6 +134,7 @@ pub fn list_relates_to(
 /// what the inspection actually found (optional for ground — "" is honest
 /// when the criterion says it all); it is ALWAYS written, so a re-ground
 /// never leaves a previous failing verdict's evidence behind the new green.
+#[allow(clippy::too_many_arguments)]
 pub fn update_relates_to_ground(
     db: &dyn LoomDb,
     from_id: &str,
@@ -152,15 +157,28 @@ pub fn update_relates_to_ground(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("from", from_id), ("to", to_id), ("crit", criterion),
-            ("ev", evidence), ("by", inspected_by), ("now", now),
+            ("from", from_id),
+            ("to", to_id),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "passing", inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "passing",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
 /// Set inspection_status = failing (was: issue_found) with evidence.
+#[allow(clippy::too_many_arguments)]
 pub fn update_relates_to_issue(
     db: &dyn LoomDb,
     from_id: &str,
@@ -183,11 +201,23 @@ pub fn update_relates_to_issue(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("from", from_id), ("to", to_id), ("crit", criterion),
-            ("ev", evidence), ("by", inspected_by), ("now", now),
+            ("from", from_id),
+            ("to", to_id),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "failing", inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "failing",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -208,11 +238,22 @@ pub fn update_relates_to_independent(
          SET r.inspection_status = 'independent', r.notes = $notes, \
              r.inspected_by = $by, r.last_inspected = $now",
         super::row::sparams(&[
-            ("from", from_id), ("to", to_id), ("notes", notes),
-            ("by", inspected_by), ("now", now),
+            ("from", from_id),
+            ("to", to_id),
+            ("notes", notes),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, "independent", inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "independent",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -223,6 +264,7 @@ pub fn update_relates_to_independent(
 /// analyzer's contract, it does not overwrite it; `default_criterion` only
 /// fills a blank. Evidence always carries the run detail, so a green edge can
 /// say "proven by execution", not just "read and believed".
+#[allow(clippy::too_many_arguments)]
 pub fn stamp_relates_to_runtime(
     db: &dyn LoomDb,
     from_id: &str,
@@ -251,12 +293,24 @@ pub fn stamp_relates_to_runtime(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("from", from_id), ("to", to_id), ("status", status),
-            ("crit", criterion), ("ev", evidence),
-            ("by", inspected_by), ("now", now),
+            ("from", from_id),
+            ("to", to_id),
+            ("status", status),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, status, inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        status,
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -277,7 +331,15 @@ pub fn fix_edge(
     };
     let from_id = edge.from_id.clone();
     let to_id = edge.to_id.clone();
-    super::note::record_transition(db, "edge", &edge.id, &edge.inspection_status, "passing", fixed_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &edge.id,
+        &edge.inspection_status,
+        "passing",
+        fixed_by,
+        now,
+    )?;
 
     // Mark the edge as passing (fixed), keyed by its endpoints.
     db.execute(&format!(
@@ -285,9 +347,9 @@ pub fn fix_edge(
          SET r.inspection_status = 'passing', r.notes = '{desc}', \
              r.last_inspected = '{now}'",
         from = esc(&from_id),
-        to   = esc(&to_id),
+        to = esc(&to_id),
         desc = esc(description),
-        now  = esc(now),
+        now = esc(now),
     ))?;
 
     // Propagate needs_reverification to currently-passing/independent neighbours.
@@ -304,7 +366,7 @@ pub fn fix_edge(
                     "MATCH (a:Intent {{id: '{from}'}})-[r:RELATES_TO]->(b:Intent {{id: '{to}'}}) \
                      SET r.inspection_status = 'needs_reverification'",
                     from = esc(&nb.from_id),
-                    to   = esc(&nb.to_id),
+                    to = esc(&nb.to_id),
                 ))?;
             }
         }
@@ -346,12 +408,15 @@ pub fn edges_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<RelatesT
 
 pub fn unresolved_edges_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<RelatesTo>> {
     let edges = edges_for_intent(db, intent_id)?;
-    Ok(edges.into_iter().filter(|e| {
-        matches!(
-            e.inspection_status.as_str(),
-            "uninspected" | "failing" | "needs_reverification"
-        )
-    }).collect())
+    Ok(edges
+        .into_iter()
+        .filter(|e| {
+            matches!(
+                e.inspection_status.as_str(),
+                "uninspected" | "failing" | "needs_reverification"
+            )
+        })
+        .collect())
 }
 
 /// Recently updated passing edges (were: recent_fixes).
@@ -369,18 +434,18 @@ fn row_to_relates_to(row: &[Value], cols: &HashMap<&str, usize>) -> RelatesTo {
         // v4: edge identity is DERIVED from the endpoints (unique per ordered
         // pair) — nothing is stored, nothing can go stale, and the key is the
         // same on every machine the graph travels to.
-        id:                crate::db::schema::edge_key(crate::db::schema::edge::RELATES_TO, &from_id, &to_id),
+        id: crate::db::schema::edge_key(crate::db::schema::edge::RELATES_TO, &from_id, &to_id),
         from_id,
         to_id,
-        from_name:         str_val(get(row, cols, "from_name")),
-        to_name:           str_val(get(row, cols, "to_name")),
+        from_name: str_val(get(row, cols, "from_name")),
+        to_name: str_val(get(row, cols, "to_name")),
         inspection_status: str_val(get(row, cols, "r.inspection_status")),
-        criterion:         str_val(get(row, cols, "r.criterion")),
-        confidence:        f64_val(get(row, cols, "r.confidence")),
-        evidence:          str_val(get(row, cols, "r.evidence")),
-        last_inspected:    str_val(get(row, cols, "r.last_inspected")),
-        inspected_by:      str_val(get(row, cols, "r.inspected_by")),
-        priority_score:    f64_val(get(row, cols, "r.priority_score")),
-        notes:             str_val(get(row, cols, "r.notes")),
+        criterion: str_val(get(row, cols, "r.criterion")),
+        confidence: f64_val(get(row, cols, "r.confidence")),
+        evidence: str_val(get(row, cols, "r.evidence")),
+        last_inspected: str_val(get(row, cols, "r.last_inspected")),
+        inspected_by: str_val(get(row, cols, "r.inspected_by")),
+        priority_score: f64_val(get(row, cols, "r.priority_score")),
+        notes: str_val(get(row, cols, "r.notes")),
     }
 }

@@ -94,13 +94,15 @@ impl LoomDb for GrafeoDb {
         query: &str,
         params: std::collections::HashMap<String, grafeo::Value>,
     ) -> Result<QueryResult> {
-        self.session.execute_with_params(query, params).map_err(|e| {
-            anyhow::anyhow!(
-                "Query execution failed: {}\nQuery: {}",
-                e,
-                query.chars().take(200).collect::<String>()
-            )
-        })
+        self.session
+            .execute_with_params(query, params)
+            .map_err(|e| {
+                anyhow::anyhow!(
+                    "Query execution failed: {}\nQuery: {}",
+                    e,
+                    query.chars().take(200).collect::<String>()
+                )
+            })
     }
 }
 
@@ -117,10 +119,7 @@ impl LoomDb for GrafeoDb {
 /// graph exactly as it was, instead of half-flipped. Do not nest: grafeo has
 /// no savepoint-based nesting through this path, and loom only opens
 /// transactions at the command boundary.
-pub fn with_transaction<T>(
-    db: &dyn LoomDb,
-    f: impl FnOnce() -> Result<T>,
-) -> Result<T> {
+pub fn with_transaction<T>(db: &dyn LoomDb, f: impl FnOnce() -> Result<T>) -> Result<T> {
     db.execute("START TRANSACTION")?;
     match f() {
         Ok(v) => {

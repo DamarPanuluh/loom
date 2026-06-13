@@ -3,10 +3,10 @@
 
 use anyhow::Result;
 
-use std::collections::{HashMap, HashSet};
 use crate::db::schema::esc;
 use crate::db::LoomDb;
 use crate::types::{ValidatesEdge, Validation};
+use std::collections::{HashMap, HashSet};
 
 #[cfg(test)]
 use super::implements::intent_ids_implementing_codefile;
@@ -28,16 +28,22 @@ pub fn insert_validates(
            e.notes = $notes, e.created_at = $now \
          RETURN e.inspection_status",
         super::row::sparams(&[
-            ("vid", validation_id), ("iid", intent_id),
-            ("notes", notes), ("now", now),
+            ("vid", validation_id),
+            ("iid", intent_id),
+            ("notes", notes),
+            ("now", now),
         ]),
     )?;
     if r.rows().is_empty() {
         let check_v = db.execute(&format!(
-            "MATCH (v:Validation {{id: '{}'}}) RETURN v.id", esc(validation_id)
+            "MATCH (v:Validation {{id: '{}'}}) RETURN v.id",
+            esc(validation_id)
         ))?;
         if check_v.rows().is_empty() {
-            anyhow::bail!("Validation '{}' not found — `loom validation list`.", validation_id);
+            anyhow::bail!(
+                "Validation '{}' not found — `loom validation list`.",
+                validation_id
+            );
         }
         anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
@@ -79,26 +85,31 @@ pub fn list_all_validates(db: &dyn LoomDb) -> Result<Vec<ValidatesEdge>> {
                     i.id AS intent_id, i.name AS intent_name";
     let result = db.execute(q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| {
-        let validation_id = str_val(get(row, &cols, "validation_id"));
-        let intent_id = str_val(get(row, &cols, "intent_id"));
-        ValidatesEdge {
-            id:                crate::db::schema::edge_key(crate::db::schema::edge::VALIDATES, &validation_id, &intent_id),
-            validation_id,
-            intent_id,
-            validation_name:   str_val(get(row, &cols, "validation_name")),
-            intent_name:       str_val(get(row, &cols, "intent_name")),
-            inspection_status: str_val(get(row, &cols, "e.inspection_status")),
-            notes:             str_val(get(row, &cols, "e.notes")),
-        }
-    }).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| {
+            let validation_id = str_val(get(row, &cols, "validation_id"));
+            let intent_id = str_val(get(row, &cols, "intent_id"));
+            ValidatesEdge {
+                id: crate::db::schema::edge_key(
+                    crate::db::schema::edge::VALIDATES,
+                    &validation_id,
+                    &intent_id,
+                ),
+                validation_id,
+                intent_id,
+                validation_name: str_val(get(row, &cols, "validation_name")),
+                intent_name: str_val(get(row, &cols, "intent_name")),
+                inspection_status: str_val(get(row, &cols, "e.inspection_status")),
+                notes: str_val(get(row, &cols, "e.notes")),
+            }
+        })
+        .collect())
 }
 
 /// Return all VALIDATES edges pointing to an intent, with Validation details.
-pub fn list_validates_for_intent(
-    db: &dyn LoomDb,
-    intent_id: &str,
-) -> Result<Vec<ValidatesEdge>> {
+pub fn list_validates_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<ValidatesEdge>> {
     let q = format!(
         "MATCH (v:Validation)-[e:VALIDATES]->(i:Intent {{id: '{id}'}}) \
          RETURN e.inspection_status, e.notes, \
@@ -108,19 +119,27 @@ pub fn list_validates_for_intent(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| {
-        let validation_id = str_val(get(row, &cols, "validation_id"));
-        let intent_id = str_val(get(row, &cols, "intent_id"));
-        ValidatesEdge {
-            id:                crate::db::schema::edge_key(crate::db::schema::edge::VALIDATES, &validation_id, &intent_id),
-            validation_id,
-            intent_id,
-            validation_name:   str_val(get(row, &cols, "validation_name")),
-            intent_name:       str_val(get(row, &cols, "intent_name")),
-            inspection_status: str_val(get(row, &cols, "e.inspection_status")),
-            notes:             str_val(get(row, &cols, "e.notes")),
-        }
-    }).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| {
+            let validation_id = str_val(get(row, &cols, "validation_id"));
+            let intent_id = str_val(get(row, &cols, "intent_id"));
+            ValidatesEdge {
+                id: crate::db::schema::edge_key(
+                    crate::db::schema::edge::VALIDATES,
+                    &validation_id,
+                    &intent_id,
+                ),
+                validation_id,
+                intent_id,
+                validation_name: str_val(get(row, &cols, "validation_name")),
+                intent_name: str_val(get(row, &cols, "intent_name")),
+                inspection_status: str_val(get(row, &cols, "e.inspection_status")),
+                notes: str_val(get(row, &cols, "e.notes")),
+            }
+        })
+        .collect())
 }
 
 /// Return full Validation objects for all validations linked to an intent.
@@ -138,10 +157,7 @@ pub fn validations_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<Va
 /// Mark all Validations linked to intents that implement a CodeFile as not_run.
 /// Returns count of validations invalidated.
 #[cfg(test)]
-pub fn invalidate_validations_for_codefile(
-    db: &dyn LoomDb,
-    codefile_id: &str,
-) -> Result<usize> {
+pub fn invalidate_validations_for_codefile(db: &dyn LoomDb, codefile_id: &str) -> Result<usize> {
     let intent_ids = intent_ids_implementing_codefile(db, codefile_id)?;
     invalidate_validations_for_intents(db, &intent_ids)
 }
@@ -184,10 +200,7 @@ pub fn invalidate_validations_for_intents_with_indexes(
 /// Callers that already resolved CodeFile → Intent ownership use this to avoid
 /// repeating that lookup for every changed file.
 #[cfg(test)]
-pub fn invalidate_validations_for_intents(
-    db: &dyn LoomDb,
-    intent_ids: &[String],
-) -> Result<usize> {
+pub fn invalidate_validations_for_intents(db: &dyn LoomDb, intent_ids: &[String]) -> Result<usize> {
     let mut count = 0usize;
     for iid in intent_ids {
         let edges = list_validates_for_intent(db, iid)?;

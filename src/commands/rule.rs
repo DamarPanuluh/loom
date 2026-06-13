@@ -2,11 +2,11 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::RuleCmd;
-use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
     insert_governs, insert_rule, list_governs_for_intent, list_rules, update_governs_verdict,
 };
+use crate::db::schema::role;
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::{fmt_rule_row, Printer};
 use crate::types::QualityRule;
@@ -186,7 +186,10 @@ const CONCURRENCY_PACK: &[(&str, &str, &str, &str)] = &[
 
 /// All seedable packs, by name. `iso5055` is the baseline (applies to any code);
 /// the rest are repo-kind vantage points — `loom detect` recommends which fit.
-const PACKS: &[(&str, &[(&str, &str, &str, &str)])] = &[
+type PackRule = (&'static str, &'static str, &'static str, &'static str);
+type Pack = (&'static str, &'static [PackRule]);
+
+const PACKS: &[Pack] = &[
     ("iso5055", ISO5055_PACK),
     ("mobile", MOBILE_PACK),
     ("web-ui", WEBUI_PACK),
@@ -209,8 +212,7 @@ pub fn pack_names() -> Vec<&'static str> {
 fn pack_rule_effort(name: &str) -> &'static str {
     match name {
         // Near-mechanical scans.
-        "iso5055-sec-no-hardcoded-secrets"
-        | "iso5055-main-no-dead-or-duplicate-code" => "low",
+        "iso5055-sec-no-hardcoded-secrets" | "iso5055-main-no-dead-or-duplicate-code" => "low",
         // Deep semantic reading.
         "conc-atomic-multi-step"
         | "conc-deadlock-ordering"
@@ -229,10 +231,16 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        RuleCmd::Add { name, description, severity, effort } => {
+        RuleCmd::Add {
+            name,
+            description,
+            severity,
+            effort,
+        } => {
             gate::acting_in_lane("add a quality rule", &[role::QUALITY], None)?;
             // Validate severity
-            severity.parse::<crate::types::Severity>()
+            severity
+                .parse::<crate::types::Severity>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             if let Some(e) = &effort {
                 if !matches!(e.as_str(), "low" | "mid" | "high") {
@@ -240,10 +248,10 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 }
             }
 
-            let id   = Uuid::new_v4().to_string();
+            let id = Uuid::new_v4().to_string();
             let rule = QualityRule {
-                id:              id.clone(),
-                name:            name.clone(),
+                id: id.clone(),
+                name: name.clone(),
                 description,
                 detection_logic: String::new(),
                 inspection_effort: effort.clone().unwrap_or_default(),
@@ -277,12 +285,12 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                     continue;
                 }
                 let rule = QualityRule {
-                    id:              Uuid::new_v4().to_string(),
-                    name:            (*name).to_string(),
-                    description:     (*description).to_string(),
+                    id: Uuid::new_v4().to_string(),
+                    name: (*name).to_string(),
+                    description: (*description).to_string(),
                     detection_logic: (*detection).to_string(),
                     inspection_effort: pack_rule_effort(name).to_string(),
-                    severity:        (*severity).to_string(),
+                    severity: (*severity).to_string(),
                 };
                 insert_rule(&db, &rule)?;
                 created.push(rule);
@@ -296,7 +304,12 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                              with the verdict; passing|failing|independent, component altitude covers descendants).",
                 }));
             } else {
-                println!("✓ Seeded pack '{}': {} rule(s) created, {} already present.", pack, created.len(), skipped);
+                println!(
+                    "✓ Seeded pack '{}': {} rule(s) created, {} already present.",
+                    pack,
+                    created.len(),
+                    skipped
+                );
                 for r in &created {
                     println!("  + [{}] {}", r.severity, r.name);
                 }
@@ -321,9 +334,9 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 for r in &rules {
                     println!("{}", fmt_rule_row(r));
                 }
-                if let Some(m) = crate::output::more_marker(
-                    total, rules.len(), "`loom rule list --limit 0`",
-                ) {
+                if let Some(m) =
+                    crate::output::more_marker(total, rules.len(), "`loom rule list --limit 0`")
+                {
                     println!("  {m}");
                 }
             }
@@ -336,7 +349,10 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             if printer.json {
                 printer.print_json(&governs);
             } else if governs.is_empty() {
-                println!("No GOVERNS edges for intent '{}' — no rules applied.", intent_id);
+                println!(
+                    "No GOVERNS edges for intent '{}' — no rules applied.",
+                    intent_id
+                );
                 println!("  → Apply a rule: loom edge govern <rule-id> {}", intent_id);
             } else {
                 let failing: Vec<_> = governs
@@ -354,24 +370,24 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
 
                 println!(
                     "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected",
-                    intent_id, failing.len(), passing.len(), uninspected.len()
+                    intent_id,
+                    failing.len(),
+                    passing.len(),
+                    uninspected.len()
                 );
                 println!();
                 for g in &failing {
                     println!(
                         "  [FAILING]  rule={rname}  criterion={crit}",
                         rname = g.rule_name,
-                        crit  = g.criterion,
+                        crit = g.criterion,
                     );
                     if !g.evidence.is_empty() {
                         println!("    evidence: {}", g.evidence);
                     }
                 }
                 for g in &uninspected {
-                    println!(
-                        "  [uninspected]  rule={}  (edge id: {})",
-                        g.rule_name, g.id
-                    );
+                    println!("  [uninspected]  rule={}  (edge id: {})", g.rule_name, g.id);
                 }
                 for g in &passing {
                     println!("  [passing]  rule={}", g.rule_name);
@@ -379,7 +395,11 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        RuleCmd::Apply { rule_id, intent_id, criterion } => {
+        RuleCmd::Apply {
+            rule_id,
+            intent_id,
+            criterion,
+        } => {
             gate::acting_in_lane("apply a quality rule", &[role::QUALITY], None)?;
             let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
@@ -389,13 +409,14 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 // Criterion is optional at apply time (the edge starts
                 // uninspected) — but if given, it must be substantive.
                 gate::require_substantive(
-                    "criterion", crit,
+                    "criterion",
+                    crit,
                     "what compliance looks like for this rule on this intent",
                 )?;
             }
             insert_governs(&db, &rule_id, &intent_id, crit, &now)?;
-            let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
+            let edge_id =
+                crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status":    "ok",
@@ -415,11 +436,19 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
         }
 
         RuleCmd::Verdict {
-            rule_id, intent_id, status, criterion, evidence, evidence_locator,
-            confidence, inspected_by,
+            rule_id,
+            intent_id,
+            status,
+            criterion,
+            evidence,
+            evidence_locator,
+            confidence,
+            inspected_by,
         } => {
             let by = gate::acting_in_lane(
-                "record a GOVERNS verdict", &[role::QUALITY], inspected_by.as_deref(),
+                "record a GOVERNS verdict",
+                &[role::QUALITY],
+                inspected_by.as_deref(),
             )?;
             let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
@@ -431,11 +460,13 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 );
             }
             gate::require_substantive(
-                "criterion", &criterion,
+                "criterion",
+                &criterion,
                 "what compliance looks like for this rule on this intent (falsifiable)",
             )?;
             gate::require_substantive(
-                "evidence", &evidence,
+                "evidence",
+                &evidence,
                 if status == "independent" {
                     "why this rule does not apply to this intent"
                 } else {
@@ -447,8 +478,7 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
 
             let now = chrono::Utc::now().to_rfc3339();
             let mut found = update_governs_verdict(
-                &db, &rule_id, &intent_id, &status, &criterion, &evidence,
-                confidence, &by, &now,
+                &db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
             )?;
             let mut edge_created = false;
             if !found {
@@ -457,8 +487,8 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 // unmeasured queue resolves with a single command.
                 insert_governs(&db, &rule_id, &intent_id, &criterion, &now)?;
                 found = update_governs_verdict(
-                    &db, &rule_id, &intent_id, &status, &criterion, &evidence,
-                    confidence, &by, &now,
+                    &db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by,
+                    &now,
                 )?;
                 edge_created = true;
             }
@@ -479,26 +509,38 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
                 "`loom next --mode quality` for the next pair".to_string()
             };
             if printer.json {
-                printer.print_json(&crate::output::with_anchor(serde_json::json!({
-                    "status":            "ok",
-                    "rule_id":           rule_id,
-                    "intent_id":         intent_id,
-                    "inspection_status": status,
-                    "criterion":         criterion,
-                    "evidence":          evidence,
-                    "confidence":        confidence,
-                    "inspected_by":      by,
-                    "last_inspected":    now,
-                    "edge_created":      edge_created,
-                }), &db, &next_step)?);
+                printer.print_json(&crate::output::with_anchor(
+                    serde_json::json!({
+                        "status":            "ok",
+                        "rule_id":           rule_id,
+                        "intent_id":         intent_id,
+                        "inspection_status": status,
+                        "criterion":         criterion,
+                        "evidence":          evidence,
+                        "confidence":        confidence,
+                        "inspected_by":      by,
+                        "last_inspected":    now,
+                        "edge_created":      edge_created,
+                    }),
+                    &db,
+                    &next_step,
+                )?);
             } else {
                 let mark = match status.as_str() {
                     "passing" => "✓",
                     "independent" => "◦",
                     _ => "✗",
                 };
-                println!("{} GOVERNS verdict recorded: {}{}", mark, status,
-                    if edge_created { "  (edge created — the verdict is the measurement)" } else { "" });
+                println!(
+                    "{} GOVERNS verdict recorded: {}{}",
+                    mark,
+                    status,
+                    if edge_created {
+                        "  (edge created — the verdict is the measurement)"
+                    } else {
+                        ""
+                    }
+                );
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
                 crate::output::print_anchor(&db, &next_step)?;

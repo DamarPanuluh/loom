@@ -30,15 +30,22 @@ pub fn insert_governs(
            e.created_at = $now \
          RETURN e.inspection_status",
         super::row::sparams(&[
-            ("rid", rule_id), ("iid", intent_id), ("crit", criterion), ("now", now),
+            ("rid", rule_id),
+            ("iid", intent_id),
+            ("crit", criterion),
+            ("now", now),
         ]),
     )?;
     if r.rows().is_empty() {
         let check_rule = db.execute(&format!(
-            "MATCH (r:QualityRule {{id: '{}'}}) RETURN r.id", esc(rule_id)
+            "MATCH (r:QualityRule {{id: '{}'}}) RETURN r.id",
+            esc(rule_id)
         ))?;
         if check_rule.rows().is_empty() {
-            anyhow::bail!("QualityRule '{}' not found — `loom rule list` shows registered rules.", rule_id);
+            anyhow::bail!(
+                "QualityRule '{}' not found — `loom rule list` shows registered rules.",
+                rule_id
+            );
         }
         anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
     }
@@ -87,12 +94,24 @@ pub fn update_governs_verdict(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("rid", rule_id), ("iid", intent_id), ("status", status),
-            ("crit", criterion), ("ev", evidence),
-            ("by", inspected_by), ("now", now),
+            ("rid", rule_id),
+            ("iid", intent_id),
+            ("status", status),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    super::note::record_transition(db, "edge", &prev.id, &prev.inspection_status, status, inspected_by, now)?;
+    super::note::record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        status,
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -107,7 +126,11 @@ pub fn list_governs_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<G
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_governs(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_governs(row, &cols))
+        .collect())
 }
 
 /// Ripple support for `loom sync`: a quality verdict is a claim about code, so
@@ -134,7 +157,13 @@ pub fn flag_governs_for_intent(
             ))?;
             if !cause.is_empty() {
                 super::note::record_sync_flip(
-                    db, "edge", &g.id, "passing", "needs_reverification", cause, now,
+                    db,
+                    "edge",
+                    &g.id,
+                    "passing",
+                    "needs_reverification",
+                    cause,
+                    now,
                 )?;
             }
             count += 1;
@@ -172,8 +201,11 @@ fn list_governs_filtered(db: &dyn LoomDb, status: Option<&str>) -> Result<Vec<Go
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    let mut edges: Vec<Governs> =
-        result.rows().iter().map(|row| row_to_governs(row, &cols)).collect();
+    let mut edges: Vec<Governs> = result
+        .rows()
+        .iter()
+        .map(|row| row_to_governs(row, &cols))
+        .collect();
     if let Some(s) = status {
         edges.retain(|g| g.inspection_status == s);
     }
@@ -184,17 +216,17 @@ fn row_to_governs(row: &[Value], cols: &HashMap<&str, usize>) -> Governs {
     let rule_id = str_val(get(row, cols, "rule_id"));
     let intent_id = str_val(get(row, cols, "intent_id"));
     Governs {
-        id:                crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id),
+        id: crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id),
         rule_id,
         intent_id,
-        rule_name:         str_val(get(row, cols, "rule_name")),
-        intent_name:       str_val(get(row, cols, "intent_name")),
+        rule_name: str_val(get(row, cols, "rule_name")),
+        intent_name: str_val(get(row, cols, "intent_name")),
         inspection_status: str_val(get(row, cols, "e.inspection_status")),
-        criterion:         str_val(get(row, cols, "e.criterion")),
-        confidence:        f64_val(get(row, cols, "e.confidence")),
-        evidence:          str_val(get(row, cols, "e.evidence")),
-        last_inspected:    str_val(get(row, cols, "e.last_inspected")),
-        inspected_by:      str_val(get(row, cols, "e.inspected_by")),
-        notes:             str_val(get(row, cols, "e.notes")),
+        criterion: str_val(get(row, cols, "e.criterion")),
+        confidence: f64_val(get(row, cols, "e.confidence")),
+        evidence: str_val(get(row, cols, "e.evidence")),
+        last_inspected: str_val(get(row, cols, "e.last_inspected")),
+        inspected_by: str_val(get(row, cols, "e.inspected_by")),
+        notes: str_val(get(row, cols, "e.notes")),
     }
 }

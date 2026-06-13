@@ -51,7 +51,9 @@ pub fn run(printer: &Printer) -> Result<()> {
             if report.version_ok { "✓" } else { "✗" }
         );
         if !report.version_ok {
-            println!("    → `loom migrate` upgrades a v3 graph in place (one transaction, idempotent).");
+            println!(
+                "    → `loom migrate` upgrades a v3 graph in place (one transaction, idempotent)."
+            );
         }
         println!();
         println!("  Nodes:");
@@ -72,7 +74,11 @@ pub fn run(printer: &Printer) -> Result<()> {
             for i in report.issues.iter().take(20) {
                 println!("    - {}", i);
             }
-            if let Some(m) = crate::output::more_marker(report.issues.len(), 20, "`loom doctor --json` for the full list") {
+            if let Some(m) = crate::output::more_marker(
+                report.issues.len(),
+                20,
+                "`loom doctor --json` for the full list",
+            ) {
                 println!("    {m}");
             }
         }
@@ -82,7 +88,11 @@ pub fn run(printer: &Printer) -> Result<()> {
             for h in hints.iter().take(20) {
                 println!("    · {}", h);
             }
-            if let Some(m) = crate::output::more_marker(hints.len(), 20, "`loom doctor --json` for the full list") {
+            if let Some(m) = crate::output::more_marker(
+                hints.len(),
+                20,
+                "`loom doctor --json` for the full list",
+            ) {
                 println!("    {m}");
             }
         }

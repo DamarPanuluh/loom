@@ -14,8 +14,15 @@ use std::path::Path;
 /// (e.g. cargo's `target/` holds thousands of artifacts). `.gitignore` is still
 /// honored on top of this.
 const DEFAULT_SKIP_DIRS: &[&str] = &[
-    "target", "node_modules", "vendor", "__pycache__", "venv", ".venv", "dist",
-    ".git", ".loom",
+    "target",
+    "node_modules",
+    "vendor",
+    "__pycache__",
+    "venv",
+    ".venv",
+    "dist",
+    ".git",
+    ".loom",
 ];
 
 /// Relative file paths under `root`, respecting `.gitignore`/`.ignore`, skipping
@@ -24,9 +31,13 @@ pub fn walk_files(root: &Path) -> Result<Vec<String>> {
     let mut files = Vec::new();
     // require_git(false): honor .gitignore/.ignore even when this isn't a git
     // repo (or we're in a subdir), so coverage's denominator is meaningful.
-    for result in WalkBuilder::new(root).hidden(true).require_git(false).build() {
-        let entry = result
-            .with_context(|| format!("Failed while walking repo '{}'", root.display()))?;
+    for result in WalkBuilder::new(root)
+        .hidden(true)
+        .require_git(false)
+        .build()
+    {
+        let entry =
+            result.with_context(|| format!("Failed while walking repo '{}'", root.display()))?;
         if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
             continue;
         }
@@ -93,7 +104,11 @@ pub fn confine(root: &Path, path: &Path) -> Option<String> {
         }
         Some(rel.to_str()?.replace('\\', "/"))
     }
-    let joined = if path.is_absolute() { path.to_path_buf() } else { root.join(path) };
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
     let mut resolved = PathBuf::new();
     for c in joined.components() {
         match c {
@@ -186,7 +201,7 @@ pub fn detect(root: &Path) -> Result<Detection> {
         .into_iter()
         .map(|(language, files)| LangCount { language, files })
         .collect();
-    top_languages.sort_by(|a, b| b.files.cmp(&a.files));
+    top_languages.sort_by_key(|language| std::cmp::Reverse(language.files));
     top_languages.truncate(8);
 
     let has_source = source_files > 0;
@@ -196,7 +211,11 @@ pub fn detect(root: &Path) -> Result<Detection> {
         has_source,
         stacks,
         top_languages,
-        suggested_mode: if has_source { "brownfield".into() } else { "greenfield".into() },
+        suggested_mode: if has_source {
+            "brownfield".into()
+        } else {
+            "greenfield".into()
+        },
         recommended_packs,
     })
 }
@@ -206,21 +225,33 @@ pub fn detect(root: &Path) -> Result<Detection> {
 fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<PackHint> {
     let mut packs = vec![PackHint {
         pack: "iso5055".into(),
-        reason: "baseline — reliability/security/performance/maintainability apply to any code".into(),
+        reason: "baseline — reliability/security/performance/maintainability apply to any code"
+            .into(),
     }];
 
     let ext_of = |f: &str| {
-        Path::new(f).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase()
+        Path::new(f)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
     };
     let has_ext = |exts: &[&str]| files.iter().any(|f| exts.contains(&ext_of(f).as_str()));
     let has_dir = |dirs: &[&str]| {
-        files.iter().any(|f| f.split('/').next().map(|d| dirs.contains(&d)).unwrap_or(false))
+        files.iter().any(|f| {
+            f.split('/')
+                .next()
+                .map(|d| dirs.contains(&d))
+                .unwrap_or(false)
+        })
     };
 
     if stacks.iter().any(|s| s == "swift" || s == "java/kotlin")
         || has_ext(&["swift", "kt"])
         || has_dir(&["ios", "android"])
-        || files.iter().any(|f| f == "pubspec.yaml" || f.ends_with("/pubspec.yaml"))
+        || files
+            .iter()
+            .any(|f| f == "pubspec.yaml" || f.ends_with("/pubspec.yaml"))
     {
         packs.push(PackHint {
             pack: "mobile".into(),
@@ -233,8 +264,12 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
             reason: "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust".into(),
         });
     }
-    if stacks.iter().any(|s| matches!(s.as_str(), "rust" | "go" | "node" | "python" | "java" | "java/kotlin" | "ruby" | "php"))
-        || root.join("Dockerfile").exists()
+    if stacks.iter().any(|s| {
+        matches!(
+            s.as_str(),
+            "rust" | "go" | "node" | "python" | "java" | "java/kotlin" | "ruby" | "php"
+        )
+    }) || root.join("Dockerfile").exists()
         || root.join("docker-compose.yml").exists()
     {
         packs.push(PackHint {
@@ -246,7 +281,11 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
             reason: "backend-capable stack detected — applies where this code shares state across threads/tasks or has hot paths worth a proven budget (sync discipline, lock hygiene, benchmarks)".into(),
         });
     }
-    if has_ext(&["sql"]) || files.iter().any(|f| f.split('/').any(|seg| seg == "migrations")) {
+    if has_ext(&["sql"])
+        || files
+            .iter()
+            .any(|f| f.split('/').any(|seg| seg == "migrations"))
+    {
         packs.push(PackHint {
             pack: "data".into(),
             reason: "SQL/migrations detected — migration safety, ingest validation, loss accounting, PII".into(),
@@ -276,14 +315,19 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
     let mut found: Vec<String> = Vec::new();
     let push_if_file = |cand: String, found: &mut Vec<String>| {
         let norm = normalize(&cand);
-        if !norm.is_empty() && norm != rel_path && root.join(&norm).is_file()
+        if !norm.is_empty()
+            && norm != rel_path
+            && root.join(&norm).is_file()
             && !found.contains(&norm)
         {
             found.push(norm);
         }
     };
 
-    let ext = Path::new(rel_path).extension().and_then(|e| e.to_str()).unwrap_or("");
+    let ext = Path::new(rel_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
     let dir = Path::new(rel_path)
         .parent()
         .map(|p| p.to_string_lossy().replace('\\', "/"))
@@ -321,7 +365,14 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
         }
         "ts" | "tsx" | "js" | "jsx" | "mjs" => {
             for line in content.lines() {
-                for marker in ["from '", "from \"", "require('", "require(\"", "import('", "import(\""] {
+                for marker in [
+                    "from '",
+                    "from \"",
+                    "require('",
+                    "require(\"",
+                    "import('",
+                    "import(\"",
+                ] {
                     if let Some(idx) = line.find(marker) {
                         let rest = &line[idx + marker.len()..];
                         let spec: String = rest
@@ -347,10 +398,15 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
             for line in content.lines() {
                 let t = line.trim();
                 let module: Option<(String, bool)> = if let Some(rest) = t.strip_prefix("from ") {
-                    rest.split_whitespace().next().map(|m| (m.to_string(), true))
+                    rest.split_whitespace()
+                        .next()
+                        .map(|m| (m.to_string(), true))
                 } else {
-                    t.strip_prefix("import ")
-                        .and_then(|rest| rest.split([' ', ',']).next().map(|m| (m.to_string(), false)))
+                    t.strip_prefix("import ").and_then(|rest| {
+                        rest.split([' ', ','])
+                            .next()
+                            .map(|m| (m.to_string(), false))
+                    })
                 };
                 if let Some((m, _)) = module {
                     let (mut base, name) = if let Some(stripped) = m.strip_prefix('.') {
@@ -359,7 +415,10 @@ pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String
                         let name = stripped.trim_start_matches('.');
                         let mut d = dir.clone();
                         for _ in 0..ups {
-                            d = Path::new(&d).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+                            d = Path::new(&d)
+                                .parent()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .unwrap_or_default();
                         }
                         (d, name.to_string())
                     } else {
@@ -397,6 +456,31 @@ fn normalize(p: &str) -> String {
     out.join("/")
 }
 
+fn lang_of(path: &str) -> &'static str {
+    let ext = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    match ext {
+        "rs" => "rust",
+        "ts" | "tsx" => "typescript",
+        "js" | "jsx" | "mjs" => "javascript",
+        "py" => "python",
+        "go" => "go",
+        "java" => "java",
+        "kt" => "kotlin",
+        "swift" => "swift",
+        "c" | "h" => "c",
+        "cpp" | "cc" | "cxx" | "hpp" => "cpp",
+        "cs" => "csharp",
+        "rb" => "ruby",
+        "php" => "php",
+        "sh" | "bash" => "shell",
+        "sql" => "sql",
+        _ => "other",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -413,14 +497,32 @@ mod tests {
     fn confine_keeps_root_relative_and_rejects_escapes() {
         let root = Path::new("/repo");
         // In-root forms normalize to the stored convention.
-        assert_eq!(confine(root, Path::new("src/main.rs")).as_deref(), Some("src/main.rs"));
-        assert_eq!(confine(root, Path::new("./src/./main.rs")).as_deref(), Some("src/main.rs"));
-        assert_eq!(confine(root, Path::new("src/db/../gate.rs")).as_deref(), Some("src/gate.rs"));
+        assert_eq!(
+            confine(root, Path::new("src/main.rs")).as_deref(),
+            Some("src/main.rs")
+        );
+        assert_eq!(
+            confine(root, Path::new("./src/./main.rs")).as_deref(),
+            Some("src/main.rs")
+        );
+        assert_eq!(
+            confine(root, Path::new("src/db/../gate.rs")).as_deref(),
+            Some("src/gate.rs")
+        );
         // Absolute is accepted iff it RESOLVES under root — and comes back relative.
-        assert_eq!(confine(root, Path::new("/repo/sub/file.rs")).as_deref(), Some("sub/file.rs"));
-        assert_eq!(confine(root, Path::new("/repo/a/../b.rs")).as_deref(), Some("b.rs"));
+        assert_eq!(
+            confine(root, Path::new("/repo/sub/file.rs")).as_deref(),
+            Some("sub/file.rs")
+        );
+        assert_eq!(
+            confine(root, Path::new("/repo/a/../b.rs")).as_deref(),
+            Some("b.rs")
+        );
         // What matters is the resolved target, not the route taken to it.
-        assert_eq!(confine(root, Path::new("../repo/src/x.rs")).as_deref(), Some("src/x.rs"));
+        assert_eq!(
+            confine(root, Path::new("../repo/src/x.rs")).as_deref(),
+            Some("src/x.rs")
+        );
         // Escapes: relative, `..`-smuggled, absolute, above-fs-root, root itself.
         assert_eq!(confine(root, Path::new("../outside.rs")), None);
         assert_eq!(confine(root, Path::new("src/../../etc/passwd")), None);
@@ -439,45 +541,55 @@ mod tests {
         fs::write(dir.join("src/db/mod.rs"), "").unwrap();
         fs::write(dir.join("src/db/schema.rs"), "").unwrap();
         fs::write(dir.join("src/gate.rs"), "").unwrap();
-        fs::write(dir.join("src/main.rs"), "mod gate;\nuse crate::db::schema::esc;\n").unwrap();
+        fs::write(
+            dir.join("src/main.rs"),
+            "mod gate;\nuse crate::db::schema::esc;\n",
+        )
+        .unwrap();
         fs::write(dir.join("web/util.ts"), "").unwrap();
-        fs::write(dir.join("web/app.ts"), "import {x} from './util';\nimport pkg from 'react';\n").unwrap();
+        fs::write(
+            dir.join("web/app.ts"),
+            "import {x} from './util';\nimport pkg from 'react';\n",
+        )
+        .unwrap();
         fs::write(dir.join("pkg/helper.py"), "").unwrap();
-        fs::write(dir.join("pkg/main.py"), "from .helper import thing\nimport os\n").unwrap();
+        fs::write(
+            dir.join("pkg/main.py"),
+            "from .helper import thing\nimport os\n",
+        )
+        .unwrap();
 
-        let rs = extract_imports(&dir, "src/main.rs", &fs::read_to_string(dir.join("src/main.rs")).unwrap());
+        let rs = extract_imports(
+            &dir,
+            "src/main.rs",
+            &fs::read_to_string(dir.join("src/main.rs")).unwrap(),
+        );
         assert!(rs.contains(&"src/gate.rs".to_string()), "{rs:?}");
         assert!(rs.contains(&"src/db/mod.rs".to_string()), "{rs:?}");
         assert!(rs.contains(&"src/db/schema.rs".to_string()), "{rs:?}");
 
-        let ts = extract_imports(&dir, "web/app.ts", &fs::read_to_string(dir.join("web/app.ts")).unwrap());
-        assert_eq!(ts, vec!["web/util.ts".to_string()], "package imports excluded");
+        let ts = extract_imports(
+            &dir,
+            "web/app.ts",
+            &fs::read_to_string(dir.join("web/app.ts")).unwrap(),
+        );
+        assert_eq!(
+            ts,
+            vec!["web/util.ts".to_string()],
+            "package imports excluded"
+        );
 
-        let py = extract_imports(&dir, "pkg/main.py", &fs::read_to_string(dir.join("pkg/main.py")).unwrap());
-        assert_eq!(py, vec!["pkg/helper.py".to_string()], "stdlib imports excluded: {py:?}");
+        let py = extract_imports(
+            &dir,
+            "pkg/main.py",
+            &fs::read_to_string(dir.join("pkg/main.py")).unwrap(),
+        );
+        assert_eq!(
+            py,
+            vec!["pkg/helper.py".to_string()],
+            "stdlib imports excluded: {py:?}"
+        );
 
         let _ = fs::remove_dir_all(&dir);
-    }
-}
-
-fn lang_of(path: &str) -> &'static str {
-    let ext = Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("");
-    match ext {
-        "rs" => "rust",
-        "ts" | "tsx" => "typescript",
-        "js" | "jsx" | "mjs" => "javascript",
-        "py" => "python",
-        "go" => "go",
-        "java" => "java",
-        "kt" => "kotlin",
-        "swift" => "swift",
-        "c" | "h" => "c",
-        "cpp" | "cc" | "cxx" | "hpp" => "cpp",
-        "cs" => "csharp",
-        "rb" => "ruby",
-        "php" => "php",
-        "sh" | "bash" => "shell",
-        "sql" => "sql",
-        _ => "other",
     }
 }

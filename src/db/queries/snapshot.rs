@@ -2,7 +2,9 @@ use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 
 use crate::db::LoomDb;
-use crate::types::{CodeFile, Governs, Implements, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation};
+use crate::types::{
+    CodeFile, Governs, Implements, Intent, QualityRule, RelatesTo, ValidatesEdge, Validation,
+};
 
 use super::{
     list_active_intents, list_all_governs, list_all_hierarchy, list_all_implements,
@@ -103,7 +105,10 @@ impl DiscoverySnapshot {
         let mut intents_on_file: HashMap<String, Vec<String>> = HashMap::new();
         for im in &snapshot.implements {
             if let Some(&idx) = path_index.get(im.codefile_path.as_str()) {
-                files_of.entry(im.intent_id.clone()).or_default().insert(idx);
+                files_of
+                    .entry(im.intent_id.clone())
+                    .or_default()
+                    .insert(idx);
             }
             intents_on_file
                 .entry(im.codefile_path.clone())
@@ -158,8 +163,8 @@ impl DiscoverySnapshot {
 
 fn tokenize(text: &str) -> HashSet<String> {
     const STOP: &[&str] = &[
-        "the", "and", "via", "with", "for", "that", "this", "from", "into",
-        "are", "its", "all", "one", "not", "has", "have", "can", "per",
+        "the", "and", "via", "with", "for", "that", "this", "from", "into", "are", "its", "all",
+        "one", "not", "has", "have", "can", "per",
     ];
     text.to_lowercase()
         .split(|c: char| !c.is_alphanumeric())

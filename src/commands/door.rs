@@ -145,7 +145,10 @@ pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
             println!("         under: {}", h.parent_chain.join(" › "));
         }
         if h.stale_edges > 0 {
-            println!("         ⚠ {} stale claim(s) — code changed since verification", h.stale_edges);
+            println!(
+                "         ⚠ {} stale claim(s) — code changed since verification",
+                h.stale_edges
+            );
         }
     }
     for v in &planes.vocab {

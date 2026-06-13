@@ -6,7 +6,9 @@ use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 
 use crate::db::LoomDb;
-use crate::types::{Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation};
+use crate::types::{
+    Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
+};
 
 use super::governs::{list_all_governs, list_governs_for_intent};
 use super::hierarchy::list_all_hierarchy;
@@ -23,6 +25,7 @@ use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 ///   well-scouted intents look like hubs.
 /// - edges touching `deprecated` intents: retired design is invisible to
 ///   computation (the retirement contract).
+///
 /// Edge-property inequality + node-status filtering in one WHERE is
 /// deterministic on grafeo 0.5.42 (tests/grafeo_probe.rs, "combined
 /// pushdown"); the Rust independent-check stays as a zero-cost guard.
@@ -56,10 +59,7 @@ pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
 /// `None` and it is built here. Callers that already have the map (e.g. `run_all`)
 /// should pass it in to avoid a redundant pair of queries.
 #[cfg(test)]
-pub fn scored_candidates(
-    db: &dyn LoomDb,
-    mode: &str,
-) -> Result<Vec<(RelatesTo, f64)>> {
+pub fn scored_candidates(db: &dyn LoomDb, mode: &str) -> Result<Vec<(RelatesTo, f64)>> {
     scored_candidates_with_degrees(db, mode, None)
 }
 
@@ -136,7 +136,6 @@ pub fn scored_candidates_with_degrees(
 
 /// A build work item: the intent, its priority, and whether it is a non-leaf
 /// whose children are all implemented (a roll-up, not a code-writing task).
-
 pub fn scored_candidates_from_snapshot(
     snapshot: &QuerySnapshot,
     mode: &str,
@@ -145,7 +144,10 @@ pub fn scored_candidates_from_snapshot(
         .relates
         .iter()
         .filter(|edge| match mode {
-            "fix" => matches!(edge.inspection_status.as_str(), "failing" | "needs_reverification"),
+            "fix" => matches!(
+                edge.inspection_status.as_str(),
+                "failing" | "needs_reverification"
+            ),
             _ => edge.inspection_status == "uninspected",
         })
         .cloned()
@@ -240,7 +242,10 @@ pub fn build_candidates_with_degrees(
         if i.lifecycle == "planned" {
             if let Some(kids) = kids {
                 let p = kids.iter().any(|c| {
-                    matches!(lifecycle_of.get(c.as_str()), Some(&"planned") | Some(&"needs_change"))
+                    matches!(
+                        lifecycle_of.get(c.as_str()),
+                        Some(&"planned") | Some(&"needs_change")
+                    )
                 });
                 if p {
                     continue;
@@ -268,16 +273,23 @@ pub fn build_candidates_with_degrees(
         .into_iter()
         .map(|(i, urgency, rollup)| {
             let deg = *degrees.get(&i.id).unwrap_or(&0) as f64;
-            BuildCandidate { intent: i.clone(), score: deg + urgency, rollup }
+            BuildCandidate {
+                intent: i.clone(),
+                score: deg + urgency,
+                rollup,
+            }
         })
         .collect();
-    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Ok(scored)
 }
 
 /// Normative-plane coverage: how much of the rule × intent-with-code grid has
 /// actually been measured. HIERARCHY-AWARE like the `unmeasured_intents` smell —
-
 pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCandidate> {
     let lifecycle_of: HashMap<&str, &str> = snapshot
         .intents
@@ -300,7 +312,10 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
         if intent.lifecycle == "planned" {
             if let Some(kids) = kids {
                 let pending_child = kids.iter().any(|c| {
-                    matches!(lifecycle_of.get(c.as_str()), Some(&"planned") | Some(&"needs_change"))
+                    matches!(
+                        lifecycle_of.get(c.as_str()),
+                        Some(&"planned") | Some(&"needs_change")
+                    )
                 });
                 if pending_child {
                     continue;
@@ -318,7 +333,11 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
             rollup,
         })
         .collect();
-    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     scored
 }
 /// a verdict on a component covers its descendants (measuring at the highest
@@ -385,8 +404,8 @@ pub fn review_candidates_with_degrees(
         {
             continue;
         }
-        let deg = (*degrees.get(&e.from_id).unwrap_or(&0)
-            + *degrees.get(&e.to_id).unwrap_or(&0)) as f64;
+        let deg =
+            (*degrees.get(&e.from_id).unwrap_or(&0) + *degrees.get(&e.to_id).unwrap_or(&0)) as f64;
         let score = (1.0 - e.confidence) * (deg + 1.0);
         scored.push((ReviewCandidate::RelatesTo(e), score));
     }
@@ -660,10 +679,16 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
 
     let mut edges_by_intent: HashMap<&str, Vec<&ValidatesEdge>> = HashMap::new();
     for edge in &snapshot.validates {
-        edges_by_intent.entry(edge.intent_id.as_str()).or_default().push(edge);
+        edges_by_intent
+            .entry(edge.intent_id.as_str())
+            .or_default()
+            .push(edge);
     }
-    let val_by_id: HashMap<&str, &Validation> =
-        snapshot.validations.iter().map(|v| (v.id.as_str(), v)).collect();
+    let val_by_id: HashMap<&str, &Validation> = snapshot
+        .validations
+        .iter()
+        .map(|v| (v.id.as_str(), v))
+        .collect();
 
     let mut selected: Vec<(Intent, f64, String)> = Vec::new();
     for intent in &snapshot.intents {
@@ -673,7 +698,10 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
             .unwrap_or(&[]);
         let (urgency, reason) = if edges.is_empty() {
             if intent.lifecycle == "implemented" && !is_parent.contains(&intent.id) {
-                (3.0, "no proof: this implemented leaf intent has no validations".to_string())
+                (
+                    3.0,
+                    "no proof: this implemented leaf intent has no validations".to_string(),
+                )
             } else {
                 continue;
             }
@@ -701,7 +729,11 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
                 .iter()
                 .any(|v| v.last_result == "not_run" || v.last_result.is_empty())
             {
-                (2.0, "linked validations have not been run (or were invalidated by a code change)".to_string())
+                (
+                    2.0,
+                    "linked validations have not been run (or were invalidated by a code change)"
+                        .to_string(),
+                )
             } else {
                 continue;
             }
@@ -738,10 +770,18 @@ pub fn validate_candidates_with_degrees(
         .into_iter()
         .map(|(intent, urgency, reason)| {
             let deg = *degrees.get(&intent.id).unwrap_or(&0) as f64;
-            ValidateCandidate { score: deg + urgency, intent, reason }
+            ValidateCandidate {
+                score: deg + urgency,
+                intent,
+                reason,
+            }
         })
         .collect();
-    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Ok(scored)
 }
 
@@ -784,7 +824,10 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
 
     let mut notes_by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
     for note in &transition_notes {
-        notes_by_target.entry(note.target_id.as_str()).or_default().push(note);
+        notes_by_target
+            .entry(note.target_id.as_str())
+            .or_default()
+            .push(note);
     }
 
     // Bulk freshness stamps (list_notes returns newest LAST, so later inserts
@@ -865,8 +908,8 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
             // the queue drain to the empty state the interview terminates on.
             continue;
         }
-        let score = (1.0 + churn_since_confirm as f64) * (1.0 + (degree as f64).ln_1p())
-            + age_days / 90.0;
+        let score =
+            (1.0 + churn_since_confirm as f64) * (1.0 + (degree as f64).ln_1p()) + age_days / 90.0;
 
         candidates.push(AlignCandidate {
             intent,
@@ -886,7 +929,6 @@ pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
     Ok(candidates)
 }
 
-
 pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<ValidateCandidate> {
     let selected = validate_selection_from_snapshot(snapshot);
     let mut scored: Vec<ValidateCandidate> = selected
@@ -897,7 +939,11 @@ pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<Valida
             reason,
         })
         .collect();
-    scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     scored
 }
 
@@ -924,7 +970,11 @@ pub fn count_unexplored_pairs_from(
     let intent_count = active_intents.len() as i64;
     let mut linked: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
     fn key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
-        if a < b { (a, b) } else { (b, a) }
+        if a < b {
+            (a, b)
+        } else {
+            (b, a)
+        }
     }
     for e in relates {
         if active_ids.contains(e.from_id.as_str()) && active_ids.contains(e.to_id.as_str()) {
@@ -971,7 +1021,10 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
             let fa = discovery.files_of.get(&a.id).unwrap_or(&empty_files);
             let fb = discovery.files_of.get(&b.id).unwrap_or(&empty_files);
             let shared = fa.intersection(fb).count();
-            let sim = jaccard(&discovery.tokens_by_intent[&a.id], &discovery.tokens_by_intent[&b.id]);
+            let sim = jaccard(
+                &discovery.tokens_by_intent[&a.id],
+                &discovery.tokens_by_intent[&b.id],
+            );
             let same_domain = !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown";
             let empty_tags = Vec::new();
             let (tag_weight, shared_tags) = super::vocab::shared_tag_weight(
@@ -1019,19 +1072,19 @@ pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>>
                 + suspicion;
             scored.push((
                 RelatesTo {
-                    id:                String::new(),
-                    from_id:           a.id.clone(),
-                    to_id:             b.id.clone(),
-                    from_name:         a.name.clone(),
-                    to_name:           b.name.clone(),
+                    id: String::new(),
+                    from_id: a.id.clone(),
+                    to_id: b.id.clone(),
+                    from_name: a.name.clone(),
+                    to_name: b.name.clone(),
                     inspection_status: "unexplored".to_string(),
-                    criterion:         String::new(),
-                    confidence:        0.0,
-                    evidence:          String::new(),
-                    last_inspected:    String::new(),
-                    inspected_by:      String::new(),
-                    priority_score:    score,
-                    notes:             if why.is_empty() {
+                    criterion: String::new(),
+                    confidence: 0.0,
+                    evidence: String::new(),
+                    last_inspected: String::new(),
+                    inspected_by: String::new(),
+                    priority_score: score,
+                    notes: if why.is_empty() {
                         String::new()
                     } else {
                         format!("suspicion: {}", why.join("; "))

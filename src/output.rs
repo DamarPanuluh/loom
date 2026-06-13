@@ -93,7 +93,11 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     };
     // Two completeness axes: vertical is binding (the spine), horizontal optional.
     let vert = if s.vertically_complete { "✓" } else { "✗" };
-    let horiz = if s.horizontally_explored { "✓" } else { "○" };
+    let horiz = if s.horizontally_explored {
+        "✓"
+    } else {
+        "○"
+    };
     let ident = if s.graph_name.is_empty() {
         "graph".to_string()
     } else if s.custody == "observed" {
@@ -137,7 +141,12 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
     }
     o.insert(
         "synced".into(),
-        if s.last_synced.is_empty() { "never".to_string() } else { rel_time(&s.last_synced) }.into(),
+        if s.last_synced.is_empty() {
+            "never".to_string()
+        } else {
+            rel_time(&s.last_synced)
+        }
+        .into(),
     );
     o.insert("coverage".into(), coverage_line(&s.coverage).into());
     serde_json::Value::Object(o)
@@ -210,7 +219,10 @@ pub fn with_anchor(
     next_step: &str,
 ) -> anyhow::Result<serde_json::Value> {
     if let Some(obj) = v.as_object_mut() {
-        obj.insert("next_step".into(), serde_json::Value::String(next_step.to_string()));
+        obj.insert(
+            "next_step".into(),
+            serde_json::Value::String(next_step.to_string()),
+        );
         obj.insert(
             "graph_state".into(),
             pulse_json(&crate::db::queries::graph_state(db)?),
@@ -246,7 +258,11 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
     } else {
         format!("\n  visibility:  {}", i.visibility)
     };
-    let lifecycle = if i.lifecycle.is_empty() { "implemented" } else { &i.lifecycle };
+    let lifecycle = if i.lifecycle.is_empty() {
+        "implemented"
+    } else {
+        &i.lifecycle
+    };
     let layer_line = if i.layer.is_empty() {
         String::new()
     } else {
@@ -273,7 +289,10 @@ pub fn fmt_intent_surface(i: &crate::types::IntentSurface) -> String {
     if !i.layer.is_empty() {
         s.push_str(&format!("\n  layer:       {}", i.layer));
     }
-    s.push_str(&format!("\n  status:      {}\n  lifecycle:   {}", i.status, i.lifecycle));
+    s.push_str(&format!(
+        "\n  status:      {}\n  lifecycle:   {}",
+        i.status, i.lifecycle
+    ));
     if !i.aspect.is_empty() {
         s.push_str(&format!("\n  aspect:      {}", i.aspect));
     }
@@ -291,9 +310,9 @@ pub fn fmt_intent_row(i: &crate::types::Intent) -> String {
     format!(
         "  [{status:>20}]  {level:<15}  {name:<40}  {id}",
         status = i.status,
-        level  = i.abstraction_level,
-        name   = i.name,
-        id     = i.id
+        level = i.abstraction_level,
+        name = i.name,
+        id = i.id
     )
 }
 
@@ -301,44 +320,74 @@ pub fn fmt_edge_row(e: &crate::types::RelatesTo) -> String {
     format!(
         "  [{status:<22}]  pri={pri:.2}  conf={conf:.2}  {from} → {to}  id={id}",
         status = e.inspection_status,
-        pri    = e.priority_score,
-        conf   = e.confidence,
-        from   = e.from_name,
-        to     = e.to_name,
-        id     = e.id
+        pri = e.priority_score,
+        conf = e.confidence,
+        from = e.from_name,
+        to = e.to_name,
+        id = e.id
     )
 }
 
 pub fn fmt_edge_detail(e: &crate::types::RelatesTo) -> String {
-    let last = if e.last_inspected.is_empty() { "(never)" } else { &e.last_inspected };
-    let by   = if e.inspected_by.is_empty()   { "(none)"  } else { &e.inspected_by };
-    let ev   = if e.evidence.is_empty()        { "(none)"  } else { &e.evidence };
-    let crit = if e.criterion.is_empty()       { "(none)"  } else { &e.criterion };
-    let notes = if e.notes.is_empty()          { "(none)"  } else { &e.notes };
+    let last = if e.last_inspected.is_empty() {
+        "(never)"
+    } else {
+        &e.last_inspected
+    };
+    let by = if e.inspected_by.is_empty() {
+        "(none)"
+    } else {
+        &e.inspected_by
+    };
+    let ev = if e.evidence.is_empty() {
+        "(none)"
+    } else {
+        &e.evidence
+    };
+    let crit = if e.criterion.is_empty() {
+        "(none)"
+    } else {
+        &e.criterion
+    };
+    let notes = if e.notes.is_empty() {
+        "(none)"
+    } else {
+        &e.notes
+    };
     // An unexplored pair has no materialised edge yet (id is empty) — say so
     // rather than printing a blank field that reads like a bug.
-    let id = if e.id.is_empty() { "(not yet created — `loom edge explore` records it)" } else { &e.id };
+    let id = if e.id.is_empty() {
+        "(not yet created — `loom edge explore` records it)"
+    } else {
+        &e.id
+    };
     format!(
         "  id:                {}\n  from:              {} ({})\n  to:                {} ({})\n\
          \n  inspection_status: {}\n  criterion:         {}\n  evidence:          {}\
          \n  confidence:        {:.2}\n  priority:          {:.2}\
          \n  last_inspected:    {}\n  inspected_by:      {}\n  notes:             {}",
         id,
-        e.from_name, e.from_id,
-        e.to_name,   e.to_id,
+        e.from_name,
+        e.from_id,
+        e.to_name,
+        e.to_id,
         e.inspection_status,
-        crit, ev,
-        e.confidence, e.priority_score,
-        last, by, notes,
+        crit,
+        ev,
+        e.confidence,
+        e.priority_score,
+        last,
+        by,
+        notes,
     )
 }
 
 pub fn fmt_rule_row(r: &crate::types::QualityRule) -> String {
     format!(
         "  [{sev:<8}]  {name:<40}  {id}",
-        sev  = r.severity,
+        sev = r.severity,
         name = r.name,
-        id   = r.id
+        id = r.id
     )
 }
 
@@ -359,18 +408,18 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
          \n  open issues (failing):      {issues}\
          \n  intents without validation: {no_val}\
          \n  validation pass rate:       {pass:.1}%",
-        intents     = s.total_intents,
-        codefiles   = s.total_codefiles,
+        intents = s.total_intents,
+        codefiles = s.total_codefiles,
         validations = s.total_validations,
         total_edges = s.total_edges,
         uninspected = s.uninspected_edges,
-        passing     = s.passing_edges,
-        failing     = s.failing_edges,
+        passing = s.passing_edges,
+        failing = s.failing_edges,
         independent = s.independent_edges,
-        nrv         = s.needs_reverification,
-        issues      = s.open_issues,
-        no_val      = s.intents_without_validations,
-        pass        = pass_pct,
+        nrv = s.needs_reverification,
+        issues = s.open_issues,
+        no_val = s.intents_without_validations,
+        pass = pass_pct,
     )
 }
 
@@ -405,11 +454,22 @@ mod tests {
 
     #[test]
     fn more_marker_is_an_affordance_not_an_apology() {
-        assert_eq!(more_marker(10, 10, "loom x"), None, "nothing elided, no marker");
-        assert_eq!(more_marker(9, 10, "loom x"), None, "shown >= total, no marker");
+        assert_eq!(
+            more_marker(10, 10, "loom x"),
+            None,
+            "nothing elided, no marker"
+        );
+        assert_eq!(
+            more_marker(9, 10, "loom x"),
+            None,
+            "shown >= total, no marker"
+        );
         let m = more_marker(12, 10, "loom note list --edge e1").unwrap();
         assert!(m.contains("+2 more"), "{m}");
-        assert!(m.contains("loom note list --edge e1"), "the marker must carry the runnable fetch: {m}");
+        assert!(
+            m.contains("loom note list --edge e1"),
+            "the marker must carry the runnable fetch: {m}"
+        );
     }
 
     #[test]
@@ -426,12 +486,20 @@ mod tests {
     fn anchor_json_carries_next_step_and_graph_state() {
         let db = crate::db::GrafeoDb::in_memory();
         db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g", "anchor", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g",
+            "anchor",
+            "owned",
+        ))
+        .unwrap();
         let v = with_anchor(serde_json::json!({"status": "ok"}), &db, "`loom next`").unwrap();
         assert_eq!(v["status"], "ok", "existing fields preserved");
         assert_eq!(v["next_step"], "`loom next`");
-        assert!(v["graph_state"].get("phase").is_some(), "the pulse travels in json: {v}");
+        assert!(
+            v["graph_state"].get("phase").is_some(),
+            "the pulse travels in json: {v}"
+        );
         // Non-object payloads pass through untouched (lists wrap themselves).
         let arr = with_anchor(serde_json::json!([1, 2]), &db, "x").unwrap();
         assert!(arr.is_array());
@@ -441,27 +509,53 @@ mod tests {
     fn pulse_is_a_surface_not_the_full_state() {
         let db = crate::db::GrafeoDb::in_memory();
         db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION, "t", "g", "pulse", "owned",
-        )).unwrap();
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g",
+            "pulse",
+            "owned",
+        ))
+        .unwrap();
         let gs = crate::db::queries::graph_state(&db).unwrap();
         let p = pulse_json(&gs);
         // Everything the next decision needs travels…
         for k in [
-            "phase", "vertical", "horizontal", "intents",
-            "codefiles", "edges", "unresolved", "synced", "coverage",
+            "phase",
+            "vertical",
+            "horizontal",
+            "intents",
+            "codefiles",
+            "edges",
+            "unresolved",
+            "synced",
+            "coverage",
         ] {
             assert!(p.get(k).is_some(), "pulse must carry '{k}': {p}");
         }
         assert_eq!(p["graph"], "pulse", "identity is the human-form name");
-        assert!(p["coverage"].is_string(), "coverage is the compact axis vector: {p}");
+        assert!(
+            p["coverage"].is_string(),
+            "coverage is the compact axis vector: {p}"
+        );
         // …and none of the deep-view fields `loom status --json` owns (tier-2),
         // nor the compass sentence (the payload's `next_step` is the guidance
         // channel — `next_action` repeated in every nested pulse was noise).
         for k in [
-            "version", "graph_id", "graph_name", "custody", "notes", "next_action",
-            "validations", "relates_to_edges", "implements_edges", "last_synced",
+            "version",
+            "graph_id",
+            "graph_name",
+            "custody",
+            "notes",
+            "next_action",
+            "validations",
+            "relates_to_edges",
+            "implements_edges",
+            "last_synced",
         ] {
-            assert!(p.get(k).is_none(), "'{k}' is tier-2 — dig via `loom status --json`: {p}");
+            assert!(
+                p.get(k).is_none(),
+                "'{k}' is tier-2 — dig via `loom status --json`: {p}"
+            );
         }
         // Never synced reads as prose, not as an empty string.
         assert_eq!(p["synced"], "never");

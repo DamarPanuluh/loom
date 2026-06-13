@@ -1,18 +1,17 @@
 use anyhow::Result;
 
 use crate::cli::{EdgeCmd, ExploreSubCmd};
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    fix_edge, get_intent, get_or_create_relates_to, get_relates_to,
-    insert_governs, insert_hierarchy, insert_implements,
-    insert_validates, list_relates_to, notes_for_target,
+    fix_edge, get_intent, get_or_create_relates_to, get_relates_to, insert_governs,
+    insert_hierarchy, insert_implements, insert_validates, list_relates_to, notes_for_target,
     update_relates_to_ground, update_relates_to_independent, update_relates_to_issue,
 };
 use crate::db::schema::role;
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::{
-    apply_limit, fmt_edge_detail, fmt_edge_row, fmt_intent, more_marker, print_anchor,
-    with_anchor, Printer, SECTION_CAP,
+    apply_limit, fmt_edge_detail, fmt_edge_row, fmt_intent, more_marker, print_anchor, with_anchor,
+    Printer, SECTION_CAP,
 };
 use crate::types::{EdgeType, Intent, RelatesTo};
 
@@ -25,7 +24,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // RELATES_TO — explore / ground / issue / independent
         // ----------------------------------------------------------------
-        EdgeCmd::Explore { intent_a_id, intent_b_id, subcommand } => {
+        EdgeCmd::Explore {
+            intent_a_id,
+            intent_b_id,
+            subcommand,
+        } => {
             let intent_a_id = crate::db::queries::resolve_intent(&db, &intent_a_id)?;
             let intent_b_id = crate::db::queries::resolve_intent(&db, &intent_b_id)?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -33,9 +36,7 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             match subcommand {
                 None => {
                     // Create or retrieve edge; print both intent contexts.
-                    let edge = get_or_create_relates_to(
-                        &db, &intent_a_id, &intent_b_id, &now,
-                    )?;
+                    let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;
                     let intent_a = get_intent(&db, &intent_a_id)?
                         .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.", intent_a_id))?;
                     let intent_b = get_intent(&db, &intent_b_id)?
@@ -48,13 +49,19 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                             "intent_b": intent_b,
                         }));
                     } else {
-                        println!("── Intent A ──────────────────────────────────────────────────────");
+                        println!(
+                            "── Intent A ──────────────────────────────────────────────────────"
+                        );
                         println!("{}", fmt_intent(&intent_a));
                         println!();
-                        println!("── Intent B ──────────────────────────────────────────────────────");
+                        println!(
+                            "── Intent B ──────────────────────────────────────────────────────"
+                        );
                         println!("{}", fmt_intent(&intent_b));
                         println!();
-                        println!("── Edge ──────────────────────────────────────────────────────────");
+                        println!(
+                            "── Edge ──────────────────────────────────────────────────────────"
+                        );
                         println!("{}", fmt_edge_detail(&edge));
                         println!();
                         println!("Next steps:");
@@ -73,7 +80,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Ground { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Ground {
+                    criterion,
+                    evidence,
+                    evidence_locator,
+                    confidence,
+                    inspected_by,
+                }) => {
                     let now = chrono::Utc::now().to_rfc3339();
                     // Grounding is inspection work: analyzer lane (fixer too —
                     // it re-grounds edges it has just repaired).
@@ -83,7 +96,8 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         inspected_by.as_deref(),
                     )?;
                     gate::require_substantive(
-                        "criterion", &criterion,
+                        "criterion",
+                        &criterion,
                         "the falsifiable coexistence criterion this edge was checked against",
                     )?;
                     // Evidence is OPTIONAL on ground (the criterion may say it
@@ -91,7 +105,8 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     // locators must be file anchors.
                     if !evidence.trim().is_empty() {
                         gate::require_substantive(
-                            "evidence", &evidence,
+                            "evidence",
+                            &evidence,
                             "what the inspection actually found (file/symbol + the observation)",
                         )?;
                     }
@@ -102,7 +117,16 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     // suggestion (`explore A B ground ...`) works in one step —
                     // consistent with the `independent` subcommand.
                     let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_ground(&db, &edge.from_id, &edge.to_id, &criterion, &evidence, confidence, by, &now)?;
+                    update_relates_to_ground(
+                        &db,
+                        &edge.from_id,
+                        &edge.to_id,
+                        &criterion,
+                        &evidence,
+                        confidence,
+                        by,
+                        &now,
+                    )?;
                     // Construct the result from the values we just wrote —
                     // cheaper than a re-read, and the values are known.
                     let updated = RelatesTo {
@@ -125,7 +149,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Issue { criterion, evidence, evidence_locator, confidence, inspected_by }) => {
+                Some(ExploreSubCmd::Issue {
+                    criterion,
+                    evidence,
+                    evidence_locator,
+                    confidence,
+                    inspected_by,
+                }) => {
                     let now = chrono::Utc::now().to_rfc3339();
                     let by = gate::acting_in_lane(
                         "record an issue on a RELATES_TO edge",
@@ -133,18 +163,29 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         inspected_by.as_deref(),
                     )?;
                     gate::require_substantive(
-                        "criterion", &criterion,
+                        "criterion",
+                        &criterion,
                         "the falsifiable criterion that was violated",
                     )?;
                     gate::require_substantive(
-                        "evidence", &evidence,
+                        "evidence",
+                        &evidence,
                         "what was actually found in the code (file/symbol + the problem)",
                     )?;
                     let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
                     gate::require_confidence(confidence)?;
                     let by = by.as_str();
                     let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_issue(&db, &edge.from_id, &edge.to_id, &criterion, &evidence, confidence, by, &now)?;
+                    update_relates_to_issue(
+                        &db,
+                        &edge.from_id,
+                        &edge.to_id,
+                        &criterion,
+                        &evidence,
+                        confidence,
+                        by,
+                        &now,
+                    )?;
                     // See note in the Ground arm: construct rather than re-read.
                     let updated = RelatesTo {
                         inspection_status: "failing".to_string(),
@@ -169,7 +210,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     }
                 }
 
-                Some(ExploreSubCmd::Independent { notes, inspected_by }) => {
+                Some(ExploreSubCmd::Independent {
+                    notes,
+                    inspected_by,
+                }) => {
                     // independent is now a status on the RELATES_TO edge, not a separate edge type
                     let now = chrono::Utc::now().to_rfc3339();
                     let by = gate::acting_in_lane(
@@ -180,16 +224,22 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     // Independence is a *verified claim*, as strong as passing —
                     // it must record why no relationship exists.
                     gate::require_substantive(
-                        "notes", &notes,
+                        "notes",
+                        &notes,
                         "why these two intents have no meaningful relationship",
                     )?;
                     let by = by.as_str();
 
                     // Ensure RELATES_TO edge exists first
-                    let edge = get_or_create_relates_to(
-                        &db, &intent_a_id, &intent_b_id, &now,
+                    let edge = get_or_create_relates_to(&db, &intent_a_id, &intent_b_id, &now)?;
+                    update_relates_to_independent(
+                        &db,
+                        &edge.from_id,
+                        &edge.to_id,
+                        &notes,
+                        by,
+                        &now,
                     )?;
-                    update_relates_to_independent(&db, &edge.from_id, &edge.to_id, &notes, by, &now)?;
 
                     let next_step = "Continue discovery: `loom next`";
                     if printer.json {
@@ -220,7 +270,12 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // IMPLEMENTS: Intent → CodeFile
         // ----------------------------------------------------------------
-        EdgeCmd::Implement { intent_id, codefile_id, locator, notes } => {
+        EdgeCmd::Implement {
+            intent_id,
+            codefile_id,
+            locator,
+            notes,
+        } => {
             gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -239,14 +294,21 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         "next_step": next_step,
                     }));
                 } else {
-                    println!("✓ Grounded intent in {} registered file(s) matching '{}'.", targets.len(), codefile_id);
+                    println!(
+                        "✓ Grounded intent in {} registered file(s) matching '{}'.",
+                        targets.len(),
+                        codefile_id
+                    );
                     println!("  → Next: {}", next_step);
                 }
             } else {
                 let cf = &targets[0];
                 insert_implements(&db, &intent_id, &cf.id, &locator, &notes, &now)?;
                 let edge_id = crate::db::schema::edge_key(
-                    crate::db::schema::edge::IMPLEMENTS, &intent_id, &cf.id);
+                    crate::db::schema::edge::IMPLEMENTS,
+                    &intent_id,
+                    &cf.id,
+                );
                 if printer.json {
                     printer.print_json(&serde_json::json!({
                         "status":       "ok",
@@ -260,8 +322,15 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                 } else {
                     println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
                     println!("  intent   → {}", intent_id);
-                    println!("  codefile → {}{}", cf.path,
-                        if locator.is_empty() { String::new() } else { format!("  @ {}", locator) });
+                    println!(
+                        "  codefile → {}{}",
+                        cf.path,
+                        if locator.is_empty() {
+                            String::new()
+                        } else {
+                            format!("  @ {}", locator)
+                        }
+                    );
                     println!("  → Next: {}", next_step);
                 }
             }
@@ -270,7 +339,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // UNIMPLEMENT: remove grounding (decomposition support)
         // ----------------------------------------------------------------
-        EdgeCmd::Unimplement { intent_id, codefile_id } => {
+        EdgeCmd::Unimplement {
+            intent_id,
+            codefile_id,
+        } => {
             gate::acting_in_lane("remove an IMPLEMENTS edge", &[role::BUILDER], None)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
             let targets = resolve_codefiles(&db, &codefile_id)?;
@@ -300,7 +372,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // GOVERNS: QualityRule → Intent
         // ----------------------------------------------------------------
-        EdgeCmd::Govern { rule_id, intent_id, criterion } => {
+        EdgeCmd::Govern {
+            rule_id,
+            intent_id,
+            criterion,
+        } => {
             gate::acting_in_lane("apply a quality rule (GOVERNS)", &[role::QUALITY], None)?;
             let rule_id = crate::db::queries::resolve_rule(&db, &rule_id)?;
             let intent_id = crate::db::queries::resolve_intent(&db, &intent_id)?;
@@ -308,13 +384,14 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {
                 gate::require_substantive(
-                    "criterion", crit,
+                    "criterion",
+                    crit,
                     "what compliance looks like for this rule on this intent",
                 )?;
             }
             insert_governs(&db, &rule_id, &intent_id, crit, &now)?;
-            let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
+            let edge_id =
+                crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
             let next_step = format!(
                 "make the edge real with a verdict: `loom rule verdict {} {} --status <passing|failing|independent> --criterion \"<text>\" --evidence \"<text>\"`",
                 rule_id, intent_id
@@ -339,7 +416,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // HIERARCHY: Intent (parent) → Intent (child)
         // ----------------------------------------------------------------
-        EdgeCmd::Hierarchy { parent_id, child_id, notes } => {
+        EdgeCmd::Hierarchy {
+            parent_id,
+            child_id,
+            notes,
+        } => {
             gate::acting_in_lane("create a HIERARCHY edge", &[role::BUILDER], None)?;
             let parent_id = crate::db::queries::resolve_intent(&db, &parent_id)?;
             let child_id = crate::db::queries::resolve_intent(&db, &child_id)?;
@@ -347,7 +428,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let n = notes.as_deref().unwrap_or("");
             insert_hierarchy(&db, &parent_id, &child_id, n, &now)?;
             let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::HIERARCHY, &parent_id, &child_id);
+                crate::db::schema::edge::HIERARCHY,
+                &parent_id,
+                &child_id,
+            );
             let next_step = format!(
                 "ground the child if it is a leaf (`loom edge implement {} <codefile> --locator \"<symbol>\"`), or keep decomposing",
                 child_id
@@ -372,7 +456,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // VALIDATES: Validation → Intent
         // ----------------------------------------------------------------
-        EdgeCmd::Validates { validation_id, intent_id, notes } => {
+        EdgeCmd::Validates {
+            validation_id,
+            intent_id,
+            notes,
+        } => {
             gate::acting_in_lane(
                 "link a validation (VALIDATES)",
                 &[role::BUILDER, role::VALIDATOR],
@@ -386,7 +474,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             let n = notes.as_deref().unwrap_or("");
             insert_validates(&db, &validation_id, &intent_id, n, &now)?;
             let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::VALIDATES, &validation_id, &intent_id);
+                crate::db::schema::edge::VALIDATES,
+                &validation_id,
+                &intent_id,
+            );
             let next_step = format!("make the proof real: `loom validate {}`", intent_id);
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -441,10 +532,10 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                     edge_id
                 ),
                 Some(ref e) => {
-                    let intent_a = get_intent(&db, &e.from_id)?
-                        .unwrap_or_else(|| default_intent(&e.from_id));
-                    let intent_b = get_intent(&db, &e.to_id)?
-                        .unwrap_or_else(|| default_intent(&e.to_id));
+                    let intent_a =
+                        get_intent(&db, &e.from_id)?.unwrap_or_else(|| default_intent(&e.from_id));
+                    let intent_b =
+                        get_intent(&db, &e.to_id)?.unwrap_or_else(|| default_intent(&e.to_id));
                     let mut notes = notes_for_target(&db, &e.id)?;
                     // Notes come back oldest-first; keep the NEWEST when capping.
                     let notes_total = notes.len();
@@ -460,7 +551,9 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                             "notes_total": notes_total,
                         }));
                     } else {
-                        println!("── Edge ──────────────────────────────────────────────────────────");
+                        println!(
+                            "── Edge ──────────────────────────────────────────────────────────"
+                        );
                         println!("{}", fmt_edge_detail(e));
                         println!();
                         println!(
@@ -475,14 +568,21 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
                         );
                         println!("{}", fmt_intent(&intent_b));
                         println!();
-                        println!("── Notes ({}) ──────────────────────────────────────────────────────", notes_total);
+                        println!(
+                            "── Notes ({}) ──────────────────────────────────────────────────────",
+                            notes_total
+                        );
                         if notes.is_empty() {
                             println!("  (none)");
                         } else {
                             for n in &notes {
                                 println!("  [{}] {}  ({})", n.kind, n.text, n.author);
                             }
-                            if let Some(m) = more_marker(notes_total, notes.len(), &format!("loom note list --edge {}", e.id)) {
+                            if let Some(m) = more_marker(
+                                notes_total,
+                                notes.len(),
+                                &format!("loom note list --edge {}", e.id),
+                            ) {
                                 println!("  {}", m);
                             }
                         }
@@ -494,13 +594,18 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         // ----------------------------------------------------------------
         // Fix a failing RELATES_TO edge → sets inspection_status = passing
         // ----------------------------------------------------------------
-        EdgeCmd::Fix { edge_id, description } => {
+        EdgeCmd::Fix {
+            edge_id,
+            description,
+        } => {
             let by = gate::acting_in_lane("mark a failing edge fixed", &[role::FIXER], None)?;
             crate::db::queries::ensure_owned(
-                &db, "mark an edge fixed (a claim that you changed the code)",
+                &db,
+                "mark an edge fixed (a claim that you changed the code)",
             )?;
             gate::require_substantive(
-                "description", &description,
+                "description",
+                &description,
                 "what was changed in the code to resolve the violation",
             )?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -549,8 +654,13 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
 fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeFile>> {
     let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
     if is_glob {
-        let pat = glob::Pattern::new(key)
-            .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`", key, e))?;
+        let pat = glob::Pattern::new(key).map_err(|e| {
+            anyhow::anyhow!(
+                "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
+                key,
+                e
+            )
+        })?;
         let matched: Vec<_> = crate::db::queries::list_codefiles(db)?
             .into_iter()
             .filter(|c| pat.matches(&c.path))
@@ -558,34 +668,37 @@ fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeF
         if matched.is_empty() {
             anyhow::bail!(
                 "No REGISTERED codefile matches glob '{}'. Register first: loom codefile add '{}'",
-                key, key
+                key,
+                key
             );
         }
         return Ok(matched);
     }
     crate::db::queries::get_codefile_by_id_or_path(db, key)?
         .map(|c| vec![c])
-        .ok_or_else(|| anyhow::anyhow!(
+        .ok_or_else(|| {
+            anyhow::anyhow!(
             "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
             key
-        ))
+        )
+        })
 }
 
 fn default_intent(id: &str) -> Intent {
     Intent {
-        id:                id.to_string(),
-        name:              "(unknown)".to_string(),
-        description:       String::new(),
+        id: id.to_string(),
+        name: "(unknown)".to_string(),
+        description: String::new(),
         abstraction_level: String::new(),
-        domain:            String::new(),
-        layer:             String::new(),
-        source_refs:       Vec::new(),
-        status:            String::new(),
-        aspect:            String::new(),
-        tags:              Vec::new(),
-        visibility:        String::new(),
-        lifecycle:         String::new(),
-        created_at:        String::new(),
-        updated_at:        String::new(),
+        domain: String::new(),
+        layer: String::new(),
+        source_refs: Vec::new(),
+        status: String::new(),
+        aspect: String::new(),
+        tags: Vec::new(),
+        visibility: String::new(),
+        lifecycle: String::new(),
+        created_at: String::new(),
+        updated_at: String::new(),
     }
 }

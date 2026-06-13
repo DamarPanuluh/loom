@@ -2,12 +2,13 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
+use crate::db::schema::{index_statements, insert_meta, CHECK_INITIALIZED, SCHEMA_VERSION};
 use crate::db::{db_path, loom_dir, GrafeoDb, LoomDb};
-use crate::db::schema::{index_statements, CHECK_INITIALIZED, insert_meta, SCHEMA_VERSION};
 use crate::output::Printer;
 
 pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer) -> Result<()> {
-    let target = Path::new(path_str).canonicalize()
+    let target = Path::new(path_str)
+        .canonicalize()
         .unwrap_or_else(|_| Path::new(path_str).to_path_buf());
 
     let loom = loom_dir(&target);
@@ -47,7 +48,11 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
         let (cur_id, cur_name, cur_custody) = meta
             .map(|m| (m.graph_id, m.graph_name, m.custody))
             .unwrap_or_default();
-        let new_id = if cur_id.is_empty() { uuid::Uuid::new_v4().to_string() } else { cur_id.clone() };
+        let new_id = if cur_id.is_empty() {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            cur_id.clone()
+        };
         let new_name = match name {
             Some(n) => n.to_string(),
             None if cur_name.is_empty() => default_name,
@@ -72,10 +77,17 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
                 "identity_updated": changed,
             }));
         } else {
-            println!("✓ Already initialised at {}  (run again is safe)", loom.display());
-            println!("  graph: '{}' ({})  custody: {}{}",
-                new_name, new_id, new_custody,
-                if changed { "  [identity updated]" } else { "" });
+            println!(
+                "✓ Already initialised at {}  (run again is safe)",
+                loom.display()
+            );
+            println!(
+                "  graph: '{}' ({})  custody: {}{}",
+                new_name,
+                new_id,
+                new_custody,
+                if changed { "  [identity updated]" } else { "" }
+            );
         }
         return Ok(());
     }
@@ -84,7 +96,13 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
     let now = chrono::Utc::now().to_rfc3339();
     let graph_id = uuid::Uuid::new_v4().to_string();
     let graph_name = name.map(str::to_string).unwrap_or(default_name);
-    db.execute(&insert_meta(SCHEMA_VERSION, &now, &graph_id, &graph_name, custody))?;
+    db.execute(&insert_meta(
+        SCHEMA_VERSION,
+        &now,
+        &graph_id,
+        &graph_name,
+        custody,
+    ))?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -103,7 +121,10 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
     } else {
         println!("✓ Initialised loom graph at {}", loom.display());
         println!("  DB:    {}", db_file.display());
-        println!("  graph: '{}' ({})  custody: {}", graph_name, graph_id, custody);
+        println!(
+            "  graph: '{}' ({})  custody: {}",
+            graph_name, graph_id, custody
+        );
         if observed {
             println!("  Observed graph: you're mapping code you don't own — build/fix lanes are");
             println!("  disabled; record findings (issue verdicts, notes), not fixes.");

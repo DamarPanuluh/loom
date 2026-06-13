@@ -549,6 +549,7 @@ pub struct RedefinitionRipple {
 /// - GOVERNS `independent` flips here (sync flips `passing` only): "this rule
 ///   doesn't apply" was judged against the old meaning; a code change can't
 ///   alter what an intent MEANS, but a redefinition is exactly that.
+///
 /// The cause string ends in "redefined", never " changed", so
 /// `parse_sync_cause` returns None and the hot-FILE grouping in
 /// `loom next --take` is never polluted with a non-file.

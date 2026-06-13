@@ -35,7 +35,10 @@ pub fn normalize_term(raw: &str) -> Result<String> {
     if t.is_empty() {
         anyhow::bail!("A vocab term cannot be empty.");
     }
-    if !t.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_') {
+    if !t
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_')
+    {
         anyhow::bail!(
             "'{t}' is not a valid term: use lowercase letters, digits, '-' or '_' \
              (terms are exact-match keys, not prose)."
@@ -59,10 +62,16 @@ pub fn insert_vocab_term(db: &dyn LoomDb, term: &VocabTerm) -> Result<()> {
         author = prop::AUTHOR,
         created = prop::CREATED_AT,
     );
-    db.execute_with_params(&q, super::row::sparams(&[
-        ("id", &term.id), ("name", &term.name), ("desc", &term.description),
-        ("author", &term.author), ("created", &term.created_at),
-    ]))?;
+    db.execute_with_params(
+        &q,
+        super::row::sparams(&[
+            ("id", &term.id),
+            ("name", &term.name),
+            ("desc", &term.description),
+            ("author", &term.author),
+            ("created", &term.created_at),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -79,7 +88,11 @@ pub fn list_vocab_terms(db: &dyn LoomDb) -> Result<Vec<VocabTerm>> {
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_term(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_term(row, &cols))
+        .collect())
 }
 
 pub fn get_vocab_term(db: &dyn LoomDb, name: &str) -> Result<Option<VocabTerm>> {
@@ -111,11 +124,11 @@ fn delete_vocab_term_node(db: &dyn LoomDb, name: &str) -> Result<()> {
 
 fn row_to_term(row: &[Value], cols: &HashMap<&str, usize>) -> VocabTerm {
     VocabTerm {
-        id:          str_val(get(row, cols, "n.id")),
-        name:        str_val(get(row, cols, "n.name")),
+        id: str_val(get(row, cols, "n.id")),
+        name: str_val(get(row, cols, "n.name")),
         description: str_val(get(row, cols, "n.description")),
-        author:      str_val(get(row, cols, "n.author")),
-        created_at:  str_val(get(row, cols, "n.created_at")),
+        author: str_val(get(row, cols, "n.author")),
+        created_at: str_val(get(row, cols, "n.created_at")),
     }
 }
 
@@ -291,6 +304,10 @@ pub fn nearest_terms<'a>(
             (t, usage, terms_look_alike(input, &t.name))
         })
         .collect();
-    ranked.sort_by(|a, b| b.2.cmp(&a.2).then(b.1.cmp(&a.1)).then(a.0.name.cmp(&b.0.name)));
+    ranked.sort_by(|a, b| {
+        b.2.cmp(&a.2)
+            .then(b.1.cmp(&a.1))
+            .then(a.0.name.cmp(&b.0.name))
+    });
     ranked.into_iter().map(|(t, usage, _)| (t, usage)).collect()
 }

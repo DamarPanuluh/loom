@@ -40,7 +40,8 @@ pub fn get_or_create_journeys(
              persona id: {}\n\
              validation id: {}\n\
              Run `loom persona list` and `loom validation list` to see available nodes.",
-            persona_id, validation_id
+            persona_id,
+            validation_id
         ),
     }
 }
@@ -55,19 +56,23 @@ pub fn list_journeys_for_persona(db: &dyn LoomDb, persona_id: &str) -> Result<Ve
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_journeys(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_journeys(row, &cols))
+        .collect())
 }
 
 fn row_to_journeys(row: &[Value], cols: &HashMap<&str, usize>) -> JourneysEdge {
-    let persona_id     = str_val(get(row, cols, "persona_id"));
-    let validation_id  = str_val(get(row, cols, "validation_id"));
+    let persona_id = str_val(get(row, cols, "persona_id"));
+    let validation_id = str_val(get(row, cols, "validation_id"));
     JourneysEdge {
         id: crate::db::schema::edge_key(edge::JOURNEYS, &persona_id, &validation_id),
         persona_id,
         validation_id,
-        persona_name:     str_val(get(row, cols, "persona_name")),
-        validation_name:  str_val(get(row, cols, "validation_name")),
-        notes:            str_val(get(row, cols, "r.notes")),
-        created_at:       str_val(get(row, cols, "r.created_at")),
+        persona_name: str_val(get(row, cols, "persona_name")),
+        validation_name: str_val(get(row, cols, "validation_name")),
+        notes: str_val(get(row, cols, "r.notes")),
+        created_at: str_val(get(row, cols, "r.created_at")),
     }
 }

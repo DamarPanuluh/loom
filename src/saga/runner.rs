@@ -109,8 +109,7 @@ pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
 
     let mut vars = spec.vars.clone();
     let redactor = EnvRedactor::from_spec(spec)?;
-    let base = interpolate(&spec.base, &vars)
-        .context("Could not resolve the saga `base:` url")?;
+    let base = interpolate(&spec.base, &vars).context("Could not resolve the saga `base:` url")?;
 
     let mut outcomes: Vec<StepOutcome> = Vec::new();
     let mut passed = true;
@@ -159,7 +158,13 @@ fn run_step(
     // not a hard process error, so earlier side effects are still recorded.
     let url = match interpolate(&step.request.url, vars) {
         Ok(u) => u,
-        Err(e) => return Ok(fail(step.request.url.clone(), None, format!("spec error: {e}"))),
+        Err(e) => {
+            return Ok(fail(
+                step.request.url.clone(),
+                None,
+                format!("spec error: {e}"),
+            ))
+        }
     };
     let url = if url.starts_with("http://") || url.starts_with("https://") {
         url
@@ -171,7 +176,11 @@ fn run_step(
                 format!("relative url '{url}' cannot run because the saga has no `base:`"),
             ));
         }
-        format!("{}/{}", base.trim_end_matches('/'), url.trim_start_matches('/'))
+        format!(
+            "{}/{}",
+            base.trim_end_matches('/'),
+            url.trim_start_matches('/')
+        )
     };
 
     // Build the request.
@@ -331,7 +340,6 @@ fn run_step(
     })
 }
 
-
 fn read_capped_body(resp: reqwest::blocking::Response) -> std::result::Result<String, String> {
     let mut bytes = Vec::new();
     let mut limited = resp.take((RESPONSE_BODY_CAP + 1) as u64);
@@ -370,7 +378,9 @@ mod tests {
         let seen2 = seen.clone();
         std::thread::spawn(move || {
             for resp in responses {
-                let Ok((mut stream, _)) = listener.accept() else { return };
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
                 let mut buf = vec![0u8; 65536];
                 let mut read = 0usize;
                 // Read until end of headers, then any Content-Length body.
@@ -382,19 +392,25 @@ mod tests {
                     read += n;
                     let text = String::from_utf8_lossy(&buf[..read]);
                     if let Some(pos) = text.find("\r\n\r\n") {
-                        let len = text
-                            .lines()
-                            .find_map(|l| l.to_lowercase().strip_prefix("content-length:")
-                                .map(|v| v.trim().parse::<usize>().unwrap_or(0)));
+                        let len = text.lines().find_map(|l| {
+                            l.to_lowercase()
+                                .strip_prefix("content-length:")
+                                .map(|v| v.trim().parse::<usize>().unwrap_or(0))
+                        });
                         break (pos + 4, len.unwrap_or(0));
                     }
                 };
                 while read < head_end + content_len {
                     let n = stream.read(&mut buf[read..]).unwrap_or(0);
-                    if n == 0 { break; }
+                    if n == 0 {
+                        break;
+                    }
                     read += n;
                 }
-                seen2.lock().unwrap().push(String::from_utf8_lossy(&buf[..read]).to_string());
+                seen2
+                    .lock()
+                    .unwrap()
+                    .push(String::from_utf8_lossy(&buf[..read]).to_string());
                 stream.write_all(resp.as_bytes()).unwrap();
             }
         });
@@ -453,7 +469,11 @@ steps:
         assert_eq!(report.outcomes[0].captured["cart_id"], "c-42");
         // The captured id was threaded into step 2's URL.
         let seen = seen.lock().unwrap();
-        assert!(seen[1].starts_with("POST /carts/c-42/payment"), "got: {}", seen[1]);
+        assert!(
+            seen[1].starts_with("POST /carts/c-42/payment"),
+            "got: {}",
+            seen[1]
+        );
         assert!(seen[0].contains(r#""owner":"alice""#), "got: {}", seen[0]);
     }
 
@@ -469,15 +489,24 @@ steps:
         assert_eq!(report.executed, 2, "halt-on-failure: step 3 never reached");
         let failure = report.failure().unwrap();
         assert_eq!(failure.step, 2);
-        assert!(failure.detail.contains("expected status 200, got 502"), "got: {}", failure.detail);
-        assert!(failure.detail.contains("$.state"), "all broken expectations listed: {}", failure.detail);
+        assert!(
+            failure.detail.contains("expected status 200, got 502"),
+            "got: {}",
+            failure.detail
+        );
+        assert!(
+            failure.detail.contains("$.state"),
+            "all broken expectations listed: {}",
+            failure.detail
+        );
     }
 
     #[test]
     fn body_assert_failure_is_a_step_failure() {
-        let (base, _seen) = serve_script(vec![
-            http("201 Created", r#"{"id":"c-42","state":"locked"}"#),
-        ]);
+        let (base, _seen) = serve_script(vec![http(
+            "201 Created",
+            r#"{"id":"c-42","state":"locked"}"#,
+        )]);
         let report = run_saga(&load(&base)).unwrap();
         assert!(!report.passed);
         assert_eq!(report.executed, 1);
@@ -488,7 +517,11 @@ steps:
     #[test]
     fn connection_refused_is_an_outcome_not_a_crash() {
         // Nothing listens on this port (bind then drop to find a free one).
-        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
         let spec = load(&format!("http://127.0.0.1:{port}"));
         let report = run_saga(&spec).unwrap();
         assert!(!report.passed);
@@ -503,23 +536,40 @@ steps:
         assert!(!report.passed);
         assert_eq!(report.executed, 1);
         let failure = report.failure().unwrap();
-        assert!(failure.detail.contains("no `base:`"), "got: {}", failure.detail);
+        assert!(
+            failure.detail.contains("no `base:`"),
+            "got: {}",
+            failure.detail
+        );
         assert_eq!(failure.url, "/carts");
     }
 
     #[test]
     fn env_values_are_redacted_from_outcomes() {
-        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
         let secret_base = format!("http://127.0.0.1:{port}");
         std::env::set_var("LOOM_SAGA_REDACT_BASE", &secret_base);
         let spec = crate::saga::spec::load_spec(
             &SPEC.replace("__BASE__", "{{ env.LOOM_SAGA_REDACT_BASE }}"),
             "test",
-        ).unwrap();
+        )
+        .unwrap();
         let report = run_saga(&spec).unwrap();
         let failure = report.failure().unwrap();
-        assert!(failure.url.contains("{{ env.LOOM_SAGA_REDACT_BASE }}"), "got: {}", failure.url);
+        assert!(
+            failure.url.contains("{{ env.LOOM_SAGA_REDACT_BASE }}"),
+            "got: {}",
+            failure.url
+        );
         assert!(!failure.url.contains(&secret_base), "got: {}", failure.url);
-        assert!(!failure.detail.contains(&secret_base), "got: {}", failure.detail);
+        assert!(
+            !failure.detail.contains(&secret_base),
+            "got: {}",
+            failure.detail
+        );
     }
 }

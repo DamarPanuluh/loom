@@ -29,16 +29,19 @@ pub fn insert_note(db: &dyn LoomDb, note: &Note) -> Result<()> {
         aud = prop::AUDIENCE,
         created = prop::CREATED_AT,
     );
-    db.execute_with_params(&q, super::row::sparams(&[
-        ("id", &note.id),
-        ("kind", &note.kind),
-        ("text", &note.text),
-        ("author", &note.author),
-        ("tkind", &note.target_kind),
-        ("tid", &note.target_id),
-        ("aud", &note.audience),
-        ("created", &note.created_at),
-    ]))?;
+    db.execute_with_params(
+        &q,
+        super::row::sparams(&[
+            ("id", &note.id),
+            ("kind", &note.kind),
+            ("text", &note.text),
+            ("author", &note.author),
+            ("tkind", &note.target_kind),
+            ("tid", &note.target_id),
+            ("aud", &note.audience),
+            ("created", &note.created_at),
+        ]),
+    )?;
     Ok(())
 }
 
@@ -58,16 +61,27 @@ pub fn record_transition(
     if old_status == new_status {
         return Ok(());
     }
-    insert_note(db, &Note {
-        id: uuid::Uuid::new_v4().to_string(),
-        kind: "transition".to_string(),
-        text: format!("{} → {}", if old_status.is_empty() { "?" } else { old_status }, new_status),
-        author: author.to_string(),
-        target_kind: target_kind.to_string(),
-        target_id: target_id.to_string(),
-        audience: String::new(),
-        created_at: now.to_string(),
-    })
+    insert_note(
+        db,
+        &Note {
+            id: uuid::Uuid::new_v4().to_string(),
+            kind: "transition".to_string(),
+            text: format!(
+                "{} → {}",
+                if old_status.is_empty() {
+                    "?"
+                } else {
+                    old_status
+                },
+                new_status
+            ),
+            author: author.to_string(),
+            target_kind: target_kind.to_string(),
+            target_id: target_id.to_string(),
+            audience: String::new(),
+            created_at: now.to_string(),
+        },
+    )
 }
 
 /// Auto-record a `loom sync` staleness flip with its CAUSE — "why is this edge
@@ -85,21 +99,28 @@ pub fn record_sync_flip(
     cause: &str, // e.g. "src/db/mod.rs changed"
     now: &str,
 ) -> Result<()> {
-    insert_note(db, &Note {
-        id: uuid::Uuid::new_v4().to_string(),
-        kind: "transition".to_string(),
-        text: format!(
-            "{} → {} (sync: {})",
-            if old_status.is_empty() { "?" } else { old_status },
-            new_status,
-            cause
-        ),
-        author: "loom".to_string(),
-        target_kind: target_kind.to_string(),
-        target_id: target_id.to_string(),
-        audience: String::new(),
-        created_at: now.to_string(),
-    })
+    insert_note(
+        db,
+        &Note {
+            id: uuid::Uuid::new_v4().to_string(),
+            kind: "transition".to_string(),
+            text: format!(
+                "{} → {} (sync: {})",
+                if old_status.is_empty() {
+                    "?"
+                } else {
+                    old_status
+                },
+                new_status,
+                cause
+            ),
+            author: "loom".to_string(),
+            target_kind: target_kind.to_string(),
+            target_id: target_id.to_string(),
+            audience: String::new(),
+            created_at: now.to_string(),
+        },
+    )
 }
 
 /// Extract the staling file from a sync-flip transition note ("… → <status>
@@ -137,8 +158,11 @@ pub fn list_notes(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    let mut notes: Vec<Note> =
-        result.rows().iter().map(|row| row_to_note(row, &cols)).collect();
+    let mut notes: Vec<Note> = result
+        .rows()
+        .iter()
+        .map(|row| row_to_note(row, &cols))
+        .collect();
     if let Some(t) = target_id {
         notes.retain(|n| n.target_id == t);
     }
@@ -155,15 +179,15 @@ pub fn notes_for_target(db: &dyn LoomDb, target_id: &str) -> Result<Vec<Note>> {
 
 fn row_to_note(row: &[Value], cols: &HashMap<&str, usize>) -> Note {
     Note {
-        id:          str_val(get(row, cols, "n.id")),
-        kind:        str_val(get(row, cols, "n.kind")),
-        text:        str_val(get(row, cols, "n.text")),
-        author:      str_val(get(row, cols, "n.author")),
+        id: str_val(get(row, cols, "n.id")),
+        kind: str_val(get(row, cols, "n.kind")),
+        text: str_val(get(row, cols, "n.text")),
+        author: str_val(get(row, cols, "n.author")),
         target_kind: str_val(get(row, cols, "n.target_kind")),
-        target_id:   str_val(get(row, cols, "n.target_id")),
+        target_id: str_val(get(row, cols, "n.target_id")),
         // Optional — "" (everyone) on notes from older graphs.
-        audience:    str_val(get(row, cols, "n.audience")),
-        created_at:  str_val(get(row, cols, "n.created_at")),
+        audience: str_val(get(row, cols, "n.audience")),
+        created_at: str_val(get(row, cols, "n.created_at")),
     }
 }
 
@@ -181,9 +205,15 @@ pub fn delete_note_by_id(db: &dyn LoomDb, note_id: &str) -> Result<()> {
 /// never dangling by this definition.
 pub fn dangling_notes(db: &dyn LoomDb) -> Result<Vec<Note>> {
     let intent_ids: std::collections::HashSet<String> =
-        super::intent::list_intents(db, None, None)?.into_iter().map(|i| i.id).collect();
+        super::intent::list_intents(db, None, None)?
+            .into_iter()
+            .map(|i| i.id)
+            .collect();
     let hypothesis_ids: std::collections::HashSet<String> =
-        super::hypothesis::list_hypotheses(db, None)?.into_iter().map(|h| h.id).collect();
+        super::hypothesis::list_hypotheses(db, None)?
+            .into_iter()
+            .map(|h| h.id)
+            .collect();
     let edge_ids = super::integrity::collect_edge_ids(db)?;
     Ok(list_notes(db, None, None)?
         .into_iter()

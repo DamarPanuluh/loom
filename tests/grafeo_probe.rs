@@ -155,9 +155,12 @@ fn probe_edge_property_filter() {
             .unwrap_or(usize::MAX),
         );
         inline_counts.push(
-            rows(&s, "MATCH (a:T)-[r:R {status: 'failing'}]->(b:T) RETURN a.id")
-                .map(|r| r.len())
-                .unwrap_or(usize::MAX),
+            rows(
+                &s,
+                "MATCH (a:T)-[r:R {status: 'failing'}]->(b:T) RETURN a.id",
+            )
+            .map(|r| r.len())
+            .unwrap_or(usize::MAX),
         );
     }
     let uniq = |v: &Vec<usize>| {
@@ -185,9 +188,7 @@ fn probe_edge_property_filter() {
         "MATCH (a:T)-[r:R]->(b:T) WHERE r.status = 'passing' RETURN a.id",
     )
     .map(|r| r.len());
-    println!(
-        "PROBE edge_prop_filter(after-SET): VERDICT — expected Ok(2), observed {after:?}"
-    );
+    println!("PROBE edge_prop_filter(after-SET): VERDICT — expected Ok(2), observed {after:?}");
 }
 
 #[test]
@@ -208,10 +209,7 @@ fn pin_edge_id_filters_match_nothing() {
         "grafeo now matches edge-id filters in WHERE position — revisit the endpoint-matching workaround, see CLAUDE.md"
     );
 
-    let inline_rows = must(
-        &s,
-        "MATCH (a:T)-[r:R {id: 'edge-1'}]->(b:T) RETURN a.id",
-    );
+    let inline_rows = must(&s, "MATCH (a:T)-[r:R {id: 'edge-1'}]->(b:T) RETURN a.id");
     assert!(
         inline_rows.is_empty(),
         "grafeo now matches edge-id filters in inline position — revisit the endpoint-matching workaround, see CLAUDE.md"
@@ -261,9 +259,7 @@ fn probe_transactions() {
         "MATCH (a:T)-[r:R]->(b:T) WHERE r.status = 'failing' RETURN a.id",
     )
     .map(|r| r.len());
-    println!(
-        "PROBE txn(edge-prop filter in txn): VERDICT — expected Ok(1), observed {in_txn:?}"
-    );
+    println!("PROBE txn(edge-prop filter in txn): VERDICT — expected Ok(1), observed {in_txn:?}");
 
     match rows(&s, "COMMIT") {
         Ok(_) => println!("PROBE txn(commit): VERDICT — COMMIT accepted"),
@@ -329,7 +325,10 @@ fn probe_merge() {
     );
     match (&e1, &e2) {
         (Ok(_), Ok(_)) => {
-            let n = must(&s, "MATCH (a:T {id: 'p'})-[r:R]->(b:T {id: 'q'}) RETURN r.status");
+            let n = must(
+                &s,
+                "MATCH (a:T {id: 'p'})-[r:R]->(b:T {id: 'q'}) RETURN r.status",
+            );
             println!(
                 "PROBE merge(edge): VERDICT — relationship MERGE accepted; edge count {} (expect 1), status {:?} (expect 'seen')",
                 n.len(),
@@ -392,10 +391,7 @@ fn probe_refactor_shapes() {
          RETURN r.status, r.note",
     ) {
         Ok(r) => {
-            let v = r
-                .rows()
-                .first()
-                .map(|row| (s_val(&row[0]), s_val(&row[1])));
+            let v = r.rows().first().map(|row| (s_val(&row[0]), s_val(&row[1])));
             println!(
                 "PROBE shapes(merge-create+return): VERDICT — rows {}, values {:?} (expect 1 row ('uninspected','fresh'))",
                 r.rows().len(),
@@ -464,10 +460,13 @@ fn probe_list_values() {
     let mut p = HashMap::new();
     p.insert(
         "tags".to_string(),
-        Value::List(vec![
-            Value::String("authz".into()),
-            Value::String("storage".into()),
-        ].into()),
+        Value::List(
+            vec![
+                Value::String("authz".into()),
+                Value::String("storage".into()),
+            ]
+            .into(),
+        ),
     );
     p.insert("id".to_string(), Value::String("i1".into()));
     match s.execute_with_params("INSERT (:T {id: $id, tags: $tags})", p) {
@@ -509,9 +508,7 @@ fn probe_list_values() {
     match s.execute("MATCH (n:T) WHERE 'storage' IN n.tags RETURN n.id ORDER BY n.id") {
         Ok(r) => {
             let ids: Vec<String> = r.rows().iter().map(|row| s_val(&row[0])).collect();
-            println!(
-                "PROBE list(IN-filter): VERDICT — matched {ids:?} (expect [\"i1\", \"i2\"])"
-            );
+            println!("PROBE list(IN-filter): VERDICT — matched {ids:?} (expect [\"i1\", \"i2\"])");
         }
         Err(e) => println!("PROBE list(IN-filter): VERDICT — FAILED: {e}"),
     }
@@ -562,7 +559,10 @@ fn probe_list_values() {
 #[test]
 fn probe_algo_join_back() {
     let (_db, s) = mem();
-    must(&s, "INSERT (:T {id: 'hub'}), (:T {id: 's1'}), (:T {id: 's2'}), (:T {id: 's3'})");
+    must(
+        &s,
+        "INSERT (:T {id: 'hub'}), (:T {id: 's1'}), (:T {id: 's2'}), (:T {id: 's3'})",
+    );
     for spoke in ["s1", "s2", "s3"] {
         must(
             &s,
@@ -580,7 +580,9 @@ fn probe_algo_join_back() {
     }
 
     // (b) raw algorithm output.
-    match s.execute("CALL grafeo.degree_centrality() YIELD node_id, total_degree RETURN node_id, total_degree") {
+    match s.execute(
+        "CALL grafeo.degree_centrality() YIELD node_id, total_degree RETURN node_id, total_degree",
+    ) {
         Ok(r) => {
             dump("degree_centrality", &r);
             println!("PROBE call(degree): VERDICT — procedure runs; see ids above");
@@ -682,7 +684,9 @@ fn probe_edge_property_stress() {
         );
         let got = rows(
             &s,
-            &format!("MATCH (a:T)-[r:R]->(b:T) WHERE r.status = '{status}' AND a.id = 'a' RETURN a.id"),
+            &format!(
+                "MATCH (a:T)-[r:R]->(b:T) WHERE r.status = '{status}' AND a.id = 'a' RETURN a.id"
+            ),
         )
         .map(|r| r.len())
         .unwrap_or(usize::MAX);
@@ -698,15 +702,21 @@ fn probe_edge_property_stress() {
     // specifically unreliable.
     let mut by_id_wrong = 0;
     for _ in 0..30 {
-        let got = rows(&s, "MATCH (a:T)-[r:R]->(b:T) WHERE r.id = 'edge-1' RETURN r.status")
-            .map(|r| r.len())
-            .unwrap_or(usize::MAX);
+        let got = rows(
+            &s,
+            "MATCH (a:T)-[r:R]->(b:T) WHERE r.id = 'edge-1' RETURN r.status",
+        )
+        .map(|r| r.len())
+        .unwrap_or(usize::MAX);
         if got != 1 {
             by_id_wrong += 1;
         }
     }
-    let inline = rows(&s, "MATCH (a:T)-[r:R {id: 'edge-2'}]->(b:T) RETURN r.status")
-        .map(|r| r.len());
+    let inline = rows(
+        &s,
+        "MATCH (a:T)-[r:R {id: 'edge-2'}]->(b:T) RETURN r.status",
+    )
+    .map(|r| r.len());
     println!(
         "PROBE edge_stress(match-by-r.id x30): VERDICT — {by_id_wrong}/30 reads wrong; inline {{id}} form returned {inline:?} (expect Ok(1))"
     );
@@ -720,8 +730,11 @@ fn probe_edge_property_stress() {
         &s,
         "MATCH (a:T {id: 'a'})-[r:R]->(b:T {id: 'b'}) SET r.uid = 'edge-1-uid'",
     );
-    let by_uid = rows(&s, "MATCH (a:T)-[r:R]->(b:T) WHERE r.uid = 'edge-1-uid' RETURN r.status")
-        .map(|r| r.len());
+    let by_uid = rows(
+        &s,
+        "MATCH (a:T)-[r:R]->(b:T) WHERE r.uid = 'edge-1-uid' RETURN r.status",
+    )
+    .map(|r| r.len());
     println!(
         "PROBE edge_stress(match-by-r.uid): VERDICT — {by_uid:?} (Ok(1) proves only the NAME `id` is broken, not edge-property matching)"
     );
@@ -921,9 +934,9 @@ fn probe_read_only_concurrent() {
                     "PROBE lock(rw+ro): VERDICT — ReadOnly open alongside writer: Ok; read saw {seen:?} rows (writer may not have checkpointed yet)"
                 );
             }
-            Err(e) => println!(
-                "PROBE lock(rw+ro): VERDICT — ReadOnly open alongside writer REFUSED: {e}"
-            ),
+            Err(e) => {
+                println!("PROBE lock(rw+ro): VERDICT — ReadOnly open alongside writer REFUSED: {e}")
+            }
         }
     }
 

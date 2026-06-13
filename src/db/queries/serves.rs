@@ -13,8 +13,8 @@ use crate::db::schema::{edge, esc};
 use crate::db::LoomDb;
 use crate::types::ServesEdge;
 
-use super::row::{col_map, f64_val, get, str_val};
 use super::note::record_transition;
+use super::row::{col_map, f64_val, get, str_val};
 
 pub fn get_or_create_serves(
     db: &dyn LoomDb,
@@ -46,7 +46,8 @@ pub fn get_or_create_serves(
              persona id: {}\n\
              intent id: {}\n\
              Run `loom persona list` and `loom intent list` to see available nodes.",
-            persona_id, intent_id
+            persona_id,
+            intent_id
         ),
     }
 }
@@ -70,10 +71,7 @@ pub fn get_serves_between(
     Ok(result.rows().first().map(|row| row_to_serves(row, &cols)))
 }
 
-pub fn list_serves(
-    db: &dyn LoomDb,
-    status_filter: Option<&str>,
-) -> Result<Vec<ServesEdge>> {
+pub fn list_serves(db: &dyn LoomDb, status_filter: Option<&str>) -> Result<Vec<ServesEdge>> {
     let where_clause = match status_filter {
         Some(s) => format!("WHERE r.inspection_status = '{}' ", esc(s)),
         None => String::new(),
@@ -88,8 +86,11 @@ pub fn list_serves(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    let mut edges: Vec<ServesEdge> =
-        result.rows().iter().map(|row| row_to_serves(row, &cols)).collect();
+    let mut edges: Vec<ServesEdge> = result
+        .rows()
+        .iter()
+        .map(|row| row_to_serves(row, &cols))
+        .collect();
     if let Some(s) = status_filter {
         edges.retain(|e| e.inspection_status == s);
     }
@@ -111,9 +112,14 @@ pub fn list_serves_for_persona(db: &dyn LoomDb, persona_id: &str) -> Result<Vec<
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_serves(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_serves(row, &cols))
+        .collect())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_serves_ground(
     db: &dyn LoomDb,
     persona_id: &str,
@@ -136,14 +142,27 @@ pub fn update_serves_ground(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("pid", persona_id), ("iid", intent_id), ("crit", criterion),
-            ("ev", evidence), ("by", inspected_by), ("now", now),
+            ("pid", persona_id),
+            ("iid", intent_id),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    record_transition(db, "edge", &prev.id, &prev.inspection_status, "passing", inspected_by, now)?;
+    record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "passing",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_serves_issue(
     db: &dyn LoomDb,
     persona_id: &str,
@@ -166,11 +185,23 @@ pub fn update_serves_issue(
             conf = confidence,
         ),
         super::row::sparams(&[
-            ("pid", persona_id), ("iid", intent_id), ("crit", criterion),
-            ("ev", evidence), ("by", inspected_by), ("now", now),
+            ("pid", persona_id),
+            ("iid", intent_id),
+            ("crit", criterion),
+            ("ev", evidence),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    record_transition(db, "edge", &prev.id, &prev.inspection_status, "failing", inspected_by, now)?;
+    record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "failing",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -190,11 +221,22 @@ pub fn update_serves_independent(
          SET r.inspection_status = 'independent', r.notes = $notes, \
              r.inspected_by = $by, r.last_inspected = $now",
         super::row::sparams(&[
-            ("pid", persona_id), ("iid", intent_id), ("notes", notes),
-            ("by", inspected_by), ("now", now),
+            ("pid", persona_id),
+            ("iid", intent_id),
+            ("notes", notes),
+            ("by", inspected_by),
+            ("now", now),
         ]),
     )?;
-    record_transition(db, "edge", &prev.id, &prev.inspection_status, "independent", inspected_by, now)?;
+    record_transition(
+        db,
+        "edge",
+        &prev.id,
+        &prev.inspection_status,
+        "independent",
+        inspected_by,
+        now,
+    )?;
     Ok(true)
 }
 
@@ -224,8 +266,13 @@ pub fn flag_serves_for_intent(
                 iid = esc(&edge.intent_id),
             ))?;
             record_transition(
-                db, "edge", &edge.id, &edge.inspection_status,
-                "needs_reverification", cause, now,
+                db,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                cause,
+                now,
             )?;
             count += 1;
         }
@@ -235,21 +282,21 @@ pub fn flag_serves_for_intent(
 
 fn row_to_serves(row: &[Value], cols: &HashMap<&str, usize>) -> ServesEdge {
     let persona_id = str_val(get(row, cols, "persona_id"));
-    let intent_id  = str_val(get(row, cols, "intent_id"));
+    let intent_id = str_val(get(row, cols, "intent_id"));
     ServesEdge {
         id: crate::db::schema::edge_key(edge::SERVES, &persona_id, &intent_id),
         persona_id,
         intent_id,
-        persona_name:      str_val(get(row, cols, "persona_name")),
-        intent_name:       str_val(get(row, cols, "intent_name")),
+        persona_name: str_val(get(row, cols, "persona_name")),
+        intent_name: str_val(get(row, cols, "intent_name")),
         inspection_status: str_val(get(row, cols, "r.inspection_status")),
-        criterion:         str_val(get(row, cols, "r.criterion")),
-        confidence:        f64_val(get(row, cols, "r.confidence")),
-        evidence:          str_val(get(row, cols, "r.evidence")),
-        last_inspected:    str_val(get(row, cols, "r.last_inspected")),
-        inspected_by:      str_val(get(row, cols, "r.inspected_by")),
-        priority_score:    f64_val(get(row, cols, "r.priority_score")),
-        notes:             str_val(get(row, cols, "r.notes")),
-        created_at:        str_val(get(row, cols, "r.created_at")),
+        criterion: str_val(get(row, cols, "r.criterion")),
+        confidence: f64_val(get(row, cols, "r.confidence")),
+        evidence: str_val(get(row, cols, "r.evidence")),
+        last_inspected: str_val(get(row, cols, "r.last_inspected")),
+        inspected_by: str_val(get(row, cols, "r.inspected_by")),
+        priority_score: f64_val(get(row, cols, "r.priority_score")),
+        notes: str_val(get(row, cols, "r.notes")),
+        created_at: str_val(get(row, cols, "r.created_at")),
     }
 }
