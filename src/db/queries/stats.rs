@@ -12,7 +12,7 @@ use super::hierarchy::list_all_hierarchy;
 use super::hypothesis::list_hypotheses;
 use super::implements::intents_with_implements;
 use super::intent::{intents_without_validations, list_active_intents};
-use super::meta::get_meta;
+use super::meta::{get_meta, get_transition_cap};
 use super::row::{col_map, get, i64_val, str_val};
 use super::scoring::{
     all_intent_degrees, count_unexplored_pairs_from, normative_coverage_from_snapshot,
@@ -162,6 +162,11 @@ pub struct GraphState {
     pub next_action: String,
     /// The 360° coverage vector — every dimension counted, weakest first to fix.
     pub coverage: Coverage360,
+    /// A note-hygiene nudge surfaced when the note log is heavy enough to drag
+    /// the read path — empty otherwise. loom's output IS the driving LLM's next
+    /// prompt, so the lever (`loom note prune --transitions` / the sync cap)
+    /// teaches itself here instead of relying on the agent to know it exists.
+    pub note_hygiene: String,
 }
 
 /// Compute the graph pulse + phase + recommended next action.
@@ -513,6 +518,23 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         }
     };
 
+    // Note-hygiene nudge: when the log is heavy enough to drag the read path,
+    // teach the lever. The cap auto-bounds via sync, so this fires mainly for
+    // graphs with the cap OFF or not yet swept — not normal capped operation
+    // (the threshold sits well above a healthy capped graph). Cheap: reuses the
+    // `notes` count already computed; no per-note materialization.
+    const NOTE_HEAVY: i64 = 5000;
+    let note_hygiene = if notes > NOTE_HEAVY {
+        let cap = get_transition_cap(db)?;
+        if cap == 0 {
+            format!("{notes} notes — the transition log is UNCAPPED and slows every command. `loom note prune --set-cap 20` bounds it (sync then holds it there).")
+        } else {
+            format!("{notes} notes are weighing on the read path. `loom sync` compacts transition churn toward the cap ({cap}/target); `loom note prune --transitions` does it now.")
+        }
+    } else {
+        String::new()
+    };
+
     let meta = get_meta(db)?;
     Ok(GraphState {
         version: meta.as_ref().map(|m| m.version.clone()).unwrap_or_default(),
@@ -540,6 +562,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         phase: phase.to_string(),
         next_action,
         coverage,
+        note_hygiene,
     })
 }
 

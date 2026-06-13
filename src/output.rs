@@ -105,11 +105,16 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     } else {
         format!("graph '{}'", s.graph_name)
     };
-    format!(
+    let base = format!(
         "{}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}\n  {}",
         ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase,
         fmt_coverage(&s.coverage)
-    )
+    );
+    if s.note_hygiene.is_empty() {
+        base
+    } else {
+        format!("{base}\n  ⓘ {}", s.note_hygiene)
+    }
 }
 
 /// The JSON pulse — the same situational awareness the two human pulse lines
@@ -149,6 +154,11 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
         .into(),
     );
     o.insert("coverage".into(), coverage_line(&s.coverage).into());
+    // Parity with the human pulse's note-hygiene line — present only when there
+    // is something to teach (heavy note log).
+    if !s.note_hygiene.is_empty() {
+        o.insert("note_hygiene".into(), s.note_hygiene.clone().into());
+    }
     serde_json::Value::Object(o)
 }
 
