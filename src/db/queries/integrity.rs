@@ -52,17 +52,51 @@ fn count_nodes(db: &dyn LoomDb, lbl: &str) -> Result<i64> {
 }
 
 fn count_edges(db: &dyn LoomDb, etype: &str) -> Result<i64> {
-    count(db, &format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"))
+    count(
+        db,
+        &format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"),
+    )
+}
+
+/// Counts the snapshot already materialized — avoids a round trip per label.
+fn snapshot_node_count(snapshot: &QuerySnapshot, lbl: &str) -> Option<i64> {
+    use crate::db::schema::label;
+    Some(match lbl {
+        label::INTENT => snapshot.intents.len() as i64,
+        label::CODE_FILE => snapshot.codefiles.len() as i64,
+        label::QUALITY_RULE => snapshot.rules.len() as i64,
+        label::VALIDATION => snapshot.validations.len() as i64,
+        _ => return None,
+    })
+}
+
+/// Counts the snapshot already materialized — avoids a round trip per edge type.
+fn snapshot_edge_count(snapshot: &QuerySnapshot, etype: &str) -> Option<i64> {
+    use crate::db::schema::edge;
+    Some(match etype {
+        edge::RELATES_TO => snapshot.relates.len() as i64,
+        edge::HIERARCHY => snapshot.hierarchy.len() as i64,
+        edge::IMPLEMENTS => snapshot.implements.len() as i64,
+        edge::GOVERNS => snapshot.governs.len() as i64,
+        edge::VALIDATES => snapshot.validates.len() as i64,
+        _ => return None,
+    })
 }
 
 /// Nodes of `lbl` missing property `p` (present as NULL / never written).
 fn nodes_missing_prop(db: &dyn LoomDb, lbl: &str, p: &str) -> Result<i64> {
-    count(db, &format!("MATCH (n:{lbl}) WHERE n.{p} IS NULL RETURN count(n) AS c"))
+    count(
+        db,
+        &format!("MATCH (n:{lbl}) WHERE n.{p} IS NULL RETURN count(n) AS c"),
+    )
 }
 
 /// Edges of `etype` missing property `p`.
 fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
-    count(db, &format!("MATCH ()-[r:{etype}]->() WHERE r.{p} IS NULL RETURN count(r) AS c"))
+    count(
+        db,
+        &format!("MATCH ()-[r:{etype}]->() WHERE r.{p} IS NULL RETURN count(r) AS c"),
+    )
 }
 
 /// Run every integrity check and collect a report.
@@ -115,7 +149,12 @@ pub fn check_graph_from_snapshot(
     // 2. Node counts + required-property presence.
     let mut node_counts = Vec::new();
     for &lbl in NODE_LABELS {
-        node_counts.push((lbl.to_string(), count_nodes(db, lbl)?));
+        let n = if let Some(c) = snapshot_node_count(query_snapshot, lbl) {
+            c
+        } else {
+            count_nodes(db, lbl)?
+        };
+        node_counts.push((lbl.to_string(), n));
         for &(p, _owner) in schema::required_node_props(lbl) {
             let missing = nodes_missing_prop(db, lbl, p)?;
             if missing > 0 {
@@ -127,7 +166,12 @@ pub fn check_graph_from_snapshot(
     // 3. Edge counts + required-property presence.
     let mut edge_counts = Vec::new();
     for &etype in EDGE_TYPES {
-        edge_counts.push((etype.to_string(), count_edges(db, etype)?));
+        let n = if let Some(c) = snapshot_edge_count(query_snapshot, etype) {
+            c
+        } else {
+            count_edges(db, etype)?
+        };
+        edge_counts.push((etype.to_string(), n));
         for &(p, _owner) in schema::required_edge_props(etype) {
             let missing = edges_missing_prop(db, etype, p)?;
             if missing > 0 {
@@ -138,7 +182,6 @@ pub fn check_graph_from_snapshot(
 
     let intents = list_intents(db, None, None)?;
     let hypotheses = list_hypotheses(db, None)?;
-
 
     // 4. Value validity for constrained fields (reliable full scans).
     let vocab_terms = super::vocab::list_vocab_terms(db)?;
@@ -187,7 +230,10 @@ pub fn check_graph_from_snapshot(
     }
     for r in &query_snapshot.rules {
         if r.severity.parse::<Severity>().is_err() {
-            issues.push(format!("QualityRule {} has invalid severity '{}'", r.id, r.severity));
+            issues.push(format!(
+                "QualityRule {} has invalid severity '{}'",
+                r.id, r.severity
+            ));
         }
     }
     for v in &query_snapshot.validations {
@@ -202,14 +248,19 @@ pub fn check_graph_from_snapshot(
     // proof verdict, and the proposer≠prover contract (when roles are declared).
     for h in &hypotheses {
         if h.status.parse::<HypothesisStatus>().is_err() {
-            issues.push(format!("Hypothesis {} has invalid status '{}'", h.id, h.status));
+            issues.push(format!(
+                "Hypothesis {} has invalid status '{}'",
+                h.id, h.status
+            ));
             continue;
         }
         if matches!(h.status.as_str(), "supported" | "refuted") {
             if crate::gate::is_vacuous(&h.evidence) {
                 issues.push(format!(
                     "Hypothesis '{}' is '{}' but its evidence is empty/vacuous ('{}')",
-                    h.name, h.status, h.evidence.trim()
+                    h.name,
+                    h.status,
+                    h.evidence.trim()
                 ));
             }
             if h.last_inspected.trim().is_empty() {
@@ -239,7 +290,10 @@ pub fn check_graph_from_snapshot(
     let hypothesis_ids: std::collections::HashSet<String> =
         hypotheses.iter().map(|h| h.id.clone()).collect();
     let target_edges = list_all_targets(db)?;
-    let edge_ids = collect_edge_ids_from_snapshot(query_snapshot, &target_edges);
+    // Full edge-id set (includes SERVES/JOURNEYS derived keys). The query
+    // snapshot omits persona-plane edges; using it here falsely flags their
+    // transition notes as dangling.
+    let edge_ids = collect_edge_ids(db)?;
     for n in list_notes(db, None, None)? {
         if let Err(e) = n.kind.parse::<NoteKind>() {
             issues.push(format!(
@@ -444,7 +498,10 @@ fn audit_inspectable_edges(
         {
             issues.push(format!(
                 "{} edge {} is '{}' but its criterion is empty/vacuous ('{}')",
-                c.etype, c.label, c.status, c.criterion.trim()
+                c.etype,
+                c.label,
+                c.status,
+                c.criterion.trim()
             ));
         }
         // A verdict whose confidence is still the 0.0 default, or whose
@@ -477,7 +534,8 @@ fn audit_inspectable_edges(
             if c.etype == schema::edge::RELATES_TO && crate::gate::is_vacuous(&c.notes) {
                 issues.push(format!(
                     "RELATES_TO edge {} is 'independent' but records no why (notes: '{}')",
-                    c.label, c.notes.trim()
+                    c.label,
+                    c.notes.trim()
                 ));
             }
             if c.etype == schema::edge::GOVERNS && crate::gate::is_vacuous(&c.evidence) {
@@ -498,7 +556,9 @@ fn audit_inspectable_edges(
                     issues.push(format!(
                         "{} edge {} was inspected by '{}' — out of lane (expected {}); \
                          separation of duties is broken",
-                        c.etype, c.label, c.inspected_by,
+                        c.etype,
+                        c.label,
+                        c.inspected_by,
                         allowed.join(" or "),
                     ));
                 }

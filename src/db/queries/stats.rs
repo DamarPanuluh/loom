@@ -28,8 +28,10 @@ pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
     let intents = list_active_intents(db)?;
     let with_code = intents_with_implements(db)?;
     let hierarchy = list_all_hierarchy(db)?;
-    let aspect_by_id: HashMap<String, String> =
-        intents.iter().map(|i| (i.id.clone(), i.aspect.clone())).collect();
+    let aspect_by_id: HashMap<String, String> = intents
+        .iter()
+        .map(|i| (i.id.clone(), i.aspect.clone()))
+        .collect();
     // Confirmed intents not grounded to any code.
     for i in &intents {
         if i.status == "confirmed" && !with_code.contains(&i.id) {
@@ -42,19 +44,29 @@ pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
 
     // Intents with no validation (no proof of fulfilment).
     for i in intents_without_validations(db)? {
-        gaps.push(format!("Intent '{}' has no validation (no proof it's fulfilled).", i.name));
+        gaps.push(format!(
+            "Intent '{}' has no validation (no proof it's fulfilled).",
+            i.name
+        ));
     }
 
     let mut children_by_parent: HashMap<&str, Vec<&str>> = HashMap::new();
     for (parent, child) in &hierarchy {
-        children_by_parent.entry(parent.as_str()).or_default().push(child.as_str());
+        children_by_parent
+            .entry(parent.as_str())
+            .or_default()
+            .push(child.as_str());
     }
 
     // Path coverage: a parent whose children include a happy path but no
     // sad/fallback sibling.
     for parent in &intents {
         let mut child_aspects: std::collections::HashSet<String> = std::collections::HashSet::new();
-        for child_id in children_by_parent.get(parent.id.as_str()).into_iter().flatten() {
+        for child_id in children_by_parent
+            .get(parent.id.as_str())
+            .into_iter()
+            .flatten()
+        {
             if let Some(a) = aspect_by_id.get(*child_id) {
                 if !a.is_empty() {
                     child_aspects.insert(a.clone());
@@ -152,7 +164,6 @@ pub struct GraphState {
     pub coverage: Coverage360,
 }
 
-
 /// Status histogram for one edge type (group-by, reliable — no per-property filter).
 fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i64>> {
     let r = db.execute(&format!(
@@ -194,9 +205,24 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         .relates
         .iter()
         .map(|e| e.inspection_status.as_str())
-        .chain(snapshot.implements.iter().map(|e| e.inspection_status.as_str()))
-        .chain(snapshot.governs.iter().map(|e| e.inspection_status.as_str()))
-        .chain(snapshot.validates.iter().map(|e| e.inspection_status.as_str()))
+        .chain(
+            snapshot
+                .implements
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .governs
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .validates
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
     {
         if !s.is_empty() {
             *by_status.entry(s).or_insert(0) += 1;
@@ -230,7 +256,10 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // below feed only the `unresolved` tally.
     let validate_backlog = validate_selection_from_snapshot(&snapshot);
     let v_failing_in_backlog = validate_backlog.iter().any(|(_, u, _)| *u >= 4.0);
-    let v_no_proof = validate_backlog.iter().filter(|(_, u, _)| *u >= 3.0 && *u < 4.0).count();
+    let v_no_proof = validate_backlog
+        .iter()
+        .filter(|(_, u, _)| *u >= 3.0 && *u < 4.0)
+        .count();
 
     let validation_result: HashMap<&str, &str> = snapshot
         .validations
@@ -271,8 +300,14 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         }
     }
 
-    let unresolved_edges = rt_uninspected + rt_failing + rt_needs_rev
-        + v_uninspected + v_failing + g_uninspected + g_failing + g_needs_rev;
+    let unresolved_edges = rt_uninspected
+        + rt_failing
+        + rt_needs_rev
+        + v_uninspected
+        + v_failing
+        + g_uninspected
+        + g_failing
+        + g_needs_rev;
 
     let relates_to_edges = snapshot.relates.len() as i64;
     let implements_edges = snapshot.implements.len() as i64;
@@ -286,8 +321,14 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     let unexplored_pairs = count_unexplored_pairs_from(all_intents, all_relates, hierarchy);
 
     // Lifecycle backlog (prescriptive axis): intents that need building/changing.
-    let needs_change = all_intents.iter().filter(|i| i.lifecycle == "needs_change").count() as i64;
-    let planned = all_intents.iter().filter(|i| i.lifecycle == "planned").count() as i64;
+    let needs_change = all_intents
+        .iter()
+        .filter(|i| i.lifecycle == "needs_change")
+        .count() as i64;
+    let planned = all_intents
+        .iter()
+        .filter(|i| i.lifecycle == "planned")
+        .count() as i64;
 
     // The two completeness axes. Vertical (binding) is the spine; horizontal
     // (optional) is the N×N grid. The compass routes vertical gaps ahead of
@@ -307,7 +348,10 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         .filter(|i| i.lifecycle == "implemented" && !is_parent.contains(i.id.as_str()))
         .collect();
     let realized_leaves = CoverageAxis {
-        covered: implemented_leaves.iter().filter(|i| with_code.contains(&i.id)).count() as i64,
+        covered: implemented_leaves
+            .iter()
+            .filter(|i| with_code.contains(&i.id))
+            .count() as i64,
         total: implemented_leaves.len() as i64,
     };
 
@@ -334,7 +378,11 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // into the denominator, making status report covered/total/unexplored
     // numbers that didn't add up.)
     fn pair_key<'a>(a: &'a str, b: &'a str) -> (&'a str, &'a str) {
-        if a < b { (a, b) } else { (b, a) }
+        if a < b {
+            (a, b)
+        } else {
+            (b, a)
+        }
     }
     let active_ids: std::collections::HashSet<&str> =
         all_intents.iter().map(|i| i.id.as_str()).collect();
@@ -346,8 +394,10 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     let mut inspected_pairs: std::collections::HashSet<(&str, &str)> =
         std::collections::HashSet::new();
     for e in all_relates {
-        if matches!(e.inspection_status.as_str(), "passing" | "failing" | "independent")
-            && active_ids.contains(e.from_id.as_str())
+        if matches!(
+            e.inspection_status.as_str(),
+            "passing" | "failing" | "independent"
+        ) && active_ids.contains(e.from_id.as_str())
             && active_ids.contains(e.to_id.as_str())
         {
             let k = pair_key(&e.from_id, &e.to_id);
@@ -366,11 +416,16 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     let proven_ids: std::collections::HashSet<&str> = snapshot
         .validates
         .iter()
-        .filter(|edge| validation_result.get(edge.validation_id.as_str()).copied() == Some("passed"))
+        .filter(|edge| {
+            validation_result.get(edge.validation_id.as_str()).copied() == Some("passed")
+        })
         .map(|edge| edge.intent_id.as_str())
         .collect();
     let proven_leaves = CoverageAxis {
-        covered: implemented_leaves.iter().filter(|i| proven_ids.contains(i.id.as_str())).count() as i64,
+        covered: implemented_leaves
+            .iter()
+            .filter(|i| proven_ids.contains(i.id.as_str()))
+            .count() as i64,
         total: implemented_leaves.len() as i64,
     };
 
@@ -378,7 +433,10 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         grounded_files,
         realized_leaves,
         explored_pairs,
-        measured_pairs: CoverageAxis { covered: nc.measured_pairs, total: nc.total_pairs },
+        measured_pairs: CoverageAxis {
+            covered: nc.measured_pairs,
+            total: nc.total_pairs,
+        },
         proven_leaves,
     };
     let unmeasured_queue = nc.queue.len();
@@ -388,9 +446,15 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     } else if needs_change > 0 {
         ("build", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
     } else if rt_failing > 0 || rt_needs_rev > 0 {
-        ("fix", "Resolve failures / re-verify stale edges: `loom next --mode fix`.".to_string())
+        (
+            "fix",
+            "Resolve failures / re-verify stale edges: `loom next --mode fix`.".to_string(),
+        )
     } else if planned > 0 {
-        ("build", format!("{planned} planned intent(s) to build: `loom next --mode build`."))
+        (
+            "build",
+            format!("{planned} planned intent(s) to build: `loom next --mode build`."),
+        )
     } else if !vc.multi_parent.is_empty() || vc.cycle {
         ("incomplete", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
     } else if !vc.unrealized_leaves.is_empty() {
@@ -406,11 +470,14 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     } else if v_failing_in_backlog {
         ("validate", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string())
     } else if !validate_backlog.is_empty() {
-        ("validate", if v_no_proof > 0 {
-            format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validate_backlog.len())
-        } else {
-            "Run pending validations: `loom next --mode validate`.".to_string()
-        })
+        (
+            "validate",
+            if v_no_proof > 0 {
+                format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validate_backlog.len())
+            } else {
+                "Run pending validations: `loom next --mode validate`.".to_string()
+            },
+        )
     } else if g_failing > 0 {
         ("quality", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
     } else if g_needs_rev > 0 {
@@ -460,8 +527,14 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     let meta = get_meta(db)?;
     Ok(GraphState {
         version: meta.as_ref().map(|m| m.version.clone()).unwrap_or_default(),
-        graph_id: meta.as_ref().map(|m| m.graph_id.clone()).unwrap_or_default(),
-        graph_name: meta.as_ref().map(|m| m.graph_name.clone()).unwrap_or_default(),
+        graph_id: meta
+            .as_ref()
+            .map(|m| m.graph_id.clone())
+            .unwrap_or_default(),
+        graph_name: meta
+            .as_ref()
+            .map(|m| m.graph_name.clone())
+            .unwrap_or_default(),
         custody: meta.as_ref().map(|m| m.custody.clone()).unwrap_or_default(),
         intents,
         relates_to_edges,
@@ -512,10 +585,97 @@ pub struct UninspectedOutsideQueues {
 }
 
 pub fn uninspected_outside_queues(db: &dyn LoomDb) -> Result<UninspectedOutsideQueues> {
-    Ok(UninspectedOutsideQueues {
-        implements: *edge_status_counts(db, "IMPLEMENTS")?.get("uninspected").unwrap_or(&0),
-        blocked_validations: blocked_uninspected_validates(db)?,
-    })
+    Ok(uninspected_outside_queues_from_snapshot(
+        &QuerySnapshot::load(db)?,
+    ))
+}
+
+pub fn uninspected_outside_queues_from_snapshot(
+    snapshot: &QuerySnapshot,
+) -> UninspectedOutsideQueues {
+    let validation_result: HashMap<&str, &str> = snapshot
+        .validations
+        .iter()
+        .map(|v| (v.id.as_str(), v.last_result.as_str()))
+        .collect();
+    let implements = snapshot
+        .implements
+        .iter()
+        .filter(|e| e.inspection_status == "uninspected")
+        .count() as i64;
+    let blocked_validations = snapshot
+        .validates
+        .iter()
+        .filter(|e| {
+            e.inspection_status == "uninspected"
+                && validation_result.get(e.validation_id.as_str()) == Some(&"blocked")
+        })
+        .count() as i64;
+    UninspectedOutsideQueues {
+        implements,
+        blocked_validations,
+    }
+}
+
+/// Edge inspection_status histogram from an already-loaded snapshot — the hot
+/// path for `loom status` / closeout views that would otherwise issue four
+/// separate edge-count queries.
+pub fn edge_status_counts_from_snapshot(snapshot: &QuerySnapshot) -> HashMap<String, i64> {
+    let mut map: HashMap<String, i64> = HashMap::new();
+    for s in snapshot
+        .relates
+        .iter()
+        .map(|e| e.inspection_status.as_str())
+        .chain(
+            snapshot
+                .implements
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .governs
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+        .chain(
+            snapshot
+                .validates
+                .iter()
+                .map(|e| e.inspection_status.as_str()),
+        )
+    {
+        if !s.is_empty() {
+            *map.entry(s.to_string()).or_insert(0) += 1;
+        }
+    }
+    map
+}
+
+pub fn validation_pass_rate_from_snapshot(snapshot: &QuerySnapshot) -> f64 {
+    let total = snapshot.validations.len();
+    if total == 0 {
+        return 0.0;
+    }
+    let passed = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.last_result == "passed")
+        .count();
+    passed as f64 / total as f64
+}
+
+pub fn intents_without_validations_count_from_snapshot(snapshot: &QuerySnapshot) -> i64 {
+    let validated: std::collections::HashSet<&str> = snapshot
+        .validates
+        .iter()
+        .map(|e| e.intent_id.as_str())
+        .collect();
+    snapshot
+        .intents
+        .iter()
+        .filter(|i| !validated.contains(i.id.as_str()))
+        .count() as i64
 }
 
 pub fn count_intents(db: &dyn LoomDb) -> Result<i64> {
@@ -566,9 +726,8 @@ pub fn validation_pass_rate(db: &dyn LoomDb) -> Result<f64> {
     if total == 0 {
         return Ok(0.0);
     }
-    let passed_r = db.execute(
-        "MATCH (v:Validation) WHERE v.last_result = 'passed' RETURN count(v) AS c"
-    )?;
+    let passed_r =
+        db.execute("MATCH (v:Validation) WHERE v.last_result = 'passed' RETURN count(v) AS c")?;
     let passed = passed_r.rows().first().map(|r| i64_val(&r[0])).unwrap_or(0);
     Ok(passed as f64 / total as f64)
 }
@@ -578,7 +737,9 @@ pub fn validation_pass_rate(db: &dyn LoomDb) -> Result<f64> {
 pub fn grounded_paths(db: &dyn LoomDb) -> Result<Vec<String>> {
     // Grounded means grounded by LIVE design: a file whose only owner was
     // retired is no longer explained (status filtered in Rust).
-    let r = db.execute("MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s")?;
+    let r = db.execute(
+        "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s",
+    )?;
     let cols = col_map(&r);
     let mut set: std::collections::HashSet<String> = std::collections::HashSet::new();
     for row in r.rows() {
@@ -620,5 +781,8 @@ pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<In
         .collect();
     with_degree.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.id.cmp(&b.0.id)));
     with_degree.truncate(limit);
-    Ok(with_degree.into_iter().map(|(intent, degree)| IntentCentrality { intent, degree }).collect())
+    Ok(with_degree
+        .into_iter()
+        .map(|(intent, degree)| IntentCentrality { intent, degree })
+        .collect())
 }

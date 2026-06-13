@@ -12,6 +12,18 @@ E=${2:-1000}
 LIMIT=${3:-2}
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Prefer an explicit binary, then the repo release build, then PATH.
+if [ -n "${LOOM_BIN:-}" ]; then
+    LOOM="$LOOM_BIN"
+elif [ -x "$REPO_ROOT/target/release/loom" ]; then
+    LOOM="$REPO_ROOT/target/release/loom"
+elif [ -x "$REPO_ROOT/target/debug/loom" ]; then
+    LOOM="$REPO_ROOT/target/debug/loom"
+else
+    LOOM="loom"
+fi
 
 # Strict throwaway dir — fail if mktemp fails, never cd back to cwd.
 T=$(mktemp -d) || { echo "ERROR: mktemp -d failed" >&2; exit 1; }
@@ -29,8 +41,8 @@ python3 "$SCRIPT_DIR/gen_synth_graph.py" "$T/synth.graph.json" "$N" "$E"
 # Import into a fresh loom graph.
 echo ""
 echo "[2/6] Importing into loom..."
-loom init . --name "bench-${N}i-${E}e" 2>&1
-loom import "$T/synth.graph.json" 2>&1
+"$LOOM" init . --name "bench-${N}i-${E}e" 2>&1
+"$LOOM" import "$T/synth.graph.json" 2>&1
 echo "Import done."
 
 echo ""
@@ -58,10 +70,10 @@ bench_cmd() {
     printf "  %-35s %ss  [%s]\n" "$label" "$elapsed_s" "$status"
 }
 
-bench_cmd "loom status"          loom status
-bench_cmd "loom next"            loom next
-bench_cmd "loom smells"          loom smells
-bench_cmd "loom next --all"      loom next --all
+bench_cmd "loom status"          "$LOOM" status
+bench_cmd "loom next"            "$LOOM" next
+bench_cmd "loom smells"          "$LOOM" smells
+bench_cmd "loom next --all"      "$LOOM" next --all
 
 echo ""
 if [[ $FAILED -eq 0 ]]; then
