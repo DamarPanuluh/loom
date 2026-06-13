@@ -1,5 +1,10 @@
 use clap::{Parser, Subcommand};
 
+/// Crate version + git build stamp (from build.rs) — shown by `loom --version`.
+/// The bare crate version is permanently "0.1.0"; the build id is what tells two
+/// binaries apart (and what the `loom serve` daemon's skew handshake keys on).
+pub const LONG_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (build ", env!("LOOM_BUILD"), ")");
+
 #[derive(Parser)]
 #[command(
     name = "loom",
@@ -17,7 +22,7 @@ machine-readable output (including a `graph_state` pulse).",
         loom intent add --name \"…\" --level system    # seed intents\n  \
         loom next                                    # get the next thing to inspect\n  \
         loom status                                  # where am I? what next?",
-    version
+    version = LONG_VERSION
 )]
 pub struct Cli {
     /// Output machine-readable JSON (all read commands honour this).
