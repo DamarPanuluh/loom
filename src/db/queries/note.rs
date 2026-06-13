@@ -268,3 +268,41 @@ pub fn prune_edge_notes_touching(db: &dyn LoomDb, node_id: &str) -> Result<usize
     }
     Ok(pruned)
 }
+
+/// Transition notes a retention prune would DROP: per target, everything beyond
+/// the newest `keep_per_target` ROUTINE transitions, EXCEPT every regression
+/// marker (`→ failing` / `→ needs_change`), which is kept regardless of age.
+///
+/// Why it's safe to drop the rest: the regression markers are the only
+/// transition history `loom smells` reads (`recurrent_trouble` counts
+/// transitions ending in failing/needs_change), so keeping them all leaves
+/// every smell finding byte-identical; and the align queue keys off whether an
+/// edge has ANY post-confirm sync churn (count ≥ 1), so keeping the newest per
+/// target keeps the candidate set identical — only the churn *count* (a ranking
+/// input) compresses. What goes is the bulk passing↔needs_reverification sync
+/// flip-flop the driving loop appends. Authored notes (decision/commentary/…)
+/// and `confirm` are not transitions, so they're never touched.
+pub fn prunable_transition_notes(db: &dyn LoomDb, keep_per_target: usize) -> Result<Vec<Note>> {
+    // list_notes orders ASC by created_at, so each target's slice is
+    // oldest-first; walk it reversed to keep the newest survivors.
+    let transitions = list_notes(db, None, Some("transition"))?;
+    let mut by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
+    for n in &transitions {
+        by_target.entry(n.target_id.as_str()).or_default().push(n);
+    }
+    let mut to_drop: Vec<Note> = Vec::new();
+    for notes in by_target.values() {
+        let mut kept_routine = 0usize;
+        for n in notes.iter().rev() {
+            if n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change") {
+                continue; // the recurrent_trouble signal — always kept
+            }
+            if kept_routine < keep_per_target {
+                kept_routine += 1;
+                continue;
+            }
+            to_drop.push((*n).clone());
+        }
+    }
+    Ok(to_drop)
+}

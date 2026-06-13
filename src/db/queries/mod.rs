@@ -1587,6 +1587,48 @@ mod tests {
         assert!(dangling_notes(&db).unwrap().is_empty());
     }
 
+    /// Transition retention: per target, keep the newest K ROUTINE transitions
+    /// plus EVERY regression marker (→ failing / → needs_change); the bulk
+    /// passing↔needs_reverification churn is what gets dropped. This is the
+    /// guarantee `loom note prune --transitions` rests on (smells + align set
+    /// unchanged because the signal-bearing notes always survive).
+    #[test]
+    fn prune_keeps_regression_markers_and_newest_routine_per_target() {
+        let (db, _ids) = db_inited(1);
+        let mk = |id: &str, tid: &str, text: &str, at: &str| {
+            let mut n = note_at(id, "transition", "edge", tid, at);
+            n.text = text.to_string();
+            n
+        };
+        // Target A: 5 routine flips (t01..t05) + 1 regression (t06).
+        for (id, at) in [
+            ("a1", "t01"),
+            ("a2", "t02"),
+            ("a3", "t03"),
+            ("a4", "t04"),
+            ("a5", "t05"),
+        ] {
+            insert_note(&db, &mk(id, "A", "passing → needs_reverification", at)).unwrap();
+        }
+        insert_note(&db, &mk("af", "A", "passing → failing", "t06")).unwrap();
+        // Target B: a single routine flip (under the keep threshold).
+        insert_note(&db, &mk("b1", "B", "passing → needs_reverification", "t01")).unwrap();
+        // An authored note is never a transition — must never be touched.
+        insert_note(&db, &note("dec", "decision", "edge", "A")).unwrap();
+
+        let drop = prunable_transition_notes(&db, 2).unwrap();
+        let ids: std::collections::HashSet<&str> = drop.iter().map(|n| n.id.as_str()).collect();
+        assert_eq!(drop.len(), 3, "only A's oldest 3 routine notes drop: {drop:?}");
+        assert!(ids.contains("a1") && ids.contains("a2") && ids.contains("a3"));
+        assert!(!ids.contains("af"), "regression markers are always kept");
+        assert!(
+            !ids.contains("a4") && !ids.contains("a5"),
+            "the newest K routine transitions are kept"
+        );
+        assert!(!ids.contains("b1"), "a target under the threshold is untouched");
+        assert!(!ids.contains("dec"), "authored notes are never transitions");
+    }
+
     /// A v3 export (stored edge uuids; notes referencing them) upgrades in
     /// flight: the legacy edge id is dropped and edge-targeted notes are
     /// remapped to the derived v4 edge key.

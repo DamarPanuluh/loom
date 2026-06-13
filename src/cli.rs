@@ -1394,7 +1394,28 @@ pub enum NoteCmd {
     /// Remove notes whose target no longer exists (deleted intent/hypothesis/
     /// edge) — the remedy `loom doctor` names for dangling note targets.
     /// Reports what was removed; floating and file notes are never touched.
-    Prune,
+    /// With --transitions, ALSO compacts low-signal transition history: keeps
+    /// the newest per target plus every regression marker, drops the bulk
+    /// passing↔needs_reverification sync churn (smells + align unchanged).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom note prune --transitions --keep-per-target 3 --dry-run")]
+    Prune {
+        /// Also compact transition history: keep, per target, the newest
+        /// --keep-per-target ROUTINE transitions plus every `→ failing` /
+        /// `→ needs_change` marker; drop the rest. `loom smells` findings and
+        /// the align candidate set are unchanged — only the sync flip-flop the
+        /// driving loop appends is removed.
+        #[arg(long)]
+        transitions: bool,
+
+        /// Newest routine transitions to keep per target under --transitions.
+        #[arg(long, default_value_t = 3)]
+        keep_per_target: usize,
+
+        /// Report what would be removed without deleting anything.
+        #[arg(long)]
+        dry_run: bool,
+    },
 
     /// Add a note. Attach it to an intent, an edge, or a code file, or leave
     /// it free-floating.

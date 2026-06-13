@@ -13,15 +13,37 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        NoteCmd::Prune => {
-            // The remedy doctor names for dangling note targets. Pruning only
-            // removes notes that are UNREACHABLE (their target id resolves to
-            // nothing) — history on live or retired nodes is never touched.
+        NoteCmd::Prune {
+            transitions,
+            keep_per_target,
+            dry_run,
+        } => {
+            // Dangling: notes whose target id resolves to nothing (the remedy
+            // doctor names). Always swept — history on live/retired nodes is
+            // never touched. --transitions additionally compacts the low-signal
+            // sync churn, keeping the recurrent_trouble signal + align set.
             let dangling = crate::db::queries::dangling_notes(&db)?;
-            for n in &dangling {
-                crate::db::queries::delete_note_by_id(&db, &n.id)?;
+            let churn = if transitions {
+                crate::db::queries::prunable_transition_notes(&db, keep_per_target)?
+            } else {
+                Vec::new()
+            };
+            if !dry_run && !(dangling.is_empty() && churn.is_empty()) {
+                crate::db::with_transaction(&db, || {
+                    for n in dangling.iter().chain(churn.iter()) {
+                        crate::db::queries::delete_note_by_id(&db, &n.id)?;
+                    }
+                    Ok(())
+                })?;
             }
-            let next_step = "`loom doctor` re-checks integrity";
+            let verb = if dry_run { "Would prune" } else { "Pruned" };
+            // After a transition compaction the committed export drifted; point
+            // there. Plain dangling prune stays anchored on the doctor re-check.
+            let next_step = if transitions && !churn.is_empty() {
+                "`loom export` to refresh the committed graph, then `loom status`"
+            } else {
+                "`loom doctor` re-checks integrity"
+            };
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok",
@@ -30,27 +52,34 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
                         "id": n.id, "kind": n.kind,
                         "target_kind": n.target_kind, "target_id": n.target_id,
                     })).collect::<Vec<_>>(),
+                    "transitions_pruned": churn.len(),
+                    "keep_per_target": keep_per_target,
+                    "dry_run": dry_run,
                     "next_step": next_step,
                 }));
-            } else if dangling.is_empty() {
-                println!("✓ No dangling notes — nothing to prune.");
             } else {
-                println!(
-                    "✓ Pruned {} dangling note(s) (targets no longer exist):",
-                    dangling.len()
-                );
-                for n in dangling.iter().take(20) {
+                if dangling.is_empty() && churn.is_empty() {
+                    println!("✓ Nothing to prune (no dangling notes{}).",
+                        if transitions { " or compactable transition history" } else { "" });
+                }
+                if !dangling.is_empty() {
+                    println!("✓ {verb} {} dangling note(s) (targets no longer exist):", dangling.len());
+                    for n in dangling.iter().take(20) {
+                        println!("    {} [{}] → missing {} '{}'", n.id, n.kind, n.target_kind, n.target_id);
+                    }
+                    if let Some(m) = crate::output::more_marker(dangling.len(), 20, "loom doctor --json") {
+                        println!("    {m}");
+                    }
+                }
+                if transitions {
                     println!(
-                        "    {} [{}] → missing {} '{}'",
-                        n.id, n.kind, n.target_kind, n.target_id
+                        "✓ {verb} {} low-signal transition note(s) — kept the newest {keep_per_target} per target + every regression marker (smells + align unchanged).",
+                        churn.len()
                     );
                 }
-                if let Some(m) =
-                    crate::output::more_marker(dangling.len(), 20, "loom doctor --json")
-                {
-                    println!("    {m}");
+                if !(dangling.is_empty() && churn.is_empty()) {
+                    println!("  → Next: {next_step}");
                 }
-                println!("  → Next: {next_step}");
             }
         }
 
