@@ -11,10 +11,10 @@ use crate::types::Intent;
 use super::row::{col_map, get, str_val};
 
 pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
-    // Param-bound: name/description/domain are agent-written free text.
+    // Param-bound: name/description/domain/layer are agent-written free text.
     db.execute_with_params(
         "INSERT (:Intent {id: $id, name: $name, description: $desc, \
-         abstraction_level: $level, domain: $domain, source_refs: $refs, \
+         abstraction_level: $level, domain: $domain, layer: $layer, source_refs: $refs, \
          status: $status, aspect: $aspect, tags: $tags, visibility: $vis, \
          lifecycle: $lifecycle, created_at: $created, updated_at: $updated})",
         {
@@ -24,6 +24,7 @@ pub fn insert_intent(db: &dyn LoomDb, intent: &Intent) -> Result<()> {
                 ("desc", &intent.description),
                 ("level", &intent.abstraction_level),
                 ("domain", &intent.domain),
+                ("layer", &intent.layer),
                 ("status", &intent.status),
                 ("aspect", &intent.aspect),
                 ("vis", &intent.visibility),
@@ -63,7 +64,10 @@ pub fn try_resolve_intent(db: &dyn LoomDb, key: &str) -> Result<Option<String>> 
         return Ok(Some(key.to_string()));
     }
     let kl = key.to_lowercase();
-    let exact: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase() == kl).collect();
+    let exact: Vec<_> = intents
+        .iter()
+        .filter(|i| i.name.to_lowercase() == kl)
+        .collect();
     if exact.len() == 1 {
         return Ok(Some(exact[0].id.clone()));
     }
@@ -73,7 +77,10 @@ pub fn try_resolve_intent(db: &dyn LoomDb, key: &str) -> Result<Option<String>> 
             key, exact.len()
         );
     }
-    let subs: Vec<_> = intents.iter().filter(|i| i.name.to_lowercase().contains(&kl)).collect();
+    let subs: Vec<_> = intents
+        .iter()
+        .filter(|i| i.name.to_lowercase().contains(&kl))
+        .collect();
     match subs.len() {
         1 => Ok(Some(subs[0].id.clone())),
         0 => Ok(None),
@@ -93,7 +100,8 @@ pub fn try_resolve_intent(db: &dyn LoomDb, key: &str) -> Result<Option<String>> 
             }
             anyhow::bail!(
                 "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
-                key, shown
+                key,
+                shown
             )
         }
     }
@@ -163,18 +171,28 @@ pub fn set_intent_lifecycle(
     };
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.lifecycle = '{}', n.updated_at = '{}'",
-        esc(id), esc(lifecycle), esc(updated_at)
+        esc(id),
+        esc(lifecycle),
+        esc(updated_at)
     ))?;
     // Lifecycle changes are the intent-level recurrence signal (an intent
     // that keeps returning to needs_change is a hotspot of trouble).
-    super::note::record_transition(db, "intent", id, &prev.lifecycle, lifecycle, "loom", updated_at)?;
+    super::note::record_transition(
+        db,
+        "intent",
+        id,
+        &prev.lifecycle,
+        lifecycle,
+        "loom",
+        updated_at,
+    )?;
     Ok(true)
 }
 
 pub fn get_intent(db: &dyn LoomDb, id: &str) -> Result<Option<Intent>> {
     let q = format!(
         "MATCH (n:Intent {{id: '{}'}}) \
-         RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
+         RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, n.layer, \
                 n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
                 n.lifecycle, n.created_at, n.updated_at",
         esc(id)
@@ -203,7 +221,7 @@ pub fn list_intents(
     };
     let q = format!(
         "MATCH (n:Intent){} \
-         RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, \
+         RETURN n.id, n.name, n.description, n.abstraction_level, n.domain, n.layer, \
                 n.source_refs, n.status, n.aspect, n.tags, n.visibility, \
                 n.lifecycle, n.created_at, n.updated_at \
          ORDER BY n.name",
@@ -211,7 +229,11 @@ pub fn list_intents(
     );
     let result = db.execute(&q)?;
     let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_intent(row, &cols)).collect())
+    Ok(result
+        .rows()
+        .iter()
+        .map(|row| row_to_intent(row, &cols))
+        .collect())
 }
 
 /// Intents that participate in computation: everything except `deprecated`.
@@ -261,9 +283,13 @@ pub fn retire_fallout(db: &dyn LoomDb, id: &str) -> Result<RetireFallout> {
     orphaned_children.sort();
 
     // Files where this intent is the only ACTIVE owner.
-    let mut owners: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut owners: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
     for im in super::implements::list_all_implements(db)? {
-        owners.entry(im.codefile_path).or_default().push(im.intent_id);
+        owners
+            .entry(im.codefile_path)
+            .or_default()
+            .push(im.intent_id);
     }
     let mut solely_grounded_files: Vec<String> = owners
         .into_iter()
@@ -273,10 +299,14 @@ pub fn retire_fallout(db: &dyn LoomDb, id: &str) -> Result<RetireFallout> {
     solely_grounded_files.sort();
 
     // Validations whose every linked intent is retired once this one goes.
-    let mut linked: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut linked: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
     let mut vname: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for e in super::validates::list_all_validates(db)? {
-        linked.entry(e.validation_id.clone()).or_default().push(e.intent_id);
+        linked
+            .entry(e.validation_id.clone())
+            .or_default()
+            .push(e.intent_id);
         vname.insert(e.validation_id, e.validation_name);
     }
     let mut dangling_validations: Vec<String> = linked
@@ -325,7 +355,8 @@ pub fn retire_intent(
     };
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.status = 'deprecated', n.updated_at = '{}'",
-        esc(id), esc(now)
+        esc(id),
+        esc(now)
     ))?;
     super::note::record_transition(db, "intent", id, &prev.status, "deprecated", "loom", now)?;
     let cause = format!("intent '{}' retired", prev.name);
@@ -338,8 +369,13 @@ pub fn retire_intent(
                 to = esc(&edge.to_id),
             ))?;
             super::note::record_sync_flip(
-                db, "edge", &edge.id, &edge.inspection_status,
-                "needs_reverification", &cause, now,
+                db,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
             )?;
         }
     }
@@ -347,29 +383,34 @@ pub fn retire_intent(
         Some(s) => format!("retired: {reason} — replaced by intent {s}"),
         None => format!("retired: {reason}"),
     };
-    super::note::insert_note(db, &crate::types::Note {
-        id: uuid::Uuid::new_v4().to_string(),
-        kind: "decision".into(),
-        text,
-        author: "loom".into(),
-        target_kind: "intent".into(),
-        target_id: id.to_string(),
-        audience: String::new(),
-        created_at: now.to_string(),
-    })?;
+    super::note::insert_note(
+        db,
+        &crate::types::Note {
+            id: uuid::Uuid::new_v4().to_string(),
+            kind: "decision".into(),
+            text,
+            author: "loom".into(),
+            target_kind: "intent".into(),
+            target_id: id.to_string(),
+            audience: String::new(),
+            created_at: now.to_string(),
+        },
+    )?;
     Ok(true)
 }
 
 pub fn confirm_intent(db: &dyn LoomDb, id: &str, updated_at: &str) -> Result<bool> {
     let check = db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)
+        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
     }
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.status = 'confirmed', n.updated_at = '{}'",
-        esc(id), esc(updated_at)
+        esc(id),
+        esc(updated_at)
     ))?;
     Ok(true)
 }
@@ -391,15 +432,32 @@ pub fn set_intent_visibility(
         );
     }
     let check = db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)
+        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
     }
     db.execute(&format!(
         "MATCH (n:Intent {{id: '{}'}}) SET n.visibility = '{}', n.updated_at = '{}'",
-        esc(id), esc(visibility), esc(updated_at)
+        esc(id),
+        esc(visibility),
+        esc(updated_at)
     ))?;
+    Ok(true)
+}
+
+/// Set an intent's architecture layer. This is metadata about where the
+/// responsibility sits, not a semantic redefinition, so it does not stale
+/// earned verdicts. Returns false when the intent doesn't exist.
+pub fn set_intent_layer(db: &dyn LoomDb, id: &str, layer: &str, updated_at: &str) -> Result<bool> {
+    if get_intent(db, id)?.is_none() {
+        return Ok(false);
+    }
+    db.execute_with_params(
+        "MATCH (n:Intent {id: $id}) SET n.layer = $layer, n.updated_at = $updated",
+        super::row::sparams(&[("id", id), ("layer", layer), ("updated", updated_at)]),
+    )?;
     Ok(true)
 }
 
@@ -410,16 +468,19 @@ pub fn set_intent_visibility(
 /// meaning?" = the newest such note. Notes travel in the export, so alignment
 /// history survives a re-import — no schema field, no migration.
 pub fn record_confirmation(db: &dyn LoomDb, id: &str, author: &str, now: &str) -> Result<()> {
-    super::note::insert_note(db, &crate::types::Note {
-        id: uuid::Uuid::new_v4().to_string(),
-        kind: "confirm".into(),
-        text: "meaning re-affirmed".into(),
-        author: author.to_string(),
-        target_kind: "intent".into(),
-        target_id: id.to_string(),
-        audience: String::new(),
-        created_at: now.to_string(),
-    })
+    super::note::insert_note(
+        db,
+        &crate::types::Note {
+            id: uuid::Uuid::new_v4().to_string(),
+            kind: "confirm".into(),
+            text: "meaning re-affirmed".into(),
+            author: author.to_string(),
+            target_kind: "intent".into(),
+            target_id: id.to_string(),
+            audience: String::new(),
+            created_at: now.to_string(),
+        },
+    )
 }
 
 /// Newest confirmation stamp for an intent (rfc3339), None = never confirmed.
@@ -429,9 +490,11 @@ pub fn record_confirmation(db: &dyn LoomDb, id: &str, author: &str, now: &str) -
 /// surface.
 #[cfg(test)]
 pub fn last_confirmed_at(db: &dyn LoomDb, intent_id: &str) -> Result<Option<String>> {
-    Ok(super::note::list_notes(db, Some(intent_id), Some("confirm"))?
-        .pop()
-        .map(|n| n.created_at))
+    Ok(
+        super::note::list_notes(db, Some(intent_id), Some("confirm"))?
+            .pop()
+            .map(|n| n.created_at),
+    )
 }
 
 /// Update an intent's name and/or description in place — design EVOLUTION,
@@ -508,8 +571,13 @@ pub fn ripple_intent_redefinition(
                 to = esc(&edge.to_id),
             ))?;
             super::note::record_sync_flip(
-                db, "edge", &edge.id, &edge.inspection_status,
-                "needs_reverification", &cause, now,
+                db,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
             )?;
             r.relates_to_flagged += 1;
         }
@@ -525,8 +593,13 @@ pub fn ripple_intent_redefinition(
                 iid = esc(intent_id),
             ))?;
             super::note::record_sync_flip(
-                db, "edge", &g.id, &g.inspection_status,
-                "needs_reverification", &cause, now,
+                db,
+                "edge",
+                &g.id,
+                &g.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
             )?;
             r.governs_flagged += 1;
         }
@@ -543,7 +616,13 @@ pub fn ripple_intent_redefinition(
                 notes = esc(&format!("stale: {cause}")),
             ))?;
             super::note::record_sync_flip(
-                db, "edge", &t.id, "passing", "needs_reverification", &cause, now,
+                db,
+                "edge",
+                &t.id,
+                "passing",
+                "needs_reverification",
+                &cause,
+                now,
             )?;
             r.targets_flagged += 1;
         }
@@ -559,7 +638,13 @@ pub fn ripple_intent_redefinition(
                 cfid = esc(&im.codefile_id),
             ))?;
             super::note::record_sync_flip(
-                db, "edge", &im.id, "passing", "needs_reverification", &cause, now,
+                db,
+                "edge",
+                &im.id,
+                "passing",
+                "needs_reverification",
+                &cause,
+                now,
             )?;
             r.implements_flagged += 1;
         }
@@ -570,7 +655,8 @@ pub fn ripple_intent_redefinition(
     // recorded reason) and already-not_run — same skip set as sync.
     for edge in super::validates::list_validates_for_intent(db, intent_id)? {
         if let Some(v) = super::validation::get_validation(db, &edge.validation_id)? {
-            if v.last_result != "not_run" && v.last_result != "blocked" && !v.last_result.is_empty() {
+            if v.last_result != "not_run" && v.last_result != "blocked" && !v.last_result.is_empty()
+            {
                 db.execute(&format!(
                     "MATCH (v:Validation {{id: '{}'}}) SET v.last_result = 'not_run'",
                     esc(&v.id)
@@ -587,18 +673,21 @@ pub fn ripple_intent_redefinition(
 /// targeting it. Returns false if the intent didn't exist.
 pub fn delete_intent(db: &dyn LoomDb, id: &str) -> Result<bool> {
     let check = db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id", esc(id)
+        "MATCH (n:Intent {{id: '{}'}}) RETURN n.id",
+        esc(id)
     ))?;
     if check.rows().is_empty() {
         return Ok(false);
     }
     // DETACH DELETE removes the node and all edges connected to it.
     db.execute(&format!(
-        "MATCH (n:Intent {{id: '{}'}}) DETACH DELETE n", esc(id)
+        "MATCH (n:Intent {{id: '{}'}}) DETACH DELETE n",
+        esc(id)
     ))?;
     // Notes reference the intent by target_id (not a graph edge), so prune them.
     db.execute(&format!(
-        "MATCH (note:Note) WHERE note.target_id = '{}' DETACH DELETE note", esc(id)
+        "MATCH (note:Note) WHERE note.target_id = '{}' DETACH DELETE note",
+        esc(id)
     ))?;
     // The DETACH DELETE above also killed this intent's edges — prune the
     // notes attached to THOSE (derived edge keys embed the intent id), or
@@ -621,21 +710,22 @@ pub fn intents_without_validations(db: &dyn LoomDb) -> Result<Vec<Intent>> {
 
 fn row_to_intent(row: &[Value], cols: &HashMap<&str, usize>) -> Intent {
     Intent {
-        id:               str_val(get(row, cols, "n.id")),
-        name:             str_val(get(row, cols, "n.name")),
-        description:      str_val(get(row, cols, "n.description")),
-        abstraction_level:str_val(get(row, cols, "n.abstraction_level")),
-        domain:           str_val(get(row, cols, "n.domain")),
-        source_refs:      super::row::list_val(get(row, cols, "n.source_refs")),
-        status:           str_val(get(row, cols, "n.status")),
-        aspect:           str_val(get(row, cols, "n.aspect")),
+        id: str_val(get(row, cols, "n.id")),
+        name: str_val(get(row, cols, "n.name")),
+        description: str_val(get(row, cols, "n.description")),
+        abstraction_level: str_val(get(row, cols, "n.abstraction_level")),
+        domain: str_val(get(row, cols, "n.domain")),
+        layer: str_val(get(row, cols, "n.layer")),
+        source_refs: super::row::list_val(get(row, cols, "n.source_refs")),
+        status: str_val(get(row, cols, "n.status")),
+        aspect: str_val(get(row, cols, "n.aspect")),
         // Additive in v3, native list in v5: Null on intents from older
         // graphs reads as empty (= untagged); legacy JSON strings parse.
-        tags:             super::row::list_val(get(row, cols, "n.tags")),
+        tags: super::row::list_val(get(row, cols, "n.tags")),
         // Additive: Null on intents from older graphs reads as "" (untriaged).
-        visibility:       str_val(get(row, cols, "n.visibility")),
-        lifecycle:        str_val(get(row, cols, "n.lifecycle")),
-        created_at:       str_val(get(row, cols, "n.created_at")),
-        updated_at:       str_val(get(row, cols, "n.updated_at")),
+        visibility: str_val(get(row, cols, "n.visibility")),
+        lifecycle: str_val(get(row, cols, "n.lifecycle")),
+        created_at: str_val(get(row, cols, "n.created_at")),
+        updated_at: str_val(get(row, cols, "n.updated_at")),
     }
 }

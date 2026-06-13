@@ -88,14 +88,6 @@ pub fn list_personas(db: &dyn LoomDb) -> Result<Vec<Persona>> {
     Ok(r.rows().iter().map(|row| row_to_persona(row, &cols)).collect())
 }
 
-pub fn delete_persona(db: &dyn LoomDb, persona_id: &str) -> Result<()> {
-    db.execute(&format!(
-        "MATCH (p:Persona {{id: '{id}'}}) DELETE p",
-        id = esc(persona_id),
-    ))?;
-    Ok(())
-}
-
 fn row_to_persona(row: &[Value], cols: &HashMap<&str, usize>) -> Persona {
     Persona {
         id:          str_val(get(row, cols, "p.id")),

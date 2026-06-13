@@ -1,6 +1,6 @@
-use anyhow::Result;
 use crate::cli::{Cli, Command};
 use crate::output::Printer;
+use anyhow::Result;
 
 pub mod batch;
 pub mod cluster;
@@ -8,34 +8,35 @@ pub mod codefile;
 pub mod coverage;
 pub mod delegate;
 pub mod detect;
+pub mod doctor;
 pub mod domain;
 pub mod door;
-pub mod doctor;
+pub mod edge;
 pub mod export;
 pub mod find;
 pub mod guide;
-pub mod hypothesis;
-pub mod import;
-pub mod migrate;
 pub mod hotspots;
+pub mod hypothesis;
 pub mod ignore;
-pub mod edge;
+pub mod import;
 pub mod init;
 pub mod intent;
+pub mod layer;
+pub mod migrate;
 pub mod next;
 pub mod note;
 pub mod persona;
 pub mod report;
 pub mod rule;
 pub mod saga;
-pub mod session;
 pub mod schema;
+pub mod session;
 pub mod smells;
 pub mod status;
 pub mod sync;
 pub mod validate;
-pub mod vocab;
 pub mod validation;
+pub mod vocab;
 
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
@@ -62,6 +63,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),
         Command::Domain      { subcommand } => domain::run(subcommand, &printer),
+        Command::Layer       { subcommand } => layer::run(subcommand, &printer),
         Command::Persona     { subcommand } => persona::run(subcommand, &printer),
         Command::Sync        { path }       => sync::run(&path, &printer),
         Command::Validate    { intent_id, all, timeout_secs } => match (intent_id, all) {

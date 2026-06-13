@@ -247,9 +247,14 @@ pub fn fmt_intent(i: &crate::types::Intent) -> String {
         format!("\n  visibility:  {}", i.visibility)
     };
     let lifecycle = if i.lifecycle.is_empty() { "implemented" } else { &i.lifecycle };
+    let layer_line = if i.layer.is_empty() {
+        String::new()
+    } else {
+        format!("\n  layer:       {}", i.layer)
+    };
     format!(
-        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}\n  status:      {}\n  lifecycle:   {}{}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
-        i.id, i.name, i.abstraction_level, i.domain, i.status, lifecycle, aspect_line, tags_line,
+        "  id:          {}\n  name:        {}\n  level:       {}\n  domain:      {}{}\n  status:      {}\n  lifecycle:   {}{}{}{}\n  description: {}\n  sources:     {}\n  created:     {}\n  updated:     {}",
+        i.id, i.name, i.abstraction_level, i.domain, layer_line, i.status, lifecycle, aspect_line, tags_line,
         visibility_line, i.description, refs_str, i.created_at, i.updated_at
     )
 }
@@ -264,6 +269,9 @@ pub fn fmt_intent_surface(i: &crate::types::IntentSurface) -> String {
     );
     if !(i.domain.is_empty() || i.domain == "unknown") {
         s.push_str(&format!("\n  domain:      {}", i.domain));
+    }
+    if !i.layer.is_empty() {
+        s.push_str(&format!("\n  layer:       {}", i.layer));
     }
     s.push_str(&format!("\n  status:      {}\n  lifecycle:   {}", i.status, i.lifecycle));
     if !i.aspect.is_empty() {
@@ -379,6 +387,7 @@ mod tests {
             description: "description".to_string(),
             abstraction_level: "feature".to_string(),
             domain: "test".to_string(),
+            layer: String::new(),
             source_refs: vec!["src/a.rs".to_string(), "docs/SPEC.md".to_string()],
             status: "proposed".to_string(),
             aspect: String::new(),

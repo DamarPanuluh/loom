@@ -25,6 +25,7 @@ pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
                 "description": h.intent.description,
                 "level": h.intent.abstraction_level,
                 "domain": h.intent.domain,
+                "layer": h.intent.layer,
                 "lifecycle": h.intent.lifecycle,
                 "status": h.intent.status,
                 "score": h.score,
@@ -57,6 +58,21 @@ pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
         );
         if !h.parent_chain.is_empty() {
             println!("         under: {}", h.parent_chain.join(" › "));
+        }
+        if !(h.intent.domain.is_empty() || h.intent.domain == "unknown")
+            || !h.intent.layer.is_empty()
+        {
+            let domain = if h.intent.domain.is_empty() || h.intent.domain == "unknown" {
+                "-".to_string()
+            } else {
+                h.intent.domain.clone()
+            };
+            let layer = if h.intent.layer.is_empty() {
+                "-".to_string()
+            } else {
+                h.intent.layer.clone()
+            };
+            println!("         domain: {domain}   layer: {layer}");
         }
         println!("         {}", h.intent.description);
         if h.groundings.is_empty() {

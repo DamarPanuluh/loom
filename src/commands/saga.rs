@@ -556,6 +556,7 @@ fn resolve_step_intents(
                     ),
                     abstraction_level: "feature".to_string(),
                     domain: String::new(),
+                    layer: String::new(),
                     source_refs: Vec::new(),
                     status: "proposed".to_string(),
                     aspect: String::new(),

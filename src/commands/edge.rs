@@ -578,6 +578,7 @@ fn default_intent(id: &str) -> Intent {
         description:       String::new(),
         abstraction_level: String::new(),
         domain:            String::new(),
+        layer:             String::new(),
         source_refs:       Vec::new(),
         status:            String::new(),
         aspect:            String::new(),

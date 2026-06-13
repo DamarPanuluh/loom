@@ -41,7 +41,7 @@ const RIPPLE: &[&str] = &[
     "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`, or every pending proof at once: `loom validate --all`)",
     "IMPLEMENTS locators that no longer occur in their file (renamed symbol) → needs_reverification, and reported — re-ground with a fresh locator",
     "files registered in the graph but missing on disk are reported — drop phantoms with `loom codefile remove <path>` or restore the file",
-    "static imports are re-extracted per file — they feed `loom smells` (undeclared coupling, layering violations against the declared `loom domain order`) and discovery ranking",
+    "static imports are re-extracted per file — they feed `loom smells` (undeclared coupling, layering violations against the declared `loom layer order`) and discovery ranking",
 ];
 
 /// The role lanes: who does what, and which `loom next` mode serves the lane.
@@ -82,15 +82,15 @@ const ORCHESTRATION: &[&str] = &[
 fn brownfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the repo root."),
-        ("seed intents", "Read the code; add `system` → `component` → `feature` intents (lifecycle defaults to `implemented`). Link with `loom edge hierarchy <parent> <child>`. GRANULARITY CONTRACT: system = 1–3 per repo (the product's purpose), component = 5–15 (cohesive subsystems), feature = MANY and ATOMIC — independently verifiable. The test: can you write ONE falsifiable criterion for it? If the description needs an 'and' ('RBAC manages users and roles and permissions'), it's several intents — seed 'users', 'roles', 'permissions' as children instead. Too coarse is recoverable (the scattered smell routes you to split the INTENT in the graph — cheap — never to refactor the code), but seeding at the right grain avoids the churn. OPTIONAL but cheap: register a small tag vocabulary as you go (`loom vocab add <term> --why \"<covers X, NOT Y>\"`) and tag intents (`--tag`, max 3) — tags from a shared registry collide where free prose doesn't, which is how duplicated responsibility in unrelated files gets caught later. Same stance for `--domain`: give intents consistent domain labels, and once the architecture's layering is clear, declare it (`loom domain order <top> … <bottom>`) — imports pointing UP that order surface as layering_violation, which no edge-level inspection catches (a recorded relationship doesn't excuse direction)."),
+        ("seed intents", "Read the code; add `system` → `component` → `feature` intents (lifecycle defaults to `implemented`). Link with `loom edge hierarchy <parent> <child>`. GRANULARITY CONTRACT: system = 1–3 per repo (the product's purpose), component = 5–15 (cohesive subsystems), feature = MANY and ATOMIC — independently verifiable. The test: can you write ONE falsifiable criterion for it? If the description needs an 'and' ('RBAC manages users and roles and permissions'), it's several intents — seed 'users', 'roles', 'permissions' as children instead. Too coarse is recoverable (the scattered smell routes you to split the INTENT in the graph — cheap — never to refactor the code), but seeding at the right grain avoids the churn. OPTIONAL but cheap: register a small tag vocabulary as you go (`loom vocab add <term> --why \"<covers X, NOT Y>\"`) and tag intents (`--tag`, max 3) — tags from a shared registry collide where free prose doesn't, which is how duplicated responsibility in unrelated files gets caught later. Use `--domain` for product/business facets (auth, billing); use `--layer` for architecture direction (presentation, application, storage). Once layering is clear, declare it (`loom layer order <top> … <bottom>`) — imports pointing UP that order surface as layering_violation, which no edge-level inspection catches (a recorded relationship doesn't excuse direction)."),
         ("ground to code", "`loom codefile add '<glob>'` then `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol AS IT APPEARS in the file — e.g. `def shorten`, `fn run`, `class Link` — `loom sync` flags it stale if it isn't found verbatim)."),
         ("discover", "`loom next` repeatedly: read the code it points to, then record `loom edge explore <a> <b> ground|issue|independent …`."),
         ("fix", "`loom next --mode fix` for failing/stale edges."),
         ("coverage", "`loom coverage` — map or `loom ignore` every file so nothing is missed."),
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
         ("prove from outside", "If the system exposes endpoints, prove the COMPOSITION from the consumer's vantage: write a saga spec (ordered chain, each step bound to its intent) and `loom saga add` + `loom saga run` — passing runs stamp runtime evidence along the intent path; a failure lands as a failing edge naming the broken boundary."),
-        ("gate", "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry domains and the architecture is layered, `loom domain order <top> … <bottom>` arms the layering audit."),
-        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code), overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports pointing UP the declared `loom domain order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings GATE GREEN: once every queue is dry the compass routes phase=audit until `loom smells` returns zero. Refute or confirm each via its remedy; `independent`/a decision note is as valuable as a fix (scatter/tangle/happy-path adjudicate via `loom note add --intent|--file … --kind decision`; a later structural change re-opens the question). Per-file ownership questions: `loom codefile show <path>`. The report also DISCLOSES what its detectors cannot see (untagged coded intents; domains in use with no declared order) — a quiet report is only as good as its armed instruments."),
+        ("gate", "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry architecture layers, `loom layer order <top> … <bottom>` arms the layering audit."),
+        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code), overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports pointing UP the declared `loom layer order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings GATE GREEN: once every queue is dry the compass routes phase=audit until `loom smells` returns zero. Refute or confirm each via its remedy; `independent`/a decision note is as valuable as a fix (scatter/tangle/happy-path adjudicate via `loom note add --intent|--file … --kind decision`; a later structural change re-opens the question). Per-file ownership questions: `loom codefile show <path>`. The report also DISCLOSES what its detectors cannot see (untagged coded intents; layers in use with no declared order) — a quiet report is only as good as its armed instruments."),
         ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]
 }
@@ -99,7 +99,7 @@ fn greenfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the (empty/new) repo root."),
         ("design as planned intents", "Write the spec AS intents: `loom intent add … --level system|component|feature --lifecycle planned`. Each feature's criterion IS its acceptance contract — so features must be ATOMIC (one falsifiable criterion each; a description needing 'and' is several intents). Counts: system 1–3, component 5–15, features many. Use `--aspect happy|sad|fallback` so error paths are designed in."),
-        ("capture architecture", "Relate intents: `loom edge hierarchy` for structure, `loom edge explore … ground` for contracts between components. If the design is layered, declare it up front: give intents `--domain` labels and `loom domain order <top> … <bottom>` — the build is then continuously audited for imports pointing up the order (layering_violation)."),
+        ("capture architecture", "Relate intents: `loom edge hierarchy` for structure, `loom edge explore … ground` for contracts between components. If the design is layered, declare it up front: give intents `--layer` labels and `loom layer order <top> … <bottom>` — the build is then continuously audited for imports pointing up the order (layering_violation). Use `--domain` separately for product/business facets."),
         ("build", "`loom next --mode build` → for each planned LEAF intent: write the code, `loom codefile add`, `loom edge implement`, then `loom intent mark <id> --lifecycle implemented`. Parents are deferred until their children are done, then surface as a roll-up. The criterion you wrote is your test."),
         ("verify", "Once built, `loom next` (discovery) and `loom validate` confirm reality matches the design. For endpoint-exposing designs, add a consumer saga per journey (`loom saga add` / `loom saga run`) — the design's composition is proven by execution, not just per-leaf tests."),
         ("gate", "Set the quality bar: seed the packs `loom detect` recommends (`loom rule seed <pack>`) + `loom rule add …` for repo-specific sticks, then earn green with `loom next --mode quality` + `loom rule verdict` (the verdict creates the edge; component altitude covers descendants)."),
@@ -109,7 +109,7 @@ fn greenfield() -> Vec<(&'static str, &'static str)> {
 fn refactor() -> Vec<(&'static str, &'static str)> {
     vec![
         ("map first if needed", "If the area isn't in the graph yet, do the brownfield steps for it."),
-        ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports against the declared `loom domain order`), recurrent trouble, and unmeasured quality rules; each finding carries its remedy command."),
+        ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports against the declared `loom layer order`), recurrent trouble, and unmeasured quality rules; each finding carries its remedy command."),
         ("propose & prove redesigns", "Anything redesign-shaped (recurring breakage, a file split, a merge of twins) goes through the HYPOTHESIS PLANE before it becomes work: `loom hypothesis add --claim … --proposal … --predicted-outcome … --target <intent>` (the redesign smells emit this for you), then a DIFFERENT agent proves it (`loom next --mode prove` → `loom hypothesis prove`), then `loom hypothesis adopt --spawned <planned-intent>…` — the predicted outcome becomes a proof on the spawned work, and the hypothesis is `confirmed` only when that proof later passes. Unproven ideas die honestly (`loom hypothesis reject --reason …`) instead of becoming speculative refactors."),
         ("flag what must change", "`loom intent mark <id> --lifecycle needs_change --reason \"…\"`. Set/refresh the criterion to the desired end state; capture rationale (the --reason is recorded as a note). This is the honest 'known issue' state — no faking a verdict."),
         ("build", "`loom next --mode build` surfaces needs_change intents first. Make the minimal change, then `loom intent mark <id> --lifecycle implemented`."),
@@ -143,7 +143,6 @@ fn seed() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
-
 fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
     if let Some(m) = mode {
         return match m {
@@ -152,13 +151,20 @@ fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
             "refactor" => Ok("refactor"),
             "port" => Ok("port"),
             "seed" => Ok("seed"),
-            other => anyhow::bail!("Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed", other),
+            other => anyhow::bail!(
+                "Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed",
+                other
+            ),
         };
     }
     // Seed is explicit-only: this is a user-in-the-loop session, and the binary cannot detect "the user wants to talk".
     // Auto-detect from the repo: no source on disk → greenfield, else brownfield.
     let cwd = crate::db::resolve_root()?;
-    Ok(if crate::repo::detect(&cwd)?.has_source { "brownfield" } else { "greenfield" })
+    Ok(if crate::repo::detect(&cwd)?.has_source {
+        "brownfield"
+    } else {
+        "greenfield"
+    })
 }
 
 pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
@@ -246,7 +252,10 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
         return Ok(());
     }
 
-    println!("══ loom — driving guide  [mode: {}] ═════════════════════════════════", m);
+    println!(
+        "══ loom — driving guide  [mode: {}] ═════════════════════════════════",
+        m
+    );
     println!();
     println!("WHAT IT IS");
     println!("  Externalized, falsifiable memory for understanding, building, and cleaning");
@@ -261,13 +270,18 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("LIFECYCLE  planned (designed, not built) → implemented → needs_change (must change)");
     println!("  `loom next --mode build` drives planned/needs_change; discovery/fix verify relationships.");
     println!();
-    println!("PLAYBOOK ({} — {})", m, match m {
-        "greenfield" => "design first, then build",
-        "refactor" => "change existing code with intent",
-        "port" => "re-realize a mapped system in a new language/repo",
-        "seed" => "capture & re-align the user's head — interview, land, terminate on completeness",
-        _ => "map & verify existing code",
-    });
+    println!(
+        "PLAYBOOK ({} — {})",
+        m,
+        match m {
+            "greenfield" => "design first, then build",
+            "refactor" => "change existing code with intent",
+            "port" => "re-realize a mapped system in a new language/repo",
+            "seed" =>
+                "capture & re-align the user's head — interview, land, terminate on completeness",
+            _ => "map & verify existing code",
+        }
+    );
     for (i, (title, doc)) in steps.iter().enumerate() {
         println!("  {}. {}", i + 1, title);
         println!("       {}", doc);
@@ -292,7 +306,9 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("  builders never green-light their own work — verdicts live in other lanes,");
     println!("  and `loom doctor` audits provenance.");
     println!();
-    println!("ORCHESTRATION (you have loom access — usually an orchestrator that can spawn subagents)");
+    println!(
+        "ORCHESTRATION (you have loom access — usually an orchestrator that can spawn subagents)"
+    );
     for line in ORCHESTRATION {
         println!("  {}", line);
     }

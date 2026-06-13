@@ -6,7 +6,12 @@
 //! version is bumped. The legacy `id` props left on pre-v4 edges are inert —
 //! nothing reads them — so they are left in place rather than churned.
 //!
-//! Idempotent: a v4 graph reports "already current" and exits 0.
+//! v5 → v6: product domain and architecture layer split. If the old graph had
+//! a declared `domain_order`, it was using domains as layers: copy each
+//! Intent.domain into Intent.layer and move the order to `layer_order`.
+//! Without a declared order, keep layer empty.
+//!
+//! Idempotent: a current graph reports "already current" and exits 0.
 //!
 //! Crash-safety comes from IDEMPOTENCE + ORDER, not a transaction: every note
 //! remap is an idempotent SET, and the meta version is stamped LAST — so a
@@ -50,9 +55,9 @@ pub fn run(printer: &Printer) -> Result<()> {
         }
         return Ok(());
     }
-    if !matches!(found.as_str(), "3" | "4") {
+    if !matches!(found.as_str(), "3" | "4" | "5") {
         anyhow::bail!(
-            "Graph reports schema version '{found}' — this loom upgrades v3/v4 graphs to v{SCHEMA_VERSION}. \
+            "Graph reports schema version '{found}' — this loom upgrades v3/v4/v5 graphs to v{SCHEMA_VERSION}. \
              For older graphs, export with the loom version that wrote them and `loom import` the export here."
         );
     }
@@ -135,12 +140,45 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cf_rows = db.execute("MATCH (n:CodeFile) RETURN n.id, n.imports")?;
     for row in cf_rows.rows() {
         let id = str_of(&row[0]);
-        let Some(imports) = string_json_list(&row[1], "CodeFile", &id, "imports")? else { continue };
+        let Some(imports) = string_json_list(&row[1], "CodeFile", &id, "imports")? else {
+            continue;
+        };
         let mut p: HashMap<String, Value> = HashMap::new();
         p.insert("id".into(), Value::String(id.into()));
         p.insert("imports".into(), list_value(imports));
         db.execute_with_params("MATCH (n:CodeFile {id: $id}) SET n.imports = $imports", p)?;
         nodes_listified += 1;
+    }
+
+    // ---- v5 → v6: product domain/layer split ----
+    let legacy_order = crate::db::queries::get_legacy_domain_order(&db)?;
+    let mut layers_populated = 0usize;
+    let mut layer_order_migrated = false;
+    let layer_source = if legacy_order.is_empty() {
+        String::new()
+    } else {
+        crate::db::queries::set_layer_order(&db, &legacy_order)?;
+        layer_order_migrated = true;
+        "__copy_domain__".into()
+    };
+    let rows = db.execute("MATCH (n:Intent) RETURN n.id, n.domain, n.layer")?;
+    for row in rows.rows() {
+        let id = str_of(&row[0]);
+        let domain = str_of(&row[1]);
+        let current_layer = str_of(&row[2]);
+        if !current_layer.is_empty() {
+            continue;
+        }
+        let layer = if layer_source == "__copy_domain__" {
+            domain
+        } else {
+            String::new()
+        };
+        let mut p: HashMap<String, Value> = HashMap::new();
+        p.insert("id".into(), Value::String(id.into()));
+        p.insert("layer".into(), Value::String(layer.into()));
+        db.execute_with_params("MATCH (n:Intent {id: $id}) SET n.layer = $layer", p)?;
+        layers_populated += 1;
     }
 
     // Stamp the new version LAST — the completion marker. Anything that died
@@ -159,6 +197,8 @@ pub fn run(printer: &Printer) -> Result<()> {
             "legacy_edge_ids_mapped": edges_mapped,
             "notes_remapped": notes_remapped,
             "list_props_converted": nodes_listified,
+            "layers_populated": layers_populated,
+            "legacy_domain_order_migrated": layer_order_migrated,
             "next_step": next_step,
         }));
     } else {
@@ -166,6 +206,8 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("  legacy edge ids mapped: {edges_mapped}");
         println!("  notes remapped:         {notes_remapped}");
         println!("  list props converted:   {nodes_listified}");
+        println!("  layers populated:       {layers_populated}");
+        println!("  legacy order migrated:  {layer_order_migrated}");
         println!("  → Next: {next_step}");
     }
     Ok(())
@@ -183,14 +225,12 @@ fn str_of(v: &Value) -> String {
 fn string_json_list(v: &Value, label: &str, id: &str, prop: &str) -> Result<Option<Vec<String>>> {
     match v {
         Value::String(s) if s.trim().is_empty() => Ok(Some(Vec::new())),
-        Value::String(s) => serde_json::from_str(s.as_ref())
-            .map(Some)
-            .with_context(|| {
-                format!(
-                    "Failed to parse pre-v5 JSON list for {label} node '{id}' property '{prop}'. \
+        Value::String(s) => serde_json::from_str(s.as_ref()).map(Some).with_context(|| {
+            format!(
+                "Failed to parse pre-v5 JSON list for {label} node '{id}' property '{prop}'. \
                      Fix the stored JSON string before running `loom migrate`."
-                )
-            }),
+            )
+        }),
         _ => Ok(None),
     }
 }

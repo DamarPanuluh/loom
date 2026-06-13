@@ -17,9 +17,9 @@ impl std::str::FromStr for AbstractionLevel {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> anyhow::Result<Self> {
         match s {
-            "feature"                    => Ok(Self::Feature),
-            "component"                  => Ok(Self::Component),
-            "system"                     => Ok(Self::System),
+            "feature" => Ok(Self::Feature),
+            "component" => Ok(Self::Component),
+            "system" => Ok(Self::System),
             "cross_cutting" | "cross-cutting" => Ok(Self::CrossCutting),
             other => anyhow::bail!(
                 "Unknown abstraction level '{}'. Valid: feature, component, system, cross_cutting",
@@ -32,9 +32,9 @@ impl std::str::FromStr for AbstractionLevel {
 impl std::fmt::Display for AbstractionLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Feature      => write!(f, "feature"),
-            Self::Component    => write!(f, "component"),
-            Self::System       => write!(f, "system"),
+            Self::Feature => write!(f, "feature"),
+            Self::Component => write!(f, "component"),
+            Self::System => write!(f, "system"),
             Self::CrossCutting => write!(f, "cross_cutting"),
         }
     }
@@ -53,8 +53,8 @@ pub enum IntentStatus {
 impl std::fmt::Display for IntentStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Proposed   => write!(f, "proposed"),
-            Self::Confirmed  => write!(f, "confirmed"),
+            Self::Proposed => write!(f, "proposed"),
+            Self::Confirmed => write!(f, "confirmed"),
             Self::Deprecated => write!(f, "deprecated"),
         }
     }
@@ -64,8 +64,8 @@ impl std::str::FromStr for IntentStatus {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> anyhow::Result<Self> {
         match s {
-            "proposed"   => Ok(Self::Proposed),
-            "confirmed"  => Ok(Self::Confirmed),
+            "proposed" => Ok(Self::Proposed),
+            "confirmed" => Ok(Self::Confirmed),
             "deprecated" => Ok(Self::Deprecated),
             other => anyhow::bail!(
                 "Unknown intent status '{}'. Valid: proposed, confirmed, deprecated",
@@ -99,9 +99,9 @@ impl InspectionStatus {
     /// Higher = more urgent. Used in priority scoring for `loom next`.
     pub fn urgency(&self) -> f64 {
         match self {
-            Self::Failing              => 4.0,
-            Self::NeedsReverification  => 3.0,
-            Self::Uninspected          => 2.0,
+            Self::Failing => 4.0,
+            Self::NeedsReverification => 3.0,
+            Self::Uninspected => 2.0,
             _ => 0.0,
         }
     }
@@ -110,11 +110,11 @@ impl InspectionStatus {
 impl std::fmt::Display for InspectionStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Uninspected          => write!(f, "uninspected"),
-            Self::Passing              => write!(f, "passing"),
-            Self::Failing              => write!(f, "failing"),
-            Self::Independent          => write!(f, "independent"),
-            Self::NeedsReverification  => write!(f, "needs_reverification"),
+            Self::Uninspected => write!(f, "uninspected"),
+            Self::Passing => write!(f, "passing"),
+            Self::Failing => write!(f, "failing"),
+            Self::Independent => write!(f, "independent"),
+            Self::NeedsReverification => write!(f, "needs_reverification"),
         }
     }
 }
@@ -156,11 +156,11 @@ pub enum ValidationType {
 impl std::fmt::Display for ValidationType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Test        => write!(f, "test"),
-            Self::Assertion   => write!(f, "assertion"),
-            Self::Benchmark   => write!(f, "benchmark"),
+            Self::Test => write!(f, "test"),
+            Self::Assertion => write!(f, "assertion"),
+            Self::Benchmark => write!(f, "benchmark"),
             Self::ManualCheck => write!(f, "manual_check"),
-            Self::Saga        => write!(f, "saga"),
+            Self::Saga => write!(f, "saga"),
         }
     }
 }
@@ -201,9 +201,9 @@ pub enum ValidationResult {
 impl std::fmt::Display for ValidationResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Passed  => write!(f, "passed"),
-            Self::Failed  => write!(f, "failed"),
-            Self::NotRun  => write!(f, "not_run"),
+            Self::Passed => write!(f, "passed"),
+            Self::Failed => write!(f, "failed"),
+            Self::NotRun => write!(f, "not_run"),
             Self::Blocked => write!(f, "blocked"),
         }
     }
@@ -213,8 +213,8 @@ impl std::str::FromStr for ValidationResult {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> anyhow::Result<Self> {
         match s {
-            "passed"  => Ok(Self::Passed),
-            "failed"  => Ok(Self::Failed),
+            "passed" => Ok(Self::Passed),
+            "failed" => Ok(Self::Failed),
             "not_run" => Ok(Self::NotRun),
             "blocked" => Ok(Self::Blocked),
             other => anyhow::bail!(
@@ -236,8 +236,6 @@ pub enum EdgeType {
     Implements,
     Governs,
     Validates,
-    Serves,
-    Journeys,
 }
 
 impl std::fmt::Display for EdgeType {
@@ -246,10 +244,8 @@ impl std::fmt::Display for EdgeType {
             Self::RelatesTo => write!(f, "RELATES_TO"),
             Self::Hierarchy => write!(f, "HIERARCHY"),
             Self::Implements => write!(f, "IMPLEMENTS"),
-            Self::Governs   => write!(f, "GOVERNS"),
+            Self::Governs => write!(f, "GOVERNS"),
             Self::Validates => write!(f, "VALIDATES"),
-            Self::Serves    => write!(f, "SERVES"),
-            Self::Journeys  => write!(f, "JOURNEYS"),
         }
     }
 }
@@ -269,7 +265,7 @@ impl std::fmt::Display for Severity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Warning => write!(f, "warning"),
-            Self::Error   => write!(f, "error"),
+            Self::Error => write!(f, "error"),
         }
     }
 }
@@ -279,7 +275,7 @@ impl std::str::FromStr for Severity {
     fn from_str(s: &str) -> anyhow::Result<Self> {
         match s {
             "warning" => Ok(Self::Warning),
-            "error"   => Ok(Self::Error),
+            "error" => Ok(Self::Error),
             other => anyhow::bail!("Unknown severity '{}'. Valid: warning, error", other),
         }
     }
@@ -316,13 +312,13 @@ impl std::fmt::Display for NoteKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             Self::Justification => "justification",
-            Self::Commentary    => "commentary",
-            Self::Idea          => "idea",
-            Self::Question      => "question",
-            Self::Decision      => "decision",
-            Self::Todo          => "todo",
-            Self::Transition    => "transition",
-            Self::Confirm       => "confirm",
+            Self::Commentary => "commentary",
+            Self::Idea => "idea",
+            Self::Question => "question",
+            Self::Decision => "decision",
+            Self::Todo => "todo",
+            Self::Transition => "transition",
+            Self::Confirm => "confirm",
         };
         write!(f, "{s}")
     }
@@ -415,12 +411,12 @@ pub enum HypothesisStatus {
 impl std::fmt::Display for HypothesisStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            Self::Proposed  => "proposed",
+            Self::Proposed => "proposed",
             Self::Supported => "supported",
-            Self::Refuted   => "refuted",
-            Self::Adopted   => "adopted",
+            Self::Refuted => "refuted",
+            Self::Adopted => "adopted",
             Self::Confirmed => "confirmed",
-            Self::Rejected  => "rejected",
+            Self::Rejected => "rejected",
         };
         write!(f, "{s}")
     }
@@ -455,7 +451,13 @@ pub struct Intent {
     pub name: String,
     pub description: String,
     pub abstraction_level: String,
+    /// Product/business facet for discovery and scoring (auth, billing,
+    /// onboarding, etc.). Not an architecture layer.
     pub domain: String,
+    /// Architecture layer used by `layering_violation` (presentation,
+    /// application, storage, etc.). Empty means undeclared/exempt.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub layer: String,
     /// File path strings (native list in the store as of schema v5).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub source_refs: Vec<String>,
@@ -904,6 +906,8 @@ pub struct IntentSurface {
     pub level: String,
     #[serde(skip_serializing_if = "domain_is_unknown")]
     pub domain: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub layer: String,
     pub status: String,
     pub lifecycle: String,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -922,9 +926,14 @@ impl From<&Intent> for IntentSurface {
             description: i.description.clone(),
             level: i.abstraction_level.clone(),
             domain: i.domain.clone(),
+            layer: i.layer.clone(),
             status: i.status.clone(),
             // "" reads as implemented everywhere (pre-lifecycle graphs).
-            lifecycle: if i.lifecycle.is_empty() { "implemented".into() } else { i.lifecycle.clone() },
+            lifecycle: if i.lifecycle.is_empty() {
+                "implemented".into()
+            } else {
+                i.lifecycle.clone()
+            },
             aspect: i.aspect.clone(),
             tags: i.tags.clone(),
             sources: i.source_refs.clone(),

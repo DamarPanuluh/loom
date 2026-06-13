@@ -114,20 +114,6 @@ pub fn list_serves_for_persona(db: &dyn LoomDb, persona_id: &str) -> Result<Vec<
     Ok(result.rows().iter().map(|row| row_to_serves(row, &cols)).collect())
 }
 
-pub fn list_serves_for_intent(db: &dyn LoomDb, intent_id: &str) -> Result<Vec<ServesEdge>> {
-    let q = format!(
-        "MATCH (p:Persona)-[r:SERVES]->(i:Intent {{id: '{iid}'}}) \
-         RETURN r.inspection_status, r.criterion, r.confidence, r.evidence, \
-                r.last_inspected, r.inspected_by, r.priority_score, r.notes, r.created_at, \
-                p.id AS persona_id, p.name AS persona_name, \
-                i.id AS intent_id, i.name AS intent_name",
-        iid = esc(intent_id),
-    );
-    let result = db.execute(&q)?;
-    let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_serves(row, &cols)).collect())
-}
-
 pub fn update_serves_ground(
     db: &dyn LoomDb,
     persona_id: &str,

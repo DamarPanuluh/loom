@@ -100,11 +100,11 @@ pub struct SmellReport {
     pub coded_intents: usize,
     pub tagged_coded_intents: usize,
     /// Blind-spot disclosure for `layering_violation`: the detector judges
-    /// imports against the DECLARED order only. `coded_domains` counts the
-    /// distinct non-empty domains across coded intents; `declared_layers` the
-    /// length of `loom domain order`. Domains in use with no declared order
+    /// imports against the DECLARED order only. `coded_layers` counts the
+    /// distinct non-empty layers across coded intents; `declared_layers` the
+    /// length of `loom layer order`. Layers in use with no declared order
     /// = the layering instrument is unarmed, and the report must say so.
-    pub coded_domains: usize,
+    pub coded_layers: usize,
     pub declared_layers: usize,
 }
 
@@ -156,10 +156,15 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         .map(|(path, ids)| (path.as_str(), ids.iter().map(|id| id.as_str()).collect()))
         .collect();
     for im in implements {
-        files_of.entry(im.intent_id.as_str()).or_default().insert(im.codefile_path.as_str());
+        files_of
+            .entry(im.intent_id.as_str())
+            .or_default()
+            .insert(im.codefile_path.as_str());
     }
-    let name_of: HashMap<&str, &str> =
-        intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
+    let name_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
     let toks: HashMap<&str, HashSet<String>> = discovery
         .tokens_by_intent
         .iter()
@@ -196,8 +201,11 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             *c = &im.created_at;
         }
     }
-    let cf_id_of: HashMap<&str, &str> =
-        snapshot.codefiles.iter().map(|cf| (cf.path.as_str(), cf.id.as_str())).collect();
+    let cf_id_of: HashMap<&str, &str> = snapshot
+        .codefiles
+        .iter()
+        .map(|cf| (cf.path.as_str(), cf.id.as_str()))
+        .collect();
     let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
     let mut roots: Vec<&crate::types::Intent> = intents
         .iter()
@@ -209,7 +217,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     // ruling note — suppressed findings surface WITH their ruling, never
     // silently.
     let adjudicated = |target: &str, anchor: &str| -> Option<&crate::types::Note> {
-        last_decision.get(target).filter(|n| n.created_at.as_str() > anchor).copied()
+        last_decision
+            .get(target)
+            .filter(|n| n.created_at.as_str() > anchor)
+            .copied()
     };
 
     let mut smells: Vec<Smell> = Vec::new();
@@ -301,7 +312,13 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if weight >= DUP_TAG_WEIGHT {
                 let term_detail = shared_terms
                     .iter()
-                    .map(|t| format!("'{}' ({} intents carry it)", t, discovery.tag_counts.get(t).copied().unwrap_or(1)))
+                    .map(|t| {
+                        format!(
+                            "'{}' ({} intents carry it)",
+                            t,
+                            discovery.tag_counts.get(t).copied().unwrap_or(1)
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
                 smells.push(Smell {
@@ -328,8 +345,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     .cloned()
                     .collect();
                 let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
-                if sim < DUP_UNTAGGED_SIMILARITY
-                    || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
+                if sim < DUP_UNTAGGED_SIMILARITY || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
                 {
                     continue;
                 }
@@ -411,7 +427,9 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         ruling: note.text.clone(),
                         ruled_by: note.author.clone(),
                         ruled_at: note.created_at.clone(),
-                        reopens_when: "a new or newly grounded untagged coded intent lands after the ruling".into(),
+                        reopens_when:
+                            "a new or newly grounded untagged coded intent lands after the ruling"
+                                .into(),
                     });
                 } else {
                     smells.push(Smell {
@@ -483,7 +501,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             // Adjudicated: a decision note on the intent newer than its newest
             // grounding says the spread is deliberate. A grounding added after
             // the decision re-opens the question.
-            if let Some(note) = adjudicated(i.id.as_str(), newest_grounding.get(i.id.as_str()).copied().unwrap_or("")) {
+            if let Some(note) = adjudicated(
+                i.id.as_str(),
+                newest_grounding.get(i.id.as_str()).copied().unwrap_or(""),
+            ) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "scattered_intent".into(),
                     summary: format!("'{}' is grounded in {} files", i.name, files.len()),
@@ -555,7 +576,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 });
                 continue;
             }
-            let mut names: Vec<&str> = distinct.iter().filter_map(|id| name_of.get(**id).copied()).collect();
+            let mut names: Vec<&str> = distinct
+                .iter()
+                .filter_map(|id| name_of.get(**id).copied())
+                .collect();
             names.sort();
             smells.push(Smell {
                 kind: "tangled_file".into(),
@@ -645,9 +669,13 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     {
         let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
         for cf in &snapshot.codefiles {
-            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
+            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+                continue;
+            };
             for target in &cf.imports {
-                let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
+                let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                    continue;
+                };
                 for a in owners_a {
                     for b in owners_b {
                         if a == b || linked.contains(&(*a, *b)) {
@@ -692,41 +720,48 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //     code owned by a LOWER layer imports code owned by a HIGHER layer.
     //     Direction always existed in the physical plane (imports are
     //     directed); what was missing is the normative input — a violation
-    //     only exists relative to a DECLARED order (`loom domain order`,
-    //     top layer first; undeclared domains are exempt). Crucially, a
+    //     only exists relative to a DECLARED order (`loom layer order`,
+    //     top layer first; undeclared layers are exempt). Crucially, a
     //     recorded RELATES_TO edge does NOT excuse direction: undeclared_
     //     coupling asks "is the contact declared?", this asks "does the
     //     dependency point the right way?" — independent questions.
     {
-        let layer_rank: HashMap<String, usize> = super::meta::get_domain_order(db)?
+        let layer_rank: HashMap<String, usize> = super::meta::get_layer_order(db)?
             .into_iter()
             .enumerate()
-            .map(|(rank, domain)| (domain, rank))
+            .map(|(rank, layer)| (layer, rank))
             .collect();
         if !layer_rank.is_empty() {
-            let domain_of: HashMap<&str, &str> =
-                intents.iter().map(|i| (i.id.as_str(), i.domain.as_str())).collect();
+            let layer_of: HashMap<&str, &str> = intents
+                .iter()
+                .map(|i| (i.id.as_str(), i.layer.as_str()))
+                .collect();
             // Ordered pair (lower importer, higher imported) → example imports.
             let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
             for cf in &snapshot.codefiles {
-                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else { continue };
+                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+                    continue;
+                };
                 for target in &cf.imports {
-                    let Some(owners_b) = intents_on_file.get(target.as_str()) else { continue };
+                    let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                        continue;
+                    };
                     for a in owners_a {
                         for b in owners_b {
                             let (Some(&ra), Some(&rb)) = (
-                                domain_of.get(*a).and_then(|d| layer_rank.get(*d)),
-                                domain_of.get(*b).and_then(|d| layer_rank.get(*d)),
+                                layer_of.get(*a).and_then(|d| layer_rank.get(*d)),
+                                layer_of.get(*b).and_then(|d| layer_rank.get(*d)),
                             ) else {
-                                continue; // undeclared domain — exempt
+                                continue; // undeclared layer — exempt
                             };
                             // Bigger rank = deeper layer; flag deep → shallow.
                             if a == b || ra <= rb {
                                 continue;
                             }
                             let example = format!("{} → {}", cf.path, target);
-                            let entry =
-                                pair_files.entry((a.to_string(), b.to_string())).or_default();
+                            let entry = pair_files
+                                .entry((a.to_string(), b.to_string()))
+                                .or_default();
                             if !entry.contains(&example) {
                                 entry.push(example);
                             }
@@ -740,15 +775,16 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                     name_of.get(b.as_str()).copied().unwrap_or(&b),
                 );
                 let (da, db_) = (
-                    domain_of.get(a.as_str()).copied().unwrap_or(""),
-                    domain_of.get(b.as_str()).copied().unwrap_or(""),
+                    layer_of.get(a.as_str()).copied().unwrap_or(""),
+                    layer_of.get(b.as_str()).copied().unwrap_or(""),
                 );
                 // Adjudicated: a decision note on the IMPORTING (lower)
                 // intent newer than its newest grounding says the
                 // up-dependency is deliberate; a new grounding re-opens it.
-                if let Some(note) =
-                    adjudicated(a.as_str(), newest_grounding.get(a.as_str()).copied().unwrap_or(""))
-                {
+                if let Some(note) = adjudicated(
+                    a.as_str(),
+                    newest_grounding.get(a.as_str()).copied().unwrap_or(""),
+                ) {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "layering_violation".into(),
                         summary: format!(
@@ -768,11 +804,11 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
                     ),
                     evidence: format!(
-                        "`loom domain order` puts '{da}' below '{db_}', but the dependency points UP: {} (a recorded relationship does not excuse direction)",
+                        "`loom layer order` puts '{da}' below '{db_}', but the dependency points UP: {} (a recorded relationship does not excuse direction)",
                         examples.join(", ")
                     ),
                     remedy: format!(
-                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom domain order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
+                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
                     ),
                 });
             }
@@ -809,7 +845,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 m.insert(e.id.as_str(), format!("{} × {}", e.from_name, e.to_name));
             }
             for g in governs {
-                m.insert(g.id.as_str(), format!("{} → {}", g.rule_name, g.intent_name));
+                m.insert(
+                    g.id.as_str(),
+                    format!("{} → {}", g.rule_name, g.intent_name),
+                );
             }
             m
         };
@@ -820,7 +859,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             let label = if kind == "intent" {
                 name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
             } else {
-                edge_label.get(id.as_str()).cloned().unwrap_or_else(|| id.clone())
+                edge_label
+                    .get(id.as_str())
+                    .cloned()
+                    .unwrap_or_else(|| id.clone())
             };
             // The last regression: guaranteed present (filled in the same
             // pass that counted `trouble`); doubles as the adjudication
@@ -838,7 +880,8 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                         ruling: d.text.clone(),
                         ruled_by: d.author.clone(),
                         ruled_at: d.created_at.clone(),
-                        reopens_when: "another failing/needs_change transition lands after the ruling".into(),
+                        reopens_when:
+                            "another failing/needs_change transition lands after the ruling".into(),
                     });
                     continue;
                 }
@@ -888,11 +931,16 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             .map(|e| e.intent_id.as_str())
             .collect();
         for (p, c) in hierarchy {
-            let Some(child) = by_id.get(c.as_str()) else { continue };
+            let Some(child) = by_id.get(c.as_str()) else {
+                continue;
+            };
             if child.aspect.is_empty() {
                 continue;
             }
-            child_aspects.entry(p.as_str()).or_default().insert(child.aspect.as_str());
+            child_aspects
+                .entry(p.as_str())
+                .or_default()
+                .insert(child.aspect.as_str());
             if matches!(child.aspect.as_str(), "sad" | "fallback")
                 && child.lifecycle == "implemented"
                 && files_of.contains_key(child.id.as_str())
@@ -925,10 +973,17 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             // aspect-carrying child records why the missing path is N/A. A new
             // aspect-tagged child re-opens the question.
             let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
-            if let Some(note) = adjudicated(parent_id, newest_aspect_child.get(parent_id).copied().unwrap_or("")) {
+            if let Some(note) = adjudicated(
+                parent_id,
+                newest_aspect_child.get(parent_id).copied().unwrap_or(""),
+            ) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "happy_path_only".into(),
-                    summary: format!("'{}' declares a happy path but no realized+proven {} behavior", pname, missing.join("/")),
+                    summary: format!(
+                        "'{}' declares a happy path but no realized+proven {} behavior",
+                        pname,
+                        missing.join("/")
+                    ),
                     ruling: note.text.clone(),
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
@@ -1102,8 +1157,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             if !candidates.is_empty() {
                 // The aggregate target: the system root (or any root) — "this
                 // product has no consumer surface" is a claim about the root.
-                let is_child: HashSet<&str> =
-                    hierarchy.iter().map(|(_, c)| c.as_str()).collect();
+                let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
                 let mut roots: Vec<&crate::types::Intent> = intents
                     .iter()
                     .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
@@ -1155,7 +1209,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 if let Some(note) = adjudicated(i.id.as_str(), i.updated_at.as_str()) {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "unjourneyed_surface".into(),
-                        summary: format!("'{}' is user_visible but no journey exercises it", i.name),
+                        summary: format!(
+                            "'{}' is user_visible but no journey exercises it",
+                            i.name
+                        ),
                         ruling: note.text.clone(),
                         ruled_by: note.author.clone(),
                         ruled_at: note.created_at.clone(),
@@ -1192,31 +1249,41 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             .then_with(|| a.evidence.cmp(&b.evidence))
             .then_with(|| a.remedy.cmp(&b.remedy))
     });
-    adjudicated_out.sort_by(|a, b| a.ruled_at.cmp(&b.ruled_at).then_with(|| a.summary.cmp(&b.summary)));
+    adjudicated_out.sort_by(|a, b| {
+        a.ruled_at
+            .cmp(&b.ruled_at)
+            .then_with(|| a.summary.cmp(&b.summary))
+    });
     // The instrument's own coverage: registered tags are the strongest
     // duplicated_responsibility signal, so the report carries how much of the
     // coded surface has that high-signal coverage.
-    let coded_intents = intents.iter().filter(|i| files_of.contains_key(i.id.as_str())).count();
+    let coded_intents = intents
+        .iter()
+        .filter(|i| files_of.contains_key(i.id.as_str()))
+        .count();
     let tagged_coded_intents = intents
         .iter()
         .filter(|i| {
             files_of.contains_key(i.id.as_str())
-                && discovery.tags_by_intent.get(i.id.as_str()).is_some_and(|t| !t.is_empty())
+                && discovery
+                    .tags_by_intent
+                    .get(i.id.as_str())
+                    .is_some_and(|t| !t.is_empty())
         })
         .count();
-    let coded_domains = intents
+    let coded_layers = intents
         .iter()
-        .filter(|i| files_of.contains_key(i.id.as_str()) && !i.domain.is_empty())
-        .map(|i| i.domain.as_str())
+        .filter(|i| files_of.contains_key(i.id.as_str()) && !i.layer.is_empty())
+        .map(|i| i.layer.as_str())
         .collect::<HashSet<_>>()
         .len();
-    let declared_layers = super::meta::get_domain_order(db)?.len();
+    let declared_layers = super::meta::get_layer_order(db)?.len();
     Ok(SmellReport {
         open: smells,
         adjudicated: adjudicated_out,
         coded_intents,
         tagged_coded_intents,
-        coded_domains,
+        coded_layers,
         declared_layers,
     })
 }

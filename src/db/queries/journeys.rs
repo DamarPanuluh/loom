@@ -58,29 +58,6 @@ pub fn list_journeys_for_persona(db: &dyn LoomDb, persona_id: &str) -> Result<Ve
     Ok(result.rows().iter().map(|row| row_to_journeys(row, &cols)).collect())
 }
 
-pub fn list_journeys_for_validation(db: &dyn LoomDb, validation_id: &str) -> Result<Vec<JourneysEdge>> {
-    let q = format!(
-        "MATCH (p:Persona)-[r:JOURNEYS]->(v:Validation {{id: '{vid}'}}) \
-         RETURN r.notes, r.created_at, \
-                p.id AS persona_id, p.name AS persona_name, \
-                v.id AS validation_id, v.name AS validation_name",
-        vid = esc(validation_id),
-    );
-    let result = db.execute(&q)?;
-    let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_journeys(row, &cols)).collect())
-}
-
-pub fn list_all_journeys(db: &dyn LoomDb) -> Result<Vec<JourneysEdge>> {
-    let q = "MATCH (p:Persona)-[r:JOURNEYS]->(v:Validation) \
-             RETURN r.notes, r.created_at, \
-                    p.id AS persona_id, p.name AS persona_name, \
-                    v.id AS validation_id, v.name AS validation_name";
-    let result = db.execute(q)?;
-    let cols = col_map(&result);
-    Ok(result.rows().iter().map(|row| row_to_journeys(row, &cols)).collect())
-}
-
 fn row_to_journeys(row: &[Value], cols: &HashMap<&str, usize>) -> JourneysEdge {
     let persona_id     = str_val(get(row, cols, "persona_id"));
     let validation_id  = str_val(get(row, cols, "validation_id"));

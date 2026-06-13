@@ -86,6 +86,7 @@ mod tests {
             description:       "d".to_string(),
             abstraction_level: "feature".to_string(),
             domain:            "test".to_string(),
+            layer:             String::new(),
             source_refs:       Vec::new(),
             status:            "proposed".to_string(),
             aspect:            String::new(),
@@ -821,6 +822,7 @@ mod tests {
         insert_intent(&db, &a).unwrap();
         let mut b = intent("b", "beta surface");
         b.domain = "storage".into(); // helper default is "test" → two coded domains
+        b.layer = "storage".into();
         insert_intent(&db, &b).unwrap();
         insert_intent(&db, &intent("c", "gamma uncoded")).unwrap(); // no code → outside the pair-space
         insert_codefile(&db, &codefile("cfa", "src/a.rs")).unwrap();
@@ -831,10 +833,10 @@ mod tests {
         let report = compute_smells(&db).unwrap();
         assert_eq!(report.coded_intents, 2, "only intents with IMPLEMENTS count");
         assert_eq!(report.tagged_coded_intents, 1, "only the tagged coded intent counts");
-        assert_eq!(report.coded_domains, 2, "distinct domains across coded intents");
+        assert_eq!(report.coded_layers, 1, "distinct layers across coded intents");
         assert_eq!(report.declared_layers, 0, "no order declared yet");
 
-        set_domain_order(&db, &["test".into(), "storage".into()]).unwrap();
+        set_layer_order(&db, &["presentation".into(), "storage".into()]).unwrap();
         let report = compute_smells(&db).unwrap();
         assert_eq!(report.declared_layers, 2, "the report reflects the armed instrument");
     }
@@ -2786,19 +2788,19 @@ mod tests {
     /// The declared layer order is one atomic list on the meta sentinel:
     /// empty until declared, replaced whole, cleared with `&[]`.
     #[test]
-    fn domain_order_round_trip_replace_and_clear() {
+    fn layer_order_round_trip_replace_and_clear() {
         let (db, _) = db_inited(0);
-        assert!(get_domain_order(&db).unwrap().is_empty(), "fresh graph has no order");
-        set_domain_order(&db, &["cli".into(), "app".into(), "db".into()]).unwrap();
-        assert_eq!(get_domain_order(&db).unwrap(), vec!["cli", "app", "db"]);
-        set_domain_order(&db, &["ui".into(), "core".into()]).unwrap();
-        assert_eq!(get_domain_order(&db).unwrap(), vec!["ui", "core"], "order replaces whole");
-        set_domain_order(&db, &[]).unwrap();
-        assert!(get_domain_order(&db).unwrap().is_empty(), "clear empties the order");
+        assert!(get_layer_order(&db).unwrap().is_empty(), "fresh graph has no order");
+        set_layer_order(&db, &["cli".into(), "app".into(), "db".into()]).unwrap();
+        assert_eq!(get_layer_order(&db).unwrap(), vec!["cli", "app", "db"]);
+        set_layer_order(&db, &["ui".into(), "core".into()]).unwrap();
+        assert_eq!(get_layer_order(&db).unwrap(), vec!["ui", "core"], "order replaces whole");
+        set_layer_order(&db, &[]).unwrap();
+        assert!(get_layer_order(&db).unwrap().is_empty(), "clear empties the order");
     }
 
     /// Layering: an import pointing UP the declared order is flagged; down
-    /// imports, undeclared domains, and no-order graphs are silent. A recorded
+    /// imports, undeclared layers, and no-order graphs are silent. A recorded
     /// RELATES_TO edge does NOT excuse direction (that is the whole point —
     /// undeclared_coupling asks "declared?", this asks "right way?"). The
     /// terminal state is a decision note on the importing intent newer than
@@ -2807,13 +2809,16 @@ mod tests {
     fn layering_violation_flags_imports_up_the_declared_order() {
         let (db, _) = db_inited(0);
         let mut ui = intent("ui", "panel rendering");
-        ui.domain = "presentation".into();
+        ui.domain = "product-ui".into();
+        ui.layer = "presentation".into();
         insert_intent(&db, &ui).unwrap();
         let mut infra = intent("infra", "storage adapters");
-        infra.domain = "storage".into();
+        infra.domain = "persistence".into();
+        infra.layer = "storage".into();
         insert_intent(&db, &infra).unwrap();
         let mut misc = intent("misc", "scratch tools");
-        misc.domain = "tools".into(); // never declared in the order
+        misc.domain = "tools".into();
+        misc.layer = "tools".into(); // never declared in the order
         insert_intent(&db, &misc).unwrap();
         insert_codefile(&db, &codefile("cfu", "src/ui.rs")).unwrap();
         insert_codefile(&db, &codefile("cfi", "src/infra.rs")).unwrap();
@@ -2830,7 +2835,7 @@ mod tests {
         };
         assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "no order declared → silent");
 
-        set_domain_order(&db, &["presentation".into(), "storage".into()]).unwrap();
+        set_layer_order(&db, &["presentation".into(), "storage".into()]).unwrap();
         let report = compute_smells(&db).unwrap();
         assert_eq!(lv(&report), 1, "only the up-import is flagged: {:?}", report.open);
         let s = report.open.iter().find(|s| s.kind == "layering_violation").unwrap();
@@ -2858,41 +2863,95 @@ mod tests {
         insert_implements(&db, "infra", "cfi2", "", "", "t3").unwrap();
         assert_eq!(lv(&compute_smells(&db).unwrap()), 1, "a new grounding must re-open it");
 
-        set_domain_order(&db, &[]).unwrap();
+        set_layer_order(&db, &[]).unwrap();
         assert_eq!(lv(&compute_smells(&db).unwrap()), 0, "clearing the order silences it");
+    }
+
+    #[test]
+    fn product_domain_order_does_not_arm_layering_violation() {
+        let (db, _) = db_inited(0);
+        let mut ui = intent("ui", "panel rendering");
+        ui.domain = "presentation".into();
+        insert_intent(&db, &ui).unwrap();
+        let mut infra = intent("infra", "storage adapters");
+        infra.domain = "storage".into();
+        insert_intent(&db, &infra).unwrap();
+        insert_codefile(&db, &codefile("cfu", "src/ui.rs")).unwrap();
+        insert_codefile(&db, &codefile("cfi", "src/infra.rs")).unwrap();
+        insert_implements(&db, "ui", "cfu", "", "", "t").unwrap();
+        insert_implements(&db, "infra", "cfi", "", "", "t").unwrap();
+        update_codefile_imports(&db, "cfi", &["src/ui.rs".to_string()]).unwrap();
+
+        set_layer_order(&db, &["presentation".into(), "storage".into()]).unwrap();
+        let report = compute_smells(&db).unwrap();
+        assert!(
+            report.open.iter().all(|s| s.kind != "layering_violation"),
+            "product domain labels alone must not arm layering: {:?}",
+            report.open
+        );
     }
 
     /// The declared order travels: in restores AND in ports (it is design,
     /// not evidence earned against old code); absent on older exports.
     #[test]
-    fn domain_order_travels_in_export_and_ports() {
+    fn layer_order_travels_in_export_and_ports() {
         let (db, _) = db_inited(1);
-        set_domain_order(&db, &["app".into(), "db".into()]).unwrap();
+        set_layer_order(&db, &["app".into(), "db".into()]).unwrap();
         let export = export_graph(&db).unwrap();
-        assert_eq!(export["domain_order"], serde_json::json!(["app", "db"]));
+        assert_eq!(export["layer_order"], serde_json::json!(["app", "db"]));
 
         let db2 = GrafeoDb::in_memory();
         db2.execute(&crate::db::schema::insert_meta(
             crate::db::schema::SCHEMA_VERSION, "t", "g-2", "two", "owned",
         )).unwrap();
         import_graph(&db2, &export, false).unwrap();
-        assert_eq!(get_domain_order(&db2).unwrap(), vec!["app", "db"], "restore adopts the order");
+        assert_eq!(get_layer_order(&db2).unwrap(), vec!["app", "db"], "restore adopts the order");
 
         let db3 = GrafeoDb::in_memory();
         db3.execute(&crate::db::schema::insert_meta(
             crate::db::schema::SCHEMA_VERSION, "t", "g-3", "three", "owned",
         )).unwrap();
         import_graph(&db3, &export, true).unwrap();
-        assert_eq!(get_domain_order(&db3).unwrap(), vec!["app", "db"], "a port keeps the design");
+        assert_eq!(get_layer_order(&db3).unwrap(), vec!["app", "db"], "a port keeps the design");
 
         let mut old = export.clone();
-        old.as_object_mut().unwrap().remove("domain_order");
+        old.as_object_mut().unwrap().remove("layer_order");
         let db4 = GrafeoDb::in_memory();
         db4.execute(&crate::db::schema::insert_meta(
             crate::db::schema::SCHEMA_VERSION, "t", "g-4", "four", "owned",
         )).unwrap();
         import_graph(&db4, &old, false).unwrap();
-        assert!(get_domain_order(&db4).unwrap().is_empty(), "older exports read as no order");
+        assert!(get_layer_order(&db4).unwrap().is_empty(), "older exports read as no order");
+    }
+
+    #[test]
+    fn v5_export_domain_order_imports_as_layer_order_and_layers() {
+        let (db, ids) = db_inited(1);
+        let id = ids[0].clone();
+        let now = "t1";
+        db.execute("MATCH (n:Intent) SET n.domain = 'storage', n.layer = ''").unwrap();
+        let mut export = export_graph(&db).unwrap();
+        let obj = export.as_object_mut().unwrap();
+        obj.insert("schema_version".into(), serde_json::json!("5"));
+        obj.remove("layer_order");
+        obj.insert("domain_order".into(), serde_json::json!(["presentation", "storage"]));
+        for intent in obj["nodes"]["Intent"].as_array_mut().unwrap() {
+            intent.as_object_mut().unwrap().remove("layer");
+        }
+
+        let db2 = GrafeoDb::in_memory();
+        db2.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION, now, "g-legacy", "legacy", "owned",
+        )).unwrap();
+        import_graph(&db2, &export, false).unwrap();
+        assert_eq!(
+            get_layer_order(&db2).unwrap(),
+            vec!["presentation", "storage"],
+            "legacy domain_order becomes canonical layer_order"
+        );
+        let imported = get_intent(&db2, &id).unwrap().unwrap();
+        assert_eq!(imported.domain, "storage", "product domain is preserved");
+        assert_eq!(imported.layer, "storage", "v5 domain copies into layer only when domain_order proved layer semantics");
     }
 
     #[test]
@@ -3110,6 +3169,7 @@ mod escaping {
     fn mk(id: &str, desc: &str) -> Intent {
         Intent { id: id.into(), name: "n".into(), description: desc.into(),
             abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
+            layer: String::new(),
             status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
             visibility: String::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into() }

@@ -33,9 +33,9 @@ const DESC_WEIGHT: f64 = 1.0;
 /// drop stop words and single chars) so a future switch to the engine index
 /// would not change what matches.
 const STOPWORDS: &[&str] = &[
-    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
-    "has", "have", "in", "is", "it", "its", "no", "not", "of", "on", "or",
-    "that", "the", "this", "to", "was", "were", "will", "with",
+    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "has", "have", "in",
+    "is", "it", "its", "no", "not", "of", "on", "or", "that", "the", "this", "to", "was", "were",
+    "will", "with",
 ];
 
 /// Shared with `loom door`'s cross-plane matchers — one tokenizer, one
@@ -66,8 +66,8 @@ pub struct FindHit {
     pub stale_edges: usize,
 }
 
-/// BM25 over active intents' names and descriptions (+ domain, folded into
-/// the description field). Returns at most `limit` hits with score > 0,
+/// BM25 over active intents' names and descriptions (+ domain/layer, folded
+/// into the description field). Returns at most `limit` hits with score > 0,
 /// ranked descending; ties break on name for deterministic output.
 pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<FindHit>> {
     let terms = tokenize(query);
@@ -86,7 +86,7 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
         .iter()
         .map(|i| {
             let name = tokenize(&i.name);
-            let desc = tokenize(&format!("{} {}", i.description, i.domain));
+            let desc = tokenize(&format!("{} {} {}", i.description, i.domain, i.layer));
             (name, desc)
         })
         .collect();
@@ -112,8 +112,14 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
     let dfs: Vec<(usize, usize)> = terms
         .iter()
         .map(|term| {
-            let df_name = docs.iter().filter(|d| d.0.iter().any(|t| t == term)).count();
-            let df_desc = docs.iter().filter(|d| d.1.iter().any(|t| t == term)).count();
+            let df_name = docs
+                .iter()
+                .filter(|d| d.0.iter().any(|t| t == term))
+                .count();
+            let df_desc = docs
+                .iter()
+                .filter(|d| d.1.iter().any(|t| t == term))
+                .count();
             (df_name, df_desc)
         })
         .collect();
@@ -141,8 +147,10 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<Vec<Fi
         .into_iter()
         .map(|(p, c)| (c, p))
         .collect();
-    let name_of: std::collections::HashMap<&str, &str> =
-        intents.iter().map(|i| (i.id.as_str(), i.name.as_str())).collect();
+    let name_of: std::collections::HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
 
     let mut hits = Vec::with_capacity(scored.len());
     for (score, intent) in scored {
@@ -237,14 +245,16 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
             return Vec::new();
         }
         let toks = tokenize(text);
-        let mut hit: Vec<String> =
-            terms.iter().filter(|t| toks.contains(t)).cloned().collect();
+        let mut hit: Vec<String> = terms.iter().filter(|t| toks.contains(t)).cloned().collect();
         hit.dedup();
         hit
     };
     let rank = |mut hits: Vec<PlaneHit>| -> Vec<PlaneHit> {
         hits.sort_by(|a, b| {
-            b.matched.len().cmp(&a.matched.len()).then_with(|| a.name.cmp(&b.name))
+            b.matched
+                .len()
+                .cmp(&a.matched.len())
+                .then_with(|| a.name.cmp(&b.name))
         });
         hits.truncate(limit);
         hits
@@ -296,5 +306,9 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
             .collect(),
     );
 
-    Ok(DoorMatches { vocab, sagas, rules })
+    Ok(DoorMatches {
+        vocab,
+        sagas,
+        rules,
+    })
 }

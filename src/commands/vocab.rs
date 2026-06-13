@@ -257,6 +257,7 @@ mod tests {
         insert_intent(&db, &Intent {
             id: "i0".into(), name: "n".into(), description: "d".into(),
             abstraction_level: "feature".into(), domain: "d".into(), source_refs: Vec::new(),
+            layer: String::new(),
             status: "proposed".into(), aspect: String::new(), tags: Vec::new(),
             visibility: String::new(),
             lifecycle: "implemented".into(), created_at: "t".into(), updated_at: "t".into(),

@@ -59,7 +59,12 @@
 /// edge): additive — older graphs simply have no personas; older exports import
 /// with empty persona sections; `loom doctor` only checks declared required
 /// properties, so a graph with no Persona nodes passes unchanged.
-pub const SCHEMA_VERSION: &str = "5";
+///
+/// v6: product `Intent.domain` and architecture `Intent.layer` are separate.
+/// `layering_violation` now reads `Intent.layer` against LoomMeta.layer_order;
+/// the old LoomMeta.domain_order is accepted only as legacy migration/import
+/// input. Product domain remains discovery/search/scoring metadata.
+pub const SCHEMA_VERSION: &str = "6";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
 /// LLM knows which fields are lists (native since v5) or numbers without
@@ -232,6 +237,7 @@ pub mod prop {
     // Intent
     pub const ABSTRACTION_LEVEL: &str = "abstraction_level";
     pub const DOMAIN: &str = "domain";
+    pub const LAYER: &str = "layer";
     pub const SOURCE_REFS: &str = "source_refs";
     pub const STATUS: &str = "status";
     /// Intent: behavioural facet for completeness — happy | sad | fallback | …
@@ -324,13 +330,16 @@ pub mod prop {
     /// "owned" (we can change this code) | "observed" (mapping someone else's
     /// code: build/fix lanes are disabled — findings, not fixes).
     pub const CUSTODY: &str = "custody";
-    /// LoomMeta: the declared domain layer order, top layer first (native
-    /// list; absent/empty = no order declared). The normative input the
+    /// LoomMeta: legacy name for the declared layer order, kept only for
+    /// v5 migration/import compatibility. New graphs write `layer_order`.
+    pub const DOMAIN_ORDER: &str = "domain_order";
+    /// LoomMeta: the declared architecture layer order, top layer first
+    /// (native list; absent/empty = no order declared). The normative input the
     /// `layering_violation` smell judges the import graph against — imports
     /// are directed facts, but a violation only exists relative to a declared
     /// order. Additive — NOT in the required-property table (absent on older
     /// graphs; travels in exports as a top-level field).
-    pub const DOMAIN_ORDER: &str = "domain_order";
+    pub const LAYER_ORDER: &str = "layer_order";
 }
 
 // ---------------------------------------------------------------------------
@@ -350,59 +359,103 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
     use role::*;
     match label {
         self::label::INTENT => &[
-            (ID, LOOM), (NAME, BUILDER), (DESCRIPTION, BUILDER),
-            (ABSTRACTION_LEVEL, BUILDER), (DOMAIN, BUILDER), (SOURCE_REFS, BUILDER),
-            (STATUS, VALIDATOR), (ASPECT, BUILDER), (LIFECYCLE, BUILDER),
-            (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+            (ID, LOOM),
+            (NAME, BUILDER),
+            (DESCRIPTION, BUILDER),
+            (ABSTRACTION_LEVEL, BUILDER),
+            (DOMAIN, BUILDER),
+            (LAYER, BUILDER),
+            (SOURCE_REFS, BUILDER),
+            (STATUS, VALIDATOR),
+            (ASPECT, BUILDER),
+            (LIFECYCLE, BUILDER),
+            (CREATED_AT, LOOM),
+            (UPDATED_AT, LOOM),
         ],
         self::label::CODE_FILE => &[
-            (ID, LOOM), (PATH, BUILDER), (LANGUAGE, LOOM), (LAST_MODIFIED, LOOM),
+            (ID, LOOM),
+            (PATH, BUILDER),
+            (LANGUAGE, LOOM),
+            (LAST_MODIFIED, LOOM),
         ],
         self::label::QUALITY_RULE => &[
-            (ID, LOOM), (NAME, QUALITY), (DESCRIPTION, QUALITY),
-            (DETECTION_LOGIC, QUALITY), (SEVERITY, QUALITY),
+            (ID, LOOM),
+            (NAME, QUALITY),
+            (DESCRIPTION, QUALITY),
+            (DETECTION_LOGIC, QUALITY),
+            (SEVERITY, QUALITY),
         ],
         self::label::VALIDATION => &[
-            (ID, LOOM), (NAME, BUILDER), (DESCRIPTION, BUILDER),
-            (VALIDATION_TYPE, BUILDER), (COMMAND, BUILDER),
-            (LAST_RUN, VALIDATOR), (LAST_RESULT, VALIDATOR),
+            (ID, LOOM),
+            (NAME, BUILDER),
+            (DESCRIPTION, BUILDER),
+            (VALIDATION_TYPE, BUILDER),
+            (COMMAND, BUILDER),
+            (LAST_RUN, VALIDATOR),
+            (LAST_RESULT, VALIDATOR),
         ],
         self::label::NOTE => &[
-            (ID, LOOM), (KIND, ANY), (TEXT, ANY), (AUTHOR, ANY),
-            (TARGET_KIND, ANY), (TARGET_ID, ANY), (CREATED_AT, LOOM),
+            (ID, LOOM),
+            (KIND, ANY),
+            (TEXT, ANY),
+            (AUTHOR, ANY),
+            (TARGET_KIND, ANY),
+            (TARGET_ID, ANY),
+            (CREATED_AT, LOOM),
         ],
         // Note also carries an OPTIONAL `audience` ("" | a role name): a note
         // addressed to a specific lane — the directed-handoff channel. Not in
         // the required table (additive; absent on notes from older graphs).
         self::label::IGNORE => &[
-            (ID, LOOM), (PATTERN, BUILDER), (REASON, BUILDER),
-            (AUTHOR, ANY), (CREATED_AT, LOOM),
+            (ID, LOOM),
+            (PATTERN, BUILDER),
+            (REASON, BUILDER),
+            (AUTHOR, ANY),
+            (CREATED_AT, LOOM),
         ],
         self::label::DELEGATION => &[
-            (ID, LOOM), (PATTERN, BUILDER), (TARGET, BUILDER),
-            (AUTHOR, ANY), (CREATED_AT, LOOM),
+            (ID, LOOM),
+            (PATTERN, BUILDER),
+            (TARGET, BUILDER),
+            (AUTHOR, ANY),
+            (CREATED_AT, LOOM),
         ],
         // Anyone may PROPOSE (claim/proposal/predicted_outcome are `any`);
         // the proof verdict (status + evidence + provenance) is analyzer work,
         // and the prover may not be the proposer (enforced at the command).
         self::label::HYPOTHESIS => &[
-            (ID, LOOM), (NAME, ANY), (CLAIM, ANY), (PROPOSAL, ANY),
-            (PREDICTED_OUTCOME, ANY), (STATUS, ANALYZER), (AUTHOR, ANY),
-            (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
-            (INSPECTED_BY, ANALYZER), (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+            (ID, LOOM),
+            (NAME, ANY),
+            (CLAIM, ANY),
+            (PROPOSAL, ANY),
+            (PREDICTED_OUTCOME, ANY),
+            (STATUS, ANALYZER),
+            (AUTHOR, ANY),
+            (EVIDENCE, ANALYZER),
+            (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER),
+            (CREATED_AT, LOOM),
+            (UPDATED_AT, LOOM),
         ],
         // The bounded tag vocabulary. `name` is the term (the key intents
         // reference in `tags`); `description` is the contrastive definition an
         // agent disambiguates by when picking from the inlined list.
         self::label::VOCAB_TERM => &[
-            (ID, LOOM), (NAME, ANY), (DESCRIPTION, ANY),
-            (AUTHOR, ANY), (CREATED_AT, LOOM),
+            (ID, LOOM),
+            (NAME, ANY),
+            (DESCRIPTION, ANY),
+            (AUTHOR, ANY),
+            (CREATED_AT, LOOM),
         ],
         // A user persona: a named audience segment. Connects to intents via
         // SERVES (inspectable) and to saga Validations via JOURNEYS (structural).
         self::label::PERSONA => &[
-            (ID, LOOM), (NAME, BUILDER), (DESCRIPTION, BUILDER),
-            (AUTHOR, ANY), (CREATED_AT, LOOM), (UPDATED_AT, LOOM),
+            (ID, LOOM),
+            (NAME, BUILDER),
+            (DESCRIPTION, BUILDER),
+            (AUTHOR, ANY),
+            (CREATED_AT, LOOM),
+            (UPDATED_AT, LOOM),
         ],
         _ => &[],
     }
@@ -414,36 +467,58 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
     use role::*;
     match edge {
         self::edge::RELATES_TO => &[
-            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
-            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
-            (INSPECTED_BY, ANALYZER), (PRIORITY_SCORE, LOOM), (NOTES, ANY),
+            (INSPECTION_STATUS, ANALYZER),
+            (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER),
+            (EVIDENCE, ANALYZER),
+            (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER),
+            (PRIORITY_SCORE, LOOM),
+            (NOTES, ANY),
             (CREATED_AT, LOOM),
         ],
         // HIERARCHY is a structural tree edge, enforced at insert — it is never
         // "inspected", so it carries no inspection_status (dropped in v3).
         self::edge::HIERARCHY => &[(NOTES, ANY), (CREATED_AT, LOOM)],
         self::edge::IMPLEMENTS => &[
-            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
-            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
-            (INSPECTED_BY, ANALYZER), (LOCATOR, BUILDER), (NOTES, ANY),
+            (INSPECTION_STATUS, ANALYZER),
+            (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER),
+            (EVIDENCE, ANALYZER),
+            (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER),
+            (LOCATOR, BUILDER),
+            (NOTES, ANY),
             (CREATED_AT, LOOM),
         ],
         self::edge::GOVERNS => &[
-            (INSPECTION_STATUS, QUALITY), (CRITERION, QUALITY),
-            (CONFIDENCE, QUALITY), (EVIDENCE, QUALITY), (LAST_INSPECTED, QUALITY),
-            (INSPECTED_BY, QUALITY), (NOTES, ANY), (CREATED_AT, LOOM),
+            (INSPECTION_STATUS, QUALITY),
+            (CRITERION, QUALITY),
+            (CONFIDENCE, QUALITY),
+            (EVIDENCE, QUALITY),
+            (LAST_INSPECTED, QUALITY),
+            (INSPECTED_BY, QUALITY),
+            (NOTES, ANY),
+            (CREATED_AT, LOOM),
         ],
         // VALIDATES.inspection_status is the per-intent proof verdict (distinct
         // from the Validation node's last_result, which is its last execution —
         // a node is reusable across intents). Owned by the validator.
         self::edge::VALIDATES => &[
-            (INSPECTION_STATUS, VALIDATOR), (NOTES, ANY), (CREATED_AT, LOOM),
+            (INSPECTION_STATUS, VALIDATOR),
+            (NOTES, ANY),
+            (CREATED_AT, LOOM),
         ],
         // TARGETS mirrors GOVERNS: a claim about code, inspectable + sync-stale-able.
         self::edge::TARGETS => &[
-            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
-            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
-            (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
+            (INSPECTION_STATUS, ANALYZER),
+            (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER),
+            (EVIDENCE, ANALYZER),
+            (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER),
+            (NOTES, ANY),
+            (CREATED_AT, LOOM),
         ],
         // SERVES: Persona → Intent. Inspectable — "this intent serves this
         // persona" is a claim that must be verified against actual behavior.
@@ -451,9 +526,14 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
         // persona serving claim was earned against the old code). Inspector role
         // is analyzer (behavioral claim, same as RELATES_TO).
         self::edge::SERVES => &[
-            (INSPECTION_STATUS, ANALYZER), (CRITERION, ANALYZER),
-            (CONFIDENCE, ANALYZER), (EVIDENCE, ANALYZER), (LAST_INSPECTED, ANALYZER),
-            (INSPECTED_BY, ANALYZER), (NOTES, ANY), (CREATED_AT, LOOM),
+            (INSPECTION_STATUS, ANALYZER),
+            (CRITERION, ANALYZER),
+            (CONFIDENCE, ANALYZER),
+            (EVIDENCE, ANALYZER),
+            (LAST_INSPECTED, ANALYZER),
+            (INSPECTED_BY, ANALYZER),
+            (NOTES, ANY),
+            (CREATED_AT, LOOM),
         ],
         // JOURNEYS: Persona → Validation (type=saga). Structural — no inspection
         // state (the saga run IS the proof; the VALIDATES edges carry the
@@ -525,8 +605,10 @@ pub fn index_statements() -> Vec<String> {
     ]
     .iter()
     .map(|(lbl, prop)| {
-        format!("CREATE INDEX loom_{lbl_lower}_{prop} FOR (n:{lbl}) ON (n.{prop})",
-                lbl_lower = lbl.to_lowercase())
+        format!(
+            "CREATE INDEX loom_{lbl_lower}_{prop} FOR (n:{lbl}) ON (n.{prop})",
+            lbl_lower = lbl.to_lowercase()
+        )
     })
     .collect()
 }

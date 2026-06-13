@@ -164,22 +164,6 @@ pub struct GraphState {
     pub coverage: Coverage360,
 }
 
-/// Status histogram for one edge type (group-by, reliable — no per-property filter).
-fn edge_status_counts(db: &dyn LoomDb, etype: &str) -> Result<HashMap<String, i64>> {
-    let r = db.execute(&format!(
-        "MATCH ()-[r:{etype}]->() RETURN r.inspection_status AS s, count(r) AS c"
-    ))?;
-    let cols = col_map(&r);
-    let mut m = HashMap::new();
-    for row in r.rows() {
-        let s = str_val(get(row, &cols, "s"));
-        if !s.is_empty() {
-            m.insert(s, i64_val(get(row, &cols, "c")));
-        }
-    }
-    Ok(m)
-}
-
 /// Compute the graph pulse + phase + recommended next action.
 pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
     let snapshot = QuerySnapshot::load(db)?;
@@ -552,26 +536,6 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         next_action,
         coverage,
     })
-}
-
-/// Uninspected VALIDATES edges whose validation is `blocked` — a recorded
-/// "can't run yet", not pending work. Excluded from `unresolved_edges` and
-/// reported by `loom status` as outside-the-queues so the raw histogram and
-/// the queue tally can be reconciled at a glance. Filtering happens in Rust
-/// (node-anchored scan) — the reliable path.
-pub fn blocked_uninspected_validates(db: &dyn LoomDb) -> Result<i64> {
-    let r = db.execute(
-        "MATCH (v:Validation)-[e:VALIDATES]->(:Intent) \
-         RETURN v.last_result AS lr, e.inspection_status AS s",
-    )?;
-    let cols = col_map(&r);
-    Ok(r.rows()
-        .iter()
-        .filter(|row| {
-            str_val(get(row, &cols, "lr")) == "blocked"
-                && str_val(get(row, &cols, "s")) == "uninspected"
-        })
-        .count() as i64)
 }
 
 /// Uninspected edges NO work queue serves — the explanation for

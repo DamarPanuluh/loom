@@ -2,13 +2,13 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::{IntentCmd, SourceCmd, TagCmd};
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::db::queries::{
-    add_source_ref, confirm_intent, delete_intent, edges_for_intent, get_intent,
-    insert_intent, list_hierarchy_for_intent, list_implements_for_intent, list_intents,
-    notes_for_target, remove_source_ref, set_intent_lifecycle,
+    add_source_ref, confirm_intent, delete_intent, edges_for_intent, get_intent, insert_intent,
+    list_hierarchy_for_intent, list_implements_for_intent, list_intents, notes_for_target,
+    remove_source_ref, set_intent_layer, set_intent_lifecycle,
 };
 use crate::db::schema::role;
+use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::{fmt_edge_row, fmt_intent, fmt_intent_row, Printer};
 use crate::types::Intent;
@@ -19,15 +19,30 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     let db = GrafeoDb::open(&db_file)?;
 
     match cmd {
-        IntentCmd::Add { name, description, level, domain, aspect, lifecycle, sources, tags, visibility } => {
+        IntentCmd::Add {
+            name,
+            description,
+            level,
+            domain,
+            layer,
+            aspect,
+            lifecycle,
+            sources,
+            tags,
+            visibility,
+        } => {
             gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
             // Validate and canonicalize abstraction level + lifecycle.
-            let level = level.parse::<crate::types::AbstractionLevel>()
+            let level = level
+                .parse::<crate::types::AbstractionLevel>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
-            lifecycle.parse::<crate::types::LifecycleState>()
+            lifecycle
+                .parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             if name.trim().is_empty() {
-                anyhow::bail!("--name must not be empty. State the responsibility this intent owns.");
+                anyhow::bail!(
+                    "--name must not be empty. State the responsibility this intent owns."
+                );
             }
             if description.trim().is_empty() {
                 anyhow::bail!("--description must not be empty. State the observable behavior or design responsibility this intent captures.");
@@ -36,7 +51,8 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // repo this graph merely observes.
             if lifecycle != "implemented" {
                 crate::db::queries::ensure_owned(
-                    &db, &format!("declare a '{lifecycle}' intent (a promise to change the code)"),
+                    &db,
+                    &format!("declare a '{lifecycle}' intent (a promise to change the code)"),
                 )?;
             }
             if !matches!(visibility.as_str(), "" | "user_visible" | "internal") {
@@ -55,22 +71,23 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             let tags = crate::db::queries::encode_tags(tags)?;
             let source_refs = sources.clone();
             let now = chrono::Utc::now().to_rfc3339();
-            let id  = Uuid::new_v4().to_string();
+            let id = Uuid::new_v4().to_string();
 
             let intent = Intent {
-                id:                id.clone(),
-                name:              name.clone(),
+                id: id.clone(),
+                name: name.clone(),
                 description,
                 abstraction_level: level.to_string(),
                 domain,
+                layer,
                 source_refs,
-                status:            "proposed".to_string(),
+                status: "proposed".to_string(),
                 aspect,
                 tags,
                 visibility,
                 lifecycle,
-                created_at:        now.clone(),
-                updated_at:        now,
+                created_at: now.clone(),
+                updated_at: now,
             };
 
             insert_intent(&db, &intent)?;
@@ -126,11 +143,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // lane, so the builder cannot ratify its own proposals.
             let by = gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let intent = get_intent(&db, &id)?
-                .ok_or_else(|| anyhow::anyhow!(
+            let intent = get_intent(&db, &id)?.ok_or_else(|| {
+                anyhow::anyhow!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
                     id
-                ))?;
+                )
+            })?;
             if intent.status == "deprecated" {
                 anyhow::bail!(
                     "Intent '{}' is retired (status=deprecated). Retirement is permanent history: create a successor intent and link the lineage instead of confirming it.",
@@ -146,7 +164,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     );
                 }
             }
-            let now  = chrono::Utc::now().to_rfc3339();
+            let now = chrono::Utc::now().to_rfc3339();
             // Atomic: the status flip, its freshness stamp, and the audience
             // ruling land together. The stamp is what `loom next --mode align`
             // ranks by — a confirm without it would ratify the meaning while
@@ -159,16 +177,19 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     crate::db::queries::record_confirmation(&db, &id, &by, &now)?;
                     if let Some(v) = visibility.as_deref() {
                         crate::db::queries::set_intent_visibility(&db, &id, v, &now)?;
-                        crate::db::queries::insert_note(&db, &crate::types::Note {
-                            id: Uuid::new_v4().to_string(),
-                            kind: "decision".into(),
-                            text: format!("visibility ruled {v} during alignment"),
-                            author: by.clone(),
-                            target_kind: "intent".into(),
-                            target_id: id.clone(),
-                            audience: String::new(),
-                            created_at: now.clone(),
-                        })?;
+                        crate::db::queries::insert_note(
+                            &db,
+                            &crate::types::Note {
+                                id: Uuid::new_v4().to_string(),
+                                kind: "decision".into(),
+                                text: format!("visibility ruled {v} during alignment"),
+                                author: by.clone(),
+                                target_kind: "intent".into(),
+                                target_id: id.clone(),
+                                audience: String::new(),
+                                created_at: now.clone(),
+                            },
+                        )?;
                     }
                 }
                 Ok(found)
@@ -185,15 +206,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 _ => "confirmed",
             };
             if printer.json {
-                let mut payload = serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"});
+                let mut payload =
+                    serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"});
                 if let Some(v) = visibility.as_deref() {
                     payload["visibility"] = serde_json::json!(v);
                 }
-                let payload = crate::output::with_anchor(
-                    payload,
-                    &db,
-                    "`loom next` serves the next item",
-                )?;
+                let payload =
+                    crate::output::with_anchor(payload, &db, "`loom next` serves the next item")?;
                 printer.print_json(&payload);
             } else {
                 println!("✓ Intent {} {}", id, confirmed_msg);
@@ -201,7 +220,15 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::Update { id, name, description, reword, reason, extra } => {
+        IntentCmd::Update {
+            id,
+            name,
+            layer,
+            description,
+            reword,
+            reason,
+            extra,
+        } => {
             // Syntax friction kills the loop mid-interview (dogfood: an agent
             // stalled on "what's the update syntax?" and went doc-hunting) —
             // the two observed stumbles teach the full shape right here.
@@ -225,14 +252,18 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // statement is design, and design decisions belong to the
             // graph's owners.
             let by = gate::acting_in_lane("update an intent", &[role::BUILDER], None)?;
-            crate::db::queries::ensure_owned(&db, "update an intent (the design decision belongs to the graph's owners)")?;
+            crate::db::queries::ensure_owned(
+                &db,
+                "update an intent (the design decision belongs to the graph's owners)",
+            )?;
             gate::require_substantive("reason", &reason, "why the meaning moved")?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
-            let intent = get_intent(&db, &id)?
-                .ok_or_else(|| anyhow::anyhow!(
+            let intent = get_intent(&db, &id)?.ok_or_else(|| {
+                anyhow::anyhow!(
                     "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
                     id
-                ))?;
+                )
+            })?;
             if intent.status == "deprecated" {
                 anyhow::bail!(
                     "Intent '{}' is retired (status=deprecated). Retirement is permanent history: create a successor intent (`loom intent add` + `--replaced-by` lineage) instead of rewriting it.",
@@ -240,10 +271,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 );
             }
             let new_name = name.as_deref().filter(|n| *n != intent.name);
+            let new_layer = layer.as_deref().filter(|l| *l != intent.layer);
             let new_desc = description.as_deref().filter(|d| *d != intent.description);
-            if new_name.is_none() && new_desc.is_none() {
+            if new_name.is_none() && new_layer.is_none() && new_desc.is_none() {
                 anyhow::bail!(
-                    "Nothing to change: pass --name and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
+                    "Nothing to change: pass --name, --layer, and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
                     id
                 );
             }
@@ -260,17 +292,49 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // says?" — through the fix queue, where a real inspection decides.
             let ripple = crate::db::with_transaction(&db, || {
                 crate::db::queries::update_intent_meaning(&db, &id, new_name, new_desc, &now)?;
+                if let Some(layer) = new_layer {
+                    set_intent_layer(&db, &id, layer, &now)?;
+                    crate::db::queries::insert_note(
+                        &db,
+                        &crate::types::Note {
+                            id: Uuid::new_v4().to_string(),
+                            kind: "decision".into(),
+                            text: format!(
+                                "layer changed: '{}' → '{}' ({})",
+                                if intent.layer.is_empty() {
+                                    "<undeclared>"
+                                } else {
+                                    &intent.layer
+                                },
+                                if layer.is_empty() {
+                                    "<undeclared>"
+                                } else {
+                                    layer
+                                },
+                                reason
+                            ),
+                            author: by.clone(),
+                            target_kind: "intent".into(),
+                            target_id: id.clone(),
+                            audience: String::new(),
+                            created_at: now.clone(),
+                        },
+                    )?;
+                }
                 if let Some(n) = new_name {
-                    crate::db::queries::insert_note(&db, &crate::types::Note {
-                        id: Uuid::new_v4().to_string(),
-                        kind: "decision".into(),
-                        text: format!("renamed: '{}' → '{}' ({})", intent.name, n, reason),
-                        author: by.clone(),
-                        target_kind: "intent".into(),
-                        target_id: id.clone(),
-                        audience: String::new(),
-                        created_at: now.clone(),
-                    })?;
+                    crate::db::queries::insert_note(
+                        &db,
+                        &crate::types::Note {
+                            id: Uuid::new_v4().to_string(),
+                            kind: "decision".into(),
+                            text: format!("renamed: '{}' → '{}' ({})", intent.name, n, reason),
+                            author: by.clone(),
+                            target_kind: "intent".into(),
+                            target_id: id.clone(),
+                            audience: String::new(),
+                            created_at: now.clone(),
+                        },
+                    )?;
                 }
                 if let Some(d) = new_desc {
                     if reword {
@@ -282,34 +346,40 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                         // stamp still resets the align clock, so the intent
                         // exits the interview queue exactly like a
                         // redefinition does.
-                        crate::db::queries::insert_note(&db, &crate::types::Note {
+                        crate::db::queries::insert_note(
+                            &db,
+                            &crate::types::Note {
+                                id: Uuid::new_v4().to_string(),
+                                kind: "decision".into(),
+                                text: format!("reworded: {}\nwas: {}", reason, intent.description),
+                                author: by.clone(),
+                                target_kind: "intent".into(),
+                                target_id: id.clone(),
+                                audience: String::new(),
+                                created_at: now.clone(),
+                            },
+                        )?;
+                        let _ = d;
+                        return Ok(None);
+                    }
+                    crate::db::queries::insert_note(
+                        &db,
+                        &crate::types::Note {
                             id: Uuid::new_v4().to_string(),
                             kind: "decision".into(),
-                            text: format!("reworded: {}\nwas: {}", reason, intent.description),
+                            text: format!("redefined: {}\nwas: {}", reason, intent.description),
                             author: by.clone(),
                             target_kind: "intent".into(),
                             target_id: id.clone(),
                             audience: String::new(),
                             created_at: now.clone(),
-                        })?;
-                        let _ = d;
-                        return Ok(None);
-                    }
-                    crate::db::queries::insert_note(&db, &crate::types::Note {
-                        id: Uuid::new_v4().to_string(),
-                        kind: "decision".into(),
-                        text: format!("redefined: {}\nwas: {}", reason, intent.description),
-                        author: by.clone(),
-                        target_kind: "intent".into(),
-                        target_id: id.clone(),
-                        audience: String::new(),
-                        created_at: now.clone(),
-                    })?;
+                        },
+                    )?;
                     let _ = d; // the new wording lives on the node; the note keeps the old
-                    // The audience ruling was made about the OLD meaning —
-                    // a redefinition makes it unknown again (the align
-                    // interview re-triages it). Cleared with the ripple, for
-                    // the same reason the ripple exists.
+                               // The audience ruling was made about the OLD meaning —
+                               // a redefinition makes it unknown again (the align
+                               // interview re-triages it). Cleared with the ripple, for
+                               // the same reason the ripple exists.
                     if !intent.visibility.is_empty() {
                         crate::db::queries::set_intent_visibility(&db, &id, "", &now)?;
                     }
@@ -323,8 +393,12 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 Ok(None)
             })?;
             let rippled = ripple.as_ref().is_some_and(|r| {
-                r.relates_to_flagged + r.governs_flagged + r.targets_flagged
-                    + r.implements_flagged + r.validations_invalidated > 0
+                r.relates_to_flagged
+                    + r.governs_flagged
+                    + r.targets_flagged
+                    + r.implements_flagged
+                    + r.validations_invalidated
+                    > 0
             });
             let next_step = if rippled {
                 "`loom next --mode fix` re-inspects staled claims; `loom next --mode quality` re-earns flagged quality green; `loom validate` re-runs invalidated proofs."
@@ -336,6 +410,7 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     serde_json::json!({
                         "status": "ok", "id": id,
                         "renamed": new_name.is_some(),
+                        "layer_changed": new_layer.is_some(),
                         "redefined": new_desc.is_some() && !reword,
                         "reworded": new_desc.is_some() && reword,
                         "visibility_cleared": new_desc.is_some() && !reword && !intent.visibility.is_empty(),
@@ -347,11 +422,24 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 printer.print_json(&payload);
             } else {
                 match (new_name, new_desc) {
-                    (_, Some(_)) if reword => println!("✓ Intent {id} reworded (same concept, clearer words — no ripple)."),
+                    (_, Some(_)) if reword => println!(
+                        "✓ Intent {id} reworded (same concept, clearer words — no ripple)."
+                    ),
                     (Some(n), Some(_)) => println!("✓ Intent {id} renamed to '{n}' and redefined."),
-                    (Some(n), None)    => println!("✓ Intent {id} renamed to '{n}' (cosmetic — no ripple)."),
-                    (None, Some(_))    => println!("✓ Intent {id} redefined."),
-                    (None, None)       => unreachable!("bailed above"),
+                    (Some(n), None) => {
+                        println!("✓ Intent {id} renamed to '{n}' (cosmetic — no ripple).")
+                    }
+                    (None, Some(_)) => println!("✓ Intent {id} redefined."),
+                    (None, None) => {
+                        if let Some(layer) = new_layer {
+                            println!("✓ Intent {id} layer → '{}' (metadata — no ripple).", layer);
+                        } else {
+                            unreachable!("bailed above");
+                        }
+                    }
+                }
+                if new_layer.is_some() && (new_name.is_some() || new_desc.is_some()) {
+                    println!("  layer changed (metadata — no ripple).");
                 }
                 if new_desc.is_some() && !reword && !intent.visibility.is_empty() {
                     println!(
@@ -363,7 +451,10 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     if rippled {
                         println!("  SEMANTIC RIPPLE (claims earned against the old wording):");
                         if r.relates_to_flagged > 0 {
-                            println!("    · {} RELATES_TO verdict(s) → needs_reverification", r.relates_to_flagged);
+                            println!(
+                                "    · {} RELATES_TO verdict(s) → needs_reverification",
+                                r.relates_to_flagged
+                            );
                         }
                         if r.implements_flagged > 0 {
                             println!("    · {} IMPLEMENTS grounding(s) → needs_reverification (does the code still do what this now says?)", r.implements_flagged);
@@ -372,7 +463,10 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                             println!("    · {} GOVERNS verdict(s) → needs_reverification (green re-earned against the new meaning)", r.governs_flagged);
                         }
                         if r.targets_flagged > 0 {
-                            println!("    · {} hypothesis TARGETS edge(s) → needs_reverification", r.targets_flagged);
+                            println!(
+                                "    · {} hypothesis TARGETS edge(s) → needs_reverification",
+                                r.targets_flagged
+                            );
                         }
                         if r.validations_invalidated > 0 {
                             println!("    · {} validation(s) → not_run (they proved the old acceptance contract)", r.validations_invalidated);
@@ -385,7 +479,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::Mark { id, lifecycle, reason } => {
+        IntentCmd::Mark {
+            id,
+            lifecycle,
+            reason,
+        } => {
             // Lifecycle is builder-owned; the fixer transitions it
             // (needs_change → implemented) as part of resolving issues.
             let by = gate::acting_in_lane(
@@ -394,9 +492,11 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 None,
             )?;
             crate::db::queries::ensure_owned(
-                &db, "change an intent's lifecycle (a claim about building/changing the code)",
+                &db,
+                "change an intent's lifecycle (a claim about building/changing the code)",
             )?;
-            lifecycle.parse::<crate::types::LifecycleState>()
+            lifecycle
+                .parse::<crate::types::LifecycleState>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -410,14 +510,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             // Record the rationale as a note (append-only memory).
             if let Some(ref r) = reason {
                 let note = crate::types::Note {
-                    id:          Uuid::new_v4().to_string(),
-                    kind:        "decision".to_string(),
-                    text:        format!("lifecycle → {}: {}", lifecycle, r),
-                    author:      by.clone(),
+                    id: Uuid::new_v4().to_string(),
+                    kind: "decision".to_string(),
+                    text: format!("lifecycle → {}: {}", lifecycle, r),
+                    author: by.clone(),
                     target_kind: "intent".to_string(),
-                    target_id:   id.clone(),
-                    audience:    String::new(),
-                    created_at:  now.clone(),
+                    target_id: id.clone(),
+                    audience: String::new(),
+                    created_at: now.clone(),
                 };
                 crate::db::queries::insert_note(&db, &note)?;
             }
@@ -461,9 +561,16 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::Retire { id, reason, replaced_by } => {
+        IntentCmd::Retire {
+            id,
+            reason,
+            replaced_by,
+        } => {
             gate::acting_in_lane("retire an intent", &[role::BUILDER], None)?;
-            crate::db::queries::ensure_owned(&db, "retire an intent (the design decision belongs to the graph's owners)")?;
+            crate::db::queries::ensure_owned(
+                &db,
+                "retire an intent (the design decision belongs to the graph's owners)",
+            )?;
             gate::require_substantive("reason", &reason, "why this design was superseded")?;
             let id = crate::db::queries::resolve_intent(&db, &id)?;
             let successor = match &replaced_by {
@@ -485,9 +592,13 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             if !crate::db::with_transaction(&db, || {
                 crate::db::queries::retire_intent(&db, &id, &reason, successor.as_deref(), &now)
             })? {
-                anyhow::bail!("Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).", id);
+                anyhow::bail!(
+                    "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).",
+                    id
+                );
             }
-            let next_step = "`loom status` re-checks the compass; `loom coverage` shows any new gaps.";
+            let next_step =
+                "`loom status` re-checks the compass; `loom coverage` shows any new gaps.";
             if printer.json {
                 let payload = crate::output::with_anchor(
                     serde_json::json!({
@@ -508,7 +619,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     && f.solely_grounded_files.is_empty()
                     && f.dangling_validations.is_empty()
                 {
-                    println!("  No fallout: no children, no solely-owned files, no dangling proofs.");
+                    println!(
+                        "  No fallout: no children, no solely-owned files, no dangling proofs."
+                    );
                 } else {
                     println!("  TRIGGERED WORK:");
                     for c in &f.orphaned_children {
@@ -528,15 +641,22 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
             }
         }
 
-        IntentCmd::List { status, level, limit } => {
+        IntentCmd::List {
+            status,
+            level,
+            limit,
+        } => {
             // Validate filter values against the domain vocabulary.
             if let Some(ref s) = status {
-                s.parse::<crate::types::IntentStatus>().map_err(|e| anyhow::anyhow!("{}", e))?;
+                s.parse::<crate::types::IntentStatus>()
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
             let level = match level {
-                Some(l) => Some(l.parse::<crate::types::AbstractionLevel>()
-                    .map_err(|e| anyhow::anyhow!("{}", e))?
-                    .to_string()),
+                Some(l) => Some(
+                    l.parse::<crate::types::AbstractionLevel>()
+                        .map_err(|e| anyhow::anyhow!("{}", e))?
+                        .to_string(),
+                ),
                 None => None,
             };
             let mut intents = list_intents(&db, status.as_deref(), level.as_deref())?;
@@ -554,14 +674,18 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     println!(
                         "  {status:>20}   {level:<15}  {name:<40}  id",
                         status = "STATUS",
-                        level  = "LEVEL",
-                        name   = "NAME",
+                        level = "LEVEL",
+                        name = "NAME",
                     );
                     println!("  {}", "-".repeat(90));
                     for i in &intents {
                         println!("{}", fmt_intent_row(i));
                     }
-                    if let Some(m) = crate::output::more_marker(total, intents.len(), "loom intent list --limit 0") {
+                    if let Some(m) = crate::output::more_marker(
+                        total,
+                        intents.len(),
+                        "loom intent list --limit 0",
+                    ) {
                         println!("  {m}");
                     }
                 }
@@ -652,7 +776,9 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                     if tags.len() == before {
                         anyhow::bail!(
                             "Intent {} carries no tag '{}' — `loom intent show {}` lists them.",
-                            id, term, id
+                            id,
+                            term,
+                            id
                         );
                     }
                     crate::db::queries::set_intent_tags(&db, &id, tags.clone(), &now)?;
@@ -679,11 +805,14 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                 ),
                 Some(ref i) => {
                     let mut edges = edges_for_intent(&db, &id)?;
-                    let edges_total = crate::output::apply_limit(&mut edges, crate::output::SECTION_CAP);
+                    let edges_total =
+                        crate::output::apply_limit(&mut edges, crate::output::SECTION_CAP);
                     let mut hierarchy = list_hierarchy_for_intent(&db, &id)?;
-                    let hierarchy_total = crate::output::apply_limit(&mut hierarchy, crate::output::SECTION_CAP);
+                    let hierarchy_total =
+                        crate::output::apply_limit(&mut hierarchy, crate::output::SECTION_CAP);
                     let mut implements = list_implements_for_intent(&db, &id)?;
-                    let implements_total = crate::output::apply_limit(&mut implements, crate::output::SECTION_CAP);
+                    let implements_total =
+                        crate::output::apply_limit(&mut implements, crate::output::SECTION_CAP);
                     let mut notes = notes_for_target(&db, &id)?;
                     let notes_total = notes.len();
                     if notes_total > crate::output::SECTION_CAP {
@@ -703,22 +832,34 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                             "notes_total": notes_total,
                         }));
                     } else {
-                        println!("── Intent ─────────────────────────────────────────────────────────");
+                        println!(
+                            "── Intent ─────────────────────────────────────────────────────────"
+                        );
                         println!("{}", fmt_intent(i));
                         println!();
-                        println!("── RELATES_TO edges ({}) ────────────────────────────────────────────", edges_total);
+                        println!(
+                            "── RELATES_TO edges ({}) ────────────────────────────────────────────",
+                            edges_total
+                        );
                         if edges.is_empty() {
                             println!("  (none)");
                         } else {
                             for e in &edges {
                                 println!("{}", fmt_edge_row(e));
                             }
-                            if let Some(m) = crate::output::more_marker(edges_total, edges.len(), &format!("loom cluster {id}")) {
+                            if let Some(m) = crate::output::more_marker(
+                                edges_total,
+                                edges.len(),
+                                &format!("loom cluster {id}"),
+                            ) {
                                 println!("  {m}");
                             }
                         }
                         println!();
-                        println!("── Hierarchy ({}) ───────────────────────────────────────────────────", hierarchy_total);
+                        println!(
+                            "── Hierarchy ({}) ───────────────────────────────────────────────────",
+                            hierarchy_total
+                        );
                         if hierarchy.is_empty() {
                             println!("  (none — no parent/child intents)");
                         } else {
@@ -729,32 +870,57 @@ pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
                                     println!("  ↑ parent: {} ({})", h.parent_name, h.parent_id);
                                 }
                             }
-                            if let Some(m) = crate::output::more_marker(hierarchy_total, hierarchy.len(), &format!("loom cluster {id}")) {
+                            if let Some(m) = crate::output::more_marker(
+                                hierarchy_total,
+                                hierarchy.len(),
+                                &format!("loom cluster {id}"),
+                            ) {
                                 println!("  {m}");
                             }
                         }
                         println!();
-                        println!("── Implements ({}) ──────────────────────────────────────────────────", implements_total);
+                        println!(
+                            "── Implements ({}) ──────────────────────────────────────────────────",
+                            implements_total
+                        );
                         if implements.is_empty() {
                             println!("  (none — intent not yet grounded to code)");
                         } else {
                             for im in &implements {
-                                let loc = if im.locator.is_empty() { String::new() } else { format!("  @ {}", im.locator) };
-                                println!("  → {}{}  [{}]", im.codefile_path, loc, im.inspection_status);
+                                let loc = if im.locator.is_empty() {
+                                    String::new()
+                                } else {
+                                    format!("  @ {}", im.locator)
+                                };
+                                println!(
+                                    "  → {}{}  [{}]",
+                                    im.codefile_path, loc, im.inspection_status
+                                );
                             }
-                            if let Some(m) = crate::output::more_marker(implements_total, implements.len(), &format!("loom cluster {id}")) {
+                            if let Some(m) = crate::output::more_marker(
+                                implements_total,
+                                implements.len(),
+                                &format!("loom cluster {id}"),
+                            ) {
                                 println!("  {m}");
                             }
                         }
                         println!();
-                        println!("── Notes ({}) ───────────────────────────────────────────────────────", notes_total);
+                        println!(
+                            "── Notes ({}) ───────────────────────────────────────────────────────",
+                            notes_total
+                        );
                         if notes.is_empty() {
                             println!("  (none)");
                         } else {
                             for n in &notes {
                                 println!("  [{}] {}  ({})", n.kind, n.text, n.author);
                             }
-                            if let Some(m) = crate::output::more_marker(notes_total, notes.len(), &format!("loom note list --intent {id}")) {
+                            if let Some(m) = crate::output::more_marker(
+                                notes_total,
+                                notes.len(),
+                                &format!("loom note list --intent {id}"),
+                            ) {
                                 println!("  {m}");
                             }
                         }

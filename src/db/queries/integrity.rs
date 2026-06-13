@@ -574,25 +574,6 @@ fn audit_inspectable_edges(
     Ok(())
 }
 
-fn collect_edge_ids_from_snapshot(
-    snapshot: &QuerySnapshot,
-    targets: &[TargetsEdge],
-) -> std::collections::HashSet<String> {
-    let mut ids = std::collections::HashSet::new();
-    ids.extend(snapshot.relates.iter().map(|edge| edge.id.clone()));
-    ids.extend(
-        snapshot
-            .hierarchy
-            .iter()
-            .map(|(from, to)| schema::edge_key(schema::edge::HIERARCHY, from, to)),
-    );
-    ids.extend(snapshot.implements.iter().map(|edge| edge.id.clone()));
-    ids.extend(snapshot.governs.iter().map(|edge| edge.id.clone()));
-    ids.extend(snapshot.validates.iter().map(|edge| edge.id.clone()));
-    ids.extend(targets.iter().map(|edge| edge.id.clone()));
-    ids
-}
-
 /// Collect every tracked edge id once for note referential-integrity checks.
 /// The old per-note check rescanned every edge type for each edge-targeted
 /// note; large histories made `loom doctor` and `loom next --all` feel heavy.

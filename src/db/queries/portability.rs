@@ -13,14 +13,14 @@ use std::collections::{HashMap, HashSet};
 use crate::db::schema::{self, edge, label, prop, EDGE_TYPES, NODE_LABELS};
 use crate::db::LoomDb;
 
-
-
 /// Properties exported per node label: the required set plus additive extras
 /// that aren't in the required table (kept out of it so older graphs stay
 /// doctor-clean until their next sync).
 fn node_props(lbl: &str) -> Vec<&'static str> {
-    let mut props: Vec<&'static str> =
-        schema::required_node_props(lbl).iter().map(|(p, _)| *p).collect();
+    let mut props: Vec<&'static str> = schema::required_node_props(lbl)
+        .iter()
+        .map(|(p, _)| *p)
+        .collect();
     if lbl == label::INTENT {
         props.push(prop::TAGS);
         props.push(prop::VISIBILITY);
@@ -51,11 +51,15 @@ fn is_optional_prop(p: &str) -> bool {
             || x == prop::AUDIENCE
             || x == prop::TAGS
             || x == prop::VISIBILITY
+            || x == prop::LAYER
     )
 }
 
 fn edge_props(etype: &str) -> Vec<&'static str> {
-    schema::required_edge_props(etype).iter().map(|(p, _)| *p).collect()
+    schema::required_edge_props(etype)
+        .iter()
+        .map(|(p, _)| *p)
+        .collect()
 }
 
 /// Endpoint node labels per edge type (from → to).
@@ -119,11 +123,7 @@ fn object_field<'a>(data: &'a J, field: &str) -> Result<&'a Map<String, J>> {
         .with_context(|| format!("Export `{field}` is not an object"))
 }
 
-fn array_in_object<'a>(
-    obj: &'a Map<String, J>,
-    section: &str,
-    key: &str,
-) -> Result<&'a Vec<J>> {
+fn array_in_object<'a>(obj: &'a Map<String, J>, section: &str, key: &str) -> Result<&'a Vec<J>> {
     obj.get(key)
         .with_context(|| format!("Export is missing `{section}.{key}` array"))?
         .as_array()
@@ -167,7 +167,10 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
             items.push(J::Object(obj));
         }
         items.sort_by(|a, b| {
-            a["id"].as_str().unwrap_or_default().cmp(b["id"].as_str().unwrap_or_default())
+            a["id"]
+                .as_str()
+                .unwrap_or_default()
+                .cmp(b["id"].as_str().unwrap_or_default())
         });
         nodes.insert(lbl.to_string(), J::Array(items));
     }
@@ -221,7 +224,7 @@ pub fn export_graph(db: &dyn LoomDb) -> Result<J> {
         "graph_id": gid,
         "graph_name": gname,
         "custody": custody,
-        "domain_order": super::meta::get_domain_order(db)?,
+        "layer_order": super::meta::get_layer_order(db)?,
         "nodes": nodes,
         "edges": edges,
     }))
@@ -261,17 +264,32 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
     //   the legacy id prop is simply not imported.
     // - v3/v4 → v5: list props (source_refs/tags/imports) arrive as
     //   JSON-encoded strings and are parsed into native lists (see `is_list`).
+    // - v5 → v6: product domain and architecture layer split; missing
+    //   Intent.layer imports as "" unless a legacy domain_order is present.
     let upgrading_v3 = ver == "3";
-    if ver != schema::SCHEMA_VERSION && !matches!(ver, "3" | "4") {
+    let legacy_layer_order: Vec<String> = data
+        .get("layer_order")
+        .or_else(|| data.get("domain_order"))
+        .and_then(J::as_array)
+        .map(|a| a.iter().filter_map(J::as_str).map(str::to_string).collect())
+        .unwrap_or_default();
+    let use_domain_as_layer =
+        ver == "5" && data.get("layer_order").is_none() && !legacy_layer_order.is_empty();
+    if ver != schema::SCHEMA_VERSION && !matches!(ver, "3" | "4" | "5") {
         anyhow::bail!(
             "Export schema version '{}' does not match this loom ('{}'), and no upgrade \
-             path exists for it (v3/v4 exports upgrade automatically).",
-            ver, schema::SCHEMA_VERSION
+             path exists for it (v3/v4/v5 exports upgrade automatically).",
+            ver,
+            schema::SCHEMA_VERSION
         );
     }
     for &lbl in NODE_LABELS {
         let r = db.execute(&format!("MATCH (n:{lbl}) RETURN count(n) AS c"))?;
-        let n = r.rows().first().map(|row| super::row::i64_val(&row[0])).unwrap_or(0);
+        let n = r
+            .rows()
+            .first()
+            .map(|row| super::row::i64_val(&row[0]))
+            .unwrap_or(0);
         if n > 0 {
             anyhow::bail!(
                 "Graph already contains {lbl} nodes — import only restores into a fresh `loom init`."
@@ -338,15 +356,16 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
     let mut node_id_labels: HashMap<String, &'static str> = HashMap::new();
     if upgrading_v3 {
         for &etype in EDGE_TYPES {
-            let Some(items) = edges.get(etype).and_then(J::as_array) else { continue };
+            let Some(items) = edges.get(etype).and_then(J::as_array) else {
+                continue;
+            };
             for item in items {
                 if let (Some(id), Some(from), Some(to)) = (
                     item.get("id").and_then(J::as_str),
                     item.get("from").and_then(J::as_str),
                     item.get("to").and_then(J::as_str),
                 ) {
-                    legacy_edge_ids
-                        .insert(id.to_string(), schema::edge_key(etype, from, to));
+                    legacy_edge_ids.insert(id.to_string(), schema::edge_key(etype, from, to));
                 }
             }
         }
@@ -407,7 +426,9 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
                             .join(", ");
                         return Ok(format!("{p}: [{lit}]"));
                     }
-                    let v = if is_optional_prop(p) {
+                    let v = if *p == prop::LAYER && use_domain_as_layer {
+                        obj.get(prop::DOMAIN).and_then(J::as_str).unwrap_or("")
+                    } else if is_optional_prop(p) {
                         obj.get(*p).and_then(J::as_str).unwrap_or("")
                     } else {
                         required_str(obj, p, &format!("nodes.{lbl}"))?
@@ -467,7 +488,9 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
                 .map(|p| {
                     if is_numeric(p) {
                         let v = required_f64(obj, p, &format!("edges.{etype}"))?;
-                        let v = edge_override(p).map(|o| o.to_string()).unwrap_or_else(|| v.to_string());
+                        let v = edge_override(p)
+                            .map(|o| o.to_string())
+                            .unwrap_or_else(|| v.to_string());
                         Ok(format!("{p}: {v}"))
                     } else {
                         let v = required_str(obj, p, &format!("edges.{etype}"))?;
@@ -503,13 +526,8 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
     // The declared layer order travels — it is DESIGN (a claim about the
     // architecture), not evidence earned against the old code, so a PORT
     // keeps it too. Absent on older exports (additive) → no order declared.
-    let domain_order: Vec<String> = data
-        .get("domain_order")
-        .and_then(J::as_array)
-        .map(|a| a.iter().filter_map(J::as_str).map(str::to_string).collect())
-        .unwrap_or_default();
-    if !domain_order.is_empty() {
-        super::meta::set_domain_order(db, &domain_order)?;
+    if !legacy_layer_order.is_empty() {
+        super::meta::set_layer_order(db, &legacy_layer_order)?;
     }
     for s in &stmts {
         db.execute(s)?;
@@ -522,10 +540,7 @@ pub fn import_graph(db: &dyn LoomDb, data: &J, as_planned: bool) -> Result<Impor
 /// `Some(false)` = exists and matches byte-for-byte, `None` = not committed.
 /// Costs a full export build — call it from orientation commands (status,
 /// next --all, doctor), never from per-mutation anchors.
-pub fn committed_export_stale(
-    db: &dyn LoomDb,
-    root: &std::path::Path,
-) -> Result<Option<bool>> {
+pub fn committed_export_stale(db: &dyn LoomDb, root: &std::path::Path) -> Result<Option<bool>> {
     let path = root.join("loom.graph.json");
     if !path.exists() {
         return Ok(None);

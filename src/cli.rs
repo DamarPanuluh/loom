@@ -170,14 +170,23 @@ pub enum Command {
         subcommand: VocabCmd,
     },
 
-    /// Declare the architecture's layer order — which domains sit above
-    /// which. Imports flowing UP the order (lower-layer code depending on a
-    /// higher layer) surface as `layering_violation` in `loom smells`; a
-    /// recorded relationship does not excuse direction. Domains not in the
-    /// order are exempt — declare only what you mean to enforce.
+    /// Deprecated alias for `loom layer`. Kept for one compatibility window:
+    /// old invocations still declare the architecture's layer order, but
+    /// product `--domain` labels no longer arm layering.
     Domain {
         #[command(subcommand)]
         subcommand: DomainCmd,
+    },
+
+    /// Declare the architecture's layer order — which layers sit above which.
+    /// Imports flowing UP the order (lower-layer code depending on a higher
+    /// layer) surface as `layering_violation` in `loom smells`; a recorded
+    /// relationship does not excuse direction. Intents without `--layer`, and
+    /// layers not in the order, are exempt — declare only what you mean to
+    /// enforce.
+    Layer {
+        #[command(subcommand)]
+        subcommand: LayerCmd,
     },
 
     /// Manage user personas — named audience segments (the "as a [X]" of user
@@ -236,12 +245,14 @@ pub enum Command {
     /// {"op":"rule_verdict","rule":"<rule>","intent":"<intent>","status":"passing|failing|independent","criterion":"…","evidence":"…","confidence":0.9}.
     /// Every gate (lanes, substantive evidence, confidence) applies per line;
     /// continues past failures, exits non-zero if any line failed.
-    #[command(after_help = "EXAMPLE (heredoc — no scratch file, nothing to clean up):\n  \
+    #[command(
+        after_help = "EXAMPLE (heredoc — no scratch file, nothing to clean up):\n  \
         loom batch - <<'EOF'\n  \
         {\"op\":\"ground\",\"a\":\"request routing\",\"b\":\"session auth\",\"confidence\":0.9}\n  \
         {\"op\":\"issue\",\"a\":\"request routing\",\"b\":\"rate limiting\",\"evidence\":\"limiter runs after dispatch\",\"confidence\":0.9}\n  \
         EOF\n  \
-        (a file path instead of '-' works for very large batches)")]
+        (a file path instead of '-' works for very large batches)"
+    )]
     Batch {
         /// JSONL file path, or "-" to read stdin.
         #[arg(default_value = "-")]
@@ -254,8 +265,9 @@ pub enum Command {
 
     /// Upgrade a live graph to the current schema version IN PLACE
     /// (v3→v4: note targets remapped to derived edge keys; v3/v4→v5:
-    /// source_refs/tags/imports converted to native lists). Idempotent and
-    /// crash-safe (version stamped last). Re-export after migrating.
+    /// source_refs/tags/imports converted to native lists; v5→v6:
+    /// product domain split from architecture layer). Idempotent and crash-safe
+    /// (version stamped last). Re-export after migrating.
     Migrate,
 
     /// Print the driving protocol for an LLM new to loom: the mental model, the
@@ -553,8 +565,15 @@ pub enum IntentCmd {
         #[arg(long)]
         level: String,
 
+        /// Product/business facet for discovery and scoring (auth, billing,
+        /// onboarding). Not an architecture layer.
         #[arg(long, default_value = "unknown")]
         domain: String,
+
+        /// Architecture layer for layering_violation, separate from product
+        /// domain. Empty/omitted = undeclared and exempt from layer checks.
+        #[arg(long, default_value = "")]
+        layer: String,
 
         /// Behavioural facet for completeness: happy | sad | fallback | edge_case
         /// | … (open vocabulary; omit for an unspecified/whole-feature intent).
@@ -618,6 +637,10 @@ pub enum IntentCmd {
         #[arg(long)]
         name: Option<String>,
 
+        /// New architecture layer (metadata — no ripple).
+        #[arg(long)]
+        layer: Option<String>,
+
         /// New meaning statement (REDEFINITION — ripples staleness one hop,
         /// and clears the visibility ruling: the new meaning's audience is
         /// unknown again). With --reword: same concept in clearer words —
@@ -665,9 +688,7 @@ pub enum IntentCmd {
 
     /// Delete an intent and everything attached to it (edges + notes). For
     /// removing mistakes. Irreversible.
-    Delete {
-        id: String,
-    },
+    Delete { id: String },
 
     /// RETIRE an intent: design that was real and got superseded (delete is
     /// for mistakes). Status → deprecated; the node, edges, and notes remain
@@ -708,9 +729,7 @@ pub enum IntentCmd {
     },
 
     /// Show full detail of one intent including all its edges.
-    Show {
-        id: String,
-    },
+    Show { id: String },
 
     /// Manage an intent's source_refs — the canonical-source list (code AND
     /// docs: contracts, ADRs, design notes). Set at `intent add --source`;
@@ -819,19 +838,16 @@ pub enum VocabCmd {
 }
 
 // ---------------------------------------------------------------------------
-// Domain subcommands (the declared layer order)
+// Domain subcommands (deprecated alias for the declared layer order)
 // ---------------------------------------------------------------------------
 
 #[derive(Subcommand)]
 pub enum DomainCmd {
-    /// Declare the layer order, top layer first — REPLACES any previous
-    /// order. `loom domain order cli app storage` means cli may depend on
-    /// app and storage, app on storage, and any import pointing the other
-    /// way is a layering_violation.
+    /// Deprecated alias for `loom layer order`.
     #[command(after_help = "EXAMPLE:\n  \
-        loom domain order cli commands queries storage")]
+        loom layer order cli commands queries storage")]
     Order {
-        /// Domains, highest layer first (≥2; each holds exactly one rank).
+        /// Layers, highest layer first (≥2; each holds exactly one rank).
         #[arg(num_args = 2..)]
         domains: Vec<String>,
 
@@ -840,8 +856,37 @@ pub enum DomainCmd {
         author: Option<String>,
     },
 
-    /// Show the declared order with per-domain intent counts, plus the
-    /// domains in use that the order does not cover (exempt from the smell).
+    /// Deprecated alias for `loom layer list`.
+    List,
+
+    /// Deprecated alias for `loom layer clear`.
+    Clear,
+}
+
+// ---------------------------------------------------------------------------
+// Layer subcommands (the declared architecture layer order)
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum LayerCmd {
+    /// Declare the layer order, top layer first — REPLACES any previous
+    /// order. `loom layer order presentation app storage` means presentation
+    /// may depend on app and storage, app on storage, and any import pointing
+    /// the other way is a layering_violation.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom layer order presentation commands queries storage")]
+    Order {
+        /// Layers, highest layer first (≥2; each holds exactly one rank).
+        #[arg(num_args = 2..)]
+        layers: Vec<String>,
+
+        /// Acting agent (defaults to $LOOM_AGENT or "llm").
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// Show the declared order with per-layer intent counts, plus the
+    /// layers in use that the order does not cover (exempt from the smell).
     List,
 
     /// Remove the declared order — layering_violation goes silent.
@@ -872,7 +917,7 @@ pub enum EdgeCmd {
     /// id, a registered path, or a glob over REGISTERED paths (quote it:
     /// 'src/db/**') for bulk grounding.
     Implement {
-        intent_id:   String,
+        intent_id: String,
         codefile_id: String,
 
         /// Finer-than-file anchor inside the file — a symbol or region, e.g.
@@ -889,13 +934,13 @@ pub enum EdgeCmd {
     /// moving groundings down to children during decomposition. Accepts an
     /// id, a registered path, or a glob over registered paths.
     Unimplement {
-        intent_id:   String,
+        intent_id: String,
         codefile_id: String,
     },
 
     /// Create a GOVERNS edge: QualityRule → Intent.
     Govern {
-        rule_id:   String,
+        rule_id: String,
         intent_id: String,
 
         /// Optional criterion describing what "passing" looks like.
@@ -906,7 +951,7 @@ pub enum EdgeCmd {
     /// Create a HIERARCHY edge: parent Intent → child Intent.
     Hierarchy {
         parent_id: String,
-        child_id:  String,
+        child_id: String,
 
         #[arg(long)]
         notes: Option<String>,
@@ -915,7 +960,7 @@ pub enum EdgeCmd {
     /// Create a VALIDATES edge: Validation → Intent.
     Validates {
         validation_id: String,
-        intent_id:     String,
+        intent_id: String,
 
         #[arg(long)]
         notes: Option<String>,
@@ -932,9 +977,7 @@ pub enum EdgeCmd {
     },
 
     /// Show full detail of one RELATES_TO edge including both intent nodes.
-    Show {
-        edge_id: String,
-    },
+    Show { edge_id: String },
 
     /// Mark a failing RELATES_TO edge as passing and propagate reverification.
     #[command(after_help = "EXAMPLE:\n  \
@@ -1055,9 +1098,7 @@ pub enum RuleCmd {
     },
 
     /// Show all GOVERNS edges for an intent (violations and passing checks).
-    Check {
-        intent_id: String,
-    },
+    Check { intent_id: String },
 
     /// Seed a built-in measuring-stick pack — the repo-kind vantage points for
     /// 360° normative coverage. `loom detect` recommends which packs fit this
@@ -1075,7 +1116,7 @@ pub enum RuleCmd {
 
     /// Apply a rule to an intent — creates a GOVERNS edge (uninspected).
     Apply {
-        rule_id:   String,
+        rule_id: String,
         intent_id: String,
 
         #[arg(long)]
@@ -1090,7 +1131,7 @@ pub enum RuleCmd {
           --criterion \"no query matches a relationship by its own property\" \\\n    \
           --evidence \"grep over src/db/queries: all updates are endpoint-matched\"")]
     Verdict {
-        rule_id:   String,
+        rule_id: String,
         intent_id: String,
 
         /// The verdict: passing (complies) | failing (violates) | independent
@@ -1546,9 +1587,7 @@ pub enum ValidationCmd {
     },
 
     /// Show full detail of one validation node.
-    Show {
-        id: String,
-    },
+    Show { id: String },
 }
 
 // ---------------------------------------------------------------------------
@@ -1668,8 +1707,14 @@ mod tests {
             super::deepest_subcommand(argv.iter().map(|s| s.to_string()))
                 .map(|c| c.get_name().to_string())
         };
-        assert_eq!(walk(&["intent", "update", "routing"]).as_deref(), Some("update"));
-        assert_eq!(walk(&["--json", "intent", "update"]).as_deref(), Some("update"));
+        assert_eq!(
+            walk(&["intent", "update", "routing"]).as_deref(),
+            Some("update")
+        );
+        assert_eq!(
+            walk(&["--json", "intent", "update"]).as_deref(),
+            Some("update")
+        );
         assert_eq!(walk(&["export", "--check"]).as_deref(), Some("export"));
         assert_eq!(walk(&["nonsense"]), None);
     }
@@ -1683,8 +1728,10 @@ mod tests {
     fn every_flag_requiring_command_ships_an_example() {
         use clap::CommandFactory;
         fn walk(cmd: &clap::Command, path: &str, missing: &mut Vec<String>) {
-            let subs: Vec<&clap::Command> =
-                cmd.get_subcommands().filter(|s| s.get_name() != "help").collect();
+            let subs: Vec<&clap::Command> = cmd
+                .get_subcommands()
+                .filter(|s| s.get_name() != "help")
+                .collect();
             if subs.is_empty() {
                 let requires_flag = cmd
                     .get_arguments()
@@ -1715,7 +1762,9 @@ mod tests {
     #[test]
     fn intent_update_positional_text_is_caught_for_teaching() {
         let cli = Cli::parse_from(["loom", "intent", "update", "routing", "new words here"]);
-        let Some(Command::Intent { subcommand: IntentCmd::Update { id, extra, .. } }) = cli.command
+        let Some(Command::Intent {
+            subcommand: IntentCmd::Update { id, extra, .. },
+        }) = cli.command
         else {
             panic!("expected intent update");
         };
