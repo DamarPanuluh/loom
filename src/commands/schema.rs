@@ -27,8 +27,11 @@ fn node_desc(label: &str) -> &'static str {
         "QualityRule" => "A named anti-pattern / norm (the normative plane).",
         "Validation" => "A runnable proof that an intent is fulfilled.",
         "Note" => "Append-only free-text memory (justification, idea, question, …).",
+        "Ignore" => "A coverage exclusion pattern with a recorded reason — the honest escape hatch for generated, vendor, or out-of-scope files.",
+        "Delegation" => "A subtree owned by another loom graph; coverage treats matching files as covered by the child graph's committed export.",
         "Hypothesis" => "An improvement proposal (the pre-decision plane): claim + proposal + predicted outcome. proposed → supported|refuted (proven by a DIFFERENT agent) → adopted → confirmed (outcome verified) or rejected. Invisible to coverage/completeness until adopted.",
         "VocabTerm" => "A registered tag term — the bounded vocabulary intents may carry in `tags` (max 3). A key, not a knowledge node: its value is forcing two descriptions of one responsibility to collide (`duplicated_responsibility`). Registry: `loom vocab list`.",
+        "Persona" => "A named audience segment. SERVES edges verify which intents serve it; JOURNEYS edges bind saga proofs to its end-to-end path.",
         _ => "",
     }
 }
@@ -41,6 +44,8 @@ fn edge_desc(etype: &str) -> &'static str {
         "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent.",
         "VALIDATES" => "Validation → Intent — a proof object attached to an intent.",
         "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
+        "SERVES" => "Persona → Intent — inspectable claim that the intent serves that audience segment.",
+        "JOURNEYS" => "Persona → Validation — structural binding from an audience segment to a saga proof exercising its path.",
         _ => "",
     }
 }
@@ -99,7 +104,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
             "schema_version": SCHEMA_VERSION,
-            "edge_identity": "Derived, never stored: <prefix>:<from-id>:<to-id> with prefixes rt (RELATES_TO), hy (HIERARCHY), imp (IMPLEMENTS), gov (GOVERNS), val (VALIDATES), tgt (TARGETS). Stable across export/import; this is the id `loom edge show` and notes reference.",
+            "edge_identity": "Derived, never stored: <prefix>:<from-id>:<to-id> with prefixes rt (RELATES_TO), hy (HIERARCHY), imp (IMPLEMENTS), gov (GOVERNS), val (VALIDATES), tgt (TARGETS), srv (SERVES), jrn (JOURNEYS). Stable across export/import; this is the id `loom edge show` and notes reference.",
             "node_labels": nodes,
             "edge_types": edges,
             "inspection_states": states,
@@ -126,7 +131,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("(non-string fields carry a :type — list fields read and write as real arrays).");
     println!();
     println!("Edge identity is DERIVED, never stored: <prefix>:<from-id>:<to-id> —");
-    println!("  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS.");
+    println!("  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS");
+    println!("  srv=SERVES     jrn=JOURNEYS.");
     println!("  Stable across export/import; it is the id `loom edge show` and notes reference.");
     println!();
     println!("Nodes:");

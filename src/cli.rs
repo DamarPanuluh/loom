@@ -549,7 +549,8 @@ pub enum IntentCmd {
     /// Add an Intent node (status = proposed).
     #[command(after_help = "EXAMPLE:\n  \
         loom intent add --name \"loom init is idempotent\" --level feature \\\n    \
-          --description \"re-running init with an existing graph is a no-op\" --aspect fallback")]
+          --description \"re-running init with an existing graph is a no-op\" \\\n    \
+          --domain developer-experience --layer cli --aspect fallback")]
     Add {
         #[arg(long)]
         name: String,
