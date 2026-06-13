@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 use crate::db::LoomDb;
-use crate::types::{Intent, IntentCentrality};
+use crate::types::{Intent, IntentCentrality, Validation};
 
 use super::completeness::vertical_completeness_from_snapshot;
 use super::hierarchy::list_all_hierarchy;
@@ -634,6 +634,29 @@ pub fn validation_pass_rate_from_snapshot(snapshot: &QuerySnapshot) -> f64 {
     passed as f64 / total as f64
 }
 
+/// (blocked count, runnable pass rate) for a set of validations. The runnable
+/// rate is passed / (total − blocked): the health of proofs that CAN run, so a
+/// wall of environmentally-blocked sagas (live target down) doesn't make the
+/// headline rate read as failures. Falls back to the all-up rate when nothing
+/// is blocked; 0.0 when nothing is runnable.
+pub fn blocked_count_and_runnable_rate(validations: &[Validation]) -> (i64, f64) {
+    let blocked = validations
+        .iter()
+        .filter(|v| v.last_result == "blocked")
+        .count();
+    let passed = validations
+        .iter()
+        .filter(|v| v.last_result == "passed")
+        .count();
+    let runnable = validations.len() - blocked;
+    let rate = if runnable > 0 {
+        passed as f64 / runnable as f64
+    } else {
+        0.0
+    };
+    (blocked as i64, rate)
+}
+
 pub fn intents_without_validations_count_from_snapshot(snapshot: &QuerySnapshot) -> i64 {
     let validated: std::collections::HashSet<&str> = snapshot
         .validates
@@ -764,4 +787,47 @@ pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<In
         .into_iter()
         .map(|(intent, degree)| IntentCentrality { intent, degree })
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn val(result: &str) -> Validation {
+        Validation {
+            id: result.into(),
+            name: result.into(),
+            description: String::new(),
+            validation_type: "manual_check".into(),
+            command: String::new(),
+            last_run: String::new(),
+            last_result: result.into(),
+        }
+    }
+
+    #[test]
+    fn runnable_rate_excludes_blocked_from_the_denominator() {
+        // 2 passed, 1 blocked: all-up 2/3, but blocked is environmental — the
+        // runnable rate is 2/2 = 100%, and the blocked count is surfaced.
+        let vs = vec![val("passed"), val("passed"), val("blocked")];
+        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        assert_eq!(blocked, 1);
+        assert!((runnable - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn runnable_rate_equals_all_up_when_nothing_blocked() {
+        let vs = vec![val("passed"), val("failed")];
+        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        assert_eq!(blocked, 0);
+        assert!((runnable - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn all_blocked_is_zero_runnable_not_a_divide_by_zero() {
+        let vs = vec![val("blocked"), val("blocked")];
+        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        assert_eq!(blocked, 2);
+        assert_eq!(runnable, 0.0);
+    }
 }

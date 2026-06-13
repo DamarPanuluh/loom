@@ -1078,8 +1078,17 @@ pub struct StatusReport {
     pub needs_reverification: i64,
     /// Intents with zero VALIDATES edges — no proof of fulfillment.
     pub intents_without_validations: i64,
-    /// Fraction of Validation.last_result == "passed".
+    /// Fraction of Validation.last_result == "passed" over ALL validations
+    /// (blocked included in the denominator). Kept for compatibility.
     pub validation_pass_rate: f64,
+    /// Validations marked `blocked` — they CANNOT run yet (environment not
+    /// ready) and are out of the validator queue. Surfaced so a wall of
+    /// environmentally-blocked proofs cannot silently drag the headline rate.
+    pub blocked_validations: i64,
+    /// passed / (total − blocked): the pass rate over proofs that can actually
+    /// run, undiluted by blocked ones — the "real health" number. Equals
+    /// `validation_pass_rate` when nothing is blocked.
+    pub validation_pass_rate_runnable: f64,
     /// Convenience alias: failing_edges (RELATES_TO + GOVERNS).
     pub open_issues: i64,
 }

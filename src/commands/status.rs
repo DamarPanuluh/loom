@@ -31,6 +31,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     let needs_reverification = *by_status.get("needs_reverification").unwrap_or(&0);
 
     let pass_rate = validation_pass_rate_from_snapshot(&snapshot);
+    let (blocked_validations, validation_pass_rate_runnable) =
+        crate::db::queries::blocked_count_and_runnable_rate(&snapshot.validations);
     let no_val_count = intents_without_validations_count_from_snapshot(&snapshot);
 
     let report = StatusReport {
@@ -45,6 +47,8 @@ pub fn run(printer: &Printer) -> Result<()> {
         needs_reverification,
         intents_without_validations: no_val_count,
         validation_pass_rate: pass_rate,
+        blocked_validations,
+        validation_pass_rate_runnable,
         open_issues: failing,
     };
 

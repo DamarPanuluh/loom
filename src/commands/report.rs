@@ -31,6 +31,8 @@ pub fn run(printer: &Printer) -> Result<()> {
 
     // ---- Validation quality ----
     let pass_rate = validation_pass_rate(&db)?;
+    let (blocked_validations, validation_pass_rate_runnable) =
+        crate::db::queries::blocked_count_and_runnable_rate(&list_validations(&db)?);
     let intents_no_val = intents_without_validations(&db)?;
 
     let status = StatusReport {
@@ -45,6 +47,8 @@ pub fn run(printer: &Printer) -> Result<()> {
         needs_reverification,
         intents_without_validations: intents_no_val.len() as i64,
         validation_pass_rate: pass_rate,
+        blocked_validations,
+        validation_pass_rate_runnable,
         open_issues: failing,
     };
 

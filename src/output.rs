@@ -393,6 +393,18 @@ pub fn fmt_rule_row(r: &crate::types::QualityRule) -> String {
 
 pub fn fmt_status(s: &crate::types::StatusReport) -> String {
     let pass_pct = s.validation_pass_rate * 100.0;
+    // A wall of environmentally-blocked proofs (live target down) would
+    // otherwise make the all-up rate read as failures — show the blocked count
+    // and the undiluted runnable rate right next to it.
+    let blocked_note = if s.blocked_validations > 0 {
+        format!(
+            "  ({} blocked — environment not ready; of runnable: {:.1}%)",
+            s.blocked_validations,
+            s.validation_pass_rate_runnable * 100.0
+        )
+    } else {
+        String::new()
+    };
     format!(
         "Nodes:\n\
          \n  intents:                    {intents}\
@@ -407,7 +419,7 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
          \n\nQuality:\n\
          \n  open issues (failing):      {issues}\
          \n  intents without validation: {no_val}\
-         \n  validation pass rate:       {pass:.1}%",
+         \n  validation pass rate:       {pass:.1}%{blocked_note}",
         intents = s.total_intents,
         codefiles = s.total_codefiles,
         validations = s.total_validations,
@@ -420,6 +432,7 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
         issues = s.open_issues,
         no_val = s.intents_without_validations,
         pass = pass_pct,
+        blocked_note = blocked_note,
     )
 }
 
