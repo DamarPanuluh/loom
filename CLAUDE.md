@@ -584,7 +584,10 @@ src/
 │       │                   coherently (the production read path; no per-query reloads)
 │       ├── find.rs         BM25 keyword search over intents (loom find)
 │       ├── smells.rs       derived problem signals (split-brain, scatter, tangle,
-│       │                   layering, vocab drift, …) with per-finding remedy (loom smells)
+│       │                   layering, vocab drift, …) with per-finding remedy; plus
+│       │                   the non-gating ADVISORIES — cochange_coupling (git) and
+│       │                   nonlocal_proof (a `proven` leaf whose only test lives in
+│       │                   another module — the proof-locality check) (loom smells)
 │       ├── stats.rs        counts / centrality / graph_state pulse / completeness gaps
 │       ├── portability.rs  deterministic export/import travel format (loom export/import)
 │       └── integrity.rs    graph integrity checks (loom doctor)

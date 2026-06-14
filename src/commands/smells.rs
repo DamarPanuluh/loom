@@ -11,7 +11,9 @@
 
 use anyhow::Result;
 
-use crate::db::queries::{cochange_suggestions, compute_smells_from, QuerySnapshot};
+use crate::db::queries::{
+    cochange_suggestions, compute_smells_from, proof_locality_suggestions, QuerySnapshot,
+};
 use crate::db::{ensure_initialized, GrafeoDb};
 use crate::output::Printer;
 
@@ -41,6 +43,13 @@ pub fn run_with_db(
     let suggestions_total = suggestions.len();
     let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
 
+    // Advisory proof-locality: STATIC (no git, no coverage run), never gates
+    // green. Flags leaves the `proven` axis counts whose only `test` proof
+    // resolves to other files than their grounded code.
+    let proof_adv = proof_locality_suggestions(&snapshot);
+    let proof_total = proof_adv.len();
+    let proof_shown: Vec<_> = proof_adv.into_iter().take(limit.max(1)).collect();
+
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
@@ -63,7 +72,9 @@ pub fn run_with_db(
             "declared_layers": declared_layers,
             "cochange_suggestions": suggestions_shown,
             "cochange_suggestions_total": suggestions_total,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` are ADVISORY (git evolutionary coupling) — they never gate green; explore or ignore.",
+            "proof_locality_suggestions": proof_shown,
+            "proof_locality_suggestions_total": proof_total,
+            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` (git evolutionary coupling) and `proof_locality_suggestions` (a proven leaf whose only `test` proof lives in other files) are ADVISORY — they never gate green; explore or ignore.",
         }));
         return Ok(());
     }
@@ -116,6 +127,28 @@ pub fn run_with_db(
                 "  ({} more — `loom smells --limit {}`)",
                 suggestions_total - suggestions_shown.len(),
                 suggestions_total
+            );
+        }
+    }
+    if !proof_shown.is_empty() {
+        println!();
+        println!(
+            "── proof-locality advisories ({}) — ADVISORY (proven leaf, test lives elsewhere; never gate green) ──",
+            proof_total
+        );
+        println!();
+        for s in &proof_shown {
+            println!("  [{}]  (score {:.1})", s.kind, s.score);
+            println!("    {}", s.summary);
+            println!("    evidence: {}", s.evidence);
+            println!("    remedy:   {}", s.remedy);
+            println!();
+        }
+        if proof_total > proof_shown.len() {
+            println!(
+                "  ({} more — `loom smells --limit {}`)",
+                proof_total - proof_shown.len(),
+                proof_total
             );
         }
     }

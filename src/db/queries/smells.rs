@@ -218,6 +218,16 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             avoid: vec!["do not treat co-change as proof of a relationship without reading the code; a wide refactor couples files incidentally".into()],
             done_when: "the pair has a grounded or independent RELATES_TO verdict (this is advisory — it never gates phase=complete)".into(),
         },
+        "nonlocal_proof" => SmellTeaching {
+            principle: "A passing LINKED validation is not a test that EXERCISES the intent's grounded code. The `proven` axis counts the link, so a leaf proven only by a test living in OTHER files reads green while its own code may have no direct test — partial-coverage overstatement. It is a SUGGESTION to investigate, not a defect.".into(),
+            inspect: vec![
+                "read the intent's grounded file(s) and ask whether the named test actually drives that code path".into(),
+                "`loom intent show <intent>` for its groundings; `loom validation list` for the proof's command".into(),
+                "if the real proof is an e2e/subprocess check, record it as an `assertion`/`saga` validation — this advisory defers to those (it only judges `test`-type proofs it can statically locate)".into(),
+            ],
+            avoid: vec!["do not read a green `proven` axis as coverage of the grounded code; a co-grounded test can pass without touching this file".into()],
+            done_when: "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)".into(),
+        },
         "layering_violation" => SmellTeaching {
             principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
             inspect: vec![
@@ -1828,4 +1838,543 @@ pub fn cochange_suggestions(
     });
     out.truncate(MAX_SUGGESTIONS);
     out
+}
+
+// ---------------------------------------------------------------------------
+// proof-locality advisory — the `proven` axis's quality check
+// ---------------------------------------------------------------------------
+
+/// `nonlocal_proof` advisories — the static counterpart to the 360° `proven`
+/// axis. `proven` counts an implemented leaf with a VALIDATES edge to a PASSED
+/// validation; it does NOT check the proof exercises the intent's grounded
+/// code. A leaf grounded in file A but proven only by a `test` living in file B
+/// reads green while A may have no direct test — partial-coverage overstatement.
+///
+/// This flags exactly that, STATICALLY (no instrumentation, no coverage run):
+/// for each implemented leaf proven ONLY by `test`-type validations, it resolves
+/// each test command's selectors to the files they live in (via the graph's
+/// test-symbol facts) and flags the leaf when those resolve to a different
+/// MODULE (directory) than its grounded code. Module-level — not file-level —
+/// because Rust keeps a module's tests beside its code (`mod.rs` / a
+/// `#[cfg(test)] mod tests`), so a same-directory test is legitimately local.
+///
+/// Two deliberate non-firings keep it false-positive-free (the trap the ④ spike
+/// named): (1) any non-`test` proof — an `assertion`/`saga`/`manual_check` e2e
+/// or subprocess check — exempts the leaf, because that proof legitimately
+/// exercises code this static check can't see; (2) a command we can't resolve to
+/// any file (an opaque script, a bare `cargo test`) is UNKNOWN, never non-local.
+/// Computed OUTSIDE `compute_smells_from` — like `cochange_suggestions`, it is
+/// ADVISORY and never gates `phase=complete`.
+pub fn proof_locality_suggestions(snapshot: &QuerySnapshot) -> Vec<Smell> {
+    proof_locality_from_parts(
+        &snapshot.intents,
+        &snapshot.implements,
+        &snapshot.validates,
+        &snapshot.validations,
+        &snapshot.codefiles,
+        &snapshot.hierarchy,
+    )
+}
+
+fn proof_locality_from_parts(
+    intents: &[crate::types::Intent],
+    implements: &[crate::types::Implements],
+    validates: &[crate::types::ValidatesEdge],
+    validations: &[crate::types::Validation],
+    codefiles: &[crate::types::CodeFile],
+    hierarchy: &[(String, String)],
+) -> Vec<Smell> {
+    const MAX_SUGGESTIONS: usize = 25;
+
+    // Test-symbol index: every is_test symbol's name → its file. Empty means the
+    // graph carries no symbol facts (pre-v8 / feature-light build) — the
+    // instrument is unarmed, so flag nothing rather than everything.
+    let mut test_symbols: Vec<(&str, &str)> = Vec::new(); // (symbol name, file path)
+    for cf in codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test {
+                test_symbols.push((f.name.as_str(), cf.path.as_str()));
+            }
+        }
+    }
+    if test_symbols.is_empty() {
+        return Vec::new();
+    }
+    let all_paths: Vec<&str> = codefiles.iter().map(|c| c.path.as_str()).collect();
+
+    let name_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
+    let is_parent: HashSet<&str> = hierarchy.iter().map(|(p, _)| p.as_str()).collect();
+
+    let mut grounded: HashMap<&str, HashSet<&str>> = HashMap::new();
+    for im in implements {
+        grounded
+            .entry(im.intent_id.as_str())
+            .or_default()
+            .insert(im.codefile_path.as_str());
+    }
+    let val_by_id: HashMap<&str, &crate::types::Validation> =
+        validations.iter().map(|v| (v.id.as_str(), v)).collect();
+    let mut passing: HashMap<&str, Vec<&crate::types::Validation>> = HashMap::new();
+    for e in validates {
+        if let Some(v) = val_by_id.get(e.validation_id.as_str()) {
+            if v.last_result == "passed" {
+                passing.entry(e.intent_id.as_str()).or_default().push(v);
+            }
+        }
+    }
+
+    let mut out: Vec<Smell> = Vec::new();
+    for i in intents {
+        if i.status == "deprecated" {
+            continue;
+        }
+        let lifecycle = if i.lifecycle.is_empty() {
+            "implemented"
+        } else {
+            i.lifecycle.as_str()
+        };
+        if lifecycle != "implemented" || is_parent.contains(i.id.as_str()) {
+            continue; // the proven axis counts implemented LEAVES only
+        }
+        let Some(g) = grounded.get(i.id.as_str()) else {
+            continue; // not grounded → not realized → not our concern
+        };
+        let Some(vals) = passing.get(i.id.as_str()) else {
+            continue; // not proven
+        };
+        // Exempt: any non-test proof exercises code we can't statically see.
+        if vals.iter().any(|v| v.validation_type != "test") {
+            continue;
+        }
+
+        // Locality is MODULE-level, not file-level: Rust keeps a module's tests
+        // beside its code (in `mod.rs` / a `#[cfg(test)] mod tests`), not in the
+        // same file. A test in the grounded code's own directory counts as local;
+        // only a proof living in a DIFFERENT module is the overstatement we flag.
+        let grounded_dirs: HashSet<&str> = g.iter().map(|p| parent_dir(p)).collect();
+        let mut located_any = false;
+        let mut local = false;
+        for v in vals {
+            let files = locate_test_proof(&v.command, &test_symbols, &all_paths);
+            if files.is_empty() {
+                continue; // unresolvable selector → unknown, not non-local
+            }
+            located_any = true;
+            if files.iter().any(|p| grounded_dirs.contains(parent_dir(p))) {
+                local = true;
+                break;
+            }
+        }
+        if located_any && !local {
+            let mut gfiles: Vec<&str> = g.iter().copied().collect();
+            gfiles.sort_unstable();
+            let cmds: Vec<&str> = vals.iter().map(|v| v.command.as_str()).collect();
+            out.push(Smell {
+                kind: "nonlocal_proof".into(),
+                score: gfiles.len() as f64,
+                summary: format!(
+                    "'{}' reads as proven, but its only test proof lives outside its grounded module",
+                    name_of.get(i.id.as_str()).copied().unwrap_or(i.name.as_str())
+                ),
+                evidence: format!(
+                    "grounded in [{}] · proven only by test(s) [{}] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis)",
+                    gfiles.join(", "),
+                    cmds.join("; ")
+                ),
+                remedy: format!(
+                    "add a test that exercises {} and link it (`loom validation add … --type test` + `loom edge validates <validation> {}`), fix the IMPLEMENTS locator if the grounding is wrong, or accept it (`loom note add --intent {} --kind decision --text \"<why the existing proof covers this code>\"`)",
+                    gfiles.first().copied().unwrap_or("the grounded file"),
+                    i.id,
+                    i.id
+                ),
+                teaching: teaching_for("nonlocal_proof"),
+            });
+        }
+    }
+    out.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.summary.cmp(&b.summary))
+    });
+    out.truncate(MAX_SUGGESTIONS);
+    out
+}
+
+/// Resolve a `cargo test` command to the source files its selectors live in,
+/// using the test-symbol index. Empty set = "can't tell" (opaque command, bare
+/// `cargo test`, a script) — the caller treats that as UNKNOWN, never non-local.
+fn locate_test_proof<'a>(
+    command: &str,
+    test_symbols: &[(&'a str, &'a str)],
+    all_paths: &[&'a str],
+) -> HashSet<&'a str> {
+    let mut files: HashSet<&str> = HashSet::new();
+    for sel in parse_cargo_test_selectors(command) {
+        if sel.contains("::") {
+            // module-path selector (a::b[::tests]) → a source-path fragment.
+            let modpath = sel.strip_suffix("::tests").unwrap_or(&sel);
+            let frag = modpath.replace("::", "/");
+            for p in all_paths {
+                if path_matches_module(p, &frag) {
+                    files.insert(p);
+                }
+            }
+        } else {
+            // bare filter: cargo runs every test whose name CONTAINS the substring.
+            for (name, path) in test_symbols {
+                if name.contains(&sel) {
+                    files.insert(path);
+                }
+            }
+        }
+    }
+    files
+}
+
+/// Extract the test-name / module selectors from a `cargo test …` command,
+/// dropping flags, their consumed values, the `--` separator, and shell
+/// redirections. Non-cargo commands (scripts, binaries) yield nothing.
+fn parse_cargo_test_selectors(command: &str) -> Vec<String> {
+    if !command.contains("cargo test") {
+        return Vec::new();
+    }
+    let mut selectors = Vec::new();
+    let mut seen_test = false;
+    let mut skip_next = false;
+    for tok in command.split_whitespace() {
+        if !seen_test {
+            if tok == "test" {
+                seen_test = true;
+            }
+            continue;
+        }
+        // Stop at a shell redirection / pipe — nothing past it is a selector.
+        if tok.starts_with('>')
+            || tok.starts_with("2>")
+            || tok.starts_with("1>")
+            || tok == "|"
+            || tok == "&&"
+            || tok == ";"
+        {
+            break;
+        }
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if tok == "--" {
+            continue;
+        }
+        if tok.starts_with('-') {
+            if matches!(
+                tok,
+                "--bin"
+                    | "-p"
+                    | "--package"
+                    | "--example"
+                    | "--test"
+                    | "--features"
+                    | "--manifest-path"
+                    | "--target"
+            ) {
+                skip_next = true; // the next token is this flag's value, not a selector
+            }
+            continue;
+        }
+        selectors.push(tok.to_string());
+    }
+    selectors
+}
+
+/// A source path matches a module fragment when the fragment is a path segment
+/// (dir `…/frag/…`, file `…/frag.rs`, or module file `…/frag/mod.rs`). Segment
+/// matching avoids the over-match a bare `contains` gives a short module name.
+fn path_matches_module(path: &str, frag: &str) -> bool {
+    path.contains(&format!("/{frag}/"))
+        || path.ends_with(&format!("/{frag}.rs"))
+        || path == format!("{frag}.rs")
+        || path.ends_with(&format!("/{frag}/mod.rs"))
+}
+
+/// The directory a file lives in — its module, for locality comparison.
+/// `"src/db/queries/intent.rs"` → `"src/db/queries"`; a bare name → `""`.
+fn parent_dir(path: &str) -> &str {
+    path.rsplit_once('/').map(|(dir, _)| dir).unwrap_or("")
+}
+
+#[cfg(test)]
+mod proof_locality_tests {
+    use super::*;
+    use crate::types::{CodeFile, Implements, Intent, SymbolFact, ValidatesEdge, Validation};
+
+    fn leaf(id: &str, name: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: name.into(),
+            description: String::new(),
+            abstraction_level: "feature".into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn cf(path: &str, test_syms: &[&str], code_syms: &[&str]) -> CodeFile {
+        let mut facts = Vec::new();
+        for s in test_syms {
+            facts.push(SymbolFact {
+                label: format!("fn {s}"),
+                name: (*s).into(),
+                kind: "fn".into(),
+                visibility: "private".into(),
+                line_start: 1,
+                line_end: 2,
+                is_test: true,
+                body_hash: String::new(),
+            });
+        }
+        for s in code_syms {
+            facts.push(SymbolFact {
+                label: format!("pub fn {s}"),
+                name: (*s).into(),
+                kind: "fn".into(),
+                visibility: "public".into(),
+                line_start: 1,
+                line_end: 2,
+                is_test: false,
+                body_hash: String::new(),
+            });
+        }
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: facts.iter().map(|f| f.label.clone()).collect(),
+            symbol_facts: facts,
+            content_hash: String::new(),
+        }
+    }
+
+    fn imp(intent: &str, path: &str) -> Implements {
+        Implements {
+            id: format!("imp:{intent}:{path}"),
+            intent_id: intent.into(),
+            codefile_id: path.into(),
+            intent_name: String::new(),
+            codefile_path: path.into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: String::new(),
+            notes: String::new(),
+            created_at: "t".into(),
+        }
+    }
+
+    fn val(id: &str, vtype: &str, command: &str, result: &str) -> Validation {
+        Validation {
+            id: id.into(),
+            name: id.into(),
+            description: String::new(),
+            validation_type: vtype.into(),
+            command: command.into(),
+            last_run: String::new(),
+            last_result: result.into(),
+        }
+    }
+
+    fn vedge(vid: &str, iid: &str) -> ValidatesEdge {
+        ValidatesEdge {
+            id: format!("val:{vid}:{iid}"),
+            validation_id: vid.into(),
+            intent_id: iid.into(),
+            validation_name: String::new(),
+            intent_name: String::new(),
+            created_at: "t".into(),
+            inspection_status: "passing".into(),
+            notes: String::new(),
+        }
+    }
+
+    #[test]
+    fn flags_a_leaf_proven_only_by_a_test_in_other_files() {
+        let codefiles = vec![
+            cf("src/commands/intent.rs", &[], &["delete_intent"]), // grounded, no tests
+            cf("src/db/queries/intent.rs", &["retire_is_invisible"], &[]), // the test lives here
+        ];
+        let intents = vec![leaf("i1", "intent retirement contract")];
+        let implements = vec![imp("i1", "src/commands/intent.rs")];
+        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert_eq!(out.len(), 1, "a non-local test proof should flag: {out:?}");
+        assert_eq!(out[0].kind, "nonlocal_proof");
+        assert!(out[0].summary.contains("intent retirement contract"), "{}", out[0].summary);
+    }
+
+    #[test]
+    fn a_test_in_the_grounded_file_is_local_and_silent() {
+        let codefiles = vec![cf(
+            "src/db/queries/intent.rs",
+            &["retire_is_invisible"],
+            &["resolve_intent"],
+        )];
+        let intents = vec![leaf("i1", "intent resolution")];
+        let implements = vec![imp("i1", "src/db/queries/intent.rs")];
+        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(out.is_empty(), "a test in the grounded file is local: {out:?}");
+    }
+
+    #[test]
+    fn an_e2e_assertion_proof_exempts_the_leaf() {
+        let codefiles = vec![
+            cf("src/commands/intent.rs", &[], &["delete_intent"]),
+            cf("src/db/queries/intent.rs", &["retire_is_invisible"], &[]),
+        ];
+        let intents = vec![leaf("i1", "intent retirement contract")];
+        let implements = vec![imp("i1", "src/commands/intent.rs")];
+        let validations = vec![
+            val("v1", "test", "cargo test retire_is_invisible", "passed"),
+            val("v2", "assertion", ".claude/skills/e2e_retire.sh", "passed"),
+        ];
+        let validates = vec![vedge("v1", "i1"), vedge("v2", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(
+            out.is_empty(),
+            "an e2e/assertion proof exercises code the static check can't see — exempt: {out:?}"
+        );
+    }
+
+    #[test]
+    fn an_unresolvable_command_is_unknown_never_nonlocal() {
+        let codefiles = vec![
+            cf("src/commands/intent.rs", &[], &["delete_intent"]),
+            cf("src/db/queries/intent.rs", &["retire_is_invisible"], &[]),
+        ];
+        let intents = vec![leaf("i1", "intent retirement contract")];
+        let implements = vec![imp("i1", "src/commands/intent.rs")];
+        // The selector matches no known test symbol → can't be located → silent.
+        let validations = vec![val("v1", "test", "cargo test no_such_test_name_xyz", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(out.is_empty(), "an unresolvable selector is UNKNOWN, not non-local: {out:?}");
+    }
+
+    #[test]
+    fn a_sibling_test_in_the_same_module_is_local() {
+        // loom keeps query-layer tests in queries/mod.rs, not beside each file;
+        // module-level locality must treat that as covering the module (this would
+        // wrongly flag under file-level locality).
+        let codefiles = vec![
+            cf("src/db/queries/intent.rs", &[], &["resolve_intent"]), // grounded code
+            cf("src/db/queries/mod.rs", &["resolve_intent_roundtrips"], &[]), // tests live here
+        ];
+        let intents = vec![leaf("i1", "intent resolution")];
+        let implements = vec![imp("i1", "src/db/queries/intent.rs")];
+        let validations = vec![val("v1", "test", "cargo test resolve_intent_roundtrips", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(
+            out.is_empty(),
+            "a test in a sibling file of the same module is local: {out:?}"
+        );
+    }
+
+    #[test]
+    fn a_module_path_selector_resolves_to_its_directory() {
+        let codefiles = vec![cf(
+            "src/db/queries/intent.rs",
+            &["resolve_intent_roundtrips"],
+            &["resolve_intent"],
+        )];
+        let intents = vec![leaf("i1", "intent resolution")];
+        let implements = vec![imp("i1", "src/db/queries/intent.rs")];
+        let validations = vec![val("v1", "test", "cargo test db::queries 2>/dev/null", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(
+            out.is_empty(),
+            "a module-path selector resolves to its directory → local: {out:?}"
+        );
+    }
+
+    #[test]
+    fn no_symbol_facts_means_the_instrument_is_unarmed() {
+        // A graph with zero test-symbol facts must flag nothing, never everything.
+        let codefiles = vec![cf("src/commands/intent.rs", &[], &["delete_intent"])];
+        let intents = vec![leaf("i1", "intent retirement contract")];
+        let implements = vec![imp("i1", "src/commands/intent.rs")];
+        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(out.is_empty(), "no symbol facts → unarmed → silent: {out:?}");
+    }
 }
