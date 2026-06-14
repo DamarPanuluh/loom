@@ -358,3 +358,66 @@ fn orient(printer: &Printer) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::GrafeoDb;
+    use std::path::Path;
+
+    /// Run a servable command through the REAL dispatch path with a capturing
+    /// printer and return its parsed --json payload.
+    fn run_json(db: &GrafeoDb, args: &[&str]) -> serde_json::Value {
+        let argv: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+        let cli = Cli::try_parse_from_argv(&argv).expect("argv parses");
+        let p = Printer::capturing(true);
+        match dispatch_with_db(db, Path::new("."), cli, &p) {
+            DispatchOutcome::Ran(r) => r.unwrap_or_else(|e| panic!("{args:?} errored: {e:?}")),
+            DispatchOutcome::NotServable => panic!("{args:?} unexpectedly NotServable"),
+        }
+        let out = p.captured().expect("captured json");
+        serde_json::from_str(&out).unwrap_or_else(|e| panic!("invalid json for {args:?}: {e}\n{out}"))
+    }
+
+    /// Just-In-Time guidance present: a `next_step` (full anchor) or `next_steps`
+    /// (light anchor on a construction step) — output contract invariant 1.
+    fn anchored(v: &serde_json::Value) -> bool {
+        v.as_object()
+            .map(|o| o.keys().any(|k| k.starts_with("next_step")))
+            .unwrap_or(false)
+    }
+
+    /// JUST-IN-TIME RATCHET (leg 2 of teaching completeness): every servable
+    /// MUTATION surfaces the next move in its --json payload, so a driving LLM
+    /// never needs a separate `loom status` to know where it stands. Drives the
+    /// real dispatch path across the mutation families (lifecycle construction,
+    /// confirmation, evolution, proof declaration); a command that forgets to
+    /// anchor fails here. (Pure-annotation `note add` is intentionally exempt —
+    /// "continue" is not useful guidance; grounding-family anchors are disk-
+    /// dependent and verified separately.)
+    #[test]
+    fn every_mutation_anchors_just_in_time() {
+        let db = GrafeoDb::in_memory();
+        let add = run_json(
+            &db,
+            &["intent", "add", "--name", "checkout endpoint", "--level", "feature",
+              "--description", "accepts a cart and creates an order", "--json"],
+        );
+        assert!(anchored(&add), "intent add must anchor: {add}");
+        let id = add["id"].as_str().expect("intent id").to_string();
+
+        for args in [
+            vec!["intent", "confirm", id.as_str(), "--json"],
+            vec!["intent", "mark", id.as_str(), "--lifecycle", "needs_change",
+                 "--reason", "known hotspot to revisit later", "--json"],
+            vec!["intent", "update", id.as_str(), "--boundary", "inbound",
+                 "--reason", "this is the public order-create surface", "--json"],
+            vec!["validation", "add", "--intent", id.as_str(), "--name", "checkout-smoke",
+                 "--type", "test", "--command", "true",
+                 "--description", "smoke test for the checkout endpoint", "--json"],
+        ] {
+            let v = run_json(&db, &args);
+            assert!(anchored(&v), "mutation {args:?} must anchor Just-In-Time: {v}");
+        }
+    }
+}

@@ -115,6 +115,31 @@ const GUIDE_SECTIONS: &[&str] = &[
     "done_condition",
 ];
 
+/// FINDABILITY CONTRACT (leg 3 of teaching completeness): the pull surfaces the
+/// guide MUST name, so when Just-In-Time anchoring isn't enough the LLM can find
+/// what it needs from the entry point instead of guessing. `guide_names_every_pull_surface`
+/// ratchets it — drop a reference here and the build fails.
+const FINDABILITY_SURFACES: &[&str] = &[
+    "loom status", // where am I
+    "loom next",   // what's the next item
+    "loom find",   // ask the map (keyword search)
+    "loom schema", // the data model
+    "--help",      // per-command EXAMPLE + flags
+];
+
+/// The sub-keys the json `orchestration` object must carry — the section that
+/// once drifted (the daemon teaching shipped human-only). Pinning the structure
+/// keeps every orchestration concept the human render teaches reachable in json.
+const ORCHESTRATION_KEYS: &[&str] = &[
+    "principle",
+    "topologies",
+    "contract",
+    "handoff_order",
+    "separation_of_duties",
+    "loop",
+    "performance",
+];
+
 fn brownfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the repo root."),
@@ -410,6 +435,36 @@ mod tests {
             let v = guide_json(mode);
             assert_eq!(v["mode"], serde_json::json!(mode), "mode echoed");
             assert!(v.get("orchestration").is_some(), "{mode}: orchestration present");
+        }
+    }
+
+    /// FINDABILITY RATCHET (leg 3): the guide names every pull surface, so when
+    /// Just-In-Time anchoring isn't enough the LLM can reach the rest from the
+    /// entry point rather than guess. Drop a reference and the build fails.
+    #[test]
+    fn guide_names_every_pull_surface() {
+        let blob = serde_json::to_string(&guide_json("brownfield")).unwrap();
+        for surface in FINDABILITY_SURFACES {
+            assert!(
+                blob.contains(surface),
+                "guide --json never names the pull surface '{surface}' — a cold LLM can't find it when JIT isn't enough. Reference it in the playbook or remove it from FINDABILITY_SURFACES."
+            );
+        }
+    }
+
+    /// PARITY GUARD for the section that drifted: the json `orchestration` object
+    /// keeps a home for every concept the human render teaches (incl. the daemon
+    /// under `performance`). A new orchestration concept added human-only fails
+    /// here — the closest mechanical guard short of routing the prose render
+    /// through the capturable Printer.
+    #[test]
+    fn orchestration_section_stays_complete() {
+        let v = guide_json("brownfield");
+        for key in ORCHESTRATION_KEYS {
+            assert!(
+                v["orchestration"].get(key).is_some(),
+                "orchestration.{key} missing from guide --json"
+            );
         }
     }
 }
