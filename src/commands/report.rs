@@ -18,7 +18,13 @@ pub fn run(printer: &Printer) -> Result<()> {
 
 pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) -> Result<()> {
     // ---- Node counts ----
-    let total_intents = count_intents(db)?;
+    // `loom status` reports the ACTIVE intent count off the snapshot (deprecated
+    // excluded); report aligns to that same number so the two orientation
+    // commands never print different totals for the same line. Deprecated intents
+    // are still surfaced — just counted separately, not folded into the headline.
+    let total_all_intents = count_intents(db)?;
+    let total_intents = crate::db::queries::list_active_intents(db)?.len() as i64;
+    let deprecated_intents = total_all_intents - total_intents;
     let total_codefiles = count_codefiles(db)?;
     let total_validations = count_validations(db)?;
 
@@ -80,6 +86,10 @@ pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) ->
         let mut v = serde_json::to_value(&report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert(
+                "deprecated_intents".to_string(),
+                serde_json::json!(deprecated_intents),
+            );
+            obj.insert(
                 "completeness_gaps".to_string(),
                 serde_json::to_value(&gaps)?,
             );
@@ -100,6 +110,11 @@ pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) ->
     println!("══ loom report ═════════════════════════════════════════════════════");
     println!();
     println!("{}", fmt_status(&status));
+    if deprecated_intents > 0 {
+        println!(
+            "  (+{deprecated_intents} deprecated intent(s) not in the count above — `loom intent list` shows all)"
+        );
+    }
     println!();
 
     println!("── Top Intents by RELATES_TO Centrality ─────────────────────────────");

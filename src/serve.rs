@@ -138,8 +138,8 @@ pub fn serve(root: &Path, idle_secs: u64) -> Result<()> {
     // a SIGHUP when the controlling terminal goes away and a SIGPIPE if it ever
     // writes to a closed stdio — either would kill it right after its first
     // request, collapsing all amortization (the symptom: "daemon serves one
-    // request, then GONE"). Ignore both so the daemon lives out its idle window.
-    ignore_hangup_signals();
+    // request, then GONE"). Ignore HUP/PIPE; trap TERM/INT for a clean drain.
+    install_signal_handlers();
 
     let sock = socket_path(root);
     // Open the graph once — the sole lock-holder. If this fails (e.g. another
@@ -193,9 +193,13 @@ pub fn serve(root: &Path, idle_secs: u64) -> Result<()> {
                 });
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                // No pending connection. Honour an in-flight drain request, then
-                // the idle timeout — but never exit while work is in flight.
-                if shutdown.load(Ordering::SeqCst) || last_activity.elapsed() >= idle {
+                // No pending connection. Honour an in-flight drain request, a
+                // SIGTERM/SIGINT, then the idle timeout — but never exit while
+                // work is in flight.
+                if shutdown.load(Ordering::SeqCst)
+                    || SHUTDOWN_REQUESTED.load(Ordering::SeqCst)
+                    || last_activity.elapsed() >= idle
+                {
                     if in_flight.load(Ordering::SeqCst) == 0 {
                         break;
                     }
@@ -223,21 +227,42 @@ pub fn serve(root: &Path, idle_secs: u64) -> Result<()> {
     Ok(())
 }
 
-/// Set SIGHUP and SIGPIPE to SIG_IGN so a detached daemon isn't killed when its
-/// spawning client exits / closes the pipe. Uses `signal(2)` directly (no extra
-/// dep). Best-effort: a failure leaves the default disposition.
-fn ignore_hangup_signals() {
+/// A SIGTERM/SIGINT requesting graceful shutdown sets this; the serve loop
+/// notices it on the next poll (the SAME drain path as the idle timeout and the
+/// `__drain__` IPC), waits for in-flight work, releases the lock, and removes
+/// the socket. A `static` (not the loop's `Arc<AtomicBool>`) because a signal
+/// handler may only touch async-signal-safe state — a lone atomic store does.
+static SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn on_terminate(_sig: i32) {
+    SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
+}
+
+/// Install the daemon's signal dispositions. SIGHUP/SIGPIPE are IGNORED — a
+/// detached daemon must outlive the short-lived client that spawned it (a
+/// SIGHUP when the controlling terminal goes away, a SIGPIPE on a closed stdio,
+/// would otherwise kill it after one request and collapse all amortization).
+/// SIGTERM/SIGINT trigger a GRACEFUL shutdown: `kill <daemon>` now drains
+/// in-flight work and releases the graph lock cleanly instead of dying mid-write
+/// and leaving a stale socket + held lock for the next client to trip over.
+/// Uses `signal(2)` directly (no extra dep). Best-effort: a failure leaves the
+/// default disposition.
+fn install_signal_handlers() {
     extern "C" {
         fn signal(signum: i32, handler: usize) -> usize;
     }
     const SIG_IGN: usize = 1;
     const SIGHUP: i32 = 1;
+    const SIGINT: i32 = 2;
     const SIGPIPE: i32 = 13;
-    // SAFETY: installing SIG_IGN for HUP/PIPE has no memory effects and is a
-    // standard daemonization step.
+    const SIGTERM: i32 = 15;
+    // SAFETY: SIG_IGN for HUP/PIPE is a standard daemonization step; the
+    // TERM/INT handler does nothing but a single atomic store (async-signal-safe).
     unsafe {
         signal(SIGHUP, SIG_IGN);
         signal(SIGPIPE, SIG_IGN);
+        signal(SIGTERM, on_terminate as extern "C" fn(i32) as usize);
+        signal(SIGINT, on_terminate as extern "C" fn(i32) as usize);
     }
 }
 

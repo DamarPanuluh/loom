@@ -31,6 +31,15 @@ serves many client requests against it. grafeo's MVCC snapshot isolation makes
 concurrent reads + writes from separate sessions safe in-process (proven). So a
 single daemon handles a whole agent fleet on one graph.
 
+Two DIFFERENT mechanisms, easy to conflate: the file lock is **cross-process**
+(it refuses a *second OS process* opening the same graph — `rw+rw` and `rw+ro`
+both refused, probe 7), which is what makes the daemon a singleton. Concurrency
+*within* the daemon's single held handle is **in-process MVCC**, not lock-gated:
+the per-connection `from_handle` sessions are exactly the safe case probe 6e
+pins. The "don't design for parallel readers on 0.5.42" warning is about the
+cross-process case (a separate `loom` invocation opening ReadOnly alongside the
+daemon) — it does NOT forbid the daemon's own per-request sessions.
+
 ## Version-skew safety (the #1 risk)
 
 Replacing the global binary while a daemon runs is the dangerous case: the stale

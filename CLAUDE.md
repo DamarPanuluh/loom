@@ -45,6 +45,11 @@ aspect              STRING  -- path-coverage facet ("happy" | "sad" | "fallback"
                                fallback sibling trips the happy_path_only smell
 visibility          STRING  -- "user_visible" | "internal" | (unset = untriaged;
                                the align interview triages it)
+boundary            STRING  -- "inbound" | "outbound" | (unset = internal) — marks
+                               a system-boundary crossing: inbound = a provider
+                               contract loom owns; outbound = a consumer dependency
+                               loom relies on. The boundary facet + coupling smells
+                               read it; no silent inference (the builder rules it).
 created_at          STRING
 updated_at          STRING
 tags                LIST    -- registered VocabTerm names (≤3, sorted; empty/absent
@@ -71,6 +76,12 @@ imports         LIST    -- statically-imported repo paths (loom sync; native
                            list since schema v5)
 content_hash    STRING  -- FNV-1a 64 hex of the bytes; sync's change detector
                            (mtime churn from checkout/rebase never false-flags)
+symbols         LIST    -- tree-sitter top-level symbol names (schema v7; additive
+                           diagnostic). Feeds symbol-accountability coverage;
+                           populated by `loom sync`, [] when unavailable.
+symbol_facts    LIST    -- richer per-symbol metadata as JSON objects (schema v8;
+                           additive). Powers symbol-level sync narrowing — a file
+                           edit ripples only the intents owning the changed symbols.
 ```
 
 ### QualityRule
@@ -398,7 +409,7 @@ design rationale for each command. The CLI is also self-documenting at runtime:
 (EXAMPLE block + flags). Compact index of the command surface:
 
 ```
-Setup & sync    init · sync · migrate · import [--as-planned] · export [--check] · detect
+Setup & sync    init · sync · serve · migrate · import [--as-planned] · export [--check] · detect
 Orientation     status · session · door · find · guide · schema · report · coverage · hotspots · smells · doctor
 Work queues     next [--mode discovery|fix|build|validate|quality|review|prove|align] [--all] [--take N] [--compact] · cluster · batch
 Intents         intent add|confirm|update|mark|delete|retire|source|tag|list|show
@@ -411,6 +422,14 @@ Personas        persona add|list|show · persona serve {ground|issue|independent
 Vocab & layers  vocab add|list|suggest|merge · layer order|list|clear   (`domain` = deprecated alias of `layer`)
 Memory & hatch  note add|prune|list · ignore add|list · delegate add|list
 ```
+
+`loom serve` is the OPTIONAL performance daemon: it holds the graph open once so
+the per-call DB-open floor amortizes to ~0, with automatic fallback to direct
+dispatch on ANY failure — so enabling it never changes behavior, only latency.
+Opt in with `LOOM_DAEMON=1`; the daemon is keyed to the binary's build-id
+(a rebuild auto-respawns it) and drains cleanly on SIGTERM/SIGINT. Full design
++ the in-process-MVCC vs cross-process-lock model in
+[`docs/daemon-design.md`](docs/daemon-design.md).
 
 Edge ids are DERIVED from endpoints — `rt:<a>:<b>` (`hy`/`imp`/`gov`/`val`/`tgt`/`srv`/`jrn`
 prefixes for the other types), never stored, stable across export/import. Intents and rules are

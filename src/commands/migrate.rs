@@ -285,3 +285,85 @@ fn list_value(items: Vec<String>) -> Value {
             .into(),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::queries::get_meta;
+    use crate::db::{GrafeoDb, LoomDb};
+    use crate::output::Printer;
+    use std::path::Path;
+
+    fn version(db: &GrafeoDb) -> String {
+        get_meta(db).unwrap().map(|m| m.version).unwrap_or_default()
+    }
+
+    fn migrate(db: &GrafeoDb) -> String {
+        let p = Printer::capturing(true);
+        run_with_db(db, Path::new("."), &p).unwrap();
+        p.captured().unwrap()
+    }
+
+    #[test]
+    fn already_current_is_an_idempotent_noop() {
+        let db = GrafeoDb::in_memory();
+        db.execute(&schema::insert_meta(SCHEMA_VERSION, "t", "g", "n", "owned"))
+            .unwrap();
+        let out = migrate(&db);
+        assert_eq!(version(&db), SCHEMA_VERSION);
+        assert!(out.contains("\"migrated\":false"), "{out}");
+    }
+
+    #[test]
+    fn upgrades_a_v6_graph_then_converges_on_rerun() {
+        let db = GrafeoDb::in_memory();
+        db.execute(&schema::insert_meta("6", "t", "g", "n", "owned"))
+            .unwrap();
+        db.execute("INSERT (:CodeFile {id: 'cf1', path: '/a.rs'})")
+            .unwrap();
+
+        let out = migrate(&db);
+        assert_eq!(version(&db), SCHEMA_VERSION, "version stamped to current");
+        assert!(
+            out.contains("\"migrated\":true") && out.contains("\"from_version\":\"6\""),
+            "{out}"
+        );
+        // v6→v7 then v7→v8 backfilled the two additive physical-fact lists for
+        // the one codefile that lacked them.
+        assert!(out.contains("\"symbols_backfilled\":1"), "{out}");
+        assert!(out.contains("\"symbol_facts_backfilled\":1"), "{out}");
+
+        // Crash-safety contract: the version is stamped LAST and every step skips
+        // already-converted data, so a re-run is a clean noop (a migrate that
+        // died midway would simply re-run the remainder).
+        let again = migrate(&db);
+        assert!(again.contains("\"migrated\":false"), "second run is a noop: {again}");
+    }
+
+    #[test]
+    fn v5_to_v6_leaves_layer_empty_without_a_declared_domain_order() {
+        let db = GrafeoDb::in_memory();
+        db.execute(&schema::insert_meta("5", "t", "g", "n", "owned"))
+            .unwrap();
+        db.execute("INSERT (:Intent {id: 'i1', domain: 'storage', layer: ''})")
+            .unwrap();
+
+        migrate(&db);
+        assert_eq!(version(&db), SCHEMA_VERSION);
+        // Documented contract: domain is NOT copied into layer unless the old
+        // graph declared a domain_order (i.e. was using domains AS layers).
+        let r = db
+            .execute("MATCH (n:Intent {id: 'i1'}) RETURN n.layer")
+            .unwrap();
+        assert_eq!(str_of(&r.rows()[0][0]), "", "layer stays empty");
+    }
+
+    #[test]
+    fn refuses_a_version_it_cannot_upgrade() {
+        let db = GrafeoDb::in_memory();
+        db.execute(&schema::insert_meta("2", "t", "g", "n", "owned"))
+            .unwrap();
+        let err = run_with_db(&db, Path::new("."), &Printer::capturing(true)).unwrap_err();
+        assert!(err.to_string().contains("schema version '2'"), "{err}");
+    }
+}

@@ -639,4 +639,173 @@ mod tests {
         // Never synced reads as prose, not as an empty string.
         assert_eq!(p["synced"], "never");
     }
+
+    #[test]
+    fn coverage_line_never_shows_a_vacuous_full() {
+        use crate::db::queries::{Coverage360, CoverageAxis};
+        let c = Coverage360 {
+            grounded_files: CoverageAxis {
+                covered: 5,
+                total: 5,
+            }, // closed → ✓
+            realized_leaves: CoverageAxis {
+                covered: 2,
+                total: 4,
+            }, // partial → fraction
+            explored_pairs: CoverageAxis {
+                covered: 0,
+                total: 0,
+            }, // no surface → —
+            measured_pairs: CoverageAxis {
+                covered: 1,
+                total: 3,
+            },
+            proven_leaves: CoverageAxis {
+                covered: 0,
+                total: 0,
+            },
+        };
+        let line = coverage_line(&c);
+        assert!(line.contains("grounded 5/5 ✓"), "closed axis gets a check: {line}");
+        assert!(line.contains("realized 2/4"), "partial axis shows the fraction: {line}");
+        assert!(
+            line.contains("explored —"),
+            "an axis with no surface is —, never a vacuous 100%: {line}"
+        );
+        assert!(!line.contains("0/0"), "0/0 must never render as a number: {line}");
+    }
+
+    #[test]
+    fn fmt_pulse_renders_both_completeness_axes_and_hygiene() {
+        let db = crate::db::GrafeoDb::in_memory();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g",
+            "pulse",
+            "owned",
+        ))
+        .unwrap();
+        let mut gs = crate::db::queries::graph_state(&db).unwrap();
+        gs.vertically_complete = false;
+        gs.horizontally_explored = false;
+        gs.note_hygiene = String::new();
+        let p = fmt_pulse(&gs);
+        assert!(p.contains("vertical ✗"), "an incomplete spine shows ✗: {p}");
+        assert!(p.contains("horizontal ○"), "an unexplored grid shows ○: {p}");
+        assert!(p.contains("360°:"), "the second line is always the coverage vector: {p}");
+        assert!(
+            !p.contains("\n  ⓘ"),
+            "no hygiene line when note_hygiene is empty: {p}"
+        );
+
+        gs.vertically_complete = true;
+        gs.horizontally_explored = true;
+        gs.note_hygiene = "heavy note log — `loom note prune --transitions`".to_string();
+        let p = fmt_pulse(&gs);
+        assert!(
+            p.contains("vertical ✓") && p.contains("horizontal ✓"),
+            "closed axes show ✓: {p}"
+        );
+        assert!(
+            p.contains("ⓘ heavy note log"),
+            "the hygiene nudge surfaces only when set: {p}"
+        );
+    }
+
+    #[test]
+    fn human_pulse_and_json_pulse_agree() {
+        // The PARITY invariant: whatever the human footer shows, the json pulse
+        // an orchestrated --json agent reads must carry identically.
+        let db = crate::db::GrafeoDb::in_memory();
+        db.execute(&crate::db::schema::insert_meta(
+            crate::db::schema::SCHEMA_VERSION,
+            "t",
+            "g",
+            "parity",
+            "owned",
+        ))
+        .unwrap();
+        let gs = crate::db::queries::graph_state(&db).unwrap();
+        let human = fmt_pulse(&gs);
+        let json = pulse_json(&gs);
+        assert!(
+            human.contains(&format!("phase={}", gs.phase)),
+            "human footer names the phase: {human}"
+        );
+        assert_eq!(json["phase"], serde_json::json!(gs.phase), "json carries the same phase");
+        let cov = coverage_line(&gs.coverage);
+        assert!(human.contains(&cov), "human footer embeds the coverage line: {human}");
+        assert_eq!(
+            json["coverage"],
+            serde_json::json!(cov),
+            "json carries the byte-identical coverage line"
+        );
+    }
+
+    #[test]
+    fn rel_time_is_relative_and_falls_back_to_raw() {
+        let two_h = (chrono::Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
+        assert_eq!(rel_time(&two_h), "2h ago");
+        let bad = "not-a-timestamp";
+        assert_eq!(rel_time(bad), bad, "an unparseable stamp echoes back, never panics");
+    }
+
+    #[test]
+    fn fmt_status_surfaces_blocked_proofs() {
+        let mut s = crate::types::StatusReport {
+            total_intents: 1,
+            total_codefiles: 1,
+            total_validations: 1,
+            total_edges: 0,
+            uninspected_edges: 0,
+            passing_edges: 0,
+            failing_edges: 0,
+            independent_edges: 0,
+            needs_reverification: 0,
+            intents_without_validations: 0,
+            validation_pass_rate: 0.5,
+            blocked_validations: 0,
+            validation_pass_rate_runnable: 1.0,
+            open_issues: 0,
+        };
+        assert!(
+            !fmt_status(&s).contains("blocked"),
+            "no blocked note when the count is 0"
+        );
+        s.blocked_validations = 2;
+        let out = fmt_status(&s);
+        assert!(out.contains("2 blocked"), "the blocked count surfaces: {out}");
+        assert!(
+            out.contains("of runnable: 100.0%"),
+            "the undiluted runnable rate sits next to it: {out}"
+        );
+    }
+
+    #[test]
+    fn intent_surface_carries_boundary_to_the_driver() {
+        let mut s = crate::types::IntentSurface {
+            id: "i".into(),
+            name: "n".into(),
+            description: "d".into(),
+            level: "feature".into(),
+            domain: "unknown".into(),
+            layer: String::new(),
+            status: "proposed".into(),
+            lifecycle: "implemented".into(),
+            aspect: String::new(),
+            boundary: String::new(),
+            tags: Vec::new(),
+            sources: Vec::new(),
+        };
+        assert!(
+            !fmt_intent_surface(&s).contains("boundary"),
+            "an unset boundary stays off the work-item card"
+        );
+        s.boundary = "outbound".into();
+        assert!(
+            fmt_intent_surface(&s).contains("boundary:    outbound"),
+            "a set boundary surfaces in the work item the driver reads"
+        );
+    }
 }

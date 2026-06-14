@@ -495,11 +495,19 @@ fn print_report(
             report.saga, report.executed, report.total_steps, stamped_passing
         );
     } else {
-        let f = report.failure().expect("failed report has a failing step");
-        println!(
-            "✗ Saga '{}' FAILED at step {}/{} ('{}').",
-            report.saga, f.step, report.total_steps, f.name
-        );
+        match report.failure() {
+            Some(f) => println!(
+                "✗ Saga '{}' FAILED at step {}/{} ('{}').",
+                report.saga, f.step, report.total_steps, f.name
+            ),
+            // A failed report should always carry a failing step; never panic an
+            // LLM-driven CLI on an unexpected invariant — report without the
+            // step detail rather than abort with a backtrace the agent can't use.
+            None => println!(
+                "✗ Saga '{}' FAILED ({}/{} steps).",
+                report.saga, report.executed, report.total_steps
+            ),
+        }
         println!(
             "  {} path edge(s) stamped passing (they ran), {} stamped failing (the broken boundary).",
             stamped_passing, stamped_failing
@@ -607,12 +615,19 @@ fn resolve_step_intents(
             match resolved {
                 Some(iid) => iid,
                 // Two steps narrating the same new behavior reuse one spawn even
-                // if the transaction's reads don't see its writes yet.
-                None if spawned.iter().any(|(_, n)| n.eq_ignore_ascii_case(key)) => spawned
-                    .iter()
-                    .find(|(_, n)| n.eq_ignore_ascii_case(key))
-                    .map(|(id, _)| id.clone())
-                    .unwrap(),
+                // if the transaction's reads don't see its writes yet. (The
+                // earlier `any()` guard guaranteed the find; the bail is purely
+                // defensive — an LLM-driven CLI never panics on an invariant.)
+                None if spawned.iter().any(|(_, n)| n.eq_ignore_ascii_case(key)) => {
+                    match spawned.iter().find(|(_, n)| n.eq_ignore_ascii_case(key)) {
+                        Some((id, _)) => id.clone(),
+                        None => anyhow::bail!(
+                            "internal: step {} ('{}') matched a spawned intent that then vanished",
+                            i + 1,
+                            step.name
+                        ),
+                    }
+                }
                 None if spawn_missing => {
                     let id = Uuid::new_v4().to_string();
                     insert_intent(
