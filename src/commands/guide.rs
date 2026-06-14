@@ -100,6 +100,7 @@ const DAEMON_GUIDANCE: &str = "The daemon (OPT-IN, --json only): in a long sessi
 /// build refuses a half-landed section. (Coverage leg of teaching completeness;
 /// the Just-In-Time leg is the per-mutation anchor, the Findability leg is the
 /// guide/schema/find pull surface.)
+#[cfg(test)]
 const GUIDE_SECTIONS: &[&str] = &[
     "what_is_loom",
     "planes",
@@ -119,6 +120,7 @@ const GUIDE_SECTIONS: &[&str] = &[
 /// guide MUST name, so when Just-In-Time anchoring isn't enough the LLM can find
 /// what it needs from the entry point instead of guessing. `guide_names_every_pull_surface`
 /// ratchets it — drop a reference here and the build fails.
+#[cfg(test)]
 const FINDABILITY_SURFACES: &[&str] = &[
     "loom status", // where am I
     "loom next",   // what's the next item
@@ -130,6 +132,7 @@ const FINDABILITY_SURFACES: &[&str] = &[
 /// The sub-keys the json `orchestration` object must carry — the section that
 /// once drifted (the daemon teaching shipped human-only). Pinning the structure
 /// keeps every orchestration concept the human render teaches reachable in json.
+#[cfg(test)]
 const ORCHESTRATION_KEYS: &[&str] = &[
     "principle",
     "topologies",

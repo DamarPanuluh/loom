@@ -113,14 +113,12 @@ fn rust_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
                 collect_rust_use(arg, content, &[], out);
             }
         }
-        "mod_item" => {
-            if node.child_by_field_name("body").is_none() {
-                if let Some(name) = node
-                    .child_by_field_name("name")
-                    .and_then(|n| text(n, content))
-                {
-                    push_unique(out, format!("mod:{name}"));
-                }
+        "mod_item" if node.child_by_field_name("body").is_none() => {
+            if let Some(name) = node
+                .child_by_field_name("name")
+                .and_then(|n| text(n, content))
+            {
+                push_unique(out, format!("mod:{name}"));
             }
         }
         _ => {}

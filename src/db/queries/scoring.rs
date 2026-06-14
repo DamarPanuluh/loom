@@ -10,6 +10,9 @@ use crate::types::{
     Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
 };
 
+// Feeds only the #[cfg(test)] DB-walking candidate functions below (production
+// reads go through the *_from_snapshot variants).
+#[cfg(test)]
 use super::intent::list_active_intents;
 use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};

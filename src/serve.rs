@@ -196,13 +196,12 @@ pub fn serve(root: &Path, idle_secs: u64) -> Result<()> {
                 // No pending connection. Honour an in-flight drain request, a
                 // SIGTERM/SIGINT, then the idle timeout — but never exit while
                 // work is in flight.
-                if shutdown.load(Ordering::SeqCst)
+                if (shutdown.load(Ordering::SeqCst)
                     || SHUTDOWN_REQUESTED.load(Ordering::SeqCst)
-                    || last_activity.elapsed() >= idle
+                    || last_activity.elapsed() >= idle)
+                    && in_flight.load(Ordering::SeqCst) == 0
                 {
-                    if in_flight.load(Ordering::SeqCst) == 0 {
-                        break;
-                    }
+                    break;
                 }
                 std::thread::sleep(Duration::from_millis(25));
             }

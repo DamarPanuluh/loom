@@ -210,7 +210,7 @@ pub fn run_with_db(
                 }
             } else {
                 println!("Candidate vocabulary terms — mined from THIS graph's intents, ranked by how many share each (collision potential):\n");
-                println!("  {:<22} {:>7}  {}", "term", "intents", "examples");
+                println!("  {:<22} {:>7}  examples", "term", "intents");
                 for s in &suggestions {
                     println!(
                         "  {:<22} {:>7}  {}",

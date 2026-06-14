@@ -132,7 +132,7 @@ pub fn run_with_db(
         // reach fs::read — the content hash and locator probes would
         // otherwise answer "is this string in that file?" for any readable
         // file on the machine. Surface it; never read it.
-        let Some(rel) = crate::repo::confine(&base, Path::new(&cf.path)) else {
+        let Some(rel) = crate::repo::confine(base, Path::new(&cf.path)) else {
             escaped_files.push(cf.path.clone());
             continue;
         };
@@ -239,7 +239,7 @@ pub fn run_with_db(
         // the change to specific symbols (non-UTF8, no symbol facts, a
         // pre-upgrade graph without body hashes yet, or a change outside every
         // symbol) → fall back to today's whole-file flip. Never under-flags.
-        let affected = affected_intents(&base, cf, text_contents.get(&cf.path), &all_implements);
+        let affected = affected_intents(base, cf, text_contents.get(&cf.path), &all_implements);
         let effective_ids: Vec<String> = match &affected {
             None => intent_ids.clone(),
             Some(set) => intent_ids
@@ -331,7 +331,7 @@ pub fn run_with_db(
     let mut locators_stale: Vec<String> = Vec::new();
     for cf in &codefiles {
         if let Some(content) = text_contents.get(&cf.path) {
-            let facts = crate::repo::extract_physical_facts(&base, &cf.path, content);
+            let facts = crate::repo::extract_physical_facts(base, &cf.path, content);
             if facts.imports != cf.imports {
                 update_codefile_imports(db, &cf.id, &facts.imports)?;
             }
