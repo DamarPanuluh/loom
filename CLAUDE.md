@@ -647,6 +647,23 @@ which covers the relationship reliability rule below. Also run
 `cargo test --no-default-features` before release changes that touch sync or
 import extraction so the fallback path stays green.
 
+**Zero-warning, rustfmt-clean is the bar.** Formatting is a mechanical invariant
+like the build-failing ratchet tests — the repo uses stock stable rustfmt
+(`rustfmt.toml`, edition pinned to Cargo.toml). Before every commit:
+
+```bash
+cargo fmt                          # or `cargo fmt --check` to verify
+cargo clippy --all-targets         # must be warning-free
+cargo build                        # must be warning-free (default + --no-default-features)
+cargo test                         # green
+```
+
+Test-only items (constants/imports used solely by `#[cfg(test)]` code) carry
+`#[cfg(test)]` so the non-test profile stays warning-free — don't `#[allow]`
+them. (No CI is wired yet; these are the pre-commit gate by hand. A
+`cargo fmt --check` + `clippy -D warnings` CI step is the natural enforcement
+when CI lands.)
+
 ## Key design decisions (why, not just what)
 
 **Why graph DB (Grafeo) not SQLite:** Blast radius, centrality, and ripple propagation are native graph traversals. SQLite fights you on this with JOIN chains. Grafeo is pure Rust, embedded, zero server.

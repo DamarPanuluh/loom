@@ -92,22 +92,42 @@ pub fn run_with_db(
             } else {
                 if let Some(cap) = set_cap {
                     let v = if dry_run { "Would set" } else { "Set" };
-                    println!("✓ {v} transition cap to {cap} per target{}.",
-                        if cap == 0 { " (off — strict append-only)" } else { " (`loom sync` enforces it)" });
+                    println!(
+                        "✓ {v} transition cap to {cap} per target{}.",
+                        if cap == 0 {
+                            " (off — strict append-only)"
+                        } else {
+                            " (`loom sync` enforces it)"
+                        }
+                    );
                 }
                 if cap_off_noop {
                     println!("ⓘ Transition cap is off (0) — nothing compacted. Pass `--keep-per-target <N>` for a one-off sweep, or `--set-cap <N>` to enable the cap `loom sync` holds.");
                 }
                 if dangling.is_empty() && churn.is_empty() && !cap_off_noop {
-                    println!("✓ Nothing to prune (no dangling notes{}).",
-                        if compact { " or compactable transition history" } else { "" });
+                    println!(
+                        "✓ Nothing to prune (no dangling notes{}).",
+                        if compact {
+                            " or compactable transition history"
+                        } else {
+                            ""
+                        }
+                    );
                 }
                 if !dangling.is_empty() {
-                    println!("✓ {verb} {} dangling note(s) (targets no longer exist):", dangling.len());
+                    println!(
+                        "✓ {verb} {} dangling note(s) (targets no longer exist):",
+                        dangling.len()
+                    );
                     for n in dangling.iter().take(20) {
-                        println!("    {} [{}] → missing {} '{}'", n.id, n.kind, n.target_kind, n.target_id);
+                        println!(
+                            "    {} [{}] → missing {} '{}'",
+                            n.id, n.kind, n.target_kind, n.target_id
+                        );
                     }
-                    if let Some(m) = crate::output::more_marker(dangling.len(), 20, "loom doctor --json") {
+                    if let Some(m) =
+                        crate::output::more_marker(dangling.len(), 20, "loom doctor --json")
+                    {
                         println!("    {m}");
                     }
                 }

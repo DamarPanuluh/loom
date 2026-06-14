@@ -20,8 +20,8 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::LoomDb;
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
+use crate::db::LoomDb;
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
 pub const TWIN_SIMILARITY: f64 = 0.4;
@@ -2221,7 +2221,12 @@ mod proof_locality_tests {
         ];
         let intents = vec![leaf("i1", "intent retirement contract")];
         let implements = vec![imp("i1", "src/commands/intent.rs")];
-        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test retire_is_invisible",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2233,7 +2238,11 @@ mod proof_locality_tests {
         );
         assert_eq!(out.len(), 1, "a non-local test proof should flag: {out:?}");
         assert_eq!(out[0].kind, "nonlocal_proof");
-        assert!(out[0].summary.contains("intent retirement contract"), "{}", out[0].summary);
+        assert!(
+            out[0].summary.contains("intent retirement contract"),
+            "{}",
+            out[0].summary
+        );
     }
 
     #[test]
@@ -2245,7 +2254,12 @@ mod proof_locality_tests {
         )];
         let intents = vec![leaf("i1", "intent resolution")];
         let implements = vec![imp("i1", "src/db/queries/intent.rs")];
-        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test retire_is_invisible",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2255,7 +2269,10 @@ mod proof_locality_tests {
             &codefiles,
             &[],
         );
-        assert!(out.is_empty(), "a test in the grounded file is local: {out:?}");
+        assert!(
+            out.is_empty(),
+            "a test in the grounded file is local: {out:?}"
+        );
     }
 
     #[test]
@@ -2294,7 +2311,12 @@ mod proof_locality_tests {
         let intents = vec![leaf("i1", "intent retirement contract")];
         let implements = vec![imp("i1", "src/commands/intent.rs")];
         // The selector matches no known test symbol → can't be located → silent.
-        let validations = vec![val("v1", "test", "cargo test no_such_test_name_xyz", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test no_such_test_name_xyz",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2304,7 +2326,10 @@ mod proof_locality_tests {
             &codefiles,
             &[],
         );
-        assert!(out.is_empty(), "an unresolvable selector is UNKNOWN, not non-local: {out:?}");
+        assert!(
+            out.is_empty(),
+            "an unresolvable selector is UNKNOWN, not non-local: {out:?}"
+        );
     }
 
     #[test]
@@ -2318,7 +2343,12 @@ mod proof_locality_tests {
         ];
         let intents = vec![leaf("i1", "intent resolution")];
         let implements = vec![imp("i1", "src/db/queries/intent.rs")];
-        let validations = vec![val("v1", "test", "cargo test resolve_intent_roundtrips", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test resolve_intent_roundtrips",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2343,7 +2373,12 @@ mod proof_locality_tests {
         )];
         let intents = vec![leaf("i1", "intent resolution")];
         let implements = vec![imp("i1", "src/db/queries/intent.rs")];
-        let validations = vec![val("v1", "test", "cargo test db::queries 2>/dev/null", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test db::queries 2>/dev/null",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2365,7 +2400,12 @@ mod proof_locality_tests {
         let codefiles = vec![cf("src/commands/intent.rs", &[], &["delete_intent"])];
         let intents = vec![leaf("i1", "intent retirement contract")];
         let implements = vec![imp("i1", "src/commands/intent.rs")];
-        let validations = vec![val("v1", "test", "cargo test retire_is_invisible", "passed")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test retire_is_invisible",
+            "passed",
+        )];
         let validates = vec![vedge("v1", "i1")];
         let out = proof_locality_from_parts(
             &intents,
@@ -2375,6 +2415,9 @@ mod proof_locality_tests {
             &codefiles,
             &[],
         );
-        assert!(out.is_empty(), "no symbol facts → unarmed → silent: {out:?}");
+        assert!(
+            out.is_empty(),
+            "no symbol facts → unarmed → silent: {out:?}"
+        );
     }
 }

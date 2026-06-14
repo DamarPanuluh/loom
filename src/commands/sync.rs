@@ -625,7 +625,11 @@ fn affected_intents(
             }
         }
     }
-    let new_labels: HashSet<&str> = facts.symbol_facts.iter().map(|f| f.label.as_str()).collect();
+    let new_labels: HashSet<&str> = facts
+        .symbol_facts
+        .iter()
+        .map(|f| f.label.as_str())
+        .collect();
     for lbl in old.keys() {
         if !new_labels.contains(lbl) {
             changed.insert(lbl);
@@ -838,8 +842,14 @@ mod tests {
         let impls = vec![imp("ia", "fn a"), imp("ib", "fn b"), imp("ifile", "")];
         let affected = affected_intents(&base, &codefile, Some(&new.to_string()), &impls)
             .expect("symbol-level diff, not the whole-file fallback");
-        assert!(affected.contains("ia"), "intent on the changed symbol flips");
-        assert!(affected.contains("ifile"), "file-level grounding always flips");
+        assert!(
+            affected.contains("ia"),
+            "intent on the changed symbol flips"
+        );
+        assert!(
+            affected.contains("ifile"),
+            "file-level grounding always flips"
+        );
         assert!(
             !affected.contains("ib"),
             "intent on the UNCHANGED symbol must NOT flip — this is the win"

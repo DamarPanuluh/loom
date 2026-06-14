@@ -337,7 +337,10 @@ mod tests {
         // already-converted data, so a re-run is a clean noop (a migrate that
         // died midway would simply re-run the remainder).
         let again = migrate(&db);
-        assert!(again.contains("\"migrated\":false"), "second run is a noop: {again}");
+        assert!(
+            again.contains("\"migrated\":false"),
+            "second run is a noop: {again}"
+        );
     }
 
     #[test]

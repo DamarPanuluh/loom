@@ -975,9 +975,8 @@ fn daemon_contract_concurrent_sessions_persistent() {
     std::fs::create_dir_all(&dir).expect("create temp dir");
     let path = dir.join("daemon.grafeo");
 
-    let db = Arc::new(
-        GrafeoDB::with_config(Config::persistent(&path)).expect("open persistent handle"),
-    );
+    let db =
+        Arc::new(GrafeoDB::with_config(Config::persistent(&path)).expect("open persistent handle"));
     {
         let seed = db.session();
         must(&seed, "INSERT (:T {id: 'seed'})");

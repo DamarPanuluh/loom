@@ -1,0 +1,5 @@
+# loom uses stock stable rustfmt — formatting is a mechanical, enforced
+# invariant, in the same spirit as the build-failing ratchet tests. Run
+# `cargo fmt` before committing; `cargo fmt --check` must be clean.
+# Edition pinned to Cargo.toml so `rustfmt` and `cargo fmt` agree.
+edition = "2021"

@@ -392,7 +392,8 @@ mod tests {
     fn guide_json(mode: &str) -> serde_json::Value {
         let p = Printer::capturing(true);
         run(Some(mode), &p).expect("guide opens no graph — must never fail");
-        serde_json::from_str(&p.captured().expect("captured json")).expect("guide --json is valid json")
+        serde_json::from_str(&p.captured().expect("captured json"))
+            .expect("guide --json is valid json")
     }
 
     /// COMPLETENESS RATCHET (coverage leg): every section in the teaching
@@ -437,7 +438,10 @@ mod tests {
         for mode in ["greenfield", "brownfield", "refactor", "port", "seed"] {
             let v = guide_json(mode);
             assert_eq!(v["mode"], serde_json::json!(mode), "mode echoed");
-            assert!(v.get("orchestration").is_some(), "{mode}: orchestration present");
+            assert!(
+                v.get("orchestration").is_some(),
+                "{mode}: orchestration present"
+            );
         }
     }
 

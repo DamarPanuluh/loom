@@ -517,8 +517,7 @@ pub fn run_with_db(
                 // unmeasured queue resolves with a single command.
                 insert_governs(db, &rule_id, &intent_id, &criterion, &now)?;
                 found = update_governs_verdict(
-                    db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by,
-                    &now,
+                    db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
                 )?;
                 edge_created = true;
             }

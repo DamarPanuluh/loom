@@ -99,11 +99,9 @@ pub fn run_with_db(
                     println!("  {:<36}  {}", p.id, p.name);
                     println!("    {}", p.description);
                 }
-                if let Some(m) = crate::output::more_marker(
-                    total,
-                    personas.len(),
-                    "loom persona list --limit 0",
-                ) {
+                if let Some(m) =
+                    crate::output::more_marker(total, personas.len(), "loom persona list --limit 0")
+                {
                     println!("  {m}");
                 }
                 println!("\n  → loom persona show <id>   to see a persona's SERVES edges");
@@ -166,7 +164,8 @@ pub fn run_with_db(
                             println!("      criterion: {}", e.criterion);
                         }
                     }
-                    if let Some(m) = crate::output::more_marker(serves_total, serves.len(), &fetch) {
+                    if let Some(m) = crate::output::more_marker(serves_total, serves.len(), &fetch)
+                    {
                         println!("  {m}");
                     }
                 }

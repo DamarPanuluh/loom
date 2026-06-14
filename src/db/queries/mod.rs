@@ -1653,14 +1653,21 @@ mod tests {
 
         let drop = prunable_transition_notes(&db, 2).unwrap();
         let ids: std::collections::HashSet<&str> = drop.iter().map(|n| n.id.as_str()).collect();
-        assert_eq!(drop.len(), 3, "only A's oldest 3 routine notes drop: {drop:?}");
+        assert_eq!(
+            drop.len(),
+            3,
+            "only A's oldest 3 routine notes drop: {drop:?}"
+        );
         assert!(ids.contains("a1") && ids.contains("a2") && ids.contains("a3"));
         assert!(!ids.contains("af"), "regression markers are always kept");
         assert!(
             !ids.contains("a4") && !ids.contains("a5"),
             "the newest K routine transitions are kept"
         );
-        assert!(!ids.contains("b1"), "a target under the threshold is untouched");
+        assert!(
+            !ids.contains("b1"),
+            "a target under the threshold is untouched"
+        );
         assert!(!ids.contains("dec"), "authored notes are never transitions");
     }
 
@@ -1678,7 +1685,11 @@ mod tests {
         set_transition_cap(&db, 3).unwrap();
         assert_eq!(get_transition_cap(&db).unwrap(), 3);
         set_transition_cap(&db, 0).unwrap();
-        assert_eq!(get_transition_cap(&db).unwrap(), 0, "0 is an explicit off, not unset");
+        assert_eq!(
+            get_transition_cap(&db).unwrap(),
+            0,
+            "0 is an explicit off, not unset"
+        );
     }
 
     /// cochange_coupling: unlinked intents whose files co-change above the

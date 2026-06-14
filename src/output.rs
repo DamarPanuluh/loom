@@ -666,13 +666,22 @@ mod tests {
             },
         };
         let line = coverage_line(&c);
-        assert!(line.contains("grounded 5/5 ✓"), "closed axis gets a check: {line}");
-        assert!(line.contains("realized 2/4"), "partial axis shows the fraction: {line}");
+        assert!(
+            line.contains("grounded 5/5 ✓"),
+            "closed axis gets a check: {line}"
+        );
+        assert!(
+            line.contains("realized 2/4"),
+            "partial axis shows the fraction: {line}"
+        );
         assert!(
             line.contains("explored —"),
             "an axis with no surface is —, never a vacuous 100%: {line}"
         );
-        assert!(!line.contains("0/0"), "0/0 must never render as a number: {line}");
+        assert!(
+            !line.contains("0/0"),
+            "0/0 must never render as a number: {line}"
+        );
     }
 
     #[test]
@@ -692,8 +701,14 @@ mod tests {
         gs.note_hygiene = String::new();
         let p = fmt_pulse(&gs);
         assert!(p.contains("vertical ✗"), "an incomplete spine shows ✗: {p}");
-        assert!(p.contains("horizontal ○"), "an unexplored grid shows ○: {p}");
-        assert!(p.contains("360°:"), "the second line is always the coverage vector: {p}");
+        assert!(
+            p.contains("horizontal ○"),
+            "an unexplored grid shows ○: {p}"
+        );
+        assert!(
+            p.contains("360°:"),
+            "the second line is always the coverage vector: {p}"
+        );
         assert!(
             !p.contains("\n  ⓘ"),
             "no hygiene line when note_hygiene is empty: {p}"
@@ -733,9 +748,16 @@ mod tests {
             human.contains(&format!("phase={}", gs.phase)),
             "human footer names the phase: {human}"
         );
-        assert_eq!(json["phase"], serde_json::json!(gs.phase), "json carries the same phase");
+        assert_eq!(
+            json["phase"],
+            serde_json::json!(gs.phase),
+            "json carries the same phase"
+        );
         let cov = coverage_line(&gs.coverage);
-        assert!(human.contains(&cov), "human footer embeds the coverage line: {human}");
+        assert!(
+            human.contains(&cov),
+            "human footer embeds the coverage line: {human}"
+        );
         assert_eq!(
             json["coverage"],
             serde_json::json!(cov),
@@ -748,7 +770,11 @@ mod tests {
         let two_h = (chrono::Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
         assert_eq!(rel_time(&two_h), "2h ago");
         let bad = "not-a-timestamp";
-        assert_eq!(rel_time(bad), bad, "an unparseable stamp echoes back, never panics");
+        assert_eq!(
+            rel_time(bad),
+            bad,
+            "an unparseable stamp echoes back, never panics"
+        );
     }
 
     #[test]
@@ -775,7 +801,10 @@ mod tests {
         );
         s.blocked_validations = 2;
         let out = fmt_status(&s);
-        assert!(out.contains("2 blocked"), "the blocked count surfaces: {out}");
+        assert!(
+            out.contains("2 blocked"),
+            "the blocked count surfaces: {out}"
+        );
         assert!(
             out.contains("of runnable: 100.0%"),
             "the undiluted runnable rate sits next to it: {out}"

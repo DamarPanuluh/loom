@@ -285,10 +285,13 @@ fn handle_connection(
     // the client knows it landed before it waits for the lock to free.
     if req.argv == ["__drain__"] {
         shutdown.store(true, Ordering::SeqCst);
-        let _ = write_frame(&mut stream, &Reply::Output {
-            stdout: String::new(),
-            exit_code: 0,
-        });
+        let _ = write_frame(
+            &mut stream,
+            &Reply::Output {
+                stdout: String::new(),
+                exit_code: 0,
+            },
+        );
         return;
     }
 
@@ -333,7 +336,10 @@ fn handle_connection(
             // stdout (the direct path would print it via the `Result` bubbling
             // to `main`, which writes to stderr — see the client note below).
             match result {
-                Ok(()) => Reply::Output { stdout, exit_code: 0 },
+                Ok(()) => Reply::Output {
+                    stdout,
+                    exit_code: 0,
+                },
                 Err(e) => Reply::Output {
                     // Mirror anyhow's `main` rendering: "Error: <msg>" on a fresh
                     // line. The client prints it to stderr to match direct mode.
@@ -358,8 +364,7 @@ fn handle_connection(
 ///
 /// Only proceeds when `LOOM_DAEMON=1` AND the request is `--json`. NEVER panics.
 pub fn try_client(cli_json: bool, argv: &[String]) -> Option<Result<()>> {
-    let want_daemon =
-        std::env::var("LOOM_DAEMON").ok().as_deref() == Some("1") && cli_json;
+    let want_daemon = std::env::var("LOOM_DAEMON").ok().as_deref() == Some("1") && cli_json;
     // Any failure resolving the root means we can't know which graph to talk to
     // — fall back (direct dispatch resolves it the same way and errors cleanly).
     let root = crate::db::resolve_root().ok()?;
@@ -657,9 +662,8 @@ mod tests {
     /// touching and servable commands do not. Guards the cold-start-thrash fix.
     #[test]
     fn no_graph_commands_skip_the_daemon() {
-        let yes = |a: &[&str]| {
-            is_no_graph_command(&a.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-        };
+        let yes =
+            |a: &[&str]| is_no_graph_command(&a.iter().map(|s| s.to_string()).collect::<Vec<_>>());
         assert!(yes(&["guide"]));
         assert!(yes(&["guide", "--mode", "brownfield", "--json"]));
         assert!(yes(&["schema", "--json"]));
@@ -668,8 +672,16 @@ mod tests {
         assert!(!yes(&["status", "--json"]));
         assert!(!yes(&["validate", "--all"]));
         assert!(!yes(&["saga", "run", "x"]));
-        assert!(!yes(&["intent", "add", "--name", "x", "--level", "feature",
-                       "--description", "an endpoint that does a thing"]));
+        assert!(!yes(&[
+            "intent",
+            "add",
+            "--name",
+            "x",
+            "--level",
+            "feature",
+            "--description",
+            "an endpoint that does a thing"
+        ]));
         // A parse failure falls back (false) so the normal path teaches the error.
         assert!(!yes(&["--no-such-flag"]));
     }
@@ -689,7 +701,8 @@ mod tests {
         // The dir name is kept SHORT: a Unix socket path must fit in
         // `sockaddr_un.sun_path` (~104 bytes on macOS), and `.loom/daemon.sock`
         // already eats ~16 of those — a long temp path overflows SUN_LEN.
-        let dir = std::env::temp_dir().join(format!("lm{:x}", uuid::Uuid::new_v4().as_u128() & 0xffffff));
+        let dir =
+            std::env::temp_dir().join(format!("lm{:x}", uuid::Uuid::new_v4().as_u128() & 0xffffff));
         std::fs::create_dir_all(crate::db::loom_dir(&dir)).unwrap();
         {
             let db = GrafeoDb::open(&crate::db::db_path(&dir)).unwrap();
@@ -758,7 +771,10 @@ mod tests {
 
         // 2) NON-JSON: human mode falls back.
         let reply = client_send(&sock, &my_id, false, &["status".into()]);
-        assert!(matches!(reply, Some(Reply::Fallback)), "non-json must fall back");
+        assert!(
+            matches!(reply, Some(Reply::Fallback)),
+            "non-json must fall back"
+        );
 
         // 3) NOT-SERVABLE: validate is graph-releasing → fallback.
         let reply = client_send(&sock, &my_id, true, &["validate".into(), "--all".into()]);
@@ -768,7 +784,12 @@ mod tests {
         );
 
         // 4) SKEW: a wrong build id → version_mismatch.
-        let reply = client_send(&sock, "not-my-id", true, &["status".into(), "--json".into()]);
+        let reply = client_send(
+            &sock,
+            "not-my-id",
+            true,
+            &["status".into(), "--json".into()],
+        );
         assert!(
             matches!(reply, Some(Reply::VersionMismatch)),
             "a build-id mismatch must report version_mismatch"

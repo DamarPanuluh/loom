@@ -76,56 +76,78 @@ pub fn dispatch_with_db(
     use DispatchOutcome::{NotServable, Ran};
     match command {
         // ---- Servable: every command with a `run_with_db` body --------------
-        Command::Status                     => Ran(status::run_with_db(db, root, printer)),
-        Command::Intent      { subcommand } => Ran(intent::run_with_db(db, root, subcommand, printer)),
-        Command::Edge        { subcommand } => Ran(edge::run_with_db(db, root, subcommand, printer)),
-        Command::Next        { mode, all, take, compact } =>
-            Ran(next::run_with_db(db, root, &mode, all, take, compact, printer)),
-        Command::Cluster     { intent_id }  => Ran(cluster::run_with_db(db, root, &intent_id, printer)),
-        Command::Rule        { subcommand } => Ran(rule::run_with_db(db, root, subcommand, printer)),
-        Command::Codefile    { subcommand } => Ran(codefile::run_with_db(db, root, subcommand, printer)),
-        Command::Validation  { subcommand } => Ran(validation::run_with_db(db, root, subcommand, printer)),
-        Command::Hypothesis  { subcommand } => Ran(hypothesis::run_with_db(db, root, subcommand, printer)),
-        Command::Note        { subcommand } => Ran(note::run_with_db(db, root, subcommand, printer)),
-        Command::Vocab       { subcommand } => Ran(vocab::run_with_db(db, root, subcommand, printer)),
-        Command::Layer       { subcommand } => Ran(layer::run_inner_with_db(db, root, subcommand, printer, false)),
-        Command::Persona     { subcommand } => Ran(persona::run_with_db(db, root, subcommand, printer)),
-        Command::Sync        { path }       => Ran(sync::run_with_db(db, root, &path, printer)),
-        Command::Report                     => Ran(report::run_with_db(db, root, printer)),
-        Command::Batch       { file }       => Ran(batch::run_with_db(db, root, &file, printer)),
-        Command::Doctor                     => Ran(doctor::run_with_db(db, root, printer)),
-        Command::Migrate                    => Ran(migrate::run_with_db(db, root, printer)),
-        Command::Find        { query, limit } => Ran(find::run_with_db(db, root, &query, limit, printer)),
-        Command::Door        { utterance, limit } => Ran(door::run_with_db(db, root, &utterance, limit, printer)),
-        Command::Session                    => Ran(session::run_with_db(db, root, printer)),
-        Command::Hotspots    { limit }      => Ran(hotspots::run_with_db(db, root, limit, printer)),
-        Command::Smells      { limit }      => Ran(smells::run_with_db(db, root, limit, printer)),
-        Command::Coverage                   => Ran(coverage::run_with_db(db, root, printer)),
-        Command::Ignore      { subcommand } => Ran(ignore::run_with_db(db, root, subcommand, printer)),
-        Command::Delegate    { subcommand } => Ran(delegate::run_with_db(db, root, subcommand, printer)),
-        Command::Export      { path, out, check } => {
-            let out = path.or(out).unwrap_or_else(|| "loom.graph.json".to_string());
+        Command::Status => Ran(status::run_with_db(db, root, printer)),
+        Command::Intent { subcommand } => Ran(intent::run_with_db(db, root, subcommand, printer)),
+        Command::Edge { subcommand } => Ran(edge::run_with_db(db, root, subcommand, printer)),
+        Command::Next {
+            mode,
+            all,
+            take,
+            compact,
+        } => Ran(next::run_with_db(
+            db, root, &mode, all, take, compact, printer,
+        )),
+        Command::Cluster { intent_id } => Ran(cluster::run_with_db(db, root, &intent_id, printer)),
+        Command::Rule { subcommand } => Ran(rule::run_with_db(db, root, subcommand, printer)),
+        Command::Codefile { subcommand } => {
+            Ran(codefile::run_with_db(db, root, subcommand, printer))
+        }
+        Command::Validation { subcommand } => {
+            Ran(validation::run_with_db(db, root, subcommand, printer))
+        }
+        Command::Hypothesis { subcommand } => {
+            Ran(hypothesis::run_with_db(db, root, subcommand, printer))
+        }
+        Command::Note { subcommand } => Ran(note::run_with_db(db, root, subcommand, printer)),
+        Command::Vocab { subcommand } => Ran(vocab::run_with_db(db, root, subcommand, printer)),
+        Command::Layer { subcommand } => Ran(layer::run_inner_with_db(
+            db, root, subcommand, printer, false,
+        )),
+        Command::Persona { subcommand } => Ran(persona::run_with_db(db, root, subcommand, printer)),
+        Command::Sync { path } => Ran(sync::run_with_db(db, root, &path, printer)),
+        Command::Report => Ran(report::run_with_db(db, root, printer)),
+        Command::Batch { file } => Ran(batch::run_with_db(db, root, &file, printer)),
+        Command::Doctor => Ran(doctor::run_with_db(db, root, printer)),
+        Command::Migrate => Ran(migrate::run_with_db(db, root, printer)),
+        Command::Find { query, limit } => Ran(find::run_with_db(db, root, &query, limit, printer)),
+        Command::Door { utterance, limit } => {
+            Ran(door::run_with_db(db, root, &utterance, limit, printer))
+        }
+        Command::Session => Ran(session::run_with_db(db, root, printer)),
+        Command::Hotspots { limit } => Ran(hotspots::run_with_db(db, root, limit, printer)),
+        Command::Smells { limit } => Ran(smells::run_with_db(db, root, limit, printer)),
+        Command::Coverage => Ran(coverage::run_with_db(db, root, printer)),
+        Command::Ignore { subcommand } => Ran(ignore::run_with_db(db, root, subcommand, printer)),
+        Command::Delegate { subcommand } => {
+            Ran(delegate::run_with_db(db, root, subcommand, printer))
+        }
+        Command::Export { path, out, check } => {
+            let out = path
+                .or(out)
+                .unwrap_or_else(|| "loom.graph.json".to_string());
             Ran(export::run_with_db(db, root, &out, check, printer))
         }
-        Command::Import      { file, as_planned } => Ran(import::run_with_db(db, root, &file, as_planned, printer)),
+        Command::Import { file, as_planned } => {
+            Ran(import::run_with_db(db, root, &file, as_planned, printer))
+        }
 
         // ---- NOT servable: fall back to direct dispatch ---------------------
         // Graph-releasing (drop the handle mid-run to free the lock for an
         // external process that may itself invoke loom) — a held-open handle
         // would deadlock:
         Command::Validate { .. } => NotServable,
-        Command::Saga     { .. } => NotServable,
+        Command::Saga { .. } => NotServable,
         // Open/own their own graph lifecycle or read no held graph at all:
-        Command::Init   { .. } => NotServable,
-        Command::Guide  { .. } => NotServable,
-        Command::Schema        => NotServable,
+        Command::Init { .. } => NotServable,
+        Command::Guide { .. } => NotServable,
+        Command::Schema => NotServable,
         Command::Domain { .. } => NotServable, // deprecated alias; runs direct
-        Command::Detect        => NotServable,
+        Command::Detect => NotServable,
         // The daemon never serves a `serve` request (the client routes `serve`
         // before the daemon check) — but be exhaustive: fall back if one arrives.
-        Command::Serve { .. }  => NotServable,
+        Command::Serve { .. } => NotServable,
         // An unrecognized token: let direct dispatch teach (it bails with help).
-        Command::Unknown(_)    => NotServable,
+        Command::Unknown(_) => NotServable,
     }
 }
 
@@ -376,7 +398,8 @@ mod tests {
             DispatchOutcome::NotServable => panic!("{args:?} unexpectedly NotServable"),
         }
         let out = p.captured().expect("captured json");
-        serde_json::from_str(&out).unwrap_or_else(|e| panic!("invalid json for {args:?}: {e}\n{out}"))
+        serde_json::from_str(&out)
+            .unwrap_or_else(|e| panic!("invalid json for {args:?}: {e}\n{out}"))
     }
 
     /// Just-In-Time guidance present: a `next_step` (full anchor) or `next_steps`
@@ -400,24 +423,64 @@ mod tests {
         let db = GrafeoDb::in_memory();
         let add = run_json(
             &db,
-            &["intent", "add", "--name", "checkout endpoint", "--level", "feature",
-              "--description", "accepts a cart and creates an order", "--json"],
+            &[
+                "intent",
+                "add",
+                "--name",
+                "checkout endpoint",
+                "--level",
+                "feature",
+                "--description",
+                "accepts a cart and creates an order",
+                "--json",
+            ],
         );
         assert!(anchored(&add), "intent add must anchor: {add}");
         let id = add["id"].as_str().expect("intent id").to_string();
 
         for args in [
             vec!["intent", "confirm", id.as_str(), "--json"],
-            vec!["intent", "mark", id.as_str(), "--lifecycle", "needs_change",
-                 "--reason", "known hotspot to revisit later", "--json"],
-            vec!["intent", "update", id.as_str(), "--boundary", "inbound",
-                 "--reason", "this is the public order-create surface", "--json"],
-            vec!["validation", "add", "--intent", id.as_str(), "--name", "checkout-smoke",
-                 "--type", "test", "--command", "true",
-                 "--description", "smoke test for the checkout endpoint", "--json"],
+            vec![
+                "intent",
+                "mark",
+                id.as_str(),
+                "--lifecycle",
+                "needs_change",
+                "--reason",
+                "known hotspot to revisit later",
+                "--json",
+            ],
+            vec![
+                "intent",
+                "update",
+                id.as_str(),
+                "--boundary",
+                "inbound",
+                "--reason",
+                "this is the public order-create surface",
+                "--json",
+            ],
+            vec![
+                "validation",
+                "add",
+                "--intent",
+                id.as_str(),
+                "--name",
+                "checkout-smoke",
+                "--type",
+                "test",
+                "--command",
+                "true",
+                "--description",
+                "smoke test for the checkout endpoint",
+                "--json",
+            ],
         ] {
             let v = run_json(&db, &args);
-            assert!(anchored(&v), "mutation {args:?} must anchor Just-In-Time: {v}");
+            assert!(
+                anchored(&v),
+                "mutation {args:?} must anchor Just-In-Time: {v}"
+            );
         }
     }
 }

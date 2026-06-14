@@ -3,7 +3,12 @@ use clap::{Parser, Subcommand};
 /// Crate version + git build stamp (from build.rs) — shown by `loom --version`.
 /// The bare crate version is permanently "0.1.0"; the build id is what tells two
 /// binaries apart (and what the `loom serve` daemon's skew handshake keys on).
-pub const LONG_VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (build ", env!("LOOM_BUILD"), ")");
+pub const LONG_VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION"),
+    " (build ",
+    env!("LOOM_BUILD"),
+    ")"
+);
 
 #[derive(Parser)]
 #[command(

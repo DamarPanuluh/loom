@@ -235,12 +235,7 @@ pub fn run_with_db(
             // Atomic: the new definition and the proof reset land together —
             // a new command with the OLD green still attached would be a lie.
             let reset_edges = crate::db::with_transaction(db, || {
-                update_validation_definition(
-                    db,
-                    &vid,
-                    command.as_deref(),
-                    description.as_deref(),
-                )?;
+                update_validation_definition(db, &vid, command.as_deref(), description.as_deref())?;
                 // The old result proved the OLD command — a changed command resets
                 // the proof so green is re-earned by actually running the new one.
                 let mut reset_edges = 0usize;

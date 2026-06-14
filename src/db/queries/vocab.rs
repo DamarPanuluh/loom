@@ -453,7 +453,10 @@ mod suggest_tests {
         let got = suggest_vocab_terms(&intents, &none, 2);
         let terms: Vec<&str> = got.iter().map(|s| s.term.as_str()).collect();
         assert!(terms.contains(&"shared"), "got {terms:?}");
-        assert!(!terms.contains(&"common"), "ubiquitous token survived: {terms:?}");
+        assert!(
+            !terms.contains(&"common"),
+            "ubiquitous token survived: {terms:?}"
+        );
         assert!(!terms.contains(&"only"), "noise word survived: {terms:?}");
     }
 
@@ -466,7 +469,10 @@ mod suggest_tests {
         let registered: HashSet<String> = ["store".to_string()].into_iter().collect();
         let got = suggest_vocab_terms(&intents, &registered, 2);
         let terms: Vec<&str> = got.iter().map(|s| s.term.as_str()).collect();
-        assert!(!terms.contains(&"store"), "registered term resuggested: {terms:?}");
+        assert!(
+            !terms.contains(&"store"),
+            "registered term resuggested: {terms:?}"
+        );
         assert!(terms.contains(&"persistence"));
     }
 }

@@ -293,7 +293,11 @@ pub fn run_with_db(
             let new_layer = layer.as_deref().filter(|l| *l != intent.layer);
             let new_boundary = boundary.as_deref().filter(|b| *b != intent.boundary);
             let new_desc = description.as_deref().filter(|d| *d != intent.description);
-            if new_name.is_none() && new_layer.is_none() && new_boundary.is_none() && new_desc.is_none() {
+            if new_name.is_none()
+                && new_layer.is_none()
+                && new_boundary.is_none()
+                && new_desc.is_none()
+            {
                 anyhow::bail!(
                     "Nothing to change: pass --name, --layer, --boundary, and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
                     id

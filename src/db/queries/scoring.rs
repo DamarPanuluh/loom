@@ -800,9 +800,7 @@ pub fn align_candidates_from_snapshot(
             // freshness clock (the meaning statement was just deliberately
             // restated), only the former ripples claims. Renames are cosmetic —
             // no stamp, no ripple, no clock reset.
-            "decision"
-                if n.text.starts_with("redefined: ") || n.text.starts_with("reworded: ") =>
-            {
+            "decision" if n.text.starts_with("redefined: ") || n.text.starts_with("reworded: ") => {
                 redefined_at.insert(n.target_id.as_str(), n.created_at.as_str());
             }
             _ => {}
