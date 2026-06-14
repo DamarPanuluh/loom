@@ -358,6 +358,16 @@ pub fn try_client(cli_json: bool, argv: &[String]) -> Option<Result<()>> {
         return None;
     }
 
+    // No-graph commands (guide/schema/detect) never open the held graph, so a
+    // daemon adds nothing — spawning one just to be told "Fallback" wastes a
+    // fork+exec+open on every cold-start orientation call (the first thing a
+    // cold driver runs). Run them direct, untouched. (Graph-releasing
+    // NotServables — validate/saga/init/domain — still drain via the Fallback
+    // path below: they DO need the lock freed.)
+    if is_no_graph_command(argv) {
+        return None;
+    }
+
     let mut stream = connect_or_spawn(&sock, &root)?;
 
     match round_trip(&mut stream, argv) {
@@ -394,6 +404,22 @@ pub fn try_client(cli_json: bool, argv: &[String]) -> Option<Result<()>> {
             }
         }
     }
+}
+
+/// Commands that read NO held graph (static/orientation): a running daemon is
+/// irrelevant to them, so the client runs them direct without spawning OR
+/// draining one. Distinct from the graph-releasing NotServables
+/// (validate/saga/init/domain), which DO need the lock freed and so still drain
+/// via the Fallback path. A parse failure ⇒ false (let the normal path's
+/// Fallback teach the syntax error).
+fn is_no_graph_command(argv: &[String]) -> bool {
+    use crate::cli::Command;
+    matches!(
+        crate::cli::Cli::try_parse_from_argv(argv)
+            .ok()
+            .and_then(|c| c.command),
+        Some(Command::Guide { .. }) | Some(Command::Schema) | Some(Command::Detect)
+    )
 }
 
 /// One request/reply exchange. Any I/O or parse error ⇒ `None` (fall back).
@@ -601,6 +627,27 @@ mod tests {
     fn socket_path_lives_under_loom() {
         let p = socket_path(Path::new("/tmp/some/repo"));
         assert!(p.ends_with(".loom/daemon.sock"), "{}", p.display());
+    }
+
+    /// No-graph commands skip the daemon (run direct, no spawn/drain); graph-
+    /// touching and servable commands do not. Guards the cold-start-thrash fix.
+    #[test]
+    fn no_graph_commands_skip_the_daemon() {
+        let yes = |a: &[&str]| {
+            is_no_graph_command(&a.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+        };
+        assert!(yes(&["guide"]));
+        assert!(yes(&["guide", "--mode", "brownfield", "--json"]));
+        assert!(yes(&["schema", "--json"]));
+        assert!(yes(&["detect"]));
+        // Servable / graph-releasing commands must NOT skip — they serve or drain.
+        assert!(!yes(&["status", "--json"]));
+        assert!(!yes(&["validate", "--all"]));
+        assert!(!yes(&["saga", "run", "x"]));
+        assert!(!yes(&["intent", "add", "--name", "x", "--level", "feature",
+                       "--description", "an endpoint that does a thing"]));
+        // A parse failure falls back (false) so the normal path teaches the error.
+        assert!(!yes(&["--no-such-flag"]));
     }
 
     /// Full IPC contract against a REAL daemon loop on a REAL graph file: a

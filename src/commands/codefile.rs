@@ -37,7 +37,14 @@ pub fn run_with_db(
             let is_glob = path.contains('*') || path.contains('?') || path.contains('[');
             let targets: Vec<String> = if is_glob {
                 let mut v = Vec::new();
-                for p in glob::glob(&path)
+                // Resolve the glob against the GRAPH ROOT, not the process cwd —
+                // so a pinned `LOOM_GRAPH` globs the graph's repo no matter where
+                // you run from (matches the literal-path branch below + the
+                // graph-targeting contract). The cwd-relative default silently
+                // grounded the wrong dir / zero files when cwd != root.
+                let rooted = root.join(&path);
+                let pattern = rooted.to_string_lossy();
+                for p in glob::glob(&pattern)
                     .map_err(|e| {
                         anyhow::anyhow!(
                             "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
