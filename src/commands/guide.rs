@@ -74,19 +74,45 @@ const ORCHESTRATION: &[&str] = &[
     "HANDOFF ORDER is a DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify)",
     "  → validator (prove) → quality (green); fixer on any failing/needs_change. Run these one at a",
     "  time or overlap where the graph allows — loom enforces the lane, never the timing.",
-    "PERFORMANCE — the daemon (OPT-IN, --json only): in a long session making MANY loom calls,",
-    "  `export LOOM_DAEMON=1` ONCE — the first --json call lazy-spawns a background `loom serve`",
-    "  that holds the graph open, so every later --json call skips the per-call DB-open (~20ms+",
-    "  each, the dominant cost at scale). TURN OFF: unset LOOM_DAEMON (the next direct/human call",
-    "  drains it) or just leave it — it idle-exits after 5 min. SAFE: anything it can't serve",
-    "  (graph-releasing validate/saga, human/non-json mode, any error) falls back to direct, so",
-    "  correctness NEVER depends on it; it auto-drains + respawns on a rebuild (version-skew",
-    "  handshake). Unset for one-off/interactive use (zero daemon, zero risk).",
+    // PERFORMANCE/daemon guidance is single-sourced in DAEMON_GUIDANCE and
+    // printed after this list (so the human render and the json
+    // `orchestration.performance` field can never drift — see that const).
     "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
     "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
     "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
     "  fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and the AUDIT gate",
     "  (zero open `loom smells` findings — every suspicion resolved or refuted via its remedy).",
+];
+
+/// The daemon/performance guidance, defined ONCE. Both the human render (printed
+/// after ORCHESTRATION) and the json `orchestration.performance` field consume
+/// THIS — so the hand-mirrored-copy drift that once shipped it human-only
+/// (invisible to --json drivers, its exact audience) is now impossible by
+/// construction. Single-source is the OCP fix: extend in one place.
+const DAEMON_GUIDANCE: &str = "The daemon (OPT-IN, --json only): in a long session making MANY loom calls, `export LOOM_DAEMON=1` ONCE — the first --json call lazy-spawns a background `loom serve` holding the graph open, so every later --json call skips the per-call DB-open (~20ms+ each, the dominant cost at scale). TURN OFF: unset LOOM_DAEMON (the next direct/human call drains it) or just leave it — it idle-exits after 5 min. SAFE: anything it can't serve (graph-releasing validate/saga, human/non-json mode, any error) falls back to direct, so correctness NEVER depends on it; it auto-drains + respawns on a rebuild (version-skew handshake). Unset for one-off/interactive use.";
+
+/// The teaching layer's COMPLETENESS CONTRACT: the sections every
+/// `loom guide --json` payload must expose — the analog of the graph's vertical
+/// spine, for the self-teaching plane. `guide_json_exposes_every_canonical_section`
+/// ratchets it (a registered section the json render forgets fails the build),
+/// exactly as `every_flag_requiring_command_ships_an_example` guards per-command
+/// help. Adding teaching = add the key here + provide it in the payload; the
+/// build refuses a half-landed section. (Coverage leg of teaching completeness;
+/// the Just-In-Time leg is the per-mutation anchor, the Findability leg is the
+/// guide/schema/find pull surface.)
+const GUIDE_SECTIONS: &[&str] = &[
+    "what_is_loom",
+    "planes",
+    "lifecycle",
+    "steps",
+    "golden_rules",
+    "ripple",
+    "roles",
+    "orchestration",
+    "consumer_plane",
+    "hypothesis_plane",
+    "completeness",
+    "done_condition",
 ];
 
 fn brownfield() -> Vec<(&'static str, &'static str)> {
@@ -230,7 +256,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
                 "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
                 "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and zero open `loom smells` findings (the audit gate).",
-                "performance": "The daemon (OPT-IN, --json only): in a long session making MANY loom calls, `export LOOM_DAEMON=1` ONCE — the first --json call lazy-spawns a background `loom serve` holding the graph open, so every later --json call skips the per-call DB-open (~20ms+ each, the dominant cost at scale). TURN OFF: unset LOOM_DAEMON (the next direct/human call drains it) or just leave it — it idle-exits after 5 min. SAFE: anything it can't serve (graph-releasing validate/saga, human/non-json mode, any error) falls back to direct, so correctness NEVER depends on it; it auto-drains + respawns on a rebuild (version-skew handshake). Unset for one-off/interactive use.",
+                "performance": DAEMON_GUIDANCE,
             },
             "consumer_plane": {
                 "what": "Runtime proof of COMPOSITION: a saga is an ordered chain of endpoint invocations run the way a real consumer will (captures thread one response into the next request). Everything else grounds claims by reading code; a saga stamps the RELATES_TO path between its step intents with EXECUTION evidence.",
@@ -323,7 +349,67 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     for line in ORCHESTRATION {
         println!("  {}", line);
     }
+    // Single-sourced with json `orchestration.performance` (see DAEMON_GUIDANCE).
+    println!("  PERFORMANCE — {}", DAEMON_GUIDANCE);
     println!();
     println!("Other modes: `loom guide --mode greenfield|brownfield|refactor|port|seed`. Start: `loom status` · `loom next`.");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::output::Printer;
+
+    fn guide_json(mode: &str) -> serde_json::Value {
+        let p = Printer::capturing(true);
+        run(Some(mode), &p).expect("guide opens no graph — must never fail");
+        serde_json::from_str(&p.captured().expect("captured json")).expect("guide --json is valid json")
+    }
+
+    /// COMPLETENESS RATCHET (coverage leg): every section in the teaching
+    /// completeness contract must be present in the json payload. A section
+    /// added to GUIDE_SECTIONS that the render forgets — or dropped from the
+    /// render but left registered — fails the build, so the self-teaching plane
+    /// is held to "verify against code" like every other plane in loom.
+    #[test]
+    fn guide_json_exposes_every_canonical_section() {
+        let v = guide_json("brownfield");
+        for key in GUIDE_SECTIONS {
+            assert!(
+                v.get(key).is_some(),
+                "guide --json is missing canonical teaching section '{key}'. Provide it in the json payload, or remove it from GUIDE_SECTIONS — the build refuses a half-landed section."
+            );
+        }
+    }
+
+    /// PARITY RATCHET: the daemon guidance must reach the --json driver (its
+    /// exact audience). Single-sourced via DAEMON_GUIDANCE, so the human render
+    /// prints the identical text — the hand-mirrored-copy drift that once
+    /// shipped it human-only cannot recur. This is the regression guard for the
+    /// bug the stress test caught.
+    #[test]
+    fn daemon_guidance_reaches_the_json_driver() {
+        let v = guide_json("brownfield");
+        assert_eq!(
+            v["orchestration"]["performance"],
+            serde_json::json!(DAEMON_GUIDANCE),
+            "the daemon guidance must travel in --json, single-sourced from DAEMON_GUIDANCE"
+        );
+        assert!(
+            DAEMON_GUIDANCE.contains("LOOM_DAEMON"),
+            "daemon guidance must name the on/off switch"
+        );
+    }
+
+    /// Every declared mode renders valid json with the canonical sections (the
+    /// contract holds across the whole disclosure surface, not just one mode).
+    #[test]
+    fn every_mode_satisfies_the_contract() {
+        for mode in ["greenfield", "brownfield", "refactor", "port", "seed"] {
+            let v = guide_json(mode);
+            assert_eq!(v["mode"], serde_json::json!(mode), "mode echoed");
+            assert!(v.get("orchestration").is_some(), "{mode}: orchestration present");
+        }
+    }
 }
