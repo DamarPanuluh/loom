@@ -13169,6 +13169,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T00:23:55.195398+00:00",
         "description": "Coverage treats files under a declared subtree as covered by a child loom.graph.json export, and reports a missing export as an explicit delegation-target gap.",
         "domain": "health",
@@ -13189,6 +13190,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:32.831143+00:00",
         "description": "embedded grafeo DB behind a LoomDb trait; one long-lived session; all edge queries endpoint-matched or scan+filter because grafeo 0.5.x cannot match relationships by their own property",
         "domain": "db",
@@ -13205,6 +13207,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T06:53:07.339578+00:00",
         "description": "Discovery ranking reuses precomputed token, ownership, and import adjacency inputs for unexplored pair scoring and adjacent smell ranking instead of rebuilding them on each command.",
         "domain": "workflow",
@@ -13224,6 +13227,7 @@
       {
         "abstraction_level": "system",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-13T09:53:52.982800+00:00",
         "description": "tiny todo list exercise app",
         "domain": "unknown",
@@ -13240,6 +13244,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T13:04:47.485986+00:00",
         "description": "loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command",
         "domain": "unknown",
@@ -13256,6 +13261,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:43:42.618969+00:00",
         "description": "loom next --mode triage serves proposed hypotheses ranked by target-intent centrality as optional work items - like discovery and review, triage never blocks phase=complete. loom next --all shows the triage count flagged optional.",
         "domain": "workflow",
@@ -13272,6 +13278,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T08:42:25.250438+00:00",
         "description": "loom saga add declares the proof (Validation type=saga + VALIDATES edges + uninspected RELATES_TO path + spec as CodeFile); loom saga run translates outcomes into verdicts: passed consecutive pairs stamp passing RELATES_TO with runtime evidence, the failing boundary stamps failing with the broken expectation, unreached pairs stay untouched, and existing edge criteria are preserved. Exits non-zero on failure so loom validate/CI read it.",
         "domain": "validation",
@@ -13290,6 +13297,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.175497+00:00",
         "description": "a declared LOOM_AGENT role is held to its lane at the command boundary; criterion/evidence/notes must be substantive; confidence bounded to [0,1]; solo mode passes all lanes",
         "domain": "trust",
@@ -13306,6 +13314,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:13:06.184910+00:00",
         "description": "edge implement <intent> 'src/db/**' should ground every matching registered file in one call, mirroring codefile add's glob support; dogfood finding: 48 files needed 48 invocations",
         "domain": "cli",
@@ -13322,6 +13331,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:29:49.990265+00:00",
         "description": "loom validate --all runs every validation whose last_result is not_run (never run or sync-invalidated) in one verb with the same three-phase lock discipline as per-intent validate (resolve, run with DB closed, persist in one transaction); settled passed/failed verdicts are not re-run and blocked proofs keep their recorded reason",
         "domain": "cli",
@@ -13338,6 +13348,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:43:42.744436+00:00",
         "description": "Structural findings that call for redesign rather than a patch (recurrent trouble, scattered intents, twin intents) emit loom hypothesis add as their remedy command, so the graph's own signals feed the proposal plane instead of dying in notes.",
         "domain": "workflow",
@@ -13354,6 +13365,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:05.411226+00:00",
         "description": "RELATES_TO/HIERARCHY/IMPLEMENTS/GOVERNS/VALIDATES queries — edges keyed by endpoint nodes, never by their own properties (grafeo 0.5.x reliability rule)",
         "domain": "db",
@@ -13370,6 +13382,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.060085+00:00",
         "description": "mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported",
         "domain": "workflow",
@@ -13386,6 +13399,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T06:55:37.813200+00:00",
         "description": "Derived problem signals read a sync-refreshed coupling adjacency snapshot instead of rebuilding import-derived coupling evidence from raw codefile state on each smell run.",
         "domain": "workflow",
@@ -13405,6 +13419,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T18:55:31.912923+00:00",
         "description": "Every command resolves its target graph via --graph flag > LOOM_GRAPH env > cwd, through a single resolve_root() helper; a mutating command with a pinned graph ignores cwd entirely, so the cd-fallback incident class (failed cd + mutating script hitting whatever graph cwd lands in) is dead; proven by a validation that mutates from a foreign cwd and finds the write in the pinned graph",
         "domain": "unknown",
@@ -13424,6 +13439,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:40:48.620002+00:00",
         "description": "The pre-decision plane: improvement hypotheses that any lane can propose, an analyzer proves against current code, and a builder adopts into planned intents. Speculation stays invisible to coverage and completeness until adoption converts it into the existing lifecycle.",
         "domain": "workflow",
@@ -13440,6 +13456,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T06:53:07.140151+00:00",
         "description": "sync precomputes deterministic per-run indexes for RELATES_TO, GOVERNS, TARGETS, and VALIDATES ripple work so multi-file edits flag each affected edge or validation once.",
         "domain": "workflow",
@@ -13460,6 +13477,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.487387+00:00",
         "description": "gitignore-aware file walk, stack detection, greenfield/brownfield suggestion; runs before init",
         "domain": "repo",
@@ -13476,6 +13494,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:13:06.129687+00:00",
         "description": "every command that takes an intent id should also accept its unique name (or unambiguous prefix); dogfood finding: the driver had to maintain an external name-to-id map across the whole session",
         "domain": "cli",
@@ -13492,6 +13511,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "outbound",
         "created_at": "2026-06-11T08:42:24.660431+00:00",
         "description": "The executor runs steps eagerly and in order, halts at the first failure, and reports honest per-step outcomes: steps before the failure passed, the failing step carries every broken expectation, steps after it produce NO outcome (never reached is not failing). All target-observed failures (refusal, timeout, bad JSON, empty capture) are outcomes, not process errors.",
         "domain": "validation",
@@ -13504,12 +13524,13 @@
         ],
         "status": "proposed",
         "tags": "",
-        "updated_at": "2026-06-11T08:42:24.660431+00:00",
+        "updated_at": "2026-06-14T03:24:44.417106+00:00",
         "visibility": ""
       },
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:14:45.074390+00:00",
         "description": "loom intent confirm ratifies status AND appends a kind=confirm note (the freshness event); last_confirmed_at returns the newest stamp or None; events are append-only so alignment history travels in the export with no schema field",
         "domain": "cli",
@@ -13526,6 +13547,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:32.943972+00:00",
         "description": "loom next: one queue per agent role (discovery/fix/build/validate/quality), scored by centrality + urgency - staleness; returns one item with full context so no second lookup is needed",
         "domain": "workflow",
@@ -13542,6 +13564,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T06:53:06.897453+00:00",
         "description": "Orientation commands share one read-only graph snapshot across graph_state, validate_selection, and normative_coverage so overlapping bulk reads are loaded once per command without changing outputs.",
         "domain": "workflow",
@@ -13561,6 +13584,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T08:42:05.587701+00:00",
         "description": "External-consumer proofs: a saga is an ordered chain of endpoint invocations (captures thread one response into the next request) whose run stamps RUNTIME evidence into the graph — the execution complement to read-evidence grounding.",
         "domain": "validation",
@@ -13579,6 +13603,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:05.815712+00:00",
         "description": "deterministic JSON export and restore-into-fresh-init import so the graph travels with the repo and diffs in PRs",
         "domain": "db",
@@ -13595,6 +13620,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T16:25:44.661512+00:00",
         "description": "loom import of a malformed, truncated, wrong-typed, or non-UTF-8 loom.graph.json fails with an error naming the offending field and leaves NO partial graph behind; proven by a fuzz-style validation feeding corrupted exports",
         "domain": "unknown",
@@ -13613,6 +13639,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T20:33:12.468976+00:00",
         "description": "Verdicts recorded with confidence below 0.7 surface in loom next --mode review, ranked (1-confidence) x centrality; re-recording at/above the threshold or overturning resolves the item; every work item carries effort low|mid|high about the WORK (never a model); the fix queue dispatches needs_reverification to the analyzer and failing to the fixer",
         "domain": "unknown",
@@ -13632,6 +13659,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:06.180480+00:00",
         "description": "clap-derive CLI surface, dispatch to handlers, bare-invocation orientation",
         "domain": "cli",
@@ -13648,6 +13676,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:04.578411+00:00",
         "description": "single-source schema declarations (labels/edges/props/owners/version), GQL escaping, the LoomDb trait and long-lived grafeo session, shared type structs",
         "domain": "db",
@@ -13664,6 +13693,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:07.057245+00:00",
         "description": "loom validate (runs proofs with the session released) and loom init (idempotent bootstrap)",
         "domain": "cli",
@@ -13680,6 +13710,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:40:55.438707+00:00",
         "description": "Schema v4 adds a Hypothesis node (claim, proposal, predicted_outcome, status: proposed/supported/refuted/adopted/rejected, provenance) and a TARGETS edge (Hypothesis to Intent) carrying the standard inspectable meta. Both persist through the deterministic export/import round-trip with two-phase validation, and loom doctor audits their required properties and value vocabularies.",
         "domain": "workflow",
@@ -13699,6 +13730,7 @@
       {
         "abstraction_level": "system",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:32.615308+00:00",
         "description": "Builds and maintains a falsifiable intent graph of a codebase (semantic/physical/normative planes) that any LLM drives via structured CLI commands; the graph is durable memory, the context window is the working set",
         "domain": "core",
@@ -13715,6 +13747,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:43:42.872537+00:00",
         "description": "Adopting a hypothesis writes its predicted_outcome as a not_run Validation attached to the spawned intents; when the validator lane passes it, the hypothesis derives confirmed. Every adopted improvement gets checked for whether it actually delivered.",
         "domain": "workflow",
@@ -13731,6 +13764,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:43:43.004001+00:00",
         "description": "TARGETS edges on supported hypotheses flip to needs_reverification when a target intent's grounded code changes, with a transition note naming the file. Support earned against old code must be re-earned, exactly like RELATES_TO and GOVERNS claims.",
         "domain": "workflow",
@@ -13747,6 +13781,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T20:33:12.511996+00:00",
         "description": "loom intent retire marks superseded design deprecated with reason and successor recorded as notes; retired intents are INVISIBLE TO COMPUTATION (queues, coverage axes, centrality, the grid, completeness, sync ripple) and VISIBLE TO HISTORY (node, edges, notes remain); the command reports triggered fallout: orphaned children, files losing their only owner, dangling proofs; independent edges add nothing to centrality",
         "domain": "unknown",
@@ -13766,6 +13801,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:14:45.916985+00:00",
         "description": "loom next --mode align serves active intents ranked by (1+churn-since-confirm) x ln(1+degree) + age/90 where churn counts sync-flip transition notes on the intent's edges newer than its last confirm stamp; the item presents the meaning for a user interview with exactly four outcome commands (confirm/update/retire/add); validator lane, effort mid, dispatch names the align queue",
         "domain": "cli",
@@ -13782,6 +13818,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:29:47.348171+00:00",
         "description": "loom next --mode quality --take N returns compact GOVERNS work items in one call, grouped by intent so one code-neighborhood read pays for every rule held against it, with prefilled rule_verdict batch-template lines (existing criterion kept, placeholder evidence forced through the gates) and per-item effort from the rule's annotation; capped at 50; symmetric with loom batch's rule_verdict write",
         "domain": "cli",
@@ -13798,6 +13835,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T16:25:44.700017+00:00",
         "description": "No query-layer read path swallows a parse or extraction failure via unwrap_or_default: malformed stored JSON (imports, source_refs) and missing columns surface as contextual errors, completing the hardening sweep started in codefile/intent/portability/sync",
         "domain": "unknown",
@@ -13816,6 +13854,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:06.621563+00:00",
         "description": "handlers that mutate the graph: intent/edge/codefile/validation/note/rule/ignore plus export-import restoration; all lane-gated",
         "domain": "cli",
@@ -13832,6 +13871,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T20:33:12.547296+00:00",
         "description": "Notes carry an optional audience lane (--for builder|analyzer|fixer|validator|quality); loom note list --for is the lane inbox; loom next sorts notes addressed to the work item's owner role first; quality rules carry inspection_effort (low|mid|high) annotated in the packs and inherited by quality work items",
         "domain": "unknown",
@@ -13851,6 +13891,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "inbound",
         "created_at": "2026-06-09T19:07:32.723724+00:00",
         "description": "clap-derive command definitions and dispatch to command handlers; bare invocation prints orientation",
         "domain": "cli",
@@ -13861,12 +13902,13 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": "",
-        "updated_at": "2026-06-09T20:14:29.811400+00:00",
+        "updated_at": "2026-06-14T03:24:43.389402+00:00",
         "visibility": ""
       },
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.280027+00:00",
         "description": "vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes",
         "domain": "health",
@@ -13883,6 +13925,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.385499+00:00",
         "description": "every command renders human-readable text or --json including a graph_state pulse",
         "domain": "cli",
@@ -13899,6 +13942,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T00:27:39.957758+00:00",
         "description": "The run-loom benchmark scripts generate a synthetic graph and fail when status, next, smells, or next --all exceed the hot-command budget.",
         "domain": "workflow",
@@ -13918,6 +13962,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T06:55:38.014385+00:00",
         "description": "A read-only graph projection bulk-loads shared node and edge slices once and serves status, next, report, doctor, and smells through a common query surface.",
         "domain": "workflow",
@@ -13938,6 +13983,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T16:25:44.617281+00:00",
         "description": "On a synthetic graph of >=500 intents and >=1000 edges, loom status / next / smells / next --all each complete in under 2 seconds; the O(N^2) paths (discovery pair enumeration, twin/overlap smells) are bounded or restructured; proven by a benchmark validation against the synthetic graph",
         "domain": "unknown",
@@ -13958,6 +14004,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:14:44.207772+00:00",
         "description": "loom intent update rewrites an intent's name/description in place (same node, same history); a description change ripples one hop like sync but for meaning: passing/independent RELATES_TO and GOVERNS, passing IMPLEMENTS and TARGETS go needs_reverification and linked proofs go not_run (blocked keeps its reason); the old wording is preserved in a decision note; a name-only change ripples nothing; deprecated intents are rejected",
         "domain": "cli",
@@ -13974,6 +14021,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:41:03.422079+00:00",
         "description": "Adopting a supported hypothesis links the planned intents spawned from it (or the targets marked needs_change) and records lineage in a decision note. The hypothesis itself never enters build queues, coverage axes, or completeness - conversion hands all real work to the existing intent machinery.",
         "domain": "workflow",
@@ -13990,6 +14038,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:13:06.293209+00:00",
         "description": "unexplored RELATES_TO pairs should be ranked beyond raw centrality (e.g. shared files, shared domain, co-change) so a driver is not pointed at 31 equally-scored pairs on a 10-intent graph",
         "domain": "workflow",
@@ -14006,6 +14055,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T01:41:03.281683+00:00",
         "description": "loom hypothesis add/list/show/prove/adopt/reject drives the state machine with gates: claim and predicted_outcome must be substantive and falsifiable, the prover's provenance must differ from the proposer's, only a proposed hypothesis can be proven, and only a supported one adopted. Every transition is recorded as an append-only note.",
         "domain": "workflow",
@@ -14024,6 +14074,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:07.429511+00:00",
         "description": "loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy",
         "domain": "health",
@@ -14040,6 +14091,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T16:25:44.726355+00:00",
         "description": "loom import --as-planned adopts a source graph's intents, hierarchy, criteria, and validations-as-specs into a fresh target-repo graph, drops all groundings (IMPLEMENTS), marks every leaf planned, and loom guide gains a port mode teaching the re-realization loop; the semantic plane travels, the physical plane is rebuilt in the new language",
         "domain": "unknown",
@@ -14059,6 +14111,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T20:14:04.934552+00:00",
         "description": "CRUD for Intent/CodeFile/QualityRule/Validation/Note/Ignore/Meta nodes plus shared row extraction; reliable node-anchored paths only",
         "domain": "db",
@@ -14075,6 +14128,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T15:18:45.572308+00:00",
         "description": "loom vocab maintains a small normalized tag registry for intent tags; write-time validation inlines the registry and drift remedies merge near-duplicate keys so discovery and smells get deliberate collisions.",
         "domain": "workflow",
@@ -14094,6 +14148,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T08:42:24.061202+00:00",
         "description": "The YAML saga format: every step names the intent it proves; specs are validated at load (method/JSONPath/json-xor-body) and {{ var }}/{{ env.X }} interpolation resolves vars from initial vars and earlier captures, failing hard on unknown names.",
         "domain": "validation",
@@ -14112,6 +14167,7 @@
       {
         "abstraction_level": "component",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-09T19:07:33.589765+00:00",
         "description": "guide/schema/orientation embed the full driving protocol in the binary so a cold LLM needs no external docs",
         "domain": "teaching",
@@ -14128,6 +14184,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-12T04:14:46.769226+00:00",
         "description": "loom guide --mode seed is explicit-only (never auto-detected) and teaches both loops: elicit (altitude calibrated to user fluency, one question per landing, recommended answers, terminate on enumerable gaps not exhaustion) and align (drive loom next --mode align outcomes); an empty graph's compass routes phase=seed pointing at this guide",
         "domain": "cli",
@@ -14144,6 +14201,7 @@
       {
         "abstraction_level": "feature",
         "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-10T23:58:10.326298+00:00",
         "description": "loom find: BM25 keyword search over active intent names+descriptions, ranked; hits carry hierarchy chain, IMPLEMENTS groundings with locators, and a stale-edge freshness count; scoring runs in Rust because grafeo's text-index CALL returns internal node ids unjoinable to properties through GQL; a miss points at loom coverage to distinguish unmapped from nonexistent",
         "domain": "navigation",
@@ -27104,6 +27162,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-14T03:24:43.389402+00:00",
+        "id": "a095723d-36e1-4b0a-b386-89f2b7c35cda",
+        "kind": "decision",
+        "target_id": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
+        "target_kind": "intent",
+        "text": "boundary changed: '<internal>' → 'inbound' (loom's published contract to its LLM driver: the CLI grammar IS the API the outside world calls, and every output is the agent's next prompt. The system's inbound edge.)"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "a0ac03d6-9188-485c-89fa-de90233c6a57",
@@ -28521,6 +28589,16 @@
         "target_id": "rt:147f04bb-f2af-4cc8-b582-de003853b41c:5f876b50-7945-4df0-8aab-da0017ed580a",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-14T03:24:44.417106+00:00",
+        "id": "b2146782-2428-46df-9bac-6dcf342331e3",
+        "kind": "decision",
+        "target_id": "3d856e36-aeff-4766-9a32-770e58e24672",
+        "target_kind": "intent",
+        "text": "boundary changed: '<internal>' → 'outbound' (the executor issues HTTP requests to the external service under test via reqwest (rustls) — loom acts as a client crossing into the outside world. The system's outbound edge.)"
       },
       {
         "audience": "",
