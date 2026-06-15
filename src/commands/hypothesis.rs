@@ -12,31 +12,32 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::HypothesisCmd;
-use crate::db::queries::{
-    get_hypothesis, insert_hypothesis, insert_note, insert_targets, insert_validates,
-    insert_validation, list_hypotheses, list_targets_for_hypothesis, notes_for_target,
-    resolve_hypothesis, resolve_intent, set_hypothesis_status, set_targets_status_for_hypothesis,
-    update_hypothesis_verdict,
-};
 use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
 use crate::types::{Hypothesis, HypothesisStatus, Note, Validation};
 
 pub fn run(cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
+    match cmd {
+        HypothesisCmd::List { status, limit } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_list_with_db(&db, status, limit, printer)
+        }
+        HypothesisCmd::Show { id } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_show_with_db(&db, id, printer)
+        }
+        cmd => {
+            ensure_initialized(&cwd)?;
+            run_with_sqlite(&cwd, cmd, printer)
+        }
+    }
 }
 
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: HypothesisCmd,
-    printer: &Printer,
-) -> Result<()> {
+fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     match cmd {
         HypothesisCmd::Add {
             name,
@@ -46,12 +47,10 @@ pub fn run_with_db(
             targets,
             author,
         } => {
-            // Proposing is open to every lane (like notes) — but never vacuous:
-            // an unfalsifiable claim or an unmeasurable prediction is a wishlist
-            // entry, not a hypothesis.
             let author = crate::agent::acting(author.as_deref());
             gate::require_substantive(
-                "claim", &claim,
+                "claim",
+                &claim,
                 "what is wrong/suboptimal in the code AS IT IS NOW (the prover will check exactly this)",
             )?;
             gate::require_substantive("proposal", &proposal, "the change being proposed")?;
@@ -61,6 +60,7 @@ pub fn run_with_db(
                 "the measurable result if adopted (the post-implementation acceptance contract)",
             )?;
 
+            let snapshot = store.query_snapshot()?;
             let now = chrono::Utc::now().to_rfc3339();
             let id = Uuid::new_v4().to_string();
             let h = Hypothesis {
@@ -77,12 +77,12 @@ pub fn run_with_db(
                 created_at: now.clone(),
                 updated_at: now.clone(),
             };
-            insert_hypothesis(db, &h)?;
+            store.insert_hypothesis(&h)?;
 
             let mut linked = Vec::new();
             for t in &targets {
-                let iid = resolve_intent(db, t)?;
-                insert_targets(db, &id, &iid, &now)?;
+                let iid = crate::db::queries::resolve_intent_from_snapshot(&snapshot, t)?;
+                store.insert_targets(&id, &iid, &now)?;
                 linked.push(iid);
             }
 
@@ -107,19 +107,23 @@ pub fn run_with_db(
         }
 
         HypothesisCmd::Target { hypothesis, intent } => {
-            let hid = resolve_hypothesis(db, &hypothesis)?;
-            let iid = resolve_intent(db, &intent)?;
-            if crate::db::queries::get_targets_between(db, &hid, &iid)?.is_some() {
+            let hid = store.resolve_hypothesis(&hypothesis)?;
+            let snapshot = store.query_snapshot()?;
+            let iid = crate::db::queries::resolve_intent_from_snapshot(&snapshot, &intent)?;
+            if store.get_targets_between(&hid, &iid)?.is_some() {
                 anyhow::bail!("Hypothesis already targets that intent — `loom hypothesis show {hid}` lists current targets.");
             }
             let now = chrono::Utc::now().to_rfc3339();
-            insert_targets(db, &hid, &iid, &now)?;
+            store.insert_targets(&hid, &iid, &now)?;
             let next_step = format!(
                 "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} …` when evidence is ready"
             );
             if printer.json {
                 printer.print_json(&serde_json::json!({
-                    "status": "ok", "edge_id": crate::db::schema::edge_key(crate::db::schema::edge::TARGETS, &hid, &iid), "hypothesis_id": hid, "intent_id": iid,
+                    "status": "ok",
+                    "edge_id": crate::db::schema::edge_key(crate::db::schema::edge::TARGETS, &hid, &iid),
+                    "hypothesis_id": hid,
+                    "intent_id": iid,
                     "next_step": next_step,
                 }));
             } else {
@@ -134,7 +138,6 @@ pub fn run_with_db(
             evidence,
             inspected_by,
         } => {
-            // Proving is analyzer work: read the code, check the claim.
             let prover = gate::acting_in_lane(
                 "prove a hypothesis",
                 &[role::ANALYZER],
@@ -142,9 +145,7 @@ pub fn run_with_db(
             )?;
             if !matches!(verdict.as_str(), "supported" | "refuted") {
                 anyhow::bail!(
-                    "--verdict must be 'supported' (the claimed problem is real) or 'refuted' \
-                     (looked — it is not). Adoption/rejection are separate DECISIONS: \
-                     `loom hypothesis adopt|reject`."
+                    "--verdict must be 'supported' or 'refuted'. Adoption/rejection are separate decisions."
                 );
             }
             gate::require_substantive(
@@ -152,8 +153,8 @@ pub fn run_with_db(
                 &evidence,
                 "what was actually found while checking the claim against the code",
             )?;
-            let hid = resolve_hypothesis(db, &id)?;
-            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
+            let hid = store.resolve_hypothesis(&id)?;
+            let h = store.get_hypothesis(&hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -161,22 +162,17 @@ pub fn run_with_db(
             })?;
             if matches!(h.status.as_str(), "adopted" | "confirmed" | "rejected") {
                 anyhow::bail!(
-                    "Hypothesis '{}' is already decided ({}) — the decision is recorded; \
-                     propose a new hypothesis instead of re-litigating this one.",
+                    "Hypothesis '{}' is already decided ({}) — propose a new hypothesis instead of re-litigating this one.",
                     h.name,
                     h.status
                 );
             }
-            // Proposer ≠ prover. Only enforceable when both declare roles —
-            // bare llm/human is solo mode, which stays supported (same contract
-            // as the lane gates).
             if gate::role_of(&h.author).is_some()
                 && gate::role_of(&prover).is_some()
                 && h.author == prover
             {
                 anyhow::bail!(
-                    "Separation of duties: '{}' proposed this hypothesis and cannot also prove it. \
-                     Hand the proof to a different agent (or a different role).",
+                    "Separation of duties: '{}' proposed this hypothesis and cannot also prove it.",
                     prover
                 );
             }
@@ -186,23 +182,15 @@ pub fn run_with_db(
             } else {
                 "independent"
             };
-            // Atomic: the verdict and every TARGETS stamp (a (2+N)-statement
-            // mutation) land together or not at all — matches the Adopt path
-            // and the multi-statement-mutation rule. A mid-loop failure must
-            // not leave the hypothesis flipped over half-stamped targets.
-            crate::db::with_transaction(db, || {
-                update_hypothesis_verdict(db, &hid, &verdict, &evidence, &prover, &now)?;
-                set_targets_status_for_hypothesis(
-                    db,
-                    &hid,
-                    target_status,
-                    "hypothesis proof establishes whether this target is affected",
-                    &evidence,
-                    &prover,
-                    &now,
-                )?;
-                Ok(())
-            })?;
+            store.update_hypothesis_verdict(&hid, &verdict, &evidence, &prover, &now)?;
+            store.set_targets_status_for_hypothesis(
+                &hid,
+                target_status,
+                "hypothesis proof establishes whether this target is affected",
+                &evidence,
+                &prover,
+                &now,
+            )?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": hid, "verdict": verdict,
@@ -227,15 +215,10 @@ pub fn run_with_db(
             spawned,
             reason,
         } => {
-            // Adoption converts speculation into a promise to change the code —
-            // builder lane, owned custody only.
             let by = gate::acting_in_lane("adopt a hypothesis", &[role::BUILDER], None)?;
-            crate::db::queries::ensure_owned(
-                db,
-                "adopt a hypothesis (a promise to change the code)",
-            )?;
-            let hid = resolve_hypothesis(db, &id)?;
-            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
+            store.ensure_owned("adopt a hypothesis (a promise to change the code)")?;
+            let hid = store.resolve_hypothesis(&id)?;
+            let h = store.get_hypothesis(&hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -243,23 +226,15 @@ pub fn run_with_db(
             })?;
             if h.status != "supported" {
                 anyhow::bail!(
-                    "Only a SUPPORTED hypothesis can be adopted — '{}' is '{}'. \
-                     {}",
+                    "Only a SUPPORTED hypothesis can be adopted — '{}' is '{}'.",
                     h.name,
-                    h.status,
-                    if h.status == "proposed" {
-                        format!("Prove it first: `loom hypothesis prove {hid} --verdict … --evidence \"…\"`.")
-                    } else {
-                        "A refuted/decided hypothesis cannot become work.".to_string()
-                    }
+                    h.status
                 );
             }
             if spawned.is_empty() {
                 let Some(ref r) = reason else {
                     anyhow::bail!(
-                        "Adoption must convert into work: pass --spawned <planned-intent> \
-                         (create it first with `loom intent add --lifecycle planned`), or \
-                         --reason explaining the conversion (e.g. targets marked needs_change)."
+                        "Adoption must convert into work: pass --spawned <planned-intent>, or --reason explaining the conversion."
                     );
                 };
                 gate::require_substantive(
@@ -268,92 +243,81 @@ pub fn run_with_db(
                     "how this adoption converts into work when no spawned intent is linked",
                 )?;
             }
+            let snapshot = store.query_snapshot()?;
             let mut spawned_ids = Vec::new();
             let mut spawned_names = Vec::new();
             for s in &spawned {
-                let iid = resolve_intent(db, s)?;
-                let i = crate::db::queries::get_intent(db, &iid)?
-                    .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found. Run `loom intent list`; for --spawned the intent must exist first.", iid))?;
+                let iid = crate::db::queries::resolve_intent_from_snapshot(&snapshot, s)?;
+                let i = store.get_intent(&iid)?.ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "Intent '{}' not found. Run `loom intent list`; for --spawned the intent must exist first.",
+                        iid
+                    )
+                })?;
                 spawned_ids.push(iid);
                 spawned_names.push(i.name);
             }
 
             let now = chrono::Utc::now().to_rfc3339();
-            // Atomic conversion: the status flip, the lineage notes (both
-            // directions), the outcome Validation, and its VALIDATES links
-            // are ONE decision — half an adoption is worse than none.
-            crate::db::with_transaction(db, || {
-                set_hypothesis_status(db, &hid, "adopted", &by, &now)?;
-
-                // Lineage, both directions. On the hypothesis: what it became. On
-                // each spawned intent: where it came from + the predicted outcome —
-                // the acceptance contract the validator will eventually prove.
-                let mut text = format!(
-                    "adopted{}",
-                    if spawned_names.is_empty() {
-                        String::new()
-                    } else {
-                        format!(
-                            ": spawned {}",
-                            spawned_ids
-                                .iter()
-                                .zip(&spawned_names)
-                                .map(|(i, n)| format!("'{n}' ({i})"))
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    }
-                );
-                if let Some(ref r) = reason {
-                    text.push_str(&format!(" — {r}"));
+            store.set_hypothesis_status(&hid, "adopted", &by, &now)?;
+            let mut text = format!(
+                "adopted{}",
+                if spawned_names.is_empty() {
+                    String::new()
+                } else {
+                    format!(
+                        ": spawned {}",
+                        spawned_ids
+                            .iter()
+                            .zip(&spawned_names)
+                            .map(|(i, n)| format!("'{n}' ({i})"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
                 }
-                insert_note(
-                    db,
-                    &Note {
-                        id: Uuid::new_v4().to_string(),
-                        kind: "decision".to_string(),
-                        text,
-                        author: by.clone(),
-                        target_kind: "hypothesis".to_string(),
-                        target_id: hid.clone(),
-                        audience: String::new(),
-                        created_at: now.clone(),
-                    },
-                )?;
-                if !spawned_ids.is_empty() {
-                    let validation_id = Uuid::new_v4().to_string();
-                    insert_validation(
-                        db,
-                        &Validation {
-                            id: validation_id.clone(),
-                            name: format!("hypothesis outcome: {}", h.name),
-                            description: format!(
-                                "hypothesis:{}\nPredicted outcome to verify after adoption: {}",
-                                hid, h.predicted_outcome
-                            ),
-                            validation_type: "manual_check".to_string(),
-                            command: String::new(),
-                            last_run: String::new(),
-                            last_result: "not_run".to_string(),
-                        },
-                    )?;
-                    for iid in &spawned_ids {
-                        insert_validates(
-                            db,
-                            &validation_id,
-                            iid,
-                            "hypothesis outcome proof",
-                            &now,
-                        )?;
-                    }
-                }
-
+            );
+            if let Some(ref r) = reason {
+                text.push_str(&format!(" - {r}"));
+            }
+            store.insert_note(&Note {
+                id: Uuid::new_v4().to_string(),
+                kind: "decision".to_string(),
+                text,
+                author: by.clone(),
+                target_kind: "hypothesis".to_string(),
+                target_id: hid.clone(),
+                audience: String::new(),
+                created_at: now.clone(),
+            })?;
+            if !spawned_ids.is_empty() {
+                let validation_id = Uuid::new_v4().to_string();
+                store.insert_validation(&Validation {
+                    id: validation_id.clone(),
+                    name: format!("hypothesis outcome: {}", h.name),
+                    description: format!(
+                        "hypothesis:{}\nPredicted outcome to verify after adoption: {}",
+                        hid, h.predicted_outcome
+                    ),
+                    validation_type: "manual_check".to_string(),
+                    command: String::new(),
+                    last_run: String::new(),
+                    last_result: "not_run".to_string(),
+                })?;
                 for iid in &spawned_ids {
-                    insert_note(db, &Note {
+                    store.insert_validates(
+                        &validation_id,
+                        iid,
+                        "hypothesis outcome proof",
+                        &now,
+                    )?;
+                }
+            }
+            for iid in &spawned_ids {
+                store.insert_note(&Note {
                     id: Uuid::new_v4().to_string(),
                     kind: "decision".to_string(),
                     text: format!(
-                        "spawned from hypothesis '{}' ({}) — predicted outcome (acceptance contract): {}",
+                        "spawned from hypothesis '{}' ({}) - predicted outcome (acceptance contract): {}",
                         h.name, hid, h.predicted_outcome
                     ),
                     author: by.clone(),
@@ -362,9 +326,7 @@ pub fn run_with_db(
                     audience: String::new(),
                     created_at: now.clone(),
                 })?;
-                }
-                Ok(())
-            })?;
+            }
 
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -388,8 +350,8 @@ pub fn run_with_db(
                 &reason,
                 "why this hypothesis is not being pursued",
             )?;
-            let hid = resolve_hypothesis(db, &id)?;
-            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
+            let hid = store.resolve_hypothesis(&id)?;
+            let h = store.get_hypothesis(&hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
                     "Hypothesis '{}' not found. Run `loom hypothesis list`.",
                     hid
@@ -397,27 +359,22 @@ pub fn run_with_db(
             })?;
             if matches!(h.status.as_str(), "adopted" | "confirmed") {
                 anyhow::bail!(
-                    "Hypothesis '{}' was adopted — its spawned intents are real work now. \
-                     Retire/delete those intents if the direction is wrong; the hypothesis \
-                     record stays as history.",
+                    "Hypothesis '{}' was adopted — its spawned intents are real work now.",
                     h.name
                 );
             }
             let now = chrono::Utc::now().to_rfc3339();
-            set_hypothesis_status(db, &hid, "rejected", &by, &now)?;
-            insert_note(
-                db,
-                &Note {
-                    id: Uuid::new_v4().to_string(),
-                    kind: "decision".to_string(),
-                    text: format!("rejected: {reason}"),
-                    author: by,
-                    target_kind: "hypothesis".to_string(),
-                    target_id: hid.clone(),
-                    audience: String::new(),
-                    created_at: now,
-                },
-            )?;
+            store.set_hypothesis_status(&hid, "rejected", &by, &now)?;
+            store.insert_note(&Note {
+                id: Uuid::new_v4().to_string(),
+                kind: "decision".to_string(),
+                text: format!("rejected: {reason}"),
+                author: by,
+                target_kind: "hypothesis".to_string(),
+                target_id: hid.clone(),
+                audience: String::new(),
+                created_at: now,
+            })?;
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": hid, "rejected": true,
@@ -430,123 +387,171 @@ pub fn run_with_db(
         }
 
         HypothesisCmd::List { status, limit } => {
-            if let Some(ref s) = status {
-                s.parse::<HypothesisStatus>()
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-            }
-            let mut hs = list_hypotheses(db, status.as_deref())?;
-            let total = crate::output::apply_limit(&mut hs, limit);
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "hypotheses": hs,
-                    "total": total,
-                    "truncated": hs.len() < total,
-                }));
-            } else if hs.is_empty() {
-                println!(
-                    "(no hypotheses{})",
-                    status
-                        .map(|s| format!(" with status '{s}'"))
-                        .unwrap_or_default()
-                );
-            } else {
-                println!(
-                    "  {status:>10}   {name:<40}  id",
-                    status = "STATUS",
-                    name = "NAME"
-                );
-                println!("  {}", "-".repeat(90));
-                for h in &hs {
-                    println!(
-                        "  [{status:>10}]  {name:<40}  {id}",
-                        status = h.status,
-                        name = h.name,
-                        id = h.id
-                    );
-                }
-                if let Some(m) =
-                    crate::output::more_marker(total, hs.len(), "loom hypothesis list --limit 0")
-                {
-                    println!("  {m}");
-                }
-            }
+            run_list_with_db(&store, status, limit, printer)?;
         }
 
         HypothesisCmd::Show { id } => {
-            let hid = resolve_hypothesis(db, &id)?;
-            let h = get_hypothesis(db, &hid)?.ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Hypothesis '{}' not found. Run `loom hypothesis list`.",
-                    hid
-                )
-            })?;
-            let targets = list_targets_for_hypothesis(db, &hid)?;
-            let targets_total = targets.len();
-            let mut notes = notes_for_target(db, &hid)?;
-            let notes_total = notes.len();
-            if notes_total > crate::output::SECTION_CAP {
-                // notes come oldest-first; keep the NEWEST.
-                notes.drain(..notes_total - crate::output::SECTION_CAP);
+            run_show_with_db(&store, id, printer)?;
+        }
+    }
+    Ok(())
+}
+
+fn run_list_with_db(
+    db: &dyn GraphReadRepository,
+    status: Option<String>,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    if let Some(ref s) = status {
+        s.parse::<HypothesisStatus>()
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+    }
+    let mut hs = db.list_hypotheses(status.as_deref())?;
+    let total = crate::output::apply_limit(&mut hs, limit);
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "hypotheses": hs,
+            "total": total,
+            "truncated": hs.len() < total,
+        }));
+    } else if hs.is_empty() {
+        println!(
+            "(no hypotheses{})",
+            status
+                .map(|s| format!(" with status '{s}'"))
+                .unwrap_or_default()
+        );
+    } else {
+        println!(
+            "  {status:>10}   {name:<40}  id",
+            status = "STATUS",
+            name = "NAME"
+        );
+        println!("  {}", "-".repeat(90));
+        for h in &hs {
+            println!(
+                "  [{status:>10}]  {name:<40}  {id}",
+                status = h.status,
+                name = h.name,
+                id = h.id
+            );
+        }
+        if let Some(m) =
+            crate::output::more_marker(total, hs.len(), "loom hypothesis list --limit 0")
+        {
+            println!("  {m}");
+        }
+    }
+    Ok(())
+}
+
+fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer) -> Result<()> {
+    let hid = resolve_hypothesis_with_db(db, &id)?;
+    let h = db
+        .list_hypotheses(None)?
+        .into_iter()
+        .find(|hypothesis| hypothesis.id == hid)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+                hid
+            )
+        })?;
+    let targets = db.list_targets_for_hypothesis(&hid)?;
+    let targets_total = targets.len();
+    let mut notes = db.notes_for_target(&hid)?;
+    let notes_total = notes.len();
+    if notes_total > crate::output::SECTION_CAP {
+        // notes come oldest-first; keep the NEWEST.
+        notes.drain(..notes_total - crate::output::SECTION_CAP);
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "hypothesis": h,
+            "targets": targets,
+            "targets_total": targets_total,
+            "notes": notes,
+            "notes_total": notes_total,
+        }));
+    } else {
+        println!("── Hypothesis ─────────────────────────────────────────────────────");
+        println!("{}", fmt_hypothesis(&h));
+        println!();
+        println!(
+            "── Targets ({}) ─────────────────────────────────────────────────────",
+            targets_total
+        );
+        if targets.is_empty() {
+            println!("  (none — `loom hypothesis target {hid} <intent>` links affected intents)");
+        } else {
+            for t in targets.iter().take(crate::output::SECTION_CAP) {
+                println!(
+                    "  → {}  [{}]  ({})",
+                    t.intent_name, t.inspection_status, t.intent_id
+                );
             }
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "hypothesis": h,
-                    "targets": targets,
-                    "targets_total": targets_total,
-                    "notes": notes,
-                    "notes_total": notes_total,
-                }));
-            } else {
-                println!("── Hypothesis ─────────────────────────────────────────────────────");
-                println!("{}", fmt_hypothesis(&h));
-                println!();
-                println!(
-                    "── Targets ({}) ─────────────────────────────────────────────────────",
-                    targets_total
-                );
-                if targets.is_empty() {
-                    println!(
-                        "  (none — `loom hypothesis target {hid} <intent>` links affected intents)"
-                    );
-                } else {
-                    for t in targets.iter().take(crate::output::SECTION_CAP) {
-                        println!(
-                            "  → {}  [{}]  ({})",
-                            t.intent_name, t.inspection_status, t.intent_id
-                        );
-                    }
-                    let shown = targets.len().min(crate::output::SECTION_CAP);
-                    if let Some(m) = crate::output::more_marker(
-                        targets_total,
-                        shown,
-                        &format!("full list: loom hypothesis show {hid} --json"),
-                    ) {
-                        println!("  {m}");
-                    }
-                }
-                println!();
-                println!(
-                    "── Notes ({}) ───────────────────────────────────────────────────────",
-                    notes_total
-                );
-                if notes.is_empty() {
-                    println!("  (none)");
-                } else {
-                    for n in &notes {
-                        println!("  [{}] {}  ({})", n.kind, n.text, n.author);
-                    }
-                    if let Some(m) = crate::output::more_marker(
-                        notes_total,
-                        notes.len(),
-                        &format!("loom note list --edge {hid}"),
-                    ) {
-                        println!("  {m}");
-                    }
-                }
+            let shown = targets.len().min(crate::output::SECTION_CAP);
+            if let Some(m) = crate::output::more_marker(
+                targets_total,
+                shown,
+                &format!("full list: loom hypothesis show {hid} --json"),
+            ) {
+                println!("  {m}");
+            }
+        }
+        println!();
+        println!(
+            "── Notes ({}) ───────────────────────────────────────────────────────",
+            notes_total
+        );
+        if notes.is_empty() {
+            println!("  (none)");
+        } else {
+            for n in &notes {
+                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
+            }
+            if let Some(m) = crate::output::more_marker(
+                notes_total,
+                notes.len(),
+                &format!("loom note list --edge {hid}"),
+            ) {
+                println!("  {m}");
             }
         }
     }
     Ok(())
+}
+
+fn resolve_hypothesis_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let hypotheses = db.list_hypotheses(None)?;
+    if hypotheses.iter().any(|hypothesis| hypothesis.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = hypotheses
+        .iter()
+        .filter(|hypothesis| hypothesis.name.to_lowercase() == kl)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let subs: Vec<_> = hypotheses
+        .iter()
+        .filter(|hypothesis| hypothesis.name.to_lowercase().contains(&kl))
+        .collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No hypothesis matches '{}' (by id, name, or fragment). Run `loom hypothesis list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — matches {} hypotheses. Use the id (`loom hypothesis list`).",
+            key,
+            subs.len()
+        ),
+    }
 }
 
 fn fmt_hypothesis(h: &Hypothesis) -> String {

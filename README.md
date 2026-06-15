@@ -4,7 +4,7 @@
 
 loom is a CLI that helps LLM agents (and the humans steering them) systematically understand, build, and clean up codebases. It maintains a graph of *intents* — what each piece of code is supposed to do — grounded in real files, where **every relationship carries a verification status and evidence**. The graph is the durable memory; the agent's context window is just the working set.
 
-There is no server and no GUI. The interaction surface is the CLI itself, and every command supports `--json`. The first dogfood target is loom's own codebase: the graph ships in this repo as [`loom.graph.json`](loom.graph.json).
+There is no required server and no GUI. The interaction surface is the CLI itself, and every command supports `--json`. The default graph store is embedded SQLite at `.loom/graph.sqlite`; `loom.graph.json` is the portable export checked into repos. The first dogfood target is loom's own codebase: the graph ships in this repo as [`loom.graph.json`](loom.graph.json).
 
 ## Why
 
@@ -39,7 +39,7 @@ cargo install --path .        # pure Rust, embedded graph DB, no server
 
 cd your-repo
 loom init .
-loom guide                    # the full driving protocol, self-taught by the binary
+loom guide                    # the full driving protocol + lifecycle, self-taught by the binary
 loom detect                   # greenfield or brownfield? + which quality packs fit this repo
 
 # map: seed intents, link the tree, ground to files
@@ -127,6 +127,7 @@ A few states exist specifically so the graph never lies by omission:
 
 - `independent` — "we looked; there is no relationship" (verified absence, not silence)
 - `needs_change` — a known issue/refactor, flagged without faking a verdict
+- retired/superseded intents use `loom intent retire`, which preserves history as `status=deprecated` instead of adding a fourth active lifecycle state
 - `blocked` — a proof that *can't* run yet (live target down, missing credential), recorded with a reason; out of the work queue but visible in `loom report`, and a code change doesn't quietly reset it
 - `loom ignore add <glob> --reason` — coverage exclusions live *in the graph*, with a recorded why
 - `loom vocab` — a bounded tag vocabulary (≤3 tags per intent, registered terms only). Open prose rarely collides; a small shared keyspace does — so two intents tagged `retry` in *unrelated* files surface as `duplicated_responsibility` even when no file, import, or wording connects them. Collisions are rarity-weighted (spammed broad terms decay to zero), tagging is optional at write time (untagged is honest; a wrong tag lies), and drift converges with `loom vocab merge` instead of being prevented by a closed list. Untagged coded pairs still get a stricter lexical fallback, but tags remain the high-signal detector; `loom smells` discloses how many coded intents are untagged and emits `duplicate_detection_unarmed` when coverage is under-armed, so a quiet report is never mistaken for proof of no duplication.
@@ -147,13 +148,13 @@ For code you *don't* own (a vendor SDK, an upstream dependency, another team's s
 ## Building from source
 
 ```bash
-cargo build          # first build is slow (grafeo statically linked); incremental is seconds
-cargo test           # query-layer regression suite, in-memory DB
+cargo build          # first build is slow (SQLite + tree-sitter deps); incremental is seconds
+cargo test           # query/storage regression suite
 cargo test --no-default-features  # dependency-light heuristic import fallback
 .claude/skills/run-loom/driver.sh   # full lifecycle smoke: map → ripple → quality → export/import
 ```
 
-The default build uses tree-sitter grammars for richer physical-plane imports and symbols, so it needs a working C compiler. `--no-default-features` restores the pure-Rust heuristic import path. The graph store is [grafeo](https://crates.io/crates/grafeo), embedded and pure Rust.
+The default build uses tree-sitter grammars for richer physical-plane imports and symbols, so it needs a working C compiler. `--no-default-features` restores the pure-Rust heuristic import path. The runtime graph store is embedded SQLite via `rusqlite`.
 
 ## Project status
 

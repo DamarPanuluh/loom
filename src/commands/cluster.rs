@@ -1,32 +1,32 @@
 use anyhow::Result;
 
-use crate::db::queries::{get_intent, unresolved_edges_for_intent};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::queries::{resolve_intent_from_snapshot, unresolved_edges_for_intent_from_snapshot};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_edge_row, fmt_intent, Printer};
 
 pub fn run(intent_id: &str, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, intent_id, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, intent_id, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     _root: &std::path::Path,
     intent_id: &str,
     printer: &Printer,
 ) -> Result<()> {
-    let intent_id = &crate::db::queries::resolve_intent(db, intent_id)?;
+    let snapshot = db.query_snapshot()?;
+    let intent_id = &resolve_intent_from_snapshot(&snapshot, intent_id)?;
 
-    let intent = get_intent(db, intent_id)?.ok_or_else(|| {
+    let intent = db.get_intent(intent_id)?.ok_or_else(|| {
         anyhow::anyhow!(
             "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
             intent_id
         )
     })?;
 
-    let edges = unresolved_edges_for_intent(db, intent_id)?;
+    let edges = unresolved_edges_for_intent_from_snapshot(&snapshot, intent_id);
 
     if printer.json {
         printer.print_json(&serde_json::json!({

@@ -4,25 +4,33 @@
 use anyhow::Result;
 use std::fs;
 
-use crate::db::queries::export_graph;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
 pub fn run(out: &str, check: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, out, check, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, out, check, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     root: &std::path::Path,
     out: &str,
     check: bool,
     printer: &Printer,
 ) -> Result<()> {
-    let graph = export_graph(db)?;
+    let graph = db.export_json()?;
+    run_graph(root, out, check, printer, graph)
+}
+
+fn run_graph(
+    root: &std::path::Path,
+    out: &str,
+    check: bool,
+    printer: &Printer,
+    graph: serde_json::Value,
+) -> Result<()> {
     let pretty = serde_json::to_string_pretty(&graph)?;
 
     if check {

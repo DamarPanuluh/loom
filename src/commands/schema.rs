@@ -100,6 +100,26 @@ pub fn run(printer: &Printer) -> Result<()> {
             "granularity": "system: 1–3 per repo (the product's purpose) · component: 5–15 (cohesive subsystems) · feature: many, ATOMIC — independently verifiable · cross_cutting: spans everything. Test: one falsifiable criterion per intent; a description needing 'and' is several intents.",
         },
         "lifecycle": ["planned", "implemented", "needs_change"],
+        "lifecycle_model": {
+            "active_states": {
+                "planned": "designed promise, not expected to be grounded in current code yet",
+                "implemented": "current code is meant to realize this intent",
+                "needs_change": "known issue or refactor target; work remains",
+            },
+            "transitions": [
+                "new behavior -> planned via intent add, saga spawn, or hypothesis adoption",
+                "planned -> implemented via build, codefile add, edge implement, and intent mark",
+                "implemented -> needs_change -> implemented for admitted repairs",
+                "superseded active intent -> status=deprecated via intent retire",
+                "import --as-planned resets incoming implemented work to planned design",
+            ],
+            "distinct_from": {
+                "intent.status": "proposed/confirmed/deprecated says whether the meaning itself is accepted or retired",
+                "inspection_status": "edge evidence freshness/currentness",
+                "validation_result": "proof freshness/currentness",
+                "hypothesis_status": "pre-decision idea state before lifecycle work exists",
+            },
+        },
         "visibility": ["user_visible", "internal"],
         "boundary": {"values": ["inbound", "outbound"], "meaning": "inbound: exposes a surface the outside world calls (a provider contract) · outbound: calls an external system (a consumer dependency) · unset: internal, no boundary crossing. Surfaced in work items so traversal knows a change here is contract-affecting."},
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
@@ -179,6 +199,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
     println!("  lifecycle:         planned | implemented | needs_change");
+    println!("                     retired/superseded intents use status=deprecated via `loom intent retire`, not a fourth active lifecycle state");
+    println!("                     porting with `import --as-planned` resets incoming work to planned design");
     println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");
     println!("  boundary:          inbound (exposes a surface the outside world calls — provider contract) | outbound (calls an external system — consumer dependency) | (unset = internal, no crossing)");
     println!("  note_kind:         justification | commentary | idea | question | decision | todo | transition (auto: verdict history) | confirm (auto: `loom intent confirm` stamp)");

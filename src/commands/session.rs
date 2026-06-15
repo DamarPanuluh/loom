@@ -17,11 +17,8 @@
 
 use anyhow::Result;
 
-use crate::db::queries::{
-    align_candidates, graph_state_from_snapshot, list_hypotheses, prove_candidates,
-    uninspected_outside_queues, QuerySnapshot,
-};
-use crate::db::GrafeoDb;
+use crate::db::queries::uninspected_outside_queues_from_snapshot;
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, pulse_json, Printer};
 
 /// One way to spend the session: the question to put to the user (their
@@ -263,15 +260,18 @@ pub fn run(printer: &Printer) -> Result<()> {
         return Ok(());
     }
 
-    let db_file = crate::db::ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, printer)
 }
 
-pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
+    printer: &Printer,
+) -> Result<()> {
     let has_source = crate::repo::detect(root)?.has_source;
-    let snapshot = QuerySnapshot::load(db)?;
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let snapshot = db.query_snapshot()?;
+    let gs = db.graph_state(&snapshot)?;
 
     let broken = snapshot
         .relates
@@ -300,13 +300,15 @@ pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> 
     // Same agenda computation as `loom status` (the oscillation summary):
     // supported hypotheses still in the prove queue are the prover's, not the
     // user's — only the remainder awaits a ruling.
-    let prove = prove_candidates(db)?;
+    let prove = db.prove_candidates(&snapshot)?;
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
-    let rulings = list_hypotheses(db, Some("supported"))?
+    let rulings = db
+        .list_hypotheses(Some("supported"))?
         .iter()
         .filter(|h| !in_prove.contains(h.id.as_str()))
         .count() as i64;
+    let outside = uninspected_outside_queues_from_snapshot(&snapshot);
 
     let counts = SessionCounts {
         intents: gs.intents,
@@ -322,9 +324,9 @@ pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> 
             .count() as i64,
         broken,
         unexplored_pairs: gs.unexplored_pairs,
-        align: align_candidates(db)?.len() as i64,
+        align: db.align_candidate_count(&snapshot)?,
         rulings,
-        blocked: uninspected_outside_queues(db)?.blocked_validations,
+        blocked: outside.blocked_validations,
         sagas: snapshot
             .validations
             .iter()

@@ -1,15 +1,14 @@
 //! The loom graph schema, declared in ONE place.
 //!
-//! grafeo is a schema-*optional* store: it will happily accept any label or
-//! property you write, so nothing at the DB layer stops a typo from silently
-//! creating a wrong field (a later read just returns `Null`). loom is the *sole*
-//! author of the graph — the LLM never writes GQL, it only calls structured
-//! subcommands — so schema stability is loom's responsibility, enforced in three
+//! SQLite owns the physical schema, while this module owns the graph vocabulary
+//! surfaced to commands, exports, doctor checks, and the LLM-facing schema view.
+//! loom is the sole author of the graph — the LLM never writes SQL, it only
+//! calls structured subcommands — so schema stability is enforced in three
 //! layers:
 //!   1. This module declares the entire vocabulary (labels, edge types,
 //!      properties, version) once. New code and `loom doctor` reference it.
 //!   2. `loom doctor` (see `commands::doctor`) verifies the *live* graph against
-//!      these declarations and catches drift the type system can't.
+//!      these declarations and catches storage drift.
 //!   3. Round-trip tests write→read every field of every entity.
 
 // ---------------------------------------------------------------------------
@@ -39,21 +38,15 @@
 ///
 /// v4: edge identity is DERIVED, never stored. An edge's id is
 /// `edge_key(type, from, to)` (e.g. `rt:<intent-a>:<intent-b>`) computed at
-/// read time — edges are unique per endpoint pair, so the stored uuid was
-/// redundant identity sitting on the ONE property name grafeo can't filter by
-/// (`r.id` resolves to the internal edge id in filter position — see
-/// tests/grafeo_probe.rs). Derived keys are also stable across export/import,
-/// which stored uuids never were (they regenerated). Stored `id` props on
-/// pre-v4 edges are inert; `loom migrate` rewrites the notes that referenced
-/// them and bumps the version; `loom import` upgrades v3 exports in flight.
+/// read time — edges are unique per endpoint pair, and derived keys are stable
+/// across export/import. Stored edge uuids from pre-v4 exports are normalized
+/// during import.
 ///
 /// v5: `Intent.source_refs`, `Intent.tags`, and `CodeFile.imports` are NATIVE
 /// LISTS instead of JSON-encoded strings — no more double encoding (the
 /// committed export now diffs as real arrays), and the malformed-JSON failure
 /// class is impossible by construction. Readers tolerate legacy string values
-/// (parsed as JSON) so a half-migrated graph still reads correctly;
-/// `loom migrate` converts storage; `loom import` upgrades v3/v4 exports in
-/// flight.
+/// (parsed as JSON) so legacy exports import into current storage correctly.
 ///
 /// Still v5 after the Persona plane (the Persona label + SERVES edge + JOURNEYS
 /// edge): additive — older graphs simply have no personas; older exports import
@@ -137,9 +130,6 @@ pub mod label {
     /// actually serve this persona?) and to saga validations via JOURNEYS edges
     /// (structural: this saga exercises this persona's path end-to-end).
     pub const PERSONA: &str = "Persona";
-    /// Sentinel node marking an initialised graph (carries the schema version,
-    /// the graph's identity, and its custody).
-    pub const META: &str = "LoomMeta";
 }
 
 /// Every content node label (excludes the `LoomMeta` sentinel).
@@ -244,9 +234,6 @@ pub mod prop {
     pub const CREATED_AT: &str = "created_at";
     pub const UPDATED_AT: &str = "updated_at";
     pub const NOTES: &str = "notes";
-    pub const VERSION: &str = "version";
-    /// LoomMeta: when the graph was last reconciled against disk (`loom sync`).
-    pub const LAST_SYNCED: &str = "last_synced";
     // Intent
     pub const ABSTRACTION_LEVEL: &str = "abstraction_level";
     pub const DOMAIN: &str = "domain";
@@ -350,31 +337,6 @@ pub mod prop {
     /// Hypothesis: the measurable result if adopted — the acceptance contract
     /// a post-implementation validation will be written from.
     pub const PREDICTED_OUTCOME: &str = "predicted_outcome";
-    // LoomMeta identity + custody (federation; backfilled on `loom init`)
-    /// Stable identity of THIS graph (uuid) — what other looms reference.
-    pub const GRAPH_ID: &str = "graph_id";
-    /// Human name of this graph (defaults to the repo directory name).
-    pub const GRAPH_NAME: &str = "graph_name";
-    /// "owned" (we can change this code) | "observed" (mapping someone else's
-    /// code: build/fix lanes are disabled — findings, not fixes).
-    pub const CUSTODY: &str = "custody";
-    /// LoomMeta: legacy name for the declared layer order, kept only for
-    /// v5 migration/import compatibility. New graphs write `layer_order`.
-    pub const DOMAIN_ORDER: &str = "domain_order";
-    /// LoomMeta: the declared architecture layer order, top layer first
-    /// (native list; absent/empty = no order declared). The normative input the
-    /// `layering_violation` smell judges the import graph against — imports
-    /// are directed facts, but a violation only exists relative to a declared
-    /// order. Additive — NOT in the required-property table (absent on older
-    /// graphs; travels in exports as a top-level field).
-    pub const LAYER_ORDER: &str = "layer_order";
-
-    /// Per-target ceiling on ROUTINE transition notes — the FIFO bucket `loom
-    /// sync` trims to (regression markers and authored notes are never counted
-    /// or dropped). A LOCAL hygiene knob, not graph truth: additive, NOT in the
-    /// required-property table, and deliberately NOT exported (an imported graph
-    /// uses the default until re-tuned). Absent / `0` = off (strict append-only).
-    pub const TRANSITION_CAP: &str = "transition_cap";
 }
 
 // ---------------------------------------------------------------------------
@@ -576,84 +538,4 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
         self::edge::JOURNEYS => &[(NOTES, ANY), (CREATED_AT, LOOM)],
         _ => &[],
     }
-}
-
-// ---------------------------------------------------------------------------
-// Meta sentinel
-// ---------------------------------------------------------------------------
-
-/// Query that returns the schema version if the graph is initialised.
-pub const CHECK_INITIALIZED: &str = "MATCH (m:LoomMeta) RETURN m.version LIMIT 1";
-
-/// Insert the `LoomMeta` sentinel node that marks a graph as initialised.
-/// `last_synced` starts empty (never synced). Identity (graph_id/name) and
-/// custody are stamped at init so other looms can reference this graph.
-pub fn insert_meta(
-    version: &str,
-    created_at: &str,
-    graph_id: &str,
-    graph_name: &str,
-    custody: &str,
-) -> String {
-    format!(
-        "INSERT (:{meta} {{{version_k}: '{version}', {created_k}: '{created}', \
-         {synced_k}: '', {gid_k}: '{gid}', {gname_k}: '{gname}', {custody_k}: '{custody}'}})",
-        meta = label::META,
-        version_k = prop::VERSION,
-        created_k = prop::CREATED_AT,
-        synced_k = prop::LAST_SYNCED,
-        gid_k = prop::GRAPH_ID,
-        gname_k = prop::GRAPH_NAME,
-        custody_k = prop::CUSTODY,
-        version = esc(version),
-        created = esc(created_at),
-        gid = esc(graph_id),
-        gname = esc(graph_name),
-        custody = esc(custody),
-    )
-}
-
-// ---------------------------------------------------------------------------
-// Property indexes — the large-graph defense
-// ---------------------------------------------------------------------------
-
-/// CREATE INDEX statements for every node property loom matches inline
-/// (`{id: '…'}` / `{path: '…'}` / `{name: '…'}`). Without these, every
-/// node-keyed lookup is a label scan — invisible at hundreds of intents,
-/// real at tens of thousands (a federation root). Grafeo's CREATE INDEX is
-/// idempotent (re-creating the same name is accepted — tests/grafeo_probe.rs,
-/// "index dup"), so `loom init` runs these on BOTH the fresh and the re-init
-/// path: re-running init is also the index backfill for older graphs.
-pub fn index_statements() -> Vec<String> {
-    [
-        (label::INTENT, "id"),
-        (label::CODE_FILE, "id"),
-        (label::CODE_FILE, "path"),
-        (label::QUALITY_RULE, "id"),
-        (label::QUALITY_RULE, "name"),
-        (label::VALIDATION, "id"),
-        (label::VALIDATION, "name"),
-        (label::HYPOTHESIS, "id"),
-        (label::VOCAB_TERM, "name"),
-        (label::PERSONA, "id"),
-        (label::PERSONA, "name"),
-    ]
-    .iter()
-    .map(|(lbl, prop)| {
-        format!(
-            "CREATE INDEX loom_{lbl_lower}_{prop} FOR (n:{lbl}) ON (n.{prop})",
-            lbl_lower = lbl.to_lowercase()
-        )
-    })
-    .collect()
-}
-
-// ---------------------------------------------------------------------------
-// String escaping for GQL literals
-// ---------------------------------------------------------------------------
-
-/// Escape a string for embedding in a GQL single-quoted literal.
-/// Escapes backslashes first, then single quotes.
-pub fn esc(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('\'', "\\'")
 }

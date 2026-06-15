@@ -1,24 +1,32 @@
 use anyhow::Result;
 
-use crate::db::queries::check_graph;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::queries::DoctorReport;
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
 pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, printer)
 }
 
-pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
-    let report = check_graph(db)?;
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = db.query_snapshot()?;
+    let report = db.doctor_report(&snapshot)?;
+    let export_stale = db.committed_export_stale(root)?;
+    render(report, export_stale, printer)
+}
 
+fn render(report: DoctorReport, export_stale: Option<bool>, printer: &Printer) -> Result<()> {
     // Committed-export freshness (advisory — the hard gate is `loom export
     // --check`): when a travel-format file exists next to the graph, a doctor
     // run is a natural moment to notice it drifted.
     let mut hints = report.hints.clone();
-    if crate::db::queries::committed_export_stale(db, root)? == Some(true) {
+    if export_stale == Some(true) {
         hints.push(
             "loom.graph.json is STALE vs the live graph — run `loom export` and commit it \
              alongside the code (verify any time with `loom export --check`; CI wiring is \

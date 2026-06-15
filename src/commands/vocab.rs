@@ -13,14 +13,14 @@ use uuid::Uuid;
 
 use crate::cli::VocabCmd;
 use crate::db::queries::{
-    get_vocab_term, insert_vocab_term, list_active_intents, list_vocab_terms, merge_vocab_terms,
-    nearest_terms, normalize_term, tag_counts, terms_look_alike, MAX_TAGS_PER_INTENT,
+    nearest_terms, normalize_term, parse_tags, suggest_vocab_terms, tag_counts, terms_look_alike,
+    MAX_TAGS_PER_INTENT,
 };
 use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb, LoomDb};
+use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
-use crate::types::VocabTerm;
+use crate::types::{Intent, VocabTerm};
 
 /// Past this size the registry stops doing its job: an agent that cannot hold
 /// the whole list in context at the moment of choice falls back to guessing,
@@ -29,257 +29,290 @@ const REGISTRY_SOFT_CAP: usize = 75;
 
 pub fn run(cmd: VocabCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
+    ensure_initialized(&cwd)?;
+    match cmd {
+        VocabCmd::List => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_list_with_db(&db, printer)
+        }
+        VocabCmd::Suggest { limit } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_suggest_with_db(&db, limit, printer)
+        }
+        VocabCmd::Add { term, why, author } => {
+            run_add_with_sqlite(&cwd, term, why, author, printer)
+        }
+        VocabCmd::Merge { from, to } => run_merge_with_sqlite(&cwd, from, to, printer),
+    }
 }
 
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: VocabCmd,
+fn run_list_with_db(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+    let terms = db.list_vocab_terms()?;
+    let active_intents: Vec<_> = db
+        .list_intents(None, None)?
+        .into_iter()
+        .filter(|intent| intent.status != "deprecated")
+        .collect();
+    let counts = tag_counts(&active_intents)?;
+    if printer.json {
+        let items: Vec<serde_json::Value> = terms
+            .iter()
+            .map(|t| {
+                serde_json::json!({
+                    "term": t.name,
+                    "description": t.description,
+                    "intents": counts.get(&t.name).copied().unwrap_or(0),
+                    "author": t.author,
+                    "created_at": t.created_at,
+                })
+            })
+            .collect();
+        printer.print_json(&serde_json::json!({
+            "terms": items,
+            "total": items.len(),
+            "truncated": false,
+        }));
+    } else if terms.is_empty() {
+        println!("(empty registry — tags are optional, but registered terms let duplicate-responsibility detection see across unrelated files)");
+        println!("  → loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"");
+    } else {
+        for t in &terms {
+            let n = counts.get(&t.name).copied().unwrap_or(0);
+            println!("  {:<24} {:>3} intent(s)  — {}", t.name, n, t.description);
+        }
+        println!("\n  tag an intent: loom intent tag add <intent> <term>   (max {MAX_TAGS_PER_INTENT}, pick the most specific)");
+    }
+    Ok(())
+}
+
+fn run_suggest_with_db(
+    db: &dyn GraphReadRepository,
+    limit: usize,
     printer: &Printer,
 ) -> Result<()> {
-    match cmd {
-        VocabCmd::Add { term, why, author } => {
-            let agent =
-                gate::acting_in_lane("register a vocab term", &[role::BUILDER], author.as_deref())?;
-            let term = normalize_term(&term)?;
-            gate::require_substantive(
-                "why",
-                &why,
-                "what the term covers AND what it does not (name the neighbouring term)",
-            )?;
-            if let Some(existing) = get_vocab_term(db, &term)? {
-                anyhow::bail!(
-                    "Term '{}' is already registered: \"{}\"\n\
-                     Use it directly: loom intent tag add <intent> {}",
-                    term,
-                    existing.description,
-                    term
-                );
-            }
-            // A new term that reads like an existing one is drift at the door.
-            // No force flag: if it is genuinely distinct, a name that doesn't
-            // read like the neighbour is strictly better — keys must be
-            // distinguishable to be worth colliding on.
-            let terms = list_vocab_terms(db)?;
-            if let Some(twin) = terms.iter().find(|t| terms_look_alike(&term, &t.name)) {
-                anyhow::bail!(
-                    "'{}' reads like the registered term '{}' (\"{}\").\n\
-                     Either use '{}', or pick a name that doesn't look like it — \
-                     synonym terms split the keyspace and intents stop colliding.",
-                    term,
-                    twin.name,
-                    twin.description,
-                    twin.name
-                );
-            }
-            let vt = VocabTerm {
-                id: Uuid::new_v4().to_string(),
-                name: term.clone(),
-                description: why,
-                author: agent,
-                created_at: chrono::Utc::now().to_rfc3339(),
-            };
-            insert_vocab_term(db, &vt)?;
-            let size = terms.len() + 1;
-            if printer.json {
-                let mut v = serde_json::to_value(&vt)?;
-                if let Some(obj) = v.as_object_mut() {
-                    obj.insert("registry_size".into(), serde_json::json!(size));
-                    obj.insert(
-                        "next_step".into(),
-                        serde_json::json!(format!(
-                            "Tag intents with it: loom intent tag add <intent> {}",
-                            vt.name
-                        )),
-                    );
-                    if size > REGISTRY_SOFT_CAP {
-                        obj.insert("warning".into(), serde_json::json!(format!(
-                            "registry has {size} terms — past ~{REGISTRY_SOFT_CAP} agents can't hold it in context and stop colliding; run `loom smells` (vocab_drift) and merge"
-                        )));
-                    }
-                }
-                printer.print_json(&v);
-            } else {
-                println!("✓ Vocab term registered: {}", vt.name);
-                println!("  \"{}\"", vt.description);
-                println!(
-                    "  → Tag intents with it: loom intent tag add <intent> {}",
-                    vt.name
-                );
-                if size > REGISTRY_SOFT_CAP {
-                    println!(
-                        "  ⚠ registry now holds {size} terms — past ~{REGISTRY_SOFT_CAP} the list stops fitting in an \
-                         agent's working context and collisions die. Check `loom smells` for vocab_drift and merge."
-                    );
-                }
-            }
-        }
+    // Read-only (no lane gate): mine THIS graph for candidate keys.
+    let snapshot = db.query_snapshot()?;
+    let registered: std::collections::HashSet<String> =
+        db.list_vocab_terms()?.into_iter().map(|t| t.name).collect();
+    let mut suggestions = suggest_vocab_terms(&snapshot.intents, &registered, 2);
+    let total = crate::output::apply_limit(&mut suggestions, limit);
 
-        VocabCmd::List => {
-            let terms = list_vocab_terms(db)?;
-            let counts = tag_counts(&list_active_intents(db)?)?;
-            if printer.json {
-                let items: Vec<serde_json::Value> = terms
-                    .iter()
-                    .map(|t| {
-                        serde_json::json!({
-                            "term": t.name,
-                            "description": t.description,
-                            "intents": counts.get(&t.name).copied().unwrap_or(0),
-                            "author": t.author,
-                            "created_at": t.created_at,
-                        })
-                    })
-                    .collect();
-                printer.print_json(&serde_json::json!({
-                    "terms": items,
-                    "total": items.len(),
-                    "truncated": false,
-                }));
-            } else if terms.is_empty() {
-                println!("(empty registry — tags are optional, but registered terms let duplicate-responsibility detection see across unrelated files)");
-                println!("  → loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"");
-            } else {
-                for t in &terms {
-                    let n = counts.get(&t.name).copied().unwrap_or(0);
-                    println!("  {:<24} {:>3} intent(s)  — {}", t.name, n, t.description);
-                }
-                println!("\n  tag an intent: loom intent tag add <intent> <term>   (max {MAX_TAGS_PER_INTENT}, pick the most specific)");
-            }
-        }
+    // Coverage context — "is the duplicate detector armed?": coded
+    // intents (≥1 IMPLEMENTS) and how many carry ≥1 tag.
+    let coded: Vec<&crate::types::Intent> = snapshot
+        .intents
+        .iter()
+        .filter(|i| snapshot.with_code.contains(&i.id))
+        .collect();
+    let coded_count = coded.len();
+    let tagged_count = coded
+        .iter()
+        .filter(|i| parse_tags(i).map(|t| !t.is_empty()).unwrap_or(false))
+        .count();
+    let armed_note = if coded_count == 0 {
+        String::new()
+    } else if tagged_count == 0 {
+        format!("0 of {coded_count} coded intent(s) tagged — duplicate detection is UNARMED (lexical fallback only); `loom smells` shows it")
+    } else {
+        format!("{tagged_count} of {coded_count} coded intent(s) tagged — tag more to strengthen duplicate detection (`loom smells`)")
+    };
 
-        VocabCmd::Suggest { limit } => {
-            // Read-only (no lane gate): mine THIS graph for candidate keys.
-            let snapshot = crate::db::queries::QuerySnapshot::load(db)?;
-            let registered: std::collections::HashSet<String> =
-                list_vocab_terms(db)?.into_iter().map(|t| t.name).collect();
-            let mut suggestions =
-                crate::db::queries::suggest_vocab_terms(&snapshot.intents, &registered, 2);
-            let total = crate::output::apply_limit(&mut suggestions, limit);
-
-            // Coverage context — "is the duplicate detector armed?": coded
-            // intents (≥1 IMPLEMENTS) and how many carry ≥1 tag.
-            let coded: Vec<&crate::types::Intent> = snapshot
-                .intents
-                .iter()
-                .filter(|i| snapshot.with_code.contains(&i.id))
-                .collect();
-            let coded_count = coded.len();
-            let tagged_count = coded
-                .iter()
-                .filter(|i| {
-                    crate::db::queries::parse_tags(i)
-                        .map(|t| !t.is_empty())
-                        .unwrap_or(false)
+    if printer.json {
+        let items: Vec<serde_json::Value> = suggestions
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "term": s.term,
+                    "intents": s.intent_count,
+                    "examples": s.examples,
                 })
-                .count();
-            let armed_note = if coded_count == 0 {
-                String::new()
-            } else if tagged_count == 0 {
-                format!("0 of {coded_count} coded intent(s) tagged — duplicate detection is UNARMED (lexical fallback only); `loom smells` shows it")
-            } else {
-                format!("{tagged_count} of {coded_count} coded intent(s) tagged — tag more to strengthen duplicate detection (`loom smells`)")
-            };
+            })
+            .collect();
+        printer.print_json(&serde_json::json!({
+            "suggestions": items,
+            "total": total,
+            "truncated": total > suggestions.len(),
+            "coded_intents": coded_count,
+            "tagged_coded_intents": tagged_count,
+            "next_step": "register the ones that name a real shared responsibility: `loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"`, then `loom intent tag add <intent> <term>`; re-run `loom smells`",
+        }));
+    } else if suggestions.is_empty() {
+        println!(
+            "(no recurring terms found — too few or too distinct intents; tags stay optional)"
+        );
+        if !armed_note.is_empty() {
+            println!("  {armed_note}");
+        }
+    } else {
+        println!("Candidate vocabulary terms — mined from THIS graph's intents, ranked by how many share each (collision potential):\n");
+        println!("  {:<22} {:>7}  examples", "term", "intents");
+        for s in &suggestions {
+            println!(
+                "  {:<22} {:>7}  {}",
+                s.term,
+                s.intent_count,
+                s.examples.join(", ")
+            );
+        }
+        if let Some(m) =
+            crate::output::more_marker(total, suggestions.len(), "loom vocab suggest --limit 0")
+        {
+            println!("  {m}");
+        }
+        println!();
+        if !armed_note.is_empty() {
+            println!("  {armed_note}");
+        }
+        println!("  → register one: loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\", then loom intent tag add <intent> <term>");
+    }
+    Ok(())
+}
 
-            if printer.json {
-                let items: Vec<serde_json::Value> = suggestions
-                    .iter()
-                    .map(|s| {
-                        serde_json::json!({
-                            "term": s.term,
-                            "intents": s.intent_count,
-                            "examples": s.examples,
-                        })
-                    })
-                    .collect();
-                printer.print_json(&serde_json::json!({
-                    "suggestions": items,
-                    "total": total,
-                    "truncated": total > suggestions.len(),
-                    "coded_intents": coded_count,
-                    "tagged_coded_intents": tagged_count,
-                    "next_step": "register the ones that name a real shared responsibility: `loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\"`, then `loom intent tag add <intent> <term>`; re-run `loom smells`",
-                }));
-            } else if suggestions.is_empty() {
-                println!("(no recurring terms found — too few or too distinct intents; tags stay optional)");
-                if !armed_note.is_empty() {
-                    println!("  {armed_note}");
-                }
-            } else {
-                println!("Candidate vocabulary terms — mined from THIS graph's intents, ranked by how many share each (collision potential):\n");
-                println!("  {:<22} {:>7}  examples", "term", "intents");
-                for s in &suggestions {
-                    println!(
-                        "  {:<22} {:>7}  {}",
-                        s.term,
-                        s.intent_count,
-                        s.examples.join(", ")
-                    );
-                }
-                if let Some(m) = crate::output::more_marker(
-                    total,
-                    suggestions.len(),
-                    "loom vocab suggest --limit 0",
-                ) {
-                    println!("  {m}");
-                }
-                println!();
-                if !armed_note.is_empty() {
-                    println!("  {armed_note}");
-                }
-                println!("  → register one: loom vocab add <term> --why \"<what it covers; what it does NOT — name the neighbour>\", then loom intent tag add <intent> <term>");
+fn prepare_add_term(
+    term: String,
+    why: String,
+    author: Option<String>,
+    terms: &[VocabTerm],
+) -> Result<(VocabTerm, usize)> {
+    let agent = gate::acting_in_lane("register a vocab term", &[role::BUILDER], author.as_deref())?;
+    let term = normalize_term(&term)?;
+    gate::require_substantive(
+        "why",
+        &why,
+        "what the term covers AND what it does not (name the neighbouring term)",
+    )?;
+    if let Some(existing) = terms.iter().find(|existing| existing.name == term) {
+        anyhow::bail!(
+            "Term '{}' is already registered: \"{}\"\n\
+             Use it directly: loom intent tag add <intent> {}",
+            term,
+            existing.description,
+            term
+        );
+    }
+    // A new term that reads like an existing one is drift at the door.
+    // No force flag: if it is genuinely distinct, a name that doesn't
+    // read like the neighbour is strictly better — keys must be
+    // distinguishable to be worth colliding on.
+    if let Some(twin) = terms
+        .iter()
+        .find(|existing| terms_look_alike(&term, &existing.name))
+    {
+        anyhow::bail!(
+            "'{}' reads like the registered term '{}' (\"{}\").\n\
+             Either use '{}', or pick a name that doesn't look like it — \
+             synonym terms split the keyspace and intents stop colliding.",
+            term,
+            twin.name,
+            twin.description,
+            twin.name
+        );
+    }
+    let vt = VocabTerm {
+        id: Uuid::new_v4().to_string(),
+        name: term,
+        description: why,
+        author: agent,
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+    Ok((vt, terms.len() + 1))
+}
+
+fn print_add_result(term: &VocabTerm, size: usize, printer: &Printer) -> Result<()> {
+    if printer.json {
+        let mut v = serde_json::to_value(term)?;
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert("registry_size".into(), serde_json::json!(size));
+            obj.insert(
+                "next_step".into(),
+                serde_json::json!(format!(
+                    "Tag intents with it: loom intent tag add <intent> {}",
+                    term.name
+                )),
+            );
+            if size > REGISTRY_SOFT_CAP {
+                obj.insert("warning".into(), serde_json::json!(format!(
+                    "registry has {size} terms — past ~{REGISTRY_SOFT_CAP} agents can't hold it in context and stop colliding; run `loom smells` (vocab_drift) and merge"
+                )));
             }
         }
-
-        VocabCmd::Merge { from, to } => {
-            gate::acting_in_lane("merge vocab terms", &[role::BUILDER], None)?;
-            let from = normalize_term(&from)?;
-            let to = normalize_term(&to)?;
-            if from == to {
-                anyhow::bail!("'{from}' and '{to}' are the same term — pick two distinct terms (`loom vocab list`).");
-            }
-            if get_vocab_term(db, &from)?.is_none() {
-                anyhow::bail!(
-                    "Term '{from}' is not registered — `loom vocab list` shows the registry."
-                );
-            }
-            if get_vocab_term(db, &to)?.is_none() {
-                anyhow::bail!(
-                    "Target term '{to}' is not registered — merge dissolves '{from}' INTO an existing term; register '{to}' first if it should exist."
-                );
-            }
-            let now = chrono::Utc::now().to_rfc3339();
-            // Atomic: a merge that dies midway would leave the keyspace
-            // SPLIT (some intents retagged, the old term still registered) —
-            // exactly the drift the command exists to converge.
-            let retagged =
-                crate::db::with_transaction(db, || merge_vocab_terms(db, &from, &to, &now))?;
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok", "from": from, "to": to, "retagged_intents": retagged,
-                    "next_step": "re-check duplicates: `loom smells`",
-                }));
-            } else {
-                println!("✓ '{from}' merged into '{to}' — {retagged} intent(s) retagged, '{from}' deleted.");
-                println!("  → Next: re-check duplicates: `loom smells`");
-            }
+        printer.print_json(&v);
+    } else {
+        println!("✓ Vocab term registered: {}", term.name);
+        println!("  \"{}\"", term.description);
+        println!(
+            "  → Tag intents with it: loom intent tag add <intent> {}",
+            term.name
+        );
+        if size > REGISTRY_SOFT_CAP {
+            println!(
+                "  ⚠ registry now holds {size} terms — past ~{REGISTRY_SOFT_CAP} the list stops fitting in an \
+                 agent's working context and collisions die. Check `loom smells` for vocab_drift and merge."
+            );
         }
     }
     Ok(())
 }
 
-// ---------------------------------------------------------------------------
-// The shared write-time gate for tags (intent add --tag / intent tag add)
-// ---------------------------------------------------------------------------
+fn run_add_with_sqlite(
+    root: &std::path::Path,
+    term: String,
+    why: String,
+    author: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let terms = store.list_vocab_terms()?;
+    let (term, size) = prepare_add_term(term, why, author, &terms)?;
+    store.insert_vocab_term(&term)?;
+    print_add_result(&term, size, printer)
+}
 
-/// Normalize + validate a set of tags against the registry. On an unknown
-/// term the error IS the affordance: nearest matches with definitions, then
-/// the whole registry inline — the agent at the keyboard sees the full menu at
-/// the moment of choice instead of being sent to a docs page.
-pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
+fn prepare_merge_terms(from: &str, to: &str) -> Result<(String, String)> {
+    gate::acting_in_lane("merge vocab terms", &[role::BUILDER], None)?;
+    let from = normalize_term(from)?;
+    let to = normalize_term(to)?;
+    if from == to {
+        anyhow::bail!(
+            "'{from}' and '{to}' are the same term — pick two distinct terms (`loom vocab list`)."
+        );
+    }
+    Ok((from, to))
+}
+
+fn print_merge_result(from: &str, to: &str, retagged: usize, printer: &Printer) {
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok", "from": from, "to": to, "retagged_intents": retagged,
+            "next_step": "re-check duplicates: `loom smells`",
+        }));
+    } else {
+        println!(
+            "✓ '{from}' merged into '{to}' — {retagged} intent(s) retagged, '{from}' deleted."
+        );
+        println!("  → Next: re-check duplicates: `loom smells`");
+    }
+}
+
+fn run_merge_with_sqlite(
+    root: &std::path::Path,
+    from: String,
+    to: String,
+    printer: &Printer,
+) -> Result<()> {
+    let (from, to) = prepare_merge_terms(&from, &to)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let retagged = store.merge_vocab_terms(&from, &to, &now)?;
+    print_merge_result(&from, &to, retagged, printer);
+    Ok(())
+}
+
+pub fn validate_tags_from_registry(
+    raw: &[String],
+    terms: &[VocabTerm],
+    active_intents: &[Intent],
+) -> Result<Vec<String>> {
     if raw.is_empty() {
         return Ok(Vec::new());
     }
@@ -296,8 +329,7 @@ pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
             tags.len()
         );
     }
-    let terms = list_vocab_terms(db)?;
-    let counts = tag_counts(&list_active_intents(db)?)?;
+    let counts = tag_counts(active_intents)?;
     for t in &tags {
         if terms.iter().any(|v| v.name == *t) {
             continue;
@@ -341,72 +373,71 @@ pub fn validate_tags(db: &dyn LoomDb, raw: &[String]) -> Result<Vec<String>> {
 
 #[cfg(test)]
 mod tests {
-    use super::validate_tags;
-    use crate::db::queries::{insert_intent, insert_vocab_term, set_intent_tags};
-    use crate::db::GrafeoDb;
+    use super::validate_tags_from_registry;
     use crate::types::{Intent, VocabTerm};
 
-    fn db_with_registry() -> GrafeoDb {
-        let db = GrafeoDb::in_memory();
-        for (name, desc) in [
+    fn registry() -> Vec<VocabTerm> {
+        [
             ("authz", "permission checks"),
             ("retry", "re-attempts"),
             ("cache", "derived data"),
-        ] {
-            insert_vocab_term(
-                &db,
-                &VocabTerm {
-                    id: format!("vt-{name}"),
-                    name: name.into(),
-                    description: desc.into(),
-                    author: "llm".into(),
-                    created_at: "t".into(),
-                },
-            )
-            .unwrap();
-        }
-        db
+        ]
+        .into_iter()
+        .map(|(name, desc)| VocabTerm {
+            id: format!("vt-{name}"),
+            name: name.into(),
+            description: desc.into(),
+            author: "llm".into(),
+            created_at: "t".into(),
+        })
+        .collect()
+    }
+
+    fn active_intents() -> Vec<Intent> {
+        Vec::new()
     }
 
     #[test]
     fn accepts_known_terms_normalized_and_deduped() {
-        let db = db_with_registry();
-        let tags = validate_tags(&db, &[" Retry ".into(), "retry".into(), "authz".into()]).unwrap();
+        let terms = registry();
+        let intents = active_intents();
+        let tags = validate_tags_from_registry(
+            &[" Retry ".into(), "retry".into(), "authz".into()],
+            &terms,
+            &intents,
+        )
+        .unwrap();
         assert_eq!(tags, vec!["authz".to_string(), "retry".to_string()]);
         assert!(
-            validate_tags(&db, &[]).unwrap().is_empty(),
+            validate_tags_from_registry(&[], &terms, &intents)
+                .unwrap()
+                .is_empty(),
             "untagged is always valid"
         );
     }
 
     #[test]
     fn unknown_term_error_is_the_affordance() {
-        let db = db_with_registry();
-        // Make usage counts visible in the inline registry.
-        insert_intent(
-            &db,
-            &Intent {
-                id: "i0".into(),
-                name: "n".into(),
-                description: "d".into(),
-                abstraction_level: "feature".into(),
-                domain: "d".into(),
-                source_refs: Vec::new(),
-                layer: String::new(),
-                status: "proposed".into(),
-                aspect: String::new(),
-                tags: Vec::new(),
-                visibility: String::new(),
-                boundary: String::new(),
-                lifecycle: "implemented".into(),
-                created_at: "t".into(),
-                updated_at: "t".into(),
-            },
-        )
-        .unwrap();
-        set_intent_tags(&db, "i0", vec!["retry".into()], "t").unwrap();
+        let terms = registry();
+        let intents = vec![Intent {
+            id: "i0".into(),
+            name: "n".into(),
+            description: "d".into(),
+            abstraction_level: "feature".into(),
+            domain: "d".into(),
+            source_refs: Vec::new(),
+            layer: String::new(),
+            status: "proposed".into(),
+            aspect: String::new(),
+            tags: vec!["retry".into()],
+            visibility: String::new(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }];
 
-        let err = validate_tags(&db, &["retrying".into()])
+        let err = validate_tags_from_registry(&["retrying".into()], &terms, &intents)
             .unwrap_err()
             .to_string();
         assert!(
@@ -429,15 +460,17 @@ mod tests {
 
     #[test]
     fn cap_is_enforced_with_teaching_error() {
-        let db = db_with_registry();
-        let err = validate_tags(
-            &db,
+        let terms = registry();
+        let intents = active_intents();
+        let err = validate_tags_from_registry(
             &[
                 "authz".into(),
                 "retry".into(),
                 "cache".into(),
                 "extra".into(),
             ],
+            &terms,
+            &intents,
         )
         .unwrap_err()
         .to_string();

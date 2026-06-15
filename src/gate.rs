@@ -1,7 +1,7 @@
 //! The enforcement layer that makes the role skeleton real.
 //!
 //! Two kinds of gate, both applied at the command boundary (the only write
-//! surface — the LLM never writes GQL):
+//! surface — the LLM never writes storage queries):
 //!
 //! **Lane gates.** Schema v3 declared an owning role per field, but ownership
 //! was advisory: any agent could write any field. Here it becomes a contract.

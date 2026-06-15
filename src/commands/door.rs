@@ -19,8 +19,8 @@
 
 use anyhow::Result;
 
-use crate::db::queries::{door_matches, find_intents, graph_state};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::queries::{DoorMatches, FindHit, GraphState};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, pulse_json, Printer};
 
 /// The landing menu: (utterance class, what lands, the exact command shape).
@@ -87,21 +87,31 @@ const DOCTRINE: &str = "The door advises, never blocks — any noun can land at 
 
 pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, utterance, limit, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, utterance, limit, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     _root: &std::path::Path,
     utterance: &str,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
-    let (intents, _match_total) = find_intents(db, utterance, limit)?;
-    let planes = door_matches(db, utterance, limit)?;
-    let gs = graph_state(db)?;
+    let (intents, _match_total) = db.find_intents(utterance, limit)?;
+    let planes = db.door_matches(utterance, limit)?;
+    let snapshot = db.query_snapshot()?;
+    let gs = db.graph_state(&snapshot)?;
+    render(utterance, intents, planes, gs, printer)
+}
+
+fn render(
+    utterance: &str,
+    intents: Vec<FindHit>,
+    planes: DoorMatches,
+    gs: GraphState,
+    printer: &Printer,
+) -> Result<()> {
     let nothing_known = intents.is_empty()
         && planes.vocab.is_empty()
         && planes.sagas.is_empty()

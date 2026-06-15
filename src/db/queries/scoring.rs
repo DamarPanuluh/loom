@@ -5,123 +5,20 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 
-use crate::db::LoomDb;
 use crate::types::{
-    Governs, InspectionStatus, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
+    Governs, Hypothesis, InspectionStatus, Intent, Note, QualityRule, RelatesTo, TargetsEdge,
+    ValidatesEdge, Validation,
 };
 
-// Feeds only the #[cfg(test)] DB-walking candidate functions below (production
-// reads go through the *_from_snapshot variants).
-#[cfg(test)]
-use super::intent::list_active_intents;
-use super::row::{col_map, get, str_val};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
-// Production scores from the *_from_snapshot variants; these DB-walking helpers
-// now feed only the #[cfg(test)] candidate functions.
-#[cfg(test)]
-use super::governs::list_all_governs;
-#[cfg(test)]
-use super::hierarchy::list_all_hierarchy;
-#[cfg(test)]
-use super::relates_to::list_relates_to;
-/// Compute RELATES_TO degree (centrality) for EVERY intent in ONE edge scan.
-/// Two deliberate exclusions, both pushed into the query:
-/// - `independent` edges: a VERIFIED ABSENCE of relationship gives closure to
-///   the grid but contributes NOTHING to blast radius — counting it made
-///   well-scouted intents look like hubs.
-/// - edges touching `deprecated` intents: retired design is invisible to
-///   computation (the retirement contract).
-///
-/// Edge-property inequality + node-status filtering in one WHERE is
-/// deterministic on grafeo 0.5.42 (tests/grafeo_probe.rs, "combined
-/// pushdown"); the Rust independent-check stays as a zero-cost guard.
-pub fn all_intent_degrees(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
-    let mut degrees: HashMap<String, i64> = HashMap::new();
-    let r = db.execute(
-        "MATCH (a:Intent)-[r:RELATES_TO]->(b:Intent) \
-         WHERE r.inspection_status <> 'independent' \
-           AND a.status <> 'deprecated' AND b.status <> 'deprecated' \
-         RETURN a.id AS f, b.id AS t, r.inspection_status AS s",
-    )?;
-    let cols = col_map(&r);
-    for row in r.rows() {
-        let s = str_val(get(row, &cols, "s"));
-        if s == "independent" {
-            continue;
-        }
-        let f = str_val(get(row, &cols, "f"));
-        let t = str_val(get(row, &cols, "t"));
-        *degrees.entry(f).or_insert(0) += 1;
-        *degrees.entry(t).or_insert(0) += 1;
-    }
-    Ok(degrees)
-}
 
-/// Compute priority scores for all candidate RELATES_TO edges and return sorted.
-/// Formula: degree(a) + degree(b) + urgency(status) - age_penalty(last_inspected)
-/// mode: "discovery" (uninspected) | "fix" (failing + needs_reverification)
-///
-/// Test-only: production scores from `scored_candidates_from_snapshot` (one
-/// shared snapshot drives both the queue and the compass).
-#[cfg(test)]
-pub fn scored_candidates(db: &dyn LoomDb, mode: &str) -> Result<Vec<(RelatesTo, f64)>> {
-    let mut candidates = match mode {
-        "fix" => {
-            let mut v = list_relates_to(db, Some("failing"))?;
-            v.extend(list_relates_to(db, Some("needs_reverification"))?);
-            v
-        }
-        _ => list_relates_to(db, Some("uninspected"))?,
-    };
-
-    // Remove duplicates (in case of overlap)
-    let mut seen = std::collections::HashSet::new();
-    candidates.retain(|e| seen.insert(e.id.clone()));
-
-    // Retired endpoints take their edges out of every queue (the retirement
-    // contract: invisible to computation, visible to history).
-    if !candidates.is_empty() {
-        let active: std::collections::HashSet<String> =
-            list_active_intents(db)?.into_iter().map(|i| i.id).collect();
-        candidates.retain(|e| active.contains(&e.from_id) && active.contains(&e.to_id));
-    }
-
-    if candidates.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // Build degrees once for all candidates rather than 2 queries per unique endpoint.
-    let degrees = all_intent_degrees(db)?;
-
-    let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
-    let now = chrono::Utc::now();
-
-    for edge in candidates {
-        let deg_a = *degrees.get(&edge.from_id).unwrap_or(&0);
-        let deg_b = *degrees.get(&edge.to_id).unwrap_or(&0);
-
-        let status: InspectionStatus = edge
-            .inspection_status
-            .parse()
-            .unwrap_or(InspectionStatus::Uninspected);
-        let urgency = status.urgency();
-
-        let age_penalty = if edge.last_inspected.is_empty() {
-            0.0
-        } else if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&edge.last_inspected) {
-            let parsed_utc = parsed.with_timezone(&chrono::Utc);
-            let days = now.signed_duration_since(parsed_utc).num_days() as f64;
-            days * 0.05
-        } else {
-            0.0
-        };
-
-        let score = deg_a as f64 + deg_b as f64 + urgency - age_penalty;
-        scored.push((edge, score));
-    }
-
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(scored)
+/// Extract the staling file from a sync-flip transition note ("... -> <status>
+/// (sync: <path> changed)") so fix queues can group stale claims by hot file.
+pub fn parse_sync_cause(text: &str) -> Option<&str> {
+    text.rsplit_once("(sync: ")?
+        .1
+        .strip_suffix(')')?
+        .strip_suffix(" changed")
 }
 
 /// A build work item: the intent, its priority, and whether it is a non-leaf
@@ -189,82 +86,6 @@ pub struct BuildCandidate {
     /// True when this is a planned PARENT whose children are all implemented —
     /// the action is "verify children and mark implemented", not "write code".
     pub rollup: bool,
-}
-
-/// Intents that need building or changing (lifecycle `planned` | `needs_change`),
-/// scored by centrality + urgency — the worklist for `loom next --mode build`.
-/// `needs_change` (a known issue / refactor) outranks `planned` (greenfield).
-///
-/// Altitude rule: a *planned parent* is never "built" directly — its children
-/// are. While any child is still planned/needs_change the parent is deferred
-/// (the children are in the queue); once all children are implemented the
-/// parent surfaces as a roll-up. `needs_change` intents always surface
-/// (component-level refactors are legitimate work at any altitude).
-/// Test-only: production builds from `build_candidates_from_snapshot`.
-#[cfg(test)]
-pub fn build_candidates(db: &dyn LoomDb) -> Result<Vec<BuildCandidate>> {
-    let intents = list_active_intents(db)?;
-    let lifecycle_of: HashMap<&str, &str> = intents
-        .iter()
-        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
-        .collect();
-    let mut children: HashMap<String, Vec<String>> = HashMap::new();
-    for (p, c) in list_all_hierarchy(db)? {
-        children.entry(p).or_default().push(c);
-    }
-
-    // Collect the build candidates BEFORE degree lookup so we only bulk-load
-    // degrees when there is actually work to score.
-    let mut pending: Vec<(&Intent, f64, bool)> = Vec::new();
-    for i in &intents {
-        let urgency = match i.lifecycle.as_str() {
-            "needs_change" => 4.0,
-            "planned" => 2.0,
-            _ => continue,
-        };
-        let kids = children.get(&i.id);
-        let mut rollup = false;
-        if i.lifecycle == "planned" {
-            if let Some(kids) = kids {
-                let p = kids.iter().any(|c| {
-                    matches!(
-                        lifecycle_of.get(c.as_str()),
-                        Some(&"planned") | Some(&"needs_change")
-                    )
-                });
-                if p {
-                    continue;
-                }
-                rollup = true;
-            }
-        }
-        pending.push((i, urgency, rollup));
-    }
-
-    if pending.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    // One bulk degree query instead of 2×N per-intent queries.
-    let degrees = all_intent_degrees(db)?;
-
-    let mut scored: Vec<BuildCandidate> = pending
-        .into_iter()
-        .map(|(i, urgency, rollup)| {
-            let deg = *degrees.get(&i.id).unwrap_or(&0) as f64;
-            BuildCandidate {
-                intent: i.clone(),
-                score: deg + urgency,
-                rollup,
-            }
-        })
-        .collect();
-    scored.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    Ok(scored)
 }
 
 /// Normative-plane coverage: how much of the rule × intent-with-code grid has
@@ -350,49 +171,6 @@ pub const REVIEW_CONFIDENCE: f64 = 0.7;
 pub enum ReviewCandidate {
     RelatesTo(RelatesTo),
     Governs(Governs),
-}
-
-/// Test-only: production reviews from `review_candidates_from_snapshot`.
-#[cfg(test)]
-pub fn review_candidates(db: &dyn LoomDb) -> Result<Vec<(ReviewCandidate, f64)>> {
-    let active: std::collections::HashSet<String> =
-        list_active_intents(db)?.into_iter().map(|i| i.id).collect();
-    let degrees = all_intent_degrees(db)?;
-    let needs_review = |status: &str, confidence: f64| {
-        matches!(status, "passing" | "failing" | "independent")
-            && confidence > 0.0
-            && confidence < REVIEW_CONFIDENCE
-    };
-
-    let mut scored: Vec<(ReviewCandidate, f64)> = Vec::new();
-    for e in list_relates_to(db, None)? {
-        if !needs_review(&e.inspection_status, e.confidence)
-            || !active.contains(&e.from_id)
-            || !active.contains(&e.to_id)
-        {
-            continue;
-        }
-        let deg =
-            (*degrees.get(&e.from_id).unwrap_or(&0) + *degrees.get(&e.to_id).unwrap_or(&0)) as f64;
-        let score = (1.0 - e.confidence) * (deg + 1.0);
-        scored.push((ReviewCandidate::RelatesTo(e), score));
-    }
-    for g in list_all_governs(db)? {
-        if !needs_review(&g.inspection_status, g.confidence) || !active.contains(&g.intent_id) {
-            continue;
-        }
-        let deg = *degrees.get(&g.intent_id).unwrap_or(&0) as f64;
-        let score = (1.0 - g.confidence) * (deg + 1.0);
-        scored.push((ReviewCandidate::Governs(g), score));
-    }
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(scored)
-}
-
-#[cfg(test)]
-pub fn normative_coverage(db: &dyn LoomDb) -> Result<NormativeCoverage> {
-    let snapshot = QuerySnapshot::load(db)?;
-    Ok(normative_coverage_from_snapshot(&snapshot))
 }
 
 pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewCandidate, f64)> {
@@ -502,62 +280,6 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
     }
 }
 
-/// GOVERNS edges needing the quality agent's attention — uninspected (applied
-/// but compliance never earned), failing (violation open), or stale — PLUS
-/// synthetic `unmeasured` items: rule × intent-with-code pairs no one ever
-/// considered (no GOVERNS edge here or on any ancestor). The worklist for
-/// `loom next --mode quality`, scored by intent centrality + urgency so
-/// high-blast-radius violations surface first; unmeasured pairs rank below
-/// every real edge (urgency 1.0) and resolve in ONE command — `loom rule
-/// verdict` creates the edge with the verdict (independent = measured, doesn't
-/// apply; a verdict at component altitude covers descendants).
-#[cfg(test)]
-pub fn quality_candidates(db: &dyn LoomDb) -> Result<Vec<(Governs, f64)>> {
-    // Bulk-load all degrees once; both the GOVERNS loop and the normative-coverage
-    // queue need degrees, so this replaces up to 2×(governs + queue) queries.
-    let degrees = all_intent_degrees(db)?;
-    let active: std::collections::HashSet<String> =
-        list_active_intents(db)?.into_iter().map(|i| i.id).collect();
-
-    let mut scored: Vec<(Governs, f64)> = Vec::new();
-    for g in list_all_governs(db)? {
-        // Rules over retired intents are history, not open quality work.
-        if !active.contains(&g.intent_id) {
-            continue;
-        }
-        let urgency = match g.inspection_status.as_str() {
-            "failing" => 4.0,
-            "needs_reverification" => 3.0,
-            "uninspected" => 2.0,
-            _ => continue,
-        };
-        let deg = *degrees.get(&g.intent_id).unwrap_or(&0);
-        scored.push((g, deg as f64 + urgency));
-    }
-    for (rule, intent) in normative_coverage(db)?.queue {
-        let deg = *degrees.get(&intent.id).unwrap_or(&0);
-        scored.push((
-            Governs {
-                id: String::new(), // no edge yet — `loom rule verdict` creates it
-                rule_id: rule.id,
-                intent_id: intent.id.clone(),
-                rule_name: rule.name,
-                intent_name: intent.name.clone(),
-                inspection_status: "unmeasured".to_string(),
-                criterion: String::new(),
-                confidence: 0.0,
-                evidence: String::new(),
-                last_inspected: String::new(),
-                inspected_by: String::new(),
-                notes: format!("detection: {}", rule.detection_logic),
-            },
-            deg as f64 + 1.0,
-        ));
-    }
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(scored)
-}
-
 /// An intent whose proof needs the validator's attention, with why.
 #[derive(Debug, Clone)]
 pub struct ValidateCandidate {
@@ -606,27 +328,6 @@ pub fn quality_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Govern
     }
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     scored
-}
-
-/// The validator's SELECTION — which intents need attention, with urgency and
-/// why, before any centrality scoring:
-/// - a linked validation failed (urgency 4)
-/// - an implemented LEAF intent has no VALIDATES edge at all (urgency 3 —
-///   "intents without validations are risky"; non-leaves are proven by their
-///   children, planned intents have nothing to prove yet)
-/// - linked validations exist but were never run / were invalidated by sync
-///   (urgency 2)
-///
-/// COHERENCE BY CONSTRUCTION: this one function is consumed verbatim by BOTH
-/// the queue (`validate_candidates` adds degree scoring) and the compass
-/// (`graph_state` routes phase=validate on its emptiness) — the two can never
-/// disagree the way edge-state counts and last_result-based selection once
-/// did (phase=validate with an empty validator queue).
-/// Test-only DB wrapper; production validates from `validate_selection_from_snapshot`.
-#[cfg(test)]
-pub fn validate_selection(db: &dyn LoomDb) -> Result<Vec<(Intent, f64, String)>> {
-    let snapshot = QuerySnapshot::load(db)?;
-    Ok(validate_selection_from_snapshot(&snapshot))
 }
 
 pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent, f64, String)> {
@@ -699,37 +400,6 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
     selected
 }
 
-/// Intents with weak or absent proof, scored by centrality + urgency — the
-/// worklist for `loom next --mode validate`. Selection logic lives in
-/// `validate_selection` (shared with the compass).
-/// Test-only: production validates from `validate_candidates_from_snapshot`.
-#[cfg(test)]
-pub fn validate_candidates(db: &dyn LoomDb) -> Result<Vec<ValidateCandidate>> {
-    let selected = validate_selection(db)?;
-    if selected.is_empty() {
-        return Ok(Vec::new());
-    }
-    // One bulk degree query instead of 2×N per-intent queries.
-    let degrees = all_intent_degrees(db)?;
-    let mut scored: Vec<ValidateCandidate> = selected
-        .into_iter()
-        .map(|(intent, urgency, reason)| {
-            let deg = *degrees.get(&intent.id).unwrap_or(&0) as f64;
-            ValidateCandidate {
-                score: deg + urgency,
-                intent,
-                reason,
-            }
-        })
-        .collect();
-    scored.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    Ok(scored)
-}
-
 /// A user↔intent drift suspect: active intent meaning whose surrounding claims
 /// changed since the user last confirmed it.
 #[derive(Debug, Clone)]
@@ -748,32 +418,10 @@ pub struct AlignCandidate {
 /// interview's honest stopping point, not the conversation petering out.
 pub const ALIGN_GRACE_DAYS: f64 = 30.0;
 
-/// Rank drift suspects for a user interview:
-/// `(1 + churn_since_confirm) * (1 + ln_1p(degree)) + age_days / 90`.
-/// Churn is strongest (claims flipped under an unrefreshed meaning — code
-/// changes, but also a neighbour's redefinition or retirement rippling in),
-/// centrality multiplies blast radius, and the slow age term sweeps in quiet
-/// never-confirmed intent wording.
-///
-/// ADMISSION, not just ranking: an intent enters the queue only when churn > 0
-/// or its meaning sat unaffirmed past `ALIGN_GRACE_DAYS`. The freshness
-/// baseline is the newest of last user confirm, last redefinition, and
-/// creation — a brand-new wording owes nothing to flips that predate it.
-/// Without the redefinition stamp, an align-driven `loom intent update` would
-/// ripple its own edges and bounce the just-ratified intent straight back to
-/// the top of the queue.
-pub fn align_candidates(db: &dyn LoomDb) -> Result<Vec<AlignCandidate>> {
-    let snapshot = QuerySnapshot::load(db)?;
-    align_candidates_from_snapshot(db, &snapshot)
-}
-
-/// Snapshot-reusing form for callers that already hold one (`loom status`,
-/// `loom next --all`). Avoids per-intent edge lookups — the hot-path trap on
-/// large graphs.
-pub fn align_candidates_from_snapshot(
-    db: &dyn LoomDb,
+pub fn align_candidates_from_snapshot_notes(
     snapshot: &QuerySnapshot,
-) -> Result<Vec<AlignCandidate>> {
+    notes: &[Note],
+) -> Vec<AlignCandidate> {
     let intents = &snapshot.intents;
     let degrees = &snapshot.degrees;
     // All notes once (the snapshot memoises the scan, so the smells + doctor
@@ -786,7 +434,7 @@ pub fn align_candidates_from_snapshot(
     let mut notes_by_target: HashMap<&str, Vec<&Note>> = HashMap::new();
     let mut confirmed_at: HashMap<&str, &str> = HashMap::new();
     let mut redefined_at: HashMap<&str, &str> = HashMap::new();
-    for n in snapshot.notes(db)? {
+    for n in notes {
         match n.kind.as_str() {
             "transition" => notes_by_target
                 .entry(n.target_id.as_str())
@@ -833,6 +481,9 @@ pub fn align_candidates_from_snapshot(
             .insert(edge.id.as_str());
     }
 
+    // One clock read per scoring pass keeps equal-baseline candidates equal.
+    // Reading inside the loop made tied align items depend on iteration order.
+    let now = Utc::now();
     let mut candidates = Vec::new();
     for intent in intents {
         // "This is internal, don't ask the user again": a recorded
@@ -875,7 +526,7 @@ pub fn align_candidates_from_snapshot(
         let age_days = DateTime::parse_from_rfc3339(baseline)
             .ok()
             .map(|at| {
-                let age = Utc::now().signed_duration_since(at.with_timezone(&Utc));
+                let age = now.signed_duration_since(at.with_timezone(&Utc));
                 age.num_seconds().max(0) as f64 / 86_400.0
             })
             .unwrap_or(0.0);
@@ -897,12 +548,62 @@ pub fn align_candidates_from_snapshot(
     }
 
     candidates.sort_by(|a, b| {
-        b.score
-            .partial_cmp(&a.score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        let a_score = (a.score * 1_000_000.0).round() as i64;
+        let b_score = (b.score * 1_000_000.0).round() as i64;
+        b_score
+            .cmp(&a_score)
             .then_with(|| a.intent.name.cmp(&b.intent.name))
+            .then_with(|| a.intent.id.cmp(&b.intent.id))
     });
-    Ok(candidates)
+    candidates
+}
+
+pub fn prove_candidates_from_parts(
+    hypotheses: Vec<Hypothesis>,
+    targets: Vec<TargetsEdge>,
+    degrees: &HashMap<String, i64>,
+) -> Vec<(Hypothesis, f64)> {
+    if hypotheses.is_empty() {
+        return Vec::new();
+    }
+    let mut targets_by_h: HashMap<String, Vec<TargetsEdge>> = HashMap::new();
+    for target in targets {
+        targets_by_h
+            .entry(target.hypothesis_id.clone())
+            .or_default()
+            .push(target);
+    }
+
+    let mut out: Vec<(Hypothesis, f64)> = Vec::new();
+    for hypothesis in hypotheses {
+        let targets = targets_by_h.get(hypothesis.id.as_str());
+        let due = match hypothesis.status.as_str() {
+            "proposed" => true,
+            "supported" => targets.is_some_and(|ts| {
+                ts.iter()
+                    .any(|target| target.inspection_status == "needs_reverification")
+            }),
+            _ => false,
+        };
+        if !due {
+            continue;
+        }
+        let reach: i64 = targets
+            .map(|ts| {
+                ts.iter()
+                    .map(|target| degrees.get(&target.intent_id).copied().unwrap_or(0))
+                    .sum()
+            })
+            .unwrap_or(0);
+        out.push((hypothesis, 1.0 + reach as f64));
+    }
+    // Highest blast radius first; oldest breaks ties (nothing rots).
+    out.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.created_at.cmp(&b.0.created_at))
+    });
+    out
 }
 
 pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<ValidateCandidate> {
@@ -921,19 +622,6 @@ pub fn validate_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<Valida
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored
-}
-
-/// Count of intent pairs with no RELATES_TO edge (and no HIERARCHY link) —
-/// arithmetic, not enumerative: C(n,2) minus linked unordered pairs. This is
-/// what `graph_state` needs on every pulse; building the full scored O(N²)
-/// list just to .len() it was an iso5055-perf-no-redundant-work violation
-/// found by loom measuring itself.
-#[cfg(test)]
-pub fn count_unexplored_pairs(db: &dyn LoomDb) -> Result<i64> {
-    let intents = list_active_intents(db)?;
-    let relates = list_relates_to(db, None)?;
-    let hierarchy = list_all_hierarchy(db)?;
-    Ok(count_unexplored_pairs_from(&intents, &relates, &hierarchy))
 }
 
 pub fn count_unexplored_pairs_from(
@@ -963,13 +651,6 @@ pub fn count_unexplored_pairs_from(
         }
     }
     (intent_count * (intent_count - 1) / 2 - linked.len() as i64).max(0)
-}
-
-/// Test-only convenience that loads the graph itself; production callers reuse
-/// a snapshot they already hold via [`unexplored_pairs_scored_from_snapshot`].
-#[cfg(test)]
-pub fn unexplored_pairs_scored(db: &dyn LoomDb) -> Result<Vec<(RelatesTo, f64)>> {
-    unexplored_pairs_scored_from_snapshot(&QuerySnapshot::load(db)?)
 }
 
 /// Intent pairs that have NO RELATES_TO edge between them yet, returned as

@@ -409,7 +409,7 @@ design rationale for each command. The CLI is also self-documenting at runtime:
 (EXAMPLE block + flags). Compact index of the command surface:
 
 ```
-Setup & sync    init · sync · serve · migrate · import [--as-planned] · export [--check] · detect
+Setup & sync    init · sync · migrate · import [--as-planned] · export [--check] · detect   (`serve` = retired stub)
 Orientation     status · session · door · find · guide · schema · report · coverage · hotspots · smells · doctor
 Work queues     next [--mode discovery|fix|build|validate|quality|review|prove|align] [--all] [--take N] [--compact] · cluster · batch
 Intents         intent add|confirm|update|mark|delete|retire|source|tag|list|show
@@ -423,13 +423,10 @@ Vocab & layers  vocab add|list|suggest|merge · layer order|list|clear   (`domai
 Memory & hatch  note add|prune|list · ignore add|list · delegate add|list
 ```
 
-`loom serve` is the OPTIONAL performance daemon: it holds the graph open once so
-the per-call DB-open floor amortizes to ~0, with automatic fallback to direct
-dispatch on ANY failure — so enabling it never changes behavior, only latency.
-Opt in with `LOOM_DAEMON=1`; the daemon is keyed to the binary's build-id
-(a rebuild auto-respawns it) and drains cleanly on SIGTERM/SIGINT. Full design
-+ the in-process-MVCC vs cross-process-lock model in
-[`docs/daemon-design.md`](docs/daemon-design.md).
+The active runtime store is embedded SQLite at `.loom/graph.sqlite`.
+`loom.graph.json` is the portable committed export. `loom serve` is a retired
+stub kept only to give old scripts a clear error; normal CLI dispatch opens
+SQLite directly and does not auto-spawn a daemon.
 
 Edge ids are DERIVED from endpoints — `rt:<a>:<b>` (`hy`/`imp`/`gov`/`val`/`tgt`/`srv`/`jrn`
 prefixes for the other types), never stored, stable across export/import. Intents and rules are
@@ -527,7 +524,7 @@ cd /Users/laptopdp/Developer/damarpanuluh/loom
 
 First three intents to add (loom's own codebase):
 1. "CLI parsing and dispatch" (component) — src/cli.rs, src/commands/mod.rs
-2. "Graph persistence via Grafeo" (component) — src/db/mod.rs, src/db/queries.rs
+2. "Graph persistence via SQLite" (component) — src/db/mod.rs, src/db/sqlite.rs
 3. "Priority-scored work queue" (feature) — src/db/queries.rs, src/commands/next.rs
 
 Then: `loom next` — it will return the first ungrounded edge to inspect.
@@ -551,35 +548,18 @@ src/
 │                         lane; solo mode passes) + evidence gates (substantive
 │                         criterion/evidence/notes, confidence ∈ [0,1])
 ├── db/
-│   ├── mod.rs            Grafeo DB connection (single long-lived Session), LoomDb trait
-│   ├── schema.rs         THE schema: vocabulary (labels/edges/props + per-field owner
-│   │                     role), version, required-property tables, GQL escaping (`esc`)
-│   └── queries/          query layer, split by concern (flat-re-exported from mod.rs)
-│       ├── mod.rs          module wiring + flat re-export + #[cfg(test)] suite
-│       ├── row.rs          shared value/row extraction helpers
-│       ├── intent.rs       Intent node queries
-│       ├── codefile.rs     CodeFile node queries
-│       ├── rule.rs         QualityRule node queries
-│       ├── validation.rs   Validation node queries
-│       ├── hypothesis.rs   Hypothesis node queries (the pre-decision plane)
-│       ├── note.rs         Note annotation queries (append-only memory)
-│       ├── ignore.rs       Ignore patterns (coverage escape hatch, with reasons)
+│   ├── mod.rs            graph root resolution + read-handle abstraction
+│   ├── sqlite.rs         SQLite schema, import/export bridge, runtime reads/writes
+│   ├── schema.rs         THE schema vocabulary: labels/edges/props + per-field owner role,
+│   │                     version, required-property tables
+│   └── queries/          pure snapshot analysis: search, queues, integrity, stats, smells
+│       ├── mod.rs          module wiring + flat re-export
 │       ├── vocab.rs        VocabTerm registry + intent tags (bounded vocabulary:
 │       │                   normalize/merge/rarity-weighted collision + look-alike)
-│       ├── meta.rs         LoomMeta sentinel: version + last_synced freshness
+│       ├── meta.rs         GraphMeta and transition defaults
 │       ├── completeness.rs vertical-completeness spine (tree + realization join)
-│       ├── relates_to.rs   RELATES_TO edge (the intent grid)
-│       ├── hierarchy.rs    HIERARCHY edge (structural tree, enforced at insert)
-│       ├── implements.rs   IMPLEMENTS edge (carries `locator`)
-│       ├── governs.rs      GOVERNS edge
-│       ├── targets.rs      TARGETS edge (hypothesis → affected intents)
-│       ├── validates.rs    VALIDATES edge
-│       ├── persona.rs      Persona node queries (the consumer plane's audience)
-│       ├── serves.rs       SERVES edge (Persona → Intent, inspectable)
-│       ├── journeys.rs     JOURNEYS edge (Persona → Validation, structural)
-│       ├── delegation.rs   Delegation node (federation: subtree owned by a child graph)
-│       ├── scoring.rs      priority scoring + per-mode candidate selection (snapshot-based
-│       │                   in production; cfg(test) DB variants mirror it) (loom next)
+│       ├── relates_to.rs   unresolved RELATES_TO analysis
+│       ├── scoring.rs      priority scoring + per-mode candidate selection (loom next)
 │       ├── snapshot.rs     QuerySnapshot — one graph load feeding scoring/stats/compass
 │       │                   coherently (the production read path; no per-query reloads)
 │       ├── find.rs         BM25 keyword search over intents (loom find)
@@ -589,7 +569,6 @@ src/
 │       │                   nonlocal_proof (a `proven` leaf whose only test lives in
 │       │                   another module — the proof-locality check) (loom smells)
 │       ├── stats.rs        counts / centrality / graph_state pulse / completeness gaps
-│       ├── portability.rs  deterministic export/import travel format (loom export/import)
 │       └── integrity.rs    graph integrity checks (loom doctor)
 └── commands/
     ├── init.rs           loom init
@@ -624,7 +603,7 @@ src/
     ├── detect.rs         loom detect
     ├── ignore.rs         loom ignore *
     ├── delegate.rs       loom delegate (federation: hand a subtree to a child graph)
-    ├── migrate.rs        loom migrate (in-place schema upgrade, crash-safe)
+    ├── migrate.rs        loom migrate (SQLite schema verification)
     ├── export.rs         loom export [--check] (commit the graph as deterministic JSON)
     └── import.rs         loom import (rebuild a graph from an export)
 ```
@@ -636,11 +615,11 @@ cd /Users/laptopdp/Developer/damarpanuluh/loom
 cargo build
 ```
 
-The `grafeo-engine` crate statically links at build time, and the default
-tree-sitter grammar crates compile C sources. First build is slow; release
-builds are slower with `lto = "fat"`. Install a working C compiler for the
-default build, or use `cargo build --no-default-features` for the dependency-
-light heuristic import path.
+The runtime graph store is SQLite via `rusqlite`. The default tree-sitter
+grammar crates compile C sources for richer imports, so the default build still
+needs a working C compiler. Release builds currently use thin LTO for faster
+iteration. Use `cargo build --no-default-features` for the dependency-light
+heuristic import path.
 
 Run `cargo test` for the query-layer regression suite (in `db/queries/mod.rs`),
 which covers the relationship reliability rule below. Also run
@@ -666,7 +645,13 @@ when CI lands.)
 
 ## Key design decisions (why, not just what)
 
-**Why graph DB (Grafeo) not SQLite:** Blast radius, centrality, and ripple propagation are native graph traversals. SQLite fights you on this with JOIN chains. Grafeo is pure Rust, embedded, zero server.
+**Why SQLite now:** Loom's production operations are bounded graph reads/writes
+with explicit queues, lifecycle state, and exportable JSON identity. SQLite gives
+us durable embedded storage, transactions, normal tooling, easy migrations, and
+fewer runtime locking surprises. Recursive CTEs and targeted adjacency indexes
+cover the graph traversals loom actually executes today; more advanced graph
+analysis can still be layered later as derived tables, virtual tables, or a
+specialized analysis engine without replacing the core SQLite store.
 
 **Why `independent` is a state not an edge type:** Independence is a verified claim about a relationship, not a different kind of relationship. Encoding it as state keeps the schema clean and queries uniform.
 
@@ -676,6 +661,4 @@ when CI lands.)
 
 **Why loom sync propagates one hop:** Full graph propagation from a file change would be too aggressive — everything would reset. One hop (IMPLEMENTS → RELATES_TO neighbors) is the right blast radius for a file-level change. System-level changes require explicit re-initialization.
 
-**Why edge identity is DERIVED, not stored (schema v4):** edges are unique per endpoint pair, so an edge's id is computed at read time — `schema::edge_key(type, from, to)` → `rt:<a>:<b>` / `imp:` / `gov:` / `val:` / `tgt:` / `hy:` — never written to the store. The uuid it replaced was redundant identity that (a) sat on the one property name grafeo can't filter by, (b) regenerated on every import so note targets broke in transit, and (c) forced scan-to-find-by-id reads. Derived keys are stable across machines and exports by construction. `loom migrate` upgrades live v3 graphs (remaps note targets); `loom import` upgrades v3 exports in flight.
-
-**Why edges are matched by endpoints, never by their own id:** in grafeo 0.5.42, the property NAME `id` is shadowed on relationships in *filter* position: `WHERE r.id = X` and inline `{id: X}` resolve `id` to grafeo's INTERNAL edge id (an integer) instead of the user property — they match nothing, ever (deterministically; in *RETURN* position `r.id` correctly yields the stored property). Every OTHER edge-property filter (`WHERE r.inspection_status = X`, `<>`, inline forms) is deterministic — verified under stress in `tests/grafeo_probe.rs` (50/50 set-then-filter cycles, in-memory and persistent), which also pins MERGE+RETURN, transactions, `$param` binding, and index idempotency; run it after any grafeo upgrade. So: edge-ID lookups take endpoint ids and match `MATCH (a {id})-[r]->(b {id}) SET ...` (RELATES_TO/IMPLEMENTS/GOVERNS/VALIDATES are unique per endpoint pair) or scan-and-filter in Rust; status filters live in the query (with a zero-cost Rust retain as regression guard); get-or-create is one `MERGE … ON CREATE SET … RETURN`. The long-lived single `Session` in `db/mod.rs` stays (read-your-writes within a session). Multi-statement mutations (import, the sync ripple, retire, one batch line) run inside `with_transaction` (START TRANSACTION/COMMIT/ROLLBACK) — a failure midway rolls back instead of leaving a half-flipped graph. `loom init` creates property indexes on every inline-matched key (idempotent; re-running init backfills older graphs). CALL procedures run but a trailing MATCH after `CALL … YIELD` is silently dropped — joining algorithm output back to properties requires a Rust-side join via `id(n)` (works; unused so far). Concurrent ReadOnly access alongside a writer is refused by the file lock — don't design for parallel readers on 0.5.42.
+**Why edge identity is DERIVED, not stored (schema v4):** edges are unique per endpoint pair, so an edge's id is computed at read time — `schema::edge_key(type, from, to)` → `rt:<a>:<b>` / `imp:` / `gov:` / `val:` / `tgt:` / `hy:` — never written to the store. The uuid it replaced was redundant identity that regenerated on every import so note targets broke in transit and forced scan-to-find-by-id reads. Derived keys are stable across machines and exports by construction. SQLite stores endpoint columns directly and treats the derived key as API identity.

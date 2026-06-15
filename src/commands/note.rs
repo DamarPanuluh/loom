@@ -2,147 +2,24 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::NoteCmd;
-use crate::db::queries::{insert_note, list_notes};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::{Note, NoteKind};
 
 pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
-}
-
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: NoteCmd,
-    printer: &Printer,
-) -> Result<()> {
     match cmd {
-        NoteCmd::Prune {
-            transitions,
-            keep_per_target,
-            set_cap,
-            dry_run,
+        NoteCmd::List {
+            intent,
+            edge,
+            file,
+            kind,
+            for_role,
+            limit,
         } => {
-            // The keep for THIS sweep: explicit override → the cap being set →
-            // the graph's current cap.
-            let keep = keep_per_target
-                .or(set_cap)
-                .unwrap_or(crate::db::queries::get_transition_cap(db)?);
-            // `0` sourced from the CAP means "off / unbounded", NEVER "drop all
-            // routine" — only an explicit `--keep-per-target 0` deliberately
-            // clears routine history. So compaction runs when requested AND the
-            // keep is positive (or an explicit zero was passed).
-            let compact_requested = transitions || set_cap.is_some();
-            let compact = compact_requested && (keep > 0 || keep_per_target == Some(0));
-
-            // Dangling: notes whose target id resolves to nothing (the remedy
-            // doctor names). Always swept — history on live/retired nodes is
-            // never touched.
-            let dangling = crate::db::queries::dangling_notes(db)?;
-            let churn = if compact {
-                crate::db::queries::prunable_transition_notes(db, keep)?
-            } else {
-                Vec::new()
-            };
-            if !dry_run {
-                if let Some(cap) = set_cap {
-                    crate::db::queries::set_transition_cap(db, cap)?;
-                }
-                if !(dangling.is_empty() && churn.is_empty()) {
-                    crate::db::with_transaction(db, || {
-                        for n in dangling.iter().chain(churn.iter()) {
-                            crate::db::queries::delete_note_by_id(db, &n.id)?;
-                        }
-                        Ok(())
-                    })?;
-                }
-            }
-            let verb = if dry_run { "Would prune" } else { "Pruned" };
-            // Compaction asked for but nothing to do because the cap is off and
-            // no explicit keep was given — explain rather than silently no-op.
-            let cap_off_noop = transitions && !compact && set_cap.is_none();
-            // After a transition compaction the committed export drifted; point
-            // there. Plain dangling prune stays anchored on the doctor re-check.
-            let next_step = if compact && !churn.is_empty() {
-                "`loom export` to refresh the committed graph, then `loom status`"
-            } else {
-                "`loom doctor` re-checks integrity"
-            };
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok",
-                    "pruned": dangling.len(),
-                    "removed": dangling.iter().map(|n| serde_json::json!({
-                        "id": n.id, "kind": n.kind,
-                        "target_kind": n.target_kind, "target_id": n.target_id,
-                    })).collect::<Vec<_>>(),
-                    "transitions_pruned": churn.len(),
-                    "keep_per_target": keep,
-                    "cap_set": set_cap,
-                    "dry_run": dry_run,
-                    "compaction_skipped": if cap_off_noop {
-                        serde_json::json!("transition cap is off (0) — pass --keep-per-target <N> for a one-off sweep, or --set-cap <N> to enable it")
-                    } else { serde_json::Value::Null },
-                    "next_step": next_step,
-                }));
-            } else {
-                if let Some(cap) = set_cap {
-                    let v = if dry_run { "Would set" } else { "Set" };
-                    println!(
-                        "✓ {v} transition cap to {cap} per target{}.",
-                        if cap == 0 {
-                            " (off — strict append-only)"
-                        } else {
-                            " (`loom sync` enforces it)"
-                        }
-                    );
-                }
-                if cap_off_noop {
-                    println!("ⓘ Transition cap is off (0) — nothing compacted. Pass `--keep-per-target <N>` for a one-off sweep, or `--set-cap <N>` to enable the cap `loom sync` holds.");
-                }
-                if dangling.is_empty() && churn.is_empty() && !cap_off_noop {
-                    println!(
-                        "✓ Nothing to prune (no dangling notes{}).",
-                        if compact {
-                            " or compactable transition history"
-                        } else {
-                            ""
-                        }
-                    );
-                }
-                if !dangling.is_empty() {
-                    println!(
-                        "✓ {verb} {} dangling note(s) (targets no longer exist):",
-                        dangling.len()
-                    );
-                    for n in dangling.iter().take(20) {
-                        println!(
-                            "    {} [{}] → missing {} '{}'",
-                            n.id, n.kind, n.target_kind, n.target_id
-                        );
-                    }
-                    if let Some(m) =
-                        crate::output::more_marker(dangling.len(), 20, "loom doctor --json")
-                    {
-                        println!("    {m}");
-                    }
-                }
-                if compact {
-                    println!(
-                        "✓ {verb} {} low-signal transition note(s) — kept the newest {keep} per target + every regression marker (smells + align unchanged).",
-                        churn.len()
-                    );
-                }
-                if set_cap.is_some() || !(dangling.is_empty() && churn.is_empty()) {
-                    println!("  → Next: {next_step}");
-                }
-            }
+            let db = GraphReadHandle::open(&cwd)?;
+            run_list_with_db(&db, intent, edge, file, kind, for_role, limit, printer)
         }
-
         NoteCmd::Add {
             text,
             kind,
@@ -152,154 +29,409 @@ pub fn run_with_db(
             author,
             for_role,
         } => {
-            // Validate the kind against the vocabulary.
-            kind.parse::<NoteKind>()
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
-            if [intent.is_some(), edge.is_some(), file.is_some()]
-                .iter()
-                .filter(|b| **b)
-                .count()
-                > 1
-            {
-                anyhow::bail!("A note targets an intent OR an edge OR a code file, not several.");
-            }
-            let (target_kind, target_id) = match (intent, edge, file) {
-                (Some(i), _, _) => (
-                    "intent".to_string(),
-                    crate::db::queries::resolve_intent(db, &i)?,
-                ),
-                (_, Some(e), _) => {
-                    if !crate::db::queries::edge_id_exists(db, &e)? {
-                        anyhow::bail!(
-                            "Edge '{}' not found. Use the derived edge id shown by `loom edge ...` commands, or run `loom doctor` to find dangling edge notes.",
-                            e
-                        );
-                    }
-                    ("edge".to_string(), e)
-                }
-                (_, _, Some(f)) => {
-                    let cf = crate::db::queries::get_codefile_by_id_or_path(db, &f)?
-                        .ok_or_else(|| anyhow::anyhow!(
-                            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
-                        ))?;
-                    ("codefile".to_string(), cf.id)
-                }
-                _ => ("none".to_string(), String::new()),
-            };
+            ensure_initialized(&cwd)?;
+            run_add_with_sqlite(
+                &cwd, text, kind, intent, edge, file, author, for_role, printer,
+            )
+        }
+        NoteCmd::Prune {
+            transitions,
+            keep_per_target,
+            set_cap,
+            dry_run,
+        } => {
+            ensure_initialized(&cwd)?;
+            run_prune_with_sqlite(
+                &cwd,
+                transitions,
+                keep_per_target,
+                set_cap,
+                dry_run,
+                printer,
+            )
+        }
+    }
+}
 
-            let audience = match &for_role {
-                Some(r) => {
-                    // The canonical lane set (gate.rs reads the same constant) —
-                    // tracks automatically if a 6th role is ever added.
-                    if !crate::db::schema::ROLES.contains(&r.as_str()) {
-                        anyhow::bail!(
-                            "--for must be a lane: {roles} (got '{r}').",
-                            roles = crate::db::schema::ROLES.join(" | ")
-                        );
-                    }
-                    r.clone()
-                }
-                None => String::new(),
-            };
-            let note = Note {
-                id: Uuid::new_v4().to_string(),
-                kind,
-                text,
-                author: crate::agent::acting(author.as_deref()),
-                target_kind,
-                target_id,
-                audience,
-                created_at: chrono::Utc::now().to_rfc3339(),
-            };
-            insert_note(db, &note)?;
+#[allow(clippy::too_many_arguments)]
+fn run_add_with_sqlite(
+    root: &std::path::Path,
+    text: String,
+    kind: String,
+    intent: Option<String>,
+    edge: Option<String>,
+    file: Option<String>,
+    author: Option<String>,
+    for_role: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let note = prepare_add_note(
+        &store,
+        text,
+        kind,
+        intent,
+        edge,
+        file,
+        author,
+        for_role,
+        |edge_id| store.edge_id_exists(edge_id),
+    )?;
+    store.insert_note(&note)?;
+    print_add_result(&note, printer);
+    Ok(())
+}
 
-            if printer.json {
-                printer.print_json(&note);
-            } else {
-                println!(
-                    "✓ Note added  [{}]{}",
-                    note.kind,
-                    if note.audience.is_empty() {
-                        String::new()
-                    } else {
-                        format!("  → for {}", note.audience)
-                    }
+#[allow(clippy::too_many_arguments)]
+fn prepare_add_note(
+    db: &dyn GraphReadRepository,
+    text: String,
+    kind: String,
+    intent: Option<String>,
+    edge: Option<String>,
+    file: Option<String>,
+    author: Option<String>,
+    for_role: Option<String>,
+    edge_exists: impl Fn(&str) -> Result<bool>,
+) -> Result<Note> {
+    // Validate the kind against the vocabulary.
+    kind.parse::<NoteKind>()
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    if [intent.is_some(), edge.is_some(), file.is_some()]
+        .iter()
+        .filter(|b| **b)
+        .count()
+        > 1
+    {
+        anyhow::bail!(
+            "A note targets an intent OR an edge OR a code file, not several — pass exactly one of \
+             `--intent <id>`, `--edge <id>`, `--file <path>` (or none for a graph-wide note)."
+        );
+    }
+    let (target_kind, target_id) = match (intent, edge, file) {
+        (Some(i), _, _) => ("intent".to_string(), resolve_intent_with_db(db, &i)?),
+        (_, Some(e), _) => {
+            if !edge_exists(&e)? {
+                anyhow::bail!(
+                    "Edge '{}' not found. Use the derived edge id shown by `loom edge ...` commands, or run `loom doctor` to find dangling edge notes.",
+                    e
                 );
-                if note.target_kind != "none" {
-                    println!("  on {} {}", note.target_kind, note.target_id);
+            }
+            ("edge".to_string(), e)
+        }
+        (_, _, Some(f)) => ("codefile".to_string(), resolve_codefile_id_with_db(db, &f)?),
+        _ => ("none".to_string(), String::new()),
+    };
+
+    let audience = match &for_role {
+        Some(r) => {
+            // The canonical lane set (gate.rs reads the same constant) —
+            // tracks automatically if a 6th role is ever added.
+            if !crate::db::schema::ROLES.contains(&r.as_str()) {
+                anyhow::bail!(
+                    "--for must be a lane: {roles} (got '{r}').",
+                    roles = crate::db::schema::ROLES.join(" | ")
+                );
+            }
+            r.clone()
+        }
+        None => String::new(),
+    };
+
+    Ok(Note {
+        id: Uuid::new_v4().to_string(),
+        kind,
+        text,
+        author: crate::agent::acting(author.as_deref()),
+        target_kind,
+        target_id,
+        audience,
+        created_at: chrono::Utc::now().to_rfc3339(),
+    })
+}
+
+fn print_add_result(note: &Note, printer: &Printer) {
+    // A note is bookkeeping — it never moves graph phase — so this is a LIGHT
+    // anchor: the `next_step` line/field without the pulse. An addressed note
+    // (`--for <role>`) routes its reader to that lane's queue; a bare note
+    // points back at the orientation surface.
+    let next_step = if note.audience.is_empty() {
+        "`loom note list` to review, or `loom next` to keep working.".to_string()
+    } else {
+        // The audience is a validated ROLE; map it to its queue's `loom next`
+        // mode (builder→build, analyzer→discovery, …) — never assume role==mode.
+        let mode = crate::gate::mode_for_role(&note.audience).unwrap_or("build");
+        format!(
+            "handed off to the {role} lane — that agent picks it up via `loom next --mode {mode}` (or `loom note list --for {role}`).",
+            role = note.audience,
+        )
+    };
+    if printer.json {
+        let mut payload = serde_json::to_value(note).unwrap_or(serde_json::Value::Null);
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert(
+                "next_step".to_string(),
+                serde_json::Value::String(next_step),
+            );
+        }
+        printer.print_json(&payload);
+    } else {
+        println!(
+            "✓ Note added  [{}]{}",
+            note.kind,
+            if note.audience.is_empty() {
+                String::new()
+            } else {
+                format!("  → for {}", note.audience)
+            }
+        );
+        if note.target_kind != "none" {
+            println!("  on {} {}", note.target_kind, note.target_id);
+        }
+        println!("  {}", note.text);
+        println!("  → Next: {}", next_step);
+    }
+}
+
+fn run_prune_with_sqlite(
+    root: &std::path::Path,
+    transitions: bool,
+    keep_per_target: Option<usize>,
+    set_cap: Option<usize>,
+    dry_run: bool,
+    printer: &Printer,
+) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let keep = keep_per_target
+        .or(set_cap)
+        .unwrap_or(store.transition_cap()?);
+    let compact_requested = transitions || set_cap.is_some();
+    let compact = compact_requested && (keep > 0 || keep_per_target == Some(0));
+
+    let dangling = store.dangling_notes()?;
+    let churn = if compact {
+        store.prunable_transition_notes(keep)?
+    } else {
+        Vec::new()
+    };
+
+    if !dry_run {
+        if let Some(cap) = set_cap {
+            store.set_transition_cap(cap)?;
+        }
+        for note in dangling.iter().chain(churn.iter()) {
+            store.delete_note_by_id(&note.id)?;
+        }
+    }
+
+    let verb = if dry_run { "Would prune" } else { "Pruned" };
+    let cap_off_noop = transitions && !compact && set_cap.is_none();
+    let next_step = if compact && !churn.is_empty() {
+        "`loom export` to refresh the committed graph, then `loom status`"
+    } else {
+        "`loom doctor` re-checks integrity"
+    };
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "pruned": dangling.len(),
+            "removed": dangling.iter().map(|n| serde_json::json!({
+                "id": n.id, "kind": n.kind,
+                "target_kind": n.target_kind, "target_id": n.target_id,
+            })).collect::<Vec<_>>(),
+            "transitions_pruned": churn.len(),
+            "keep_per_target": keep,
+            "cap_set": set_cap,
+            "dry_run": dry_run,
+            "compaction_skipped": if cap_off_noop {
+                Some("transition cap is 0/off and no --keep-per-target override was given")
+            } else {
+                None
+            },
+            "next_step": next_step,
+        }));
+    } else {
+        if dangling.is_empty() && churn.is_empty() && !cap_off_noop {
+            println!(
+                "✓ Nothing to prune (no dangling notes{}).",
+                if compact {
+                    " or excess transition notes"
+                } else {
+                    ""
                 }
-                println!("  {}", note.text);
+            );
+        }
+        if !dangling.is_empty() {
+            println!(
+                "✓ {verb} {} dangling note(s) (targets no longer exist):",
+                dangling.len()
+            );
+            for n in dangling.iter().take(20) {
+                println!(
+                    "  - {} [{}] on {} {}",
+                    n.id, n.kind, n.target_kind, n.target_id
+                );
+            }
+            if dangling.len() > 20 {
+                if let Some(marker) =
+                    crate::output::more_marker(dangling.len(), 20, "loom doctor --json")
+                {
+                    println!("  {marker}");
+                }
             }
         }
-
-        NoteCmd::List {
-            intent,
-            edge,
-            file,
-            kind,
-            for_role,
-            limit,
-        } => {
-            if let Some(ref k) = kind {
-                k.parse::<NoteKind>()
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-            }
-            let intent = match intent {
-                Some(i) => Some(crate::db::queries::resolve_intent(db, &i)?),
-                None => None,
-            };
-            let file = match file {
-                Some(f) => Some(
-                    crate::db::queries::get_codefile_by_id_or_path(db, &f)?
-                        .ok_or_else(|| anyhow::anyhow!(
-                            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.", f
-                        ))?
-                        .id,
-                ),
-                None => None,
-            };
-            let target = intent.or(edge).or(file);
-            let mut notes = list_notes(db, target.as_deref(), kind.as_deref())?;
-            // The lane's inbox: only notes explicitly addressed to this role.
-            if let Some(r) = &for_role {
-                notes.retain(|n| &n.audience == r);
-            }
-            // Newest LAST in `notes`; keep the tail — the live context.
-            let total = notes.len();
-            if limit > 0 && total > limit {
-                notes.drain(..total - limit);
-            }
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "notes": notes,
-                    "total": total,
-                    "truncated": total > notes.len(),
-                }));
-            } else if notes.is_empty() {
-                println!("(no notes)");
-            } else {
-                for n in &notes {
-                    let tgt = if n.target_kind == "none" {
-                        "—".to_string()
-                    } else {
-                        let short = &n.target_id[..n.target_id.len().min(8)];
-                        format!("{} {}", n.target_kind, short)
-                    };
-                    let aud = if n.audience.is_empty() {
-                        String::new()
-                    } else {
-                        format!(" → for {}", n.audience)
-                    };
-                    println!("  [{:<13}]{} {}", n.kind, aud, n.text);
-                    println!("      ({} · {})", n.author, tgt);
-                }
-                if let Some(m) =
-                    crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`")
-                {
-                    println!("  {}", m);
-                }
-            }
+        if !churn.is_empty() {
+            println!(
+                "✓ {verb} {} routine transition note(s), keeping {} newest per target (regression markers kept).",
+                churn.len(),
+                keep
+            );
+        } else if cap_off_noop {
+            println!("✓ Transition compaction skipped: transition cap is 0/off; pass --keep-per-target N to prune this sweep.");
+        }
+        if let Some(cap) = set_cap {
+            println!("  transition_cap set to {cap}");
+        }
+        if set_cap.is_some() || !(dangling.is_empty() && churn.is_empty()) {
+            println!("  → Next: {next_step}");
         }
     }
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_list_with_db(
+    db: &dyn GraphReadRepository,
+    intent: Option<String>,
+    edge: Option<String>,
+    file: Option<String>,
+    kind: Option<String>,
+    for_role: Option<String>,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    if let Some(ref k) = kind {
+        k.parse::<NoteKind>()
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+    }
+    let intent = match intent {
+        Some(i) => Some(resolve_intent_with_db(db, &i)?),
+        None => None,
+    };
+    let file = match file {
+        Some(f) => Some(resolve_codefile_id_with_db(db, &f)?),
+        None => None,
+    };
+    let target = intent.or(edge).or(file);
+    let mut notes = db.list_notes(target.as_deref(), kind.as_deref())?;
+    // The lane's inbox: only notes explicitly addressed to this role.
+    if let Some(r) = &for_role {
+        notes.retain(|n| &n.audience == r);
+    }
+    // Newest LAST in `notes`; keep the tail — the live context.
+    let total = notes.len();
+    if limit > 0 && total > limit {
+        notes.drain(..total - limit);
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "notes": notes,
+            "total": total,
+            "truncated": total > notes.len(),
+        }));
+    } else if notes.is_empty() {
+        println!("(no notes)");
+    } else {
+        for n in &notes {
+            let tgt = if n.target_kind == "none" {
+                "—".to_string()
+            } else {
+                let short = &n.target_id[..n.target_id.len().min(8)];
+                format!("{} {}", n.target_kind, short)
+            };
+            let aud = if n.audience.is_empty() {
+                String::new()
+            } else {
+                format!(" → for {}", n.audience)
+            };
+            println!("  [{:<13}]{} {}", n.kind, aud, n.text);
+            println!("      ({} · {})", n.author, tgt);
+        }
+        if let Some(m) =
+            crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`")
+        {
+            println!("  {}", m);
+        }
+    }
+    Ok(())
+}
+
+fn resolve_codefile_id_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    db.query_snapshot()?
+        .codefiles
+        .into_iter()
+        .find(|codefile| codefile.id == key || codefile.path == key)
+        .map(|codefile| codefile.id)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
+                key
+            )
+        })
+}
+
+fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let intents = db.list_intents(None, None)?;
+    if intents.iter().any(|intent| intent.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase() == kl)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    if exact.len() > 1 {
+        anyhow::bail!(
+            "Intent name '{}' is not unique ({} intents carry it) — use the id. `loom intent list` to see them.",
+            key,
+            exact.len()
+        );
+    }
+    let subs: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase().contains(&kl))
+        .collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
+            key
+        ),
+        _ => {
+            let total = subs.len();
+            let shown = subs
+                .iter()
+                .take(10)
+                .map(|intent| format!("'{}'", intent.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if total > 10 {
+                anyhow::bail!(
+                    "'{}' is ambiguous — it matches: {} … +{} more — narrow the fragment or `loom find \"{}\"`.",
+                    key,
+                    shown,
+                    total - 10,
+                    key
+                );
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key,
+                shown
+            )
+        }
+    }
 }

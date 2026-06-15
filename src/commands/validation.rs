@@ -2,29 +2,21 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::ValidationCmd;
-use crate::db::queries::{
-    delete_validation, get_hypothesis, get_validation, insert_validates, insert_validation,
-    list_validations, resolve_validation, set_hypothesis_status,
-    set_validates_status_for_validation, update_validation_definition, update_validation_result,
-};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::{Validation, ValidationResult};
 
 pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
-}
-
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: ValidationCmd,
-    printer: &Printer,
-) -> Result<()> {
     match cmd {
+        ValidationCmd::List { limit } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_list_with_db(&db, limit, printer)
+        }
+        ValidationCmd::Show { id } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_show_with_db(&db, id, printer)
+        }
         ValidationCmd::Add {
             name,
             description,
@@ -32,333 +24,385 @@ pub fn run_with_db(
             command,
             intent,
         } => {
-            crate::gate::acting_in_lane(
-                "add a validation",
-                &[
-                    crate::db::schema::role::BUILDER,
-                    crate::db::schema::role::VALIDATOR,
-                ],
-                None,
-            )?;
-            // Validate type
-            validation_type
-                .parse::<crate::types::ValidationType>()
-                .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-            let now = chrono::Utc::now().to_rfc3339();
-            let id = Uuid::new_v4().to_string();
-            let v = Validation {
-                id: id.clone(),
-                name: name.clone(),
-                description: description.unwrap_or_default(),
-                validation_type: validation_type.clone(),
-                command: command.unwrap_or_default(),
-                last_run: String::new(),
-                last_result: "not_run".to_string(),
-            };
-            insert_validation(db, &v)?;
-
-            // A validation only proves something once it's attached to an intent.
-            // Linking in one step (repeatable --intent) removes the most common
-            // friction; otherwise we tell the driver exactly how to link it.
-            let mut linked_intents: Vec<String> = Vec::new();
-            for iid in &intent {
-                let iid = crate::db::queries::resolve_intent(db, iid)?;
-                insert_validates(db, &id, &iid, "", &now)?;
-                linked_intents.push(iid);
-            }
-
-            if printer.json {
-                let mut val = serde_json::to_value(&v)?;
-                if let Some(obj) = val.as_object_mut() {
-                    if linked_intents.is_empty() {
-                        obj.insert(
-                            "next_steps".to_string(),
-                            serde_json::json!([
-                                format!(
-                                    "Link it to an intent: `loom edge validates {} <intent-id>`.",
-                                    id
-                                ),
-                                "Then run it: `loom validate <intent-id>`.",
-                            ]),
-                        );
-                    } else {
-                        obj.insert(
-                            "linked_intents".to_string(),
-                            serde_json::json!(linked_intents),
-                        );
-                        obj.insert(
-                            "next_steps".to_string(),
-                            serde_json::json!([format!(
-                                "Run it: `loom validate {}`.",
-                                linked_intents[0]
-                            ),]),
-                        );
-                    }
-                }
-                printer.print_json(&val);
-            } else {
-                println!("✓ Validation '{}' created  (id: {})", name, id);
-                println!("  type:    {}", validation_type);
-                println!("  command: {}", v.command);
-                if linked_intents.is_empty() {
-                    println!("  → Next: link it — `loom edge validates {id} <intent-id>` (or re-add with --intent).");
-                } else {
-                    for iid in &linked_intents {
-                        println!("  → Linked to intent {iid}.");
-                    }
-                    println!("  Run: `loom validate {}`.", linked_intents[0]);
-                }
-            }
+            ensure_initialized(&cwd)?;
+            run_add_with_sqlite(
+                &cwd,
+                name,
+                description,
+                validation_type,
+                command,
+                intent,
+                printer,
+            )
         }
-
         ValidationCmd::Mark {
             id,
             result,
             evidence,
             reason,
         } => {
-            let marker = crate::gate::acting_in_lane(
-                "mark a validation result",
-                &[crate::db::schema::role::VALIDATOR],
-                None,
-            )?;
-            // Verdict must be passed/failed/blocked ("not_run" is not a verdict).
-            let res: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
-            if res == ValidationResult::NotRun {
-                anyhow::bail!(
-                    "--result must be 'passed', 'failed', or 'blocked' (not_run is not a verdict)."
-                );
-            }
-            // passed/failed carry evidence (what you checked); blocked carries a
-            // reason (why it can't run) — recorded on the VALIDATES edge either
-            // way so the state explains itself.
-            let edge_note = if res == ValidationResult::Blocked {
-                let r = reason.as_deref().unwrap_or("");
-                crate::gate::require_substantive(
-                    "reason",
-                    r,
-                    "why this proof cannot run yet (what it is waiting on)",
-                )?;
-                format!("blocked: {r}")
-            } else {
-                let ev = evidence.as_deref().unwrap_or("");
-                crate::gate::require_substantive(
-                    "evidence",
-                    ev,
-                    "what you checked to reach this verdict",
-                )?;
-                ev.to_string()
-            };
-            let vid = resolve_validation(db, &id)?;
-            let validation = get_validation(db, &vid)?;
-            let now = chrono::Utc::now().to_rfc3339();
-            let n = crate::db::with_transaction(db, || {
-                update_validation_result(db, &vid, &res.to_string(), &now)?;
-                // Mirror the verdict onto the per-intent VALIDATES edges. `blocked`
-                // leaves the edge uninspected (no proof was produced — that's
-                // honest); the "blocked: <reason>" note distinguishes it from
-                // forgotten, and the compass + validator queue skip blocked proofs.
-                let status = match res {
-                    ValidationResult::Passed => "passing",
-                    ValidationResult::Failed => "failing",
-                    _ => "uninspected",
-                };
-                let n = set_validates_status_for_validation(db, &vid, status, &edge_note)?;
-                if res == ValidationResult::Passed {
-                    if let Some(v) = &validation {
-                        if let Some(hid) = v
-                            .description
-                            .lines()
-                            .find_map(|line| line.strip_prefix("hypothesis:"))
-                        {
-                            let hid = hid.trim();
-                            if get_hypothesis(db, hid)?.is_some_and(|h| h.status == "adopted") {
-                                set_hypothesis_status(db, hid, "confirmed", &marker, &now)?;
-                            }
-                        }
-                    }
-                }
-                Ok(n)
-            })?;
-            // Result-sensitive anchor: a verdict moves the phase, so the
-            // output ends with where the driver goes next.
-            let next_step = match res {
-                ValidationResult::Passed =>
-                    "`loom next --mode validate` for the next proof".to_string(),
-                ValidationResult::Failed =>
-                    "flag the owner: `loom intent mark <intent> --lifecycle needs_change --reason \"<validation failure>\"`".to_string(),
-                _ =>
-                    "out of the validator queue until re-marked; visible in `loom validation list` / `loom report`".to_string(),
-            };
-            if printer.json {
-                let mut payload = serde_json::json!({
-                    "status": "ok", "validation_id": vid, "result": res.to_string(),
-                    "intents_updated": n, "note": edge_note,
-                });
-                if n == 0 {
-                    payload["hint"] = serde_json::Value::String(format!(
-                        "Not linked yet: `loom edge validates {vid} <intent-id>`."
-                    ));
-                }
-                printer.print_json(&crate::output::with_anchor(payload, db, &next_step)?);
-            } else {
-                println!("✓ Validation {vid} marked {res}  ({n} linked intent(s) updated)");
-                if n == 0 {
-                    println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
-                }
-                crate::output::print_anchor(db, &next_step)?;
-            }
+            let db_file = ensure_initialized(&cwd)?;
+            run_mark_with_sqlite(&cwd, &db_file, id, result, evidence, reason, printer)
         }
-
         ValidationCmd::Update {
             id,
             command,
             description,
         } => {
-            crate::gate::acting_in_lane(
-                "update a validation definition",
-                &[
-                    crate::db::schema::role::BUILDER,
-                    crate::db::schema::role::VALIDATOR,
-                ],
-                None,
-            )?;
-            if command.is_none() && description.is_none() {
-                anyhow::bail!("Nothing to update — pass --command and/or --description.");
-            }
-            let vid = resolve_validation(db, &id)?;
-            let command_changed = match (&command, get_validation(db, &vid)?) {
-                (Some(c), Some(v)) => *c != v.command,
-                _ => false,
-            };
-            // Atomic: the new definition and the proof reset land together —
-            // a new command with the OLD green still attached would be a lie.
-            let reset_edges = crate::db::with_transaction(db, || {
-                update_validation_definition(db, &vid, command.as_deref(), description.as_deref())?;
-                // The old result proved the OLD command — a changed command resets
-                // the proof so green is re-earned by actually running the new one.
-                let mut reset_edges = 0usize;
-                if command_changed {
-                    update_validation_result(db, &vid, "not_run", "")?;
-                    reset_edges = set_validates_status_for_validation(
-                        db,
-                        &vid,
-                        "uninspected",
-                        "command updated — proof must be re-run",
-                    )?;
-                }
-                Ok(reset_edges)
-            })?;
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok", "validation_id": vid,
-                    "command_changed": command_changed,
-                    "proof_reset": command_changed,
-                    "intents_reset": reset_edges,
-                }));
-            } else {
-                println!("✓ Validation {vid} updated.");
-                if command_changed {
-                    println!("  Command changed → proof reset (last_result=not_run, {reset_edges} VALIDATES edge(s) → uninspected).");
-                    println!("  → Re-run it: `loom validate <intent>` (or `loom validation mark` for manual proofs).");
-                }
-            }
+            ensure_initialized(&cwd)?;
+            run_update_with_sqlite(&cwd, id, command, description, printer)
         }
-
         ValidationCmd::Delete { id } => {
-            crate::gate::acting_in_lane(
-                "delete a validation",
-                &[
-                    crate::db::schema::role::BUILDER,
-                    crate::db::schema::role::VALIDATOR,
-                ],
-                None,
-            )?;
-            let vid = resolve_validation(db, &id)?;
-            // Atomic: node, VALIDATES edges, and their notes go together.
-            if !crate::db::with_transaction(db, || delete_validation(db, &vid))? {
-                anyhow::bail!(
-                    "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
-                    vid
+            ensure_initialized(&cwd)?;
+            run_delete_with_sqlite(&cwd, id, printer)
+        }
+    }
+}
+
+fn run_add_with_sqlite(
+    root: &std::path::Path,
+    name: String,
+    description: Option<String>,
+    validation_type: String,
+    command: Option<String>,
+    intent: Vec<String>,
+    printer: &Printer,
+) -> Result<()> {
+    crate::gate::acting_in_lane(
+        "add a validation",
+        &[
+            crate::db::schema::role::BUILDER,
+            crate::db::schema::role::VALIDATOR,
+        ],
+        None,
+    )?;
+    validation_type
+        .parse::<crate::types::ValidationType>()
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let snapshot = store.query_snapshot()?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let id = Uuid::new_v4().to_string();
+    let v = Validation {
+        id: id.clone(),
+        name: name.clone(),
+        description: description.unwrap_or_default(),
+        validation_type: validation_type.clone(),
+        command: command.unwrap_or_default(),
+        last_run: String::new(),
+        last_result: "not_run".to_string(),
+    };
+    store.insert_validation(&v)?;
+
+    let mut linked_intents: Vec<String> = Vec::new();
+    for iid in &intent {
+        let iid = crate::db::queries::resolve_intent_from_snapshot(&snapshot, iid)?;
+        store.insert_validates(&id, &iid, "", &now)?;
+        linked_intents.push(iid);
+    }
+
+    if printer.json {
+        let mut val = serde_json::to_value(&v)?;
+        if let Some(obj) = val.as_object_mut() {
+            if linked_intents.is_empty() {
+                obj.insert(
+                    "next_steps".to_string(),
+                    serde_json::json!([
+                        format!(
+                            "Link it to an intent: `loom edge validates {} <intent-id>`.",
+                            id
+                        ),
+                        "Then run it: `loom validate <intent-id>`.",
+                    ]),
+                );
+            } else {
+                obj.insert(
+                    "linked_intents".to_string(),
+                    serde_json::json!(linked_intents),
+                );
+                obj.insert(
+                    "next_steps".to_string(),
+                    serde_json::json!([format!("Run it: `loom validate {}`.", linked_intents[0]),]),
                 );
             }
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok", "id": vid, "deleted": true,
-                    "message": "Validation and its VALIDATES edges removed. Intents that lost \
-                                their only proof will resurface in `loom next --mode validate`.",
-                }));
-            } else {
-                println!("✓ Validation {vid} deleted (with its VALIDATES edges).");
-                println!("  Intents that lost their only proof resurface in `loom next --mode validate`.");
-            }
         }
-
-        ValidationCmd::List { limit } => {
-            let mut validations = list_validations(db)?;
-            let total = crate::output::apply_limit(&mut validations, limit);
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "validations": validations,
-                    "total":       total,
-                    "truncated":   validations.len() < total,
-                }));
-            } else if validations.is_empty() {
-                println!("(no validations defined)");
-            } else {
-                println!(
-                    "  {result:<8}  {vtype:<14}  {name:<40}  id",
-                    result = "RESULT",
-                    vtype = "TYPE",
-                    name = "NAME",
-                );
-                println!("  {}", "-".repeat(100));
-                for v in &validations {
-                    println!(
-                        "  [{result:<8}]  {vtype:<14}  {name:<40}  {id}",
-                        result = v.last_result,
-                        vtype = v.validation_type,
-                        name = v.name,
-                        id = v.id,
-                    );
-                }
-                if let Some(m) = crate::output::more_marker(
-                    total,
-                    validations.len(),
-                    "`loom validation list --limit 0`",
-                ) {
-                    println!("  {m}");
-                }
+        printer.print_json(&val);
+    } else {
+        println!("✓ Validation '{}' created  (id: {})", name, id);
+        println!("  type:    {}", validation_type);
+        println!("  command: {}", v.command);
+        if linked_intents.is_empty() {
+            println!("  → Next: link it — `loom edge validates {id} <intent-id>` (or re-add with --intent).");
+        } else {
+            for iid in &linked_intents {
+                println!("  → Linked to intent {iid}.");
             }
-        }
-
-        ValidationCmd::Show { id } => {
-            // Same addressing as every other subcommand: id, exact name, or
-            // unique name fragment.
-            let id = resolve_validation(db, &id).unwrap_or(id);
-            match get_validation(db, &id)? {
-                None => anyhow::bail!(
-                    "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
-                    id
-                ),
-                Some(ref v) => {
-                    if printer.json {
-                        printer.print_json(v);
-                    } else {
-                        println!("── Validation ─────────────────────────────────────────────────────");
-                        println!("  id:          {}", v.id);
-                        println!("  name:        {}", v.name);
-                        println!("  type:        {}", v.validation_type);
-                        println!("  command:     {}", v.command);
-                        println!("  last_result: {}", v.last_result);
-                        println!("  last_run:    {}",
-                            if v.last_run.is_empty() { "(never)" } else { &v.last_run });
-                        println!("  description: {}", v.description);
-                    }
-                }
-            }
+            println!("  Run: `loom validate {}`.", linked_intents[0]);
         }
     }
     Ok(())
+}
+
+fn prepare_mark_result(
+    result: &str,
+    evidence: Option<&str>,
+    reason: Option<&str>,
+) -> Result<(String, ValidationResult, String)> {
+    let marker = crate::gate::acting_in_lane(
+        "mark a validation result",
+        &[crate::db::schema::role::VALIDATOR],
+        None,
+    )?;
+    let res: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
+    if res == ValidationResult::NotRun {
+        anyhow::bail!(
+            "--result must be 'passed', 'failed', or 'blocked' (not_run is not a verdict)."
+        );
+    }
+    let edge_note = if res == ValidationResult::Blocked {
+        let r = reason.unwrap_or("");
+        crate::gate::require_substantive(
+            "reason",
+            r,
+            "why this proof cannot run yet (what it is waiting on)",
+        )?;
+        format!("blocked: {r}")
+    } else {
+        let ev = evidence.unwrap_or("");
+        crate::gate::require_substantive("evidence", ev, "what you checked to reach this verdict")?;
+        ev.to_string()
+    };
+    Ok((marker, res, edge_note))
+}
+
+fn validation_mark_next_step(res: &ValidationResult) -> String {
+    match res {
+        ValidationResult::Passed => "`loom next --mode validate` for the next proof".to_string(),
+        ValidationResult::Failed => {
+            "flag the owner: `loom intent mark <intent> --lifecycle needs_change --reason \"<validation failure>\"`".to_string()
+        }
+        _ => {
+            "out of the validator queue until re-marked; visible in `loom validation list` / `loom report`".to_string()
+        }
+    }
+}
+
+fn validation_mark_edge_status(res: &ValidationResult) -> &'static str {
+    match res {
+        ValidationResult::Passed => "passing",
+        ValidationResult::Failed => "failing",
+        _ => "uninspected",
+    }
+}
+
+fn run_mark_with_sqlite(
+    root: &std::path::Path,
+    _db_file: &std::path::Path,
+    id: String,
+    result: String,
+    evidence: Option<String>,
+    reason: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    let (marker, res, edge_note) =
+        prepare_mark_result(&result, evidence.as_deref(), reason.as_deref())?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let (vid, n) = store.mark_validation_result(
+        &id,
+        &res.to_string(),
+        validation_mark_edge_status(&res),
+        &edge_note,
+        &marker,
+        &now,
+    )?;
+    let next_step = validation_mark_next_step(&res);
+    if printer.json {
+        let mut payload = serde_json::json!({
+            "status": "ok", "validation_id": vid, "result": res.to_string(),
+            "intents_updated": n, "note": edge_note,
+        });
+        if n == 0 {
+            payload["hint"] = serde_json::Value::String(format!(
+                "Not linked yet: `loom edge validates {vid} <intent-id>`."
+            ));
+        }
+        printer.print_json(&crate::output::with_read_anchor(
+            payload, &store, &next_step,
+        )?);
+    } else {
+        println!("✓ Validation {vid} marked {res}  ({n} linked intent(s) updated)");
+        if n == 0 {
+            println!("  → Not linked yet: `loom edge validates {vid} <intent-id>`.");
+        }
+        let snapshot = store.query_snapshot()?;
+        let graph_state = store.graph_state(&snapshot)?;
+        println!("  → Next: {next_step}");
+        println!("  {}", crate::output::fmt_pulse(&graph_state));
+    }
+    Ok(())
+}
+
+fn run_update_with_sqlite(
+    root: &std::path::Path,
+    id: String,
+    command: Option<String>,
+    description: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    crate::gate::acting_in_lane(
+        "update a validation definition",
+        &[
+            crate::db::schema::role::BUILDER,
+            crate::db::schema::role::VALIDATOR,
+        ],
+        None,
+    )?;
+    if command.is_none() && description.is_none() {
+        anyhow::bail!("Nothing to update — pass --command and/or --description.");
+    }
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let (vid, command_changed, reset_edges) =
+        store.update_validation_definition(&id, command.as_deref(), description.as_deref())?;
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok", "validation_id": vid,
+            "command_changed": command_changed,
+            "proof_reset": command_changed,
+            "intents_reset": reset_edges,
+        }));
+    } else {
+        println!("✓ Validation {vid} updated.");
+        if command_changed {
+            println!("  Command changed → proof reset (last_result=not_run, {reset_edges} VALIDATES edge(s) → uninspected).");
+            println!("  → Re-run it: `loom validate <intent>` (or `loom validation mark` for manual proofs).");
+        }
+    }
+    Ok(())
+}
+
+fn run_delete_with_sqlite(root: &std::path::Path, id: String, printer: &Printer) -> Result<()> {
+    crate::gate::acting_in_lane(
+        "delete a validation",
+        &[
+            crate::db::schema::role::BUILDER,
+            crate::db::schema::role::VALIDATOR,
+        ],
+        None,
+    )?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let vid = store.delete_validation(&id)?;
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok", "id": vid, "deleted": true,
+            "message": "Validation and its VALIDATES edges removed. Intents that lost \
+                        their only proof will resurface in `loom next --mode validate`.",
+        }));
+    } else {
+        println!("✓ Validation {vid} deleted (with its VALIDATES edges).");
+        println!("  Intents that lost their only proof resurface in `loom next --mode validate`.");
+    }
+    Ok(())
+}
+
+fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer) -> Result<()> {
+    let mut validations = db.query_snapshot()?.validations;
+    let total = crate::output::apply_limit(&mut validations, limit);
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "validations": validations,
+            "total":       total,
+            "truncated":   validations.len() < total,
+        }));
+    } else if validations.is_empty() {
+        println!("(no validations defined)");
+    } else {
+        println!(
+            "  {result:<8}  {vtype:<14}  {name:<40}  id",
+            result = "RESULT",
+            vtype = "TYPE",
+            name = "NAME",
+        );
+        println!("  {}", "-".repeat(100));
+        for v in &validations {
+            println!(
+                "  [{result:<8}]  {vtype:<14}  {name:<40}  {id}",
+                result = v.last_result,
+                vtype = v.validation_type,
+                name = v.name,
+                id = v.id,
+            );
+        }
+        if let Some(m) =
+            crate::output::more_marker(total, validations.len(), "`loom validation list --limit 0`")
+        {
+            println!("  {m}");
+        }
+    }
+    Ok(())
+}
+
+fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer) -> Result<()> {
+    let validations = db.query_snapshot()?.validations;
+    // Same addressing as every other subcommand: id, exact name, or unique
+    // name fragment. Preserve the existing command behavior: a failed resolve
+    // falls back to exact-id lookup before reporting not found.
+    let id = resolve_validation_from_list(&validations, &id).unwrap_or(id);
+    let Some(v) = validations.iter().find(|validation| validation.id == id) else {
+        anyhow::bail!(
+            "Validation '{}' not found.\nRun `loom validation list` to see available validations.",
+            id
+        );
+    };
+    if printer.json {
+        printer.print_json(v);
+    } else {
+        println!("── Validation ─────────────────────────────────────────────────────");
+        println!("  id:          {}", v.id);
+        println!("  name:        {}", v.name);
+        println!("  type:        {}", v.validation_type);
+        println!("  command:     {}", v.command);
+        println!("  last_result: {}", v.last_result);
+        println!(
+            "  last_run:    {}",
+            if v.last_run.is_empty() {
+                "(never)"
+            } else {
+                &v.last_run
+            }
+        );
+        println!("  description: {}", v.description);
+    }
+    Ok(())
+}
+
+fn resolve_validation_from_list(validations: &[Validation], key: &str) -> Result<String> {
+    if validations.iter().any(|validation| validation.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = validations
+        .iter()
+        .filter(|validation| validation.name.to_lowercase() == kl)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let subs: Vec<_> = validations
+        .iter()
+        .filter(|validation| validation.name.to_lowercase().contains(&kl))
+        .collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No validation matches '{}' (by id, name, or fragment). Run `loom validation list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — matches {} validations. Use the id (`loom validation list`).",
+            key,
+            subs.len()
+        ),
+    }
 }

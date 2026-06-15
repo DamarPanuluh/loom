@@ -2,12 +2,9 @@ use serde::Serialize;
 
 pub struct Printer {
     pub json: bool,
-    /// When `Some`, JSON output is APPENDED to this buffer instead of being
-    /// `println!`-ed to process stdout. The `loom serve` daemon uses this to
-    /// capture a command's rendered output per-request and ship it back over
-    /// the socket — process stdout can't be captured per-connection without
-    /// racing concurrent threads. `None` (the only state in the direct path)
-    /// is byte-identical to printing straight to stdout.
+    /// When `Some`, JSON output is appended to this buffer instead of being
+    /// printed to process stdout. Normal CLI execution leaves this as `None`;
+    /// unit tests use capture mode for exact JSON assertions.
     capture: Option<std::cell::RefCell<String>>,
 }
 
@@ -20,9 +17,9 @@ impl Printer {
         }
     }
 
-    /// Capturing mode (daemon-only): every stdout write in JSON mode is folded
-    /// into an internal buffer instead of hitting the terminal. Read it back
-    /// with [`Printer::captured`].
+    /// Capturing mode for tests: every stdout write in JSON mode is folded into
+    /// an internal buffer instead of hitting the terminal.
+    #[cfg(test)]
     pub fn capturing(json: bool) -> Self {
         Self {
             json,
@@ -30,8 +27,8 @@ impl Printer {
         }
     }
 
-    /// The captured buffer (daemon-only). `None` for a direct-mode printer —
-    /// nothing was captured because everything went straight to stdout.
+    /// The captured buffer. `None` for a direct-mode printer.
+    #[cfg(test)]
     pub fn captured(&self) -> Option<String> {
         self.capture.as_ref().map(|c| c.borrow().clone())
     }
@@ -253,31 +250,21 @@ pub fn apply_limit<T>(items: &mut Vec<T>, limit: usize) -> usize {
     total
 }
 
-/// Human-mode mutation footer: the next command + the two-line pulse.
-/// Call as the LAST lines of a mutating command's human branch.
-pub fn print_anchor(db: &dyn crate::db::LoomDb, next_step: &str) -> anyhow::Result<()> {
-    let gs = crate::db::queries::graph_state(db)?;
-    println!("  → Next: {next_step}");
-    println!("  {}", fmt_pulse(&gs));
-    Ok(())
-}
-
-/// JSON-mode mutation anchor: merge `next_step` + `graph_state` into the
-/// command's payload (same data the human branch prints — parity by
-/// construction). Non-object payloads are returned untouched.
-pub fn with_anchor(
+/// JSON-mode mutation anchor for backend-neutral repositories.
+pub fn with_read_anchor(
     mut v: serde_json::Value,
-    db: &dyn crate::db::LoomDb,
+    db: &dyn crate::db::GraphReadRepository,
     next_step: &str,
 ) -> anyhow::Result<serde_json::Value> {
     if let Some(obj) = v.as_object_mut() {
+        let snapshot = db.query_snapshot()?;
         obj.insert(
             "next_step".into(),
             serde_json::Value::String(next_step.to_string()),
         );
         obj.insert(
             "graph_state".into(),
-            pulse_json(&crate::db::queries::graph_state(db)?),
+            pulse_json(&db.graph_state(&snapshot)?),
         );
     }
     Ok(v)
@@ -502,7 +489,53 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::LoomDb;
+    use crate::db::queries::{Coverage360, CoverageAxis, GraphState};
+
+    fn graph_state_fixture(name: &str) -> GraphState {
+        GraphState {
+            version: crate::db::schema::SCHEMA_VERSION.to_string(),
+            graph_id: "test-graph".to_string(),
+            graph_name: name.to_string(),
+            custody: "owned".to_string(),
+            intents: 0,
+            relates_to_edges: 0,
+            implements_edges: 0,
+            total_edges: 0,
+            unresolved_edges: 0,
+            unexplored_pairs: 0,
+            codefiles: 0,
+            validations: 0,
+            notes: 0,
+            last_synced: String::new(),
+            vertically_complete: true,
+            horizontally_explored: true,
+            phase: "seed".to_string(),
+            next_action: String::new(),
+            coverage: Coverage360 {
+                grounded_files: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+                realized_leaves: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+                explored_pairs: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+                measured_pairs: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+                proven_leaves: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+            },
+            note_hygiene: String::new(),
+        }
+    }
 
     #[test]
     fn fmt_intent_renders_refs_and_tags() {
@@ -563,16 +596,16 @@ mod tests {
 
     #[test]
     fn anchor_json_carries_next_step_and_graph_state() {
-        let db = crate::db::GrafeoDb::in_memory();
-        db.execute(&crate::db::schema::insert_meta(
+        let db = crate::db::sqlite::SqliteGraphStore::in_memory().unwrap();
+        db.initialize(
             crate::db::schema::SCHEMA_VERSION,
             "t",
-            "g",
             "anchor",
             "owned",
-        ))
+            "t",
+        )
         .unwrap();
-        let v = with_anchor(serde_json::json!({"status": "ok"}), &db, "`loom next`").unwrap();
+        let v = with_read_anchor(serde_json::json!({"status": "ok"}), &db, "`loom next`").unwrap();
         assert_eq!(v["status"], "ok", "existing fields preserved");
         assert_eq!(v["next_step"], "`loom next`");
         assert!(
@@ -580,22 +613,13 @@ mod tests {
             "the pulse travels in json: {v}"
         );
         // Non-object payloads pass through untouched (lists wrap themselves).
-        let arr = with_anchor(serde_json::json!([1, 2]), &db, "x").unwrap();
+        let arr = with_read_anchor(serde_json::json!([1, 2]), &db, "x").unwrap();
         assert!(arr.is_array());
     }
 
     #[test]
     fn pulse_is_a_surface_not_the_full_state() {
-        let db = crate::db::GrafeoDb::in_memory();
-        db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION,
-            "t",
-            "g",
-            "pulse",
-            "owned",
-        ))
-        .unwrap();
-        let gs = crate::db::queries::graph_state(&db).unwrap();
+        let gs = graph_state_fixture("pulse");
         let p = pulse_json(&gs);
         // Everything the next decision needs travels…
         for k in [
@@ -642,7 +666,6 @@ mod tests {
 
     #[test]
     fn coverage_line_never_shows_a_vacuous_full() {
-        use crate::db::queries::{Coverage360, CoverageAxis};
         let c = Coverage360 {
             grounded_files: CoverageAxis {
                 covered: 5,
@@ -686,16 +709,7 @@ mod tests {
 
     #[test]
     fn fmt_pulse_renders_both_completeness_axes_and_hygiene() {
-        let db = crate::db::GrafeoDb::in_memory();
-        db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION,
-            "t",
-            "g",
-            "pulse",
-            "owned",
-        ))
-        .unwrap();
-        let mut gs = crate::db::queries::graph_state(&db).unwrap();
+        let mut gs = graph_state_fixture("pulse");
         gs.vertically_complete = false;
         gs.horizontally_explored = false;
         gs.note_hygiene = String::new();
@@ -732,16 +746,7 @@ mod tests {
     fn human_pulse_and_json_pulse_agree() {
         // The PARITY invariant: whatever the human footer shows, the json pulse
         // an orchestrated --json agent reads must carry identically.
-        let db = crate::db::GrafeoDb::in_memory();
-        db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION,
-            "t",
-            "g",
-            "parity",
-            "owned",
-        ))
-        .unwrap();
-        let gs = crate::db::queries::graph_state(&db).unwrap();
+        let gs = graph_state_fixture("parity");
         let human = fmt_pulse(&gs);
         let json = pulse_json(&gs);
         assert!(

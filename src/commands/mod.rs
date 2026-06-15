@@ -38,119 +38,6 @@ pub mod validate;
 pub mod validation;
 pub mod vocab;
 
-/// The outcome of a `dispatch_with_db` attempt — the daemon's routing verdict.
-/// `Ran` means the command is servable and was executed against the held
-/// handle (its `Result` is the command's own outcome). `NotServable` is the
-/// sentinel the daemon turns into a `fallback` reply: the client then runs the
-/// command via the ordinary direct-open `dispatch`. Graph-releasing commands
-/// (validate, saga) and lifecycle commands that open their own graph (init,
-/// migrate's path, …) and anything lacking a `run_with_db` are NotServable.
-pub enum DispatchOutcome {
-    Ran(Result<()>),
-    NotServable,
-}
-
-/// Daemon dispatch: run a command against an ALREADY-OPEN shared handle,
-/// routing each servable command to its `*::run_with_db` variant (the body
-/// that does NOT open its own graph). Mirrors `dispatch`'s match arm-for-arm
-/// for every command that has a `run_with_db`; everything else returns
-/// `NotServable` so the client falls back to direct dispatch.
-///
-/// `--graph` is honoured here too (the daemon process resolves its own root,
-/// but a client may still carry the flag); `cli.json` is guaranteed true by
-/// the caller (the daemon only serves JSON requests).
-pub fn dispatch_with_db(
-    db: &crate::db::GrafeoDb,
-    root: &std::path::Path,
-    cli: Cli,
-    printer: &Printer,
-) -> DispatchOutcome {
-    if let Some(g) = &cli.graph {
-        crate::db::set_explicit_graph(g);
-    }
-    let command = match cli.command {
-        // Bare `loom` (orientation) opens no graph — safe and cheap to serve.
-        Some(c) => c,
-        None => return DispatchOutcome::Ran(orient(printer)),
-    };
-    use DispatchOutcome::{NotServable, Ran};
-    match command {
-        // ---- Servable: every command with a `run_with_db` body --------------
-        Command::Status => Ran(status::run_with_db(db, root, printer)),
-        Command::Intent { subcommand } => Ran(intent::run_with_db(db, root, subcommand, printer)),
-        Command::Edge { subcommand } => Ran(edge::run_with_db(db, root, subcommand, printer)),
-        Command::Next {
-            mode,
-            all,
-            take,
-            compact,
-        } => Ran(next::run_with_db(
-            db, root, &mode, all, take, compact, printer,
-        )),
-        Command::Cluster { intent_id } => Ran(cluster::run_with_db(db, root, &intent_id, printer)),
-        Command::Rule { subcommand } => Ran(rule::run_with_db(db, root, subcommand, printer)),
-        Command::Codefile { subcommand } => {
-            Ran(codefile::run_with_db(db, root, subcommand, printer))
-        }
-        Command::Validation { subcommand } => {
-            Ran(validation::run_with_db(db, root, subcommand, printer))
-        }
-        Command::Hypothesis { subcommand } => {
-            Ran(hypothesis::run_with_db(db, root, subcommand, printer))
-        }
-        Command::Note { subcommand } => Ran(note::run_with_db(db, root, subcommand, printer)),
-        Command::Vocab { subcommand } => Ran(vocab::run_with_db(db, root, subcommand, printer)),
-        Command::Layer { subcommand } => Ran(layer::run_inner_with_db(
-            db, root, subcommand, printer, false,
-        )),
-        Command::Persona { subcommand } => Ran(persona::run_with_db(db, root, subcommand, printer)),
-        Command::Sync { path } => Ran(sync::run_with_db(db, root, &path, printer)),
-        Command::Report => Ran(report::run_with_db(db, root, printer)),
-        Command::Batch { file } => Ran(batch::run_with_db(db, root, &file, printer)),
-        Command::Doctor => Ran(doctor::run_with_db(db, root, printer)),
-        Command::Migrate => Ran(migrate::run_with_db(db, root, printer)),
-        Command::Find { query, limit } => Ran(find::run_with_db(db, root, &query, limit, printer)),
-        Command::Door { utterance, limit } => {
-            Ran(door::run_with_db(db, root, &utterance, limit, printer))
-        }
-        Command::Session => Ran(session::run_with_db(db, root, printer)),
-        Command::Hotspots { limit } => Ran(hotspots::run_with_db(db, root, limit, printer)),
-        Command::Smells { limit } => Ran(smells::run_with_db(db, root, limit, printer)),
-        Command::Coverage => Ran(coverage::run_with_db(db, root, printer)),
-        Command::Ignore { subcommand } => Ran(ignore::run_with_db(db, root, subcommand, printer)),
-        Command::Delegate { subcommand } => {
-            Ran(delegate::run_with_db(db, root, subcommand, printer))
-        }
-        Command::Export { path, out, check } => {
-            let out = path
-                .or(out)
-                .unwrap_or_else(|| "loom.graph.json".to_string());
-            Ran(export::run_with_db(db, root, &out, check, printer))
-        }
-        Command::Import { file, as_planned } => {
-            Ran(import::run_with_db(db, root, &file, as_planned, printer))
-        }
-
-        // ---- NOT servable: fall back to direct dispatch ---------------------
-        // Graph-releasing (drop the handle mid-run to free the lock for an
-        // external process that may itself invoke loom) — a held-open handle
-        // would deadlock:
-        Command::Validate { .. } => NotServable,
-        Command::Saga { .. } => NotServable,
-        // Open/own their own graph lifecycle or read no held graph at all:
-        Command::Init { .. } => NotServable,
-        Command::Guide { .. } => NotServable,
-        Command::Schema => NotServable,
-        Command::Domain { .. } => NotServable, // deprecated alias; runs direct
-        Command::Detect => NotServable,
-        // The daemon never serves a `serve` request (the client routes `serve`
-        // before the daemon check) — but be exhaustive: fall back if one arrives.
-        Command::Serve { .. } => NotServable,
-        // An unrecognized token: let direct dispatch teach (it bails with help).
-        Command::Unknown(_) => NotServable,
-    }
-}
-
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
     if let Some(g) = &cli.graph {
@@ -195,8 +82,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
-        Command::Smells      { limit }      => smells::run(limit, &printer),
-        Command::Coverage                   => coverage::run(&printer),
+        Command::Smells      { limit, summary } => smells::run(limit, summary, &printer),
+        Command::Coverage    { summary }        => coverage::run(summary, &printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
         Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
@@ -205,7 +92,9 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             export::run(&out, check, &printer)
         }
         Command::Import      { file, as_planned } => import::run(&file, as_planned, &printer),
-        Command::Serve       { idle_secs }  => crate::serve::serve(&crate::db::resolve_root()?, idle_secs),
+        Command::Serve       { .. }         => anyhow::bail!(
+            "`loom serve` was retired with the SQLite backend. Commands now open `.loom/graph.sqlite` directly."
+        ),
         Command::Unknown(tokens) => teach_unknown(&tokens),
     }
 }
@@ -349,8 +238,8 @@ fn orient(printer: &Printer) -> Result<()> {
             "tool": "loom",
             "what": "Externalized, falsifiable memory for understanding and cleaning up a codebase.",
             "start_here": [
-                "loom guide      — the full driving protocol (read first)",
-                "loom schema     — the data model (node/edge types, states, vocabularies)",
+                "loom guide      — the full driving protocol, including lifecycle transitions (read first)",
+                "loom schema     — the data model (node/edge types, lifecycle/states, vocabularies)",
                 "loom status     — where the graph is now + the recommended next action",
                 "loom next       — get the next thing to inspect",
                 "loom next --all — the closeout view: every role queue + gaps in one list",
@@ -366,8 +255,8 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("loom — externalized, falsifiable memory for understanding/cleaning a codebase.");
         println!();
         println!("Start here:");
-        println!("  loom guide       learn the loop (read this first)");
-        println!("  loom schema      the data model");
+        println!("  loom guide       learn the loop and lifecycle transitions (read this first)");
+        println!("  loom schema      the data model, lifecycle, and states");
         println!("  loom status      where am I? what next?");
         println!("  loom next        get the next thing to inspect");
         println!("  loom next --all  closeout: every role queue + gaps in one list");
@@ -379,108 +268,4 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("Every command has --help; add --json for machine-readable output.");
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::db::GrafeoDb;
-    use std::path::Path;
-
-    /// Run a servable command through the REAL dispatch path with a capturing
-    /// printer and return its parsed --json payload.
-    fn run_json(db: &GrafeoDb, args: &[&str]) -> serde_json::Value {
-        let argv: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-        let cli = Cli::try_parse_from_argv(&argv).expect("argv parses");
-        let p = Printer::capturing(true);
-        match dispatch_with_db(db, Path::new("."), cli, &p) {
-            DispatchOutcome::Ran(r) => r.unwrap_or_else(|e| panic!("{args:?} errored: {e:?}")),
-            DispatchOutcome::NotServable => panic!("{args:?} unexpectedly NotServable"),
-        }
-        let out = p.captured().expect("captured json");
-        serde_json::from_str(&out)
-            .unwrap_or_else(|e| panic!("invalid json for {args:?}: {e}\n{out}"))
-    }
-
-    /// Just-In-Time guidance present: a `next_step` (full anchor) or `next_steps`
-    /// (light anchor on a construction step) — output contract invariant 1.
-    fn anchored(v: &serde_json::Value) -> bool {
-        v.as_object()
-            .map(|o| o.keys().any(|k| k.starts_with("next_step")))
-            .unwrap_or(false)
-    }
-
-    /// JUST-IN-TIME RATCHET (leg 2 of teaching completeness): every servable
-    /// MUTATION surfaces the next move in its --json payload, so a driving LLM
-    /// never needs a separate `loom status` to know where it stands. Drives the
-    /// real dispatch path across the mutation families (lifecycle construction,
-    /// confirmation, evolution, proof declaration); a command that forgets to
-    /// anchor fails here. (Pure-annotation `note add` is intentionally exempt —
-    /// "continue" is not useful guidance; grounding-family anchors are disk-
-    /// dependent and verified separately.)
-    #[test]
-    fn every_mutation_anchors_just_in_time() {
-        let db = GrafeoDb::in_memory();
-        let add = run_json(
-            &db,
-            &[
-                "intent",
-                "add",
-                "--name",
-                "checkout endpoint",
-                "--level",
-                "feature",
-                "--description",
-                "accepts a cart and creates an order",
-                "--json",
-            ],
-        );
-        assert!(anchored(&add), "intent add must anchor: {add}");
-        let id = add["id"].as_str().expect("intent id").to_string();
-
-        for args in [
-            vec!["intent", "confirm", id.as_str(), "--json"],
-            vec![
-                "intent",
-                "mark",
-                id.as_str(),
-                "--lifecycle",
-                "needs_change",
-                "--reason",
-                "known hotspot to revisit later",
-                "--json",
-            ],
-            vec![
-                "intent",
-                "update",
-                id.as_str(),
-                "--boundary",
-                "inbound",
-                "--reason",
-                "this is the public order-create surface",
-                "--json",
-            ],
-            vec![
-                "validation",
-                "add",
-                "--intent",
-                id.as_str(),
-                "--name",
-                "checkout-smoke",
-                "--type",
-                "test",
-                "--command",
-                "true",
-                "--description",
-                "smoke test for the checkout endpoint",
-                "--json",
-            ],
-        ] {
-            let v = run_json(&db, &args);
-            assert!(
-                anchored(&v),
-                "mutation {args:?} must anchor Just-In-Time: {v}"
-            );
-        }
-    }
 }

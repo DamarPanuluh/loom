@@ -1,24 +1,15 @@
 //! `loom find` — keyword search over the semantic plane (the "ask the map"
 //! entry point: intent names + descriptions, BM25-ranked).
 //!
-//! Scoring runs in Rust, NOT in the engine. Grafeo 0.5.x ships a BM25 text
-//! index (`CREATE INDEX … USING TEXT` + `CALL grafeo.search.text`), but the
-//! procedure returns INTERNAL node ids that cannot be joined back to node
-//! properties through GQL — the trailing `MATCH … WHERE id(n) = node_id`
-//! parses, "succeeds", and is silently dropped (probed June 2026; same
-//! reliability class as relationship-property matching, see the project
-//! memory `grafeo-relationship-matching`). The corpus is hundreds of
-//! LLM-written intents, so a scan scores in microseconds, works on graphs
-//! created before this command existed, and is deterministic by construction.
+//! Scoring runs in Rust over typed SQLite rows, not in a database-specific
+//! text index. The corpus is hundreds of LLM-written intents, so a scan scores
+//! in microseconds, works on every imported graph, and is deterministic by
+//! construction.
 
 use anyhow::Result;
 use serde::Serialize;
 
-use super::hierarchy::list_all_hierarchy;
-use super::implements::list_implements_for_intent;
-use super::intent::list_active_intents;
-use crate::db::LoomDb;
-use crate::types::Intent;
+use crate::types::{Intent, QualityRule, Validation, VocabTerm};
 
 /// BM25 constants — the standard defaults; nothing about this corpus argues
 /// for tuning them.
@@ -29,9 +20,7 @@ const B: f64 = 0.75;
 const NAME_WEIGHT: f64 = 2.0;
 const DESC_WEIGHT: f64 = 1.0;
 
-/// Mirrors grafeo's SimpleTokenizer (lowercase, split on non-alphanumeric,
-/// drop stop words and single chars) so a future switch to the engine index
-/// would not change what matches.
+/// Lowercase, split on non-alphanumeric, drop stop words and single chars.
 const STOPWORDS: &[&str] = &[
     "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "has", "have", "in",
     "is", "it", "its", "no", "not", "of", "on", "or", "that", "the", "this", "to", "was", "were",
@@ -66,18 +55,19 @@ pub struct FindHit {
     pub stale_edges: usize,
 }
 
-/// BM25 over active intents' names and descriptions (+ domain/layer, folded
-/// into the description field). Returns at most `limit` hits with score > 0,
-/// ranked descending (ties break on name for deterministic output), PLUS the
-/// pre-truncation match count so callers can signal "showing N of M" rather
-/// than letting a capped list read as exhaustive.
-pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<(Vec<FindHit>, usize)> {
+pub(crate) fn rank_intents_from_parts(
+    intents: &[Intent],
+    hierarchy: &[(String, String)],
+    mut groundings_for_intent: impl FnMut(&str) -> Result<Vec<(String, String)>>,
+    mut stale_count_for_intent: impl FnMut(&str) -> Result<usize>,
+    query: &str,
+    limit: usize,
+) -> Result<(Vec<FindHit>, usize)> {
     let terms = tokenize(query);
     if terms.is_empty() {
         return Ok((Vec::new(), 0));
     }
 
-    let intents = list_active_intents(db)?;
     let n = intents.len();
     if n == 0 {
         return Ok((Vec::new(), 0));
@@ -147,10 +137,8 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<(Vec<F
     scored.truncate(limit);
 
     // Hydrate only the winners — context is fetched for ≤ limit intents.
-    let parent_of: std::collections::HashMap<String, String> = list_all_hierarchy(db)?
-        .into_iter()
-        .map(|(p, c)| (c, p))
-        .collect();
+    let parent_of: std::collections::HashMap<String, String> =
+        hierarchy.iter().cloned().map(|(p, c)| (c, p)).collect();
     let name_of: std::collections::HashMap<&str, &str> = intents
         .iter()
         .map(|i| (i.id.as_str(), i.name.as_str()))
@@ -173,12 +161,9 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<(Vec<F
         }
         chain.reverse();
 
-        let groundings = list_implements_for_intent(db, &intent.id)?
-            .into_iter()
-            .map(|e| (e.codefile_path, e.locator))
-            .collect();
-
-        let stale_edges = stale_edge_count(db, &intent.id)?;
+        let mut groundings = groundings_for_intent(&intent.id)?;
+        groundings.sort();
+        let stale_edges = stale_count_for_intent(&intent.id)?;
 
         hits.push(FindHit {
             intent: intent.clone(),
@@ -189,29 +174,6 @@ pub fn find_intents(db: &dyn LoomDb, query: &str, limit: usize) -> Result<(Vec<F
         });
     }
     Ok((hits, match_total))
-}
-
-/// How many claims touching this intent went stale (needs_reverification)
-/// across RELATES_TO, GOVERNS, VALIDATES, and IMPLEMENTS.
-fn stale_edge_count(db: &dyn LoomDb, intent_id: &str) -> Result<usize> {
-    const STALE: &str = "needs_reverification";
-    let relates = super::relates_to::edges_for_intent(db, intent_id)?
-        .iter()
-        .filter(|e| e.inspection_status == STALE)
-        .count();
-    let governs = super::governs::list_governs_for_intent(db, intent_id)?
-        .iter()
-        .filter(|e| e.inspection_status == STALE)
-        .count();
-    let validates = super::validates::list_validates_for_intent(db, intent_id)?
-        .iter()
-        .filter(|e| e.inspection_status == STALE)
-        .count();
-    let implements = super::implements::list_implements_for_intent(db, intent_id)?
-        .iter()
-        .filter(|e| e.inspection_status == STALE)
-        .count();
-    Ok(relates + governs + validates + implements)
 }
 
 // ---------------------------------------------------------------------------
@@ -242,7 +204,13 @@ pub struct DoorMatches {
     pub rules: Vec<PlaneHit>,
 }
 
-pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMatches> {
+pub(crate) fn door_matches_from_planes(
+    vocab_terms: Vec<VocabTerm>,
+    validations: Vec<Validation>,
+    rules: Vec<QualityRule>,
+    query: &str,
+    limit: usize,
+) -> DoorMatches {
     let terms = tokenize(query);
     let overlap = |text: &str| -> Vec<String> {
         if terms.is_empty() {
@@ -265,7 +233,7 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
     };
 
     let vocab = rank(
-        super::vocab::list_vocab_terms(db)?
+        vocab_terms
             .into_iter()
             .filter_map(|t| {
                 let matched = overlap(&format!("{} {}", t.name, t.description));
@@ -280,7 +248,7 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
     );
 
     let sagas = rank(
-        super::validation::list_validations(db)?
+        validations
             .into_iter()
             .filter(|v| v.validation_type == "saga")
             .filter_map(|v| {
@@ -296,7 +264,7 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
     );
 
     let rules = rank(
-        super::rule::list_rules(db)?
+        rules
             .into_iter()
             .filter_map(|r| {
                 let matched = overlap(&format!("{} {}", r.name, r.description));
@@ -310,9 +278,9 @@ pub fn door_matches(db: &dyn LoomDb, query: &str, limit: usize) -> Result<DoorMa
             .collect(),
     );
 
-    Ok(DoorMatches {
+    DoorMatches {
         vocab,
         sagas,
         rules,
-    })
+    }
 }

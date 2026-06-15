@@ -38,13 +38,8 @@
 use anyhow::Result;
 use std::io::Read;
 
-use crate::db::queries::{
-    get_governs_between, get_or_create_relates_to, insert_governs, resolve_intent, resolve_rule,
-    update_governs_verdict, update_relates_to_ground, update_relates_to_independent,
-    update_relates_to_issue,
-};
+use crate::db::ensure_initialized;
 use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
 use crate::gate;
 use crate::output::Printer;
 
@@ -67,13 +62,13 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     };
 
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, &input, printer)
+    ensure_initialized(&cwd)?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    run_with_sqlite(&mut store, &cwd, &input, printer)
 }
 
-pub fn run_with_db(
-    db: &GrafeoDb,
+fn run_with_sqlite(
+    store: &mut crate::db::sqlite::SqliteGraphStore,
     _root: &std::path::Path,
     input: &str,
     printer: &Printer,
@@ -88,10 +83,7 @@ pub fn run_with_db(
             continue;
         }
         let n = lineno + 1;
-        // Per-LINE transaction (not per batch): the contract is "continue past
-        // failed lines", so the batch is never all-or-nothing — but one line's
-        // verdict and its transition note must land together or not at all.
-        match crate::db::with_transaction(db, || apply_line(db, line)) {
+        match apply_line_sqlite(store, line) {
             Ok(desc) => {
                 ok += 1;
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
@@ -105,12 +97,8 @@ pub fn run_with_db(
         }
     }
 
-    // Anchor the drain (invariant 1): the bulk path is exactly where
-    // `loom next --take` funnels agents, so a 50-line cross-phase drain must
-    // hand back fresh state + the next move — never leave the agent to call
-    // `loom status` to learn where it now stands. Fire BEFORE the failed>0
-    // bail so a success-bearing partial still anchors.
-    let gs = crate::db::queries::graph_state(db)?;
+    let snapshot = store.query_snapshot()?;
+    let gs = store.graph_state(&snapshot)?;
     let next_step = if failed == 0 {
         gs.next_action.clone()
     } else {
@@ -153,9 +141,10 @@ pub fn run_with_db(
     Ok(())
 }
 
-/// Apply one JSONL op through the SAME query functions and gates the
-/// single-shot commands use. Returns a one-line description of what happened.
-fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
+fn apply_line_sqlite(
+    store: &mut crate::db::sqlite::SqliteGraphStore,
+    line: &str,
+) -> Result<String> {
     let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
         anyhow::anyhow!(
             "not valid JSON: {e} — each line must be ONE JSON object: {{\"op\": \"<name>\", …}}"
@@ -176,18 +165,24 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 &[role::ANALYZER, role::FIXER],
                 None,
             )?;
-            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let snapshot = store.query_snapshot()?;
+            let a = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "a")?,
+            )?;
+            let b = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "b")?,
+            )?;
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_confidence(confidence)?;
-            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
+            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
             let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
             gate::require_substantive(
                 "criterion",
                 criterion,
                 "the falsifiable coexistence criterion this edge was checked against",
             )?;
-            // Optional on ground: what was found + file/line anchors.
             let evidence = v.get("evidence").and_then(|x| x.as_str()).unwrap_or("");
             if !evidence.trim().is_empty() {
                 gate::require_substantive(
@@ -197,8 +192,7 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 )?;
             }
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            update_relates_to_ground(
-                db,
+            store.update_relates_to_ground(
                 &edge.from_id,
                 &edge.to_id,
                 criterion,
@@ -215,22 +209,28 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
                 &[role::ANALYZER, role::FIXER],
                 None,
             )?;
-            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let snapshot = store.query_snapshot()?;
+            let a = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "a")?,
+            )?;
+            let b = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "b")?,
+            )?;
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
+            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
             let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
             gate::require_substantive(
                 "criterion",
                 criterion,
                 "the criterion the code was checked against",
             )?;
-            update_relates_to_issue(
-                db,
+            store.update_relates_to_issue(
                 &edge.from_id,
                 &edge.to_id,
                 criterion,
@@ -244,28 +244,43 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
         "independent" => {
             let by =
                 gate::acting_in_lane("confirm two intents independent", &[role::ANALYZER], None)?;
-            let a = resolve_intent(db, str_field(&v, op, "a")?)?;
-            let b = resolve_intent(db, str_field(&v, op, "b")?)?;
+            let snapshot = store.query_snapshot()?;
+            let a = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "a")?,
+            )?;
+            let b = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "b")?,
+            )?;
             let notes = str_field(&v, op, "notes")?;
             gate::require_substantive(
                 "notes",
                 notes,
                 "why these two intents have no meaningful relationship",
             )?;
-            let edge = get_or_create_relates_to(db, &a, &b, &now)?;
-            update_relates_to_independent(db, &edge.from_id, &edge.to_id, notes, &by, &now)?;
+            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
+            store.update_relates_to_independent(&edge.from_id, &edge.to_id, notes, &by, &now)?;
             Ok(format!("independent {} × {}", edge.from_name, edge.to_name))
         }
         "rule_verdict" => {
             let by = gate::acting_in_lane("record a GOVERNS verdict", &[role::QUALITY], None)?;
-            let rule = resolve_rule(db, str_field(&v, op, "rule")?)?;
-            let intent = resolve_intent(db, str_field(&v, op, "intent")?)?;
+            let rule = store.resolve_rule(str_field(&v, op, "rule")?)?;
+            let snapshot = store.query_snapshot()?;
+            let intent = crate::db::queries::resolve_intent_from_snapshot(
+                &snapshot,
+                str_field(&v, op, "intent")?,
+            )?;
             let status = str_field(&v, op, "status")?;
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!("invalid status '{status}' (passing | failing | independent)");
             }
-            let existing = get_governs_between(db, &rule, &intent)?;
-            let stored_criterion = existing.map(|g| g.criterion).unwrap_or_default();
+            let stored_criterion = store
+                .list_governs_for_intent(&intent)?
+                .into_iter()
+                .find(|edge| edge.rule_id == rule)
+                .map(|edge| edge.criterion)
+                .unwrap_or_default();
             let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
@@ -285,15 +300,13 @@ fn apply_line(db: &GrafeoDb, line: &str) -> Result<String> {
             )?;
             gate::require_confidence(confidence)?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            // The verdict IS the measurement — create the edge if absent,
-            // exactly like the single-shot `loom rule verdict`.
-            let found = update_governs_verdict(
-                db, &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
+            let found = store.update_governs_verdict(
+                &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
             )?;
             if !found {
-                insert_governs(db, &rule, &intent, criterion, &now)?;
-                update_governs_verdict(
-                    db, &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
+                store.insert_governs(&rule, &intent, criterion, &now)?;
+                store.update_governs_verdict(
+                    &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
                 )?;
             }
             Ok(format!("rule_verdict {status}: {rule} → {intent}"))

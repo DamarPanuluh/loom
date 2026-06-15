@@ -11,14 +11,9 @@
 //! silently, which is worse than an honest new term.
 
 use anyhow::Result;
-use grafeo::Value;
 use std::collections::HashMap;
 
-use crate::db::schema::{esc, label, prop};
-use crate::db::LoomDb;
 use crate::types::{Intent, VocabTerm};
-
-use super::row::{col_map, get, str_val};
 
 /// Hard cap on tags per intent. Agreeable LLMs fill every slot they're given;
 /// tag spam makes everything collide with everything and the signal dies.
@@ -47,95 +42,6 @@ pub fn normalize_term(raw: &str) -> Result<String> {
     Ok(t)
 }
 
-// ---------------------------------------------------------------------------
-// CRUD
-// ---------------------------------------------------------------------------
-
-pub fn insert_vocab_term(db: &dyn LoomDb, term: &VocabTerm) -> Result<()> {
-    let q = format!(
-        "INSERT (:{lbl} {{{id}: $id, {name}: $name, {desc}: $desc, {author}: $author, \
-         {created}: $created}})",
-        lbl = label::VOCAB_TERM,
-        id = prop::ID,
-        name = prop::NAME,
-        desc = prop::DESCRIPTION,
-        author = prop::AUTHOR,
-        created = prop::CREATED_AT,
-    );
-    db.execute_with_params(
-        &q,
-        super::row::sparams(&[
-            ("id", &term.id),
-            ("name", &term.name),
-            ("desc", &term.description),
-            ("author", &term.author),
-            ("created", &term.created_at),
-        ]),
-    )?;
-    Ok(())
-}
-
-pub fn list_vocab_terms(db: &dyn LoomDb) -> Result<Vec<VocabTerm>> {
-    let q = format!(
-        "MATCH (n:{lbl}) RETURN n.{id}, n.{name}, n.{desc}, n.{author}, n.{created} \
-         ORDER BY n.{name}",
-        lbl = label::VOCAB_TERM,
-        id = prop::ID,
-        name = prop::NAME,
-        desc = prop::DESCRIPTION,
-        author = prop::AUTHOR,
-        created = prop::CREATED_AT,
-    );
-    let result = db.execute(&q)?;
-    let cols = col_map(&result);
-    Ok(result
-        .rows()
-        .iter()
-        .map(|row| row_to_term(row, &cols))
-        .collect())
-}
-
-pub fn get_vocab_term(db: &dyn LoomDb, name: &str) -> Result<Option<VocabTerm>> {
-    let q = format!(
-        "MATCH (n:{lbl} {{{nm}: '{}'}}) RETURN n.{id}, n.{nm}, n.{desc}, n.{author}, n.{created}",
-        esc(name),
-        lbl = label::VOCAB_TERM,
-        id = prop::ID,
-        nm = prop::NAME,
-        desc = prop::DESCRIPTION,
-        author = prop::AUTHOR,
-        created = prop::CREATED_AT,
-    );
-    let result = db.execute(&q)?;
-    let cols = col_map(&result);
-    Ok(result.rows().first().map(|row| row_to_term(row, &cols)))
-}
-
-fn delete_vocab_term_node(db: &dyn LoomDb, name: &str) -> Result<()> {
-    let q = format!(
-        "MATCH (n:{lbl} {{{nm}: '{}'}}) DETACH DELETE n",
-        esc(name),
-        lbl = label::VOCAB_TERM,
-        nm = prop::NAME,
-    );
-    db.execute(&q)?;
-    Ok(())
-}
-
-fn row_to_term(row: &[Value], cols: &HashMap<&str, usize>) -> VocabTerm {
-    VocabTerm {
-        id: str_val(get(row, cols, "n.id")),
-        name: str_val(get(row, cols, "n.name")),
-        description: str_val(get(row, cols, "n.description")),
-        author: str_val(get(row, cols, "n.author")),
-        created_at: str_val(get(row, cols, "n.created_at")),
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Intent tags
-// ---------------------------------------------------------------------------
-
 /// An intent's tags. Native list since schema v5 (the row reader already
 /// tolerates legacy JSON strings) — kept as a function so call sites and the
 /// "absent = untagged" contract read unchanged.
@@ -149,32 +55,6 @@ pub fn encode_tags(mut tags: Vec<String>) -> Result<Vec<String>> {
     tags.sort();
     tags.dedup();
     Ok(tags)
-}
-
-/// Overwrite an intent's tags (canonicalised). Returns false when the intent
-/// doesn't exist.
-pub fn set_intent_tags(
-    db: &dyn LoomDb,
-    id: &str,
-    tags: Vec<String>,
-    updated_at: &str,
-) -> Result<bool> {
-    if super::get_intent(db, id)?.is_none() {
-        return Ok(false);
-    }
-    let encoded = encode_tags(tags)?;
-    let mut p = super::row::sparams(&[("id", id), ("updated", updated_at)]);
-    p.insert("tags".into(), super::row::list_param(&encoded));
-    db.execute_with_params(
-        &format!(
-            "MATCH (n:{lbl} {{id: $id}}) SET n.{tags} = $tags, n.{updated} = $updated",
-            lbl = label::INTENT,
-            tags = prop::TAGS,
-            updated = prop::UPDATED_AT,
-        ),
-        p,
-    )?;
-    Ok(true)
 }
 
 /// How many intents carry each registered term — the rarity denominator for
@@ -208,30 +88,6 @@ pub fn shared_tag_weight(
         .map(|t| 1.0 / (*counts.get(t).unwrap_or(&1)).max(1) as f64)
         .sum();
     (weight, shared)
-}
-
-/// Merge term `from` into term `to`: every intent carrying `from` is retagged
-/// to `to` (deduped), then the `from` node is deleted. The cheapness of this
-/// operation is the POINT of keeping terms as keys instead of edges — drift
-/// converges in one sweep with no inspection state to migrate.
-/// Returns the number of intents retagged.
-pub fn merge_vocab_terms(db: &dyn LoomDb, from: &str, to: &str, now: &str) -> Result<usize> {
-    let mut retagged = 0usize;
-    // ALL intents, including deprecated — history must not dangle.
-    for intent in super::list_intents(db, None, None)? {
-        let tags = parse_tags(&intent)?;
-        if !tags.iter().any(|t| t == from) {
-            continue;
-        }
-        let new_tags: Vec<String> = tags
-            .into_iter()
-            .map(|t| if t == from { to.to_string() } else { t })
-            .collect();
-        set_intent_tags(db, &intent.id, new_tags, now)?;
-        retagged += 1;
-    }
-    delete_vocab_term_node(db, from)?;
-    Ok(retagged)
 }
 
 // ---------------------------------------------------------------------------

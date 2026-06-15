@@ -3,14 +3,10 @@
 //! it asks whether behavior-significant syntax surfaces have an owner, an
 //! accepted file-level owner, or an actionable gap.
 
-use anyhow::Result;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::db::LoomDb;
 use crate::types::{CodeFile, Implements, Intent, Note, SymbolFact};
-
-use super::{list_active_intents, list_all_implements, list_codefiles, list_notes};
 
 #[derive(Debug, Clone, Serialize, Default, PartialEq)]
 pub struct SymbolAccountabilitySummary {
@@ -77,19 +73,6 @@ struct Owner {
     id: String,
     name: String,
     locator: String,
-}
-
-pub fn symbol_accountability(db: &dyn LoomDb) -> Result<SymbolAccountabilityReport> {
-    let codefiles = list_codefiles(db)?;
-    let intents = list_active_intents(db)?;
-    let implements = list_all_implements(db)?;
-    let notes = list_notes(db, None, Some("decision"))?;
-    Ok(symbol_accountability_from_parts_with_notes(
-        &codefiles,
-        &intents,
-        &implements,
-        &notes,
-    ))
 }
 
 #[cfg(test)]

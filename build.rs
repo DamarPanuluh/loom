@@ -1,10 +1,7 @@
 //! Stamp the build with the git commit (short, + `-dirty`) so `loom --version`
-//! distinguishes builds — the bare crate version is permanently "0.1.0", which
-//! can't tell an old binary from a new one. This is also the identity the
-//! opt-in `loom serve` daemon's version-skew handshake will key on: when the
-//! global binary is replaced, a new invocation's build id differs from a
-//! running (stale) daemon's, so the daemon is drained and replaced rather than
-//! silently serving old logic. Falls back to "unknown" when git is unavailable.
+//! distinguishes local binaries — the crate version is intentionally stable at
+//! "0.1.0", so the git stamp is the useful identity during dogfood and release
+//! checks. Falls back to "unknown" when git is unavailable.
 
 use std::process::Command;
 

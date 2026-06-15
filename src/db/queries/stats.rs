@@ -4,94 +4,14 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::db::LoomDb;
-use crate::types::{Intent, IntentCentrality, Validation};
+use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation};
 
 use super::completeness::vertical_completeness_from_snapshot;
-use super::hierarchy::list_all_hierarchy;
-use super::hypothesis::list_hypotheses;
-use super::implements::intents_with_implements;
-use super::intent::{intents_without_validations, list_active_intents};
-use super::meta::{get_meta, get_transition_cap};
-use super::row::{col_map, get, i64_val, str_val};
+use super::meta::GraphMeta;
 use super::scoring::{
-    all_intent_degrees, count_unexplored_pairs_from, normative_coverage_from_snapshot,
-    validate_selection_from_snapshot,
+    count_unexplored_pairs_from, normative_coverage_from_snapshot, validate_selection_from_snapshot,
 };
-use super::smells::compute_smells_from;
 use super::snapshot::QuerySnapshot;
-/// Completeness gaps — "what's missing," not "what's present". Flags ungrounded
-/// confirmed intents, intents with no validation, and feature groups that have a
-/// happy path but no sad/fallback sibling (path-coverage via the `aspect` tag).
-pub fn completeness_gaps(db: &dyn LoomDb) -> Result<Vec<String>> {
-    let mut gaps = Vec::new();
-    let intents = list_active_intents(db)?;
-    let with_code = intents_with_implements(db)?;
-    let hierarchy = list_all_hierarchy(db)?;
-    let aspect_by_id: HashMap<String, String> = intents
-        .iter()
-        .map(|i| (i.id.clone(), i.aspect.clone()))
-        .collect();
-    // Confirmed intents not grounded to any code.
-    for i in &intents {
-        if i.status == "confirmed" && !with_code.contains(&i.id) {
-            gaps.push(format!(
-                "Intent '{}' is confirmed but not grounded to code (no IMPLEMENTS edge).",
-                i.name
-            ));
-        }
-    }
-
-    // Intents with no validation (no proof of fulfilment).
-    for i in intents_without_validations(db)? {
-        gaps.push(format!(
-            "Intent '{}' has no validation (no proof it's fulfilled).",
-            i.name
-        ));
-    }
-
-    let mut children_by_parent: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (parent, child) in &hierarchy {
-        children_by_parent
-            .entry(parent.as_str())
-            .or_default()
-            .push(child.as_str());
-    }
-
-    // Path coverage: a parent whose children include a happy path but no
-    // sad/fallback sibling.
-    for parent in &intents {
-        let mut child_aspects: std::collections::HashSet<String> = std::collections::HashSet::new();
-        for child_id in children_by_parent
-            .get(parent.id.as_str())
-            .into_iter()
-            .flatten()
-        {
-            if let Some(a) = aspect_by_id.get(*child_id) {
-                if !a.is_empty() {
-                    child_aspects.insert(a.clone());
-                }
-            }
-        }
-        if child_aspects.contains("happy") {
-            let mut missing = Vec::new();
-            if !child_aspects.contains("sad") {
-                missing.push("sad");
-            }
-            if !child_aspects.contains("fallback") {
-                missing.push("fallback");
-            }
-            if !missing.is_empty() {
-                gaps.push(format!(
-                    "Feature group under '{}' has a happy path but no {} sibling.",
-                    parent.name,
-                    missing.join("/")
-                ));
-            }
-        }
-    }
-    Ok(gaps)
-}
 
 /// One axis of the 360° coverage vector: covered/total along one dimension of
 /// understanding. `total == 0` means the axis has no surface yet (e.g. no
@@ -169,25 +89,26 @@ pub struct GraphState {
     pub note_hygiene: String,
 }
 
-/// Compute the graph pulse + phase + recommended next action.
-pub fn graph_state(db: &dyn LoomDb) -> Result<GraphState> {
-    let snapshot = QuerySnapshot::load(db)?;
-    graph_state_from_snapshot(db, &snapshot)
+#[derive(Debug, Clone)]
+pub struct GraphStateContext {
+    pub meta: Option<GraphMeta>,
+    pub notes: i64,
+    pub transition_cap: usize,
 }
 
-pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<GraphState> {
+pub fn graph_state_from_snapshot_parts(
+    snapshot: &QuerySnapshot,
+    context: GraphStateContext,
+    mut open_findings: impl FnMut(&QuerySnapshot) -> Result<usize>,
+    mut proposed_hypotheses: impl FnMut() -> Result<usize>,
+) -> Result<GraphState> {
     // Active intents only: retired (deprecated) design is invisible to every
     // computed number here — counts, pair denominators, coverage axes.
     let all_intents = &snapshot.intents;
     let intents = all_intents.len() as i64;
     let codefiles = snapshot.codefiles.len() as i64;
     let validations = snapshot.validations.len() as i64;
-    let notes = db
-        .execute("MATCH (n:Note) RETURN count(n) AS c")?
-        .rows()
-        .first()
-        .map(|row| i64_val(&row[0]))
-        .unwrap_or(0);
+    let notes = context.notes;
 
     let mut by_status: HashMap<&str, i64> = HashMap::new();
     for s in snapshot
@@ -496,7 +417,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         // fix). Computed lazily: only graphs that cleared every other gate
         // pay for the O(N²) scan, and at this point every pair is linked, so
         // the pairwise detectors short-circuit.
-        let open_findings = compute_smells_from(db, snapshot)?.open.len();
+        let open_findings = open_findings(snapshot)?;
         if open_findings > 0 {
             ("audit", format!(
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
@@ -507,7 +428,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
             // invisibly either: pending proofs are disclosed at the one
             // message every agent reads. Computed lazily with the same
             // justification as the smells scan above.
-            let proposed = list_hypotheses(db, Some("proposed"))?.len();
+            let proposed = proposed_hypotheses()?;
             let mut msg = "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string();
             if proposed > 0 {
                 msg.push_str(&format!(
@@ -525,7 +446,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
     // `notes` count already computed; no per-note materialization.
     const NOTE_HEAVY: i64 = 5000;
     let note_hygiene = if notes > NOTE_HEAVY {
-        let cap = get_transition_cap(db)?;
+        let cap = context.transition_cap;
         if cap == 0 {
             format!("{notes} notes — the transition log is UNCAPPED and slows every command. `loom note prune --set-cap 20` bounds it (sync then holds it there).")
         } else {
@@ -535,7 +456,7 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
         String::new()
     };
 
-    let meta = get_meta(db)?;
+    let meta = context.meta;
     Ok(GraphState {
         version: meta.as_ref().map(|m| m.version.clone()).unwrap_or_default(),
         graph_id: meta
@@ -574,12 +495,6 @@ pub fn graph_state_from_snapshot(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> R
 pub struct UninspectedOutsideQueues {
     pub implements: i64,
     pub blocked_validations: i64,
-}
-
-pub fn uninspected_outside_queues(db: &dyn LoomDb) -> Result<UninspectedOutsideQueues> {
-    Ok(uninspected_outside_queues_from_snapshot(
-        &QuerySnapshot::load(db)?,
-    ))
 }
 
 pub fn uninspected_outside_queues_from_snapshot(
@@ -644,6 +559,176 @@ pub fn edge_status_counts_from_snapshot(snapshot: &QuerySnapshot) -> HashMap<Str
     map
 }
 
+pub fn status_report_from_snapshot(snapshot: &QuerySnapshot) -> StatusReport {
+    let total_intents = snapshot.intents.len() as i64;
+    let total_codefiles = snapshot.codefiles.len() as i64;
+    let total_validations = snapshot.validations.len() as i64;
+
+    let by_status = edge_status_counts_from_snapshot(snapshot);
+    let total_edges = by_status.values().sum::<i64>();
+    let uninspected = *by_status.get("uninspected").unwrap_or(&0);
+    let passing = *by_status.get("passing").unwrap_or(&0);
+    let failing = *by_status.get("failing").unwrap_or(&0);
+    let independent = *by_status.get("independent").unwrap_or(&0);
+    let needs_reverification = *by_status.get("needs_reverification").unwrap_or(&0);
+
+    let pass_rate = validation_pass_rate_from_snapshot(snapshot);
+    let (blocked_validations, validation_pass_rate_runnable) =
+        blocked_count_and_runnable_rate(&snapshot.validations);
+    let no_val_count = intents_without_validations_count_from_snapshot(snapshot);
+
+    StatusReport {
+        total_intents,
+        total_codefiles,
+        total_validations,
+        total_edges,
+        uninspected_edges: uninspected,
+        passing_edges: passing,
+        failing_edges: failing,
+        independent_edges: independent,
+        needs_reverification,
+        intents_without_validations: no_val_count,
+        validation_pass_rate: pass_rate,
+        blocked_validations,
+        validation_pass_rate_runnable,
+        open_issues: failing,
+    }
+}
+
+pub fn intents_without_validations_from_snapshot(snapshot: &QuerySnapshot) -> Vec<Intent> {
+    let validated: std::collections::HashSet<&str> = snapshot
+        .validates
+        .iter()
+        .map(|e| e.intent_id.as_str())
+        .collect();
+    let parents: std::collections::HashSet<&str> = snapshot
+        .hierarchy
+        .iter()
+        .map(|(parent, _child)| parent.as_str())
+        .collect();
+    snapshot
+        .intents
+        .iter()
+        .filter(|i| i.lifecycle == "implemented")
+        .filter(|i| !parents.contains(i.id.as_str()))
+        .filter(|i| !validated.contains(i.id.as_str()))
+        .cloned()
+        .collect()
+}
+
+pub fn completeness_gaps_from_snapshot(snapshot: &QuerySnapshot) -> Vec<String> {
+    let mut gaps = Vec::new();
+    let intents = &snapshot.intents;
+    let aspect_by_id: HashMap<String, String> = intents
+        .iter()
+        .map(|i| (i.id.clone(), i.aspect.clone()))
+        .collect();
+
+    // Confirmed intents not grounded to any code.
+    for intent in intents {
+        if intent.status == "confirmed" && !snapshot.with_code.contains(&intent.id) {
+            gaps.push(format!(
+                "Intent '{}' is confirmed but not grounded to code (no IMPLEMENTS edge).",
+                intent.name
+            ));
+        }
+    }
+
+    // Intents with no validation (no proof of fulfilment).
+    for intent in intents_without_validations_from_snapshot(snapshot) {
+        gaps.push(format!(
+            "Intent '{}' has no validation (no proof it's fulfilled).",
+            intent.name
+        ));
+    }
+
+    let mut children_by_parent: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (parent, child) in &snapshot.hierarchy {
+        children_by_parent
+            .entry(parent.as_str())
+            .or_default()
+            .push(child.as_str());
+    }
+
+    // Path coverage: a parent whose children include a happy path but no
+    // sad/fallback sibling.
+    for parent in intents {
+        let mut child_aspects: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for child_id in children_by_parent
+            .get(parent.id.as_str())
+            .into_iter()
+            .flatten()
+        {
+            if let Some(aspect) = aspect_by_id.get(*child_id) {
+                if !aspect.is_empty() {
+                    child_aspects.insert(aspect.clone());
+                }
+            }
+        }
+        if child_aspects.contains("happy") {
+            let mut missing = Vec::new();
+            if !child_aspects.contains("sad") {
+                missing.push("sad");
+            }
+            if !child_aspects.contains("fallback") {
+                missing.push("fallback");
+            }
+            if !missing.is_empty() {
+                gaps.push(format!(
+                    "Feature group under '{}' has a happy path but no {} sibling.",
+                    parent.name,
+                    missing.join("/")
+                ));
+            }
+        }
+    }
+    gaps
+}
+
+pub fn top_intents_by_centrality_from_snapshot(
+    snapshot: &QuerySnapshot,
+    limit: usize,
+) -> Vec<IntentCentrality> {
+    let mut with_degree: Vec<(Intent, i64)> = snapshot
+        .intents
+        .iter()
+        .cloned()
+        .map(|intent| {
+            let degree = *snapshot.degrees.get(&intent.id).unwrap_or(&0);
+            (intent, degree)
+        })
+        .collect();
+    with_degree.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.id.cmp(&b.0.id)));
+    with_degree.truncate(limit);
+    with_degree
+        .into_iter()
+        .map(|(intent, degree)| IntentCentrality { intent, degree })
+        .collect()
+}
+
+pub fn failing_governs_from_snapshot(snapshot: &QuerySnapshot) -> Vec<Governs> {
+    let mut governs: Vec<Governs> = snapshot
+        .governs
+        .iter()
+        .filter(|edge| edge.inspection_status == "failing")
+        .cloned()
+        .collect();
+    governs.sort_by(|a, b| b.last_inspected.cmp(&a.last_inspected));
+    governs
+}
+
+pub fn recent_passing_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Vec<RelatesTo> {
+    let mut edges: Vec<RelatesTo> = snapshot
+        .relates
+        .iter()
+        .filter(|edge| edge.inspection_status == "passing")
+        .cloned()
+        .collect();
+    edges.sort_by(|a, b| b.last_inspected.cmp(&a.last_inspected));
+    edges.truncate(limit);
+    edges
+}
+
 pub fn validation_pass_rate_from_snapshot(snapshot: &QuerySnapshot) -> f64 {
     let total = snapshot.validations.len();
     if total == 0 {
@@ -703,113 +788,15 @@ pub fn intents_without_validations_count_from_snapshot(snapshot: &QuerySnapshot)
         .count() as i64
 }
 
-pub fn count_intents(db: &dyn LoomDb) -> Result<i64> {
-    let r = db.execute("MATCH (n:Intent) RETURN count(n) AS c")?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
-}
-
-pub fn count_codefiles(db: &dyn LoomDb) -> Result<i64> {
-    let r = db.execute("MATCH (n:CodeFile) RETURN count(n) AS c")?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
-}
-
-pub fn count_validations(db: &dyn LoomDb) -> Result<i64> {
-    let r = db.execute("MATCH (n:Validation) RETURN count(n) AS c")?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
-}
-
-/// Count edges by inspection_status across every edge type that *carries* one
-/// (RELATES_TO, IMPLEMENTS, GOVERNS, VALIDATES). HIERARCHY is excluded — it's a
-/// structural tree edge with no inspection_status (schema v3).
-/// Returns a flat map of status → count (summed across those types).
-pub fn count_all_edges_by_inspection_status(db: &dyn LoomDb) -> Result<HashMap<String, i64>> {
-    let mut map: HashMap<String, i64> = HashMap::new();
-    let edge_types = [
-        "MATCH ()-[r:RELATES_TO]->() RETURN r.inspection_status AS s, count(r) AS c",
-        "MATCH ()-[r:IMPLEMENTS]->() RETURN r.inspection_status AS s, count(r) AS c",
-        "MATCH ()-[r:GOVERNS]->()   RETURN r.inspection_status AS s, count(r) AS c",
-        "MATCH ()-[r:VALIDATES]->() RETURN r.inspection_status AS s, count(r) AS c",
-    ];
-    for q in &edge_types {
-        let result = db.execute(q)?;
-        let cols = col_map(&result);
-        for row in result.rows() {
-            let s = str_val(get(row, &cols, "s"));
-            let c = i64_val(get(row, &cols, "c"));
-            if !s.is_empty() {
-                *map.entry(s).or_insert(0) += c;
-            }
-        }
+pub fn tangled_files_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Vec<(String, i64)> {
+    let mut counts: HashMap<String, i64> = HashMap::new();
+    for edge in &snapshot.implements {
+        *counts.entry(edge.codefile_path.clone()).or_insert(0) += 1;
     }
-    Ok(map)
-}
-
-/// Count validation pass rate: fraction of Validation nodes with last_result = 'passed'.
-pub fn validation_pass_rate(db: &dyn LoomDb) -> Result<f64> {
-    let total_r = db.execute("MATCH (v:Validation) RETURN count(v) AS c")?;
-    let total = total_r.rows().first().map(|r| i64_val(&r[0])).unwrap_or(0);
-    if total == 0 {
-        return Ok(0.0);
-    }
-    let passed_r =
-        db.execute("MATCH (v:Validation) WHERE v.last_result = 'passed' RETURN count(v) AS c")?;
-    let passed = passed_r.rows().first().map(|r| i64_val(&r[0])).unwrap_or(0);
-    Ok(passed as f64 / total as f64)
-}
-
-/// Distinct CodeFile paths that at least one intent IMPLEMENTS (i.e. grounded
-/// in an intent). Used by `loom coverage`.
-pub fn grounded_paths(db: &dyn LoomDb) -> Result<Vec<String>> {
-    // Grounded means grounded by LIVE design: a file whose only owner was
-    // retired is no longer explained (status filtered in Rust).
-    let r = db.execute(
-        "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s",
-    )?;
-    let cols = col_map(&r);
-    let mut set: std::collections::HashSet<String> = std::collections::HashSet::new();
-    for row in r.rows() {
-        if str_val(get(row, &cols, "s")) != "deprecated" {
-            set.insert(str_val(get(row, &cols, "p")));
-        }
-    }
-    Ok(set.into_iter().collect())
-}
-
-/// Files implementing the most intents — a structural "tangle" signal (one file
-/// carrying many concerns). Returns (path, intent_count) sorted desc.
-pub fn tangled_files(db: &dyn LoomDb, limit: usize) -> Result<Vec<(String, i64)>> {
-    let q = "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) \
-             RETURN cf.path AS p, count(e) AS c";
-    let result = db.execute(q)?;
-    let cols = col_map(&result);
-    let mut rows: Vec<(String, i64)> = result
-        .rows()
-        .iter()
-        .map(|row| (str_val(get(row, &cols, "p")), i64_val(get(row, &cols, "c"))))
-        .collect();
+    let mut rows: Vec<_> = counts.into_iter().collect();
     rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     rows.truncate(limit);
-    Ok(rows)
-}
-
-/// Top intents by degree centrality (RELATES_TO edges).
-pub fn top_intents_by_centrality(db: &dyn LoomDb, limit: usize) -> Result<Vec<IntentCentrality>> {
-    let intents = list_active_intents(db)?;
-    // Bulk-load all degrees in 2 queries instead of 2×N queries.
-    let degrees = all_intent_degrees(db)?;
-    let mut with_degree: Vec<(Intent, i64)> = intents
-        .into_iter()
-        .map(|i| {
-            let deg = *degrees.get(&i.id).unwrap_or(&0);
-            (i, deg)
-        })
-        .collect();
-    with_degree.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.id.cmp(&b.0.id)));
-    with_degree.truncate(limit);
-    Ok(with_degree
-        .into_iter()
-        .map(|(intent, degree)| IntentCentrality { intent, degree })
-        .collect())
+    rows
 }
 
 #[cfg(test)]

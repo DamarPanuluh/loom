@@ -2,8 +2,8 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
-use crate::db::schema::{index_statements, insert_meta, CHECK_INITIALIZED, SCHEMA_VERSION};
-use crate::db::{db_path, loom_dir, GrafeoDb, LoomDb};
+use crate::db::schema::SCHEMA_VERSION;
+use crate::db::{db_path, loom_dir};
 use crate::output::Printer;
 
 pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer) -> Result<()> {
@@ -19,8 +19,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
         fs::create_dir_all(&loom)?;
     }
 
-    // Open (or create) the database
-    let db = GrafeoDb::open(&db_file)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&db_file)?;
 
     // The graph's default human name is the directory it maps.
     let default_name = target
@@ -30,44 +29,31 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
         .to_string();
     let custody = if observed { "observed" } else { "owned" };
 
-    // Property indexes on every inline-matched key (Intent.id, CodeFile.path,
-    // …): the large-graph defense. Idempotent in grafeo, and run on the
-    // re-init path too — re-running init is the index backfill for graphs
-    // created before indexes existed.
-    for stmt in index_statements() {
-        db.execute(&stmt)?;
-    }
-
-    // Idempotency check: is there already a LoomMeta node?
-    let check = db.execute(CHECK_INITIALIZED)?;
-    if !check.rows().is_empty() {
+    if let Some(meta) = store.graph_meta()? {
         // Re-running init is safe — and it's also the identity touch-point:
         // backfill a missing graph_id (pre-identity graph), and apply
         // explicitly-passed --name/--observed (init is the only meta writer).
-        let meta = crate::db::queries::get_meta(&db)?;
-        let (cur_id, cur_name, cur_custody) = meta
-            .map(|m| (m.graph_id, m.graph_name, m.custody))
-            .unwrap_or_default();
-        let new_id = if cur_id.is_empty() {
+        let new_id = if meta.graph_id.is_empty() {
             uuid::Uuid::new_v4().to_string()
         } else {
-            cur_id.clone()
+            meta.graph_id.clone()
         };
         let new_name = match name {
             Some(n) => n.to_string(),
-            None if cur_name.is_empty() => default_name,
-            None => cur_name.clone(),
+            None if meta.graph_name.is_empty() => default_name,
+            None => meta.graph_name.clone(),
         };
         let new_custody = if observed {
             "observed".to_string()
-        } else if cur_custody.is_empty() {
+        } else if meta.custody.is_empty() {
             "owned".to_string()
         } else {
-            cur_custody.clone()
+            meta.custody.clone()
         };
-        let changed = new_id != cur_id || new_name != cur_name || new_custody != cur_custody;
+        let changed =
+            new_id != meta.graph_id || new_name != meta.graph_name || new_custody != meta.custody;
         if changed {
-            crate::db::queries::set_identity(&db, &new_id, &new_name, &new_custody)?;
+            store.set_identity(&new_id, &new_name, &new_custody)?;
         }
         if printer.json {
             printer.print_json(&serde_json::json!({
@@ -96,13 +82,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
     let now = chrono::Utc::now().to_rfc3339();
     let graph_id = uuid::Uuid::new_v4().to_string();
     let graph_name = name.map(str::to_string).unwrap_or(default_name);
-    db.execute(&insert_meta(
-        SCHEMA_VERSION,
-        &now,
-        &graph_id,
-        &graph_name,
-        custody,
-    ))?;
+    store.initialize(SCHEMA_VERSION, &graph_id, &graph_name, custody, &now)?;
 
     if printer.json {
         printer.print_json(&serde_json::json!({

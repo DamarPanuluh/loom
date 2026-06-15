@@ -13,18 +13,11 @@
 //! N×N grid) is optional understanding/cleanup and is reported separately, never
 //! gating completeness. See `stats::graph_state`.
 
-use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::LoomDb;
 use crate::types::Intent;
 
-use super::codefile::list_codefiles;
-use super::hierarchy::list_all_hierarchy;
-use super::implements::intents_with_implements;
-use super::intent::list_active_intents;
-use super::row::{col_map, get, str_val};
 use super::snapshot::QuerySnapshot;
 
 /// The verifiable state of the completeness spine. Every field is computed from
@@ -51,95 +44,6 @@ pub struct VerticalCompleteness {
     /// True when the spine is sound: tree well-formed, every implemented leaf
     /// realized, every CodeFile reached. (non_system_roots is advisory, excluded.)
     pub complete: bool,
-}
-
-/// Compute the vertical-completeness spine. Pure graph analysis — cheap enough
-/// for `loom status` / `loom report` on any realistic graph.
-pub fn vertical_completeness(db: &dyn LoomDb) -> Result<VerticalCompleteness> {
-    let intents = list_active_intents(db)?;
-    let hier = list_all_hierarchy(db)?;
-
-    // Tree shape: parent multiplicity, who-is-a-child, who-is-a-parent.
-    let mut parent_count: HashMap<&str, usize> = HashMap::new();
-    let mut is_child: HashSet<&str> = HashSet::new();
-    let mut is_parent: HashSet<&str> = HashSet::new();
-    for (p, c) in &hier {
-        *parent_count.entry(c.as_str()).or_insert(0) += 1;
-        is_child.insert(c.as_str());
-        is_parent.insert(p.as_str());
-    }
-
-    let name_of: HashMap<&str, &str> = intents
-        .iter()
-        .map(|i| (i.id.as_str(), i.name.as_str()))
-        .collect();
-    let resolve = |id: &str| name_of.get(id).copied().unwrap_or(id).to_string();
-
-    let mut multi_parent: Vec<String> = parent_count
-        .iter()
-        .filter(|(_, &n)| n > 1)
-        .map(|(id, _)| resolve(id))
-        .collect();
-    multi_parent.sort();
-
-    let cycle = has_cycle(&hier);
-
-    let roots: Vec<&Intent> = intents
-        .iter()
-        .filter(|i| !is_child.contains(i.id.as_str()))
-        .collect();
-    let leaves: Vec<&Intent> = intents
-        .iter()
-        .filter(|i| !is_parent.contains(i.id.as_str()))
-        .collect();
-
-    let mut non_system_roots: Vec<String> = roots
-        .iter()
-        .filter(|i| i.abstraction_level != "system")
-        .map(|i| i.name.clone())
-        .collect();
-    non_system_roots.sort();
-
-    // The join (semantic → physical): an implemented leaf with no code is
-    // unrealized. `planned` leaves legitimately have no code yet (build mode
-    // drives those); `needs_change` is surfaced by the build phase.
-    let realized = intents_with_implements(db)?;
-    let mut unrealized_leaves: Vec<String> = leaves
-        .iter()
-        .filter(|i| i.lifecycle == "implemented" && !realized.contains(&i.id))
-        .map(|i| i.name.clone())
-        .collect();
-    unrealized_leaves.sort();
-
-    // The join (physical → semantic): a CodeFile no intent reaches is code with
-    // no recorded purpose.
-    let reached = reached_codefile_paths(db)?;
-    let mut unreached_codefiles: Vec<String> = list_codefiles(db)?
-        .into_iter()
-        .map(|c| c.path)
-        .filter(|p| !reached.contains(p))
-        .collect();
-    unreached_codefiles.sort();
-
-    // An empty graph isn't "complete" — there's nothing realized yet. Requiring
-    // ≥1 intent stops the pulse from showing a vacuous vertical ✓ on `phase=empty`.
-    let complete = !intents.is_empty()
-        && multi_parent.is_empty()
-        && !cycle
-        && unrealized_leaves.is_empty()
-        && unreached_codefiles.is_empty();
-
-    Ok(VerticalCompleteness {
-        intents: intents.len() as i64,
-        roots: roots.len() as i64,
-        leaves: leaves.len() as i64,
-        multi_parent,
-        cycle,
-        non_system_roots,
-        unrealized_leaves,
-        unreached_codefiles,
-        complete,
-    })
 }
 
 pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> VerticalCompleteness {
@@ -227,22 +131,6 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         unreached_codefiles,
         complete,
     }
-}
-
-/// Distinct CodeFile paths reached by at least one IMPLEMENTS edge.
-fn reached_codefile_paths(db: &dyn LoomDb) -> Result<HashSet<String>> {
-    // Status returned as a column and filtered in Rust: a file owned ONLY by a
-    // retired intent is UNREACHED — retiring the sole owner surfaces the file
-    // as a vertical gap instead of leaving it covered by dead design.
-    let r = db.execute(
-        "MATCH (i:Intent)-[e:IMPLEMENTS]->(cf:CodeFile) RETURN cf.path AS p, i.status AS s",
-    )?;
-    let cols = col_map(&r);
-    Ok(r.rows()
-        .iter()
-        .filter(|row| str_val(get(row, &cols, "s")) != "deprecated")
-        .map(|row| str_val(get(row, &cols, "p")))
-        .collect())
 }
 
 /// Cycle detection over the parent→child digraph via Kahn's algorithm: if some

@@ -12,27 +12,57 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    cochange_suggestions, compute_smells_from, proof_locality_suggestions, QuerySnapshot,
+    cochange_suggestions, proof_locality_suggestions, AdjudicatedSmell, QuerySnapshot, Smell,
+    SmellReport,
 };
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
-pub fn run(limit: usize, printer: &Printer) -> Result<()> {
+pub fn run(limit: usize, summary: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, limit, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, limit, summary, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     root: &std::path::Path,
     limit: usize,
+    summary: bool,
     printer: &Printer,
 ) -> Result<()> {
-    let snapshot = QuerySnapshot::load(db)?;
-    let report = compute_smells_from(db, &snapshot)?;
+    let snapshot = db.query_snapshot()?;
+    let report = db.smell_report(&snapshot)?;
+    let registry = db.vocab_term_count()?;
+    render(root, &snapshot, report, registry, limit, summary, printer)
+}
+fn kind_counts(smells: &[Smell]) -> std::collections::BTreeMap<String, usize> {
+    let mut counts = std::collections::BTreeMap::new();
+    for smell in smells {
+        *counts.entry(smell.kind.clone()).or_insert(0) += 1;
+    }
+    counts
+}
 
+fn adjudicated_kind_counts(
+    smells: &[AdjudicatedSmell],
+) -> std::collections::BTreeMap<String, usize> {
+    let mut counts = std::collections::BTreeMap::new();
+    for smell in smells {
+        *counts.entry(smell.kind.clone()).or_insert(0) += 1;
+    }
+    counts
+}
+
+fn render(
+    root: &std::path::Path,
+    snapshot: &QuerySnapshot,
+    report: SmellReport,
+    registry: usize,
+    limit: usize,
+    summary: bool,
+    printer: &Printer,
+) -> Result<()> {
     // Advisory cochange_coupling suggestions: git-derived, command-only (the
     // audit gate's `compute_smells_from` stays git-free and fast), never gate
     // green. Bounded to recent history; degrades silently with no git.
@@ -53,11 +83,63 @@ pub fn run_with_db(
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
-    let registry = crate::db::queries::list_vocab_terms(db)?.len();
     let mut smells = report.open;
+    let open_by_kind = kind_counts(&smells);
     smells.truncate(limit);
     let adjudicated = report.adjudicated;
+    let adjudicated_by_kind = adjudicated_kind_counts(&adjudicated);
 
+    if summary {
+        let blind = coded.saturating_sub(tagged);
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "summary": true,
+                "total": total,
+                "shown": smells.len(),
+                "open_by_kind": open_by_kind,
+                "top": smells.iter().map(|s| serde_json::json!({
+                    "kind": s.kind,
+                    "summary": s.summary,
+                    "remedy": s.remedy,
+                })).collect::<Vec<_>>(),
+                "adjudicated_total": adjudicated.len(),
+                "adjudicated_by_kind": adjudicated_by_kind,
+                "coded_intents": coded,
+                "tagged_coded_intents": tagged,
+                "untagged_coded_intents": blind,
+                "vocab_terms": registry,
+                "coded_layers": coded_layers,
+                "declared_layers": declared_layers,
+                "cochange_suggestions_total": suggestions_total,
+                "proof_locality_suggestions_total": proof_total,
+                "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Use `loom smells --json` only when per-item evidence is needed.",
+            }));
+        } else {
+            println!("── loom smells summary ──────────────────────────────────────────────");
+            println!("  open findings: {total}");
+            for (kind, count) in &open_by_kind {
+                println!("    {kind}: {count}");
+            }
+            println!("  adjudicated findings: {}", adjudicated.len());
+            println!("  co-change advisories: {suggestions_total}");
+            println!("  proof-locality advisories: {proof_total}");
+            println!("  tagged coded intents: {tagged}/{coded}");
+            if blind > 0 {
+                println!("  duplicate detector blind spot: {blind} untagged coded intent(s)");
+            }
+            if declared_layers == 0 && coded_layers >= 2 {
+                println!(
+                    "  layering detector unarmed: {coded_layers} coded layer(s), no declared order"
+                );
+            }
+            for s in &smells {
+                println!("  - [{}] {}", s.kind, s.summary);
+                println!("    remedy: {}", s.remedy);
+            }
+            println!("  Full detail: `loom smells --json`.");
+        }
+        return Ok(());
+    }
     if printer.json {
         printer.print_json(&serde_json::json!({
             "total": total,

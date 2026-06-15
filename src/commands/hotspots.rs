@@ -6,25 +6,25 @@
 
 use anyhow::Result;
 
-use crate::db::queries::{tangled_files, top_intents_by_centrality};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::queries::{tangled_files_from_snapshot, top_intents_by_centrality_from_snapshot};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
 pub fn run(limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, limit, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, limit, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     _root: &std::path::Path,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
-    let central = top_intents_by_centrality(db, limit)?;
-    let tangled = tangled_files(db, limit)?;
+    let snapshot = db.query_snapshot()?;
+    let central = top_intents_by_centrality_from_snapshot(&snapshot, limit);
+    let tangled = tangled_files_from_snapshot(&snapshot, limit);
 
     if printer.json {
         printer.print_json(&serde_json::json!({

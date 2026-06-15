@@ -9,7 +9,7 @@ All commands support `--json` for machine-readable output. LLM driving mode uses
 
 ```
 loom init [path] [--name <graph-name>] [--observed]
-  Creates .loom/ directory, initializes Grafeo DB with full schema, and stamps
+  Creates .loom/ directory, initializes the SQLite graph store with full schema, and stamps
   the graph's IDENTITY (graph_id uuid + human name, default = dir name) — what
   other looms reference in a federation; it travels in the export.
   --observed = this graph maps code its drivers DON'T own (vendor SDK, another
@@ -473,10 +473,8 @@ loom doctor
   A version mismatch points at `loom migrate`.
 
 loom migrate
-  Upgrade a LIVE graph to the current schema version IN PLACE — a version
-  CHAIN, each step idempotent, the meta version stamped LAST (crash-safe by
-  re-run, not by transaction: bulk read-modify loops inside one transaction
-  go quadratic on grafeo 0.5.x — see commands/migrate.rs).
+  Upgrade a LIVE graph to the current schema version IN PLACE. SQLite graphs
+  are created/backfilled on open; legacy export imports still upgrade in flight.
   v3 → v4: edge identity became DERIVED (`<prefix>:<from>:<to>`, e.g.
   `rt:<intent-a>:<intent-b>`) instead of a stored uuid — every note that
   referenced a stored edge uuid is remapped (legacy id props on old edges are
@@ -487,8 +485,9 @@ loom migrate
   `loom import` upgrades v3/v4 exports in flight.
 
 loom guide [--mode greenfield|brownfield|refactor|port|seed]
-  Self-contained driving protocol for an LLM new to loom: mental model, the loop,
-  the done-condition, and a MODE-SPECIFIC population checklist (auto-detected via
+  Self-contained driving protocol for an LLM new to loom: mental model, lifecycle
+  transitions, status-family separation, the loop, the done-condition, and a
+  MODE-SPECIFIC population checklist (auto-detected via
   `loom detect` if --mode omitted): greenfield = design-as-planned-intents then
   build; brownfield = map & verify existing; refactor = flag needs_change & change;
   port = adopt a source graph's design (`import --as-planned`) and re-realize
@@ -500,17 +499,17 @@ loom guide [--mode greenfield|brownfield|refactor|port|seed]
 
 loom schema
   The data model — node/edge types + properties, the inspection state machine,
-  and the valid value vocabularies. Generated from the schema vocabulary (drift-proof).
+  intent lifecycle model, and the valid value vocabularies. Generated from the
+  schema vocabulary (drift-proof).
 
 loom find <query> [--limit N]
   ASK THE MAP — codebase intelligence entry point: BM25 keyword search over
   active intent names + descriptions (+domain), ranked. Each hit carries its
   hierarchy chain, IMPLEMENTS groundings with locators, and a stale-edge count
   (the freshness warning: claims about since-changed code). Scoring runs in
-  Rust, NOT grafeo's text index — `CALL grafeo.search.text` returns internal
-  node ids that can't be joined back to properties through GQL (probed; the
-  trailing MATCH parses and is silently dropped). Deterministic; no fuzzy/
-  stemming by design — the calling LLM reformulates. A miss distinguishes
+  Rust over the graph export/read model, not an engine-specific text index.
+  Deterministic; no fuzzy/stemming by design — the calling LLM reformulates.
+  A miss distinguishes
   "not mapped" (points at `loom coverage`) from "doesn't exist".
 
 loom door "<utterance>" [--limit N]
@@ -555,7 +554,7 @@ loom hotspots [--limit N]
   Structural importance (graph centrality, NOT runtime profiling): most-central
   intents (blast radius) and most-tangled files (most intents in one file).
 
-loom smells [--limit N]
+loom smells [--limit N] [--summary]
   Derived problem signals — the graph as instrument, not ledger. Computed from
   structure alone (no LLM judgment in the flagging): twin intents (split-brain:
   same level, similar wording, no edge), overlapping ownership (two intents
@@ -625,6 +624,11 @@ loom smells [--limit N]
   unexplored pairs in `loom next` discovery, with the why in the work item's
   notes. `loom rule verdict --status independent` records "measured — rule
   does not apply" so unmeasured findings resolve honestly.
+  Use `loom smells --summary --json` for bounded audit routing: counts by
+  kind, top remedies, advisory totals, and detector blind spots. Full
+  `loom smells --json` includes per-finding evidence, teaching text,
+  adjudicated rulings, and advisory bodies; load it only when a specific
+  finding needs inspection.
 
 loom rule seed iso5055|mobile|web-ui|service|data|concurrency
   Seed a built-in measuring-stick pack — the repo-kind VANTAGE POINTS for 360°
@@ -673,12 +677,16 @@ Every verdict transition (ground/issue/independent/fix/rule verdict/lifecycle
 mark) is auto-recorded as an append-only note (kind=transition) — the graph's
 recurrence memory, read by the recurrent_trouble smell.
 
-loom coverage
+loom coverage [--summary]
   Reconcile files on disk (respecting .gitignore) against the graph. Buckets each
   file: grounded (≥1 IMPLEMENTS) / delegated (owned by a child graph — federation) /
   excluded (matches an ignore pattern) / registered-but-ungrounded (unexplained
   code) / unaccounted (gap). Ensures nothing is silently missed. Done = no
   unaccounted (missing delegation targets are flagged).
+  Use `loom coverage --summary --json` for bounded coverage routing: file
+  counts, symbol-accountability counts, and a small actionable-gap sample.
+  Full `loom coverage --json` includes complete file, symbol, raw-gap, and
+  adjudication archives; load it only when per-item evidence is needed.
 
 loom detect
   Programmable repo introspection: stack (from manifests), source presence, top
@@ -693,6 +701,7 @@ loom ignore add <glob> --reason <why> [--author human|llm]
 loom ignore list
 
 loom delegate add <glob> --to <child-export-path>
+loom delegate remove <glob>
 loom delegate list
   FEDERATION (monorepo): a subtree owned by ANOTHER loom graph. `loom coverage`
   buckets matching files as `delegated` — covered by the child, verified against

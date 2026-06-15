@@ -1,665 +1,742 @@
 use anyhow::Result;
 
 use crate::cli::{EdgeCmd, ExploreSubCmd};
-use crate::db::queries::{
-    fix_edge, get_intent, get_or_create_relates_to, get_relates_to, insert_governs,
-    insert_hierarchy, insert_implements, insert_validates, list_relates_to, notes_for_target,
-    update_relates_to_ground, update_relates_to_independent, update_relates_to_issue,
-};
 use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{ensure_initialized, GraphReadRepository};
 use crate::gate;
 use crate::output::{
-    apply_limit, fmt_edge_detail, fmt_edge_row, fmt_intent, more_marker, print_anchor, with_anchor,
-    Printer, SECTION_CAP,
+    apply_limit, fmt_edge_detail, fmt_edge_row, fmt_intent, fmt_pulse, more_marker,
+    with_read_anchor, Printer, SECTION_CAP,
 };
-use crate::types::{EdgeType, Intent, RelatesTo};
+use crate::types::{CodeFile, EdgeType, Intent, RelatesTo};
 
 pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
-}
-
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: EdgeCmd,
-    printer: &Printer,
-) -> Result<()> {
+    ensure_initialized(&cwd)?;
     match cmd {
-        // ----------------------------------------------------------------
-        // RELATES_TO — explore / ground / issue / independent
-        // ----------------------------------------------------------------
         EdgeCmd::Explore {
             intent_a_id,
             intent_b_id,
             subcommand,
-        } => {
-            let intent_a_id = crate::db::queries::resolve_intent(db, &intent_a_id)?;
-            let intent_b_id = crate::db::queries::resolve_intent(db, &intent_b_id)?;
-            let now = chrono::Utc::now().to_rfc3339();
-
-            match subcommand {
-                None => {
-                    // Create or retrieve edge; print both intent contexts.
-                    let edge = get_or_create_relates_to(db, &intent_a_id, &intent_b_id, &now)?;
-                    let intent_a = get_intent(db, &intent_a_id)?
-                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.", intent_a_id))?;
-                    let intent_b = get_intent(db, &intent_b_id)?
-                        .ok_or_else(|| anyhow::anyhow!("Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.", intent_b_id))?;
-
-                    if printer.json {
-                        printer.print_json(&serde_json::json!({
-                            "edge":     edge,
-                            "intent_a": intent_a,
-                            "intent_b": intent_b,
-                        }));
-                    } else {
-                        println!(
-                            "── Intent A ──────────────────────────────────────────────────────"
-                        );
-                        println!("{}", fmt_intent(&intent_a));
-                        println!();
-                        println!(
-                            "── Intent B ──────────────────────────────────────────────────────"
-                        );
-                        println!("{}", fmt_intent(&intent_b));
-                        println!();
-                        println!(
-                            "── Edge ──────────────────────────────────────────────────────────"
-                        );
-                        println!("{}", fmt_edge_detail(&edge));
-                        println!();
-                        println!("Next steps:");
-                        println!(
-                            "  loom edge explore {a} {b} ground --criterion \"<text>\" --confidence 0.9",
-                            a = intent_a_id, b = intent_b_id
-                        );
-                        println!(
-                            "  loom edge explore {a} {b} issue  --criterion \"<text>\" --evidence \"<text>\"",
-                            a = intent_a_id, b = intent_b_id
-                        );
-                        println!(
-                            "  loom edge explore {a} {b} independent --notes \"<why no relationship>\"",
-                            a = intent_a_id, b = intent_b_id
-                        );
-                    }
-                }
-
-                Some(ExploreSubCmd::Ground {
-                    criterion,
-                    evidence,
-                    evidence_locator,
-                    confidence,
-                    inspected_by,
-                }) => {
-                    let now = chrono::Utc::now().to_rfc3339();
-                    // Grounding is inspection work: analyzer lane (fixer too —
-                    // it re-grounds edges it has just repaired).
-                    let by = gate::acting_in_lane(
-                        "ground a RELATES_TO edge",
-                        &[role::ANALYZER, role::FIXER],
-                        inspected_by.as_deref(),
-                    )?;
-                    gate::require_substantive(
-                        "criterion",
-                        &criterion,
-                        "the falsifiable coexistence criterion this edge was checked against",
-                    )?;
-                    // Evidence is OPTIONAL on ground (the criterion may say it
-                    // all) — but when given it must be substantive, and
-                    // locators must be file anchors.
-                    if !evidence.trim().is_empty() {
-                        gate::require_substantive(
-                            "evidence",
-                            &evidence,
-                            "what the inspection actually found (file/symbol + the observation)",
-                        )?;
-                    }
-                    let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
-                    gate::require_confidence(confidence)?;
-                    let by = by.as_str();
-                    // Create the edge if it does not exist yet, so a discovery
-                    // suggestion (`explore A B ground ...`) works in one step —
-                    // consistent with the `independent` subcommand.
-                    let edge = get_or_create_relates_to(db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_ground(
-                        db,
-                        &edge.from_id,
-                        &edge.to_id,
-                        &criterion,
-                        &evidence,
-                        confidence,
-                        by,
-                        &now,
-                    )?;
-                    // Construct the result from the values we just wrote —
-                    // cheaper than a re-read, and the values are known.
-                    let updated = RelatesTo {
-                        inspection_status: "passing".to_string(),
-                        criterion,
-                        evidence,
-                        confidence,
-                        inspected_by: by.to_string(),
-                        last_inspected: now,
-                        ..edge
-                    };
-                    let next_step = "`loom next` for the next item.";
-                    if printer.json {
-                        let v = with_anchor(serde_json::to_value(&updated)?, db, next_step)?;
-                        printer.print_json(&v);
-                    } else {
-                        println!("✓ Edge marked as passing (grounded)");
-                        println!("{}", fmt_edge_detail(&updated));
-                        print_anchor(db, next_step)?;
-                    }
-                }
-
-                Some(ExploreSubCmd::Issue {
-                    criterion,
-                    evidence,
-                    evidence_locator,
-                    confidence,
-                    inspected_by,
-                }) => {
-                    let now = chrono::Utc::now().to_rfc3339();
-                    let by = gate::acting_in_lane(
-                        "record an issue on a RELATES_TO edge",
-                        &[role::ANALYZER, role::FIXER],
-                        inspected_by.as_deref(),
-                    )?;
-                    gate::require_substantive(
-                        "criterion",
-                        &criterion,
-                        "the falsifiable criterion that was violated",
-                    )?;
-                    gate::require_substantive(
-                        "evidence",
-                        &evidence,
-                        "what was actually found in the code (file/symbol + the problem)",
-                    )?;
-                    let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
-                    gate::require_confidence(confidence)?;
-                    let by = by.as_str();
-                    let edge = get_or_create_relates_to(db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_issue(
-                        db,
-                        &edge.from_id,
-                        &edge.to_id,
-                        &criterion,
-                        &evidence,
-                        confidence,
-                        by,
-                        &now,
-                    )?;
-                    // See note in the Ground arm: construct rather than re-read.
-                    let updated = RelatesTo {
-                        inspection_status: "failing".to_string(),
-                        criterion,
-                        evidence,
-                        confidence,
-                        inspected_by: by.to_string(),
-                        last_inspected: now,
-                        ..edge
-                    };
-                    let next_step = format!(
-                        "fix it then `loom edge fix {}`, or `loom next --mode fix`.",
-                        updated.id
-                    );
-                    if printer.json {
-                        let v = with_anchor(serde_json::to_value(&updated)?, db, &next_step)?;
-                        printer.print_json(&v);
-                    } else {
-                        println!("✓ Issue recorded — edge marked as failing");
-                        println!("{}", fmt_edge_detail(&updated));
-                        print_anchor(db, &next_step)?;
-                    }
-                }
-
-                Some(ExploreSubCmd::Independent {
-                    notes,
-                    inspected_by,
-                }) => {
-                    // independent is now a status on the RELATES_TO edge, not a separate edge type
-                    let now = chrono::Utc::now().to_rfc3339();
-                    let by = gate::acting_in_lane(
-                        "confirm two intents independent",
-                        &[role::ANALYZER],
-                        inspected_by.as_deref(),
-                    )?;
-                    // Independence is a *verified claim*, as strong as passing —
-                    // it must record why no relationship exists.
-                    gate::require_substantive(
-                        "notes",
-                        &notes,
-                        "why these two intents have no meaningful relationship",
-                    )?;
-                    let by = by.as_str();
-
-                    // Ensure RELATES_TO edge exists first
-                    let edge = get_or_create_relates_to(db, &intent_a_id, &intent_b_id, &now)?;
-                    update_relates_to_independent(
-                        db,
-                        &edge.from_id,
-                        &edge.to_id,
-                        &notes,
-                        by,
-                        &now,
-                    )?;
-
-                    let next_step = "Continue discovery: `loom next`";
-                    if printer.json {
-                        let v = with_anchor(
-                            serde_json::json!({
-                                "status":  "ok",
-                                "edge_id": edge.id,
-                                "inspection_status": "independent",
-                                "from":    intent_a_id,
-                                "to":      intent_b_id,
-                                "notes":   notes,
-                            }),
-                            db,
-                            next_step,
-                        )?;
-                        printer.print_json(&v);
-                    } else {
-                        println!(
-                            "✓ Confirmed independent: {} ↔ {}  (edge id: {})",
-                            intent_a_id, intent_b_id, edge.id
-                        );
-                        print_anchor(db, next_step)?;
-                    }
-                }
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // IMPLEMENTS: Intent → CodeFile
-        // ----------------------------------------------------------------
+        } => run_explore_with_sqlite(&cwd, intent_a_id, intent_b_id, subcommand, printer),
         EdgeCmd::Implement {
             intent_id,
             codefile_id,
             locator,
             notes,
-        } => {
-            gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
-            let now = chrono::Utc::now().to_rfc3339();
-            let targets = resolve_codefiles(db, &codefile_id)?;
-            let next_step = "ground more (`loom edge implement …`) or, if the leaf is fully grounded, prove it: `loom next --mode validate`";
-            if targets.len() > 1 {
-                // Bulk (glob) grounding: one edge per matched registered file.
-                for cf in &targets {
-                    insert_implements(db, &intent_id, &cf.id, "", &notes, &now)?;
-                }
-                if printer.json {
-                    printer.print_json(&serde_json::json!({
-                        "status": "ok", "intent_id": intent_id,
-                        "grounded": targets.iter().map(|c| c.path.clone()).collect::<Vec<_>>(),
-                        "count": targets.len(),
-                        "next_step": next_step,
-                    }));
-                } else {
-                    println!(
-                        "✓ Grounded intent in {} registered file(s) matching '{}'.",
-                        targets.len(),
-                        codefile_id
-                    );
-                    println!("  → Next: {}", next_step);
-                }
-            } else {
-                let cf = &targets[0];
-                insert_implements(db, &intent_id, &cf.id, &locator, &notes, &now)?;
-                let edge_id = crate::db::schema::edge_key(
-                    crate::db::schema::edge::IMPLEMENTS,
-                    &intent_id,
-                    &cf.id,
-                );
-                if printer.json {
-                    printer.print_json(&serde_json::json!({
-                        "status":       "ok",
-                        "edge_id":      edge_id,
-                        "edge_type":    EdgeType::Implements.to_string(),
-                        "intent_id":    intent_id,
-                        "codefile_id":  cf.id,
-                        "locator":      locator,
-                        "next_step":    next_step,
-                    }));
-                } else {
-                    println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
-                    println!("  intent   → {}", intent_id);
-                    println!(
-                        "  codefile → {}{}",
-                        cf.path,
-                        if locator.is_empty() {
-                            String::new()
-                        } else {
-                            format!("  @ {}", locator)
-                        }
-                    );
-                    println!("  → Next: {}", next_step);
-                }
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // UNIMPLEMENT: remove grounding (decomposition support)
-        // ----------------------------------------------------------------
+        } => run_implement_with_sqlite(&cwd, intent_id, codefile_id, locator, notes, printer),
         EdgeCmd::Unimplement {
             intent_id,
             codefile_id,
-        } => {
-            gate::acting_in_lane("remove an IMPLEMENTS edge", &[role::BUILDER], None)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
-            let targets = resolve_codefiles(db, &codefile_id)?;
-            let mut removed: Vec<String> = Vec::new();
-            for cf in &targets {
-                if crate::db::queries::delete_implements(db, &intent_id, &cf.id)? {
-                    removed.push(cf.path.clone());
-                }
-            }
-            if removed.is_empty() {
-                anyhow::bail!(
-                    "No IMPLEMENTS edge between intent '{}' and '{}'.\n`loom codefile show <path>` lists the file's owners; `loom edge implement <intent> <path>` creates the grounding.",
-                    intent_id, codefile_id
-                );
-            }
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status": "ok", "intent_id": intent_id, "removed": removed,
-                    "next_step": "If the intent is a leaf it may be unrealized now — `loom status` will route.",
-                }));
-            } else {
-                println!("✓ Removed {} grounding(s).", removed.len());
-                println!("  → If the intent is a leaf it may be unrealized now — `loom status` will route.");
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // GOVERNS: QualityRule → Intent
-        // ----------------------------------------------------------------
+        } => run_unimplement_with_sqlite(&cwd, intent_id, codefile_id, printer),
         EdgeCmd::Govern {
             rule_id,
             intent_id,
             criterion,
-        } => {
-            gate::acting_in_lane("apply a quality rule (GOVERNS)", &[role::QUALITY], None)?;
-            let rule_id = crate::db::queries::resolve_rule(db, &rule_id)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
-            let now = chrono::Utc::now().to_rfc3339();
-            let crit = criterion.as_deref().unwrap_or("");
-            if !crit.is_empty() {
-                gate::require_substantive(
-                    "criterion",
-                    crit,
-                    "what compliance looks like for this rule on this intent",
-                )?;
-            }
-            insert_governs(db, &rule_id, &intent_id, crit, &now)?;
-            let edge_id =
-                crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
-            let next_step = format!(
-                "make the edge real with a verdict: `loom rule verdict {} {} --status <passing|failing|independent> --criterion \"<text>\" --evidence \"<text>\"`",
-                rule_id, intent_id
-            );
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status":    "ok",
-                    "edge_id":   edge_id,
-                    "edge_type": EdgeType::Governs.to_string(),
-                    "rule_id":   rule_id,
-                    "intent_id": intent_id,
-                    "next_step": next_step,
-                }));
-            } else {
-                println!("✓ GOVERNS edge created  (id: {})", edge_id);
-                println!("  rule   → {}", rule_id);
-                println!("  intent → {}", intent_id);
-                println!("  → Next: {}", next_step);
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // HIERARCHY: Intent (parent) → Intent (child)
-        // ----------------------------------------------------------------
+        } => run_govern_with_sqlite(&cwd, rule_id, intent_id, criterion, printer),
         EdgeCmd::Hierarchy {
             parent_id,
             child_id,
             notes,
-        } => {
-            gate::acting_in_lane("create a HIERARCHY edge", &[role::BUILDER], None)?;
-            let parent_id = crate::db::queries::resolve_intent(db, &parent_id)?;
-            let child_id = crate::db::queries::resolve_intent(db, &child_id)?;
-            let now = chrono::Utc::now().to_rfc3339();
-            let n = notes.as_deref().unwrap_or("");
-            insert_hierarchy(db, &parent_id, &child_id, n, &now)?;
-            let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::HIERARCHY,
-                &parent_id,
-                &child_id,
-            );
-            let next_step = format!(
-                "ground the child if it is a leaf (`loom edge implement {} <codefile> --locator \"<symbol>\"`), or keep decomposing",
-                child_id
-            );
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status":    "ok",
-                    "edge_id":   edge_id,
-                    "edge_type": EdgeType::Hierarchy.to_string(),
-                    "parent_id": parent_id,
-                    "child_id":  child_id,
-                    "next_step": next_step,
-                }));
-            } else {
-                println!("✓ HIERARCHY edge created  (id: {})", edge_id);
-                println!("  parent → {}", parent_id);
-                println!("  child  → {}", child_id);
-                println!("  → Next: {}", next_step);
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // VALIDATES: Validation → Intent
-        // ----------------------------------------------------------------
+        } => run_hierarchy_with_sqlite(&cwd, parent_id, child_id, notes, printer),
         EdgeCmd::Validates {
             validation_id,
             intent_id,
             notes,
-        } => {
-            gate::acting_in_lane(
-                "link a validation (VALIDATES)",
-                &[role::BUILDER, role::VALIDATOR],
-                None,
-            )?;
-            // Validations resolve by id, exact name, or unique fragment —
-            // same addressability contract as intents and rules.
-            let validation_id = crate::db::queries::resolve_validation(db, &validation_id)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
-            let now = chrono::Utc::now().to_rfc3339();
-            let n = notes.as_deref().unwrap_or("");
-            insert_validates(db, &validation_id, &intent_id, n, &now)?;
-            let edge_id = crate::db::schema::edge_key(
-                crate::db::schema::edge::VALIDATES,
-                &validation_id,
-                &intent_id,
-            );
-            let next_step = format!("make the proof real: `loom validate {}`", intent_id);
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "status":        "ok",
-                    "edge_id":       edge_id,
-                    "edge_type":     EdgeType::Validates.to_string(),
-                    "validation_id": validation_id,
-                    "intent_id":     intent_id,
-                    "next_step":     next_step,
-                }));
-            } else {
-                println!("✓ VALIDATES edge created  (id: {})", edge_id);
-                println!("  validation → {}", validation_id);
-                println!("  intent     → {}", intent_id);
-                println!("  → Next: {}", next_step);
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // List RELATES_TO edges
-        // ----------------------------------------------------------------
-        EdgeCmd::List { status, limit } => {
-            let mut edges = list_relates_to(db, status.as_deref())?;
-            let total = apply_limit(&mut edges, limit);
-            let shown = edges.len();
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "edges":     edges,
-                    "total":     total,
-                    "truncated": shown < total,
-                }));
-            } else if edges.is_empty() {
-                println!("(no RELATES_TO edges found)");
-            } else {
-                for e in &edges {
-                    println!("{}", fmt_edge_row(e));
-                }
-                if let Some(m) = more_marker(total, shown, "loom edge list --limit 0") {
-                    println!("{}", m);
-                }
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // Show full detail of one RELATES_TO edge
-        // ----------------------------------------------------------------
-        EdgeCmd::Show { edge_id } => {
-            let edge = get_relates_to(db, &edge_id)?;
-            match edge {
-                None => anyhow::bail!(
-                    "Edge '{}' not found.\nRun `loom edge list` to see available edges.",
-                    edge_id
-                ),
-                Some(ref e) => {
-                    let intent_a =
-                        get_intent(db, &e.from_id)?.unwrap_or_else(|| default_intent(&e.from_id));
-                    let intent_b =
-                        get_intent(db, &e.to_id)?.unwrap_or_else(|| default_intent(&e.to_id));
-                    let mut notes = notes_for_target(db, &e.id)?;
-                    // Notes come back oldest-first; keep the NEWEST when capping.
-                    let notes_total = notes.len();
-                    if notes_total > SECTION_CAP {
-                        notes.drain(..notes_total - SECTION_CAP);
-                    }
-                    if printer.json {
-                        printer.print_json(&serde_json::json!({
-                            "edge":     e,
-                            "intent_a": intent_a,
-                            "intent_b": intent_b,
-                            "notes":    notes,
-                            "notes_total": notes_total,
-                        }));
-                    } else {
-                        println!(
-                            "── Edge ──────────────────────────────────────────────────────────"
-                        );
-                        println!("{}", fmt_edge_detail(e));
-                        println!();
-                        println!(
-                            "── Intent A ({}) ──────────────────────────────────────────────────",
-                            e.from_name
-                        );
-                        println!("{}", fmt_intent(&intent_a));
-                        println!();
-                        println!(
-                            "── Intent B ({}) ──────────────────────────────────────────────────",
-                            e.to_name
-                        );
-                        println!("{}", fmt_intent(&intent_b));
-                        println!();
-                        println!(
-                            "── Notes ({}) ──────────────────────────────────────────────────────",
-                            notes_total
-                        );
-                        if notes.is_empty() {
-                            println!("  (none)");
-                        } else {
-                            for n in &notes {
-                                println!("  [{}] {}  ({})", n.kind, n.text, n.author);
-                            }
-                            if let Some(m) = more_marker(
-                                notes_total,
-                                notes.len(),
-                                &format!("loom note list --edge {}", e.id),
-                            ) {
-                                println!("  {}", m);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // Fix a failing RELATES_TO edge → sets inspection_status = passing
-        // ----------------------------------------------------------------
+        } => run_validates_with_sqlite(&cwd, validation_id, intent_id, notes, printer),
+        EdgeCmd::List { status, limit } => run_list_with_sqlite(&cwd, status, limit, printer),
+        EdgeCmd::Show { edge_id } => run_show_with_sqlite(&cwd, edge_id, printer),
         EdgeCmd::Fix {
             edge_id,
             description,
-        } => {
-            let by = gate::acting_in_lane("mark a failing edge fixed", &[role::FIXER], None)?;
-            crate::db::queries::ensure_owned(
-                db,
-                "mark an edge fixed (a claim that you changed the code)",
-            )?;
-            gate::require_substantive(
-                "description",
-                &description,
-                "what was changed in the code to resolve the violation",
-            )?;
-            let now = chrono::Utc::now().to_rfc3339();
-            // Atomic: the passing verdict and its needs_reverification ripple
-            // to neighbours land together — a fix without its ripple would
-            // leave stale green on adjacent claims.
-            let found = crate::db::with_transaction(db, || {
-                fix_edge(db, &edge_id, &description, &by, &now)
-            })?;
-            if !found {
-                anyhow::bail!(
-                    "Edge '{}' not found.\nRun `loom edge list` to see available edges.",
-                    edge_id
-                );
-            }
-            let next_step =
-                "Neighbouring passing/independent edges set to needs_reverification — `loom next --mode fix`.";
-            if printer.json {
-                let v = with_anchor(
-                    serde_json::json!({
-                        "status":      "ok",
-                        "edge_id":     edge_id,
-                        "description": description,
-                        "message":     "Edge marked passing. Neighbouring passing/independent edges set to needs_reverification.",
-                    }),
-                    db,
-                    next_step,
-                )?;
-                printer.print_json(&v);
-            } else {
-                println!("✓ Edge {} marked as passing (fixed)", edge_id);
-                print_anchor(db, next_step)?;
-            }
-        }
+        } => run_fix_with_sqlite(&cwd, edge_id, description, printer),
     }
-
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Resolve a codefile argument: exact id, exact registered path, or a glob
-/// over REGISTERED paths (bulk). Errors when nothing matches.
-fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeFile>> {
+fn run_explore_with_sqlite(
+    root: &std::path::Path,
+    intent_a_key: String,
+    intent_b_key: String,
+    subcommand: Option<ExploreSubCmd>,
+    printer: &Printer,
+) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let intent_a_id = resolve_intent_with_db(&store, &intent_a_key)?;
+    let intent_b_id = resolve_intent_with_db(&store, &intent_b_key)?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    match subcommand {
+        None => {
+            let edge = store.get_or_create_relates_to(&intent_a_id, &intent_b_id, &now)?;
+            let intent_a = store.get_intent(&intent_a_id)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.",
+                    intent_a_id
+                )
+            })?;
+            let intent_b = store.get_intent(&intent_b_id)?.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Intent '{}' not found — the graph may be inconsistent; run `loom doctor`.",
+                    intent_b_id
+                )
+            })?;
+
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "edge": edge,
+                    "intent_a": intent_a,
+                    "intent_b": intent_b,
+                }));
+            } else {
+                println!("── Intent A ──────────────────────────────────────────────────────");
+                println!("{}", fmt_intent(&intent_a));
+                println!();
+                println!("── Intent B ──────────────────────────────────────────────────────");
+                println!("{}", fmt_intent(&intent_b));
+                println!();
+                println!("── Edge ──────────────────────────────────────────────────────────");
+                println!("{}", fmt_edge_detail(&edge));
+                println!();
+                println!("Next steps:");
+                println!(
+                    "  loom edge explore {a} {b} ground --criterion \"<text>\" --confidence 0.9",
+                    a = intent_a_id,
+                    b = intent_b_id
+                );
+                println!(
+                    "  loom edge explore {a} {b} issue  --criterion \"<text>\" --evidence \"<text>\"",
+                    a = intent_a_id,
+                    b = intent_b_id
+                );
+                println!(
+                    "  loom edge explore {a} {b} independent --notes \"<why no relationship>\"",
+                    a = intent_a_id,
+                    b = intent_b_id
+                );
+            }
+        }
+        Some(ExploreSubCmd::Ground {
+            criterion,
+            evidence,
+            evidence_locator,
+            confidence,
+            inspected_by,
+        }) => {
+            let now = chrono::Utc::now().to_rfc3339();
+            let by = gate::acting_in_lane(
+                "ground a RELATES_TO edge",
+                &[role::ANALYZER, role::FIXER],
+                inspected_by.as_deref(),
+            )?;
+            gate::require_substantive(
+                "criterion",
+                &criterion,
+                "the falsifiable coexistence criterion this edge was checked against",
+            )?;
+            if !evidence.trim().is_empty() {
+                gate::require_substantive(
+                    "evidence",
+                    &evidence,
+                    "what the inspection actually found (file/symbol + the observation)",
+                )?;
+            }
+            let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
+            gate::require_confidence(confidence)?;
+            let by = by.as_str();
+            let edge = store.get_or_create_relates_to(&intent_a_id, &intent_b_id, &now)?;
+            store.update_relates_to_ground(
+                &edge.from_id,
+                &edge.to_id,
+                &criterion,
+                &evidence,
+                confidence,
+                by,
+                &now,
+            )?;
+            let updated = RelatesTo {
+                inspection_status: "passing".to_string(),
+                criterion,
+                evidence,
+                confidence,
+                inspected_by: by.to_string(),
+                last_inspected: now,
+                ..edge
+            };
+            let next_step = "`loom next` for the next item.";
+            if printer.json {
+                let v = with_read_anchor(serde_json::to_value(&updated)?, &store, next_step)?;
+                printer.print_json(&v);
+            } else {
+                println!("✓ Edge marked as passing (grounded)");
+                println!("{}", fmt_edge_detail(&updated));
+                let snapshot = store.query_snapshot()?;
+                println!("  → Next: {next_step}");
+                println!("  {}", fmt_pulse(&store.graph_state(&snapshot)?));
+            }
+        }
+        Some(ExploreSubCmd::Issue {
+            criterion,
+            evidence,
+            evidence_locator,
+            confidence,
+            inspected_by,
+        }) => {
+            let now = chrono::Utc::now().to_rfc3339();
+            let by = gate::acting_in_lane(
+                "record an issue on a RELATES_TO edge",
+                &[role::ANALYZER, role::FIXER],
+                inspected_by.as_deref(),
+            )?;
+            gate::require_substantive(
+                "criterion",
+                &criterion,
+                "the falsifiable criterion that was violated",
+            )?;
+            gate::require_substantive(
+                "evidence",
+                &evidence,
+                "what was actually found in the code (file/symbol + the problem)",
+            )?;
+            let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
+            gate::require_confidence(confidence)?;
+            let by = by.as_str();
+            let edge = store.get_or_create_relates_to(&intent_a_id, &intent_b_id, &now)?;
+            store.update_relates_to_issue(
+                &edge.from_id,
+                &edge.to_id,
+                &criterion,
+                &evidence,
+                confidence,
+                by,
+                &now,
+            )?;
+            let updated = RelatesTo {
+                inspection_status: "failing".to_string(),
+                criterion,
+                evidence,
+                confidence,
+                inspected_by: by.to_string(),
+                last_inspected: now,
+                ..edge
+            };
+            let next_step = format!(
+                "fix it then `loom edge fix {}`, or `loom next --mode fix`.",
+                updated.id
+            );
+            if printer.json {
+                let v = with_read_anchor(serde_json::to_value(&updated)?, &store, &next_step)?;
+                printer.print_json(&v);
+            } else {
+                println!("✓ Issue recorded — edge marked as failing");
+                println!("{}", fmt_edge_detail(&updated));
+                let snapshot = store.query_snapshot()?;
+                println!("  → Next: {next_step}");
+                println!("  {}", fmt_pulse(&store.graph_state(&snapshot)?));
+            }
+        }
+        Some(ExploreSubCmd::Independent {
+            notes,
+            inspected_by,
+        }) => {
+            let now = chrono::Utc::now().to_rfc3339();
+            let by = gate::acting_in_lane(
+                "confirm two intents independent",
+                &[role::ANALYZER],
+                inspected_by.as_deref(),
+            )?;
+            gate::require_substantive(
+                "notes",
+                &notes,
+                "why these two intents have no meaningful relationship",
+            )?;
+            let by = by.as_str();
+            let edge = store.get_or_create_relates_to(&intent_a_id, &intent_b_id, &now)?;
+            store.update_relates_to_independent(&edge.from_id, &edge.to_id, &notes, by, &now)?;
+
+            let next_step = "Continue discovery: `loom next`";
+            if printer.json {
+                let v = with_read_anchor(
+                    serde_json::json!({
+                        "status": "ok",
+                        "edge_id": edge.id,
+                        "inspection_status": "independent",
+                        "from": intent_a_id,
+                        "to": intent_b_id,
+                        "notes": notes,
+                    }),
+                    &store,
+                    next_step,
+                )?;
+                printer.print_json(&v);
+            } else {
+                println!(
+                    "✓ Confirmed independent: {} ↔ {}  (edge id: {})",
+                    intent_a_id, intent_b_id, edge.id
+                );
+                let snapshot = store.query_snapshot()?;
+                println!("  → Next: {next_step}");
+                println!("  {}", fmt_pulse(&store.graph_state(&snapshot)?));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn run_implement_with_sqlite(
+    root: &std::path::Path,
+    intent_key: String,
+    codefile_key: String,
+    locator: String,
+    notes: String,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let intent_id = resolve_intent_with_db(&store, &intent_key)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let targets = resolve_codefiles_with_db(&store, &codefile_key)?;
+    let next_step = "ground more (`loom edge implement …`) or, if the leaf is fully grounded, prove it: `loom next --mode validate`";
+    if targets.len() > 1 {
+        for cf in &targets {
+            store.insert_implements(&intent_id, &cf.id, "", &notes, &now)?;
+        }
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "ok",
+                "intent_id": intent_id,
+                "grounded": targets.iter().map(|codefile| codefile.path.clone()).collect::<Vec<_>>(),
+                "count": targets.len(),
+                "next_step": next_step,
+            }));
+        } else {
+            println!(
+                "✓ Grounded intent in {} registered file(s) matching '{}'.",
+                targets.len(),
+                codefile_key
+            );
+            println!("  → Next: {}", next_step);
+        }
+    } else {
+        let cf = &targets[0];
+        store.insert_implements(&intent_id, &cf.id, &locator, &notes, &now)?;
+        let edge_id =
+            crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, &intent_id, &cf.id);
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "ok",
+                "edge_id": edge_id,
+                "edge_type": EdgeType::Implements.to_string(),
+                "intent_id": intent_id,
+                "codefile_id": cf.id,
+                "locator": locator,
+                "next_step": next_step,
+            }));
+        } else {
+            println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
+            println!("  intent   → {}", intent_id);
+            println!(
+                "  codefile → {}{}",
+                cf.path,
+                if locator.is_empty() {
+                    String::new()
+                } else {
+                    format!("  @ {}", locator)
+                }
+            );
+            println!("  → Next: {}", next_step);
+        }
+    }
+    Ok(())
+}
+
+fn run_unimplement_with_sqlite(
+    root: &std::path::Path,
+    intent_key: String,
+    codefile_key: String,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane("remove an IMPLEMENTS edge", &[role::BUILDER], None)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let intent_id = resolve_intent_with_db(&store, &intent_key)?;
+    let targets = resolve_codefiles_with_db(&store, &codefile_key)?;
+    let mut removed: Vec<String> = Vec::new();
+    for cf in &targets {
+        if store.delete_implements(&intent_id, &cf.id)? {
+            removed.push(cf.path.clone());
+        }
+    }
+    if removed.is_empty() {
+        anyhow::bail!(
+            "No IMPLEMENTS edge between intent '{}' and '{}'.\n`loom codefile show <path>` lists the file's owners; `loom edge implement <intent> <path>` creates the grounding.",
+            intent_id,
+            codefile_key
+        );
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "intent_id": intent_id,
+            "removed": removed,
+            "next_step": "If the intent is a leaf it may be unrealized now — `loom status` will route.",
+        }));
+    } else {
+        println!("✓ Removed {} grounding(s).", removed.len());
+    }
+    Ok(())
+}
+
+fn run_govern_with_sqlite(
+    root: &std::path::Path,
+    rule_key: String,
+    intent_key: String,
+    criterion: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane("apply a quality rule (GOVERNS)", &[role::QUALITY], None)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let rule_id = resolve_rule_with_db(&store, &rule_key)?;
+    let intent_id = resolve_intent_with_db(&store, &intent_key)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let criterion = criterion.as_deref().unwrap_or("");
+    if !criterion.is_empty() {
+        gate::require_substantive(
+            "criterion",
+            criterion,
+            "what compliance looks like for this rule on this intent",
+        )?;
+    }
+    store.insert_governs(&rule_id, &intent_id, criterion, &now)?;
+    let edge_id =
+        crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
+    let next_step = format!(
+        "make the edge real with a verdict: `loom rule verdict {} {} --status <passing|failing|independent> --criterion \"<text>\" --evidence \"<text>\"`",
+        rule_id, intent_id
+    );
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "edge_id": edge_id,
+            "edge_type": EdgeType::Governs.to_string(),
+            "rule_id": rule_id,
+            "intent_id": intent_id,
+            "next_step": next_step,
+        }));
+    } else {
+        println!("✓ GOVERNS edge created  (id: {})", edge_id);
+        println!("  rule   → {}", rule_id);
+        println!("  intent → {}", intent_id);
+        println!("  → Next: {}", next_step);
+    }
+    Ok(())
+}
+
+fn run_hierarchy_with_sqlite(
+    root: &std::path::Path,
+    parent_key: String,
+    child_key: String,
+    notes: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane("create a HIERARCHY edge", &[role::BUILDER], None)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let parent_id = resolve_intent_with_db(&store, &parent_key)?;
+    let child_id = resolve_intent_with_db(&store, &child_key)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let notes = notes.as_deref().unwrap_or("");
+    store.insert_hierarchy(&parent_id, &child_id, notes, &now)?;
+    let edge_id =
+        crate::db::schema::edge_key(crate::db::schema::edge::HIERARCHY, &parent_id, &child_id);
+    let next_step = format!(
+        "ground the child if it is a leaf (`loom edge implement {} <codefile> --locator \"<symbol>\"`), or keep decomposing",
+        child_id
+    );
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "edge_id": edge_id,
+            "edge_type": EdgeType::Hierarchy.to_string(),
+            "parent_id": parent_id,
+            "child_id": child_id,
+            "next_step": next_step,
+        }));
+    } else {
+        println!("✓ HIERARCHY edge created  (id: {})", edge_id);
+        println!("  parent → {}", parent_id);
+        println!("  child  → {}", child_id);
+        println!("  → Next: {}", next_step);
+    }
+    Ok(())
+}
+
+fn run_validates_with_sqlite(
+    root: &std::path::Path,
+    validation_key: String,
+    intent_key: String,
+    notes: Option<String>,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane(
+        "link a validation (VALIDATES)",
+        &[role::BUILDER, role::VALIDATOR],
+        None,
+    )?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let validation_id = resolve_validation_with_db(&store, &validation_key)?;
+    let intent_id = resolve_intent_with_db(&store, &intent_key)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let notes = notes.as_deref().unwrap_or("");
+    store.insert_validates(&validation_id, &intent_id, notes, &now)?;
+    let edge_id = crate::db::schema::edge_key(
+        crate::db::schema::edge::VALIDATES,
+        &validation_id,
+        &intent_id,
+    );
+    let next_step = format!("make the proof real: `loom validate {}`", intent_id);
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "edge_id": edge_id,
+            "edge_type": EdgeType::Validates.to_string(),
+            "validation_id": validation_id,
+            "intent_id": intent_id,
+            "next_step": next_step,
+        }));
+    } else {
+        println!("✓ VALIDATES edge created  (id: {})", edge_id);
+        println!("  validation → {}", validation_id);
+        println!("  intent     → {}", intent_id);
+        println!("  → Next: {}", next_step);
+    }
+    Ok(())
+}
+
+fn run_list_with_sqlite(
+    root: &std::path::Path,
+    status: Option<String>,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let mut edges = store.query_snapshot()?.relates;
+    if let Some(status) = status.as_deref() {
+        edges.retain(|edge| edge.inspection_status == status);
+    }
+    edges.sort_by(|a, b| {
+        b.priority_score
+            .partial_cmp(&a.priority_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+    let total = apply_limit(&mut edges, limit);
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "edges": edges,
+            "total": total,
+            "shown": edges.len(),
+            "status_filter": status,
+            "more": more_marker(total, edges.len(), "loom edge list --limit 0"),
+        }));
+    } else {
+        for edge in &edges {
+            println!("{}", fmt_edge_row(edge));
+        }
+        if let Some(marker) = more_marker(total, edges.len(), "loom edge list --limit 0") {
+            println!("  {marker}");
+        }
+    }
+    Ok(())
+}
+
+fn run_show_with_sqlite(root: &std::path::Path, edge_id: String, printer: &Printer) -> Result<()> {
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let snapshot = store.query_snapshot()?;
+    let edge = snapshot
+        .relates
+        .iter()
+        .find(|edge| edge.id == edge_id)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("RELATES_TO edge '{}' not found.", edge_id))?;
+    let from = store
+        .get_intent(&edge.from_id)?
+        .unwrap_or_else(|| default_intent(&edge.from_id));
+    let to = store
+        .get_intent(&edge.to_id)?
+        .unwrap_or_else(|| default_intent(&edge.to_id));
+    let notes = store.notes_for_target(&edge.id)?;
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "edge": edge,
+            "from_intent": from,
+            "to_intent": to,
+            "notes": notes,
+        }));
+    } else {
+        println!("── From ─────────────────────────────────────────────────────────");
+        println!("{}", fmt_intent(&from));
+        println!();
+        println!("── To ───────────────────────────────────────────────────────────");
+        println!("{}", fmt_intent(&to));
+        println!();
+        println!("── Edge ─────────────────────────────────────────────────────────");
+        println!("{}", fmt_edge_detail(&edge));
+        if !notes.is_empty() {
+            println!();
+            println!("── Notes ────────────────────────────────────────────────────────");
+            for note in notes.iter().take(SECTION_CAP) {
+                println!("  [{}] {}: {}", note.kind, note.created_at, note.text);
+            }
+            if let Some(marker) = more_marker(
+                notes.len(),
+                notes.len().min(SECTION_CAP),
+                "loom note list --edge <id>",
+            ) {
+                println!("  {marker}");
+            }
+        }
+    }
+    Ok(())
+}
+
+fn run_fix_with_sqlite(
+    root: &std::path::Path,
+    edge_id: String,
+    description: String,
+    printer: &Printer,
+) -> Result<()> {
+    gate::acting_in_lane(
+        "mark a repaired RELATES_TO edge passing",
+        &[role::FIXER],
+        None,
+    )?;
+    gate::require_substantive(
+        "description",
+        &description,
+        "what changed in code or design to make the failing/stale relationship true again",
+    )?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let snapshot = store.query_snapshot()?;
+    let edge = snapshot
+        .relates
+        .iter()
+        .find(|edge| edge.id == edge_id)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("RELATES_TO edge '{}' not found.", edge_id))?;
+    anyhow::ensure!(
+        matches!(
+            edge.inspection_status.as_str(),
+            "failing" | "needs_reverification"
+        ),
+        "Edge '{}' is '{}'; `loom edge fix` only applies to failing or needs_reverification edges.",
+        edge.id,
+        edge.inspection_status
+    );
+    let now = chrono::Utc::now().to_rfc3339();
+    let criterion = if edge.criterion.trim().is_empty() {
+        "the relationship remains valid after the repair"
+    } else {
+        edge.criterion.as_str()
+    };
+    let evidence = format!("Repair verified: {description}");
+    let confidence = if edge.confidence > 0.0 {
+        edge.confidence
+    } else {
+        0.9
+    };
+    store.update_relates_to_ground(
+        &edge.from_id,
+        &edge.to_id,
+        criterion,
+        &evidence,
+        confidence,
+        "loom",
+        &now,
+    )?;
+    let updated = RelatesTo {
+        inspection_status: "passing".to_string(),
+        criterion: criterion.to_string(),
+        evidence,
+        confidence,
+        inspected_by: "loom".to_string(),
+        last_inspected: now,
+        ..edge
+    };
+    let next_step = "`loom next --mode fix` for the next stale or failing edge.";
+    if printer.json {
+        let v = with_read_anchor(serde_json::to_value(&updated)?, &store, next_step)?;
+        printer.print_json(&v);
+    } else {
+        println!("✓ Edge marked as passing after repair");
+        println!("{}", fmt_edge_detail(&updated));
+        let snapshot = store.query_snapshot()?;
+        println!("  → Next: {next_step}");
+        println!("  {}", fmt_pulse(&store.graph_state(&snapshot)?));
+    }
+    Ok(())
+}
+
+fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let intents = db.list_intents(None, None)?;
+    if intents.iter().any(|intent| intent.id == key) {
+        return Ok(key.to_string());
+    }
+    let lower = key.to_lowercase();
+    let exact: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase() == lower)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    if exact.len() > 1 {
+        anyhow::bail!(
+            "Intent name '{}' is not unique ({} intents carry it) — use the id. `loom intent list` to see them.",
+            key,
+            exact.len()
+        );
+    }
+    let matches: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase().contains(&lower))
+        .collect();
+    match matches.len() {
+        1 => Ok(matches[0].id.clone()),
+        0 => anyhow::bail!(
+            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
+            key
+        ),
+        _ => {
+            let total = matches.len();
+            let shown = matches
+                .iter()
+                .take(10)
+                .map(|intent| format!("'{}'", intent.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if total > 10 {
+                anyhow::bail!(
+                    "'{}' is ambiguous — it matches: {} … +{} more — narrow the fragment or `loom find \"{}\"`.",
+                    key,
+                    shown,
+                    total - 10,
+                    key
+                );
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key,
+                shown
+            );
+        }
+    }
+}
+
+fn resolve_codefiles_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<Vec<CodeFile>> {
+    let codefiles = db.query_snapshot()?.codefiles;
     let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
     if is_glob {
         let pat = glob::Pattern::new(key).map_err(|e| {
@@ -669,9 +746,9 @@ fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeF
                 e
             )
         })?;
-        let matched: Vec<_> = crate::db::queries::list_codefiles(db)?
+        let matched: Vec<_> = codefiles
             .into_iter()
-            .filter(|c| pat.matches(&c.path))
+            .filter(|codefile| pat.matches(&codefile.path))
             .collect();
         if matched.is_empty() {
             anyhow::bail!(
@@ -682,14 +759,94 @@ fn resolve_codefiles(db: &GrafeoDb, key: &str) -> Result<Vec<crate::types::CodeF
         }
         return Ok(matched);
     }
-    crate::db::queries::get_codefile_by_id_or_path(db, key)?
-        .map(|c| vec![c])
+    codefiles
+        .into_iter()
+        .find(|codefile| codefile.id == key || codefile.path == key)
+        .map(|codefile| vec![codefile])
         .ok_or_else(|| {
             anyhow::anyhow!(
-            "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
-            key
-        )
+                "CodeFile '{}' not found (by id or path).\nRegister it first: loom codefile add <path>",
+                key
+            )
         })
+}
+
+fn resolve_rule_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let rules = db.list_rules()?;
+    if rules.iter().any(|rule| rule.id == key) {
+        return Ok(key.to_string());
+    }
+    let lower = key.to_lowercase();
+    let exact: Vec<_> = rules
+        .iter()
+        .filter(|rule| rule.name.to_lowercase() == lower)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let matches: Vec<_> = rules
+        .iter()
+        .filter(|rule| rule.name.to_lowercase().contains(&lower))
+        .collect();
+    match matches.len() {
+        1 => Ok(matches[0].id.clone()),
+        0 => anyhow::bail!(
+            "No rule matches '{}' (by id, exact name, or name fragment). Run `loom rule list`.",
+            key
+        ),
+        _ => {
+            let mut shown = matches
+                .iter()
+                .take(SECTION_CAP)
+                .map(|rule| format!("'{}'", rule.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if let Some(marker) = more_marker(
+                matches.len(),
+                matches.len().min(SECTION_CAP),
+                "`loom rule list`",
+            ) {
+                shown.push_str(", ");
+                shown.push_str(&marker);
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key,
+                shown
+            )
+        }
+    }
+}
+
+fn resolve_validation_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let validations = db.list_validations()?;
+    if validations.iter().any(|validation| validation.id == key) {
+        return Ok(key.to_string());
+    }
+    let lower = key.to_lowercase();
+    let exact: Vec<_> = validations
+        .iter()
+        .filter(|validation| validation.name.to_lowercase() == lower)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let matches: Vec<_> = validations
+        .iter()
+        .filter(|validation| validation.name.to_lowercase().contains(&lower))
+        .collect();
+    match matches.len() {
+        1 => Ok(matches[0].id.clone()),
+        0 => anyhow::bail!(
+            "No validation matches '{}' (by id, name, or fragment). Run `loom validation list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — matches {} validations. Use the id (`loom validation list`).",
+            key,
+            matches.len()
+        ),
+    }
 }
 
 fn default_intent(id: &str) -> Intent {

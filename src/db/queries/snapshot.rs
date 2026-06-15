@@ -2,14 +2,8 @@ use anyhow::Result;
 use std::cell::OnceCell;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::LoomDb;
 use crate::types::{
     CodeFile, Governs, Implements, Intent, Note, QualityRule, RelatesTo, ValidatesEdge, Validation,
-};
-
-use super::{
-    list_active_intents, list_all_governs, list_all_hierarchy, list_all_implements,
-    list_all_validates, list_codefiles, list_notes, list_relates_to, list_rules, list_validations,
 };
 
 #[derive(Debug, Clone)]
@@ -38,17 +32,19 @@ pub struct QuerySnapshot {
 }
 
 impl QuerySnapshot {
-    pub fn load(db: &dyn LoomDb) -> Result<Self> {
-        let intents = list_active_intents(db)?;
-        let hierarchy = list_all_hierarchy(db)?;
-        let relates = list_relates_to(db, None)?;
-        let governs = list_all_governs(db)?;
-        let rules = list_rules(db)?;
-        let validates = list_all_validates(db)?;
-        let validations = list_validations(db)?;
-        let implements = list_all_implements(db)?;
-        let codefiles = list_codefiles(db)?;
-
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_parts(
+        intents: Vec<Intent>,
+        hierarchy: Vec<(String, String)>,
+        relates: Vec<RelatesTo>,
+        governs: Vec<Governs>,
+        rules: Vec<QualityRule>,
+        validates: Vec<ValidatesEdge>,
+        validations: Vec<Validation>,
+        implements: Vec<Implements>,
+        codefiles: Vec<CodeFile>,
+        notes: Option<Vec<Note>>,
+    ) -> Self {
         let with_code: HashSet<String> = implements.iter().map(|im| im.intent_id.clone()).collect();
         let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
         let mut degrees: HashMap<String, i64> = HashMap::new();
@@ -63,7 +59,12 @@ impl QuerySnapshot {
             *degrees.entry(edge.to_id.clone()).or_insert(0) += 1;
         }
 
-        Ok(Self {
+        let note_cache = OnceCell::new();
+        if let Some(notes) = notes {
+            let _ = note_cache.set(notes);
+        }
+
+        Self {
             intents,
             hierarchy,
             relates,
@@ -75,21 +76,12 @@ impl QuerySnapshot {
             codefiles,
             with_code,
             degrees,
-            notes: OnceCell::new(),
-        })
+            notes: note_cache,
+        }
     }
 
-    /// All notes (newest last), loaded once per snapshot and memoised. Equivalent
-    /// to `list_notes(db, None, None)` for every caller, but a second consumer
-    /// holding the same snapshot reuses the first scan instead of re-walking the
-    /// (often thousands-strong) Note label. Single-threaded by construction —
-    /// loom is one command per process — so the `OnceCell` set never races.
-    pub fn notes(&self, db: &dyn LoomDb) -> Result<&[Note]> {
-        if self.notes.get().is_none() {
-            let loaded = list_notes(db, None, None)?;
-            let _ = self.notes.set(loaded);
-        }
-        Ok(self.notes.get().expect("just initialised"))
+    pub(crate) fn cached_notes(&self) -> Option<&[Note]> {
+        self.notes.get().map(Vec::as_slice)
     }
 }
 

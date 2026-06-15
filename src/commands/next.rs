@@ -1,30 +1,29 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    align_candidates, build_candidates_from_snapshot, check_graph_from_snapshot,
-    compute_smells_from, edges_for_intent, get_intent, graph_state, graph_state_from_snapshot,
-    list_hierarchy_for_intent, list_implements_for_intent, notes_for_target, parse_sync_cause,
-    quality_candidates_from_snapshot, review_candidates_from_snapshot,
-    scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
-    validate_candidates_from_snapshot, validations_for_intent, vertical_completeness_from_snapshot,
-    QuerySnapshot,
+    build_candidates_from_snapshot, parse_sync_cause, quality_candidates_from_snapshot,
+    review_candidates_from_snapshot, scored_candidates_from_snapshot,
+    unexplored_pairs_scored_from_snapshot, validate_candidates_from_snapshot,
+    vertical_completeness_from_snapshot, AlignCandidate, DoctorReport, GraphState, QuerySnapshot,
+    Smell,
 };
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{
     fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP,
 };
-use crate::types::{EdgeType, GroundingSurface, IntentSurface, ValidationSurface, WorkItem};
+use crate::types::{
+    EdgeType, GroundingSurface, Hypothesis, IntentSurface, ValidationSurface, WorkItem,
+};
 
 pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, mode, all, take, compact, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_repo(&store, &cwd, mode, all, take, compact, printer)
 }
 
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
+fn run_with_repo(
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
     mode: &str,
     all: bool,
     take: usize,
@@ -32,7 +31,7 @@ pub fn run_with_db(
     printer: &Printer,
 ) -> Result<()> {
     if all {
-        return run_all(db, printer);
+        return run_all(db, root, printer);
     }
     if mode == "triage" {
         anyhow::bail!(
@@ -91,17 +90,25 @@ pub fn run_with_db(
         _ => {}
     }
 
-    let snapshot = QuerySnapshot::load(db)?;
+    run_relates_with_repo(db, mode, take, compact, printer)
+}
+
+fn run_relates_with_repo(
+    store: &dyn GraphReadRepository,
+    mode: &str,
+    take: usize,
+    compact: bool,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
     let mut candidates = scored_candidates_from_snapshot(&snapshot, mode);
 
-    // Discovery keeps going once every materialised edge is inspected: fall back
-    // to intent pairs that have no edge yet, so the N×N grid gets explored.
     if candidates.is_empty() && mode == "discovery" {
         candidates = unexplored_pairs_scored_from_snapshot(&snapshot)?;
     }
 
     if candidates.is_empty() {
-        let gs = graph_state_from_snapshot(db, &snapshot)?;
+        let gs = store.graph_state(&snapshot)?;
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
@@ -123,59 +130,43 @@ pub fn run_with_db(
         return Ok(());
     }
 
-    // The bulk-read path: N compact items, one shared anchor.
     if take > 0 {
-        let gs = graph_state_from_snapshot(db, &snapshot)?;
-        return run_take(db, mode, &candidates, take, &gs, printer);
+        let gs = store.graph_state(&snapshot)?;
+        return run_take(store, mode, &candidates, take, &gs, printer);
     }
 
     let (top_edge, score) = &candidates[0];
 
-    // The projection path: verdict coordinates only — no validations, notes,
-    // descriptions, or pulse (each elision names its dig command instead).
     if compact {
-        return run_compact(db, mode, top_edge, *score, printer);
+        return run_compact(store, mode, top_edge, *score, printer);
     }
 
-    // Fetch rich context for both intents
-    let intent_a = get_intent(db, &top_edge.from_id)?.ok_or_else(|| {
+    let intent_a = store.get_intent(&top_edge.from_id)?.ok_or_else(|| {
         anyhow::anyhow!(
             "Intent '{}' not found in DB — graph inconsistency; run `loom doctor`.",
             top_edge.from_id
         )
     })?;
-    let intent_b_opt = get_intent(db, &top_edge.to_id)?;
+    let intent_b_opt = store.get_intent(&top_edge.to_id)?;
 
-    // IMPLEMENTS groundings for intent_a — projected to path/locator/status.
-    let mut implements_a = list_implements_for_intent(db, &top_edge.from_id)?;
+    let mut implements_a = store.list_implements_for_intent(&top_edge.from_id)?;
     let implements_total = cap_section(&mut implements_a);
-
-    // Fetch validations for intent_a (via VALIDATES)
-    let mut validations = validations_for_intent(db, &top_edge.from_id)?;
+    let mut validations = store.validations_for_intent(&top_edge.from_id)?;
     let validations_total = cap_section(&mut validations);
 
-    // discovery surfaces analyzer work. The fix queue SPLITS by what the item
-    // actually is: a stale (needs_reverification) claim is RE-INSPECTION — the
-    // criterion already exists, nothing gets fixed unless the re-inspection
-    // finds breakage — so it belongs to the analyzer at mid effort; only a
-    // recorded failure is repair work for the fixer, at high effort.
     let (role, effort) = match (mode, top_edge.inspection_status.as_str()) {
         ("fix", "failing") => ("fixer", "high"),
         ("fix", _) => ("analyzer", "mid"),
         _ => ("analyzer", "mid"),
     };
 
-    // Gather accumulated memory: notes on the edge (if it exists yet) and on
-    // both intents, so prior reasoning travels with the work item.
     let mut notes = Vec::new();
     if !top_edge.id.is_empty() {
-        notes.extend(notes_for_target(db, &top_edge.id)?);
+        notes.extend(store.notes_for_target(&top_edge.id)?);
     }
-    notes.extend(notes_for_target(db, &top_edge.from_id)?);
-    notes.extend(notes_for_target(db, &top_edge.to_id)?);
+    notes.extend(store.notes_for_target(&top_edge.from_id)?);
+    notes.extend(store.notes_for_target(&top_edge.to_id)?);
     let (notes, notes_total) = note_surfaces(notes, role);
-
-    // Build suggested action string
     let suggested_action = build_suggested_action(top_edge, score);
 
     let item = WorkItem {
@@ -193,7 +184,7 @@ pub fn run_with_db(
         suggested_action,
     };
 
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
 
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
@@ -208,7 +199,6 @@ pub fn run_with_db(
         return Ok(());
     }
 
-    // ---- Human-readable output ----
     println!(
         "── Next Work Item  [mode={}  priority={:.2}] ─────────────────────────────",
         mode, score
@@ -229,7 +219,6 @@ pub fn run_with_db(
     println!("{}", fmt_edge_detail(top_edge));
     println!();
 
-    // Code files (with locator precision where grounded)
     if !item.implements.is_empty() {
         println!("── Related Code Files ──────────────────────────────────────────────");
         for imp in &item.implements {
@@ -249,7 +238,6 @@ pub fn run_with_db(
         println!();
     }
 
-    // Validations
     if !item.validations.is_empty() {
         println!("── Validations on Intent A ─────────────────────────────────────────");
         for v in &item.validations {
@@ -274,7 +262,6 @@ pub fn run_with_db(
         println!();
     }
 
-    // Accumulated memory
     if !item.notes.is_empty() {
         if notes_total > item.notes.len() {
             println!(
@@ -306,13 +293,137 @@ pub fn run_with_db(
         println!();
     }
 
-    // Suggested action
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", item.suggested_action);
     println!();
     println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
     println!("  {}", fmt_pulse(&gs));
 
+    Ok(())
+}
+
+fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Printer) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let gs = store.graph_state(&snapshot)?;
+
+    if candidates.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "empty", "mode": "quality",
+                "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
+                "next_step": gs.next_action,
+                "graph_state": pulse_json(&gs),
+            }));
+        } else {
+            println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
+            println!();
+            println!("  {}", fmt_pulse(&gs));
+            println!("  → Next: {}", gs.next_action);
+        }
+        return Ok(());
+    }
+
+    const TAKE_CAP: usize = 50;
+    let n = take.min(TAKE_CAP).min(candidates.len());
+    let queue_total = candidates.len();
+    let rule_effort: std::collections::HashMap<String, String> = store
+        .list_rules()?
+        .into_iter()
+        .map(|r| (r.id, r.inspection_effort))
+        .collect();
+
+    let mut groups: Vec<(String, String, Vec<serde_json::Value>)> = Vec::new();
+    let mut batch_lines: Vec<String> = Vec::new();
+    for (g, score) in candidates.iter().take(n) {
+        let mut line = serde_json::json!({
+            "op": "rule_verdict",
+            "rule": g.rule_id,
+            "intent": g.intent_id,
+            "status": "passing",
+            "evidence": "<evidence>",
+            "confidence": 0.9,
+        });
+        if g.criterion.is_empty() {
+            line["criterion"] = "<criterion>".into();
+        }
+        batch_lines.push(line.to_string());
+        let effort = rule_effort
+            .get(&g.rule_id)
+            .map(String::as_str)
+            .filter(|e| !e.is_empty())
+            .unwrap_or("mid");
+        let item = serde_json::json!({
+            "rule": { "id": g.rule_id, "name": g.rule_name },
+            "inspection_status": g.inspection_status,
+            "criterion": g.criterion,
+            "notes": g.notes,
+            "priority_score": score,
+            "effort": effort,
+        });
+        match groups.iter_mut().find(|(iid, _, _)| *iid == g.intent_id) {
+            Some((_, _, items)) => items.push(item),
+            None => groups.push((g.intent_id.clone(), g.intent_name.clone(), vec![item])),
+        }
+    }
+    groups.sort_by(|a, b| {
+        (std::cmp::Reverse(a.2.len()), &a.1).cmp(&(std::cmp::Reverse(b.2.len()), &b.1))
+    });
+
+    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "mode": "quality",
+            "taken": n,
+            "queue_total": queue_total,
+            "groups": groups
+                .iter()
+                .map(|(iid, iname, items)| serde_json::json!({
+                    "intent": { "id": iid, "name": iname },
+                    "items": items,
+                }))
+                .collect::<Vec<_>>(),
+            "batch_template": batch_lines,
+            "guidance": guidance,
+            "dispatch": { "role": "quality", "effort": "per-item (see items[].effort)" },
+            "graph_state": pulse_json(&gs),
+        }));
+        return Ok(());
+    }
+
+    println!("── Next: {n} of {queue_total}  [mode=quality] — bulk read, grouped by intent ────",);
+    for (iid, iname, items) in &groups {
+        println!();
+        println!(
+            "  {} ({} verdict(s) to earn)  [{}]",
+            iname,
+            items.len(),
+            iid
+        );
+        for it in items {
+            println!(
+                "    [{:<21} {:>5.2}  effort={}]  {}",
+                it["inspection_status"].as_str().unwrap_or(""),
+                it["priority_score"].as_f64().unwrap_or(0.0),
+                it["effort"].as_str().unwrap_or("mid"),
+                it["rule"]["name"].as_str().unwrap_or(""),
+            );
+        }
+    }
+    println!();
+    println!(
+        "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──"
+    );
+    for l in &batch_lines {
+        println!("  {l}");
+    }
+    println!();
+    println!("  {guidance}");
+    println!();
+    println!("  Dispatch — quality lane; effort is per item (the rule's annotation).");
+    println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
 
@@ -329,7 +440,7 @@ pub fn run_with_db(
 // ---------------------------------------------------------------------------
 
 fn run_take(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     mode: &str,
     candidates: &[(crate::types::RelatesTo, f64)],
     take: usize,
@@ -353,7 +464,7 @@ fn run_take(
     // Iteration is oldest→newest, so later inserts overwrite = latest flip wins.
     let mut latest_cause: std::collections::HashMap<String, String> =
         std::collections::HashMap::new();
-    for nt in crate::db::queries::list_notes(db, None, Some("transition"))? {
+    for nt in db.notes_by_kind("transition")? {
         if let Some(cause) = parse_sync_cause(&nt.text) {
             latest_cause.insert(nt.target_id, cause.to_string());
         }
@@ -459,149 +570,6 @@ fn run_take(
 }
 
 // ---------------------------------------------------------------------------
-// `--take N` for QUALITY — the bulk read symmetric with `loom batch`'s
-// `rule_verdict` write. A sync flood stales GOVERNS green in bulk too (every
-// passing verdict on an intent grounded in a changed file flips), but quality
-// previously only served one item per call: agents draining 100 stale verdicts
-// were forced around the interface (parsing `loom export` by hand). Groups by
-// INTENT — one code-neighborhood read pays for every rule held against it.
-// ---------------------------------------------------------------------------
-
-fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()> {
-    let snapshot = QuerySnapshot::load(db)?;
-    let candidates = quality_candidates_from_snapshot(&snapshot);
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
-
-    if candidates.is_empty() {
-        if printer.json {
-            printer.print_json(&serde_json::json!({
-                "status": "empty", "mode": "quality",
-                "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
-                "next_step": gs.next_action,
-                "graph_state": pulse_json(&gs),
-            }));
-        } else {
-            println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
-            println!();
-            println!("  {}", fmt_pulse(&gs));
-            println!("  → Next: {}", gs.next_action);
-        }
-        return Ok(());
-    }
-
-    const TAKE_CAP: usize = 50;
-    let n = take.min(TAKE_CAP).min(candidates.len());
-    let queue_total = candidates.len();
-
-    // Rule effort annotations, read once: each group's effort is the MAX of
-    // its rules' (a group is one sitting; the deepest rule sets the bar).
-    let rule_effort: std::collections::HashMap<String, String> =
-        crate::db::queries::list_rules(db)?
-            .into_iter()
-            .map(|r| (r.id, r.inspection_effort))
-            .collect();
-
-    let mut groups: Vec<(String, String, Vec<serde_json::Value>)> = Vec::new(); // (intent_id, intent_name, items)
-    let mut batch_lines: Vec<String> = Vec::new();
-    for (g, score) in candidates.iter().take(n) {
-        // Prefill the verdict line: stale green re-affirms the recorded
-        // criterion, so the line OMITS it (`loom batch` reuses the stored
-        // text); first measurements get placeholders the gates reject unedited.
-        let mut line = serde_json::json!({
-            "op": "rule_verdict",
-            "rule": g.rule_id,
-            "intent": g.intent_id,
-            "status": "passing",
-            "evidence": "<evidence>",
-            "confidence": 0.9,
-        });
-        if g.criterion.is_empty() {
-            line["criterion"] = "<criterion>".into();
-        }
-        batch_lines.push(line.to_string());
-        let effort = rule_effort
-            .get(&g.rule_id)
-            .map(String::as_str)
-            .filter(|e| !e.is_empty())
-            .unwrap_or("mid");
-        let item = serde_json::json!({
-            "rule": { "id": g.rule_id, "name": g.rule_name },
-            "inspection_status": g.inspection_status,
-            "criterion": g.criterion,
-            // For unmeasured items this carries the rule's detection_logic —
-            // exactly what to look for (same field run_quality surfaces).
-            "notes": g.notes,
-            "priority_score": score,
-            "effort": effort,
-        });
-        match groups.iter_mut().find(|(iid, _, _)| *iid == g.intent_id) {
-            Some((_, _, items)) => items.push(item),
-            None => groups.push((g.intent_id.clone(), g.intent_name.clone(), vec![item])),
-        }
-    }
-    // Biggest intent-group first: one neighborhood read pays for the most verdicts.
-    groups.sort_by(|a, b| {
-        (std::cmp::Reverse(a.2.len()), &a.1).cmp(&(std::cmp::Reverse(b.2.len()), &b.1))
-    });
-
-    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
-
-    if printer.json {
-        printer.print_json(&serde_json::json!({
-            "status": "ok",
-            "mode": "quality",
-            "taken": n,
-            "queue_total": queue_total,
-            "groups": groups
-                .iter()
-                .map(|(iid, iname, items)| serde_json::json!({
-                    "intent": { "id": iid, "name": iname },
-                    "items": items,
-                }))
-                .collect::<Vec<_>>(),
-            "batch_template": batch_lines,
-            "guidance": guidance,
-            "dispatch": { "role": "quality", "effort": "per-item (see items[].effort)" },
-            "graph_state": pulse_json(&gs),
-        }));
-        return Ok(());
-    }
-
-    println!("── Next: {n} of {queue_total}  [mode=quality] — bulk read, grouped by intent ────",);
-    for (iid, iname, items) in &groups {
-        println!();
-        println!(
-            "  {} ({} verdict(s) to earn)  [{}]",
-            iname,
-            items.len(),
-            iid
-        );
-        for it in items {
-            println!(
-                "    [{:<21} {:>5.2}  effort={}]  {}",
-                it["inspection_status"].as_str().unwrap_or(""),
-                it["priority_score"].as_f64().unwrap_or(0.0),
-                it["effort"].as_str().unwrap_or("mid"),
-                it["rule"]["name"].as_str().unwrap_or(""),
-            );
-        }
-    }
-    println!();
-    println!(
-        "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──"
-    );
-    for l in &batch_lines {
-        println!("  {l}");
-    }
-    println!();
-    println!("  {guidance}");
-    println!();
-    println!("  Dispatch — quality lane; effort is per item (the rule's annotation).");
-    println!("  {}", fmt_pulse(&gs));
-    Ok(())
-}
-
-// ---------------------------------------------------------------------------
 // `--compact` — the single-item PROJECTION: verdict coordinates only.
 //
 // The full work item front-loads everything an agent COULD need (intent
@@ -614,7 +582,7 @@ fn run_take_quality(db: &GrafeoDb, take: usize, printer: &Printer) -> Result<()>
 // ---------------------------------------------------------------------------
 
 fn run_compact(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     mode: &str,
     edge: &crate::types::RelatesTo,
     score: f64,
@@ -622,7 +590,8 @@ fn run_compact(
 ) -> Result<()> {
     // Top grounded paths only — half the full item's section cap.
     const COMPACT_PATHS: usize = 5;
-    let mut grounded: Vec<String> = list_implements_for_intent(db, &edge.from_id)?
+    let mut grounded: Vec<String> = db
+        .list_implements_for_intent(&edge.from_id)?
         .into_iter()
         .map(|im| {
             if im.locator.is_empty() {
@@ -808,10 +777,49 @@ fn add_dispatch(obj: &mut serde_json::Map<String, serde_json::Value>, role: &str
 // by hand. Read-only; each line carries the exact command that works it.
 // ---------------------------------------------------------------------------
 
-fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let snapshot = QuerySnapshot::load(db)?;
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
-    let doctor = check_graph_from_snapshot(db, &snapshot)?;
+fn run_all(
+    store: &dyn GraphReadRepository,
+    root: &std::path::Path,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let gs = store.graph_state(&snapshot)?;
+    let doctor = store.doctor_report(&snapshot)?;
+    let all_smells = store.smell_report(&snapshot)?.open;
+    let prove = store.prove_candidates(&snapshot)?;
+    let supported_hypotheses = store.list_hypotheses(Some("supported"))?;
+    let align = store.align_candidates(&snapshot)?;
+    let export_freshness = match store.committed_export_stale(root)? {
+        Some(true) => "stale",
+        Some(false) => "fresh",
+        None => "absent",
+    }
+    .to_string();
+    render_all(
+        snapshot,
+        gs,
+        doctor,
+        all_smells,
+        prove,
+        supported_hypotheses,
+        align,
+        export_freshness,
+        printer,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_all(
+    snapshot: QuerySnapshot,
+    gs: GraphState,
+    doctor: DoctorReport,
+    all_smells: Vec<Smell>,
+    prove: Vec<(Hypothesis, f64)>,
+    supported_hypotheses: Vec<Hypothesis>,
+    align: Vec<AlignCandidate>,
+    export_freshness: String,
+    printer: &Printer,
+) -> Result<()> {
     let mut vc = vertical_completeness_from_snapshot(&snapshot);
     let build = build_candidates_from_snapshot(&snapshot);
     let fix = scored_candidates_from_snapshot(&snapshot, "fix");
@@ -822,7 +830,6 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         .count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
-    let all_smells = compute_smells_from(db, &snapshot)?.open;
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
 
@@ -895,7 +902,6 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "top": "low-confidence verdicts × centrality — the tiered double-check",
         }));
     }
-    let prove = crate::db::queries::prove_candidates(db)?;
     if !prove.is_empty() {
         let (h, _) = &prove[0];
         queues.push(serde_json::json!({
@@ -913,7 +919,7 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     // prepares the case, the user (or an explicitly entrusted builder) rules.
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
-    let adopt: Vec<_> = crate::db::queries::list_hypotheses(db, Some("supported"))?
+    let adopt: Vec<_> = supported_hypotheses
         .into_iter()
         .filter(|h| !in_prove.contains(h.id.as_str()))
         .collect();
@@ -927,7 +933,6 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
     // The user↔intent drift queue: meanings to re-affirm WITH the user. The
     // graph cannot read heads — this queue is human-gated by definition.
-    let align = crate::db::queries::align_candidates_from_snapshot(db, &snapshot)?;
     if !align.is_empty() {
         queues.push(serde_json::json!({
             "queue": "align", "role": "validator", "gate": "human", "optional": true,
@@ -943,15 +948,6 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
             "top": "the horizontal N×N grid — understanding/cleanup, not required for done",
         }));
     }
-
-    // The closeout is where work wraps up — the moment the agent decides
-    // what to commit, so committed-export drift belongs in THIS view.
-    let export_freshness =
-        match crate::db::queries::committed_export_stale(db, &crate::db::resolve_root()?)? {
-            Some(true) => "stale",
-            Some(false) => "fresh",
-            None => "absent",
-        };
 
     // The oscillation summary: how much of the remainder needs the user.
     let human_gated: i64 = queues
@@ -1062,17 +1058,14 @@ fn run_all(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // Build mode: realize `planned` / `needs_change` intents (greenfield/refactor)
 // ---------------------------------------------------------------------------
 
-fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    crate::db::queries::ensure_owned(
-        db,
-        "work the build queue (there is nothing to build in someone else's repo)",
-    )?;
+fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+    db.ensure_owned("work the build queue (there is nothing to build in someone else's repo)")?;
     // ONE snapshot feeds both the queue and the pulse (production uses the
     // same snapshot scoring as the compass — coherence by construction — and
     // avoids a second full graph load).
-    let snapshot = QuerySnapshot::load(db)?;
+    let snapshot = db.query_snapshot()?;
     let candidates = build_candidates_from_snapshot(&snapshot);
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let gs = db.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1093,9 +1086,9 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 
     let c = &candidates[0];
     let (intent, score) = (&c.intent, &c.score);
-    let mut implements = list_implements_for_intent(db, &intent.id)?;
+    let mut implements = db.list_implements_for_intent(&intent.id)?;
     let implements_total = cap_section(&mut implements);
-    let mut validations = validations_for_intent(db, &intent.id)?;
+    let mut validations = db.validations_for_intent(&intent.id)?;
     let validations_total = cap_section(&mut validations);
     // planned → builder constructs it; needs_change → fixer changes it.
     // Effort names the work: writing NEW code from a criterion (planned leaf)
@@ -1108,7 +1101,7 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     } else {
         ("builder", "high")
     };
-    let (notes, notes_total) = note_surfaces(notes_for_target(db, &intent.id)?, role);
+    let (notes, notes_total) = note_surfaces(db.notes_for_target(&intent.id)?, role);
     let action = build_action(intent, c.rollup);
 
     let item = WorkItem {
@@ -1207,12 +1200,12 @@ fn run_build(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // Validate mode: the validator's queue — intents with failing/unrun/missing proof
 // ---------------------------------------------------------------------------
 
-fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     // ONE snapshot for both the queue and the pulse (shares the compass's
     // validate_selection scoring; no second full graph load).
-    let snapshot = QuerySnapshot::load(db)?;
+    let snapshot = db.query_snapshot()?;
     let candidates = validate_candidates_from_snapshot(&snapshot);
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let gs = db.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1232,8 +1225,8 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     let c = &candidates[0];
-    let mut validations = validations_for_intent(db, &c.intent.id)?;
-    let (notes, notes_total) = note_surfaces(notes_for_target(db, &c.intent.id)?, "validator");
+    let mut validations = db.validations_for_intent(&c.intent.id)?;
+    let (notes, notes_total) = note_surfaces(db.notes_for_target(&c.intent.id)?, "validator");
     let action = if validations.is_empty() {
         format!(
             "PROVE this intent — it has no validations:\n\
@@ -1383,9 +1376,10 @@ fn run_validate(db: &GrafeoDb, printer: &Printer) -> Result<()> {
 // Align mode: the validator's user↔intent drift queue — meaning to re-affirm
 // ---------------------------------------------------------------------------
 
-fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = align_candidates(db)?;
-    let gs = graph_state(db)?;
+fn run_align(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let candidates = store.align_candidates(&snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1405,20 +1399,17 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     let c = &candidates[0];
-    let mut groundings = list_implements_for_intent(db, &c.intent.id)?;
+    let mut groundings = store.list_implements_for_intent(&c.intent.id)?;
     let groundings_total = cap_section(&mut groundings);
-    let (notes, notes_total) = note_surfaces(notes_for_target(db, &c.intent.id)?, "validator");
+    let (notes, notes_total) = note_surfaces(store.notes_for_target(&c.intent.id)?, "validator");
     let last_confirmed = c.last_confirmed.as_deref().unwrap_or("never");
 
-    // Concept context — the item must let the driver present the CONCEPT
-    // (what the product does, why it matters, who it's for, what it is not),
-    // not recite wording. All one-hop-ish reads on the single served item.
-    // Parent chain = the "why it matters" spine (root → … → this).
     let mut parent_chain: Vec<String> = Vec::new();
     let mut immediate_parent_id: Option<String> = None;
     let mut cursor = c.intent.id.clone();
     for _ in 0..6 {
-        let Some(h) = list_hierarchy_for_intent(db, &cursor)?
+        let Some(h) = store
+            .list_hierarchy_for_intent(&cursor)?
             .into_iter()
             .find(|h| h.child_id == cursor)
         else {
@@ -1431,17 +1422,18 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         cursor = h.parent_id;
     }
     parent_chain.reverse();
-    // Siblings + verified-independent neighbours = "nearby concepts it is NOT".
     let mut siblings: Vec<String> = Vec::new();
     if let Some(pid) = &immediate_parent_id {
-        siblings = list_hierarchy_for_intent(db, pid)?
+        siblings = store
+            .list_hierarchy_for_intent(pid)?
             .into_iter()
             .filter(|h| h.parent_id == *pid && h.child_id != c.intent.id)
             .map(|h| h.child_name)
             .take(5)
             .collect();
     }
-    let independent_of: Vec<String> = edges_for_intent(db, &c.intent.id)?
+    let independent_of: Vec<String> = store
+        .edges_for_intent(&c.intent.id)?
         .into_iter()
         .filter(|e| e.inspection_status == "independent")
         .map(|e| {
@@ -1458,15 +1450,6 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     } else {
         c.intent.visibility.as_str()
     };
-
-    // The action text is a SCAFFOLD the driving LLM copies almost verbatim —
-    // so it must model CONCEPT alignment, not wording approval. The question
-    // is "what can the product do here, and does that match your mental
-    // model?"; vocabulary surfaces only when the user asks, stumbles, or uses
-    // a term that conflicts with the graph. The description stays labelled as
-    // source material (graph-speak), never embedded in the question. The
-    // audience label leads: machinery presented as a product capability is
-    // exactly how interviews go wrong (dogfood finding).
     let audience_brief = match visibility {
         "internal" => "internal machinery (serves other parts; the user never touches it directly)"
             .to_string(),
@@ -1525,10 +1508,6 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         not_this = not_this_block,
     );
 
-    // Validator-lane, but NOT the validate queue: `dispatch_line` derives the
-    // queue from the role (validator → validate), and align is the validator's
-    // SECOND queue — same lane gates, different work. Spell it out, or an
-    // orchestrator dispatching from this line sends the agent to the wrong queue.
     let dispatch = "this is validator work — fills the alignment outcome: present the CONCEPT \
          to the USER, then record exactly ONE of `loom intent confirm` (optionally \
          `--visibility internal`) / `update` (`--reword` for wording-only) / `retire` / \
@@ -1675,14 +1654,15 @@ fn run_align(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
+
 // ---------------------------------------------------------------------------
 // Quality mode: the quality agent's queue — GOVERNS edges whose green is unearned
 // ---------------------------------------------------------------------------
 
-fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let snapshot = QuerySnapshot::load(db)?;
+fn run_quality(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
     let candidates = quality_candidates_from_snapshot(&snapshot);
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1702,19 +1682,17 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     let (g, score) = &candidates[0];
-    let intent = get_intent(db, &g.intent_id)?;
-    let mut implements = list_implements_for_intent(db, &g.intent_id)?;
+    let intent = store.get_intent(&g.intent_id)?;
+    let mut implements = store.list_implements_for_intent(&g.intent_id)?;
     let implements_total = cap_section(&mut implements);
     let edge_notes = if g.id.is_empty() {
         Vec::new()
     } else {
-        notes_for_target(db, &g.id)?
+        store.notes_for_target(&g.id)?
     };
     let (notes, notes_total) = note_surfaces(edge_notes, "quality");
-    // Effort comes from the RULE: the pack author knows statically whether
-    // holding this stick against code is a near-mechanical scan or deep
-    // semantic reading. "" (unannotated/older rules) reads as mid.
-    let rule_effort = crate::db::queries::list_rules(db)?
+    let rule_effort = store
+        .list_rules()?
         .into_iter()
         .find(|r| r.id == g.rule_id)
         .map(|r| r.inspection_effort)
@@ -1779,8 +1757,6 @@ fn run_quality(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         println!("  evidence:  {}", g.evidence);
     }
     if !g.notes.is_empty() {
-        // For unmeasured items this carries the rule's detection_logic —
-        // exactly what to look for during the inspection.
         println!("  {}", g.notes);
     }
     println!();
@@ -1873,12 +1849,12 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
 // paths — no special review write exists, so every gate still applies.
 // ---------------------------------------------------------------------------
 
-fn run_review(db: &GrafeoDb, printer: &Printer) -> Result<()> {
+fn run_review(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     use crate::db::queries::{ReviewCandidate, REVIEW_CONFIDENCE};
-    // ONE snapshot for both the queue and the pulse (no second full graph load).
-    let snapshot = QuerySnapshot::load(db)?;
+
+    let snapshot = store.query_snapshot()?;
     let candidates = review_candidates_from_snapshot(&snapshot);
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -1906,9 +1882,9 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
 
     match item {
         ReviewCandidate::RelatesTo(e) => {
-            let intent_a = get_intent(db, &e.from_id)?;
-            let intent_b = get_intent(db, &e.to_id)?;
-            let (notes, notes_total) = note_surfaces(notes_for_target(db, &e.id)?, "analyzer");
+            let intent_a = store.get_intent(&e.from_id)?;
+            let intent_b = store.get_intent(&e.to_id)?;
+            let (notes, notes_total) = note_surfaces(store.notes_for_target(&e.id)?, "analyzer");
             let action = format!(
                 "{protocol}
 
@@ -1950,8 +1926,8 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             println!("  {}", fmt_pulse(&gs));
         }
         ReviewCandidate::Governs(g) => {
-            let intent = get_intent(db, &g.intent_id)?;
-            let (notes, notes_total) = note_surfaces(notes_for_target(db, &g.id)?, "quality");
+            let intent = store.get_intent(&g.intent_id)?;
+            let (notes, notes_total) = note_surfaces(store.notes_for_target(&g.id)?, "quality");
             let action = format!(
                 "{protocol}
 
@@ -1998,9 +1974,10 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
 // optional like discovery/review (speculation never blocks complete).
 // ---------------------------------------------------------------------------
 
-fn run_prove(db: &GrafeoDb, printer: &Printer) -> Result<()> {
-    let candidates = crate::db::queries::prove_candidates(db)?;
-    let gs = graph_state(db)?;
+fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let candidates = store.prove_candidates(&snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
@@ -2022,16 +1999,12 @@ fn run_prove(db: &GrafeoDb, printer: &Printer) -> Result<()> {
     }
 
     let (h, score) = &candidates[0];
-    let mut targets = crate::db::queries::list_targets_for_hypothesis(db, &h.id)?;
-    // The proof reads the targeted intents' code — surface their groundings.
+    let mut targets = store.list_targets_for_hypothesis(&h.id)?;
     let mut implements = Vec::new();
     for t in &targets {
-        implements.extend(list_implements_for_intent(db, &t.intent_id)?);
+        implements.extend(store.list_implements_for_intent(&t.intent_id)?);
     }
-    let (notes, notes_total) = note_surfaces(notes_for_target(db, &h.id)?, "analyzer");
-    // Two item kinds share this queue: a never-proven proposal, and a
-    // supported hypothesis whose TARGETS evidence went stale under it
-    // (`loom sync` flipped them — the support was earned against old code).
+    let (notes, notes_total) = note_surfaces(store.notes_for_target(&h.id)?, "analyzer");
     let stale_targets: Vec<&str> = targets
         .iter()
         .filter(|t| t.inspection_status == "needs_reverification")
@@ -2158,14 +2131,14 @@ fn run_prove(db: &GrafeoDb, printer: &Printer) -> Result<()> {
         if let Some(m) = more_marker(
             notes_total,
             notes.len(),
-            &format!("loom hypothesis show {}", h.id),
+            &format!("loom note list --intent {}", h.id),
         ) {
             println!("  {m}");
         }
         println!();
     }
     println!("── Suggested Action ────────────────────────────────────────────────");
-    println!("{action}");
+    println!("{}", action);
     println!();
     println!("  Dispatch — {}  [effort: high]", dispatch_line("analyzer"));
     println!("  {}", fmt_pulse(&gs));

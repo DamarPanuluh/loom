@@ -21,7 +21,7 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
-use crate::db::LoomDb;
+use crate::types::{Hypothesis, Note, TargetsEdge, VocabTerm};
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
 pub const TWIN_SIMILARITY: f64 = 0.4;
@@ -343,28 +343,20 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     inter / union
 }
 
-/// Compute every OPEN smell, sorted by score (descending) within insertion
-/// order of kind. Callers truncate for display.
-///
-/// "Open" is the operative word: a finding that was adjudicated — structurally
-/// resolved, or refuted through its remedy (an `independent` verdict, a vocab
-/// merge, a decision note newer than the structure it judges) — is not
-/// returned. That is what lets `graph_state` gate phase=complete on zero
-/// findings without inviting threshold-gaming: green means every suspicion
-/// was ANSWERED, not that every heuristic is happy.
-///
-/// Test-only convenience now: production callers (`graph_state`, `loom next
-/// --all`, the `loom smells` command) hold a snapshot already and call
-/// `compute_smells_from` directly.
-#[cfg(test)]
-pub fn compute_smells(db: &dyn LoomDb) -> Result<SmellReport> {
-    let snapshot = QuerySnapshot::load(db)?;
-    compute_smells_from(db, &snapshot)
+pub struct SmellInputs<'a> {
+    pub notes: &'a [Note],
+    pub vocab_terms: &'a [VocabTerm],
+    pub layer_order: &'a [String],
+    pub proposed_hypotheses: &'a [Hypothesis],
+    pub targets: &'a [TargetsEdge],
 }
 
-/// Snapshot-reusing form for callers that already hold one (`graph_state`,
-/// `loom next --all`). `db` is still needed for notes and the vocab registry.
-pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<SmellReport> {
+/// Snapshot + input reusing form for storage backends that can load the read
+/// planes directly.
+pub fn compute_smells_from_parts(
+    snapshot: &QuerySnapshot,
+    inputs: SmellInputs<'_>,
+) -> Result<SmellReport> {
     let discovery = DiscoverySnapshot::from_query(snapshot)?;
     let intents = &snapshot.intents;
     let implements = &snapshot.implements;
@@ -405,9 +397,8 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     // target id to its newest kind=decision note — the recorded "looked at it,
     // here's the call" that resolves a structural finding until the structure
     // changes again underneath it (recurrent_trouble set the pattern).
-    let all_notes = snapshot.notes(db)?;
     let mut last_decision: HashMap<&str, &crate::types::Note> = HashMap::new();
-    for n in all_notes {
+    for n in inputs.notes {
         if n.kind == "decision" && !n.target_id.is_empty() {
             let e = last_decision.entry(n.target_id.as_str()).or_insert(n);
             if n.created_at > e.created_at {
@@ -631,7 +622,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 })
                 .collect();
             if !untagged.is_empty() {
-                let registry = super::vocab::list_vocab_terms(db)?.len();
+                let registry = inputs.vocab_terms.len();
                 let newest_untagged_grounding = untagged
                     .iter()
                     .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
@@ -968,8 +959,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //     coupling asks "is the contact declared?", this asks "does the
     //     dependency point the right way?" — independent questions.
     {
-        let layer_rank: HashMap<String, usize> = super::meta::get_layer_order(db)?
-            .into_iter()
+        let layer_rank: HashMap<String, usize> = inputs
+            .layer_order
+            .iter()
+            .cloned()
             .enumerate()
             .map(|(rank, layer)| (layer, rank))
             .collect();
@@ -1072,7 +1065,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         let mut trouble: HashMap<(String, String), usize> = HashMap::new();
         let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
         let mut trouble_notes: HashMap<(String, String), Vec<&crate::types::Note>> = HashMap::new();
-        for n in all_notes {
+        for n in inputs.notes {
             if n.kind == "transition"
                 && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
             {
@@ -1180,7 +1173,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //    remedy is not a decision note; the terminal states live on the
     //    hypothesis state machine itself.
     {
-        let proposed = super::hypothesis::list_hypotheses(db, Some("proposed"))?;
+        let proposed = inputs.proposed_hypotheses;
         if !proposed.is_empty() {
             let now = chrono::Utc::now();
             let stale: Vec<&crate::types::Hypothesis> = proposed
@@ -1196,9 +1189,10 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
                 })
                 .collect();
             if proposed.len() >= HYPOTHESIS_BACKLOG_LIMIT || !stale.is_empty() {
-                let targeted: HashSet<String> = super::targets::list_all_targets(db)?
-                    .into_iter()
-                    .map(|t| t.hypothesis_id)
+                let targeted: HashSet<&str> = inputs
+                    .targets
+                    .iter()
+                    .map(|t| t.hypothesis_id.as_str())
                     .collect();
                 let untargeted = proposed
                     .iter()
@@ -1394,7 +1388,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
     //     keyspace and silently halve the signal. Detection-and-merge is the
     //     designed governance — never a closed list.
     {
-        let terms = super::vocab::list_vocab_terms(db)?;
+        let terms = inputs.vocab_terms;
         let counts = super::vocab::tag_counts(intents)?;
         for i in 0..terms.len() {
             for j in (i + 1)..terms.len() {
@@ -1618,7 +1612,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
             &snapshot.codefiles,
             intents,
             implements,
-            all_notes,
+            inputs.notes,
         );
         if !report.actionable_symbol_gaps.is_empty() {
             let examples: Vec<String> = report
@@ -1704,7 +1698,7 @@ pub fn compute_smells_from(db: &dyn LoomDb, snapshot: &QuerySnapshot) -> Result<
         .map(|i| i.layer.as_str())
         .collect::<HashSet<_>>()
         .len();
-    let declared_layers = super::meta::get_layer_order(db)?.len();
+    let declared_layers = inputs.layer_order.len();
     Ok(SmellReport {
         open: smells,
         adjudicated: adjudicated_out,

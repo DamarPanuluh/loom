@@ -5,27 +5,31 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::queries::{
-    grounded_paths, list_active_intents, list_all_implements, list_codefiles, list_delegations,
-    list_ignores, symbol_accountability as compute_symbol_accountability,
-};
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::queries::{symbol_accountability_from_parts_with_notes, QuerySnapshot};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
+use crate::types::{CodeFile, Implements, Intent};
 
-pub fn run(printer: &Printer) -> Result<()> {
+pub fn run(summary: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, printer)
+    let db = GraphReadHandle::open(&cwd)?;
+    run_with_db(&db, &cwd, summary, printer)
 }
 
-pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
+    summary: bool,
+    printer: &Printer,
+) -> Result<()> {
     let disk = crate::repo::walk_files(root)?;
-    let codefiles = list_codefiles(db)?;
+    let snapshot = db.query_snapshot()?;
+    let codefiles = &snapshot.codefiles;
     let registered: HashSet<String> = codefiles.iter().map(|c| c.path.clone()).collect();
-    let grounded: HashSet<String> = grounded_paths(db)?.into_iter().collect();
+    let grounded = grounded_paths_from_snapshot(&snapshot);
     let mut pattern_errors = Vec::new();
-    let patterns: Vec<glob::Pattern> = list_ignores(db)?
+    let patterns: Vec<glob::Pattern> = db
+        .list_ignores()?
         .into_iter()
         .filter_map(|i| match glob::Pattern::new(&i.pattern) {
             Ok(p) => Some(p),
@@ -38,7 +42,7 @@ pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> 
     let is_ignored = |p: &str| patterns.iter().any(|pat| pat.matches(p));
     // Delegated subtrees: covered by a CHILD graph (federation), verified
     // against its committed export rather than blanket-excluded.
-    let delegations = list_delegations(db)?;
+    let delegations = db.list_delegations()?;
     let delegation_pats: Vec<(glob::Pattern, &str)> = delegations
         .iter()
         .filter_map(|d| match glob::Pattern::new(&d.pattern) {
@@ -82,8 +86,72 @@ pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> 
     } else {
         covered as f64 / total as f64 * 100.0
     };
-    let symbol_diagnostics = symbol_diagnostics(&codefiles, &grounded, db)?;
-    let symbol_accountability = compute_symbol_accountability(db)?;
+    let symbol_diagnostics = symbol_diagnostics(
+        codefiles,
+        &grounded,
+        &snapshot.intents,
+        &snapshot.implements,
+    )?;
+    let decision_notes = db.notes_by_kind("decision")?;
+    let symbol_accountability = symbol_accountability_from_parts_with_notes(
+        &snapshot.codefiles,
+        &snapshot.intents,
+        &snapshot.implements,
+        &decision_notes,
+    );
+
+    if summary {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "summary": true,
+                "total_files":           total,
+                "grounded":              grounded_n,
+                "delegated":             delegated_n,
+                "excluded":              excluded_n,
+                "registered_ungrounded": ungrounded.len(),
+                "unaccounted":           unaccounted.len(),
+                "coverage_pct":          (pct * 10.0).round() / 10.0,
+                "delegation_targets_missing": missing_targets.len(),
+                "pattern_errors":        pattern_errors.len(),
+                "symbol_coverage":       &symbol_diagnostics.coverage,
+                "symbol_accountability": &symbol_accountability.summary,
+                "actionable_symbol_gaps_shown": symbol_accountability
+                    .actionable_symbol_gaps
+                    .iter()
+                    .take(10)
+                    .collect::<Vec<_>>(),
+                "actionable_symbol_gaps_total": symbol_accountability.actionable_symbol_gaps.len(),
+                "adjudicated_symbol_gaps_total": symbol_accountability.adjudicated_symbol_gaps.len(),
+                "note": "Summary mode omits full file, symbol, raw-gap, and adjudication archives. Use `loom coverage --json` only when per-item evidence is needed.",
+            }));
+        } else {
+            println!("── loom coverage summary ────────────────────────────────────────────");
+            println!(
+                "  {covered}/{total} files covered ({pct:.1}%)   [grounded {grounded_n} + delegated {delegated_n} + excluded {excluded_n}]"
+            );
+            println!("  registered but ungrounded: {}", ungrounded.len());
+            println!("  unaccounted: {}", unaccounted.len());
+            println!("  delegation targets missing: {}", missing_targets.len());
+            println!("  pattern errors: {}", pattern_errors.len());
+            if symbol_diagnostics.coverage.total > 0 {
+                println!(
+                    "  symbols grounded: {} / {} ({:.1}%)",
+                    symbol_diagnostics.coverage.grounded,
+                    symbol_diagnostics.coverage.total,
+                    symbol_diagnostics.coverage.coverage_pct
+                );
+            }
+            if symbol_accountability.summary.total_symbols > 0 {
+                let s = &symbol_accountability.summary;
+                println!(
+                    "  symbol accountability: {} open gaps · {} raw gaps · {} adjudicated",
+                    s.actionable_gaps, s.raw_actionable_gaps, s.adjudicated
+                );
+            }
+            println!("  Full detail: `loom coverage --json`.");
+        }
+        return Ok(());
+    }
 
     if printer.json {
         let mut payload = serde_json::json!({
@@ -265,19 +333,35 @@ struct SymbolDiagnostics {
     ungrounded: Vec<UngroundedSymbol>,
 }
 
+fn grounded_paths_from_snapshot(snapshot: &QuerySnapshot) -> HashSet<String> {
+    let active_ids: HashSet<&str> = snapshot
+        .intents
+        .iter()
+        .map(|intent| intent.id.as_str())
+        .collect();
+    snapshot
+        .implements
+        .iter()
+        .filter(|implements| active_ids.contains(implements.intent_id.as_str()))
+        .map(|implements| implements.codefile_path.clone())
+        .collect()
+}
+
 fn symbol_diagnostics(
-    codefiles: &[crate::types::CodeFile],
+    codefiles: &[CodeFile],
     grounded_paths: &HashSet<String>,
-    db: &dyn crate::db::LoomDb,
+    intents: &[Intent],
+    implements: &[Implements],
 ) -> Result<SymbolDiagnostics> {
-    let active_ids: HashSet<String> = list_active_intents(db)?.into_iter().map(|i| i.id).collect();
+    let active_ids: HashSet<&str> = intents.iter().map(|intent| intent.id.as_str()).collect();
     let mut locators_by_path: HashMap<String, Vec<String>> = HashMap::new();
-    for im in list_all_implements(db)? {
-        if active_ids.contains(&im.intent_id) && grounded_paths.contains(&im.codefile_path) {
+    for im in implements {
+        if active_ids.contains(im.intent_id.as_str()) && grounded_paths.contains(&im.codefile_path)
+        {
             locators_by_path
-                .entry(im.codefile_path)
+                .entry(im.codefile_path.clone())
                 .or_default()
-                .push(im.locator);
+                .push(im.locator.clone());
         }
     }
 
@@ -361,24 +445,11 @@ fn contains_identifier_word(haystack: &str, needle: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::queries::{insert_codefile, insert_implements, insert_intent, list_codefiles};
-    use crate::db::{GrafeoDb, LoomDb};
-    use crate::types::{CodeFile, Intent};
 
     #[test]
     fn symbol_diagnostics_report_ungrounded_symbols_without_gating_files() {
-        let db = GrafeoDb::in_memory();
-        db.execute(&crate::db::schema::insert_meta(
-            crate::db::schema::SCHEMA_VERSION,
-            "t",
-            "g",
-            "graph",
-            "owned",
-        ))
-        .unwrap();
-        insert_intent(
-            &db,
-            &Intent {
+        let intents = vec![
+            Intent {
                 id: "i".into(),
                 name: "Run things".into(),
                 description: "runs the main flow".into(),
@@ -395,11 +466,7 @@ mod tests {
                 created_at: "t".into(),
                 updated_at: "t".into(),
             },
-        )
-        .unwrap();
-        insert_intent(
-            &db,
-            &Intent {
+            Intent {
                 id: "j".into(),
                 name: "Use users".into(),
                 description: "uses the user symbol".into(),
@@ -416,28 +483,53 @@ mod tests {
                 created_at: "t".into(),
                 updated_at: "t".into(),
             },
-        )
-        .unwrap();
-        insert_codefile(
-            &db,
-            &CodeFile {
-                id: "cf".into(),
-                path: "src/run.rs".into(),
-                language: "rust".into(),
-                last_modified: String::new(),
-                imports: Vec::new(),
-                symbols: vec!["fn run".into(), "struct Worker".into(), "class User".into()],
-                symbol_facts: Vec::new(),
-                content_hash: String::new(),
+        ];
+        let codefiles = vec![CodeFile {
+            id: "cf".into(),
+            path: "src/run.rs".into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: vec!["fn run".into(), "struct Worker".into(), "class User".into()],
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+        }];
+        let implements = vec![
+            Implements {
+                id: crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, "i", "cf"),
+                intent_id: "i".into(),
+                codefile_id: "cf".into(),
+                intent_name: "Run things".into(),
+                codefile_path: "src/run.rs".into(),
+                inspection_status: "passing".into(),
+                criterion: String::new(),
+                confidence: 0.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                locator: "fn run".into(),
+                notes: String::new(),
+                created_at: "t".into(),
             },
-        )
-        .unwrap();
-        insert_implements(&db, "i", "cf", "fn run", "", "t").unwrap();
-        insert_implements(&db, "j", "cf", "User", "", "t").unwrap();
-
-        let codefiles = list_codefiles(&db).unwrap();
+            Implements {
+                id: crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, "j", "cf"),
+                intent_id: "j".into(),
+                codefile_id: "cf".into(),
+                intent_name: "Use users".into(),
+                codefile_path: "src/run.rs".into(),
+                inspection_status: "passing".into(),
+                criterion: String::new(),
+                confidence: 0.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                locator: "User".into(),
+                notes: String::new(),
+                created_at: "t".into(),
+            },
+        ];
         let grounded = HashSet::from(["src/run.rs".to_string()]);
-        let diag = symbol_diagnostics(&codefiles, &grounded, &db).unwrap();
+        let diag = symbol_diagnostics(&codefiles, &grounded, &intents, &implements).unwrap();
 
         assert_eq!(diag.coverage.total, 3);
         assert_eq!(diag.coverage.grounded, 2);

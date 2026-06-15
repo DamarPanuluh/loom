@@ -1,23 +1,19 @@
 //! Graph integrity checks for `loom doctor`.
 //!
-//! grafeo is schema-optional, so loom verifies its own invariants here against
-//! the single declared vocabulary in `crate::db::schema`. Everything uses
-//! reliable query paths: node/edge counts, `IS NULL` presence predicates (which
-//! — unlike relationship *equality* matching — work on edges too), and Rust-side
-//! value validation.
+//! SQLite enforces the core shape with tables and foreign keys; loom still
+//! verifies graph-level invariants here against the single declared vocabulary
+//! in `crate::db::schema`.
 
 use anyhow::Result;
 
-use crate::db::schema::{self, prop, EDGE_TYPES, NODE_LABELS};
-use crate::db::LoomDb;
+use crate::db::schema;
 use crate::types::{
-    AbstractionLevel, HypothesisStatus, IntentStatus, NoteKind, Severity, TargetsEdge,
-    ValidationResult,
+    AbstractionLevel, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note, NoteKind, Severity,
+    TargetsEdge, ValidationResult, VocabTerm,
 };
 
-use super::row::i64_val;
 use super::snapshot::QuerySnapshot;
-use super::{list_all_targets, list_hypotheses, list_intents};
+use super::GraphMeta;
 
 /// Outcome of a full integrity scan.
 #[derive(Debug)]
@@ -42,95 +38,41 @@ impl DoctorReport {
     }
 }
 
-fn count(db: &dyn LoomDb, query: &str) -> Result<i64> {
-    let r = db.execute(query)?;
-    Ok(r.rows().first().map(|row| i64_val(&row[0])).unwrap_or(0))
+pub struct DoctorInputs<'a> {
+    pub found_version: String,
+    pub meta: Option<GraphMeta>,
+    pub node_counts: Vec<(String, i64)>,
+    pub edge_counts: Vec<(String, i64)>,
+    pub missing_node_props: Vec<(String, String, i64)>,
+    pub missing_edge_props: Vec<(String, String, i64)>,
+    pub intents: Vec<Intent>,
+    pub hypotheses: Vec<Hypothesis>,
+    pub vocab_terms: Vec<VocabTerm>,
+    pub target_edges: Vec<TargetsEdge>,
+    pub edge_ids: std::collections::HashSet<String>,
+    pub notes: &'a [Note],
 }
 
-fn count_nodes(db: &dyn LoomDb, lbl: &str) -> Result<i64> {
-    count(db, &format!("MATCH (n:{lbl}) RETURN count(n) AS c"))
-}
-
-fn count_edges(db: &dyn LoomDb, etype: &str) -> Result<i64> {
-    count(
-        db,
-        &format!("MATCH ()-[r:{etype}]->() RETURN count(r) AS c"),
-    )
-}
-
-/// Counts the snapshot already materialized — avoids a round trip per label.
-fn snapshot_node_count(snapshot: &QuerySnapshot, lbl: &str) -> Option<i64> {
-    use crate::db::schema::label;
-    Some(match lbl {
-        label::INTENT => snapshot.intents.len() as i64,
-        label::CODE_FILE => snapshot.codefiles.len() as i64,
-        label::QUALITY_RULE => snapshot.rules.len() as i64,
-        label::VALIDATION => snapshot.validations.len() as i64,
-        _ => return None,
-    })
-}
-
-/// Counts the snapshot already materialized — avoids a round trip per edge type.
-fn snapshot_edge_count(snapshot: &QuerySnapshot, etype: &str) -> Option<i64> {
-    use crate::db::schema::edge;
-    Some(match etype {
-        edge::RELATES_TO => snapshot.relates.len() as i64,
-        edge::HIERARCHY => snapshot.hierarchy.len() as i64,
-        edge::IMPLEMENTS => snapshot.implements.len() as i64,
-        edge::GOVERNS => snapshot.governs.len() as i64,
-        edge::VALIDATES => snapshot.validates.len() as i64,
-        _ => return None,
-    })
-}
-
-/// Nodes of `lbl` missing property `p` (present as NULL / never written).
-fn nodes_missing_prop(db: &dyn LoomDb, lbl: &str, p: &str) -> Result<i64> {
-    count(
-        db,
-        &format!("MATCH (n:{lbl}) WHERE n.{p} IS NULL RETURN count(n) AS c"),
-    )
-}
-
-/// Edges of `etype` missing property `p`.
-fn edges_missing_prop(db: &dyn LoomDb, etype: &str, p: &str) -> Result<i64> {
-    count(
-        db,
-        &format!("MATCH ()-[r:{etype}]->() WHERE r.{p} IS NULL RETURN count(r) AS c"),
-    )
-}
-
-/// Run every integrity check and collect a report.
-pub fn check_graph(db: &dyn LoomDb) -> Result<DoctorReport> {
-    let query_snapshot = QuerySnapshot::load(db)?;
-    check_graph_from_snapshot(db, &query_snapshot)
-}
-
-pub fn check_graph_from_snapshot(
-    db: &dyn LoomDb,
+pub fn check_graph_from_parts(
     query_snapshot: &QuerySnapshot,
+    inputs: DoctorInputs<'_>,
 ) -> Result<DoctorReport> {
     let mut issues = Vec::new();
     let mut hints = Vec::new();
 
     // 1. Schema version.
-    let meta = db.execute(schema::CHECK_INITIALIZED)?;
-    let found_version = meta
-        .rows()
-        .first()
-        .map(|row| super::row::str_val(&row[0]))
-        .unwrap_or_default();
     let expected_version = schema::SCHEMA_VERSION.to_string();
-    let version_ok = found_version == expected_version;
+    let version_ok = inputs.found_version == expected_version;
     if !version_ok {
         issues.push(format!(
             "schema version mismatch: graph is '{}', this loom expects '{}' \
              (re-init or migrate)",
-            found_version, expected_version
+            inputs.found_version, expected_version
         ));
     }
 
     // Identity + custody on the meta sentinel (federation).
-    if let Some(m) = super::meta::get_meta(db)? {
+    if let Some(m) = &inputs.meta {
         if !m.custody.is_empty() && !matches!(m.custody.as_str(), "owned" | "observed") {
             issues.push(format!(
                 "LoomMeta has invalid custody '{}' (valid: owned, observed)",
@@ -147,47 +89,21 @@ pub fn check_graph_from_snapshot(
     }
 
     // 2. Node counts + required-property presence.
-    let mut node_counts = Vec::new();
-    for &lbl in NODE_LABELS {
-        let n = if let Some(c) = snapshot_node_count(query_snapshot, lbl) {
-            c
-        } else {
-            count_nodes(db, lbl)?
-        };
-        node_counts.push((lbl.to_string(), n));
-        for &(p, _owner) in schema::required_node_props(lbl) {
-            let missing = nodes_missing_prop(db, lbl, p)?;
-            if missing > 0 {
-                issues.push(format!("{missing} {lbl} node(s) missing property '{p}'"));
-            }
-        }
+    let node_counts = inputs.node_counts;
+    for (lbl, p, missing) in &inputs.missing_node_props {
+        issues.push(format!("{missing} {lbl} node(s) missing property '{p}'"));
     }
 
     // 3. Edge counts + required-property presence.
-    let mut edge_counts = Vec::new();
-    for &etype in EDGE_TYPES {
-        let n = if let Some(c) = snapshot_edge_count(query_snapshot, etype) {
-            c
-        } else {
-            count_edges(db, etype)?
-        };
-        edge_counts.push((etype.to_string(), n));
-        for &(p, _owner) in schema::required_edge_props(etype) {
-            let missing = edges_missing_prop(db, etype, p)?;
-            if missing > 0 {
-                issues.push(format!("{missing} {etype} edge(s) missing property '{p}'"));
-            }
-        }
+    let edge_counts = inputs.edge_counts;
+    for (etype, p, missing) in &inputs.missing_edge_props {
+        issues.push(format!("{missing} {etype} edge(s) missing property '{p}'"));
     }
 
-    let intents = list_intents(db, None, None)?;
-    let hypotheses = list_hypotheses(db, None)?;
-
     // 4. Value validity for constrained fields (reliable full scans).
-    let vocab_terms = super::vocab::list_vocab_terms(db)?;
     let registered_terms: std::collections::HashSet<&str> =
-        vocab_terms.iter().map(|t| t.name.as_str()).collect();
-    for i in &intents {
+        inputs.vocab_terms.iter().map(|t| t.name.as_str()).collect();
+    for i in &inputs.intents {
         if i.id.is_empty() {
             issues.push(format!("Intent '{}' has an empty id", i.name));
         }
@@ -246,7 +162,7 @@ pub fn check_graph_from_snapshot(
     }
     // Hypothesis plane: status vocabulary + the evidence audit behind every
     // proof verdict, and the proposer≠prover contract (when roles are declared).
-    for h in &hypotheses {
+    for h in &inputs.hypotheses {
         if h.status.parse::<HypothesisStatus>().is_err() {
             issues.push(format!(
                 "Hypothesis {} has invalid status '{}'",
@@ -286,15 +202,10 @@ pub fn check_graph_from_snapshot(
 
     // 5. Note validity + referential integrity (dangling targets).
     let intent_ids: std::collections::HashSet<String> =
-        intents.iter().map(|i| i.id.clone()).collect();
+        inputs.intents.iter().map(|i| i.id.clone()).collect();
     let hypothesis_ids: std::collections::HashSet<String> =
-        hypotheses.iter().map(|h| h.id.clone()).collect();
-    let target_edges = list_all_targets(db)?;
-    // Full edge-id set (includes SERVES/JOURNEYS derived keys). The query
-    // snapshot omits persona-plane edges; using it here falsely flags their
-    // transition notes as dangling.
-    let edge_ids = collect_edge_ids(db)?;
-    for n in query_snapshot.notes(db)? {
+        inputs.hypotheses.iter().map(|h| h.id.clone()).collect();
+    for n in inputs.notes {
         if let Err(e) = n.kind.parse::<NoteKind>() {
             issues.push(format!(
                 "Note {} has invalid kind '{}' — {} (likely written by a different loom version; \
@@ -315,12 +226,17 @@ pub fn check_graph_from_snapshot(
                 n.id, n.target_id
             ));
         }
-        if n.target_kind == "edge" && !edge_ids.contains(&n.target_id) {
+        if n.target_kind == "edge" && !inputs.edge_ids.contains(&n.target_id) {
             issues.push(format!("Note {} targets missing edge '{}' — `loom note prune` removes notes whose target no longer exists", n.id, n.target_id));
         }
     }
 
-    audit_inspectable_edges(query_snapshot, &target_edges, &mut issues, &mut hints)?;
+    audit_inspectable_edges(
+        query_snapshot,
+        &inputs.target_edges,
+        &mut issues,
+        &mut hints,
+    )?;
     // evidence behind a verdict, and provenance lanes (a verdict recorded by an
     // out-of-lane role is a separation-of-duties breach — the whole point of
     // the role system is that no agent green-lights its own work).
@@ -344,7 +260,7 @@ pub fn check_graph_from_snapshot(
 
     Ok(DoctorReport {
         expected_version,
-        found_version,
+        found_version: inputs.found_version,
         version_ok,
         node_counts,
         edge_counts,
@@ -572,32 +488,4 @@ fn audit_inspectable_edges(
         }
     }
     Ok(())
-}
-
-/// Collect every tracked edge id once for note referential-integrity checks.
-/// The old per-note check rescanned every edge type for each edge-targeted
-/// note; large histories made `loom doctor` and `loom next --all` feel heavy.
-pub(super) fn collect_edge_ids(db: &dyn LoomDb) -> Result<std::collections::HashSet<String>> {
-    // v4: edge identity is DERIVED from the endpoints (schema::edge_key) —
-    // nothing stored on the edge. Endpoint node ids ARE the edge id.
-    let mut ids = std::collections::HashSet::new();
-    for &etype in EDGE_TYPES {
-        let r = db.execute(&format!(
-            "MATCH (a)-[r:{etype}]->(b) RETURN a.{id} AS f, b.{id} AS t",
-            id = prop::ID
-        ))?;
-        for row in r.rows() {
-            ids.insert(crate::db::schema::edge_key(
-                etype,
-                &super::row::str_val(&row[0]),
-                &super::row::str_val(&row[1]),
-            ));
-        }
-    }
-    Ok(ids)
-}
-
-/// True when an edge-targeted note can resolve its derived edge id.
-pub fn edge_id_exists(db: &dyn LoomDb, edge_id: &str) -> Result<bool> {
-    Ok(collect_edge_ids(db)?.contains(edge_id))
 }

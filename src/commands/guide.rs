@@ -12,7 +12,7 @@ const GOLDEN_RULES: &[&str] = &[
     "Per edge, work the Socratic loop: read both intents → form a hypothesis (\"I expect the code to show X\") → inspect the actual code → confirmed = ground it, code wrong = record the issue, hypothesis wrong = revise and re-inspect. Never record a verdict you didn't check.",
     "Batch by neighborhood: when you inspect an edge, `loom cluster <intent-id>` lists every other unresolved edge touching it — work those while the context is loaded.",
     "ASK THE MAP: `loom find \"<what you're looking for>\"` — keyword search over intent names/descriptions when you don't know the intent's name yet. Hits carry hierarchy position, code groundings with locators, and a staleness warning (claims about since-changed code). No fuzzy matching — a miss means reformulate in the map's vocabulary, or the area isn't mapped (`loom coverage`).",
-    "Use `--json` on every command for machine-readable output (incl. a `graph_state` pulse).",
+    "Use `--json` on every command for machine-readable output (incl. a `graph_state` pulse). For high-volume audit surfaces, start with `loom smells --summary --json` and `loom coverage --summary --json`; load full `--json` only when you need per-finding evidence.",
     "Every command has `--help`. `loom schema` = data model; `loom status` = where you are; `loom doctor` = integrity.",
     "Prescriptive intents (planned/needs_change) still need a falsifiable criterion — that's what makes the design a test.",
     "Two axes of completeness. VERTICAL is the binding spine: HIERARCHY is a tree (one parent per intent), every implemented leaf intent is grounded in code (IMPLEMENTS), every CodeFile is reached. HORIZONTAL (RELATES_TO, the N×N grid) is optional understanding/cleanup.",
@@ -74,7 +74,7 @@ const ORCHESTRATION: &[&str] = &[
     "HANDOFF ORDER is a DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify)",
     "  → validator (prove) → quality (green); fixer on any failing/needs_change. Run these one at a",
     "  time or overlap where the graph allows — loom enforces the lane, never the timing.",
-    // PERFORMANCE/daemon guidance is single-sourced in DAEMON_GUIDANCE and
+    // PERFORMANCE/storage guidance is single-sourced in PERFORMANCE_GUIDANCE and
     // printed after this list (so the human render and the json
     // `orchestration.performance` field can never drift — see that const).
     "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
@@ -84,12 +84,84 @@ const ORCHESTRATION: &[&str] = &[
     "  (zero open `loom smells` findings — every suspicion resolved or refuted via its remedy).",
 ];
 
-/// The daemon/performance guidance, defined ONCE. Both the human render (printed
+/// The storage/performance guidance, defined ONCE. Both the human render (printed
 /// after ORCHESTRATION) and the json `orchestration.performance` field consume
 /// THIS — so the hand-mirrored-copy drift that once shipped it human-only
 /// (invisible to --json drivers, its exact audience) is now impossible by
 /// construction. Single-source is the OCP fix: extend in one place.
-const DAEMON_GUIDANCE: &str = "The daemon (OPT-IN, --json only): in a long session making MANY loom calls, `export LOOM_DAEMON=1` ONCE — the first --json call lazy-spawns a background `loom serve` holding the graph open, so every later --json call skips the per-call DB-open (~20ms+ each, the dominant cost at scale). TURN OFF: unset LOOM_DAEMON (the next direct/human call drains it) or just leave it — it idle-exits after 5 min. SAFE: anything it can't serve (graph-releasing validate/saga, human/non-json mode, any error) falls back to direct, so correctness NEVER depends on it; it auto-drains + respawns on a rebuild (version-skew handshake). Unset for one-off/interactive use.";
+const PERFORMANCE_GUIDANCE: &str = "SQLite is the active embedded graph store: every command opens `.loom/graph.sqlite` directly, uses transactions for multi-step mutations, and exports `loom.graph.json` as the portable review/commit artifact. `loom serve` is retired; there is no daemon to start, drain, or tune.";
+
+const LIFECYCLE_SUMMARY: &str = "Intent.lifecycle is the implementation-work axis: `planned` means designed but not built, `implemented` means grounded in code, and `needs_change` means known work remains. Superseded meanings are retired with `loom intent retire`, which moves the intent to status=deprecated rather than inventing a fourth active lifecycle state.";
+
+const LIFECYCLE_STATES: &[(&str, &str, &str)] = &[
+    (
+        "planned",
+        "Designed promise; not expected to be grounded in current code yet.",
+        "`loom next --mode build` serves it; build the leaf, ground it with IMPLEMENTS, then mark implemented.",
+    ),
+    (
+        "implemented",
+        "Current code is meant to realize this intent.",
+        "It must stay grounded, proven, and measured; `loom sync` can stale evidence around it after code or meaning changes.",
+    ),
+    (
+        "needs_change",
+        "Known issue or refactor target; the graph admits work is still needed.",
+        "`loom next --mode build`/fixer work repairs it, then `loom intent mark <id> --lifecycle implemented` closes the implementation loop.",
+    ),
+];
+
+const LIFECYCLE_TRANSITIONS: &[(&str, &str, &str)] = &[
+    (
+        "seed_or_design",
+        "new behavior -> planned",
+        "`loom guide --mode seed`, `loom saga add --spawn-missing`, and hypothesis adoption land future work as planned intents.",
+    ),
+    (
+        "build",
+        "planned -> implemented",
+        "Write code, `loom codefile add`, `loom edge implement <intent> <file> --locator ...`, then mark implemented.",
+    ),
+    (
+        "repair",
+        "implemented -> needs_change -> implemented",
+        "Use `loom intent mark ... --lifecycle needs_change --reason ...` for known issues; fix, re-ground, and mark implemented.",
+    ),
+    (
+        "meaning_change",
+        "active meaning -> stale evidence",
+        "`loom intent update ... --reason ...` preserves history and ripples claims/proofs for re-verification; `--reword` is wording-only and does not ripple.",
+    ),
+    (
+        "retire",
+        "active intent -> status=deprecated",
+        "`loom intent retire ... --reason ... [--replaced-by ...]` removes superseded design from computation while keeping history.",
+    ),
+    (
+        "port",
+        "source graph -> target planned design",
+        "`loom import <source-export> --as-planned` resets imported intents to planned, proofs to not_run, and verdicts to uninspected.",
+    ),
+];
+
+const RELATED_STATUS_FAMILIES: &[(&str, &str)] = &[
+    (
+        "intent.status",
+        "proposed/confirmed/deprecated says whether the meaning itself is accepted or retired; it is distinct from lifecycle.",
+    ),
+    (
+        "edge.inspection_status",
+        "uninspected/passing/failing/independent/needs_reverification says whether a relationship claim has current evidence.",
+    ),
+    (
+        "validation.last_result",
+        "not_run/passed/failed/blocked says whether a proof has current runtime/manual evidence.",
+    ),
+    (
+        "hypothesis.status",
+        "proposed/supported/refuted/adopted/confirmed/rejected gates redesign ideas before they become lifecycle work.",
+    ),
+];
 
 /// The teaching layer's COMPLETENESS CONTRACT: the sections every
 /// `loom guide --json` payload must expose — the analog of the graph's vertical
@@ -114,6 +186,7 @@ const GUIDE_SECTIONS: &[&str] = &[
     "hypothesis_plane",
     "completeness",
     "done_condition",
+    "output_hygiene",
 ];
 
 /// FINDABILITY CONTRACT (leg 3 of teaching completeness): the pull surfaces the
@@ -122,16 +195,18 @@ const GUIDE_SECTIONS: &[&str] = &[
 /// ratchets it — drop a reference here and the build fails.
 #[cfg(test)]
 const FINDABILITY_SURFACES: &[&str] = &[
-    "loom status", // where am I
-    "loom next",   // what's the next item
-    "loom find",   // ask the map (keyword search)
-    "loom schema", // the data model
-    "--help",      // per-command EXAMPLE + flags
+    "loom status",             // where am I
+    "loom next",               // what's the next item
+    "loom find",               // ask the map (keyword search)
+    "loom schema",             // the data model
+    "--help",                  // per-command EXAMPLE + flags
+    "loom smells --summary",   // bounded audit counts before detail
+    "loom coverage --summary", // bounded coverage counts before archives
 ];
 
-/// The sub-keys the json `orchestration` object must carry — the section that
-/// once drifted (the daemon teaching shipped human-only). Pinning the structure
-/// keeps every orchestration concept the human render teaches reachable in json.
+/// The sub-keys the json `orchestration` object must carry. Pinning the
+/// structure keeps every orchestration concept the human render teaches
+/// reachable in json.
 #[cfg(test)]
 const ORCHESTRATION_KEYS: &[&str] = &[
     "principle",
@@ -143,6 +218,14 @@ const ORCHESTRATION_KEYS: &[&str] = &[
     "performance",
 ];
 
+#[cfg(test)]
+const LIFECYCLE_JSON_KEYS: &[&str] = &[
+    "summary",
+    "active_states",
+    "transitions",
+    "related_status_families",
+];
+
 fn brownfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the repo root."),
@@ -150,11 +233,11 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
         ("ground to code", "`loom codefile add '<glob>'` then `loom edge implement <intent> <codefile> --locator \"<symbol>\"` (the symbol AS IT APPEARS in the file — e.g. `def shorten`, `fn run`, `class Link` — `loom sync` flags it stale if it isn't found verbatim)."),
         ("discover", "`loom next` repeatedly: read the code it points to, then record `loom edge explore <a> <b> ground|issue|independent …`."),
         ("fix", "`loom next --mode fix` for failing/stale edges."),
-        ("coverage", "`loom coverage` — map or `loom ignore` every file so nothing is missed. Use `actionable_symbol_gaps` for open symbol work; `raw_actionable_symbol_gaps` is the audit trail before current decision notes. Do NOT chase 100% raw symbol coverage."),
+        ("coverage", "`loom coverage --summary` first — it reports file counts plus actionable symbol-gap counts without dumping full symbol/adjudication archives. Use full `loom coverage --json` only when you need per-file or per-symbol evidence. Map or `loom ignore` every unaccounted file. Use `actionable_symbol_gaps` for open symbol work; `raw_actionable_symbol_gaps` is the audit trail before current decision notes. Do NOT chase 100% raw symbol coverage."),
         ("prove", "`loom validation add …` + `loom edge validates …`, then `loom validate <intent>`. Manual/async proofs: `loom validation mark <id> --result passed|failed --evidence …` (or `--result blocked --reason …` while something external is in the way)."),
         ("prove from outside", "If the system exposes endpoints, prove the COMPOSITION from the consumer's vantage: write a saga spec (ordered chain, each step bound to its intent) and `loom saga add` + `loom saga run` — passing runs stamp runtime evidence along the intent path; a failure lands as a failing edge naming the broken boundary."),
         ("gate", "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry architecture layers, `loom layer order <top> … <bottom>` arms the layering audit."),
-        ("audit", "`loom smells` — derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code, with a weaker lexical fallback for under-tagged coded pairs), overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports pointing UP the declared `loom layer order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), symbol-accountability gaps (public/risky symbols without precise ownership), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings GATE GREEN: once every queue is dry the compass routes phase=audit until `loom smells` returns zero. Refute or confirm each via its remedy; `independent`/a decision note is as valuable as a fix (scatter/tangle/happy-path/symbol gaps adjudicate via `loom note add --intent|--file … --kind decision`; a later structural change re-opens the question). Per-file ownership questions: `loom codefile show <path>`. The report also DISCLOSES detector coverage (untagged coded intents mean duplicate detection is under-armed, not blind; layers in use with no declared order are a true layering blind spot) — a quiet report is only as good as its armed instruments."),
+        ("audit", "`loom smells --summary` first — it reports counts by smell kind, top remedies, advisory totals, and detector blind spots without dumping evidence/teaching bodies. Use full `loom smells --json` only when you need to inspect a specific finding. Smells are derived suspicions the graph noticed for you: twin intents (split-brain), duplicated responsibility (tag collisions across unrelated code, with a weaker lexical fallback for under-tagged coded pairs), overlapping ownership, scatter, tangles, undeclared coupling, layering violations (imports pointing UP the declared `loom layer order` — a recorded relationship doesn't excuse direction; adjudicate a deliberate up-dependency with a decision note on the importing intent), symbol-accountability gaps (public/risky symbols without precise ownership), vocab drift, rules never held against coded intents, happy-path-only feature groups (no sad/fallback behavior declared). OPEN findings GATE GREEN: once every queue is dry the compass still says audit until these are resolved or explicitly refuted."),
         ("close out", "`loom next --all` — every lane's remainder as one prioritized list. Then `loom export --check` before committing, so the graph travels with the repo."),
     ]
 }
@@ -252,8 +335,18 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "physical": "CodeFile — what exists on disk",
                 "normative": "QualityRule — what good looks like",
             },
-            "lifecycle": "Each intent has a lifecycle: planned (designed, not built) → implemented → needs_change (must change). \
-                `loom next --mode build` drives planned/needs_change; discovery/fix drive relationship verification.",
+            "lifecycle": {
+                "summary": LIFECYCLE_SUMMARY,
+                "active_states": LIFECYCLE_STATES.iter().map(|(state, meaning, driver)| serde_json::json!({
+                    "state": state, "meaning": meaning, "driver": driver,
+                })).collect::<Vec<_>>(),
+                "transitions": LIFECYCLE_TRANSITIONS.iter().map(|(name, transition, command)| serde_json::json!({
+                    "name": name, "transition": transition, "command": command,
+                })).collect::<Vec<_>>(),
+                "related_status_families": RELATED_STATUS_FAMILIES.iter().map(|(family, meaning)| serde_json::json!({
+                    "family": family, "meaning": meaning,
+                })).collect::<Vec<_>>(),
+            },
             "steps": steps.iter().map(|(t, d)| serde_json::json!({"step": t, "do": d})).collect::<Vec<_>>(),
             "golden_rules": GOLDEN_RULES,
             "ripple": {
@@ -284,7 +377,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
                 "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
                 "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and zero open `loom smells` findings (the audit gate).",
-                "performance": DAEMON_GUIDANCE,
+                "performance": PERFORMANCE_GUIDANCE,
             },
             "consumer_plane": {
                 "what": "Runtime proof of COMPOSITION: a saga is an ordered chain of endpoint invocations run the way a real consumer will (captures thread one response into the next request). Everything else grounds claims by reading code; a saga stamps the RELATES_TO path between its step intents with EXECUTION evidence.",
@@ -313,6 +406,10 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "horizontal": "OPTIONAL closure: every intent pair has an inspected RELATES_TO edge (passing/failing/independent). Surfaced as `horizontally_explored`. Good for deep understanding/cleanup, but never required for 'done'.",
             },
             "done_condition": "VERTICAL done = `vertically_complete: true` in `loom status` + `loom coverage` shows nothing unaccounted. HORIZONTAL (phase=complete) is optional polish.",
+            "output_hygiene": {
+                "rule": "High-volume audit commands have summary mode. Start with `loom smells --summary --json` and `loom coverage --summary --json`; only request full JSON when a specific finding/gap needs evidence.",
+                "why": "`loom smells --json` includes per-finding evidence, teaching, adjudicated rulings, and advisory bodies; `loom coverage --json` includes full file/symbol/raw-gap/adjudication archives. Summary mode preserves routing facts without blowing the driver context."
+            },
         }));
         return Ok(());
     }
@@ -332,8 +429,22 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("  physical   CodeFile     — what actually exists on disk");
     println!("  normative  QualityRule  — what good looks like");
     println!();
-    println!("LIFECYCLE  planned (designed, not built) → implemented → needs_change (must change)");
-    println!("  `loom next --mode build` drives planned/needs_change; discovery/fix verify relationships.");
+    println!("LIFECYCLE");
+    println!("  {}", LIFECYCLE_SUMMARY);
+    println!("  Active states:");
+    for (state, meaning, driver) in LIFECYCLE_STATES {
+        println!("  - {state}: {meaning}");
+        println!("    {driver}");
+    }
+    println!("  Transitions:");
+    for (name, transition, command) in LIFECYCLE_TRANSITIONS {
+        println!("  - {name}: {transition}");
+        println!("    {command}");
+    }
+    println!("  Related status families:");
+    for (family, meaning) in RELATED_STATUS_FAMILIES {
+        println!("  - {family}: {meaning}");
+    }
     println!();
     println!(
         "PLAYBOOK ({} — {})",
@@ -377,8 +488,8 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     for line in ORCHESTRATION {
         println!("  {}", line);
     }
-    // Single-sourced with json `orchestration.performance` (see DAEMON_GUIDANCE).
-    println!("  PERFORMANCE — {}", DAEMON_GUIDANCE);
+    // Single-sourced with json `orchestration.performance` (see PERFORMANCE_GUIDANCE).
+    println!("  PERFORMANCE — {}", PERFORMANCE_GUIDANCE);
     println!();
     println!("Other modes: `loom guide --mode greenfield|brownfield|refactor|port|seed`. Start: `loom status` · `loom next`.");
     Ok(())
@@ -412,22 +523,20 @@ mod tests {
         }
     }
 
-    /// PARITY RATCHET: the daemon guidance must reach the --json driver (its
-    /// exact audience). Single-sourced via DAEMON_GUIDANCE, so the human render
-    /// prints the identical text — the hand-mirrored-copy drift that once
-    /// shipped it human-only cannot recur. This is the regression guard for the
-    /// bug the stress test caught.
+    /// PARITY RATCHET: the storage/performance guidance must reach the --json
+    /// driver. Single-sourced via PERFORMANCE_GUIDANCE, so the human render
+    /// prints the identical text and copy drift cannot recur.
     #[test]
-    fn daemon_guidance_reaches_the_json_driver() {
+    fn performance_guidance_reaches_the_json_driver() {
         let v = guide_json("brownfield");
         assert_eq!(
             v["orchestration"]["performance"],
-            serde_json::json!(DAEMON_GUIDANCE),
-            "the daemon guidance must travel in --json, single-sourced from DAEMON_GUIDANCE"
+            serde_json::json!(PERFORMANCE_GUIDANCE),
+            "the performance guidance must travel in --json, single-sourced from PERFORMANCE_GUIDANCE"
         );
         assert!(
-            DAEMON_GUIDANCE.contains("LOOM_DAEMON"),
-            "daemon guidance must name the on/off switch"
+            PERFORMANCE_GUIDANCE.contains("graph.sqlite"),
+            "performance guidance must name the active SQLite store"
         );
     }
 
@@ -459,11 +568,11 @@ mod tests {
         }
     }
 
-    /// PARITY GUARD for the section that drifted: the json `orchestration` object
-    /// keeps a home for every concept the human render teaches (incl. the daemon
-    /// under `performance`). A new orchestration concept added human-only fails
-    /// here — the closest mechanical guard short of routing the prose render
-    /// through the capturable Printer.
+    /// PARITY GUARD for the section that drifted: the json `orchestration`
+    /// object keeps a home for every concept the human render teaches. A new
+    /// orchestration concept added human-only fails here — the closest
+    /// mechanical guard short of routing the prose render through the capturable
+    /// Printer.
     #[test]
     fn orchestration_section_stays_complete() {
         let v = guide_json("brownfield");
@@ -471,6 +580,48 @@ mod tests {
             assert!(
                 v["orchestration"].get(key).is_some(),
                 "orchestration.{key} missing from guide --json"
+            );
+        }
+    }
+
+    #[test]
+    fn lifecycle_contract_is_complete() {
+        let v = guide_json("brownfield");
+        let lifecycle = &v["lifecycle"];
+        for key in LIFECYCLE_JSON_KEYS {
+            assert!(
+                lifecycle.get(key).is_some(),
+                "lifecycle.{key} missing from guide --json"
+            );
+        }
+
+        let states = lifecycle["active_states"]
+            .as_array()
+            .expect("lifecycle.active_states is an array");
+        let state_names = states
+            .iter()
+            .filter_map(|state| state["state"].as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            state_names,
+            vec!["planned", "implemented", "needs_change"],
+            "guide must teach every active implementation lifecycle state in schema order"
+        );
+
+        let blob = serde_json::to_string(lifecycle).unwrap();
+        for required in [
+            "loom intent retire",
+            "status=deprecated",
+            "loom import <source-export> --as-planned",
+            "validation.last_result",
+            "edge.inspection_status",
+            "hypothesis.status",
+            "loom intent update",
+            "--reword",
+        ] {
+            assert!(
+                blob.contains(required),
+                "guide lifecycle contract does not teach '{required}'"
             );
         }
     }

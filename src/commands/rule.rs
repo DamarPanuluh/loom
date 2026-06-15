@@ -2,11 +2,8 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::RuleCmd;
-use crate::db::queries::{
-    insert_governs, insert_rule, list_governs_for_intent, list_rules, update_governs_verdict,
-};
 use crate::db::schema::role;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::{fmt_rule_row, Printer};
 use crate::types::QualityRule;
@@ -227,17 +224,24 @@ fn pack_rule_effort(name: &str) -> &'static str {
 
 pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, cmd, printer)
+    match cmd {
+        RuleCmd::List { limit } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_list_with_db(&db, limit, printer)
+        }
+        RuleCmd::Check { intent_id } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_check_with_db(&db, intent_id, printer)
+        }
+        cmd => {
+            ensure_initialized(&cwd)?;
+            run_with_sqlite(&cwd, cmd, printer)
+        }
+    }
 }
 
-pub fn run_with_db(
-    db: &GrafeoDb,
-    _root: &std::path::Path,
-    cmd: RuleCmd,
-    printer: &Printer,
-) -> Result<()> {
+fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     match cmd {
         RuleCmd::Add {
             name,
@@ -246,7 +250,6 @@ pub fn run_with_db(
             effort,
         } => {
             gate::acting_in_lane("add a quality rule", &[role::QUALITY], None)?;
-            // Validate severity
             severity
                 .parse::<crate::types::Severity>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -255,17 +258,16 @@ pub fn run_with_db(
                     anyhow::bail!("--effort must be low, mid, or high (a statement about the inspection WORK, not about models).");
                 }
             }
-
             let id = Uuid::new_v4().to_string();
             let rule = QualityRule {
                 id: id.clone(),
                 name: name.clone(),
                 description,
                 detection_logic: String::new(),
-                inspection_effort: effort.clone().unwrap_or_default(),
+                inspection_effort: effort.unwrap_or_default(),
                 severity,
             };
-            insert_rule(db, &rule)?;
+            store.insert_rule(&rule)?;
 
             if printer.json {
                 printer.print_json(&rule);
@@ -284,7 +286,7 @@ pub fn run_with_db(
                 );
             };
             let existing: std::collections::HashSet<String> =
-                list_rules(db)?.into_iter().map(|r| r.name).collect();
+                store.list_rules()?.into_iter().map(|r| r.name).collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
             for (name, severity, description, detection) in *rules {
@@ -300,16 +302,14 @@ pub fn run_with_db(
                     inspection_effort: pack_rule_effort(name).to_string(),
                     severity: (*severity).to_string(),
                 };
-                insert_rule(db, &rule)?;
+                store.insert_rule(&rule)?;
                 created.push(rule);
             }
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "pack": pack,
                     "created": created, "skipped_existing": skipped,
-                    "next": "loom next --mode quality now serves every coded intent these rules were never \
-                             held against; one command resolves each — loom rule verdict (creates the edge \
-                             with the verdict; passing|failing|independent, component altitude covers descendants).",
+                    "next": "loom next --mode quality now serves every coded intent these rules were never held against; one command resolves each — loom rule verdict.",
                 }));
             } else {
                 println!(
@@ -327,124 +327,24 @@ pub fn run_with_db(
             }
         }
 
-        RuleCmd::List { limit } => {
-            let mut rules = list_rules(db)?;
-            let total = crate::output::apply_limit(&mut rules, limit);
-            if printer.json {
-                printer.print_json(&serde_json::json!({
-                    "rules":     rules,
-                    "total":     total,
-                    "truncated": rules.len() < total,
-                }));
-            } else if rules.is_empty() {
-                println!("(no rules defined)");
-            } else {
-                for r in &rules {
-                    println!("{}", fmt_rule_row(r));
-                }
-                if let Some(m) =
-                    crate::output::more_marker(total, rules.len(), "`loom rule list --limit 0`")
-                {
-                    println!("  {m}");
-                }
-            }
-        }
-
-        RuleCmd::Check { intent_id } => {
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
-            // Show all GOVERNS edges for this intent (grouped by inspection_status)
-            let governs = list_governs_for_intent(db, &intent_id)?;
-            let failing: Vec<_> = governs
-                .iter()
-                .filter(|g| g.inspection_status == "failing")
-                .collect();
-            let passing: Vec<_> = governs
-                .iter()
-                .filter(|g| g.inspection_status == "passing")
-                .collect();
-            let uninspected: Vec<_> = governs
-                .iter()
-                .filter(|g| g.inspection_status == "uninspected")
-                .collect();
-            // The one-step verdict doctrine: `loom rule verdict` creates the
-            // GOVERNS edge AND measures it in one command (never the dead
-            // uninspected state that `rule apply`/`edge govern` manufacture).
-            let measure_hint = format!(
-                "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …",
-                intent_id
-            );
-            if printer.json {
-                // Parity: same grouped counts the human branch shows, plus the
-                // empty-case corrective command (invariant 2).
-                let mut payload = serde_json::json!({
-                    "governs": governs,
-                    "total": governs.len(),
-                    "failing": failing.len(),
-                    "passing": passing.len(),
-                    "uninspected": uninspected.len(),
-                    "truncated": false,
-                });
-                if governs.is_empty() {
-                    payload["note"] = serde_json::json!(format!(
-                        "no rules measured against this intent — {measure_hint}"
-                    ));
-                }
-                printer.print_json(&payload);
-            } else if governs.is_empty() {
-                println!(
-                    "No GOVERNS edges for intent '{}' — no rules measured.",
-                    intent_id
-                );
-                println!("  → Measure a rule against it: {measure_hint}");
-                println!("    (the verdict creates the edge and measures it in one step; independent = the rule does not apply)");
-            } else {
-                println!(
-                    "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected",
-                    intent_id,
-                    failing.len(),
-                    passing.len(),
-                    uninspected.len()
-                );
-                println!();
-                for g in &failing {
-                    println!(
-                        "  [FAILING]  rule={rname}  criterion={crit}",
-                        rname = g.rule_name,
-                        crit = g.criterion,
-                    );
-                    if !g.evidence.is_empty() {
-                        println!("    evidence: {}", g.evidence);
-                    }
-                }
-                for g in &uninspected {
-                    println!("  [uninspected]  rule={}  (edge id: {})", g.rule_name, g.id);
-                }
-                for g in &passing {
-                    println!("  [passing]  rule={}", g.rule_name);
-                }
-            }
-        }
-
         RuleCmd::Apply {
             rule_id,
             intent_id,
             criterion,
         } => {
             gate::acting_in_lane("apply a quality rule", &[role::QUALITY], None)?;
-            let rule_id = crate::db::queries::resolve_rule(db, &rule_id)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
+            let rule_id = store.resolve_rule(&rule_id)?;
+            let intent_id = resolve_intent_with_db(&store, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {
-                // Criterion is optional at apply time (the edge starts
-                // uninspected) — but if given, it must be substantive.
                 gate::require_substantive(
                     "criterion",
                     crit,
                     "what compliance looks like for this rule on this intent",
                 )?;
             }
-            insert_governs(db, &rule_id, &intent_id, crit, &now)?;
+            store.insert_governs(&rule_id, &intent_id, crit, &now)?;
             let edge_id =
                 crate::db::schema::edge_key(crate::db::schema::edge::GOVERNS, &rule_id, &intent_id);
             if printer.json {
@@ -453,8 +353,7 @@ pub fn run_with_db(
                     "edge_id":   edge_id,
                     "rule_id":   rule_id,
                     "intent_id": intent_id,
-                    "message":   "GOVERNS edge created with inspection_status=uninspected. \
-                                  Inspect and update via `loom rule check`.",
+                    "message":   "GOVERNS edge created with inspection_status=uninspected. Inspect and update via `loom rule check`.",
                     "next_step": format!("Run `loom rule check {}` to inspect.", intent_id),
                 }));
             } else {
@@ -480,12 +379,11 @@ pub fn run_with_db(
                 &[role::QUALITY],
                 inspected_by.as_deref(),
             )?;
-            let rule_id = crate::db::queries::resolve_rule(db, &rule_id)?;
-            let intent_id = crate::db::queries::resolve_intent(db, &intent_id)?;
+            let rule_id = store.resolve_rule(&rule_id)?;
+            let intent_id = resolve_intent_with_db(&store, &intent_id)?;
             if status != "passing" && status != "failing" && status != "independent" {
                 anyhow::bail!(
-                    "Invalid --status '{}'. A verdict is passing (complies), failing (violates), \
-                     or independent (measured — the rule does not apply to this intent).",
+                    "Invalid --status '{}'. A verdict is passing, failing, or independent.",
                     status
                 );
             }
@@ -507,28 +405,24 @@ pub fn run_with_db(
             gate::require_confidence(confidence)?;
 
             let now = chrono::Utc::now().to_rfc3339();
-            let mut found = update_governs_verdict(
-                db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+            let mut found = store.update_governs_verdict(
+                &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
             )?;
             let mut edge_created = false;
             if !found {
-                // A verdict IS a measurement — no separate `apply` step needed.
-                // Create the edge and record the verdict in one motion, so the
-                // unmeasured queue resolves with a single command.
-                insert_governs(db, &rule_id, &intent_id, &criterion, &now)?;
-                found = update_governs_verdict(
-                    db, &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                store.insert_governs(&rule_id, &intent_id, &criterion, &now)?;
+                found = store.update_governs_verdict(
+                    &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
                 )?;
                 edge_created = true;
             }
             if !found {
                 anyhow::bail!(
-                    "Could not record the GOVERNS verdict between rule '{}' and intent '{}' — \
-                     run `loom doctor`; `loom rule list` / `loom intent list` to verify both endpoints.",
-                    rule_id, intent_id
+                    "Could not record the GOVERNS verdict between rule '{}' and intent '{}'.",
+                    rule_id,
+                    intent_id
                 );
             }
-            // Verdict = phase-moving: full anchor, result-sensitive.
             let next_step = if status == "failing" {
                 format!(
                     "flag the intent (`loom intent mark {} --lifecycle needs_change --reason \"…\"`) or fix and re-verdict.",
@@ -538,7 +432,7 @@ pub fn run_with_db(
                 "`loom next --mode quality` for the next pair".to_string()
             };
             if printer.json {
-                printer.print_json(&crate::output::with_anchor(
+                printer.print_json(&crate::output::with_read_anchor(
                     serde_json::json!({
                         "status":            "ok",
                         "rule_id":           rule_id,
@@ -551,7 +445,7 @@ pub fn run_with_db(
                         "last_inspected":    now,
                         "edge_created":      edge_created,
                     }),
-                    db,
+                    &store,
                     &next_step,
                 )?);
             } else {
@@ -572,9 +466,169 @@ pub fn run_with_db(
                 );
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
-                crate::output::print_anchor(db, &next_step)?;
+                let snapshot = store.query_snapshot()?;
+                let graph_state = store.graph_state(&snapshot)?;
+                println!("  → Next: {next_step}");
+                println!("  {}", crate::output::fmt_pulse(&graph_state));
             }
+        }
+
+        RuleCmd::List { limit } => run_list_with_db(&store, limit, printer)?,
+        RuleCmd::Check { intent_id } => run_check_with_db(&store, intent_id, printer)?,
+    }
+    Ok(())
+}
+
+fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer) -> Result<()> {
+    let mut rules = db.list_rules()?;
+    let total = crate::output::apply_limit(&mut rules, limit);
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "rules":     rules,
+            "total":     total,
+            "truncated": rules.len() < total,
+        }));
+    } else if rules.is_empty() {
+        println!("(no rules defined)");
+    } else {
+        for r in &rules {
+            println!("{}", fmt_rule_row(r));
+        }
+        if let Some(m) =
+            crate::output::more_marker(total, rules.len(), "`loom rule list --limit 0`")
+        {
+            println!("  {m}");
         }
     }
     Ok(())
+}
+
+fn run_check_with_db(
+    db: &dyn GraphReadRepository,
+    intent_id: String,
+    printer: &Printer,
+) -> Result<()> {
+    let intent_id = resolve_intent_with_db(db, &intent_id)?;
+    let governs = db.list_governs_for_intent(&intent_id)?;
+    let failing: Vec<_> = governs
+        .iter()
+        .filter(|g| g.inspection_status == "failing")
+        .collect();
+    let passing: Vec<_> = governs
+        .iter()
+        .filter(|g| g.inspection_status == "passing")
+        .collect();
+    let uninspected: Vec<_> = governs
+        .iter()
+        .filter(|g| g.inspection_status == "uninspected")
+        .collect();
+    let measure_hint = format!(
+        "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …",
+        intent_id
+    );
+    if printer.json {
+        let mut payload = serde_json::json!({
+            "governs": governs,
+            "total": governs.len(),
+            "failing": failing.len(),
+            "passing": passing.len(),
+            "uninspected": uninspected.len(),
+            "truncated": false,
+        });
+        if governs.is_empty() {
+            payload["note"] = serde_json::json!(format!(
+                "no rules measured against this intent — {measure_hint}"
+            ));
+        }
+        printer.print_json(&payload);
+    } else if governs.is_empty() {
+        println!(
+            "No GOVERNS edges for intent '{}' — no rules measured.",
+            intent_id
+        );
+        println!("  → Measure a rule against it: {measure_hint}");
+        println!("    (the verdict creates the edge and measures it in one step; independent = the rule does not apply)");
+    } else {
+        println!(
+            "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected",
+            intent_id,
+            failing.len(),
+            passing.len(),
+            uninspected.len()
+        );
+        println!();
+        for g in &failing {
+            println!(
+                "  [FAILING]  rule={rname}  criterion={crit}",
+                rname = g.rule_name,
+                crit = g.criterion,
+            );
+            if !g.evidence.is_empty() {
+                println!("    evidence: {}", g.evidence);
+            }
+        }
+        for g in &uninspected {
+            println!("  [uninspected]  rule={}  (edge id: {})", g.rule_name, g.id);
+        }
+        for g in &passing {
+            println!("  [passing]  rule={}", g.rule_name);
+        }
+    }
+    Ok(())
+}
+
+fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    let intents = db.list_intents(None, None)?;
+    if intents.iter().any(|intent| intent.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase() == kl)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    if exact.len() > 1 {
+        anyhow::bail!(
+            "Intent name '{}' is not unique ({} intents carry it) — use the id. `loom intent list` to see them.",
+            key,
+            exact.len()
+        );
+    }
+    let subs: Vec<_> = intents
+        .iter()
+        .filter(|intent| intent.name.to_lowercase().contains(&kl))
+        .collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
+            key
+        ),
+        _ => {
+            let total = subs.len();
+            let shown = subs
+                .iter()
+                .take(10)
+                .map(|intent| format!("'{}'", intent.name))
+                .collect::<Vec<_>>()
+                .join(", ");
+            if total > 10 {
+                anyhow::bail!(
+                    "'{}' is ambiguous — it matches: {} … +{} more — narrow the fragment or `loom find \"{}\"`.",
+                    key,
+                    shown,
+                    total - 10,
+                    key
+                );
+            }
+            anyhow::bail!(
+                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
+                key,
+                shown
+            )
+        }
+    }
 }

@@ -1,78 +1,94 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    completeness_gaps, count_all_edges_by_inspection_status, count_codefiles, count_intents,
-    count_validations, intents_without_validations, list_all_failing_governs, list_validations,
-    recent_passing, top_intents_by_centrality, validation_pass_rate, vertical_completeness,
+    completeness_gaps_from_snapshot, edge_status_counts_from_snapshot,
+    failing_governs_from_snapshot, intents_without_validations_from_snapshot,
+    recent_passing_from_snapshot, status_report_from_snapshot,
+    top_intents_by_centrality_from_snapshot, vertical_completeness_from_snapshot, QuerySnapshot,
+    VerticalCompleteness,
 };
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_status, Printer};
-use crate::types::{FullReport, StatusReport};
+use crate::types::{
+    FullReport, Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation,
+};
+
+struct ReportData {
+    status: StatusReport,
+    deprecated_intents: i64,
+    top_intents: Vec<IntentCentrality>,
+    intents_no_val: Vec<Intent>,
+    failing_governs: Vec<Governs>,
+    recent: Vec<RelatesTo>,
+    by_status: std::collections::HashMap<String, i64>,
+    gaps: Vec<String>,
+    vc: VerticalCompleteness,
+    blocked: Vec<Validation>,
+}
 
 pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, printer)
 }
 
-pub fn run_with_db(db: &GrafeoDb, _root: &std::path::Path, printer: &Printer) -> Result<()> {
-    // ---- Node counts ----
-    // `loom status` reports the ACTIVE intent count off the snapshot (deprecated
-    // excluded); report aligns to that same number so the two orientation
-    // commands never print different totals for the same line. Deprecated intents
-    // are still surfaced — just counted separately, not folded into the headline.
-    let total_all_intents = count_intents(db)?;
-    let total_intents = crate::db::queries::list_active_intents(db)?.len() as i64;
-    let deprecated_intents = total_all_intents - total_intents;
-    let total_codefiles = count_codefiles(db)?;
-    let total_validations = count_validations(db)?;
-
-    // ---- Edge inspection_status counts (all types combined) ----
-    let by_status = count_all_edges_by_inspection_status(db)?;
-
-    let uninspected = *by_status.get("uninspected").unwrap_or(&0);
-    let passing = *by_status.get("passing").unwrap_or(&0);
-    let failing = *by_status.get("failing").unwrap_or(&0);
-    let independent = *by_status.get("independent").unwrap_or(&0);
-    let needs_reverification = *by_status.get("needs_reverification").unwrap_or(&0);
-    let total_edges = by_status.values().sum::<i64>();
-
-    // ---- Validation quality ----
-    let pass_rate = validation_pass_rate(db)?;
-    let (blocked_validations, validation_pass_rate_runnable) =
-        crate::db::queries::blocked_count_and_runnable_rate(&list_validations(db)?);
-    let intents_no_val = intents_without_validations(db)?;
-
-    let status = StatusReport {
-        total_intents,
-        total_codefiles,
-        total_validations,
-        total_edges,
-        uninspected_edges: uninspected,
-        passing_edges: passing,
-        failing_edges: failing,
-        independent_edges: independent,
-        needs_reverification,
-        intents_without_validations: intents_no_val.len() as i64,
-        validation_pass_rate: pass_rate,
-        blocked_validations,
-        validation_pass_rate_runnable,
-        open_issues: failing,
-    };
-
-    let top_intents = top_intents_by_centrality(db, 5)?;
-    let failing_governs = list_all_failing_governs(db)?;
-    let recent = recent_passing(db, 10)?;
-
-    let gaps = completeness_gaps(db)?;
-    let vc = vertical_completeness(db)?;
-    // Blocked proofs leave the validator queue (deliberate — they can't run),
-    // so the report is where they stay visible until someone unblocks them.
-    let blocked: Vec<_> = list_validations(db)?
-        .into_iter()
-        .filter(|v| v.last_result == "blocked")
+fn report_data_from_snapshot(snapshot: &QuerySnapshot, total_all_intents: i64) -> ReportData {
+    let status = status_report_from_snapshot(snapshot);
+    let deprecated_intents = total_all_intents - status.total_intents;
+    let top_intents = top_intents_by_centrality_from_snapshot(snapshot, 5);
+    let intents_no_val = intents_without_validations_from_snapshot(snapshot);
+    let failing_governs = failing_governs_from_snapshot(snapshot);
+    let recent = recent_passing_from_snapshot(snapshot, 10);
+    let by_status = edge_status_counts_from_snapshot(snapshot);
+    let gaps = completeness_gaps_from_snapshot(snapshot);
+    let vc = vertical_completeness_from_snapshot(snapshot);
+    let blocked = snapshot
+        .validations
+        .iter()
+        .filter(|validation| validation.last_result == "blocked")
+        .cloned()
         .collect();
+
+    ReportData {
+        status,
+        deprecated_intents,
+        top_intents,
+        intents_no_val,
+        failing_governs,
+        recent,
+        by_status,
+        gaps,
+        vc,
+        blocked,
+    }
+}
+
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    _root: &std::path::Path,
+    printer: &Printer,
+) -> Result<()> {
+    let snapshot = db.query_snapshot()?;
+    let total_all_intents = db.count_intents_including_deprecated()?;
+    render_report(
+        report_data_from_snapshot(&snapshot, total_all_intents),
+        printer,
+    )
+}
+
+fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
+    let ReportData {
+        status,
+        deprecated_intents,
+        top_intents,
+        intents_no_val,
+        failing_governs,
+        recent,
+        by_status,
+        gaps,
+        vc,
+        blocked,
+    } = data;
 
     if printer.json {
         let report = FullReport {

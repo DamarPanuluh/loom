@@ -1,85 +1,74 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    edge_status_counts_from_snapshot, graph_state_from_snapshot,
-    intents_without_validations_count_from_snapshot, uninspected_outside_queues_from_snapshot,
-    validation_pass_rate_from_snapshot, QuerySnapshot,
+    status_report_from_snapshot, uninspected_outside_queues_from_snapshot, GraphState,
+    UninspectedOutsideQueues,
 };
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, fmt_status, Printer};
 use crate::types::StatusReport;
 
 pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, printer)
 }
 
-pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> Result<()> {
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
+    printer: &Printer,
+) -> Result<()> {
     // One graph scan — every count below is derived from the snapshot instead
     // of re-querying nodes/edges (the scale benchmark's status hot path).
-    let snapshot = QuerySnapshot::load(db)?;
-
-    let total_intents = snapshot.intents.len() as i64;
-    let total_codefiles = snapshot.codefiles.len() as i64;
-    let total_validations = snapshot.validations.len() as i64;
-
-    let by_status = edge_status_counts_from_snapshot(&snapshot);
-    let total_edges = by_status.values().sum::<i64>();
-    let uninspected = *by_status.get("uninspected").unwrap_or(&0);
-    let passing = *by_status.get("passing").unwrap_or(&0);
-    let failing = *by_status.get("failing").unwrap_or(&0);
-    let independent = *by_status.get("independent").unwrap_or(&0);
-    let needs_reverification = *by_status.get("needs_reverification").unwrap_or(&0);
-
-    let pass_rate = validation_pass_rate_from_snapshot(&snapshot);
-    let (blocked_validations, validation_pass_rate_runnable) =
-        crate::db::queries::blocked_count_and_runnable_rate(&snapshot.validations);
-    let no_val_count = intents_without_validations_count_from_snapshot(&snapshot);
-
-    let report = StatusReport {
-        total_intents,
-        total_codefiles,
-        total_validations,
-        total_edges,
-        uninspected_edges: uninspected,
-        passing_edges: passing,
-        failing_edges: failing,
-        independent_edges: independent,
-        needs_reverification,
-        intents_without_validations: no_val_count,
-        validation_pass_rate: pass_rate,
-        blocked_validations,
-        validation_pass_rate_runnable,
-        open_issues: failing,
-    };
-
-    let gs = graph_state_from_snapshot(db, &snapshot)?;
+    let snapshot = db.query_snapshot()?;
+    let report = status_report_from_snapshot(&snapshot);
+    let gs = db.graph_state(&snapshot)?;
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
-    let align_count =
-        crate::db::queries::align_candidates_from_snapshot(db, &snapshot)?.len() as i64;
-    let prove = crate::db::queries::prove_candidates(db)?;
+    let align_count = db.align_candidate_count(&snapshot)?;
+    let prove = db.prove_candidates(&snapshot)?;
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
-    let adopt_count = crate::db::queries::list_hypotheses(db, Some("supported"))?
+    let adopt_count = db
+        .list_hypotheses(Some("supported"))?
         .iter()
         .filter(|h| !in_prove.contains(h.id.as_str()))
         .count() as i64;
-    let human_gated = align_count + adopt_count + outside.blocked_validations;
-    let export_freshness = match crate::db::queries::committed_export_stale(db, root)? {
+    let export_freshness = match db.committed_export_stale(root)? {
         Some(true) => "stale",
         Some(false) => "fresh",
         None => "absent",
     };
 
+    render_status(
+        &report,
+        &gs,
+        &outside,
+        align_count,
+        adopt_count,
+        export_freshness,
+        printer,
+    )
+}
+
+fn render_status(
+    report: &StatusReport,
+    gs: &GraphState,
+    outside: &UninspectedOutsideQueues,
+    align_count: i64,
+    adopt_count: i64,
+    export_freshness: &str,
+    printer: &Printer,
+) -> Result<()> {
+    let human_gated = align_count + adopt_count + outside.blocked_validations;
+
     if printer.json {
-        let mut v = serde_json::to_value(&report)?;
+        let mut v = serde_json::to_value(report)?;
         if let Some(obj) = v.as_object_mut() {
-            obj.insert("graph_state".to_string(), serde_json::to_value(&gs)?);
+            obj.insert("graph_state".to_string(), serde_json::to_value(gs)?);
             obj.insert(
                 "uninspected_outside_queues".to_string(),
-                serde_json::to_value(&outside)?,
+                serde_json::to_value(outside)?,
             );
             obj.insert(
                 "committed_export".to_string(),
@@ -103,9 +92,9 @@ pub fn run_with_db(db: &GrafeoDb, root: &std::path::Path, printer: &Printer) -> 
         }
         printer.print_json(&v);
     } else {
-        println!("{}", fmt_status(&report));
+        println!("{}", fmt_status(report));
         println!();
-        println!("  {}", fmt_pulse(&gs));
+        println!("  {}", fmt_pulse(gs));
         if outside.implements + outside.blocked_validations > 0 {
             println!(
                 "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons).",

@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 /// Crate version + git build stamp (from build.rs) — shown by `loom --version`.
 /// The bare crate version is permanently "0.1.0"; the build id is what tells two
-/// binaries apart (and what the `loom serve` daemon's skew handshake keys on).
+/// binaries apart in local dogfood builds.
 pub const LONG_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (build ",
@@ -355,11 +355,18 @@ pub enum Command {
         /// How many findings to show.
         #[arg(long, default_value_t = 15)]
         limit: usize,
+        /// Print only counts, top summaries, and instrumentation blind spots.
+        #[arg(long)]
+        summary: bool,
     },
 
     /// Reconcile files on disk against the graph: grounded / excluded /
     /// unaccounted — so nothing is silently missed (respects .gitignore).
-    Coverage,
+    Coverage {
+        /// Print only counts and actionable gaps; omit full symbol/finding archives.
+        #[arg(long)]
+        summary: bool,
+    },
 
     /// Detect the repo's stack and whether there's existing source to map
     /// (greenfield vs brownfield). Runs even before `loom init`.
@@ -417,15 +424,11 @@ pub enum Command {
         as_planned: bool,
     },
 
-    /// The OPT-IN daemon: hold the graph open and serve client requests over a
-    /// Unix socket, amortizing the per-call DB-open floor for a heavy
-    /// multi-agent session. Started lazily by a client when `LOOM_DAEMON=1`;
-    /// rarely run by hand. Drains + exits after `--idle-secs` of no traffic,
-    /// releasing the lock. The daemon is a PERFORMANCE layer only — clients
-    /// fall back to direct open on any failure, so behaviour never depends on it.
+    /// Retired daemon command. SQLite-backed loom opens the embedded graph
+    /// store directly; this command remains only to give old scripts a clear
+    /// retirement error.
     Serve {
-        /// Drain and exit after this many seconds with no connection (so a
-        /// daemon never squats on a repo's graph). Default: 5 minutes.
+        /// Kept for old invocations; ignored because the daemon is retired.
         #[arg(long, default_value_t = 300)]
         idle_secs: u64,
     },
@@ -442,22 +445,6 @@ pub enum Command {
 // ---------------------------------------------------------------------------
 // Parse-error teaching — every command's EXAMPLE doubles as its error message
 // ---------------------------------------------------------------------------
-
-impl Cli {
-    /// Parse a post-binary argument vector (what `std::env::args().skip(1)`
-    /// yields, i.e. WITHOUT the program name) into a `Cli`. The `loom serve`
-    /// daemon uses this to re-parse a client's `argv` against the SAME clap
-    /// definition the direct path uses — so daemon and client never disagree
-    /// about argument semantics. A synthetic program name is prepended because
-    /// clap's `try_parse_from` treats the first element as `argv[0]`. Returns
-    /// clap's error unchanged on a parse failure (the daemon turns it into a
-    /// `fallback`, so the client surfaces the real teaching error via the
-    /// direct path).
-    pub fn try_parse_from_argv(argv: &[String]) -> Result<Cli, clap::Error> {
-        let with_prog = std::iter::once("loom".to_string()).chain(argv.iter().cloned());
-        Cli::try_parse_from(with_prog)
-    }
-}
 
 /// Parse argv; on ANY syntax failure, append the failing command's EXAMPLE
 /// block (its after_help) plus a guide pointer before exiting. Clap's stock
@@ -573,6 +560,14 @@ pub enum DelegateCmd {
         /// $LOOM_AGENT, else "llm".
         #[arg(long)]
         author: Option<String>,
+    },
+
+    /// Remove a delegation by its exact glob pattern.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom delegate remove 'services/grid/**'")]
+    Remove {
+        /// Glob pattern to remove (must exactly match `loom delegate list`).
+        pattern: String,
     },
 
     /// List all delegations (and whether each child export exists).
@@ -988,7 +983,7 @@ pub enum EdgeCmd {
         codefile_id: String,
 
         /// Finer-than-file anchor inside the file — a symbol or region, e.g.
-        /// "fn run" or "impl LoomDb". Ignored for glob (bulk) grounding.
+        /// "fn run" or "impl GraphReadRepository". Ignored for glob (bulk) grounding.
         #[arg(long, default_value = "")]
         locator: String,
 

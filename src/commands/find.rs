@@ -4,26 +4,32 @@
 
 use anyhow::Result;
 
-use crate::db::queries::find_intents;
-use crate::db::{ensure_initialized, GrafeoDb};
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
 pub fn run(query: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let db_file = ensure_initialized(&cwd)?;
-    let db = GrafeoDb::open(&db_file)?;
-    run_with_db(&db, &cwd, query, limit, printer)
+    let store = GraphReadHandle::open(&cwd)?;
+    run_with_db(&store, &cwd, query, limit, printer)
 }
 
 pub fn run_with_db(
-    db: &GrafeoDb,
+    db: &dyn GraphReadRepository,
     _root: &std::path::Path,
     query: &str,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
-    let (hits, match_total) = find_intents(db, query, limit)?;
+    let (hits, match_total) = db.find_intents(query, limit)?;
+    render(query, hits, match_total, printer)
+}
 
+fn render(
+    query: &str,
+    hits: Vec<crate::db::queries::FindHit>,
+    match_total: usize,
+    printer: &Printer,
+) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
             "query": query,
