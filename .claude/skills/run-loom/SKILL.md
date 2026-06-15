@@ -5,16 +5,19 @@ description: Build, run, smoke-test, and drive the loom intent-graph CLI — use
 
 # Run loom
 
-loom is a Rust CLI (embedded grafeo graph DB, statically linked) whose primary
-user is an LLM agent: it maintains a falsifiable intent graph of a codebase.
+loom is a Rust CLI (embedded SQLite graph store via `rusqlite`, statically
+linked) whose primary user is an LLM agent: it maintains a falsifiable intent
+graph of a codebase.
 There is no GUI and no server — the "interaction surface" is the CLI itself,
 so the harness is a lifecycle smoke driver plus the driving protocol below.
 All paths are relative to the repo root.
 
 ## Prerequisites
 
-Rust toolchain (`cargo`). Nothing else — grafeo is a pure-Rust crate compiled
-in. First build is slow (several minutes); incremental builds are seconds.
+Rust toolchain (`cargo`). Nothing else — SQLite is bundled and compiled in via
+`rusqlite` (the default tree-sitter grammars also compile C sources, so a
+working C compiler is needed unless you build `--no-default-features`). First
+build is slow (several minutes); incremental builds are seconds.
 
 ## Build + smoke (agent path — run this first)
 
@@ -74,9 +77,12 @@ Bulk re-verification after a big sync: `loom batch - <<'EOF' … EOF` with one
 JSONL verdict per line (ground/issue/independent/rule_verdict) — same gates
 per line. The heredoc is the frictionless apply: no scratch file to place, no
 repo pollution, nothing to clean up (a file path suits very large batches).
-One real hazard: never pipe LIVE loom output into `loom batch -` (`loom next
-… | loom batch -`) — the DB lock is exclusive and both pipe ends start
-concurrently; static heredoc text has no such problem.
+Don't pipe `loom next` straight into `loom batch -` (`loom next … | loom batch
+-`): not for any lock reason — `next` is a pure reader and WAL lets it run
+alongside batch's write — but because next's output isn't batch-shaped. Human
+output carries decorative headers, and even `next --take N --json` emits a
+`batch_template` whose `criterion` fields are `<criterion>` placeholders the
+evidence gate rejects. Copy the template lines, fill the criteria, then paste.
 Pin a session to one repo's graph: `export LOOM_GRAPH=<path>` (or `--graph`)
 — every loom call then hits that graph regardless of cd mistakes.
 Tiered agents: every work item carries `effort: low|mid|high` (about the WORK,
@@ -95,10 +101,14 @@ per agent — lanes are enforced. Unset (bare `llm`) = solo mode, all lanes pass
 
 ## Gotchas (all hit for real)
 
-- **One process at a time per `.loom/`.** The grafeo session is exclusive;
-  a second concurrent loom process fails with `GRAFEO-X001 … locked`.
-  Sequential commands are fine. Validation commands MAY invoke loom (the
-  session is released while they run) — but don't parallelize loom itself.
+- **Concurrent reads are fine; only writers serialize.** loom opens
+  `.loom/graph.sqlite` in WAL mode (`busy_timeout = 5000`), so any number of
+  readers run at once and a reader during a write sees the last committed
+  snapshot — there is NO exclusive single-process session (that was the old
+  backend's limit). Two concurrent *writers* serialize: the second waits up to
+  5s for the write lock, only erroring `database is locked` if the first holds
+  it longer. Back-to-back commands and reader/writer pipes are safe; you'd only
+  hit the timeout by fanning out a swarm of simultaneous long writers.
 - **Sync detects CONTENT changes, not timestamps.** `loom sync` hashes file
   bytes (`content_hash`): a `touch`/checkout that doesn't change bytes flags
   nothing, and a byte change is caught even within the same second. Only a
@@ -118,9 +128,13 @@ per agent — lanes are enforced. Unset (bare `llm`) = solo mode, all lanes pass
 
 ## Troubleshooting
 
-- `GRAFEO-X001 … database file is locked` → another loom process holds this
-  `.loom/`; wait for it or kill it. (Inside a validation command this was a
-  bug, fixed: validate releases the session around command execution.)
+- `database is locked` → a concurrent writer held the WAL write lock on
+  `.loom/graph.sqlite` longer than the 5s `busy_timeout` (rare — writes are
+  brief; only a swarm of simultaneous writers provokes it). Retry, or stop
+  parallelising writes. Readers never hit this. (A validation command that
+  *invokes loom* once deadlocked here because validate held the write
+  connection open across the subprocess; fixed — validate releases the
+  connection around command execution.)
 - `Lane violation: 'llm:X' cannot …` → you're role-scoped; hand the action to
   the named lane or unset `LOOM_AGENT` for solo mode.
 - `schema version mismatch` from `loom doctor` → graph predates this binary's
