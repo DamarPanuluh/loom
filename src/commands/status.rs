@@ -145,7 +145,16 @@ fn render_status(
         if let Some(others) = other_lanes_line(lanes, &gs.phase) {
             println!("  other open lanes: {others}");
         }
-        println!("  → Next: {}", gs.next_action);
+        // The verb signals the compass's own confidence: a directive phase (a
+        // failure or binding gap) reads as a command; a recommended phase
+        // (discretionary work the agent may sequence against the lanes above)
+        // reads as a suggestion the agent can override with context loom lacks.
+        let anchor = if gs.next_kind == "recommended" {
+            "→ Recommended"
+        } else {
+            "→ Next"
+        };
+        println!("  {anchor}: {}", gs.next_action);
     }
     Ok(())
 }

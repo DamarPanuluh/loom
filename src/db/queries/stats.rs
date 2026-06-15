@@ -80,6 +80,12 @@ pub struct GraphState {
     /// discovery | audit | complete
     pub phase: String,
     pub next_action: String,
+    /// How firmly to take `next_action`: "directive" = a failure or binding
+    /// gap the agent should just act on, "recommended" = discretionary work it
+    /// may reasonably sequence against the other open lanes. Drives the
+    /// `→ Next:` vs `→ Recommended:` verb so the single pointer signals its own
+    /// confidence instead of always reading as a command.
+    pub next_kind: String,
     /// The 360° coverage vector — every dimension counted, weakest first to fix.
     pub coverage: Coverage360,
     /// A note-hygiene nudge surfaced when the note log is heavy enough to drag
@@ -356,18 +362,24 @@ pub fn graph_state_from_snapshot_parts(
     };
     let unmeasured_queue = nc.queue.len();
 
-    let (phase, next_action) = if intents == 0 {
-        ("seed", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
+    // Each arm declares its `next_kind`: "directive" when the phase is a failure
+    // or a binding vertical gap the agent should just act on; "recommended" when
+    // the work is discretionary improvement it may sequence against other open
+    // lanes (the verb the `→ Next:` / `→ Recommended:` line picks from).
+    let (phase, next_kind, next_action) = if intents == 0 {
+        ("seed", "directive", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
     } else if needs_change > 0 {
-        ("build", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
+        ("build", "directive", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
     } else if rt_failing > 0 {
         (
             "fix",
+            "directive",
             format!("{rt_failing} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause)."),
         )
     } else if planned > 0 {
         (
             "build",
+            "recommended",
             format!("{planned} planned intent(s) to build: `loom next --mode build`."),
         )
     } else if rt_needs_rev > 0 {
@@ -379,25 +391,27 @@ pub fn graph_state_from_snapshot_parts(
         // serves the stale items.
         (
             "fix",
+            "recommended",
             format!("{rt_needs_rev} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`."),
         )
     } else if !vc.multi_parent.is_empty() || vc.cycle {
-        ("incomplete", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
+        ("incomplete", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
     } else if !vc.unrealized_leaves.is_empty() {
-        ("ground", format!(
+        ("ground", "directive", format!(
             "{} leaf intent(s) implemented but not grounded — `loom edge implement` them, or decompose with `loom edge hierarchy` (see `loom report`).",
             vc.unrealized_leaves.len()
         ))
     } else if !vc.unreached_codefiles.is_empty() {
-        ("ground", format!(
+        ("ground", "directive", format!(
             "{} CodeFile(s) reached by no intent — see which with `loom coverage`, then ground them (`loom edge implement`) or `loom ignore` them.",
             vc.unreached_codefiles.len()
         ))
     } else if v_failing_in_backlog {
-        ("validate", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string())
+        ("validate", "directive", "A validation is failing — `loom next --mode validate` (fix the code, then re-run `loom validate <intent>`).".to_string())
     } else if !validate_backlog.is_empty() {
         (
             "validate",
+            "recommended",
             if v_no_proof > 0 {
                 format!("{} intent(s) need proof (missing or unrun validations): `loom next --mode validate`.", validate_backlog.len())
             } else {
@@ -405,19 +419,19 @@ pub fn graph_state_from_snapshot_parts(
             },
         )
     } else if g_failing > 0 {
-        ("quality", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
+        ("quality", "directive", "A quality gate is failing — `loom next --mode quality`, refactor to meet it, then record `loom rule verdict`.".to_string())
     } else if g_needs_rev > 0 {
-        ("quality", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string())
+        ("quality", "recommended", "Quality green went stale (the code under a passing verdict changed) — `loom next --mode quality`, re-inspect, re-earn with `loom rule verdict`.".to_string())
     } else if g_uninspected > 0 {
-        ("quality", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
+        ("quality", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
     } else if unmeasured_queue > 0 {
-        ("quality", format!(
+        ("quality", "recommended", format!(
             "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a verdict at component altitude covers descendants; independent = measured, doesn't apply)."
         ))
     } else if rules_count == 0 && nc.intents_with_code > 0 {
-        ("quality", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
+        ("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
     } else if rt_uninspected > 0 || unexplored_pairs > 0 {
-        ("discovery", format!(
+        ("discovery", "recommended", format!(
             "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
         ))
     } else {
@@ -430,7 +444,7 @@ pub fn graph_state_from_snapshot_parts(
         // the pairwise detectors short-circuit.
         let open_findings = open_findings(snapshot)?;
         if open_findings > 0 {
-            ("audit", format!(
+            ("audit", "recommended", format!(
                 "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
             ))
         } else {
@@ -446,7 +460,7 @@ pub fn graph_state_from_snapshot_parts(
                     " Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, never gates green: `loom next --mode prove`."
                 ));
             }
-            ("complete", msg)
+            ("complete", "recommended", msg)
         }
     };
 
@@ -493,6 +507,7 @@ pub fn graph_state_from_snapshot_parts(
         horizontally_explored,
         phase: phase.to_string(),
         next_action,
+        next_kind: next_kind.to_string(),
         coverage,
         note_hygiene,
     })
@@ -910,7 +925,7 @@ mod tests {
         )
     }
 
-    fn phase_of(snapshot: &QuerySnapshot) -> String {
+    fn gs_of(snapshot: &QuerySnapshot) -> GraphState {
         graph_state_from_snapshot_parts(
             snapshot,
             GraphStateContext {
@@ -922,7 +937,10 @@ mod tests {
             || Ok(0),
         )
         .unwrap()
-        .phase
+    }
+
+    fn phase_of(snapshot: &QuerySnapshot) -> String {
+        gs_of(snapshot).phase
     }
 
     /// Every phase the compass can route to MUST correspond to a non-empty
@@ -987,5 +1005,29 @@ mod tests {
             "planned build outranks optional stale re-verification"
         );
         assert!(queue_nonempty_for_phase("build", &stale_plus_planned));
+    }
+
+    #[test]
+    fn compass_marks_directive_vs_recommended() {
+        // A failing edge is a violation — the agent should just act: directive.
+        let failing = snap(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![rel("a", "b", "failing")],
+        );
+        assert_eq!(gs_of(&failing).next_kind, "directive");
+
+        // Building a planned intent is discretionary construction the agent may
+        // sequence against other lanes: recommended (the "your call" verb).
+        let planned = snap(vec![intent("p", "planned")], vec![]);
+        let gs = gs_of(&planned);
+        assert_eq!(gs.phase, "build");
+        assert_eq!(gs.next_kind, "recommended");
+
+        // Stale-only re-verification is optional grid upkeep: recommended.
+        let stale_only = snap(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![rel("a", "b", "needs_reverification")],
+        );
+        assert_eq!(gs_of(&stale_only).next_kind, "recommended");
     }
 }

@@ -511,6 +511,7 @@ mod tests {
             horizontally_explored: true,
             phase: "seed".to_string(),
             next_action: String::new(),
+            next_kind: "directive".to_string(),
             coverage: Coverage360 {
                 grounded_files: CoverageAxis {
                     covered: 0,
