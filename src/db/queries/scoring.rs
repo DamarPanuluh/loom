@@ -767,3 +767,26 @@ pub fn unexplored_pairs_scored_from_snapshot(
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
 }
+
+/// Per-lane queue depths for the autonomous work modes, computed in one pass
+/// over an already-loaded snapshot. `loom status` uses this for its "other open
+/// lanes" footer so the single-pointer compass doesn't hide that other lanes
+/// have work; the numbers are the SAME selections `loom next --mode <lane>`
+/// serves (coherence by construction). All counts are pure in-memory derivation
+/// over the snapshot — no extra DB I/O.
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct LaneDepths {
+    pub build: i64,
+    pub fix: i64,
+    pub validate: i64,
+    pub quality: i64,
+}
+
+pub fn lane_depths_from_snapshot(snapshot: &QuerySnapshot) -> LaneDepths {
+    LaneDepths {
+        build: build_candidates_from_snapshot(snapshot).len() as i64,
+        fix: scored_candidates_from_snapshot(snapshot, "fix").len() as i64,
+        validate: validate_candidates_from_snapshot(snapshot).len() as i64,
+        quality: quality_candidates_from_snapshot(snapshot).len() as i64,
+    }
+}

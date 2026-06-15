@@ -360,15 +360,26 @@ pub fn graph_state_from_snapshot_parts(
         ("seed", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
     } else if needs_change > 0 {
         ("build", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
-    } else if rt_failing > 0 || rt_needs_rev > 0 {
+    } else if rt_failing > 0 {
         (
             "fix",
-            "Resolve failures / re-verify stale edges: `loom next --mode fix`.".to_string(),
+            format!("{rt_failing} relationship(s) FAILING — `loom next --mode fix` (resolve violations at root cause)."),
         )
     } else if planned > 0 {
         (
             "build",
             format!("{planned} planned intent(s) to build: `loom next --mode build`."),
+        )
+    } else if rt_needs_rev > 0 {
+        // Stale RELATES_TO is the OPTIONAL horizontal grid — re-verifying it
+        // ranks BELOW building `planned` intents (the binding vertical spine).
+        // `rt_failing` (a genuine violation) is handled above and stays urgent.
+        // Both branches route to the same `loom next --mode fix` queue, which
+        // serves failing|needs_reverification; here rt_failing == 0, so it
+        // serves the stale items.
+        (
+            "fix",
+            format!("{rt_needs_rev} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`."),
         )
     } else if !vc.multi_parent.is_empty() || vc.cycle {
         ("incomplete", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
@@ -839,5 +850,142 @@ mod tests {
         let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
         assert_eq!(blocked, 2);
         assert_eq!(runnable, 0.0);
+    }
+
+    use super::super::scoring::{
+        build_candidates_from_snapshot, quality_candidates_from_snapshot,
+        scored_candidates_from_snapshot, validate_candidates_from_snapshot,
+    };
+
+    fn intent(id: &str, lifecycle: &str) -> Intent {
+        Intent {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: String::new(),
+            abstraction_level: "feature".to_string(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".to_string(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: String::new(),
+            boundary: String::new(),
+            lifecycle: lifecycle.to_string(),
+            created_at: "t0".to_string(),
+            updated_at: "t0".to_string(),
+        }
+    }
+
+    fn rel(from: &str, to: &str, status: &str) -> RelatesTo {
+        RelatesTo {
+            id: format!("rt:{from}:{to}"),
+            from_id: from.to_string(),
+            to_id: to.to_string(),
+            from_name: from.to_string(),
+            to_name: to.to_string(),
+            inspection_status: status.to_string(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            priority_score: 0.0,
+            notes: String::new(),
+        }
+    }
+
+    fn snap(intents: Vec<Intent>, relates: Vec<RelatesTo>) -> QuerySnapshot {
+        QuerySnapshot::from_parts(
+            intents,
+            vec![],
+            relates,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            None,
+        )
+    }
+
+    fn phase_of(snapshot: &QuerySnapshot) -> String {
+        graph_state_from_snapshot_parts(
+            snapshot,
+            GraphStateContext {
+                meta: None,
+                notes: 0,
+                transition_cap: 0,
+            },
+            |_| Ok(0),
+            || Ok(0),
+        )
+        .unwrap()
+        .phase
+    }
+
+    /// Every phase the compass can route to MUST correspond to a non-empty
+    /// `loom next --mode <phase>` queue (the coherence-by-construction invariant
+    /// CLAUDE.md states but had no test for). Routing to a phase whose queue is
+    /// empty would send an agent to a `loom next` that answers "nothing to do".
+    fn queue_nonempty_for_phase(phase: &str, snapshot: &QuerySnapshot) -> bool {
+        match phase {
+            "fix" => !scored_candidates_from_snapshot(snapshot, "fix").is_empty(),
+            "build" => !build_candidates_from_snapshot(snapshot).is_empty(),
+            "validate" => !validate_candidates_from_snapshot(snapshot).is_empty(),
+            "quality" => !quality_candidates_from_snapshot(snapshot).is_empty(),
+            "discovery" => snapshot
+                .relates
+                .iter()
+                .any(|e| e.inspection_status == "uninspected"),
+            // seed/ground/incomplete/audit/complete are not `loom next --mode`
+            // lanes — they route to other commands and have no queue to check.
+            _ => true,
+        }
+    }
+
+    #[test]
+    fn compass_phase_always_has_a_nonempty_queue() {
+        // A FAILING relationship is a genuine violation: it routes to `fix`
+        // and stays ABOVE build even when a planned intent is waiting.
+        let failing = snap(
+            vec![
+                intent("a", "implemented"),
+                intent("b", "implemented"),
+                intent("p", "planned"),
+            ],
+            vec![rel("a", "b", "failing")],
+        );
+        assert_eq!(phase_of(&failing), "fix", "a failing edge outranks build");
+        assert!(queue_nonempty_for_phase("fix", &failing));
+
+        // Stale-only (needs_reverification, no failing, no planned) still routes
+        // to `fix` — and the fix queue serves the stale items.
+        let stale_only = snap(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![rel("a", "b", "needs_reverification")],
+        );
+        assert_eq!(phase_of(&stale_only), "fix");
+        assert!(queue_nonempty_for_phase("fix", &stale_only));
+
+        // The reorder under test: stale RELATES_TO (optional horizontal grid)
+        // must NOT bury a `planned` build item (binding vertical spine). With a
+        // stale edge AND a planned intent and NO failing edge, the compass picks
+        // `build`, not `fix`.
+        let stale_plus_planned = snap(
+            vec![
+                intent("a", "implemented"),
+                intent("b", "implemented"),
+                intent("p", "planned"),
+            ],
+            vec![rel("a", "b", "needs_reverification")],
+        );
+        assert_eq!(
+            phase_of(&stale_plus_planned),
+            "build",
+            "planned build outranks optional stale re-verification"
+        );
+        assert!(queue_nonempty_for_phase("build", &stale_plus_planned));
     }
 }

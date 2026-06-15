@@ -340,7 +340,7 @@ pub fn validate_tags_from_registry(
                  loom vocab add {t} --why \"<what it covers; what it does NOT — name the neighbour>\""
             );
         }
-        let ranked = nearest_terms(t, &terms, &counts);
+        let ranked = nearest_terms(t, terms, &counts);
         let nearest: Vec<String> = ranked
             .iter()
             .take(3)

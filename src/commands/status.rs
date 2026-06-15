@@ -1,8 +1,8 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    status_report_from_snapshot, uninspected_outside_queues_from_snapshot, GraphState,
-    UninspectedOutsideQueues,
+    lane_depths_from_snapshot, status_report_from_snapshot,
+    uninspected_outside_queues_from_snapshot, GraphState, LaneDepths, UninspectedOutsideQueues,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, fmt_status, Printer};
@@ -24,6 +24,7 @@ pub fn run_with_db(
     let snapshot = db.query_snapshot()?;
     let report = status_report_from_snapshot(&snapshot);
     let gs = db.graph_state(&snapshot)?;
+    let lanes = lane_depths_from_snapshot(&snapshot);
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
     let align_count = db.align_candidate_count(&snapshot)?;
     let prove = db.prove_candidates(&snapshot)?;
@@ -43,6 +44,7 @@ pub fn run_with_db(
     render_status(
         &report,
         &gs,
+        &lanes,
         &outside,
         align_count,
         adopt_count,
@@ -51,9 +53,35 @@ pub fn run_with_db(
     )
 }
 
+/// Format the "other open lanes" footer: the autonomous work lanes that have
+/// items AND aren't the lane the compass already pointed at. `discovery` (the
+/// optional N×N grid, already signalled by `horizontal ○`) and the human-gated
+/// align/adopt items (already on the `⚑` line) are intentionally omitted — this
+/// is peripheral vision over the *autonomous closable* queues, so the single
+/// pointer can't hide that other lanes have work. Empty when nothing qualifies.
+fn other_lanes_line(lanes: &LaneDepths, phase: &str) -> Option<String> {
+    let parts: Vec<String> = [
+        ("build", lanes.build),
+        ("fix", lanes.fix),
+        ("validate", lanes.validate),
+        ("quality", lanes.quality),
+    ]
+    .into_iter()
+    .filter(|(name, count)| *count > 0 && *name != phase)
+    .map(|(name, count)| format!("{name} {count}"))
+    .collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" · "))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn render_status(
     report: &StatusReport,
     gs: &GraphState,
+    lanes: &LaneDepths,
     outside: &UninspectedOutsideQueues,
     align_count: i64,
     adopt_count: i64,
@@ -66,6 +94,7 @@ fn render_status(
         let mut v = serde_json::to_value(report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(gs)?);
+            obj.insert("other_lanes".to_string(), serde_json::to_value(lanes)?);
             obj.insert(
                 "uninspected_outside_queues".to_string(),
                 serde_json::to_value(outside)?,
@@ -112,6 +141,9 @@ fn render_status(
             println!(
                 "  ⚠ committed loom.graph.json is STALE — `loom export` before committing code."
             );
+        }
+        if let Some(others) = other_lanes_line(lanes, &gs.phase) {
+            println!("  other open lanes: {others}");
         }
         println!("  → Next: {}", gs.next_action);
     }

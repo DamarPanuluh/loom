@@ -69,14 +69,14 @@ fn render(
     let paths: std::collections::HashSet<String> =
         snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
     let cc = crate::repo::git_cochange(root, &paths, 800);
-    let suggestions = cochange_suggestions(&snapshot, &cc.pairs, &cc.individual);
+    let suggestions = cochange_suggestions(snapshot, &cc.pairs, &cc.individual);
     let suggestions_total = suggestions.len();
     let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
 
     // Advisory proof-locality: STATIC (no git, no coverage run), never gates
     // green. Flags leaves the `proven` axis counts whose only `test` proof
     // resolves to other files than their grounded code.
-    let proof_adv = proof_locality_suggestions(&snapshot);
+    let proof_adv = proof_locality_suggestions(snapshot);
     let proof_total = proof_adv.len();
     let proof_shown: Vec<_> = proof_adv.into_iter().take(limit.max(1)).collect();
 
