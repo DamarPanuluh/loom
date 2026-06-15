@@ -29,6 +29,12 @@ pub struct QuerySnapshot {
     /// users (`report`, `coverage`, `hotspots`) never pay for it. Point-in-time
     /// like every other field: the snapshot is a read view, not a live cursor.
     notes: OnceCell<Vec<Note>>,
+    /// Raw betweenness centrality per active intent over the REAL RELATES_TO
+    /// graph (same basis as `degrees` — non-`independent` edges between active
+    /// intents, undirected). Lazily computed (Brandes is O(V·E); the orientation
+    /// and report passes never need it) and shared, so `loom next` scoring pays
+    /// for it once. A missing key = 0.0 betweenness.
+    betweenness: OnceCell<HashMap<String, f64>>,
 }
 
 impl QuerySnapshot {
@@ -77,11 +83,58 @@ impl QuerySnapshot {
             with_code,
             degrees,
             notes: note_cache,
+            betweenness: OnceCell::new(),
         }
     }
 
     pub(crate) fn cached_notes(&self) -> Option<&[Note]> {
         self.notes.get().map(Vec::as_slice)
+    }
+
+    /// Betweenness centrality per active intent (computed once, then cached) —
+    /// the bridge-centrality signal `loom next` scoring adds on top of degree so
+    /// a low-degree chokepoint can outrank a high-degree clique member. Built
+    /// over the SAME graph `degrees` counts: undirected, non-`independent`
+    /// RELATES_TO edges between active intents. A missing key means 0.0.
+    pub fn betweenness(&self) -> &HashMap<String, f64> {
+        self.betweenness.get_or_init(|| {
+            let ids: Vec<&str> = self.intents.iter().map(|i| i.id.as_str()).collect();
+            let n = ids.len();
+            if n == 0 {
+                return HashMap::new();
+            }
+            let index: HashMap<&str, usize> =
+                ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+            // Dedupe to a simple undirected graph (a node pair has at most one
+            // RELATES_TO edge, but guard anyway so Brandes counts each once).
+            let mut neighbors: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+            for edge in &self.relates {
+                if edge.inspection_status == "independent" {
+                    continue;
+                }
+                let (Some(&a), Some(&b)) = (
+                    index.get(edge.from_id.as_str()),
+                    index.get(edge.to_id.as_str()),
+                ) else {
+                    continue;
+                };
+                if a == b {
+                    continue;
+                }
+                neighbors[a].insert(b);
+                neighbors[b].insert(a);
+            }
+            let adjacency: Vec<Vec<usize>> = neighbors
+                .into_iter()
+                .map(|s| s.into_iter().collect())
+                .collect();
+            let bc = super::graph_algo::betweenness_centrality(n, &adjacency);
+            ids.iter()
+                .enumerate()
+                .filter(|(i, _)| bc[*i] > 0.0)
+                .map(|(i, &id)| (id.to_string(), bc[i]))
+                .collect()
+        })
     }
 }
 

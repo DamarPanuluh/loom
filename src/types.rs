@@ -1144,6 +1144,14 @@ pub struct SyncReport {
     pub files_checked: usize,
     pub files_changed: usize,
     pub relates_to_edges_flagged: usize,
+    /// Intents two/three hops from the current `needs_reverification` frontier
+    /// that receive a decaying priority bump WITHOUT any status change — the
+    /// graded ripple beyond the surgical one-hop blast radius (one hop flips,
+    /// farther hops only nudge `loom next` ranking). Derived from the post-sync
+    /// stale frontier, so on an already-stale graph it reflects the whole
+    /// elevated region, not just this sync's own contribution.
+    #[serde(default)]
+    pub intents_priority_bumped: usize,
     /// Passing GOVERNS edges flipped to needs_reverification — quality green
     /// must be re-earned after the code it judged changes.
     pub governs_edges_flagged: usize,

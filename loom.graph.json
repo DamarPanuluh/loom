@@ -3612,6 +3612,32 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.736373+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "205377c4-ef33-4636-866d-f344e7dc1410",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn ripple_bump_by_intent",
+        "notes": "",
+        "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.771553+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "205377c4-ef33-4636-866d-f344e7dc1410",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "intents_priority_bumped",
+        "notes": "",
+        "to": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:11.292556+00:00",
         "criterion": "",
         "evidence": "",
@@ -3635,6 +3661,19 @@
         "locator": "",
         "notes": "",
         "to": "5ff43321-c1a7-4443-b853-3dd03e68b1cd"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.809599+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "circular RELATES_TO dependency among",
+        "notes": "",
+        "to": "37581090-ca9d-48e6-95ef-eb1434b08eea"
       },
       {
         "confidence": 0.0,
@@ -3898,6 +3937,32 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.666081+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn betweenness",
+        "notes": "",
+        "to": "23b50aad-b00c-46c3-ad8e-4bd6dc8ab137"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.702453+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "BRIDGE_WEIGHT",
+        "notes": "",
+        "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-09T19:08:10.529956+00:00",
         "criterion": "",
         "evidence": "",
@@ -3960,6 +4025,19 @@
         "locator": "pub fn run_saga",
         "notes": "",
         "to": "d1f45015-7e97-4a3e-a92c-e3fb65bcbc4a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.849069+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "form an island with no path to a system-level root",
+        "notes": "",
+        "to": "37581090-ca9d-48e6-95ef-eb1434b08eea"
       },
       {
         "confidence": 0.0,
@@ -5289,6 +5367,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-15T17:01:16.499330+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c61f66f5-a396-4494-9b48-c00d5203bcb3",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "128cfcf2-6d51-4930-8c23-eb55db259309"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-12T04:15:02.296506+00:00",
         "criterion": "",
         "evidence": "",
@@ -6264,6 +6355,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "e5bba339-3f44-47be-8065-9630cc482e9b"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-15T17:01:37.272823+00:00",
+        "criterion": "Both are graph-structural detectors in compute_smells_from_parts consuming the shared graph_algo engine over the same active-intent index",
+        "evidence": "src/db/queries/smells.rs sections 15 (strongly_connected_components) and 16 (connected_components) are adjacent in compute_smells_from_parts; both exclude independent edges and build the index identically",
+        "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-15T17:01:37.272823+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "3fe71c5a-d357-4c51-9363-e9874a755f83"
       },
       {
         "confidence": 0.9,
@@ -7502,6 +7606,19 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-15T17:01:37.207333+00:00",
+        "criterion": "Both add an additive term to the SAME edge score in scored_candidates_from_snapshot and must compose without clobbering each other",
+        "evidence": "src/db/queries/scoring.rs scored_candidates_from_snapshot sums bridge_bonus (betweenness) and ripple_bump in one loop; both read the shared QuerySnapshot",
+        "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-15T17:01:37.207333+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "205377c4-ef33-4636-866d-f344e7dc1410"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-09T19:10:14.159585+00:00",
         "criterion": "The intents remain coupled through src/gate.rs; the changed code still preserves the recorded contract between repo introspection and role lanes and evidence gates.",
         "evidence": "Re-inspected the current staling-file group after the SQLite/delegate cleanup; the recorded relationship criterion still matches the current code shape, and cargo test plus SQLite parity passed after these edits.",
@@ -8560,7 +8677,7 @@
         "evidence": "Inspected src/commands/sync.rs calls to flag_relates_to_needs_reverification, flag_governs_needs_reverification, flag_targets_needs_reverification, and flag_implements_needs_reverification; inspected src/db/sqlite.rs flag_* helpers and schema/type imports. validate --all passed sync/ripple validations.",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-15T10:47:43.087739+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -8638,7 +8755,7 @@
         "evidence": "Inspected src/commands/validate.rs drop(store)/mark_validation_result flow, src/commands/saga.rs add_sqlite/execute_sqlite paths, and src/db/schema.rs/src/types.rs validation edge vocabulary. validate --all passed saga engine and validation isolation proofs.",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-15T10:47:43.152392+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -10794,11 +10911,25 @@
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
       },
       {
+        "created_at": "2026-06-15T17:02:11.491612+00:00",
+        "from": "1f64a74c-10b6-4b2b-b634-63502225c475",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "205377c4-ef33-4636-866d-f344e7dc1410"
+      },
+      {
         "created_at": "2026-06-15T11:57:26.000899+00:00",
         "from": "242860fb-6c35-4416-8771-165569c8c38e",
         "inspection_status": "uninspected",
         "notes": "",
         "to": "5b05669e-f421-4999-af45-a6942eb61b2c"
+      },
+      {
+        "created_at": "2026-06-15T17:02:11.563515+00:00",
+        "from": "24a6004b-8653-4797-b562-813ed3d20fd7",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "3fe71c5a-d357-4c51-9363-e9874a755f83"
       },
       {
         "created_at": "2026-06-10T23:58:20.066175+00:00",
@@ -11466,6 +11597,13 @@
         "to": "6f4dc39e-0179-4ed9-9e8c-5eff49545022"
       },
       {
+        "created_at": "2026-06-15T17:02:11.448478+00:00",
+        "from": "f56826da-13f0-4e67-b5ba-d407c128a53f",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "376864cc-37d5-4a40-bd4a-ad9af5992acb"
+      },
+      {
         "created_at": "2026-06-11T00:27:40.172792+00:00",
         "from": "f6a2110b-0894-40ef-ae1d-4a0d65bb7861",
         "inspection_status": "passing",
@@ -11478,6 +11616,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
+      },
+      {
+        "created_at": "2026-06-15T17:02:11.530164+00:00",
+        "from": "f86938b9-b328-4f59-904c-4ee39ab2cfa5",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "21f9f668-c79d-49e6-9702-9da8f9229b36"
       },
       {
         "created_at": "2026-06-10T20:33:12.848932+00:00",
@@ -11721,6 +11866,177 @@
           "fn run_unimplement_with_sqlite",
           "fn run_validates_with_sqlite",
           "pub fn run"
+        ]
+      },
+      {
+        "content_hash": "fe60b0486472efea",
+        "id": "128cfcf2-6d51-4930-8c23-eb55db259309",
+        "imports": [],
+        "language": "rust",
+        "last_modified": "2026-06-15T16:54:53.088322581+00:00",
+        "path": "src/db/queries/graph_algo.rs",
+        "symbol_facts": [
+          {
+            "body_hash": "da4f4da02e96db84",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn betweenness_is_zero_in_a_complete_graph",
+            "line_end": 237,
+            "line_start": 229,
+            "name": "betweenness_is_zero_in_a_complete_graph",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4e049097da8b7427",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn betweenness_of_a_path_peaks_in_the_middle",
+            "line_end": 226,
+            "line_start": 215,
+            "name": "betweenness_of_a_path_peaks_in_the_middle",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "999a067ece615b58",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn bridge_node_has_the_highest_betweenness",
+            "line_end": 259,
+            "line_start": 240,
+            "name": "bridge_node_has_the_highest_betweenness",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "23052e313636c0f3",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn connected_components_splits_a_disconnected_graph",
+            "line_end": 308,
+            "line_start": 301,
+            "name": "connected_components_splits_a_disconnected_graph",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "56f9c1fa6eaaa8e0",
+            "kind": "fn",
+            "label": "fn directed",
+            "line_end": 212,
+            "line_start": 206,
+            "name": "directed",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c9a8e91c0f78d1ae",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn hop_distances_decay_from_the_source",
+            "line_end": 316,
+            "line_start": 311,
+            "name": "hop_distances_decay_from_the_source",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "862d3f2fa7d36d35",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn hop_distances_take_the_nearest_source_and_leave_islands_unreached",
+            "line_end": 329,
+            "line_start": 319,
+            "name": "hop_distances_take_the_nearest_source_and_leave_islands_unreached",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b75a1e7a789a741c",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn scc_finds_a_directed_cycle",
+            "line_end": 271,
+            "line_start": 262,
+            "name": "scc_finds_a_directed_cycle",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "323d6a9306495a61",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn scc_reports_only_singletons_for_a_dag",
+            "line_end": 283,
+            "line_start": 274,
+            "name": "scc_reports_only_singletons_for_a_dag",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "2d559c3efb67c55a",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn scc_two_independent_cycles",
+            "line_end": 298,
+            "line_start": 286,
+            "name": "scc_two_independent_cycles",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "205000db67ffadb3",
+            "kind": "fn",
+            "label": "fn undirected",
+            "line_end": 205,
+            "line_start": 198,
+            "name": "undirected",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "1b3590942de2cb5e",
+            "kind": "fn",
+            "label": "pub fn betweenness_centrality",
+            "line_end": 73,
+            "line_start": 32,
+            "name": "betweenness_centrality",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "5c6579a4a7533bab",
+            "kind": "fn",
+            "label": "pub fn connected_components",
+            "line_end": 166,
+            "line_start": 141,
+            "name": "connected_components",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "6f93c0849abfe2eb",
+            "kind": "fn",
+            "label": "pub fn hop_distances",
+            "line_end": 191,
+            "line_start": 172,
+            "name": "hop_distances",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "26ffe57066f675cd",
+            "kind": "fn",
+            "label": "pub fn strongly_connected_components",
+            "line_end": 136,
+            "line_start": 82,
+            "name": "strongly_connected_components",
+            "visibility": "public"
+          }
+        ],
+        "symbols": [
+          "fn betweenness_is_zero_in_a_complete_graph",
+          "fn betweenness_of_a_path_peaks_in_the_middle",
+          "fn bridge_node_has_the_highest_betweenness",
+          "fn connected_components_splits_a_disconnected_graph",
+          "fn directed",
+          "fn hop_distances_decay_from_the_source",
+          "fn hop_distances_take_the_nearest_source_and_leave_islands_unreached",
+          "fn scc_finds_a_directed_cycle",
+          "fn scc_reports_only_singletons_for_a_dag",
+          "fn scc_two_independent_cycles",
+          "fn undirected",
+          "pub fn betweenness_centrality",
+          "pub fn connected_components",
+          "pub fn hop_distances",
+          "pub fn strongly_connected_components"
         ]
       },
       {
@@ -12752,30 +13068,30 @@
         "symbols": []
       },
       {
-        "content_hash": "6bf898ba4ce5cd85",
+        "content_hash": "e4328b323c08bc02",
         "id": "23b50aad-b00c-46c3-ad8e-4bd6dc8ab137",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:29:56.243137263+00:00",
+        "last_modified": "2026-06-15T16:54:53.122319198+00:00",
         "path": "src/db/queries/snapshot.rs",
         "symbol_facts": [
           {
             "body_hash": "3be5b88f4aee9586",
             "kind": "impl",
             "label": "impl DiscoverySnapshot",
-            "line_end": 179,
-            "line_start": 102,
+            "line_end": 232,
+            "line_start": 155,
             "name": "DiscoverySnapshot",
             "visibility": "private"
           },
           {
-            "body_hash": "8e96ec59f768dc64",
+            "body_hash": "5860adcdbec36a85",
             "kind": "impl",
             "label": "impl QuerySnapshot",
-            "line_end": 86,
-            "line_start": 34,
+            "line_end": 139,
+            "line_start": 40,
             "name": "QuerySnapshot",
             "visibility": "private"
           },
@@ -12783,16 +13099,16 @@
             "body_hash": "67c5b06ed914f81f",
             "kind": "struct",
             "label": "pub struct DiscoverySnapshot",
-            "line_end": 100,
-            "line_start": 89,
+            "line_end": 153,
+            "line_start": 142,
             "name": "DiscoverySnapshot",
             "visibility": "public"
           },
           {
-            "body_hash": "0847f8238b128b59",
+            "body_hash": "a7f850771164e953",
             "kind": "struct",
             "label": "pub struct QuerySnapshot",
-            "line_end": 32,
+            "line_end": 38,
             "line_start": 10,
             "name": "QuerySnapshot",
             "visibility": "public"
@@ -12801,8 +13117,8 @@
             "body_hash": "52b2e3c5214cf2a0",
             "kind": "fn",
             "label": "pub(crate) fn tokenize",
-            "line_end": 191,
-            "line_start": 181,
+            "line_end": 244,
+            "line_start": 234,
             "name": "tokenize",
             "visibility": "public"
           }
@@ -12816,29 +13132,29 @@
         ]
       },
       {
-        "content_hash": "e9e0806cf2fabf22",
+        "content_hash": "1244676239869e86",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T13:32:30.627986458+00:00",
+        "last_modified": "2026-06-15T16:19:43.902030228+00:00",
         "path": "src/commands/guide.rs",
         "symbol_facts": [
           {
             "body_hash": "324c50cd05c7c484",
             "kind": "const",
             "label": "const FINDABILITY_SURFACES",
-            "line_end": 205,
-            "line_start": 197,
+            "line_end": 206,
+            "line_start": 198,
             "name": "FINDABILITY_SURFACES",
             "visibility": "private"
           },
           {
-            "body_hash": "6323b874b38fdacb",
+            "body_hash": "17d1bcabf5cfd4a9",
             "kind": "const",
             "label": "const GOLDEN_RULES",
-            "line_end": 30,
+            "line_end": 31,
             "line_start": 9,
             "name": "GOLDEN_RULES",
             "visibility": "private"
@@ -12847,8 +13163,8 @@
             "body_hash": "6ac1f5949d6a3231",
             "kind": "const",
             "label": "const GUIDE_SECTIONS",
-            "line_end": 190,
-            "line_start": 176,
+            "line_end": 191,
+            "line_start": 177,
             "name": "GUIDE_SECTIONS",
             "visibility": "private"
           },
@@ -12856,8 +13172,8 @@
             "body_hash": "df3013fcd52db341",
             "kind": "const",
             "label": "const LIFECYCLE_JSON_KEYS",
-            "line_end": 227,
-            "line_start": 222,
+            "line_end": 228,
+            "line_start": 223,
             "name": "LIFECYCLE_JSON_KEYS",
             "visibility": "private"
           },
@@ -12865,8 +13181,8 @@
             "body_hash": "99b7b7c6cf96765e",
             "kind": "const",
             "label": "const LIFECYCLE_STATES",
-            "line_end": 112,
-            "line_start": 96,
+            "line_end": 113,
+            "line_start": 97,
             "name": "LIFECYCLE_STATES",
             "visibility": "private"
           },
@@ -12874,8 +13190,8 @@
             "body_hash": "db762d64ffcc2b6c",
             "kind": "const",
             "label": "const LIFECYCLE_SUMMARY",
-            "line_end": 94,
-            "line_start": 94,
+            "line_end": 95,
+            "line_start": 95,
             "name": "LIFECYCLE_SUMMARY",
             "visibility": "private"
           },
@@ -12883,8 +13199,8 @@
             "body_hash": "f5bc4544598050da",
             "kind": "const",
             "label": "const LIFECYCLE_TRANSITIONS",
-            "line_end": 145,
-            "line_start": 114,
+            "line_end": 146,
+            "line_start": 115,
             "name": "LIFECYCLE_TRANSITIONS",
             "visibility": "private"
           },
@@ -12892,8 +13208,8 @@
             "body_hash": "dd4173157ac5b238",
             "kind": "const",
             "label": "const ORCHESTRATION",
-            "line_end": 85,
-            "line_start": 64,
+            "line_end": 86,
+            "line_start": 65,
             "name": "ORCHESTRATION",
             "visibility": "private"
           },
@@ -12901,8 +13217,8 @@
             "body_hash": "0a5127c714384afc",
             "kind": "const",
             "label": "const ORCHESTRATION_KEYS",
-            "line_end": 219,
-            "line_start": 211,
+            "line_end": 220,
+            "line_start": 212,
             "name": "ORCHESTRATION_KEYS",
             "visibility": "private"
           },
@@ -12910,8 +13226,8 @@
             "body_hash": "434e5dc56145b103",
             "kind": "const",
             "label": "const PERFORMANCE_GUIDANCE",
-            "line_end": 92,
-            "line_start": 92,
+            "line_end": 93,
+            "line_start": 93,
             "name": "PERFORMANCE_GUIDANCE",
             "visibility": "private"
           },
@@ -12919,8 +13235,8 @@
             "body_hash": "36646cff9db7451d",
             "kind": "const",
             "label": "const RELATED_STATUS_FAMILIES",
-            "line_end": 164,
-            "line_start": 147,
+            "line_end": 165,
+            "line_start": 148,
             "name": "RELATED_STATUS_FAMILIES",
             "visibility": "private"
           },
@@ -12928,8 +13244,8 @@
             "body_hash": "800cb4468592b7f0",
             "kind": "const",
             "label": "const RIPPLE",
-            "line_end": 47,
-            "line_start": 37,
+            "line_end": 48,
+            "line_start": 38,
             "name": "RIPPLE",
             "visibility": "private"
           },
@@ -12937,8 +13253,8 @@
             "body_hash": "dc71c0d5ab51b0f0",
             "kind": "const",
             "label": "const ROLE_LANES",
-            "line_end": 58,
-            "line_start": 52,
+            "line_end": 59,
+            "line_start": 53,
             "name": "ROLE_LANES",
             "visibility": "private"
           },
@@ -12946,8 +13262,8 @@
             "body_hash": "da75bb9956c3c71c",
             "kind": "fn",
             "label": "fn brownfield",
-            "line_end": 243,
-            "line_start": 229,
+            "line_end": 244,
+            "line_start": 230,
             "name": "brownfield",
             "visibility": "private"
           },
@@ -12956,8 +13272,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn every_mode_satisfies_the_contract",
-            "line_end": 555,
-            "line_start": 546,
+            "line_end": 556,
+            "line_start": 547,
             "name": "every_mode_satisfies_the_contract",
             "visibility": "private"
           },
@@ -12965,8 +13281,8 @@
             "body_hash": "d5bc5c56412496d1",
             "kind": "fn",
             "label": "fn greenfield",
-            "line_end": 254,
-            "line_start": 245,
+            "line_end": 255,
+            "line_start": 246,
             "name": "greenfield",
             "visibility": "private"
           },
@@ -12974,8 +13290,8 @@
             "body_hash": "fa23aba628903156",
             "kind": "fn",
             "label": "fn guide_json",
-            "line_end": 508,
-            "line_start": 503,
+            "line_end": 509,
+            "line_start": 504,
             "name": "guide_json",
             "visibility": "private"
           },
@@ -12984,8 +13300,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn guide_json_exposes_every_canonical_section",
-            "line_end": 524,
-            "line_start": 516,
+            "line_end": 525,
+            "line_start": 517,
             "name": "guide_json_exposes_every_canonical_section",
             "visibility": "private"
           },
@@ -12994,8 +13310,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn guide_names_every_pull_surface",
-            "line_end": 569,
-            "line_start": 561,
+            "line_end": 570,
+            "line_start": 562,
             "name": "guide_names_every_pull_surface",
             "visibility": "private"
           },
@@ -13004,8 +13320,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn lifecycle_contract_is_complete",
-            "line_end": 627,
-            "line_start": 588,
+            "line_end": 628,
+            "line_start": 589,
             "name": "lifecycle_contract_is_complete",
             "visibility": "private"
           },
@@ -13014,8 +13330,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn orchestration_section_stays_complete",
-            "line_end": 585,
-            "line_start": 577,
+            "line_end": 586,
+            "line_start": 578,
             "name": "orchestration_section_stays_complete",
             "visibility": "private"
           },
@@ -13024,8 +13340,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn performance_guidance_reaches_the_json_driver",
-            "line_end": 541,
-            "line_start": 530,
+            "line_end": 542,
+            "line_start": 531,
             "name": "performance_guidance_reaches_the_json_driver",
             "visibility": "private"
           },
@@ -13033,8 +13349,8 @@
             "body_hash": "f298a9d448e32d48",
             "kind": "fn",
             "label": "fn port",
-            "line_end": 280,
-            "line_start": 271,
+            "line_end": 281,
+            "line_start": 272,
             "name": "port",
             "visibility": "private"
           },
@@ -13042,8 +13358,8 @@
             "body_hash": "72376bb29671d8eb",
             "kind": "fn",
             "label": "fn refactor",
-            "line_end": 267,
-            "line_start": 256,
+            "line_end": 268,
+            "line_start": 257,
             "name": "refactor",
             "visibility": "private"
           },
@@ -13051,8 +13367,8 @@
             "body_hash": "513e11048c78a3a2",
             "kind": "fn",
             "label": "fn resolve_mode",
-            "line_end": 315,
-            "line_start": 293,
+            "line_end": 316,
+            "line_start": 294,
             "name": "resolve_mode",
             "visibility": "private"
           },
@@ -13060,8 +13376,8 @@
             "body_hash": "5a3b3744b73ee662",
             "kind": "fn",
             "label": "fn seed",
-            "line_end": 291,
-            "line_start": 281,
+            "line_end": 292,
+            "line_start": 282,
             "name": "seed",
             "visibility": "private"
           },
@@ -13069,8 +13385,8 @@
             "body_hash": "f311bfd735226bca",
             "kind": "fn",
             "label": "pub fn run",
-            "line_end": 496,
-            "line_start": 317,
+            "line_end": 497,
+            "line_start": 318,
             "name": "run",
             "visibility": "public"
           }
@@ -13122,23 +13438,63 @@
         ]
       },
       {
-        "content_hash": "aef908c70aa76a37",
+        "content_hash": "e72999c6c8499ef9",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:38:38.047413851+00:00",
+        "last_modified": "2026-06-15T16:54:53.120438184+00:00",
         "path": "src/db/queries/smells.rs",
         "symbol_facts": [
+          {
+            "body_hash": "2910c0540a5e9098",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_directed_three_cycle_is_one_finding_naming_its_members",
+            "line_end": 2735,
+            "line_start": 2722,
+            "name": "a_directed_three_cycle_is_one_finding_naming_its_members",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "317292645caa949c",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_disconnected_subgraph_is_an_island",
+            "line_end": 2784,
+            "line_start": 2768,
+            "name": "a_disconnected_subgraph_is_an_island",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "cb1b8bbd7c32952d",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_fully_connected_graph_has_no_islands",
+            "line_end": 2795,
+            "line_start": 2787,
+            "name": "a_fully_connected_graph_has_no_islands",
+            "visibility": "private"
+          },
           {
             "body_hash": "ed1b6527cb26a023",
             "is_test": true,
             "kind": "fn",
             "label": "fn a_module_path_selector_resolves_to_its_directory",
-            "line_end": 2389,
-            "line_start": 2362,
+            "line_end": 2602,
+            "line_start": 2575,
             "name": "a_module_path_selector_resolves_to_its_directory",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "35a0449c99b4d4a5",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_reciprocal_pair_is_a_two_cycle",
+            "line_end": 2744,
+            "line_start": 2738,
+            "name": "a_reciprocal_pair_is_a_two_cycle",
             "visibility": "private"
           },
           {
@@ -13146,8 +13502,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_sibling_test_in_the_same_module_is_local",
-            "line_end": 2359,
-            "line_start": 2330,
+            "line_end": 2572,
+            "line_start": 2543,
             "name": "a_sibling_test_in_the_same_module_is_local",
             "visibility": "private"
           },
@@ -13156,9 +13512,19 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_test_in_the_grounded_file_is_local_and_silent",
-            "line_end": 2270,
-            "line_start": 2243,
+            "line_end": 2483,
+            "line_start": 2456,
             "name": "a_test_in_the_grounded_file_is_local_and_silent",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ebda715469b0c994",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn an_acyclic_chain_reports_no_cycle",
+            "line_end": 2752,
+            "line_start": 2747,
+            "name": "an_acyclic_chain_reports_no_cycle",
             "visibility": "private"
           },
           {
@@ -13166,9 +13532,19 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_e2e_assertion_proof_exempts_the_leaf",
-            "line_end": 2297,
-            "line_start": 2273,
+            "line_end": 2510,
+            "line_start": 2486,
             "name": "an_e2e_assertion_proof_exempts_the_leaf",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "a1d98c2ca5ad2153",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn an_independent_edge_does_not_close_a_cycle",
+            "line_end": 2765,
+            "line_start": 2755,
+            "name": "an_independent_edge_does_not_close_a_cycle",
             "visibility": "private"
           },
           {
@@ -13176,8 +13552,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_unresolvable_command_is_unknown_never_nonlocal",
-            "line_end": 2327,
-            "line_start": 2300,
+            "line_end": 2540,
+            "line_start": 2513,
             "name": "an_unresolvable_command_is_unknown_never_nonlocal",
             "visibility": "private"
           },
@@ -13185,8 +13561,8 @@
             "body_hash": "cf2f3d0a90b81193",
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 2164,
-            "line_start": 2128,
+            "line_end": 2377,
+            "line_start": 2341,
             "name": "cf",
             "visibility": "private"
           },
@@ -13195,8 +13571,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
-            "line_end": 2240,
-            "line_start": 2211,
+            "line_end": 2453,
+            "line_start": 2424,
             "name": "flags_a_leaf_proven_only_by_a_test_in_other_files",
             "visibility": "private"
           },
@@ -13204,17 +13580,36 @@
             "body_hash": "4ade4c484e71996c",
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 2183,
-            "line_start": 2166,
+            "line_end": 2396,
+            "line_start": 2379,
             "name": "imp",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "7750085ecd8ba03c",
+            "kind": "fn",
+            "label": "fn intent",
+            "line_end": 2655,
+            "line_start": 2637,
+            "name": "intent",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "efa8d8d13e93c09c",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn island_detector_is_unarmed_without_a_system_root",
+            "line_end": 2807,
+            "line_start": 2798,
+            "name": "island_detector_is_unarmed_without_a_system_root",
             "visibility": "private"
           },
           {
             "body_hash": "abfd2c4fe730f877",
             "kind": "fn",
             "label": "fn leaf",
-            "line_end": 2126,
-            "line_start": 2108,
+            "line_end": 2339,
+            "line_start": 2321,
             "name": "leaf",
             "visibility": "private"
           },
@@ -13222,8 +13617,8 @@
             "body_hash": "b3500edb49b3029a",
             "kind": "fn",
             "label": "fn locate_test_proof",
-            "line_end": 2030,
-            "line_start": 2004,
+            "line_end": 2243,
+            "line_start": 2217,
             "name": "locate_test_proof",
             "visibility": "private"
           },
@@ -13232,17 +13627,26 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn no_symbol_facts_means_the_instrument_is_unarmed",
-            "line_end": 2416,
-            "line_start": 2392,
+            "line_end": 2629,
+            "line_start": 2605,
             "name": "no_symbol_facts_means_the_instrument_is_unarmed",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "be51dad1bf2e3ccf",
+            "kind": "fn",
+            "label": "fn of_kind",
+            "line_end": 2707,
+            "line_start": 2705,
+            "name": "of_kind",
             "visibility": "private"
           },
           {
             "body_hash": "3d5fba833195903c",
             "kind": "fn",
             "label": "fn parent_dir",
-            "line_end": 2101,
-            "line_start": 2099,
+            "line_end": 2314,
+            "line_start": 2312,
             "name": "parent_dir",
             "visibility": "private"
           },
@@ -13250,8 +13654,8 @@
             "body_hash": "7e8d21c631604527",
             "kind": "fn",
             "label": "fn parse_cargo_test_selectors",
-            "line_end": 2085,
-            "line_start": 2035,
+            "line_end": 2298,
+            "line_start": 2248,
             "name": "parse_cargo_test_selectors",
             "visibility": "private"
           },
@@ -13259,8 +13663,8 @@
             "body_hash": "d3f67f8e0d692538",
             "kind": "fn",
             "label": "fn path_matches_module",
-            "line_end": 2095,
-            "line_start": 2090,
+            "line_end": 2308,
+            "line_start": 2303,
             "name": "path_matches_module",
             "visibility": "private"
           },
@@ -13268,8 +13672,8 @@
             "body_hash": "24c677b82db52751",
             "kind": "fn",
             "label": "fn proof_locality_from_parts",
-            "line_end": 1999,
-            "line_start": 1873,
+            "line_end": 2212,
+            "line_start": 2086,
             "name": "proof_locality_from_parts",
             "visibility": "private"
           },
@@ -13277,17 +13681,44 @@
             "body_hash": "583c59d6a1a62b9a",
             "kind": "fn",
             "label": "fn recurrent_teaching",
-            "line_end": 334,
-            "line_start": 318,
+            "line_end": 355,
+            "line_start": 339,
             "name": "recurrent_teaching",
             "visibility": "private"
           },
           {
-            "body_hash": "7aa174ba0119ff6a",
+            "body_hash": "bd51f7483c6e9cf2",
+            "kind": "fn",
+            "label": "fn rel",
+            "line_end": 2673,
+            "line_start": 2657,
+            "name": "rel",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "edb0320d86976a1b",
+            "kind": "fn",
+            "label": "fn report",
+            "line_end": 2703,
+            "line_start": 2675,
+            "name": "report",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "202c06c86767f88d",
+            "kind": "fn",
+            "label": "fn rooted",
+            "line_end": 2719,
+            "line_start": 2711,
+            "name": "rooted",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "92a0f8293bfb038f",
             "kind": "fn",
             "label": "fn teaching_for",
-            "line_end": 316,
-            "line_start": 129,
+            "line_end": 337,
+            "line_start": 130,
             "name": "teaching_for",
             "visibility": "private"
           },
@@ -13295,8 +13726,8 @@
             "body_hash": "ee70e2b9a6b5a62b",
             "kind": "fn",
             "label": "fn val",
-            "line_end": 2195,
-            "line_start": 2185,
+            "line_end": 2408,
+            "line_start": 2398,
             "name": "val",
             "visibility": "private"
           },
@@ -13304,8 +13735,8 @@
             "body_hash": "1819ed08198a8455",
             "kind": "fn",
             "label": "fn vedge",
-            "line_end": 2208,
-            "line_start": 2197,
+            "line_end": 2421,
+            "line_start": 2410,
             "name": "vedge",
             "visibility": "private"
           },
@@ -13376,17 +13807,17 @@
             "body_hash": "3933d7307773495e",
             "kind": "fn",
             "label": "pub fn cochange_suggestions",
-            "line_end": 1835,
-            "line_start": 1720,
+            "line_end": 2048,
+            "line_start": 1933,
             "name": "cochange_suggestions",
             "visibility": "public"
           },
           {
-            "body_hash": "fc9ae558d16b71b5",
+            "body_hash": "3b2ddc5b7a3e259d",
             "kind": "fn",
             "label": "pub fn compute_smells_from_parts",
-            "line_end": 1710,
-            "line_start": 356,
+            "line_end": 1923,
+            "line_start": 377,
             "name": "compute_smells_from_parts",
             "visibility": "public"
           },
@@ -13394,8 +13825,8 @@
             "body_hash": "22e4917b07124d97",
             "kind": "fn",
             "label": "pub fn jaccard",
-            "line_end": 344,
-            "line_start": 337,
+            "line_end": 365,
+            "line_start": 358,
             "name": "jaccard",
             "visibility": "public"
           },
@@ -13403,8 +13834,8 @@
             "body_hash": "4c03c20305903f6f",
             "kind": "fn",
             "label": "pub fn proof_locality_suggestions",
-            "line_end": 1871,
-            "line_start": 1862,
+            "line_end": 2084,
+            "line_start": 2075,
             "name": "proof_locality_suggestions",
             "visibility": "public"
           },
@@ -13421,16 +13852,16 @@
             "body_hash": "6f876a52ce824d85",
             "kind": "struct",
             "label": "pub struct AdjudicatedSmell",
-            "line_end": 97,
-            "line_start": 85,
+            "line_end": 98,
+            "line_start": 86,
             "name": "AdjudicatedSmell",
             "visibility": "public"
           },
           {
-            "body_hash": "a22ab19335960daa",
+            "body_hash": "9e0bbb79ab15fec1",
             "kind": "struct",
             "label": "pub struct Smell",
-            "line_end": 77,
+            "line_end": 78,
             "line_start": 59,
             "name": "Smell",
             "visibility": "public"
@@ -13439,8 +13870,8 @@
             "body_hash": "2d77d5c611e44c48",
             "kind": "struct",
             "label": "pub struct SmellInputs",
-            "line_end": 352,
-            "line_start": 346,
+            "line_end": 373,
+            "line_start": 367,
             "name": "SmellInputs",
             "visibility": "public"
           },
@@ -13448,8 +13879,8 @@
             "body_hash": "fa8fdf4d5d2580c5",
             "kind": "struct",
             "label": "pub struct SmellReport",
-            "line_end": 127,
-            "line_start": 111,
+            "line_end": 128,
+            "line_start": 112,
             "name": "SmellReport",
             "visibility": "public"
           },
@@ -13457,29 +13888,41 @@
             "body_hash": "797e1bb20f6a48ad",
             "kind": "struct",
             "label": "pub struct SmellTeaching",
-            "line_end": 105,
-            "line_start": 100,
+            "line_end": 106,
+            "line_start": 101,
             "name": "SmellTeaching",
             "visibility": "public"
           }
         ],
         "symbols": [
+          "fn a_directed_three_cycle_is_one_finding_naming_its_members",
+          "fn a_disconnected_subgraph_is_an_island",
+          "fn a_fully_connected_graph_has_no_islands",
           "fn a_module_path_selector_resolves_to_its_directory",
+          "fn a_reciprocal_pair_is_a_two_cycle",
           "fn a_sibling_test_in_the_same_module_is_local",
           "fn a_test_in_the_grounded_file_is_local_and_silent",
+          "fn an_acyclic_chain_reports_no_cycle",
           "fn an_e2e_assertion_proof_exempts_the_leaf",
+          "fn an_independent_edge_does_not_close_a_cycle",
           "fn an_unresolvable_command_is_unknown_never_nonlocal",
           "fn cf",
           "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
           "fn imp",
+          "fn intent",
+          "fn island_detector_is_unarmed_without_a_system_root",
           "fn leaf",
           "fn locate_test_proof",
           "fn no_symbol_facts_means_the_instrument_is_unarmed",
+          "fn of_kind",
           "fn parent_dir",
           "fn parse_cargo_test_selectors",
           "fn path_matches_module",
           "fn proof_locality_from_parts",
           "fn recurrent_teaching",
+          "fn rel",
+          "fn report",
+          "fn rooted",
           "fn teaching_for",
           "fn val",
           "fn vedge",
@@ -13643,11 +14086,12 @@
         "symbols": []
       },
       {
-        "content_hash": "a0dc4cd505716c57",
+        "content_hash": "d25f37ee0b39abb5",
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
         "imports": [
           "src/db/queries/completeness.rs",
           "src/db/queries/find.rs",
+          "src/db/queries/graph_algo.rs",
           "src/db/queries/integrity.rs",
           "src/db/queries/intent.rs",
           "src/db/queries/meta.rs",
@@ -13660,7 +14104,7 @@
           "src/db/queries/vocab.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:39:38.634631259+00:00",
+        "last_modified": "2026-06-15T16:41:00.262716007+00:00",
         "path": "src/db/queries/mod.rs",
         "symbol_facts": [],
         "symbols": []
@@ -14293,14 +14737,14 @@
         ]
       },
       {
-        "content_hash": "d6f545d5d366b39c",
+        "content_hash": "5dffdac4506f2155",
         "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
         "imports": [
           "src/db/mod.rs",
           "src/db/queries/mod.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T10:06:21.454843926+00:00",
+        "last_modified": "2026-06-15T16:13:56.685394037+00:00",
         "path": "src/output.rs",
         "symbol_facts": [
           {
@@ -14308,8 +14752,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn anchor_json_carries_next_step_and_graph_state",
-            "line_end": 618,
-            "line_start": 598,
+            "line_end": 619,
+            "line_start": 599,
             "name": "anchor_json_carries_next_step_and_graph_state",
             "visibility": "private"
           },
@@ -14318,8 +14762,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn apply_limit_honors_zero_as_unlimited",
-            "line_end": 595,
-            "line_start": 588,
+            "line_end": 596,
+            "line_start": 589,
             "name": "apply_limit_honors_zero_as_unlimited",
             "visibility": "private"
           },
@@ -14328,8 +14772,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn coverage_line_never_shows_a_vacuous_full",
-            "line_end": 708,
-            "line_start": 668,
+            "line_end": 709,
+            "line_start": 669,
             "name": "coverage_line_never_shows_a_vacuous_full",
             "visibility": "private"
           },
@@ -14347,8 +14791,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_intent_renders_refs_and_tags",
-            "line_end": 565,
-            "line_start": 541,
+            "line_end": 566,
+            "line_start": 542,
             "name": "fmt_intent_renders_refs_and_tags",
             "visibility": "private"
           },
@@ -14357,8 +14801,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_pulse_renders_both_completeness_axes_and_hygiene",
-            "line_end": 743,
-            "line_start": 711,
+            "line_end": 744,
+            "line_start": 712,
             "name": "fmt_pulse_renders_both_completeness_axes_and_hygiene",
             "visibility": "private"
           },
@@ -14367,16 +14811,16 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_status_surfaces_blocked_proofs",
-            "line_end": 817,
-            "line_start": 786,
+            "line_end": 818,
+            "line_start": 787,
             "name": "fmt_status_surfaces_blocked_proofs",
             "visibility": "private"
           },
           {
-            "body_hash": "453c2ad0a7b9a818",
+            "body_hash": "e56fd5ec71c77493",
             "kind": "fn",
             "label": "fn graph_state_fixture",
-            "line_end": 538,
+            "line_end": 539,
             "line_start": 494,
             "name": "graph_state_fixture",
             "visibility": "private"
@@ -14386,8 +14830,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn human_pulse_and_json_pulse_agree",
-            "line_end": 771,
-            "line_start": 746,
+            "line_end": 772,
+            "line_start": 747,
             "name": "human_pulse_and_json_pulse_agree",
             "visibility": "private"
           },
@@ -14396,8 +14840,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent_surface_carries_boundary_to_the_driver",
-            "line_end": 844,
-            "line_start": 820,
+            "line_end": 845,
+            "line_start": 821,
             "name": "intent_surface_carries_boundary_to_the_driver",
             "visibility": "private"
           },
@@ -14406,8 +14850,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn more_marker_is_an_affordance_not_an_apology",
-            "line_end": 585,
-            "line_start": 568,
+            "line_end": 586,
+            "line_start": 569,
             "name": "more_marker_is_an_affordance_not_an_apology",
             "visibility": "private"
           },
@@ -14416,8 +14860,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn pulse_is_a_surface_not_the_full_state",
-            "line_end": 665,
-            "line_start": 621,
+            "line_end": 666,
+            "line_start": 622,
             "name": "pulse_is_a_surface_not_the_full_state",
             "visibility": "private"
           },
@@ -14435,8 +14879,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rel_time_is_relative_and_falls_back_to_raw",
-            "line_end": 783,
-            "line_start": 774,
+            "line_end": 784,
+            "line_start": 775,
             "name": "rel_time_is_relative_and_falls_back_to_raw",
             "visibility": "private"
           },
@@ -15343,78 +15787,598 @@
         ]
       },
       {
-        "content_hash": "9dd40459e543976d",
+        "content_hash": "944c216b06ab13cc",
         "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-13T20:44:08.261816654+00:00",
+        "last_modified": "2026-06-15T16:48:03.900044351+00:00",
         "path": "src/types.rs",
         "symbol_facts": [
-          "{\"label\":\"fn bool_is_false\",\"name\":\"bool_is_false\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":927,\"line_end\":929,\"body_hash\":\"2a9cf12aba9ca02d\"}",
-          "{\"label\":\"fn domain_is_unknown\",\"name\":\"domain_is_unknown\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":932,\"line_end\":934,\"body_hash\":\"6bc41dcced6b0bbc\"}",
-          "{\"label\":\"fn f64_is_zero\",\"name\":\"f64_is_zero\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":923,\"line_end\":925,\"body_hash\":\"ab1bb2698e0fda81\"}",
-          "{\"label\":\"fn times_is_one\",\"name\":\"times_is_one\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":1054,\"line_end\":1056,\"body_hash\":\"020bbbc9fb4089b8\"}",
-          "{\"label\":\"impl From<&Implements> for GroundingSurface\",\"name\":\"From<&Implements> for GroundingSurface\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":1007,\"line_end\":1015,\"body_hash\":\"ba831e53c33d8d39\"}",
-          "{\"label\":\"impl From<&Intent> for IntentSurface\",\"name\":\"From<&Intent> for IntentSurface\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":973,\"line_end\":995,\"body_hash\":\"67563964ac4d4163\"}",
-          "{\"label\":\"impl From<&Validation> for ValidationSurface\",\"name\":\"From<&Validation> for ValidationSurface\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":1028,\"line_end\":1037,\"body_hash\":\"4f02a0b6cb7cce4f\"}",
-          "{\"label\":\"impl InspectionStatus\",\"name\":\"InspectionStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":98,\"line_end\":108,\"body_hash\":\"0fb53b237f2996c4\"}",
-          "{\"label\":\"impl std::fmt::Display for AbstractionLevel\",\"name\":\"std::fmt::Display for AbstractionLevel\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":32,\"line_end\":41,\"body_hash\":\"c65c4c23dba78b6c\"}",
-          "{\"label\":\"impl std::fmt::Display for EdgeType\",\"name\":\"std::fmt::Display for EdgeType\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":241,\"line_end\":251,\"body_hash\":\"d2601ff1120b5bb1\"}",
-          "{\"label\":\"impl std::fmt::Display for HypothesisStatus\",\"name\":\"std::fmt::Display for HypothesisStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":411,\"line_end\":423,\"body_hash\":\"906f4104964057a5\"}",
-          "{\"label\":\"impl std::fmt::Display for InspectionStatus\",\"name\":\"std::fmt::Display for InspectionStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":110,\"line_end\":120,\"body_hash\":\"5675c28764704d38\"}",
-          "{\"label\":\"impl std::fmt::Display for IntentStatus\",\"name\":\"std::fmt::Display for IntentStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":53,\"line_end\":61,\"body_hash\":\"5713833525121b4b\"}",
-          "{\"label\":\"impl std::fmt::Display for LifecycleState\",\"name\":\"std::fmt::Display for LifecycleState\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":363,\"line_end\":372,\"body_hash\":\"17adb022e44d1bfe\"}",
-          "{\"label\":\"impl std::fmt::Display for NoteKind\",\"name\":\"std::fmt::Display for NoteKind\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":311,\"line_end\":325,\"body_hash\":\"536b832a1c805671\"}",
-          "{\"label\":\"impl std::fmt::Display for Severity\",\"name\":\"std::fmt::Display for Severity\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":264,\"line_end\":271,\"body_hash\":\"78fb8e715a970198\"}",
-          "{\"label\":\"impl std::fmt::Display for ValidationResult\",\"name\":\"std::fmt::Display for ValidationResult\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":201,\"line_end\":210,\"body_hash\":\"50c5ff6de8b196fa\"}",
-          "{\"label\":\"impl std::fmt::Display for ValidationType\",\"name\":\"std::fmt::Display for ValidationType\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":156,\"line_end\":166,\"body_hash\":\"bd0663f50031ee37\"}",
-          "{\"label\":\"impl std::str::FromStr for AbstractionLevel\",\"name\":\"std::str::FromStr for AbstractionLevel\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":16,\"line_end\":30,\"body_hash\":\"db310c802ee1b489\"}",
-          "{\"label\":\"impl std::str::FromStr for HypothesisStatus\",\"name\":\"std::str::FromStr for HypothesisStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":425,\"line_end\":441,\"body_hash\":\"e9adbf6345b2a977\"}",
-          "{\"label\":\"impl std::str::FromStr for InspectionStatus\",\"name\":\"std::str::FromStr for InspectionStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":122,\"line_end\":137,\"body_hash\":\"223fafee7a9f9eb8\"}",
-          "{\"label\":\"impl std::str::FromStr for IntentStatus\",\"name\":\"std::str::FromStr for IntentStatus\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":63,\"line_end\":76,\"body_hash\":\"76067c80e3b02d3a\"}",
-          "{\"label\":\"impl std::str::FromStr for LifecycleState\",\"name\":\"std::str::FromStr for LifecycleState\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":374,\"line_end\":387,\"body_hash\":\"4462f2446cf0f7c0\"}",
-          "{\"label\":\"impl std::str::FromStr for NoteKind\",\"name\":\"std::str::FromStr for NoteKind\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":327,\"line_end\":345,\"body_hash\":\"df69ee29a3681b97\"}",
-          "{\"label\":\"impl std::str::FromStr for Severity\",\"name\":\"std::str::FromStr for Severity\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":273,\"line_end\":282,\"body_hash\":\"7aeb699b52da52d0\"}",
-          "{\"label\":\"impl std::str::FromStr for ValidationResult\",\"name\":\"std::str::FromStr for ValidationResult\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":212,\"line_end\":226,\"body_hash\":\"d03d011f8da34049\"}",
-          "{\"label\":\"impl std::str::FromStr for ValidationType\",\"name\":\"std::str::FromStr for ValidationType\",\"kind\":\"impl\",\"visibility\":\"private\",\"line_start\":168,\"line_end\":183,\"body_hash\":\"ef616689952b7855\"}",
-          "{\"label\":\"pub enum AbstractionLevel\",\"name\":\"AbstractionLevel\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":9,\"line_end\":14,\"body_hash\":\"3afad90fe3815c2d\"}",
-          "{\"label\":\"pub enum EdgeType\",\"name\":\"EdgeType\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":233,\"line_end\":239,\"body_hash\":\"6d6daa1923329c2d\"}",
-          "{\"label\":\"pub enum HypothesisStatus\",\"name\":\"HypothesisStatus\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":395,\"line_end\":409,\"body_hash\":\"9ec5e4f5efac2f5d\"}",
-          "{\"label\":\"pub enum InspectionStatus\",\"name\":\"InspectionStatus\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":85,\"line_end\":96,\"body_hash\":\"e3004afcda895c10\"}",
-          "{\"label\":\"pub enum IntentStatus\",\"name\":\"IntentStatus\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":47,\"line_end\":51,\"body_hash\":\"dbdf2165e9e085cf\"}",
-          "{\"label\":\"pub enum LifecycleState\",\"name\":\"LifecycleState\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":353,\"line_end\":361,\"body_hash\":\"755582cfa1e26d78\"}",
-          "{\"label\":\"pub enum NoteKind\",\"name\":\"NoteKind\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":290,\"line_end\":309,\"body_hash\":\"4c73f069bfc5e34e\"}",
-          "{\"label\":\"pub enum Severity\",\"name\":\"Severity\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":259,\"line_end\":262,\"body_hash\":\"b5b5cd30335859f2\"}",
-          "{\"label\":\"pub enum ValidationResult\",\"name\":\"ValidationResult\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":191,\"line_end\":199,\"body_hash\":\"ab0607bd6ec20f28\"}",
-          "{\"label\":\"pub enum ValidationType\",\"name\":\"ValidationType\",\"kind\":\"enum\",\"visibility\":\"public\",\"line_start\":145,\"line_end\":154,\"body_hash\":\"6efdc4eb9388efe4\"}",
-          "{\"label\":\"pub struct CodeFile\",\"name\":\"CodeFile\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":500,\"line_end\":525,\"body_hash\":\"15268be1745862b8\"}",
-          "{\"label\":\"pub struct Delegation\",\"name\":\"Delegation\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":682,\"line_end\":689,\"body_hash\":\"ac2adac91516c188\"}",
-          "{\"label\":\"pub struct FullReport\",\"name\":\"FullReport\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1122,\"line_end\":1133,\"body_hash\":\"b1ae7f6f1dbdb85e\"}",
-          "{\"label\":\"pub struct Governs\",\"name\":\"Governs\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":808,\"line_end\":828,\"body_hash\":\"9b82254c34e19ad9\"}",
-          "{\"label\":\"pub struct GroundingSurface\",\"name\":\"GroundingSurface\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1000,\"line_end\":1005,\"body_hash\":\"45b603d40f904a96\"}",
-          "{\"label\":\"pub struct Hierarchy\",\"name\":\"Hierarchy\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":762,\"line_end\":769,\"body_hash\":\"8901c094e9290e10\"}",
-          "{\"label\":\"pub struct Hypothesis\",\"name\":\"Hypothesis\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":702,\"line_end\":724,\"body_hash\":\"1d0792c83d9dd8b5\"}",
-          "{\"label\":\"pub struct Ignore\",\"name\":\"Ignore\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":624,\"line_end\":630,\"body_hash\":\"3af21ca90748cde5\"}",
-          "{\"label\":\"pub struct Implements\",\"name\":\"Implements\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":773,\"line_end\":802,\"body_hash\":\"7509f0b8490f141d\"}",
-          "{\"label\":\"pub struct Intent\",\"name\":\"Intent\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":449,\"line_end\":496,\"body_hash\":\"b0609f5385c6b85b\"}",
-          "{\"label\":\"pub struct IntentCentrality\",\"name\":\"IntentCentrality\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1136,\"line_end\":1139,\"body_hash\":\"bc87663a9e0eea8b\"}",
-          "{\"label\":\"pub struct IntentSurface\",\"name\":\"IntentSurface\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":950,\"line_end\":971,\"body_hash\":\"6f22782ea1d17e18\"}",
-          "{\"label\":\"pub struct JourneysEdge\",\"name\":\"JourneysEdge\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":889,\"line_end\":899,\"body_hash\":\"dc3dcd4471de1c53\"}",
-          "{\"label\":\"pub struct Note\",\"name\":\"Note\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":594,\"line_end\":613,\"body_hash\":\"f2023a15570de823\"}",
-          "{\"label\":\"pub struct NoteSurface\",\"name\":\"NoteSurface\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1044,\"line_end\":1052,\"body_hash\":\"38761f68efe3921c\"}",
-          "{\"label\":\"pub struct Persona\",\"name\":\"Persona\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":663,\"line_end\":670,\"body_hash\":\"5dae4aa76a8d4251\"}",
-          "{\"label\":\"pub struct QualityRule\",\"name\":\"QualityRule\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":552,\"line_end\":564,\"body_hash\":\"d4819472388e3339\"}",
-          "{\"label\":\"pub struct RelatesTo\",\"name\":\"RelatesTo\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":733,\"line_end\":756,\"body_hash\":\"aeded05973c62477\"}",
-          "{\"label\":\"pub struct ServesEdge\",\"name\":\"ServesEdge\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":860,\"line_end\":883,\"body_hash\":\"fe6d302c0099cc3f\"}",
-          "{\"label\":\"pub struct StatusReport\",\"name\":\"StatusReport\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1092,\"line_end\":1119,\"body_hash\":\"20c5ff56b6ccc316\"}",
-          "{\"label\":\"pub struct SymbolFact\",\"name\":\"SymbolFact\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":529,\"line_end\":548,\"body_hash\":\"3c0ba5c1a5eb6224\"}",
-          "{\"label\":\"pub struct SyncReport\",\"name\":\"SyncReport\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1143,\"line_end\":1176,\"body_hash\":\"90f84071af7ed55f\"}",
-          "{\"label\":\"pub struct TargetsEdge\",\"name\":\"TargetsEdge\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":834,\"line_end\":854,\"body_hash\":\"93417e6012204740\"}",
-          "{\"label\":\"pub struct ValidatesEdge\",\"name\":\"ValidatesEdge\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":903,\"line_end\":915,\"body_hash\":\"50092d4a6cda7791\"}",
-          "{\"label\":\"pub struct Validation\",\"name\":\"Validation\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":568,\"line_end\":582,\"body_hash\":\"87d392cfed31a2c7\"}",
-          "{\"label\":\"pub struct ValidationSurface\",\"name\":\"ValidationSurface\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1020,\"line_end\":1026,\"body_hash\":\"a5e10cda6e5cd80d\"}",
-          "{\"label\":\"pub struct VocabTerm\",\"name\":\"VocabTerm\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":643,\"line_end\":652,\"body_hash\":\"960fa42450d50970\"}",
-          "{\"label\":\"pub struct WorkItem\",\"name\":\"WorkItem\",\"kind\":\"struct\",\"visibility\":\"public\",\"line_start\":1062,\"line_end\":1089,\"body_hash\":\"2b380098a6a0a69c\"}"
+          {
+            "body_hash": "2a9cf12aba9ca02d",
+            "kind": "fn",
+            "label": "fn bool_is_false",
+            "line_end": 929,
+            "line_start": 927,
+            "name": "bool_is_false",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "6bc41dcced6b0bbc",
+            "kind": "fn",
+            "label": "fn domain_is_unknown",
+            "line_end": 934,
+            "line_start": 932,
+            "name": "domain_is_unknown",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ab1bb2698e0fda81",
+            "kind": "fn",
+            "label": "fn f64_is_zero",
+            "line_end": 925,
+            "line_start": 923,
+            "name": "f64_is_zero",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "020bbbc9fb4089b8",
+            "kind": "fn",
+            "label": "fn times_is_one",
+            "line_end": 1056,
+            "line_start": 1054,
+            "name": "times_is_one",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ba831e53c33d8d39",
+            "kind": "impl",
+            "label": "impl From<&Implements> for GroundingSurface",
+            "line_end": 1015,
+            "line_start": 1007,
+            "name": "From<&Implements> for GroundingSurface",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "67563964ac4d4163",
+            "kind": "impl",
+            "label": "impl From<&Intent> for IntentSurface",
+            "line_end": 995,
+            "line_start": 973,
+            "name": "From<&Intent> for IntentSurface",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4f02a0b6cb7cce4f",
+            "kind": "impl",
+            "label": "impl From<&Validation> for ValidationSurface",
+            "line_end": 1037,
+            "line_start": 1028,
+            "name": "From<&Validation> for ValidationSurface",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "0fb53b237f2996c4",
+            "kind": "impl",
+            "label": "impl InspectionStatus",
+            "line_end": 108,
+            "line_start": 98,
+            "name": "InspectionStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c65c4c23dba78b6c",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for AbstractionLevel",
+            "line_end": 41,
+            "line_start": 32,
+            "name": "std::fmt::Display for AbstractionLevel",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "d2601ff1120b5bb1",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for EdgeType",
+            "line_end": 251,
+            "line_start": 241,
+            "name": "std::fmt::Display for EdgeType",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "906f4104964057a5",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for HypothesisStatus",
+            "line_end": 423,
+            "line_start": 411,
+            "name": "std::fmt::Display for HypothesisStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "5675c28764704d38",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for InspectionStatus",
+            "line_end": 120,
+            "line_start": 110,
+            "name": "std::fmt::Display for InspectionStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "5713833525121b4b",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for IntentStatus",
+            "line_end": 61,
+            "line_start": 53,
+            "name": "std::fmt::Display for IntentStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "17adb022e44d1bfe",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for LifecycleState",
+            "line_end": 372,
+            "line_start": 363,
+            "name": "std::fmt::Display for LifecycleState",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "536b832a1c805671",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for NoteKind",
+            "line_end": 325,
+            "line_start": 311,
+            "name": "std::fmt::Display for NoteKind",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "78fb8e715a970198",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for Severity",
+            "line_end": 271,
+            "line_start": 264,
+            "name": "std::fmt::Display for Severity",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "50c5ff6de8b196fa",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for ValidationResult",
+            "line_end": 210,
+            "line_start": 201,
+            "name": "std::fmt::Display for ValidationResult",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "bd0663f50031ee37",
+            "kind": "impl",
+            "label": "impl std::fmt::Display for ValidationType",
+            "line_end": 166,
+            "line_start": 156,
+            "name": "std::fmt::Display for ValidationType",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "db310c802ee1b489",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for AbstractionLevel",
+            "line_end": 30,
+            "line_start": 16,
+            "name": "std::str::FromStr for AbstractionLevel",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "e9adbf6345b2a977",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for HypothesisStatus",
+            "line_end": 441,
+            "line_start": 425,
+            "name": "std::str::FromStr for HypothesisStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "223fafee7a9f9eb8",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for InspectionStatus",
+            "line_end": 137,
+            "line_start": 122,
+            "name": "std::str::FromStr for InspectionStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "76067c80e3b02d3a",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for IntentStatus",
+            "line_end": 76,
+            "line_start": 63,
+            "name": "std::str::FromStr for IntentStatus",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4462f2446cf0f7c0",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for LifecycleState",
+            "line_end": 387,
+            "line_start": 374,
+            "name": "std::str::FromStr for LifecycleState",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "df69ee29a3681b97",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for NoteKind",
+            "line_end": 345,
+            "line_start": 327,
+            "name": "std::str::FromStr for NoteKind",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "7aeb699b52da52d0",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for Severity",
+            "line_end": 282,
+            "line_start": 273,
+            "name": "std::str::FromStr for Severity",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "d03d011f8da34049",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for ValidationResult",
+            "line_end": 226,
+            "line_start": 212,
+            "name": "std::str::FromStr for ValidationResult",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ef616689952b7855",
+            "kind": "impl",
+            "label": "impl std::str::FromStr for ValidationType",
+            "line_end": 183,
+            "line_start": 168,
+            "name": "std::str::FromStr for ValidationType",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "3afad90fe3815c2d",
+            "kind": "enum",
+            "label": "pub enum AbstractionLevel",
+            "line_end": 14,
+            "line_start": 9,
+            "name": "AbstractionLevel",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "6d6daa1923329c2d",
+            "kind": "enum",
+            "label": "pub enum EdgeType",
+            "line_end": 239,
+            "line_start": 233,
+            "name": "EdgeType",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "9ec5e4f5efac2f5d",
+            "kind": "enum",
+            "label": "pub enum HypothesisStatus",
+            "line_end": 409,
+            "line_start": 395,
+            "name": "HypothesisStatus",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "e3004afcda895c10",
+            "kind": "enum",
+            "label": "pub enum InspectionStatus",
+            "line_end": 96,
+            "line_start": 85,
+            "name": "InspectionStatus",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "dbdf2165e9e085cf",
+            "kind": "enum",
+            "label": "pub enum IntentStatus",
+            "line_end": 51,
+            "line_start": 47,
+            "name": "IntentStatus",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "755582cfa1e26d78",
+            "kind": "enum",
+            "label": "pub enum LifecycleState",
+            "line_end": 361,
+            "line_start": 353,
+            "name": "LifecycleState",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "4c73f069bfc5e34e",
+            "kind": "enum",
+            "label": "pub enum NoteKind",
+            "line_end": 309,
+            "line_start": 290,
+            "name": "NoteKind",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b5b5cd30335859f2",
+            "kind": "enum",
+            "label": "pub enum Severity",
+            "line_end": 262,
+            "line_start": 259,
+            "name": "Severity",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "ab0607bd6ec20f28",
+            "kind": "enum",
+            "label": "pub enum ValidationResult",
+            "line_end": 199,
+            "line_start": 191,
+            "name": "ValidationResult",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "6efdc4eb9388efe4",
+            "kind": "enum",
+            "label": "pub enum ValidationType",
+            "line_end": 154,
+            "line_start": 145,
+            "name": "ValidationType",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "15268be1745862b8",
+            "kind": "struct",
+            "label": "pub struct CodeFile",
+            "line_end": 525,
+            "line_start": 500,
+            "name": "CodeFile",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "ac2adac91516c188",
+            "kind": "struct",
+            "label": "pub struct Delegation",
+            "line_end": 689,
+            "line_start": 682,
+            "name": "Delegation",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b1ae7f6f1dbdb85e",
+            "kind": "struct",
+            "label": "pub struct FullReport",
+            "line_end": 1133,
+            "line_start": 1122,
+            "name": "FullReport",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "9b82254c34e19ad9",
+            "kind": "struct",
+            "label": "pub struct Governs",
+            "line_end": 828,
+            "line_start": 808,
+            "name": "Governs",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "45b603d40f904a96",
+            "kind": "struct",
+            "label": "pub struct GroundingSurface",
+            "line_end": 1005,
+            "line_start": 1000,
+            "name": "GroundingSurface",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "8901c094e9290e10",
+            "kind": "struct",
+            "label": "pub struct Hierarchy",
+            "line_end": 769,
+            "line_start": 762,
+            "name": "Hierarchy",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "1d0792c83d9dd8b5",
+            "kind": "struct",
+            "label": "pub struct Hypothesis",
+            "line_end": 724,
+            "line_start": 702,
+            "name": "Hypothesis",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "3af21ca90748cde5",
+            "kind": "struct",
+            "label": "pub struct Ignore",
+            "line_end": 630,
+            "line_start": 624,
+            "name": "Ignore",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "7509f0b8490f141d",
+            "kind": "struct",
+            "label": "pub struct Implements",
+            "line_end": 802,
+            "line_start": 773,
+            "name": "Implements",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b0609f5385c6b85b",
+            "kind": "struct",
+            "label": "pub struct Intent",
+            "line_end": 496,
+            "line_start": 449,
+            "name": "Intent",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "bc87663a9e0eea8b",
+            "kind": "struct",
+            "label": "pub struct IntentCentrality",
+            "line_end": 1139,
+            "line_start": 1136,
+            "name": "IntentCentrality",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "6f22782ea1d17e18",
+            "kind": "struct",
+            "label": "pub struct IntentSurface",
+            "line_end": 971,
+            "line_start": 950,
+            "name": "IntentSurface",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "dc3dcd4471de1c53",
+            "kind": "struct",
+            "label": "pub struct JourneysEdge",
+            "line_end": 899,
+            "line_start": 889,
+            "name": "JourneysEdge",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "f2023a15570de823",
+            "kind": "struct",
+            "label": "pub struct Note",
+            "line_end": 613,
+            "line_start": 594,
+            "name": "Note",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "38761f68efe3921c",
+            "kind": "struct",
+            "label": "pub struct NoteSurface",
+            "line_end": 1052,
+            "line_start": 1044,
+            "name": "NoteSurface",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "5dae4aa76a8d4251",
+            "kind": "struct",
+            "label": "pub struct Persona",
+            "line_end": 670,
+            "line_start": 663,
+            "name": "Persona",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "d4819472388e3339",
+            "kind": "struct",
+            "label": "pub struct QualityRule",
+            "line_end": 564,
+            "line_start": 552,
+            "name": "QualityRule",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "aeded05973c62477",
+            "kind": "struct",
+            "label": "pub struct RelatesTo",
+            "line_end": 756,
+            "line_start": 733,
+            "name": "RelatesTo",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "fe6d302c0099cc3f",
+            "kind": "struct",
+            "label": "pub struct ServesEdge",
+            "line_end": 883,
+            "line_start": 860,
+            "name": "ServesEdge",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "20c5ff56b6ccc316",
+            "kind": "struct",
+            "label": "pub struct StatusReport",
+            "line_end": 1119,
+            "line_start": 1092,
+            "name": "StatusReport",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "3c0ba5c1a5eb6224",
+            "kind": "struct",
+            "label": "pub struct SymbolFact",
+            "line_end": 548,
+            "line_start": 529,
+            "name": "SymbolFact",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "40c8a818fcf0a798",
+            "kind": "struct",
+            "label": "pub struct SyncReport",
+            "line_end": 1184,
+            "line_start": 1143,
+            "name": "SyncReport",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "93417e6012204740",
+            "kind": "struct",
+            "label": "pub struct TargetsEdge",
+            "line_end": 854,
+            "line_start": 834,
+            "name": "TargetsEdge",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "50092d4a6cda7791",
+            "kind": "struct",
+            "label": "pub struct ValidatesEdge",
+            "line_end": 915,
+            "line_start": 903,
+            "name": "ValidatesEdge",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "87d392cfed31a2c7",
+            "kind": "struct",
+            "label": "pub struct Validation",
+            "line_end": 582,
+            "line_start": 568,
+            "name": "Validation",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "a5e10cda6e5cd80d",
+            "kind": "struct",
+            "label": "pub struct ValidationSurface",
+            "line_end": 1026,
+            "line_start": 1020,
+            "name": "ValidationSurface",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "960fa42450d50970",
+            "kind": "struct",
+            "label": "pub struct VocabTerm",
+            "line_end": 652,
+            "line_start": 643,
+            "name": "VocabTerm",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "2b380098a6a0a69c",
+            "kind": "struct",
+            "label": "pub struct WorkItem",
+            "line_end": 1089,
+            "line_start": 1062,
+            "name": "WorkItem",
+            "visibility": "public"
+          }
         ],
         "symbols": [
           "fn bool_is_false",
@@ -16563,39 +17527,66 @@
         ]
       },
       {
-        "content_hash": "ea5c9b7c141412ec",
+        "content_hash": "d0b6a41223070c08",
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T10:04:36.452929739+00:00",
+        "last_modified": "2026-06-15T16:45:50.967076041+00:00",
         "path": "src/db/queries/scoring.rs",
         "symbol_facts": [
           {
             "body_hash": "432daf4bfea8d9c4",
             "kind": "const",
             "label": "pub const ALIGN_GRACE_DAYS",
-            "line_end": 419,
-            "line_start": 419,
+            "line_end": 529,
+            "line_start": 529,
             "name": "ALIGN_GRACE_DAYS",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "90025cfa43b613da",
+            "kind": "const",
+            "label": "pub const BRIDGE_WEIGHT",
+            "line_end": 35,
+            "line_start": 35,
+            "name": "BRIDGE_WEIGHT",
             "visibility": "public"
           },
           {
             "body_hash": "6192d2c64a007c2d",
             "kind": "const",
             "label": "pub const REVIEW_CONFIDENCE",
-            "line_end": 163,
-            "line_start": 163,
+            "line_end": 273,
+            "line_start": 273,
             "name": "REVIEW_CONFIDENCE",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "e7513fe0c9fd43a8",
+            "kind": "const",
+            "label": "pub const RIPPLE_BUMP_HOP2",
+            "line_end": 44,
+            "line_start": 44,
+            "name": "RIPPLE_BUMP_HOP2",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "80ca90e62ad9bb80",
+            "kind": "const",
+            "label": "pub const RIPPLE_BUMP_HOP3",
+            "line_end": 45,
+            "line_start": 45,
+            "name": "RIPPLE_BUMP_HOP3",
             "visibility": "public"
           },
           {
             "body_hash": "3ad5190013a3344c",
             "kind": "enum",
             "label": "pub enum ReviewCandidate",
-            "line_end": 174,
-            "line_start": 171,
+            "line_end": 284,
+            "line_start": 281,
             "name": "ReviewCandidate",
             "visibility": "public"
           },
@@ -16603,8 +17594,8 @@
             "body_hash": "68cdebee2b10edab",
             "kind": "fn",
             "label": "pub fn align_candidates_from_snapshot_notes",
-            "line_end": 559,
-            "line_start": 421,
+            "line_end": 669,
+            "line_start": 531,
             "name": "align_candidates_from_snapshot_notes",
             "visibility": "public"
           },
@@ -16612,8 +17603,8 @@
             "body_hash": "17c35e6f1ce04043",
             "kind": "fn",
             "label": "pub fn build_candidates_from_snapshot",
-            "line_end": 142,
-            "line_start": 93,
+            "line_end": 252,
+            "line_start": 203,
             "name": "build_candidates_from_snapshot",
             "visibility": "public"
           },
@@ -16621,17 +17612,26 @@
             "body_hash": "fddab17a254eba62",
             "kind": "fn",
             "label": "pub fn count_unexplored_pairs_from",
-            "line_end": 654,
-            "line_start": 627,
+            "line_end": 764,
+            "line_start": 737,
             "name": "count_unexplored_pairs_from",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b606ef00e5ddc905",
+            "kind": "fn",
+            "label": "pub fn lane_depths_from_snapshot",
+            "line_end": 902,
+            "line_start": 895,
+            "name": "lane_depths_from_snapshot",
             "visibility": "public"
           },
           {
             "body_hash": "c75d8601a7592bda",
             "kind": "fn",
             "label": "pub fn normative_coverage_from_snapshot",
-            "line_end": 281,
-            "line_start": 211,
+            "line_end": 391,
+            "line_start": 321,
             "name": "normative_coverage_from_snapshot",
             "visibility": "public"
           },
@@ -16648,8 +17648,8 @@
             "body_hash": "50ecefa9e391495a",
             "kind": "fn",
             "label": "pub fn prove_candidates_from_parts",
-            "line_end": 607,
-            "line_start": 561,
+            "line_end": 717,
+            "line_start": 671,
             "name": "prove_candidates_from_parts",
             "visibility": "public"
           },
@@ -16657,8 +17657,8 @@
             "body_hash": "7b06e6b60da0fc13",
             "kind": "fn",
             "label": "pub fn quality_candidates_from_snapshot",
-            "line_end": 331,
-            "line_start": 292,
+            "line_end": 441,
+            "line_start": 402,
             "name": "quality_candidates_from_snapshot",
             "visibility": "public"
           },
@@ -16666,17 +17666,26 @@
             "body_hash": "e22e14c0168f80d9",
             "kind": "fn",
             "label": "pub fn review_candidates_from_snapshot",
-            "line_end": 209,
-            "line_start": 176,
+            "line_end": 319,
+            "line_start": 286,
             "name": "review_candidates_from_snapshot",
             "visibility": "public"
           },
           {
-            "body_hash": "636797c477b52524",
+            "body_hash": "1eebf98adb230b2e",
+            "kind": "fn",
+            "label": "pub fn ripple_bump_by_intent",
+            "line_end": 111,
+            "line_start": 63,
+            "name": "ripple_bump_by_intent",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "9eb382fd67c7b1d8",
             "kind": "fn",
             "label": "pub fn scored_candidates_from_snapshot",
-            "line_end": 81,
-            "line_start": 26,
+            "line_end": 191,
+            "line_start": 115,
             "name": "scored_candidates_from_snapshot",
             "visibility": "public"
           },
@@ -16684,8 +17693,8 @@
             "body_hash": "cc4f5efab4446c4f",
             "kind": "fn",
             "label": "pub fn unexplored_pairs_scored_from_snapshot",
-            "line_end": 769,
-            "line_start": 668,
+            "line_end": 879,
+            "line_start": 778,
             "name": "unexplored_pairs_scored_from_snapshot",
             "visibility": "public"
           },
@@ -16693,8 +17702,8 @@
             "body_hash": "d9e4a7fa19205fd9",
             "kind": "fn",
             "label": "pub fn validate_candidates_from_snapshot",
-            "line_end": 625,
-            "line_start": 609,
+            "line_end": 735,
+            "line_start": 719,
             "name": "validate_candidates_from_snapshot",
             "visibility": "public"
           },
@@ -16702,8 +17711,8 @@
             "body_hash": "165590828f9c672a",
             "kind": "fn",
             "label": "pub fn validate_selection_from_snapshot",
-            "line_end": 401,
-            "line_start": 333,
+            "line_end": 511,
+            "line_start": 443,
             "name": "validate_selection_from_snapshot",
             "visibility": "public"
           },
@@ -16711,8 +17720,8 @@
             "body_hash": "fff186e217f6f82b",
             "kind": "struct",
             "label": "pub struct AlignCandidate",
-            "line_end": 412,
-            "line_start": 406,
+            "line_end": 522,
+            "line_start": 516,
             "name": "AlignCandidate",
             "visibility": "public"
           },
@@ -16720,17 +17729,26 @@
             "body_hash": "202e9756adff5340",
             "kind": "struct",
             "label": "pub struct BuildCandidate",
-            "line_end": 89,
-            "line_start": 83,
+            "line_end": 199,
+            "line_start": 193,
             "name": "BuildCandidate",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b5c1013383a12167",
+            "kind": "struct",
+            "label": "pub struct LaneDepths",
+            "line_end": 893,
+            "line_start": 888,
+            "name": "LaneDepths",
             "visibility": "public"
           },
           {
             "body_hash": "4900cf22ecda441a",
             "kind": "struct",
             "label": "pub struct NormativeCoverage",
-            "line_end": 156,
-            "line_start": 145,
+            "line_end": 266,
+            "line_start": 255,
             "name": "NormativeCoverage",
             "visibility": "public"
           },
@@ -16738,30 +17756,36 @@
             "body_hash": "d662c8b245a74544",
             "kind": "struct",
             "label": "pub struct ValidateCandidate",
-            "line_end": 290,
-            "line_start": 285,
+            "line_end": 400,
+            "line_start": 395,
             "name": "ValidateCandidate",
             "visibility": "public"
           }
         ],
         "symbols": [
           "pub const ALIGN_GRACE_DAYS",
+          "pub const BRIDGE_WEIGHT",
           "pub const REVIEW_CONFIDENCE",
+          "pub const RIPPLE_BUMP_HOP2",
+          "pub const RIPPLE_BUMP_HOP3",
           "pub enum ReviewCandidate",
           "pub fn align_candidates_from_snapshot_notes",
           "pub fn build_candidates_from_snapshot",
           "pub fn count_unexplored_pairs_from",
+          "pub fn lane_depths_from_snapshot",
           "pub fn normative_coverage_from_snapshot",
           "pub fn parse_sync_cause",
           "pub fn prove_candidates_from_parts",
           "pub fn quality_candidates_from_snapshot",
           "pub fn review_candidates_from_snapshot",
+          "pub fn ripple_bump_by_intent",
           "pub fn scored_candidates_from_snapshot",
           "pub fn unexplored_pairs_scored_from_snapshot",
           "pub fn validate_candidates_from_snapshot",
           "pub fn validate_selection_from_snapshot",
           "pub struct AlignCandidate",
           "pub struct BuildCandidate",
+          "pub struct LaneDepths",
           "pub struct NormativeCoverage",
           "pub struct ValidateCandidate"
         ]
@@ -16813,7 +17837,7 @@
         ]
       },
       {
-        "content_hash": "c8b105350a329382",
+        "content_hash": "52855924e0c3865e",
         "id": "ba1d0d50-3c9f-4d80-ba1a-acae8312990c",
         "imports": [
           "src/cli.rs",
@@ -16825,7 +17849,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T10:06:21.363805164+00:00",
+        "last_modified": "2026-06-15T15:53:20.539968358+00:00",
         "path": "src/commands/vocab.rs",
         "symbol_facts": [
           {
@@ -16967,7 +17991,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "54eef148f8f99926",
+            "body_hash": "166523a97f1ec8ca",
             "kind": "fn",
             "label": "pub fn validate_tags_from_registry",
             "line_end": 372,
@@ -17122,7 +18146,7 @@
         ]
       },
       {
-        "content_hash": "3d43ac54ad21ae1c",
+        "content_hash": "983a469d3f5a1e9f",
         "id": "bc90d157-fc72-4c2d-80be-8baf51682e92",
         "imports": [
           "src/db/mod.rs",
@@ -17131,14 +18155,48 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-14T20:04:01.539214106+00:00",
+        "last_modified": "2026-06-15T16:14:03.699124901+00:00",
         "path": "src/commands/status.rs",
         "symbol_facts": [
-          "{\"label\":\"fn render_status\",\"name\":\"render_status\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":54,\"line_end\":119,\"body_hash\":\"0996cfff7cdf2bf2\"}",
-          "{\"label\":\"pub fn run\",\"name\":\"run\",\"kind\":\"fn\",\"visibility\":\"public\",\"line_start\":11,\"line_end\":15,\"body_hash\":\"6339fc877a5e2c1d\"}",
-          "{\"label\":\"pub fn run_with_db\",\"name\":\"run_with_db\",\"kind\":\"fn\",\"visibility\":\"public\",\"line_start\":17,\"line_end\":52,\"body_hash\":\"083a7a026c6888a9\"}"
+          {
+            "body_hash": "e80cbfb132e3297c",
+            "kind": "fn",
+            "label": "fn other_lanes_line",
+            "line_end": 78,
+            "line_start": 62,
+            "name": "other_lanes_line",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4ee80bb38aacb55d",
+            "kind": "fn",
+            "label": "fn render_status",
+            "line_end": 160,
+            "line_start": 81,
+            "name": "render_status",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "6339fc877a5e2c1d",
+            "kind": "fn",
+            "label": "pub fn run",
+            "line_end": 15,
+            "line_start": 11,
+            "name": "run",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "a8a6b333523325cc",
+            "kind": "fn",
+            "label": "pub fn run_with_db",
+            "line_end": 54,
+            "line_start": 17,
+            "name": "run_with_db",
+            "visibility": "public"
+          }
         ],
         "symbols": [
+          "fn other_lanes_line",
           "fn render_status",
           "pub fn run",
           "pub fn run_with_db"
@@ -17498,11 +18556,11 @@
         ]
       },
       {
-        "content_hash": "be48292ae7d87fb1",
+        "content_hash": "63d0d44197688d92",
         "id": "c9f29777-86bc-4395-808f-eea18a497cb2",
         "imports": [],
         "language": "unknown",
-        "last_modified": "2026-06-15T13:34:22.249557937+00:00",
+        "last_modified": "2026-06-15T16:20:14.085889479+00:00",
         "path": "docs/COMMANDS.md",
         "symbol_facts": [],
         "symbols": []
@@ -17518,13 +18576,13 @@
         "symbols": []
       },
       {
-        "content_hash": "8e778706500145ee",
+        "content_hash": "7ab53de225c29dcd",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:38:15.552901118+00:00",
+        "last_modified": "2026-06-15T16:55:26.747193800+00:00",
         "path": "src/db/queries/stats.rs",
         "symbol_facts": [
           {
@@ -17532,9 +18590,124 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn all_blocked_is_zero_runnable_not_a_divide_by_zero",
-            "line_end": 842,
-            "line_start": 837,
+            "line_end": 868,
+            "line_start": 863,
             "name": "all_blocked_is_zero_runnable_not_a_divide_by_zero",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b02939fadaea07b3",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
+            "line_end": 1078,
+            "line_start": 1036,
+            "name": "betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "30237c709c81ee77",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn compass_marks_directive_vs_recommended",
+            "line_end": 1033,
+            "line_start": 1012,
+            "name": "compass_marks_directive_vs_recommended",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "69cfc5f55651f501",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn compass_phase_always_has_a_nonempty_queue",
+            "line_end": 1009,
+            "line_start": 968,
+            "name": "compass_phase_always_has_a_nonempty_queue",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "fcd0ef14a098da4d",
+            "kind": "fn",
+            "label": "fn gs_of",
+            "line_end": 941,
+            "line_start": 929,
+            "name": "gs_of",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "cf02064b74bc5043",
+            "kind": "fn",
+            "label": "fn intent",
+            "line_end": 894,
+            "line_start": 876,
+            "name": "intent",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "3c1e58fe8542dfab",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn no_bridges_leaves_scoring_on_pure_degree",
+            "line_end": 1190,
+            "line_start": 1167,
+            "name": "no_bridges_leaves_scoring_on_pure_degree",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c6d4f0b2151b7d0f",
+            "kind": "fn",
+            "label": "fn phase_of",
+            "line_end": 945,
+            "line_start": 943,
+            "name": "phase_of",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c9ca314a294d8cfa",
+            "kind": "fn",
+            "label": "fn queue_nonempty_for_phase",
+            "line_end": 965,
+            "line_start": 951,
+            "name": "queue_nonempty_for_phase",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "1562a8c2294ec8f9",
+            "kind": "fn",
+            "label": "fn rel",
+            "line_end": 912,
+            "line_start": 896,
+            "name": "rel",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "a39517aff22e84f2",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn ripple_bump_decays_with_distance_from_the_stale_frontier",
+            "line_end": 1114,
+            "line_start": 1081,
+            "name": "ripple_bump_decays_with_distance_from_the_stale_frontier",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "183e5d9ac442a98a",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn ripple_bump_empty_without_stale_edges",
+            "line_end": 1127,
+            "line_start": 1117,
+            "name": "ripple_bump_empty_without_stale_edges",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "9910985dbc1b27bf",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn ripple_elevates_an_edge_near_a_stale_region",
+            "line_end": 1164,
+            "line_start": 1130,
+            "name": "ripple_elevates_an_edge_near_a_stale_region",
             "visibility": "private"
           },
           {
@@ -17542,8 +18715,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn runnable_rate_equals_all_up_when_nothing_blocked",
-            "line_end": 834,
-            "line_start": 829,
+            "line_end": 860,
+            "line_start": 855,
             "name": "runnable_rate_equals_all_up_when_nothing_blocked",
             "visibility": "private"
           },
@@ -17552,17 +18725,26 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn runnable_rate_excludes_blocked_from_the_denominator",
-            "line_end": 826,
-            "line_start": 819,
+            "line_end": 852,
+            "line_start": 845,
             "name": "runnable_rate_excludes_blocked_from_the_denominator",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "e6d02bf1bde4f679",
+            "kind": "fn",
+            "label": "fn snap",
+            "line_end": 927,
+            "line_start": 914,
+            "name": "snap",
             "visibility": "private"
           },
           {
             "body_hash": "e826d43aea01c1c3",
             "kind": "fn",
             "label": "fn val",
-            "line_end": 816,
-            "line_start": 806,
+            "line_end": 842,
+            "line_start": 832,
             "name": "val",
             "visibility": "private"
           },
@@ -17579,8 +18761,8 @@
             "body_hash": "9e0d30f10b043c41",
             "kind": "fn",
             "label": "pub fn blocked_count_and_runnable_rate",
-            "line_end": 766,
-            "line_start": 750,
+            "line_end": 792,
+            "line_start": 776,
             "name": "blocked_count_and_runnable_rate",
             "visibility": "public"
           },
@@ -17588,8 +18770,8 @@
             "body_hash": "325356b69274c068",
             "kind": "fn",
             "label": "pub fn completeness_gaps_from_snapshot",
-            "line_end": 686,
-            "line_start": 619,
+            "line_end": 712,
+            "line_start": 645,
             "name": "completeness_gaps_from_snapshot",
             "visibility": "public"
           },
@@ -17597,8 +18779,8 @@
             "body_hash": "97539c1815f23e25",
             "kind": "fn",
             "label": "pub fn edge_status_counts_from_snapshot",
-            "line_end": 560,
-            "line_start": 530,
+            "line_end": 586,
+            "line_start": 556,
             "name": "edge_status_counts_from_snapshot",
             "visibility": "public"
           },
@@ -17606,17 +18788,17 @@
             "body_hash": "7b720628aa4b1777",
             "kind": "fn",
             "label": "pub fn failing_governs_from_snapshot",
-            "line_end": 718,
-            "line_start": 709,
+            "line_end": 744,
+            "line_start": 735,
             "name": "failing_governs_from_snapshot",
             "visibility": "public"
           },
           {
-            "body_hash": "e10563d4f419ef9b",
+            "body_hash": "9c6c30084028a2b9",
             "kind": "fn",
             "label": "pub fn graph_state_from_snapshot_parts",
-            "line_end": 488,
-            "line_start": 99,
+            "line_end": 514,
+            "line_start": 105,
             "name": "graph_state_from_snapshot_parts",
             "visibility": "public"
           },
@@ -17624,8 +18806,8 @@
             "body_hash": "671ebc9e5fa0186d",
             "kind": "fn",
             "label": "pub fn intents_without_validations_count_from_snapshot",
-            "line_end": 789,
-            "line_start": 768,
+            "line_end": 815,
+            "line_start": 794,
             "name": "intents_without_validations_count_from_snapshot",
             "visibility": "public"
           },
@@ -17633,8 +18815,8 @@
             "body_hash": "2aa69de15f2ebcf3",
             "kind": "fn",
             "label": "pub fn intents_without_validations_from_snapshot",
-            "line_end": 617,
-            "line_start": 598,
+            "line_end": 643,
+            "line_start": 624,
             "name": "intents_without_validations_from_snapshot",
             "visibility": "public"
           },
@@ -17642,8 +18824,8 @@
             "body_hash": "d0a9f24281452d0c",
             "kind": "fn",
             "label": "pub fn recent_passing_from_snapshot",
-            "line_end": 730,
-            "line_start": 720,
+            "line_end": 756,
+            "line_start": 746,
             "name": "recent_passing_from_snapshot",
             "visibility": "public"
           },
@@ -17651,8 +18833,8 @@
             "body_hash": "34a7906c2103e053",
             "kind": "fn",
             "label": "pub fn status_report_from_snapshot",
-            "line_end": 596,
-            "line_start": 562,
+            "line_end": 622,
+            "line_start": 588,
             "name": "status_report_from_snapshot",
             "visibility": "public"
           },
@@ -17660,8 +18842,8 @@
             "body_hash": "e7f8f35109f233df",
             "kind": "fn",
             "label": "pub fn tangled_files_from_snapshot",
-            "line_end": 800,
-            "line_start": 791,
+            "line_end": 826,
+            "line_start": 817,
             "name": "tangled_files_from_snapshot",
             "visibility": "public"
           },
@@ -17669,8 +18851,8 @@
             "body_hash": "69796d3d8ebd4194",
             "kind": "fn",
             "label": "pub fn top_intents_by_centrality_from_snapshot",
-            "line_end": 707,
-            "line_start": 688,
+            "line_end": 733,
+            "line_start": 714,
             "name": "top_intents_by_centrality_from_snapshot",
             "visibility": "public"
           },
@@ -17678,8 +18860,8 @@
             "body_hash": "f5b14e882040339f",
             "kind": "fn",
             "label": "pub fn uninspected_outside_queues_from_snapshot",
-            "line_end": 525,
-            "line_start": 500,
+            "line_end": 551,
+            "line_start": 526,
             "name": "uninspected_outside_queues_from_snapshot",
             "visibility": "public"
           },
@@ -17687,8 +18869,8 @@
             "body_hash": "3917fc04d250134f",
             "kind": "fn",
             "label": "pub fn validation_pass_rate_from_snapshot",
-            "line_end": 743,
-            "line_start": 732,
+            "line_end": 769,
+            "line_start": 758,
             "name": "validation_pass_rate_from_snapshot",
             "visibility": "public"
           },
@@ -17711,10 +18893,10 @@
             "visibility": "public"
           },
           {
-            "body_hash": "77bedbdb20e12c75",
+            "body_hash": "60677ded5d0ea454",
             "kind": "struct",
             "label": "pub struct GraphState",
-            "line_end": 90,
+            "line_end": 96,
             "line_start": 54,
             "name": "GraphState",
             "visibility": "public"
@@ -17723,8 +18905,8 @@
             "body_hash": "ef516f879b39c14b",
             "kind": "struct",
             "label": "pub struct GraphStateContext",
-            "line_end": 97,
-            "line_start": 93,
+            "line_end": 103,
+            "line_start": 99,
             "name": "GraphStateContext",
             "visibility": "public"
           },
@@ -17732,16 +18914,29 @@
             "body_hash": "6339cfa0b220fe71",
             "kind": "struct",
             "label": "pub struct UninspectedOutsideQueues",
-            "line_end": 498,
-            "line_start": 495,
+            "line_end": 524,
+            "line_start": 521,
             "name": "UninspectedOutsideQueues",
             "visibility": "public"
           }
         ],
         "symbols": [
           "fn all_blocked_is_zero_runnable_not_a_divide_by_zero",
+          "fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
+          "fn compass_marks_directive_vs_recommended",
+          "fn compass_phase_always_has_a_nonempty_queue",
+          "fn gs_of",
+          "fn intent",
+          "fn no_bridges_leaves_scoring_on_pure_degree",
+          "fn phase_of",
+          "fn queue_nonempty_for_phase",
+          "fn rel",
+          "fn ripple_bump_decays_with_distance_from_the_stale_frontier",
+          "fn ripple_bump_empty_without_stale_edges",
+          "fn ripple_elevates_an_edge_near_a_stale_region",
           "fn runnable_rate_equals_all_up_when_nothing_blocked",
           "fn runnable_rate_excludes_blocked_from_the_denominator",
+          "fn snap",
           "fn val",
           "impl CoverageAxis",
           "pub fn blocked_count_and_runnable_rate",
@@ -19377,7 +20572,7 @@
         ]
       },
       {
-        "content_hash": "fcae75735e11511b",
+        "content_hash": "1eb25535c0b2e08b",
         "id": "f764041a-598b-4de8-804c-42336c4f3bcd",
         "imports": [
           "src/db/mod.rs",
@@ -19385,7 +20580,7 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T13:32:30.668609273+00:00",
+        "last_modified": "2026-06-15T15:53:11.310637359+00:00",
         "path": "src/commands/smells.rs",
         "symbol_facts": [
           {
@@ -19407,7 +20602,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "5ff0bca4d169095c",
+            "body_hash": "a69682ab8fbf7a48",
             "kind": "fn",
             "label": "fn render",
             "line_end": 303,
@@ -19535,7 +20730,7 @@
         ]
       },
       {
-        "content_hash": "9b78d6fa9141a646",
+        "content_hash": "35f09039c2de66f5",
         "id": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a",
         "imports": [
           "src/db/mod.rs",
@@ -19543,7 +20738,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:55:42.038525973+00:00",
+        "last_modified": "2026-06-15T16:54:53.077763505+00:00",
         "path": "src/commands/sync.rs",
         "symbol_facts": [
           {
@@ -19551,8 +20746,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_when_change_is_outside_symbols",
-            "line_end": 569,
-            "line_start": 558,
+            "line_end": 581,
+            "line_start": 570,
             "name": "affected_falls_back_when_change_is_outside_symbols",
             "visibility": "private"
           },
@@ -19561,8 +20756,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_without_content",
-            "line_end": 525,
-            "line_start": 523,
+            "line_end": 537,
+            "line_start": 535,
             "name": "affected_falls_back_without_content",
             "visibility": "private"
           },
@@ -19571,8 +20766,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_without_prior_facts",
-            "line_end": 521,
-            "line_start": 517,
+            "line_end": 533,
+            "line_start": 529,
             "name": "affected_falls_back_without_prior_facts",
             "visibility": "private"
           },
@@ -19580,8 +20775,8 @@
             "body_hash": "cc32aa1f4d8adeb2",
             "kind": "fn",
             "label": "fn affected_intents",
-            "line_end": 475,
-            "line_start": 395,
+            "line_end": 487,
+            "line_start": 407,
             "name": "affected_intents",
             "visibility": "private"
           },
@@ -19590,8 +20785,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_narrows_to_the_changed_symbol_only",
-            "line_end": 552,
-            "line_start": 530,
+            "line_end": 564,
+            "line_start": 542,
             "name": "affected_narrows_to_the_changed_symbol_only",
             "visibility": "private"
           },
@@ -19599,8 +20794,8 @@
             "body_hash": "4a7c50ceee1a09a4",
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 493,
-            "line_start": 482,
+            "line_end": 505,
+            "line_start": 494,
             "name": "cf",
             "visibility": "private"
           },
@@ -19608,16 +20803,16 @@
             "body_hash": "828924da555bea11",
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 511,
-            "line_start": 494,
+            "line_end": 523,
+            "line_start": 506,
             "name": "imp",
             "visibility": "private"
           },
           {
-            "body_hash": "0276b0d40dadc524",
+            "body_hash": "64341e6b45be5763",
             "kind": "fn",
             "label": "fn run_with_sqlite",
-            "line_end": 386,
+            "line_end": 398,
             "line_start": 24,
             "name": "run_with_sqlite",
             "visibility": "private"
@@ -19984,12 +21179,12 @@
         "domain": "analysis",
         "id": "205377c4-ef33-4636-866d-f344e7dc1410",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "graded decaying sync ripple beyond one hop",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:26.039083+00:00",
+        "updated_at": "2026-06-15T17:01:37.327866+00:00",
         "visibility": "internal"
       },
       {
@@ -20018,12 +21213,12 @@
         "domain": "analysis",
         "id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "dependency-cycle smell over RELATES_TO",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:25.561445+00:00",
+        "updated_at": "2026-06-15T17:01:37.338848+00:00",
         "visibility": "internal"
       },
       {
@@ -20244,12 +21439,12 @@
         "domain": "analysis",
         "id": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "betweenness centrality in priority scoring",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:25.852964+00:00",
+        "updated_at": "2026-06-15T17:01:37.315876+00:00",
         "visibility": "internal"
       },
       {
@@ -20314,12 +21509,12 @@
         "domain": "analysis",
         "id": "3fe71c5a-d357-4c51-9363-e9874a755f83",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "intent-island reachability finding",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:25.748358+00:00",
+        "updated_at": "2026-06-15T17:01:37.351663+00:00",
         "visibility": "internal"
       },
       {
@@ -22227,6 +23422,16 @@
         "target_id": "rt:1adf640a-6a66-452c-8e22-ab4c2e3a98bb:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-15T16:56:50.969726+00:00",
+        "id": "05d7799d-31c0-4f04-8855-ab6d9bfd21c5",
+        "kind": "transition",
+        "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:87d4fe6a-2331-4376-bb9f-172b24eefda7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -25311,6 +26516,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-15T17:01:37.338848+00:00",
+        "id": "1fe8f407-5e59-42ff-8dc0-0790f153b93b",
+        "kind": "transition",
+        "target_id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:14:25.799198+00:00",
         "id": "1ffcd1c3-c60a-47f4-a3bc-5ba9085d3a09",
         "kind": "transition",
@@ -26040,6 +27255,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.327866+00:00",
+        "id": "24fedac2-024d-4f74-b5bf-1c13a30d9e1e",
+        "kind": "transition",
+        "target_id": "205377c4-ef33-4636-866d-f344e7dc1410",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T05:22:32.198719+00:00",
         "id": "25262857-9b18-4a01-a9d0-030f2fd9e2c7",
@@ -26247,6 +27472,16 @@
         "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:c3cc2a54-cf7f-4b47-9f19-677839166343",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.351663+00:00",
+        "id": "26dcedd3-3c60-4ea1-8fef-609d03baac67",
+        "kind": "decision",
+        "target_id": "3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built and tested: graph_algo.rs algorithms with unit tests + scoring/smells integration tests; cargo build/clippy/fmt/test clean on default and --no-default-features"
       },
       {
         "audience": "",
@@ -28870,6 +30105,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.338848+00:00",
+        "id": "3ba40295-080a-4522-a3fd-d4a478fbba37",
+        "kind": "decision",
+        "target_id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built and tested: graph_algo.rs algorithms with unit tests + scoring/smells integration tests; cargo build/clippy/fmt/test clean on default and --no-default-features"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T07:23:42.032811+00:00",
         "id": "3bb39db8-1eaa-4d89-8fc2-2cd5a41be58e",
@@ -29987,6 +31232,16 @@
         "target_id": "rt:0071f786-c3da-438e-ac50-0c12aaec9f84:e2d64ed4-b10f-48fd-995b-f533a6250a18",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.315876+00:00",
+        "id": "463e4498-050d-4ea0-a467-e80f59b9ff13",
+        "kind": "decision",
+        "target_id": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built and tested: graph_algo.rs algorithms with unit tests + scoring/smells integration tests; cargo build/clippy/fmt/test clean on default and --no-default-features"
       },
       {
         "audience": "",
@@ -31227,6 +32482,16 @@
         "target_id": "rt:29288a6c-3f0b-4762-a34d-ad4a714b5390:5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/schema.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.272823+00:00",
+        "id": "516e3135-d4a5-480b-a90e-9d609af6c472",
+        "kind": "transition",
+        "target_id": "rt:21f9f668-c79d-49e6-9702-9da8f9229b36:3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -34490,6 +35755,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.351663+00:00",
+        "id": "6baf226e-7d78-4f3d-8b96-fad1781b0839",
+        "kind": "transition",
+        "target_id": "3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T07:09:14.961126+00:00",
         "id": "6bba78e4-d933-407a-8a42-fe0bdf7f4130",
@@ -36850,6 +38125,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.327866+00:00",
+        "id": "7d3a139b-3291-4e30-b3a7-ca8cfe39b15e",
+        "kind": "decision",
+        "target_id": "205377c4-ef33-4636-866d-f344e7dc1410",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built and tested: graph_algo.rs algorithms with unit tests + scoring/smells integration tests; cargo build/clippy/fmt/test clean on default and --no-default-features"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "7d4068d5-cf3a-4515-9aa0-15471153d066",
@@ -38557,6 +39842,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:6a41dcbc-4035-4d08-8315-0d77803ca862",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/rule.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-15T16:56:50.969726+00:00",
+        "id": "8caeb0b0-7519-437c-83a7-689ef02d8d50",
+        "kind": "transition",
+        "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:95a32c01-480b-4d59-8633-fc249cd9a526",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/types.rs changed)"
       },
       {
         "audience": "",
@@ -42910,6 +44205,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:05:28.653785+00:00",
+        "id": "acc30722-e4bb-4611-a08d-0e0b627a7d9b",
+        "kind": "idea",
+        "target_id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "target_kind": "intent",
+        "text": "On loom's own mature graph this detector yields ONE 39-intent SCC, not crisp a->b->c->a loops — the directed RELATES_TO graph is densely mutually-reachable. Faithful to the spec (one finding per SCC>1) but the mega-component is hard to action. Consider a follow-up: report the condensation / smallest enclosing cycles, exclude the single dominant SCC, or make this advisory (non-gating) when the SCC exceeds a fraction of the graph."
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "accd60bc-3c56-485c-9577-f002a84ebbb6",
@@ -46680,6 +47985,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.315876+00:00",
+        "id": "cbddd598-c71b-47d1-a4fc-fc5174c168ee",
+        "kind": "transition",
+        "target_id": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "cbe3c29b-95e3-4fda-9530-f478c9257fa3",
@@ -47717,6 +49032,16 @@
         "target_id": "rt:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd:d7d485d7-c342-4c44-a57f-d08f7cf31941",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:01:37.207333+00:00",
+        "id": "d5433ab3-ad8b-459b-9b9c-474b747ab67d",
+        "kind": "transition",
+        "target_id": "rt:376864cc-37d5-4a40-bd4a-ad9af5992acb:205377c4-ef33-4636-866d-f344e7dc1410",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -53122,8 +54447,8 @@
         "command": "cargo test db::queries 2>/dev/null",
         "description": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "query-layer regression suite",
         "validation_type": "test"
       },
@@ -53158,8 +54483,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix compact command parity",
         "validation_type": "test"
       },
@@ -53167,8 +54492,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next all command parity",
         "validation_type": "test"
       },
@@ -53185,8 +54510,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "0bca574a-059b-4c23-ae03-274a5cc7ebe3",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next prove command parity",
         "validation_type": "test"
       },
@@ -53203,8 +54528,8 @@
         "command": "env -u LOOM_AGENT cargo check && env -u LOOM_AGENT cargo test",
         "description": "Proves the backend-neutral read repository facade compiles and preserves global/local plus SQLite command parity under the full test suite.",
         "id": "0d3fb69b-1221-43c0-9ed4-ff1e92e1d2c2",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "backend read repository boundary parity",
         "validation_type": "test"
       },
@@ -53221,8 +54546,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "1662f9ca-c05d-4e00-8846-06d9063c0fad",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery take command parity",
         "validation_type": "test"
       },
@@ -53230,9 +54555,18 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "1a2a4da6-5572-4721-971c-e0016513666b",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite door command parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test ripple",
+        "description": "",
+        "id": "1f64a74c-10b6-4b2b-b634-63502225c475",
+        "last_result": "passed",
+        "last_run": "2026-06-15T17:02:24.140924+00:00",
+        "name": "graded sync ripple — tests",
         "validation_type": "test"
       },
       {
@@ -53243,6 +54577,15 @@
         "last_run": "",
         "name": "structure_version cache for topology-keyed metrics — acceptance",
         "validation_type": "manual_check"
+      },
+      {
+        "command": "cargo test -- connected_components a_disconnected_subgraph a_fully_connected_graph island_detector_is_unarmed",
+        "description": "",
+        "id": "24a6004b-8653-4797-b562-813ed3d20fd7",
+        "last_result": "passed",
+        "last_run": "2026-06-15T17:03:12.622351+00:00",
+        "name": "intent-island detector — tests",
+        "validation_type": "test"
       },
       {
         "command": "cargo test --quiet find_ranks_by_relevance_and_skips_deprecated",
@@ -53284,8 +54627,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "316bbfe2-48d4-48f3-be07-722625cdfd84",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix take command parity",
         "validation_type": "test"
       },
@@ -53293,8 +54636,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "336a9745-854c-44ab-a81c-3f1edcb01b02",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite smells command parity",
         "validation_type": "test"
       },
@@ -53311,8 +54654,8 @@
         "command": "cargo test sqlite_search_parity && cargo test sqlite_find_command_parity",
         "description": "Compares SQLite typed search/door projections to the Grafeo query layer and compares the experimental LOOM_BACKEND=sqlite find/export command path to the installed global oracle on scratch graphs.",
         "id": "343a5cc7-9110-4641-9546-61c01eb0c2f4",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite find door search parity",
         "validation_type": "test"
       },
@@ -53320,8 +54663,8 @@
         "command": "cargo test -- completeness doctor 2>/dev/null",
         "description": "",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },
@@ -53365,8 +54708,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "42171f15-04d2-4e74-99ea-327ca2bc6f58",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite doctor command parity",
         "validation_type": "test"
       },
@@ -53419,8 +54762,8 @@
         "command": "cargo test sqlite_snapshot_parity",
         "description": "",
         "id": "5f1a017b-d22e-4255-826f-beb7d5610a1e",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite snapshot parity",
         "validation_type": "test"
       },
@@ -53428,8 +54771,8 @@
         "command": "cargo test governs_ripple_invalidates_passing_verdicts 2>/dev/null",
         "description": "",
         "id": "6263dc09-2cf5-4400-84da-35a7e13b14da",
-        "last_result": "passed",
-        "last_run": "2026-06-15T10:43:41.896826+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "governs ripple test",
         "validation_type": "test"
       },
@@ -53437,8 +54780,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "6428558b-e405-48c3-abd8-9e255da16b48",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite status command parity",
         "validation_type": "test"
       },
@@ -53509,8 +54852,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "747f2173-a6f2-4f37-8629-6bcf8999dba4",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality command parity",
         "validation_type": "test"
       },
@@ -53536,8 +54879,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "85244e24-e189-4cb8-a7e9-8745da673bb9",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next validate command parity",
         "validation_type": "test"
       },
@@ -53545,8 +54888,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "88fe328d-c9e1-4fa7-a931-3cde45e70bdf",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery command parity",
         "validation_type": "test"
       },
@@ -53590,8 +54933,8 @@
         "command": "cargo test --bin loom commands::guide::tests::lifecycle_contract_is_complete",
         "description": "Ratcheted unit test that guide --json teaches active lifecycle states, retirement/status separation, port reset, and related status families.",
         "id": "96f699bc-b8ed-445b-948b-331ef57ede11",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "guide lifecycle contract is complete",
         "validation_type": "test"
       },
@@ -53617,8 +54960,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next compact command parity",
         "validation_type": "test"
       },
@@ -53644,8 +54987,8 @@
         "command": "./target/debug/loom --json > /dev/null && ./target/debug/loom guide --json | python3 -m json.tool > /dev/null && ./target/debug/loom schema --json | python3 -m json.tool > /dev/null",
         "description": "",
         "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "orientation + guide + schema emit valid JSON",
         "validation_type": "assertion"
       },
@@ -53653,8 +54996,8 @@
         "command": "cargo test && target/debug/loom status --json >/dev/null && target/debug/loom next --all --json >/dev/null",
         "description": "The local SQLite-backed binary must pass the test suite, read the live SQLite graph, and route queues before it can replace the global installed loom. Export freshness is checked as the final closeout after validation results are recorded.",
         "id": "b1cae681-0183-4fac-bbc6-661594dc8f61",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "local SQLite dogfood gate before global install",
         "validation_type": "test"
       },
@@ -53680,8 +55023,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality take command parity",
         "validation_type": "test"
       },
@@ -53698,8 +55041,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "b95cd4eb-b2b7-496f-9e82-0f18866a3201",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next review command parity",
         "validation_type": "test"
       },
@@ -53716,8 +55059,8 @@
         "command": "python3 - <<'PY'\nfrom pathlib import Path\npaths = [\n    Path(\"README.md\"),\n    Path(\"docs/COMMANDS.md\"),\n    Path(\"docs/daemon-design.md\"),\n    Path(\"src/commands/guide.rs\"),\n    Path(\"src/commands/mod.rs\"),\n    Path(\".claude/skills/run-loom/SKILL.md\"),\n]\nneedles = [\"grafeo\", \"legacy lock\", \"legacy query\", \"must start loom serve\", \"serve daemon\"]\nhits = []\nfor path in paths:\n    text = path.read_text().lower()\n    for needle in needles:\n        if needle in text:\n            hits.append(f\"{path}: {needle}\")\nassert not hits, \"stale backend claims found: \" + \", \".join(hits)\nprint(\"sqlite docs stale backend claim check passed\")\nPY",
         "description": "Scan the public self-teaching docs for obsolete Grafeo/legacy-backend operational claims.",
         "id": "bdbf39a1-0177-472d-97b1-b8ae7fd7a23e",
-        "last_result": "passed",
-        "last_run": "2026-06-15T14:45:30.518684+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite docs stale backend claim check",
         "validation_type": "test"
       },
@@ -53743,8 +55086,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "c3dd4763-faaa-4fe7-bb3c-7ed005332ff9",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix command parity",
         "validation_type": "test"
       },
@@ -53761,8 +55104,8 @@
         "command": "",
         "description": "hypothesis:a098fe93-96db-470a-9592-dd0c66acf9da\nPredicted outcome to verify after adoption: read-heavy commands share one bulk graph projection per invocation family, making further performance work simpler and reducing repeated table scans across command handlers.",
         "id": "c6b29a71-7545-4644-820f-3e2db607ea06",
-        "last_result": "passed",
-        "last_run": "2026-06-15T10:45:43.504623+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "hypothesis outcome: unified graph query snapshot layer",
         "validation_type": "manual_check"
       },
@@ -53797,8 +55140,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "cf2f39e2-3ed0-4853-9cdb-ba35b33678aa",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next build command parity",
         "validation_type": "test"
       },
@@ -53851,8 +55194,8 @@
         "command": "./target/debug/loom status --json | python3 -c 'import sys,json; gs=json.load(sys.stdin)[\"graph_state\"]; assert gs[\"phase\"]'",
         "description": "",
         "id": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
-        "last_result": "passed",
-        "last_run": "2026-06-15T10:43:41.896826+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "status --json carries the graph_state pulse",
         "validation_type": "assertion"
       },
@@ -53860,8 +55203,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "ebe73777-2de9-4cf2-900b-af4ea6324128",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite report command parity",
         "validation_type": "test"
       },
@@ -53869,8 +55212,8 @@
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "eefa76b1-a35f-45fe-b459-5d5ee20a5e4c",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next align command parity",
         "validation_type": "test"
       },
@@ -53902,13 +55245,31 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test betweenness",
+        "description": "",
+        "id": "f56826da-13f0-4e67-b5ba-d407c128a53f",
+        "last_result": "passed",
+        "last_run": "2026-06-15T17:02:21.486658+00:00",
+        "name": "betweenness chokepoint ranking — tests",
+        "validation_type": "test"
+      },
+      {
         "command": "bash .claude/skills/run-loom/bench.sh 500 1000 2",
         "description": "Generates a synthetic graph of 500 intents / 1000 edges, imports it, and times loom status / next / smells / next --all; exits non-zero if any command exceeds 2 seconds",
         "id": "f6a2110b-0894-40ef-ae1d-4a0d65bb7861",
-        "last_result": "passed",
-        "last_run": "2026-06-15T10:43:41.896826+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "scale benchmark: hot commands under 2s at 500 intents",
         "validation_type": "benchmark"
+      },
+      {
+        "command": "cargo test -- scc_ a_directed_three_cycle a_reciprocal_pair an_acyclic_chain an_independent_edge",
+        "description": "",
+        "id": "f86938b9-b328-4f59-904c-4ee39ab2cfa5",
+        "last_result": "passed",
+        "last_run": "2026-06-15T17:03:10.866227+00:00",
+        "name": "dependency-cycle detector — tests",
+        "validation_type": "test"
       },
       {
         "command": "cargo test low_confidence_verdicts_feed_the_review_queue",

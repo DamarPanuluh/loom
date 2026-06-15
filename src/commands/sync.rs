@@ -246,10 +246,17 @@ fn run_with_sqlite(
 
     store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
 
+    // Graded ripple: the one-hop flips above produced the stale frontier; count
+    // the intents two/three hops out that now carry a decaying priority bump
+    // (status untouched). Reuse this post-sync snapshot for the closing pulse.
+    let post_snapshot = store.query_snapshot()?;
+    let intents_priority_bumped = crate::db::queries::ripple_bump_by_intent(&post_snapshot).len();
+
     let report = SyncReport {
         files_checked,
         files_changed,
         relates_to_edges_flagged: relates_to_flagged,
+        intents_priority_bumped,
         targets_edges_flagged: targets_flagged,
         governs_edges_flagged: governs_flagged,
         serves_edges_flagged: serves_flagged,
@@ -312,6 +319,12 @@ fn run_with_sqlite(
             "  RELATES_TO edges flagged:      {}",
             report.relates_to_edges_flagged
         );
+        if report.intents_priority_bumped > 0 {
+            println!(
+                "  Intents priority-bumped (2-3 hop): {} (graded ripple — no status change)",
+                report.intents_priority_bumped
+            );
+        }
         println!(
             "  GOVERNS verdicts flagged:      {}",
             report.governs_edges_flagged
@@ -376,8 +389,7 @@ fn run_with_sqlite(
         } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
             println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
         }
-        let snapshot = store.query_snapshot()?;
-        let graph_state = store.graph_state(&snapshot)?;
+        let graph_state = store.graph_state(&post_snapshot)?;
         println!("  → Next: {next_step}");
         println!("  {}", crate::output::fmt_pulse(&graph_state));
     }

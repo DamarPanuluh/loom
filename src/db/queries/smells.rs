@@ -61,7 +61,8 @@ pub struct Smell {
     /// | scattered_intent | tangled_file | unmeasured_intents
     /// | undeclared_coupling | layering_violation | recurrent_trouble
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
-    /// | hypothesis_accumulation | symbol_accountability_gap
+    /// | hypothesis_accumulation | symbol_accountability_gap | dependency_cycle
+    /// | intent_island
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -305,6 +306,26 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "do not bulk-ground symbols without checking intent meaning".into(),
             ],
             done_when: "actionable symbol gaps are grounded with precise locators, accepted with a current decision note, or converted into real intent split/build work".into(),
+        },
+        "dependency_cycle" => SmellTeaching {
+            principle: "A circular RELATES_TO dependency means a set of intents that all transitively depend on each other with no acyclic order — usually a missing shared abstraction or one relationship pointing the wrong way; exactly one edge in the loop is the weak link to redirect or sever.".into(),
+            inspect: vec![
+                "read each member intent's criteria and the edges that form the loop".into(),
+                "`loom edge show <id>` for each edge in the cycle before changing anything".into(),
+                "find the ONE relationship that is backwards or incidental (the cycle's weak link)".into(),
+            ],
+            avoid: vec!["do not leave a circular dependency implicit; do not break the loop by deleting a real relationship — redirect it or mark the incidental edge independent".into()],
+            done_when: "the cycle is broken (an edge redirected, marked independent, or a shared intent extracted so the loop disappears), or a current decision note on a member records why the mutual dependency is deliberate".into(),
+        },
+        "intent_island" => SmellTeaching {
+            principle: "Every intent should reach a system-level purpose through HIERARCHY or RELATES_TO; an island has no such path, so nothing in the graph explains why it exists in this product.".into(),
+            inspect: vec![
+                "read the island members and find which existing branch they belong under".into(),
+                "`loom edge hierarchy <parent> <child>` to attach the island to its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph".into(),
+                "if the island is a genuinely separate top-level purpose, add or confirm a system-level intent for it".into(),
+            ],
+            avoid: vec!["do not leave orphaned intents floating; do not attach an island to an unrelated parent just to silence the finding".into()],
+            done_when: "every island member reaches a system-level root through HIERARCHY or RELATES_TO, or a current decision note records why the disconnected subgraph is intentional".into(),
         },
         _ => SmellTeaching {
             principle: "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.".into(),
@@ -1661,6 +1682,198 @@ pub fn compute_smells_from_parts(
         }
     }
 
+    // 15. Dependency cycle — a circular RELATES_TO dependency. RELATES_TO is
+    //     stored directed (from→to; a 2-cycle needs both a→b and b→a, a longer
+    //     cycle a→b→c→a), so a strongly-connected component of size > 1 is a set
+    //     of intents that all transitively depend on each other with no acyclic
+    //     ordering. `independent` edges assert NO relationship and are excluded.
+    //     One finding per cycle. (Most loom analysis treats RELATES_TO as
+    //     undirected — under that lens an SCC is vacuous; the cycle question is
+    //     the one place the stored direction carries meaning.)
+    {
+        let active: Vec<&crate::types::Intent> = intents
+            .iter()
+            .filter(|i| i.status != "deprecated")
+            .collect();
+        let n = active.len();
+        let idx: HashMap<&str, usize> = active
+            .iter()
+            .enumerate()
+            .map(|(i, intent)| (intent.id.as_str(), i))
+            .collect();
+        let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); n];
+        let mut seen_edge: HashSet<(usize, usize)> = HashSet::new();
+        for e in relates {
+            if e.inspection_status == "independent" {
+                continue;
+            }
+            let (Some(&a), Some(&b)) = (idx.get(e.from_id.as_str()), idx.get(e.to_id.as_str()))
+            else {
+                continue;
+            };
+            if a != b && seen_edge.insert((a, b)) {
+                adjacency[a].push(b);
+            }
+        }
+        for comp in super::graph_algo::strongly_connected_components(n, &adjacency) {
+            if comp.len() < 2 {
+                continue;
+            }
+            let mut members: Vec<&crate::types::Intent> = comp.iter().map(|&i| active[i]).collect();
+            members.sort_by(|a, b| a.id.cmp(&b.id));
+            let member_set: HashSet<&str> = members.iter().map(|i| i.id.as_str()).collect();
+            let names: Vec<String> = members.iter().map(|i| format!("'{}'", i.name)).collect();
+            // Re-opens when an edge in the loop is re-inspected (the structure
+            // the ruling judged changed): anchor on the newest last_inspected
+            // among the cycle's internal edges.
+            let cycle_anchor = relates
+                .iter()
+                .filter(|e| {
+                    e.inspection_status != "independent"
+                        && member_set.contains(e.from_id.as_str())
+                        && member_set.contains(e.to_id.as_str())
+                })
+                .map(|e| e.last_inspected.as_str())
+                .max()
+                .unwrap_or("");
+            let anchor = members[0]; // smallest id — the stable place to rule
+            let summary = format!(
+                "circular RELATES_TO dependency among {} intents: {}",
+                members.len(),
+                names.join(", ")
+            );
+            if let Some(note) = adjudicated(anchor.id.as_str(), cycle_anchor) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "dependency_cycle".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "any edge in the cycle is re-inspected".into(),
+                    teaching: teaching_for("dependency_cycle"),
+                });
+            } else {
+                smells.push(Smell {
+                    kind: "dependency_cycle".into(),
+                    score: 5.0 + comp.len() as f64,
+                    summary,
+                    evidence: format!(
+                        "the directed RELATES_TO graph has a strongly-connected component of size {} (every member can reach every other and return): {}",
+                        members.len(),
+                        names.join(", ")
+                    ),
+                    remedy: format!(
+                        "break the loop: `loom edge show <id>` each edge in the cycle, then redirect or `loom edge explore <a> <b> independent` the ONE relationship that is backwards or incidental (do not delete a real relationship); if the mutual dependency is DELIBERATE, record it: `loom note add --intent {} --kind decision --text \"<why this cycle is intended>\"` (re-inspecting any cycle edge re-opens this)",
+                        anchor.id
+                    ),
+                    teaching: teaching_for("dependency_cycle"),
+                });
+            }
+        }
+    }
+
+    // 16. Intent island — a subgraph with no path to a system-level root. The
+    //     UNDIRECTED connectivity over HIERARCHY + non-independent RELATES_TO
+    //     partitions intents into components; a component holding no
+    //     system-level intent cannot reach any product purpose. One finding per
+    //     island. When the graph has NO system root at all the detector is
+    //     unarmed (nothing to be an island relative to) and stays silent — the
+    //     missing-system-root gap is the granularity contract's problem, not
+    //     this detector's.
+    {
+        let active: Vec<&crate::types::Intent> = intents
+            .iter()
+            .filter(|i| i.status != "deprecated")
+            .collect();
+        let n = active.len();
+        let has_system = active.iter().any(|i| i.abstraction_level == "system");
+        if has_system && n > 0 {
+            let idx: HashMap<&str, usize> = active
+                .iter()
+                .enumerate()
+                .map(|(i, intent)| (intent.id.as_str(), i))
+                .collect();
+            let mut neighbors: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+            for (p, c) in hierarchy {
+                if let (Some(&a), Some(&b)) = (idx.get(p.as_str()), idx.get(c.as_str())) {
+                    if a != b {
+                        neighbors[a].insert(b);
+                        neighbors[b].insert(a);
+                    }
+                }
+            }
+            for e in relates {
+                if e.inspection_status == "independent" {
+                    continue;
+                }
+                if let (Some(&a), Some(&b)) =
+                    (idx.get(e.from_id.as_str()), idx.get(e.to_id.as_str()))
+                {
+                    if a != b {
+                        neighbors[a].insert(b);
+                        neighbors[b].insert(a);
+                    }
+                }
+            }
+            let adjacency: Vec<Vec<usize>> = neighbors
+                .into_iter()
+                .map(|s| s.into_iter().collect())
+                .collect();
+            for comp in super::graph_algo::connected_components(n, &adjacency) {
+                if comp
+                    .iter()
+                    .any(|&i| active[i].abstraction_level == "system")
+                {
+                    continue; // reaches a system root — not an island
+                }
+                let mut members: Vec<&crate::types::Intent> =
+                    comp.iter().map(|&i| active[i]).collect();
+                members.sort_by(|a, b| a.id.cmp(&b.id));
+                let names: Vec<String> = members.iter().map(|i| format!("'{}'", i.name)).collect();
+                let anchor = members[0]; // smallest id
+                                         // A re-grounding of a member is the structural change that
+                                         // re-opens a "deliberately separate" ruling.
+                let island_anchor = members
+                    .iter()
+                    .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
+                    .max()
+                    .unwrap_or("");
+                let summary = format!(
+                    "{} intent(s) form an island with no path to a system-level root: {}",
+                    members.len(),
+                    names.join(", ")
+                );
+                if let Some(note) = adjudicated(anchor.id.as_str(), island_anchor) {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "intent_island".into(),
+                        summary,
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "a member is re-grounded".into(),
+                        teaching: teaching_for("intent_island"),
+                    });
+                } else {
+                    smells.push(Smell {
+                        kind: "intent_island".into(),
+                        score: 5.0 + members.len() as f64,
+                        summary,
+                        evidence: format!(
+                            "no HIERARCHY or non-independent RELATES_TO path connects {} to any system-level intent: {}",
+                            if members.len() == 1 { "this intent" } else { "these intents" },
+                            names.join(", ")
+                        ),
+                        remedy: format!(
+                            "attach the island: `loom edge hierarchy <parent> <child>` under its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph; if it is a genuinely separate top-level purpose, add a system intent for it; if the separation is DELIBERATE, record it: `loom note add --intent {} --kind decision --text \"<why this subgraph is intentionally disconnected>\"` (re-grounding a member re-opens this)",
+                            anchor.id
+                        ),
+                        teaching: teaching_for("intent_island"),
+                    });
+                }
+            }
+        }
+    }
+
     smells.sort_by(|a, b| {
         b.score
             .partial_cmp(&a.score)
@@ -2412,6 +2625,184 @@ mod proof_locality_tests {
         assert!(
             out.is_empty(),
             "no symbol facts → unarmed → silent: {out:?}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod cycle_island_tests {
+    use super::*;
+    use crate::types::Intent;
+
+    fn intent(id: &str, level: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: format!("intent {id}"),
+            description: format!("does {id} things"),
+            abstraction_level: level.into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn rel(from: &str, to: &str) -> crate::types::RelatesTo {
+        crate::types::RelatesTo {
+            id: format!("rt:{from}:{to}"),
+            from_id: from.into(),
+            to_id: to.into(),
+            from_name: from.into(),
+            to_name: to.into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            priority_score: 0.0,
+            notes: String::new(),
+        }
+    }
+
+    fn report(
+        intents: Vec<Intent>,
+        hierarchy: Vec<(String, String)>,
+        relates: Vec<crate::types::RelatesTo>,
+    ) -> SmellReport {
+        let snapshot = QuerySnapshot::from_parts(
+            intents,
+            hierarchy,
+            relates,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            None,
+        );
+        compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap()
+    }
+
+    fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
+        r.open.iter().filter(|s| s.kind == kind).collect()
+    }
+
+    // A system root parents a..c so they are never islands; the cycle, if any,
+    // is purely in the RELATES_TO direction.
+    fn rooted(children: &[&str]) -> (Vec<Intent>, Vec<(String, String)>) {
+        let mut intents = vec![intent("sys", "system")];
+        let mut hierarchy = Vec::new();
+        for c in children {
+            intents.push(intent(c, "feature"));
+            hierarchy.push(("sys".to_string(), c.to_string()));
+        }
+        (intents, hierarchy)
+    }
+
+    #[test]
+    fn a_directed_three_cycle_is_one_finding_naming_its_members() {
+        let (intents, hierarchy) = rooted(&["a", "b", "c"]);
+        let relates = vec![rel("a", "b"), rel("b", "c"), rel("c", "a")];
+        let r = report(intents, hierarchy, relates);
+        let cycles = of_kind(&r, "dependency_cycle");
+        assert_eq!(cycles.len(), 1, "one finding for the one cycle: {cycles:?}");
+        for m in ["intent a", "intent b", "intent c"] {
+            assert!(
+                cycles[0].summary.contains(m),
+                "names {m}: {}",
+                cycles[0].summary
+            );
+        }
+    }
+
+    #[test]
+    fn a_reciprocal_pair_is_a_two_cycle() {
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        // Both directions recorded → a strongly-connected pair.
+        let relates = vec![rel("a", "b"), rel("b", "a")];
+        let r = report(intents, hierarchy, relates);
+        assert_eq!(of_kind(&r, "dependency_cycle").len(), 1);
+    }
+
+    #[test]
+    fn an_acyclic_chain_reports_no_cycle() {
+        let (intents, hierarchy) = rooted(&["a", "b", "c"]);
+        let relates = vec![rel("a", "b"), rel("b", "c")]; // DAG
+        let r = report(intents, hierarchy, relates);
+        assert!(of_kind(&r, "dependency_cycle").is_empty());
+    }
+
+    #[test]
+    fn an_independent_edge_does_not_close_a_cycle() {
+        let (intents, hierarchy) = rooted(&["a", "b", "c"]);
+        let mut back = rel("c", "a");
+        back.inspection_status = "independent".into(); // asserts NO relationship
+        let relates = vec![rel("a", "b"), rel("b", "c"), back];
+        let r = report(intents, hierarchy, relates);
+        assert!(
+            of_kind(&r, "dependency_cycle").is_empty(),
+            "an independent edge cannot form the loop"
+        );
+    }
+
+    #[test]
+    fn a_disconnected_subgraph_is_an_island() {
+        // sys—a is connected; x—y float free with no path to a system root.
+        let mut intents = vec![intent("sys", "system"), intent("a", "feature")];
+        intents.push(intent("x", "feature"));
+        intents.push(intent("y", "feature"));
+        let hierarchy = vec![("sys".to_string(), "a".to_string())];
+        let relates = vec![rel("x", "y")];
+        let r = report(intents, hierarchy, relates);
+        let islands = of_kind(&r, "intent_island");
+        assert_eq!(
+            islands.len(),
+            1,
+            "the x—y component is one island: {islands:?}"
+        );
+        assert!(islands[0].summary.contains("intent x"));
+        assert!(islands[0].summary.contains("intent y"));
+    }
+
+    #[test]
+    fn a_fully_connected_graph_has_no_islands() {
+        let (mut intents, mut hierarchy) = rooted(&["a", "b"]);
+        intents.push(intent("c", "feature"));
+        // c reaches the system root via a RELATES_TO edge, not hierarchy.
+        hierarchy.retain(|_| true);
+        let relates = vec![rel("a", "c")];
+        let r = report(intents, hierarchy, relates);
+        assert!(of_kind(&r, "intent_island").is_empty());
+    }
+
+    #[test]
+    fn island_detector_is_unarmed_without_a_system_root() {
+        // No system intent at all → nothing to be an island relative to.
+        let intents = vec![intent("a", "feature"), intent("b", "feature")];
+        let relates = vec![rel("a", "b")];
+        let r = report(intents, vec![], relates);
+        assert!(
+            of_kind(&r, "intent_island").is_empty(),
+            "silent without a system root (missing-root is a different problem)"
         );
     }
 }

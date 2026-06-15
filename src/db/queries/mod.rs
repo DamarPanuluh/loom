@@ -6,6 +6,7 @@
 
 pub mod completeness;
 pub mod find;
+pub mod graph_algo;
 pub mod integrity;
 pub mod intent;
 pub mod meta;

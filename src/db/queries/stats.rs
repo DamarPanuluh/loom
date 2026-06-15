@@ -868,8 +868,9 @@ mod tests {
     }
 
     use super::super::scoring::{
-        build_candidates_from_snapshot, quality_candidates_from_snapshot,
-        scored_candidates_from_snapshot, validate_candidates_from_snapshot,
+        build_candidates_from_snapshot, quality_candidates_from_snapshot, ripple_bump_by_intent,
+        scored_candidates_from_snapshot, validate_candidates_from_snapshot, RIPPLE_BUMP_HOP2,
+        RIPPLE_BUMP_HOP3,
     };
 
     fn intent(id: &str, lifecycle: &str) -> Intent {
@@ -1029,5 +1030,162 @@ mod tests {
             vec![rel("a", "b", "needs_reverification")],
         );
         assert_eq!(gs_of(&stale_only).next_kind, "recommended");
+    }
+
+    #[test]
+    fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique() {
+        // A 5-clique {c1..c5} (every pair adjacent → betweenness 0) plus a
+        // bridge c1—m—z hanging off it. `m` is a low-degree chokepoint: every
+        // path from `z` into the clique routes through it, so it has the highest
+        // betweenness in the graph; `c2..c5` are high-degree but bridge nothing.
+        let mut intents = Vec::new();
+        for id in ["c1", "c2", "c3", "c4", "c5", "m", "z"] {
+            intents.push(intent(id, "implemented"));
+        }
+        let clique = ["c1", "c2", "c3", "c4", "c5"];
+        let mut relates = Vec::new();
+        for i in 0..clique.len() {
+            for j in (i + 1)..clique.len() {
+                relates.push(rel(clique[i], clique[j], "uninspected"));
+            }
+        }
+        relates.push(rel("c1", "m", "uninspected")); // bridge into the clique
+        relates.push(rel("m", "z", "uninspected")); // the pendant beyond the bridge
+        let snapshot = snap(intents, relates);
+
+        // The bridge edge c1—m has a SMALLER degree sum than the clique edge
+        // c2—c3 (7 vs 8), so on degree alone it would rank lower.
+        let deg = &snapshot.degrees;
+        let bridge_degree = deg["c1"] + deg["m"];
+        let clique_degree = deg["c2"] + deg["c3"];
+        assert!(
+            bridge_degree < clique_degree,
+            "by degree alone the bridge edge loses: {bridge_degree} vs {clique_degree}"
+        );
+
+        // But scoring adds bridge centrality, so the chokepoint edge wins.
+        let scored = scored_candidates_from_snapshot(&snapshot, "discovery");
+        let pos = |id: &str| scored.iter().position(|(e, _)| e.id == id).unwrap();
+        let bridge_pos = pos("rt:c1:m");
+        let clique_pos = pos("rt:c2:c3");
+        assert!(
+            bridge_pos < clique_pos,
+            "betweenness must rank the low-degree chokepoint edge above the high-degree clique edge: \
+             c1—m at {bridge_pos}, c2—c3 at {clique_pos}"
+        );
+        let score_of = |id: &str| scored.iter().find(|(e, _)| e.id == id).unwrap().1;
+        assert!(score_of("rt:c1:m") > score_of("rt:c2:c3"));
+    }
+
+    #[test]
+    fn ripple_bump_decays_with_distance_from_the_stale_frontier() {
+        // Chain a—b—c—d—e with the a—b edge stale (needs_reverification). The
+        // frontier is {a,b}; c is one hop from it (two from the change), d two
+        // hops, e beyond the graded radius.
+        let intents = ["a", "b", "c", "d", "e"]
+            .iter()
+            .map(|id| intent(id, "implemented"))
+            .collect();
+        let relates = vec![
+            rel("a", "b", "needs_reverification"),
+            rel("b", "c", "uninspected"),
+            rel("c", "d", "uninspected"),
+            rel("d", "e", "uninspected"),
+        ];
+        let snapshot = snap(intents, relates);
+        let bump = ripple_bump_by_intent(&snapshot);
+
+        assert_eq!(
+            bump.get("c"),
+            Some(&RIPPLE_BUMP_HOP2),
+            "two hops from change"
+        );
+        assert_eq!(
+            bump.get("d"),
+            Some(&RIPPLE_BUMP_HOP3),
+            "three hops from change"
+        );
+        assert!(
+            !bump.contains_key("e"),
+            "beyond the graded radius — no bump"
+        );
+        // The frontier itself is already flipped/urgent and gets NO bump.
+        assert!(!bump.contains_key("a") && !bump.contains_key("b"));
+    }
+
+    #[test]
+    fn ripple_bump_empty_without_stale_edges() {
+        // Nothing needs_reverification → no frontier → no ripple, scoring
+        // identical to a freshly-synced graph.
+        let intents = ["a", "b", "c"]
+            .iter()
+            .map(|id| intent(id, "implemented"))
+            .collect();
+        let relates = vec![rel("a", "b", "uninspected"), rel("b", "c", "passing")];
+        let snapshot = snap(intents, relates);
+        assert!(ripple_bump_by_intent(&snapshot).is_empty());
+    }
+
+    #[test]
+    fn ripple_elevates_an_edge_near_a_stale_region() {
+        // Two disjoint triangles (each a clique → zero betweenness, every node
+        // degree 2). A pendant `x` is wired to `a` with a stale edge, putting
+        // triangle T1={a,b,c} next to the stale frontier and T2={d,e,f} far from
+        // it. The b—c and e—f edges have identical degree and (zero) betweenness,
+        // so any ranking difference is the graded ripple alone.
+        let intents = ["a", "b", "c", "d", "e", "f", "x"]
+            .iter()
+            .map(|id| intent(id, "implemented"))
+            .collect();
+        let relates = vec![
+            rel("a", "b", "uninspected"),
+            rel("a", "c", "uninspected"),
+            rel("b", "c", "uninspected"),
+            rel("d", "e", "uninspected"),
+            rel("d", "f", "uninspected"),
+            rel("e", "f", "uninspected"),
+            rel("a", "x", "needs_reverification"), // the stale frontier sits on T1
+        ];
+        let snapshot = snap(intents, relates);
+
+        let deg = &snapshot.degrees;
+        assert_eq!(
+            deg["b"] + deg["c"],
+            deg["e"] + deg["f"],
+            "equal degree sums"
+        );
+
+        let scored = scored_candidates_from_snapshot(&snapshot, "discovery");
+        let score_of = |id: &str| scored.iter().find(|(e, _)| e.id == id).unwrap().1;
+        assert!(
+            score_of("rt:b:c") > score_of("rt:e:f"),
+            "the edge near the stale region must rank above the equally-shaped far edge"
+        );
+    }
+
+    #[test]
+    fn no_bridges_leaves_scoring_on_pure_degree() {
+        // A clique has zero betweenness everywhere → the bridge term vanishes
+        // and edges order by degree+urgency exactly as before the feature.
+        let intents = vec![
+            intent("a", "implemented"),
+            intent("b", "implemented"),
+            intent("c", "implemented"),
+        ];
+        let relates = vec![
+            rel("a", "b", "uninspected"),
+            rel("a", "c", "uninspected"),
+            rel("b", "c", "uninspected"),
+        ];
+        let snapshot = snap(intents, relates);
+        assert!(
+            snapshot.betweenness().values().all(|&b| b == 0.0),
+            "a triangle has no bridges"
+        );
+        // All three edges have identical degree sums (2+2) and status → equal
+        // scores, no betweenness perturbation.
+        let scored = scored_candidates_from_snapshot(&snapshot, "discovery");
+        let first = scored[0].1;
+        assert!(scored.iter().all(|(_, s)| (*s - first).abs() < 1e-9));
     }
 }

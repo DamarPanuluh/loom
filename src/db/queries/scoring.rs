@@ -21,6 +21,95 @@ pub fn parse_sync_cause(text: &str) -> Option<&str> {
         .strip_suffix(" changed")
 }
 
+/// Weight of the bridge-centrality term in `loom next` edge scoring. Degree
+/// measures local blast radius; betweenness measures whether an intent is a
+/// CHOKEPOINT on the paths between regions of the graph — a structural risk a
+/// degree count is blind to. The bump per endpoint is `BRIDGE_WEIGHT × (that
+/// intent's betweenness / the graph's max betweenness)`, so the single most
+/// bridge-like intent contributes the full weight and everyone else scales
+/// down. At 3.0 it is on the order of an urgency step (uninspected=2, failing=4)
+/// and a few degrees — enough that a low-degree chokepoint edge can overtake a
+/// higher-degree clique edge, never so much that betweenness alone dominates.
+/// A graph with no bridges (max betweenness 0 — e.g. a clique or a tree of
+/// stars) gets no bump and scores exactly as before.
+pub const BRIDGE_WEIGHT: f64 = 3.0;
+
+/// Decaying priority bump for the graded sync ripple. `loom sync` FLIPS only
+/// the direct one-hop RELATES_TO neighbors of a changed file's intents to
+/// `needs_reverification` (the blast radius stays surgical — one hop). But a
+/// change two or three hops out is *suggestive*, not yet stale: those edges
+/// keep their status and instead receive a decaying priority nudge so the
+/// analyzer drifts toward the changed region without the graph lying about what
+/// has actually been invalidated. HOP2 (two hops from the change) > HOP3.
+pub const RIPPLE_BUMP_HOP2: f64 = 2.0;
+pub const RIPPLE_BUMP_HOP3: f64 = 1.0;
+
+/// Per-intent graded-ripple priority bump derived from the CURRENT stale
+/// frontier — the set of intents that are an endpoint of a `needs_reverification`
+/// RELATES_TO edge (exactly what the one-hop flip produces). Distance is
+/// measured from that frontier over the undirected real-RELATES_TO graph:
+///
+/// - frontier itself (distance 0): the changed intents AND their one-hop
+///   neighbors — already flipped/urgent, so **no** bump.
+/// - distance 1 (two hops from the change): `RIPPLE_BUMP_HOP2`.
+/// - distance 2 (three hops from the change): `RIPPLE_BUMP_HOP3`.
+/// - farther / unreached: nothing.
+///
+/// Deriving from `needs_reverification` rather than from "what this sync
+/// touched" keeps the bump COHERENT with scoring and self-correcting: as the
+/// one-hop edges get re-inspected and leave `needs_reverification`, the frontier
+/// shrinks and the downstream bumps fade on their own. Empty map when nothing is
+/// stale (no frontier → no ripple).
+pub fn ripple_bump_by_intent(snapshot: &QuerySnapshot) -> HashMap<String, f64> {
+    let ids: Vec<&str> = snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let n = ids.len();
+    if n == 0 {
+        return HashMap::new();
+    }
+    let index: HashMap<&str, usize> = ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    let mut neighbors: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    let mut frontier: HashSet<usize> = HashSet::new();
+    for edge in &snapshot.relates {
+        if edge.inspection_status == "independent" {
+            continue;
+        }
+        let (Some(&a), Some(&b)) = (
+            index.get(edge.from_id.as_str()),
+            index.get(edge.to_id.as_str()),
+        ) else {
+            continue;
+        };
+        if a == b {
+            continue;
+        }
+        neighbors[a].insert(b);
+        neighbors[b].insert(a);
+        if edge.inspection_status == "needs_reverification" {
+            frontier.insert(a);
+            frontier.insert(b);
+        }
+    }
+    if frontier.is_empty() {
+        return HashMap::new();
+    }
+    let adjacency: Vec<Vec<usize>> = neighbors
+        .into_iter()
+        .map(|s| s.into_iter().collect())
+        .collect();
+    let sources: Vec<usize> = frontier.into_iter().collect();
+    let dist = super::graph_algo::hop_distances(n, &adjacency, &sources);
+    let mut out = HashMap::new();
+    for (i, &d) in dist.iter().enumerate() {
+        let bump = match d {
+            1 => RIPPLE_BUMP_HOP2,
+            2 => RIPPLE_BUMP_HOP3,
+            _ => continue, // 0 (frontier, already stale) or >2 / unreached
+        };
+        out.insert(ids[i].to_string(), bump);
+    }
+    out
+}
+
 /// A build work item: the intent, its priority, and whether it is a non-leaf
 /// whose children are all implemented (a roll-up, not a code-writing task).
 pub fn scored_candidates_from_snapshot(
@@ -54,6 +143,24 @@ pub fn scored_candidates_from_snapshot(
         return Vec::new();
     }
 
+    // Bridge centrality, normalized so the most bridge-like intent contributes
+    // the full BRIDGE_WEIGHT and others scale down. Computed once over the
+    // shared snapshot (cached there); `max_bc == 0` (no bridges) leaves scoring
+    // byte-identical to the pure-degree formula.
+    let betweenness = snapshot.betweenness();
+    let max_bc = betweenness.values().cloned().fold(0.0f64, f64::max);
+    let bridge_bonus = |id: &str| -> f64 {
+        if max_bc <= 0.0 {
+            0.0
+        } else {
+            BRIDGE_WEIGHT * betweenness.get(id).copied().unwrap_or(0.0) / max_bc
+        }
+    };
+
+    // Graded sync-ripple bump: edges two/three hops from a stale region rank
+    // higher without being flipped. Empty (no cost) when nothing is stale.
+    let ripple = ripple_bump_by_intent(snapshot);
+
     let now = chrono::Utc::now();
     let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
     for edge in candidates {
@@ -73,7 +180,10 @@ pub fn scored_candidates_from_snapshot(
         } else {
             0.0
         };
-        let score = deg_a as f64 + deg_b as f64 + urgency - age_penalty;
+        let bridge = bridge_bonus(&edge.from_id) + bridge_bonus(&edge.to_id);
+        let ripple_bump = ripple.get(&edge.from_id).copied().unwrap_or(0.0)
+            + ripple.get(&edge.to_id).copied().unwrap_or(0.0);
+        let score = deg_a as f64 + deg_b as f64 + urgency - age_penalty + bridge + ripple_bump;
         scored.push((edge, score));
     }
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
