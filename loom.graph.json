@@ -3664,14 +3664,14 @@
       },
       {
         "confidence": 0.0,
-        "created_at": "2026-06-15T17:01:16.809599+00:00",
+        "created_at": "2026-06-15T17:37:55.303443+00:00",
         "criterion": "",
         "evidence": "",
         "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "inspected_by": "",
         "inspection_status": "passing",
         "last_inspected": "",
-        "locator": "circular RELATES_TO dependency among",
+        "locator": "mutual RELATES_TO dependency",
         "notes": "",
         "to": "37581090-ca9d-48e6-95ef-eb1434b08eea"
       },
@@ -6363,7 +6363,7 @@
         "evidence": "src/db/queries/smells.rs sections 15 (strongly_connected_components) and 16 (connected_components) are adjacent in compute_smells_from_parts; both exclude independent edges and build the index identically",
         "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-15T17:01:37.272823+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -11869,11 +11869,11 @@
         ]
       },
       {
-        "content_hash": "fe60b0486472efea",
+        "content_hash": "0f916d16b2a862a0",
         "id": "128cfcf2-6d51-4930-8c23-eb55db259309",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-15T16:54:53.088322581+00:00",
+        "last_modified": "2026-06-15T17:32:34.981514940+00:00",
         "path": "src/db/queries/graph_algo.rs",
         "symbol_facts": [
           {
@@ -11881,8 +11881,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn betweenness_is_zero_in_a_complete_graph",
-            "line_end": 237,
-            "line_start": 229,
+            "line_end": 165,
+            "line_start": 157,
             "name": "betweenness_is_zero_in_a_complete_graph",
             "visibility": "private"
           },
@@ -11891,8 +11891,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn betweenness_of_a_path_peaks_in_the_middle",
-            "line_end": 226,
-            "line_start": 215,
+            "line_end": 154,
+            "line_start": 143,
             "name": "betweenness_of_a_path_peaks_in_the_middle",
             "visibility": "private"
           },
@@ -11901,8 +11901,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn bridge_node_has_the_highest_betweenness",
-            "line_end": 259,
-            "line_start": 240,
+            "line_end": 187,
+            "line_start": 168,
             "name": "bridge_node_has_the_highest_betweenness",
             "visibility": "private"
           },
@@ -11911,18 +11911,9 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn connected_components_splits_a_disconnected_graph",
-            "line_end": 308,
-            "line_start": 301,
+            "line_end": 197,
+            "line_start": 190,
             "name": "connected_components_splits_a_disconnected_graph",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "56f9c1fa6eaaa8e0",
-            "kind": "fn",
-            "label": "fn directed",
-            "line_end": 212,
-            "line_start": 206,
-            "name": "directed",
             "visibility": "private"
           },
           {
@@ -11930,8 +11921,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn hop_distances_decay_from_the_source",
-            "line_end": 316,
-            "line_start": 311,
+            "line_end": 205,
+            "line_start": 200,
             "name": "hop_distances_decay_from_the_source",
             "visibility": "private"
           },
@@ -11940,47 +11931,17 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn hop_distances_take_the_nearest_source_and_leave_islands_unreached",
-            "line_end": 329,
-            "line_start": 319,
+            "line_end": 218,
+            "line_start": 208,
             "name": "hop_distances_take_the_nearest_source_and_leave_islands_unreached",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "b75a1e7a789a741c",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn scc_finds_a_directed_cycle",
-            "line_end": 271,
-            "line_start": 262,
-            "name": "scc_finds_a_directed_cycle",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "323d6a9306495a61",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn scc_reports_only_singletons_for_a_dag",
-            "line_end": 283,
-            "line_start": 274,
-            "name": "scc_reports_only_singletons_for_a_dag",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "2d559c3efb67c55a",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn scc_two_independent_cycles",
-            "line_end": 298,
-            "line_start": 286,
-            "name": "scc_two_independent_cycles",
             "visibility": "private"
           },
           {
             "body_hash": "205000db67ffadb3",
             "kind": "fn",
             "label": "fn undirected",
-            "line_end": 205,
-            "line_start": 198,
+            "line_end": 140,
+            "line_start": 133,
             "name": "undirected",
             "visibility": "private"
           },
@@ -11988,8 +11949,8 @@
             "body_hash": "1b3590942de2cb5e",
             "kind": "fn",
             "label": "pub fn betweenness_centrality",
-            "line_end": 73,
-            "line_start": 32,
+            "line_end": 71,
+            "line_start": 30,
             "name": "betweenness_centrality",
             "visibility": "public"
           },
@@ -11997,8 +11958,8 @@
             "body_hash": "5c6579a4a7533bab",
             "kind": "fn",
             "label": "pub fn connected_components",
-            "line_end": 166,
-            "line_start": 141,
+            "line_end": 101,
+            "line_start": 76,
             "name": "connected_components",
             "visibility": "public"
           },
@@ -12006,18 +11967,9 @@
             "body_hash": "6f93c0849abfe2eb",
             "kind": "fn",
             "label": "pub fn hop_distances",
-            "line_end": 191,
-            "line_start": 172,
+            "line_end": 126,
+            "line_start": 107,
             "name": "hop_distances",
-            "visibility": "public"
-          },
-          {
-            "body_hash": "26ffe57066f675cd",
-            "kind": "fn",
-            "label": "pub fn strongly_connected_components",
-            "line_end": 136,
-            "line_start": 82,
-            "name": "strongly_connected_components",
             "visibility": "public"
           }
         ],
@@ -12026,17 +11978,12 @@
           "fn betweenness_of_a_path_peaks_in_the_middle",
           "fn bridge_node_has_the_highest_betweenness",
           "fn connected_components_splits_a_disconnected_graph",
-          "fn directed",
           "fn hop_distances_decay_from_the_source",
           "fn hop_distances_take_the_nearest_source_and_leave_islands_unreached",
-          "fn scc_finds_a_directed_cycle",
-          "fn scc_reports_only_singletons_for_a_dag",
-          "fn scc_two_independent_cycles",
           "fn undirected",
           "pub fn betweenness_centrality",
           "pub fn connected_components",
-          "pub fn hop_distances",
-          "pub fn strongly_connected_components"
+          "pub fn hop_distances"
         ]
       },
       {
@@ -13438,32 +13385,22 @@
         ]
       },
       {
-        "content_hash": "e72999c6c8499ef9",
+        "content_hash": "14f20bc3c08c38fb",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T16:54:53.120438184+00:00",
+        "last_modified": "2026-06-15T17:34:32.221037319+00:00",
         "path": "src/db/queries/smells.rs",
         "symbol_facts": [
-          {
-            "body_hash": "2910c0540a5e9098",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn a_directed_three_cycle_is_one_finding_naming_its_members",
-            "line_end": 2735,
-            "line_start": 2722,
-            "name": "a_directed_three_cycle_is_one_finding_naming_its_members",
-            "visibility": "private"
-          },
           {
             "body_hash": "317292645caa949c",
             "is_test": true,
             "kind": "fn",
             "label": "fn a_disconnected_subgraph_is_an_island",
-            "line_end": 2784,
-            "line_start": 2768,
+            "line_end": 2875,
+            "line_start": 2859,
             "name": "a_disconnected_subgraph_is_an_island",
             "visibility": "private"
           },
@@ -13472,9 +13409,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_fully_connected_graph_has_no_islands",
-            "line_end": 2795,
-            "line_start": 2787,
+            "line_end": 2886,
+            "line_start": 2878,
             "name": "a_fully_connected_graph_has_no_islands",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "5b500942518610fe",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_half_grounded_reciprocal_pair_does_not_fire",
+            "line_end": 2804,
+            "line_start": 2797,
+            "name": "a_half_grounded_reciprocal_pair_does_not_fire",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "df93af8fe0461c2b",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_long_directed_cycle_is_not_a_dependency_cycle",
+            "line_end": 2754,
+            "line_start": 2743,
+            "name": "a_long_directed_cycle_is_not_a_dependency_cycle",
             "visibility": "private"
           },
           {
@@ -13482,19 +13439,19 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_module_path_selector_resolves_to_its_directory",
-            "line_end": 2602,
-            "line_start": 2575,
+            "line_end": 2601,
+            "line_start": 2574,
             "name": "a_module_path_selector_resolves_to_its_directory",
             "visibility": "private"
           },
           {
-            "body_hash": "35a0449c99b4d4a5",
+            "body_hash": "9e4f3f7735726315",
             "is_test": true,
             "kind": "fn",
-            "label": "fn a_reciprocal_pair_is_a_two_cycle",
-            "line_end": 2744,
-            "line_start": 2738,
-            "name": "a_reciprocal_pair_is_a_two_cycle",
+            "label": "fn a_reciprocal_grounded_pair_is_a_dependency_cycle",
+            "line_end": 2769,
+            "line_start": 2757,
+            "name": "a_reciprocal_grounded_pair_is_a_dependency_cycle",
             "visibility": "private"
           },
           {
@@ -13502,8 +13459,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_sibling_test_in_the_same_module_is_local",
-            "line_end": 2572,
-            "line_start": 2543,
+            "line_end": 2571,
+            "line_start": 2542,
             "name": "a_sibling_test_in_the_same_module_is_local",
             "visibility": "private"
           },
@@ -13512,19 +13469,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_test_in_the_grounded_file_is_local_and_silent",
-            "line_end": 2483,
-            "line_start": 2456,
+            "line_end": 2482,
+            "line_start": 2455,
             "name": "a_test_in_the_grounded_file_is_local_and_silent",
             "visibility": "private"
           },
           {
-            "body_hash": "ebda715469b0c994",
+            "body_hash": "a4ed03bc34d75040",
             "is_test": true,
             "kind": "fn",
             "label": "fn an_acyclic_chain_reports_no_cycle",
-            "line_end": 2752,
-            "line_start": 2747,
+            "line_end": 2777,
+            "line_start": 2772,
             "name": "an_acyclic_chain_reports_no_cycle",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ad90684277f4e45f",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn an_adjudicated_reciprocal_pair_is_suppressed",
+            "line_end": 2856,
+            "line_start": 2832,
+            "name": "an_adjudicated_reciprocal_pair_is_suppressed",
             "visibility": "private"
           },
           {
@@ -13532,19 +13499,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_e2e_assertion_proof_exempts_the_leaf",
-            "line_end": 2510,
-            "line_start": 2486,
+            "line_end": 2509,
+            "line_start": 2485,
             "name": "an_e2e_assertion_proof_exempts_the_leaf",
             "visibility": "private"
           },
           {
-            "body_hash": "a1d98c2ca5ad2153",
+            "body_hash": "c9d3a62b1652a5aa",
             "is_test": true,
             "kind": "fn",
-            "label": "fn an_independent_edge_does_not_close_a_cycle",
-            "line_end": 2765,
-            "line_start": 2755,
-            "name": "an_independent_edge_does_not_close_a_cycle",
+            "label": "fn an_independent_reverse_does_not_make_a_reciprocal_pair",
+            "line_end": 2814,
+            "line_start": 2807,
+            "name": "an_independent_reverse_does_not_make_a_reciprocal_pair",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "7aeb76fe1966fca4",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn an_uninspected_reciprocal_pair_does_not_fire",
+            "line_end": 2794,
+            "line_start": 2780,
+            "name": "an_uninspected_reciprocal_pair_does_not_fire",
             "visibility": "private"
           },
           {
@@ -13552,8 +13529,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_unresolvable_command_is_unknown_never_nonlocal",
-            "line_end": 2540,
-            "line_start": 2513,
+            "line_end": 2539,
+            "line_start": 2512,
             "name": "an_unresolvable_command_is_unknown_never_nonlocal",
             "visibility": "private"
           },
@@ -13561,8 +13538,8 @@
             "body_hash": "cf2f3d0a90b81193",
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 2377,
-            "line_start": 2341,
+            "line_end": 2376,
+            "line_start": 2340,
             "name": "cf",
             "visibility": "private"
           },
@@ -13571,8 +13548,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
-            "line_end": 2453,
-            "line_start": 2424,
+            "line_end": 2452,
+            "line_start": 2423,
             "name": "flags_a_leaf_proven_only_by_a_test_in_other_files",
             "visibility": "private"
           },
@@ -13580,8 +13557,8 @@
             "body_hash": "4ade4c484e71996c",
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 2396,
-            "line_start": 2379,
+            "line_end": 2395,
+            "line_start": 2378,
             "name": "imp",
             "visibility": "private"
           },
@@ -13589,8 +13566,8 @@
             "body_hash": "7750085ecd8ba03c",
             "kind": "fn",
             "label": "fn intent",
-            "line_end": 2655,
-            "line_start": 2637,
+            "line_end": 2654,
+            "line_start": 2636,
             "name": "intent",
             "visibility": "private"
           },
@@ -13599,8 +13576,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn island_detector_is_unarmed_without_a_system_root",
-            "line_end": 2807,
-            "line_start": 2798,
+            "line_end": 2898,
+            "line_start": 2889,
             "name": "island_detector_is_unarmed_without_a_system_root",
             "visibility": "private"
           },
@@ -13608,8 +13585,8 @@
             "body_hash": "abfd2c4fe730f877",
             "kind": "fn",
             "label": "fn leaf",
-            "line_end": 2339,
-            "line_start": 2321,
+            "line_end": 2338,
+            "line_start": 2320,
             "name": "leaf",
             "visibility": "private"
           },
@@ -13617,8 +13594,8 @@
             "body_hash": "b3500edb49b3029a",
             "kind": "fn",
             "label": "fn locate_test_proof",
-            "line_end": 2243,
-            "line_start": 2217,
+            "line_end": 2242,
+            "line_start": 2216,
             "name": "locate_test_proof",
             "visibility": "private"
           },
@@ -13627,8 +13604,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn no_symbol_facts_means_the_instrument_is_unarmed",
-            "line_end": 2629,
-            "line_start": 2605,
+            "line_end": 2628,
+            "line_start": 2604,
             "name": "no_symbol_facts_means_the_instrument_is_unarmed",
             "visibility": "private"
           },
@@ -13636,8 +13613,8 @@
             "body_hash": "be51dad1bf2e3ccf",
             "kind": "fn",
             "label": "fn of_kind",
-            "line_end": 2707,
-            "line_start": 2705,
+            "line_end": 2728,
+            "line_start": 2726,
             "name": "of_kind",
             "visibility": "private"
           },
@@ -13645,8 +13622,8 @@
             "body_hash": "3d5fba833195903c",
             "kind": "fn",
             "label": "fn parent_dir",
-            "line_end": 2314,
-            "line_start": 2312,
+            "line_end": 2313,
+            "line_start": 2311,
             "name": "parent_dir",
             "visibility": "private"
           },
@@ -13654,8 +13631,8 @@
             "body_hash": "7e8d21c631604527",
             "kind": "fn",
             "label": "fn parse_cargo_test_selectors",
-            "line_end": 2298,
-            "line_start": 2248,
+            "line_end": 2297,
+            "line_start": 2247,
             "name": "parse_cargo_test_selectors",
             "visibility": "private"
           },
@@ -13663,8 +13640,8 @@
             "body_hash": "d3f67f8e0d692538",
             "kind": "fn",
             "label": "fn path_matches_module",
-            "line_end": 2308,
-            "line_start": 2303,
+            "line_end": 2307,
+            "line_start": 2302,
             "name": "path_matches_module",
             "visibility": "private"
           },
@@ -13672,9 +13649,19 @@
             "body_hash": "24c677b82db52751",
             "kind": "fn",
             "label": "fn proof_locality_from_parts",
-            "line_end": 2212,
-            "line_start": 2086,
+            "line_end": 2211,
+            "line_start": 2085,
             "name": "proof_locality_from_parts",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c004601933eecfe2",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
+            "line_end": 2829,
+            "line_start": 2817,
+            "name": "reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
             "visibility": "private"
           },
           {
@@ -13687,34 +13674,52 @@
             "visibility": "private"
           },
           {
-            "body_hash": "bd51f7483c6e9cf2",
+            "body_hash": "ff9182c9d3dcda49",
             "kind": "fn",
             "label": "fn rel",
-            "line_end": 2673,
-            "line_start": 2657,
+            "line_end": 2661,
+            "line_start": 2656,
             "name": "rel",
             "visibility": "private"
           },
           {
-            "body_hash": "edb0320d86976a1b",
+            "body_hash": "c909892ee5b59b7c",
+            "kind": "fn",
+            "label": "fn rel_st",
+            "line_end": 2685,
+            "line_start": 2663,
+            "name": "rel_st",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "8602db62e1065d5a",
             "kind": "fn",
             "label": "fn report",
-            "line_end": 2703,
-            "line_start": 2675,
+            "line_end": 2693,
+            "line_start": 2687,
             "name": "report",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "fc1fc436440f5acd",
+            "kind": "fn",
+            "label": "fn report_with_notes",
+            "line_end": 2724,
+            "line_start": 2695,
+            "name": "report_with_notes",
             "visibility": "private"
           },
           {
             "body_hash": "202c06c86767f88d",
             "kind": "fn",
             "label": "fn rooted",
-            "line_end": 2719,
-            "line_start": 2711,
+            "line_end": 2740,
+            "line_start": 2732,
             "name": "rooted",
             "visibility": "private"
           },
           {
-            "body_hash": "92a0f8293bfb038f",
+            "body_hash": "d8ebd2cbf06f4bcd",
             "kind": "fn",
             "label": "fn teaching_for",
             "line_end": 337,
@@ -13726,8 +13731,8 @@
             "body_hash": "ee70e2b9a6b5a62b",
             "kind": "fn",
             "label": "fn val",
-            "line_end": 2408,
-            "line_start": 2398,
+            "line_end": 2407,
+            "line_start": 2397,
             "name": "val",
             "visibility": "private"
           },
@@ -13735,8 +13740,8 @@
             "body_hash": "1819ed08198a8455",
             "kind": "fn",
             "label": "fn vedge",
-            "line_end": 2421,
-            "line_start": 2410,
+            "line_end": 2420,
+            "line_start": 2409,
             "name": "vedge",
             "visibility": "private"
           },
@@ -13807,16 +13812,16 @@
             "body_hash": "3933d7307773495e",
             "kind": "fn",
             "label": "pub fn cochange_suggestions",
-            "line_end": 2048,
-            "line_start": 1933,
+            "line_end": 2047,
+            "line_start": 1932,
             "name": "cochange_suggestions",
             "visibility": "public"
           },
           {
-            "body_hash": "3b2ddc5b7a3e259d",
+            "body_hash": "e4e6cf386f66f3d1",
             "kind": "fn",
             "label": "pub fn compute_smells_from_parts",
-            "line_end": 1923,
+            "line_end": 1922,
             "line_start": 377,
             "name": "compute_smells_from_parts",
             "visibility": "public"
@@ -13834,8 +13839,8 @@
             "body_hash": "4c03c20305903f6f",
             "kind": "fn",
             "label": "pub fn proof_locality_suggestions",
-            "line_end": 2084,
-            "line_start": 2075,
+            "line_end": 2083,
+            "line_start": 2074,
             "name": "proof_locality_suggestions",
             "visibility": "public"
           },
@@ -13895,16 +13900,19 @@
           }
         ],
         "symbols": [
-          "fn a_directed_three_cycle_is_one_finding_naming_its_members",
           "fn a_disconnected_subgraph_is_an_island",
           "fn a_fully_connected_graph_has_no_islands",
+          "fn a_half_grounded_reciprocal_pair_does_not_fire",
+          "fn a_long_directed_cycle_is_not_a_dependency_cycle",
           "fn a_module_path_selector_resolves_to_its_directory",
-          "fn a_reciprocal_pair_is_a_two_cycle",
+          "fn a_reciprocal_grounded_pair_is_a_dependency_cycle",
           "fn a_sibling_test_in_the_same_module_is_local",
           "fn a_test_in_the_grounded_file_is_local_and_silent",
           "fn an_acyclic_chain_reports_no_cycle",
+          "fn an_adjudicated_reciprocal_pair_is_suppressed",
           "fn an_e2e_assertion_proof_exempts_the_leaf",
-          "fn an_independent_edge_does_not_close_a_cycle",
+          "fn an_independent_reverse_does_not_make_a_reciprocal_pair",
+          "fn an_uninspected_reciprocal_pair_does_not_fire",
           "fn an_unresolvable_command_is_unknown_never_nonlocal",
           "fn cf",
           "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
@@ -13919,9 +13927,12 @@
           "fn parse_cargo_test_selectors",
           "fn path_matches_module",
           "fn proof_locality_from_parts",
+          "fn reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
           "fn recurrent_teaching",
           "fn rel",
+          "fn rel_st",
           "fn report",
+          "fn report_with_notes",
           "fn rooted",
           "fn teaching_for",
           "fn val",
@@ -21209,7 +21220,7 @@
         "aspect": "",
         "boundary": "",
         "created_at": "2026-06-15T11:57:25.561445+00:00",
-        "description": "loom smells reports one finding per strongly-connected component of size greater than one in the RELATES_TO graph (a circular intent dependency), naming its members; an acyclic grid reports none",
+        "description": "loom smells reports one finding per RECIPROCAL RELATES_TO pair: two active intents where BOTH directed rows (a->b and b->a) carry a grounded verdict (not uninspected, not independent). RELATES_TO is semantically undirected and its stored direction is not canonicalized, so a long directed cycle is typing-order noise (the old SCC reading produced a vacuous 39-intent blob on loom's own graph); a reciprocal grounded pair is the one honest signal - the same relationship stored twice, double-counting in centrality and able to carry disagreeing verdicts. Mechanically-created uninspected saga path edges are excluded so a round-trip journey never false-gates. A graph with no reciprocal grounded pair reports none.",
         "domain": "analysis",
         "id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "layer": "application",
@@ -21218,8 +21229,8 @@
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T17:01:37.338848+00:00",
-        "visibility": "internal"
+        "updated_at": "2026-06-15T17:37:55.231988+00:00",
+        "visibility": ""
       },
       {
         "abstraction_level": "feature",
@@ -28325,6 +28336,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-15T17:37:55.231988+00:00",
+        "id": "2e8d053e-38d7-43ed-bedc-fb309bc33bee",
+        "kind": "transition",
+        "target_id": "imp:21f9f668-c79d-49e6-9702-9da8f9229b36:37581090-ca9d-48e6-95ef-eb1434b08eea",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: intent 'dependency-cycle smell over RELATES_TO' redefined)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-12T20:38:36.926018+00:00",
         "id": "2e8fa274-6af8-44bc-a1df-be6b21568420",
@@ -32672,6 +32693,16 @@
         "target_id": "rt:bb8ee237-2d84-46ee-b254-c8bc39c16fc1:a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/output.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-15T17:37:55.231988+00:00",
+        "id": "531ef23a-b686-49ec-b48d-f2ddfcf4b490",
+        "kind": "transition",
+        "target_id": "rt:21f9f668-c79d-49e6-9702-9da8f9229b36:3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: intent 'dependency-cycle smell over RELATES_TO' redefined)"
       },
       {
         "audience": "",
@@ -47905,6 +47936,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:39:50.381056+00:00",
+        "id": "cb436f67-cd13-4810-bb0b-915d7c90ddc9",
+        "kind": "decision",
+        "target_id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "target_kind": "intent",
+        "text": "Reframed directed-SCC -> reciprocal-pair (both directions grounded). SCC over non-canonicalized RELATES_TO produced a non-actionable 39-intent blob on loom's own graph; the reciprocal grounded pair is the only honest, actionable circular signal. Uninspected saga path edges are excluded so legitimate round-trip journeys never false-gate (adversarial-review finding). DEFERRED: a genuine saga-flow cycle detector needs a stored saga-edge provenance marker (saga add writes plain uninspected edges today); build that increment if/when sagas are used. RETIREMENT: if RELATES_TO storage is ever canonicalized at insert (sort from<to), reciprocal pairs become impossible and this detector should be retired, not left as a zero-yield gate."
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-12T21:50:39.601134+00:00",
         "id": "cb49bc4c-13b0-430e-bda5-a68bae8f343d",
@@ -50362,6 +50403,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-15T17:37:55.231988+00:00",
+        "id": "e08ee19b-941e-4c50-9d40-5c219fd80031",
+        "kind": "decision",
+        "target_id": "21f9f668-c79d-49e6-9702-9da8f9229b36",
+        "target_kind": "intent",
+        "text": "redefined: Reframed from directed-SCC to reciprocal-pair: an SCC over non-canonicalized RELATES_TO produced a non-actionable 39-intent blob; reciprocal grounded pairs are the only honestly-useful actionable signal, and excluding uninspected saga edges prevents false-gating legitimate round-trip journeys\nwas: loom smells reports one finding per strongly-connected component of size greater than one in the RELATES_TO graph (a circular intent dependency), naming its members; an acyclic grid reports none"
       },
       {
         "audience": "",
@@ -55263,11 +55314,11 @@
         "validation_type": "benchmark"
       },
       {
-        "command": "cargo test -- scc_ a_directed_three_cycle a_reciprocal_pair an_acyclic_chain an_independent_edge",
+        "command": "cargo test -- reciprocal a_long_directed_cycle an_acyclic_chain",
         "description": "",
         "id": "f86938b9-b328-4f59-904c-4ee39ab2cfa5",
         "last_result": "passed",
-        "last_run": "2026-06-15T17:03:10.866227+00:00",
+        "last_run": "2026-06-15T17:38:10.379152+00:00",
         "name": "dependency-cycle detector — tests",
         "validation_type": "test"
       },

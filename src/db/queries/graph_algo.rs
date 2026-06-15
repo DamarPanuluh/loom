@@ -4,8 +4,6 @@
 //!
 //! - [`betweenness_centrality`] — bridge centrality for `loom next` ranking, so
 //!   a low-degree chokepoint can outrank a high-degree clique node.
-//! - [`strongly_connected_components`] — circular RELATES_TO dependencies
-//!   (`dependency_cycle` smell).
 //! - [`connected_components`] — intent islands unreachable from a system root
 //!   (`intent_island` smell).
 //! - [`hop_distances`] — the graded sync ripple: distance from the changed
@@ -70,69 +68,6 @@ pub fn betweenness_centrality(n: usize, adjacency: &[Vec<usize>]) -> Vec<f64> {
         *c /= 2.0;
     }
     centrality
-}
-
-/// Tarjan's strongly-connected components on a DIRECTED graph. `adjacency[v]`
-/// lists v's out-neighbors. Returns every SCC as a vec of node indices
-/// (singletons included). Iterative (explicit stack) so a deep graph cannot
-/// blow the call stack.
-///
-/// A returned component of length > 1 is a directed cycle: every member can
-/// reach every other and return.
-pub fn strongly_connected_components(n: usize, adjacency: &[Vec<usize>]) -> Vec<Vec<usize>> {
-    const UNVISITED: usize = usize::MAX;
-    let mut index = vec![UNVISITED; n]; // DFS discovery order
-    let mut lowlink = vec![0usize; n];
-    let mut on_stack = vec![false; n];
-    let mut scc_stack: Vec<usize> = Vec::new();
-    let mut components: Vec<Vec<usize>> = Vec::new();
-    let mut next_index = 0usize;
-
-    for start in 0..n {
-        if index[start] != UNVISITED {
-            continue;
-        }
-        // Explicit DFS stack of (node, position of the next out-neighbor to visit).
-        let mut call_stack: Vec<(usize, usize)> = vec![(start, 0)];
-        while let Some(&(v, pos)) = call_stack.last() {
-            if pos == 0 {
-                // First time we touch v: assign its index/lowlink and stack it.
-                index[v] = next_index;
-                lowlink[v] = next_index;
-                next_index += 1;
-                scc_stack.push(v);
-                on_stack[v] = true;
-            }
-            if pos < adjacency[v].len() {
-                let w = adjacency[v][pos];
-                call_stack.last_mut().unwrap().1 = pos + 1;
-                if index[w] == UNVISITED {
-                    call_stack.push((w, 0)); // descend (tree edge)
-                } else if on_stack[w] {
-                    lowlink[v] = lowlink[v].min(index[w]); // back/cross edge into the stack
-                }
-            } else {
-                // All of v's out-neighbors done. If v is an SCC root, pop it.
-                if lowlink[v] == index[v] {
-                    let mut comp = Vec::new();
-                    loop {
-                        let w = scc_stack.pop().unwrap();
-                        on_stack[w] = false;
-                        comp.push(w);
-                        if w == v {
-                            break;
-                        }
-                    }
-                    components.push(comp);
-                }
-                call_stack.pop();
-                if let Some(&(parent, _)) = call_stack.last() {
-                    lowlink[parent] = lowlink[parent].min(lowlink[v]);
-                }
-            }
-        }
-    }
-    components
 }
 
 /// Connected components of an UNDIRECTED graph (`adjacency` symmetric). Returns
@@ -203,13 +138,6 @@ mod tests {
         }
         adj
     }
-    fn directed(n: usize, edges: &[(usize, usize)]) -> Vec<Vec<usize>> {
-        let mut adj = vec![Vec::new(); n];
-        for &(a, b) in edges {
-            adj[a].push(b);
-        }
-        adj
-    }
 
     #[test]
     fn betweenness_of_a_path_peaks_in_the_middle() {
@@ -256,45 +184,6 @@ mod tests {
         let max = bc.iter().cloned().fold(0.0, f64::max);
         assert_eq!(bc[6], max, "the bridge is the most central — {bc:?}");
         assert!(bc[6] > bc[0], "bridge outscores a clique member");
-    }
-
-    #[test]
-    fn scc_finds_a_directed_cycle() {
-        // 0→1→2→0 is a cycle; 3 hangs off it; 4 is isolated.
-        let adj = directed(5, &[(0, 1), (1, 2), (2, 0), (2, 3)]);
-        let mut comps = strongly_connected_components(5, &adj);
-        let big: Vec<Vec<usize>> = comps.drain(..).filter(|c| c.len() > 1).collect();
-        assert_eq!(big.len(), 1, "exactly one nontrivial SCC");
-        let mut members = big[0].clone();
-        members.sort();
-        assert_eq!(members, vec![0, 1, 2], "the cycle members");
-    }
-
-    #[test]
-    fn scc_reports_only_singletons_for_a_dag() {
-        // 0→1→2, 0→2 : acyclic, every SCC is a singleton.
-        let adj = directed(3, &[(0, 1), (1, 2), (0, 2)]);
-        let comps = strongly_connected_components(3, &adj);
-        assert_eq!(comps.len(), 3);
-        assert!(
-            comps.iter().all(|c| c.len() == 1),
-            "no cycle → all singletons"
-        );
-    }
-
-    #[test]
-    fn scc_two_independent_cycles() {
-        // 0↔1 and 2→3→4→2.
-        let adj = directed(5, &[(0, 1), (1, 0), (2, 3), (3, 4), (4, 2)]);
-        let comps = strongly_connected_components(5, &adj);
-        let big: Vec<usize> = comps
-            .iter()
-            .filter(|c| c.len() > 1)
-            .map(|c| c.len())
-            .collect();
-        let mut sizes = big;
-        sizes.sort();
-        assert_eq!(sizes, vec![2, 3], "two cycles of size 2 and 3");
     }
 
     #[test]

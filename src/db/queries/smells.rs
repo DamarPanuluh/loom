@@ -308,14 +308,14 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             done_when: "actionable symbol gaps are grounded with precise locators, accepted with a current decision note, or converted into real intent split/build work".into(),
         },
         "dependency_cycle" => SmellTeaching {
-            principle: "A circular RELATES_TO dependency means a set of intents that all transitively depend on each other with no acyclic order — usually a missing shared abstraction or one relationship pointing the wrong way; exactly one edge in the loop is the weak link to redirect or sever.".into(),
+            principle: "RELATES_TO is semantically undirected, so a relationship belongs in ONE row. Two GROUNDED rows for the same pair (a→b and b→a both carry a verdict) store the relationship twice: it double-counts in degree/centrality and skews `loom next` ranking, and the two verdicts can silently disagree. Exactly one direction is the redundant/incidental one to retire — unless the mutuality is a deliberate peer contract.".into(),
             inspect: vec![
-                "read each member intent's criteria and the edges that form the loop".into(),
-                "`loom edge show <id>` for each edge in the cycle before changing anything".into(),
-                "find the ONE relationship that is backwards or incidental (the cycle's weak link)".into(),
+                "`loom edge show rt:<a>:<b>` and `loom edge show rt:<b>:<a>` — compare the two verdicts and criteria".into(),
+                "read both intents' criteria; decide which way the dependency actually runs".into(),
+                "check whether the two are really one responsibility (a merge) or genuine mutual peers (a deliberate contract)".into(),
             ],
-            avoid: vec!["do not leave a circular dependency implicit; do not break the loop by deleting a real relationship — redirect it or mark the incidental edge independent".into()],
-            done_when: "the cycle is broken (an edge redirected, marked independent, or a shared intent extracted so the loop disappears), or a current decision note on a member records why the mutual dependency is deliberate".into(),
+            avoid: vec!["do not keep both directions as the default; do not 'fix' an uninspected saga round-trip flow as if it were graph-hygiene debt (those edges are never flagged here — only deliberately grounded pairs are)".into()],
+            done_when: "the redundant direction is marked independent (or the two intents merged), or a current decision note on the smaller-id intent records why both directions deliberately hold".into(),
         },
         "intent_island" => SmellTeaching {
             principle: "Every intent should reach a system-level purpose through HIERARCHY or RELATES_TO; an island has no such path, so nothing in the graph explains why it exists in this product.".into(),
@@ -1682,89 +1682,88 @@ pub fn compute_smells_from_parts(
         }
     }
 
-    // 15. Dependency cycle — a circular RELATES_TO dependency. RELATES_TO is
-    //     stored directed (from→to; a 2-cycle needs both a→b and b→a, a longer
-    //     cycle a→b→c→a), so a strongly-connected component of size > 1 is a set
-    //     of intents that all transitively depend on each other with no acyclic
-    //     ordering. `independent` edges assert NO relationship and are excluded.
-    //     One finding per cycle. (Most loom analysis treats RELATES_TO as
-    //     undirected — under that lens an SCC is vacuous; the cycle question is
-    //     the one place the stored direction carries meaning.)
+    // 15. Reciprocal dependency — the one circular RELATES_TO pattern whose
+    //     meaning survives loom's storage. RELATES_TO rows are stored directed
+    //     (PRIMARY KEY(from_id,to_id)) but `loom edge explore` never
+    //     canonicalizes endpoint order and the snapshot's `linked` set adds BOTH
+    //     directions for every undirected analysis — so a long directed "cycle"
+    //     a→b→c→a is just typing-order noise (an SCC over it is vacuous; on
+    //     loom's own graph it surfaced as one 39-intent blob that gated green for
+    //     nothing). The only honest signal is a RECIPROCAL pair: two intents
+    //     where BOTH directed rows a→b AND b→a carry a real verdict. That is one
+    //     undirected relationship stored twice — it double-counts in
+    //     degree/betweenness (the snapshot adds both directions) and skews
+    //     `loom next` ranking, and the two rows can carry silently-disagreeing
+    //     verdicts. We require BOTH directions GROUNDED (status not uninspected,
+    //     not independent) precisely to EXCLUDE the mechanically-created kind:
+    //     `loom saga add` writes *uninspected* directed path edges, so a
+    //     round-trip consumer journey legitimately produces an a↔b pair —
+    //     gating on those would false-alarm on a healthy graph with wrong advice.
+    //     (FUTURE: a real saga-flow cycle detector wants a stored saga-edge
+    //     provenance marker; deferred — no such marker exists yet. RETIREMENT:
+    //     if RELATES_TO storage is ever canonicalized at insert, reciprocal
+    //     pairs become impossible and this detector should be retired, not left
+    //     as a zero-yield gate.)
     {
-        let active: Vec<&crate::types::Intent> = intents
+        let active_ids: HashSet<&str> = intents
             .iter()
             .filter(|i| i.status != "deprecated")
+            .map(|i| i.id.as_str())
             .collect();
-        let n = active.len();
-        let idx: HashMap<&str, usize> = active
-            .iter()
-            .enumerate()
-            .map(|(i, intent)| (intent.id.as_str(), i))
-            .collect();
-        let mut adjacency: Vec<Vec<usize>> = vec![Vec::new(); n];
-        let mut seen_edge: HashSet<(usize, usize)> = HashSet::new();
+        // Grounded directed rows only: a verdict recorded (NOT uninspected, NOT
+        // independent) between two active intents. Indexed for O(1) reverse
+        // lookup and to read each direction's status/last_inspected.
+        let mut grounded: HashMap<(&str, &str), &crate::types::RelatesTo> = HashMap::new();
         for e in relates {
-            if e.inspection_status == "independent" {
+            if e.inspection_status == "uninspected"
+                || e.inspection_status == "independent"
+                || e.from_id == e.to_id
+                || !active_ids.contains(e.from_id.as_str())
+                || !active_ids.contains(e.to_id.as_str())
+            {
                 continue;
             }
-            let (Some(&a), Some(&b)) = (idx.get(e.from_id.as_str()), idx.get(e.to_id.as_str()))
-            else {
-                continue;
-            };
-            if a != b && seen_edge.insert((a, b)) {
-                adjacency[a].push(b);
-            }
+            grounded.insert((e.from_id.as_str(), e.to_id.as_str()), e);
         }
-        for comp in super::graph_algo::strongly_connected_components(n, &adjacency) {
-            if comp.len() < 2 {
-                continue;
+        for (&(a, b), fwd) in &grounded {
+            if a >= b {
+                continue; // each unordered pair once; the a<b guard dedupes it
             }
-            let mut members: Vec<&crate::types::Intent> = comp.iter().map(|&i| active[i]).collect();
-            members.sort_by(|a, b| a.id.cmp(&b.id));
-            let member_set: HashSet<&str> = members.iter().map(|i| i.id.as_str()).collect();
-            let names: Vec<String> = members.iter().map(|i| format!("'{}'", i.name)).collect();
-            // Re-opens when an edge in the loop is re-inspected (the structure
-            // the ruling judged changed): anchor on the newest last_inspected
-            // among the cycle's internal edges.
-            let cycle_anchor = relates
-                .iter()
-                .filter(|e| {
-                    e.inspection_status != "independent"
-                        && member_set.contains(e.from_id.as_str())
-                        && member_set.contains(e.to_id.as_str())
-                })
-                .map(|e| e.last_inspected.as_str())
-                .max()
-                .unwrap_or("");
-            let anchor = members[0]; // smallest id — the stable place to rule
-            let summary = format!(
-                "circular RELATES_TO dependency among {} intents: {}",
-                members.len(),
-                names.join(", ")
+            let Some(rev) = grounded.get(&(b, a)) else {
+                continue; // only one direction grounded — not a reciprocal pair
+            };
+            let (na, nb) = (
+                name_of.get(a).copied().unwrap_or(a),
+                name_of.get(b).copied().unwrap_or(b),
             );
-            if let Some(note) = adjudicated(anchor.id.as_str(), cycle_anchor) {
+            // Both rows are grounded, so both carry a real last_inspected — no
+            // empty-anchor phantom suppression. Re-opens when either is re-inspected.
+            let pair_anchor = fwd.last_inspected.as_str().max(rev.last_inspected.as_str());
+            let summary =
+                format!("mutual RELATES_TO dependency: '{na}' ↔ '{nb}' (both directions grounded)");
+            if let Some(note) = adjudicated(a, pair_anchor) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "dependency_cycle".into(),
                     summary,
                     ruling: note.text.clone(),
                     ruled_by: note.author.clone(),
                     ruled_at: note.created_at.clone(),
-                    reopens_when: "any edge in the cycle is re-inspected".into(),
+                    reopens_when: "either direction's edge is re-inspected".into(),
                     teaching: teaching_for("dependency_cycle"),
                 });
             } else {
+                let deg =
+                    *snapshot.degrees.get(a).unwrap_or(&0) + *snapshot.degrees.get(b).unwrap_or(&0);
                 smells.push(Smell {
                     kind: "dependency_cycle".into(),
-                    score: 5.0 + comp.len() as f64,
+                    score: 6.0 + deg as f64,
                     summary,
                     evidence: format!(
-                        "the directed RELATES_TO graph has a strongly-connected component of size {} (every member can reach every other and return): {}",
-                        members.len(),
-                        names.join(", ")
+                        "both directed rows are grounded — {na}→{nb} is {} and {nb}→{na} is {}. RELATES_TO is semantically undirected (the snapshot adds both directions for degree/centrality), so this is ONE relationship stored twice: it double-counts in degree/betweenness and skews `loom next` ranking, and the two verdicts can silently disagree.",
+                        fwd.inspection_status, rev.inspection_status
                     ),
                     remedy: format!(
-                        "break the loop: `loom edge show <id>` each edge in the cycle, then redirect or `loom edge explore <a> <b> independent` the ONE relationship that is backwards or incidental (do not delete a real relationship); if the mutual dependency is DELIBERATE, record it: `loom note add --intent {} --kind decision --text \"<why this cycle is intended>\"` (re-inspecting any cycle edge re-opens this)",
-                        anchor.id
+                        "`loom edge show rt:{a}:{b}` and `loom edge show rt:{b}:{a}`; decide which way the dependency really runs, then `loom edge explore <incidental-from> <incidental-to> independent` to retire the redundant direction (keep the better-grounded verdict). If '{na}' and '{nb}' are one responsibility, merge them. If the mutual relationship is DELIBERATE (true peers / a mutual contract), record it: `loom note add --intent {a} --kind decision --text \"<why both directions hold>\"` (re-inspecting either edge re-opens this)."
                     ),
                     teaching: teaching_for("dependency_cycle"),
                 });
@@ -2655,17 +2654,30 @@ mod cycle_island_tests {
     }
 
     fn rel(from: &str, to: &str) -> crate::types::RelatesTo {
+        // Default to a GROUNDED (passing) verdict with a real last_inspected, so
+        // a reciprocal pair built from two `rel(...)`s is a deliberate
+        // double-grounding (the case the detector fires on).
+        rel_st(from, to, "passing")
+    }
+
+    fn rel_st(from: &str, to: &str, status: &str) -> crate::types::RelatesTo {
+        // Grounded statuses carry a timestamp; uninspected/independent do not —
+        // mirrors how the store records verdicts vs mechanically-created edges.
+        let last_inspected = match status {
+            "passing" | "failing" | "needs_reverification" => "2026-06-15T00:00:00+00:00",
+            _ => "",
+        };
         crate::types::RelatesTo {
             id: format!("rt:{from}:{to}"),
             from_id: from.into(),
             to_id: to.into(),
             from_name: from.into(),
             to_name: to.into(),
-            inspection_status: "passing".into(),
+            inspection_status: status.into(),
             criterion: String::new(),
             confidence: 0.0,
             evidence: String::new(),
-            last_inspected: String::new(),
+            last_inspected: last_inspected.into(),
             inspected_by: String::new(),
             priority_score: 0.0,
             notes: String::new(),
@@ -2676,6 +2688,15 @@ mod cycle_island_tests {
         intents: Vec<Intent>,
         hierarchy: Vec<(String, String)>,
         relates: Vec<crate::types::RelatesTo>,
+    ) -> SmellReport {
+        report_with_notes(intents, hierarchy, relates, &[])
+    }
+
+    fn report_with_notes(
+        intents: Vec<Intent>,
+        hierarchy: Vec<(String, String)>,
+        relates: Vec<crate::types::RelatesTo>,
+        notes: &[Note],
     ) -> SmellReport {
         let snapshot = QuerySnapshot::from_parts(
             intents,
@@ -2692,7 +2713,7 @@ mod cycle_island_tests {
         compute_smells_from_parts(
             &snapshot,
             SmellInputs {
-                notes: &[],
+                notes,
                 vocab_terms: &[],
                 layer_order: &[],
                 proposed_hypotheses: &[],
@@ -2719,48 +2740,118 @@ mod cycle_island_tests {
     }
 
     #[test]
-    fn a_directed_three_cycle_is_one_finding_naming_its_members() {
+    fn a_long_directed_cycle_is_not_a_dependency_cycle() {
+        // a→b→c→a: a directed loop of single-direction grounded edges. Stored
+        // direction is a typing-order artifact, so this is NOT flagged — the
+        // behavior change from the SCC era, and the central de-noising win.
         let (intents, hierarchy) = rooted(&["a", "b", "c"]);
         let relates = vec![rel("a", "b"), rel("b", "c"), rel("c", "a")];
         let r = report(intents, hierarchy, relates);
-        let cycles = of_kind(&r, "dependency_cycle");
-        assert_eq!(cycles.len(), 1, "one finding for the one cycle: {cycles:?}");
-        for m in ["intent a", "intent b", "intent c"] {
-            assert!(
-                cycles[0].summary.contains(m),
-                "names {m}: {}",
-                cycles[0].summary
-            );
-        }
+        assert!(
+            of_kind(&r, "dependency_cycle").is_empty(),
+            "a single-direction long cycle is noise, not a finding"
+        );
     }
 
     #[test]
-    fn a_reciprocal_pair_is_a_two_cycle() {
+    fn a_reciprocal_grounded_pair_is_a_dependency_cycle() {
         let (intents, hierarchy) = rooted(&["a", "b"]);
-        // Both directions recorded → a strongly-connected pair.
+        // BOTH directions grounded with a verdict → a deliberate double-assert.
         let relates = vec![rel("a", "b"), rel("b", "a")];
         let r = report(intents, hierarchy, relates);
-        assert_eq!(of_kind(&r, "dependency_cycle").len(), 1);
+        let found = of_kind(&r, "dependency_cycle");
+        assert_eq!(
+            found.len(),
+            1,
+            "one finding for the reciprocal pair: {found:?}"
+        );
+        assert!(found[0].summary.contains("intent a") && found[0].summary.contains("intent b"));
     }
 
     #[test]
     fn an_acyclic_chain_reports_no_cycle() {
         let (intents, hierarchy) = rooted(&["a", "b", "c"]);
-        let relates = vec![rel("a", "b"), rel("b", "c")]; // DAG
+        let relates = vec![rel("a", "b"), rel("b", "c")]; // single-direction DAG
         let r = report(intents, hierarchy, relates);
         assert!(of_kind(&r, "dependency_cycle").is_empty());
     }
 
     #[test]
-    fn an_independent_edge_does_not_close_a_cycle() {
-        let (intents, hierarchy) = rooted(&["a", "b", "c"]);
-        let mut back = rel("c", "a");
-        back.inspection_status = "independent".into(); // asserts NO relationship
-        let relates = vec![rel("a", "b"), rel("b", "c"), back];
+    fn an_uninspected_reciprocal_pair_does_not_fire() {
+        // The saga fingerprint: `loom saga add` writes BOTH directions as
+        // mechanically-created uninspected path edges (a round-trip journey).
+        // Requiring a verdict on both directions excludes this — no false gate.
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        let relates = vec![
+            rel_st("a", "b", "uninspected"),
+            rel_st("b", "a", "uninspected"),
+        ];
         let r = report(intents, hierarchy, relates);
         assert!(
             of_kind(&r, "dependency_cycle").is_empty(),
-            "an independent edge cannot form the loop"
+            "mechanically-created uninspected round-trip is not graph-hygiene debt"
+        );
+    }
+
+    #[test]
+    fn a_half_grounded_reciprocal_pair_does_not_fire() {
+        // One direction grounded by an agent, the reverse left uninspected
+        // (e.g. a saga path edge) — not a deliberate double-grounding.
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        let relates = vec![rel_st("a", "b", "passing"), rel_st("b", "a", "uninspected")];
+        let r = report(intents, hierarchy, relates);
+        assert!(of_kind(&r, "dependency_cycle").is_empty());
+    }
+
+    #[test]
+    fn an_independent_reverse_does_not_make_a_reciprocal_pair() {
+        // a→b grounded, b→a explicitly independent (no relationship that way) —
+        // only ONE real relationship, so not a redundant double-grounding.
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        let relates = vec![rel_st("a", "b", "passing"), rel_st("b", "a", "independent")];
+        let r = report(intents, hierarchy, relates);
+        assert!(of_kind(&r, "dependency_cycle").is_empty());
+    }
+
+    #[test]
+    fn reciprocal_pair_evidence_surfaces_disagreeing_verdicts() {
+        // The two stored rows can silently disagree — the evidence must show it.
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        let relates = vec![rel_st("a", "b", "passing"), rel_st("b", "a", "failing")];
+        let r = report(intents, hierarchy, relates);
+        let found = of_kind(&r, "dependency_cycle");
+        assert_eq!(found.len(), 1);
+        assert!(
+            found[0].evidence.contains("passing") && found[0].evidence.contains("failing"),
+            "evidence surfaces the disagreement: {}",
+            found[0].evidence
+        );
+    }
+
+    #[test]
+    fn an_adjudicated_reciprocal_pair_is_suppressed() {
+        // A decision note on the smaller-id anchor, newer than both edges'
+        // last_inspected, suppresses the OPEN finding (shows as adjudicated).
+        let (intents, hierarchy) = rooted(&["a", "b"]);
+        let relates = vec![rel("a", "b"), rel("b", "a")];
+        let note = Note {
+            id: "n1".into(),
+            kind: "decision".into(),
+            text: "a and b are deliberate mutual peers".into(),
+            author: "llm".into(),
+            target_kind: "intent".into(),
+            target_id: "a".into(), // the smaller-id anchor
+            audience: String::new(),
+            created_at: "2026-06-16T00:00:00+00:00".into(), // newer than the edges
+        };
+        let r = report_with_notes(intents, hierarchy, relates, &[note]);
+        assert!(
+            of_kind(&r, "dependency_cycle").is_empty(),
+            "a current decision on the anchor suppresses the open finding"
+        );
+        assert!(
+            r.adjudicated.iter().any(|a| a.kind == "dependency_cycle"),
+            "it surfaces as adjudicated, not silently gone"
         );
     }
 
