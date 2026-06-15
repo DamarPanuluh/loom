@@ -713,7 +713,10 @@ loom delegate list
 (Discoverability extras: bare `loom` prints an orientation; `loom intent add` takes
  `--aspect happy|sad|fallback|…`; `loom edge implement … --locator "fn run"` grounds
  to a symbol; `loom codefile add 'src/**/*.rs'` bulk-registers via glob. `loom status`
- ends with a phase-aware "→ Next" compass, and status/next carry a `graph_state` pulse.
+ ends with a phase-aware compass whose verb signals confidence — `→ Next:`
+ (directive: a failure/binding gap) or `→ Recommended:` (discretionary, with an
+ `other open lanes:` line listing the other non-empty queues) — and status/next
+ carry a `graph_state` pulse (incl. `next_kind` + `other_lanes` in `--json`).
  Intents and rules are addressable by id, exact name, or unique name fragment.
  Edge ids are DERIVED from the endpoints — `rt:<from>:<to>` (hy/imp/gov/val/tgt
  for the other types), never stored — stable across export/import; `loom edge
