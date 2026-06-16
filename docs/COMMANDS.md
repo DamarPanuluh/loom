@@ -624,6 +624,12 @@ loom smells [--limit N] [--summary]
   unexplored pairs in `loom next` discovery, with the why in the work item's
   notes. `loom rule verdict --status independent` records "measured — rule
   does not apply" so unmeasured findings resolve honestly.
+  The NON-GATING ADVISORIES travel alongside (they never gate phase=complete):
+  cochange_coupling (`cochange_suggestions`, git evolutionary coupling),
+  nonlocal_proof (`proof_locality_suggestions`, a proven leaf whose only `test`
+  proof lives in other files), and code_clone (`code_clones`, cross-file
+  EXACT-text duplication via per-symbol body_hash — size-floored and
+  ignore-aware, the one duplication the intent-level detectors are blind to).
   Use `loom smells --summary --json` for bounded audit routing: counts by
   kind, top remedies, advisory totals, and detector blind spots. Full
   `loom smells --json` includes per-finding evidence, teaching text,

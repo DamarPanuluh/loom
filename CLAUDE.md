@@ -565,9 +565,11 @@ src/
 │       ├── find.rs         BM25 keyword search over intents (loom find)
 │       ├── smells.rs       derived problem signals (split-brain, scatter, tangle,
 │       │                   layering, vocab drift, …) with per-finding remedy; plus
-│       │                   the non-gating ADVISORIES — cochange_coupling (git) and
+│       │                   the non-gating ADVISORIES — cochange_coupling (git),
 │       │                   nonlocal_proof (a `proven` leaf whose only test lives in
-│       │                   another module — the proof-locality check) (loom smells)
+│       │                   another module — the proof-locality check), and code_clone
+│       │                   (cross-file exact-text duplication via per-symbol
+│       │                   body_hash) (loom smells)
 │       ├── stats.rs        counts / centrality / graph_state pulse / completeness gaps
 │       └── integrity.rs    graph integrity checks (loom doctor)
 └── commands/

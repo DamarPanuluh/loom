@@ -44,7 +44,7 @@ const RIPPLE: &[&str] = &[
     "files registered in the graph but missing on disk are reported — drop phantoms with `loom codefile remove <path>` or restore the file",
     "static imports are re-extracted per file — they feed `loom smells` (undeclared coupling, layering violations against the declared `loom layer order`) and discovery ranking",
     "the ripple is SYMBOL-PRECISE: an edge flips only when its IMPLEMENTS locator targets a symbol whose body actually changed — a comment/whitespace/unrelated-symbol edit flips nothing (falls back to whole-file when it can't attribute the change)",
-    "the auto `transition` notes recording these flips are bounded per target (transition_cap, default 20) so the flip-flop log never bloats — `loom sync` trims it; tune with `loom note prune --set-cap N` (0 = off). `loom smells` also surfaces ADVISORY `cochange_coupling` (files that change together in git but whose intents aren't linked)",
+    "the auto `transition` notes recording these flips are bounded per target (transition_cap, default 20) so the flip-flop log never bloats — `loom sync` trims it; tune with `loom note prune --set-cap N` (0 = off). `loom smells` also surfaces ADVISORY `cochange_coupling` (files that change together in git but whose intents aren't linked) and `code_clone` (cross-file exact-text duplication via per-symbol body_hash)",
 ];
 
 /// The role lanes: who does what, and which `loom next` mode serves the lane.

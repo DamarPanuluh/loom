@@ -53,6 +53,10 @@ pub fn scatter_threshold(level: &str) -> Option<usize> {
 }
 /// A file implemented by this many intents or more is tangled.
 pub const TANGLE_INTENTS: usize = 3;
+/// A clone group must span symbols at least this many lines long — below this,
+/// identical bodies are boilerplate (trivial getters, single match arms), not
+/// a copy-paste worth flagging.
+pub const MIN_CLONE_LINES: usize = 5;
 
 /// Aspect families for the `happy_path_only` audit: a TRIGGER aspect implies its
 /// REQUIRED sibling aspects must also exist (and, in the gating detector, be
@@ -77,7 +81,8 @@ pub struct Smell {
     /// | undeclared_coupling | layering_violation | recurrent_trouble
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
     /// | hypothesis_accumulation | symbol_accountability_gap | dependency_cycle
-    /// | intent_island | transitive_layering_violation
+    /// | intent_island | transitive_layering_violation | cochange_coupling
+    /// | nonlocal_proof | code_clone
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -243,6 +248,19 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             ],
             avoid: vec!["do not read a green `proven` axis as coverage of the grounded code; a co-grounded test can pass without touching this file".into()],
             done_when: "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)".into(),
+        },
+        "code_clone" => SmellTeaching {
+            principle: "Identical code text in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; an exact copy-paste in disjoint code has none. It is a SUGGESTION to investigate, not a defect: an exact clone can be legitimate (generated code, deliberately independent copies that must not be coupled).".into(),
+            inspect: vec![
+                "read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally identical".into(),
+                "`loom intent show <intent>` / `loom codefile show <path>` to see who owns each copy".into(),
+                "if both copies are owned, `loom edge explore <a> <b>` — an exact clone is hard evidence for a `duplicated_responsibility` merge".into(),
+            ],
+            avoid: vec![
+                "do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist".into(),
+                "do not treat a short identical body as proof; the size floor already filters trivia, but read before merging".into(),
+            ],
+            done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, or a decision note records why the copies are deliberate (this is advisory — it never gates phase=complete)".into(),
         },
         "layering_violation" => SmellTeaching {
             principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
@@ -2495,6 +2513,112 @@ fn parent_dir(path: &str) -> &str {
     path.rsplit_once('/').map(|(dir, _)| dir).unwrap_or("")
 }
 
+// ---------------------------------------------------------------------------
+// code-clone advisory — exact-text duplication the intent graph can't see
+// ---------------------------------------------------------------------------
+
+/// `code_clone` suggestions — cross-file EXACT (Type-1) clone detection, the
+/// one duplication the intent-level detectors are blind to by construction:
+/// `twin_intents` needs shared wording, `duplicated_responsibility` needs shared
+/// tags, `overlapping_ownership` needs a shared file, `undeclared_coupling`
+/// needs an import — literally copy-pasted code in disjoint, untagged,
+/// unimported files has none of those. The primitive is already paid for: every
+/// `SymbolFact` carries a `body_hash` (FNV-1a over its source lines) that
+/// `loom sync` populates, so exact-clone detection is GROUP BY body_hash across
+/// files.
+///
+/// Conservative by design (clone detection is famously noisy): a symbol is
+/// skipped when its hash is empty (pre-v8 / feature-light build — the instrument
+/// is unarmed for that fact), it is a test (fixtures legitimately repeat), its
+/// span is below `MIN_CLONE_LINES` (trivial getters / single match arms), or its
+/// file matches an ignore glob (generated/vendor/out-of-scope). Only groups
+/// spanning ≥2 DISTINCT files are flagged — intra-file repetition is a different
+/// concern (`tangled_file`). Computed OUTSIDE `compute_smells_from` — like
+/// `cochange_suggestions` and `proof_locality_suggestions`, it is ADVISORY and
+/// never gates `phase=complete`.
+pub fn clone_suggestions(
+    snapshot: &QuerySnapshot,
+    ignore_patterns: &[glob::Pattern],
+) -> Vec<Smell> {
+    const MAX_SUGGESTIONS: usize = 25;
+
+    let is_ignored = |path: &str| ignore_patterns.iter().any(|p| p.matches(path));
+
+    // Group eligible symbols by body_hash. Value: (file path, symbol fact).
+    let mut by_hash: HashMap<&str, Vec<(&str, &crate::types::SymbolFact)>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        if is_ignored(cf.path.as_str()) {
+            continue;
+        }
+        for f in &cf.symbol_facts {
+            if f.body_hash.is_empty() || f.is_test {
+                continue;
+            }
+            let span = f.line_end.saturating_sub(f.line_start) + 1;
+            if span < MIN_CLONE_LINES {
+                continue;
+            }
+            by_hash
+                .entry(f.body_hash.as_str())
+                .or_default()
+                .push((cf.path.as_str(), f));
+        }
+    }
+
+    let mut out: Vec<Smell> = Vec::new();
+    for members in by_hash.values() {
+        let distinct_files: HashSet<&str> = members.iter().map(|(p, _)| *p).collect();
+        if distinct_files.len() < 2 {
+            continue; // cross-file only — intra-file repetition is tangled_file's
+        }
+        let mut locs: Vec<(&str, &crate::types::SymbolFact)> = members.clone();
+        locs.sort_by(|a, b| {
+            a.0.cmp(b.0)
+                .then_with(|| a.1.line_start.cmp(&b.1.line_start))
+        });
+        let span = locs
+            .iter()
+            .map(|(_, f)| f.line_end.saturating_sub(f.line_start) + 1)
+            .max()
+            .unwrap_or(0);
+        let first_label = locs[0].1.label.as_str();
+        let count = locs.len();
+        let summary = if count > 2 {
+            format!(
+                "identical code in {count} locations: '{first_label}' (and {} others)",
+                count - 1
+            )
+        } else {
+            format!("identical code in 2 locations: '{first_label}'")
+        };
+        let evidence = format!(
+            "all share one exact body_hash ({} lines): {}",
+            span,
+            locs.iter()
+                .map(|(p, f)| format!("{}:{}-{} '{}'", p, f.line_start, f.line_end, f.label))
+                .collect::<Vec<_>>()
+                .join(" · ")
+        );
+        out.push(Smell {
+            kind: "code_clone".into(),
+            score: span as f64 * count as f64,
+            summary,
+            evidence,
+            remedy:
+                "read each copy; if both are owned by intents, `loom edge explore <a> <b>` to ground or refute the relationship (an exact clone is hard evidence for a `duplicated_responsibility` merge); if they are unowned or share one owner, dedupe the code or record why the copies are deliberate (`loom note add --file <path> --kind decision --text \"<why these copies are independent>\"`)".into(),
+            teaching: teaching_for("code_clone"),
+        });
+    }
+    out.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.summary.cmp(&b.summary))
+    });
+    out.truncate(MAX_SUGGESTIONS);
+    out
+}
+
 #[cfg(test)]
 mod proof_locality_tests {
     use super::*;
@@ -2807,6 +2931,144 @@ mod proof_locality_tests {
         assert!(
             out.is_empty(),
             "no symbol facts → unarmed → silent: {out:?}"
+        );
+    }
+}
+
+#[cfg(test)]
+mod clone_tests {
+    use super::*;
+    use crate::types::{CodeFile, SymbolFact};
+
+    fn sym(
+        name: &str,
+        body_hash: &str,
+        line_start: usize,
+        line_end: usize,
+        is_test: bool,
+    ) -> SymbolFact {
+        SymbolFact {
+            label: format!("fn {name}"),
+            name: name.into(),
+            kind: "fn".into(),
+            visibility: "private".into(),
+            line_start,
+            line_end,
+            is_test,
+            body_hash: body_hash.into(),
+        }
+    }
+
+    fn cf(path: &str, facts: Vec<SymbolFact>) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: facts.iter().map(|f| f.label.clone()).collect(),
+            symbol_facts: facts,
+            content_hash: String::new(),
+        }
+    }
+
+    fn snap(codefiles: Vec<CodeFile>) -> QuerySnapshot {
+        QuerySnapshot::from_parts(
+            Vec::new(), // intents
+            Vec::new(), // hierarchy
+            Vec::new(), // relates
+            Vec::new(), // governs
+            Vec::new(), // rules
+            Vec::new(), // validates
+            Vec::new(), // validations
+            Vec::new(), // implements
+            codefiles,
+            Some(Vec::new()), // notes
+        )
+    }
+
+    #[test]
+    fn two_files_with_one_shared_body_hash_flag_once() {
+        let s = snap(vec![
+            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 10, false)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, false)]),
+        ]);
+        let out = clone_suggestions(&s, &[]);
+        assert_eq!(
+            out.len(),
+            1,
+            "an exact cross-file clone should flag once: {out:?}"
+        );
+        assert_eq!(out[0].kind, "code_clone");
+        assert!(out[0].evidence.contains("src/a.rs"));
+        assert!(out[0].evidence.contains("src/b.rs"));
+    }
+
+    #[test]
+    fn test_symbols_are_skipped() {
+        let s = snap(vec![
+            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 10, true)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, true)]),
+        ]);
+        assert!(
+            clone_suggestions(&s, &[]).is_empty(),
+            "test fixtures legitimately repeat"
+        );
+    }
+
+    #[test]
+    fn bodies_below_the_size_floor_are_skipped() {
+        // span = line_end - line_start + 1 = 4 < MIN_CLONE_LINES (5).
+        let s = snap(vec![
+            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 4, false)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", 20, 23, false)]),
+        ]);
+        assert!(
+            clone_suggestions(&s, &[]).is_empty(),
+            "below the size floor is boilerplate"
+        );
+    }
+
+    #[test]
+    fn an_ignored_file_drops_the_pair_below_cross_file() {
+        let pat = glob::Pattern::new("src/generated/**").unwrap();
+        let s = snap(vec![
+            cf(
+                "src/generated/a.rs",
+                vec![sym("alpha", "HASH", 1, 10, false)],
+            ),
+            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, false)]),
+        ]);
+        assert!(
+            clone_suggestions(&s, &[pat]).is_empty(),
+            "ignoring one copy leaves a single-file group → no cross-file clone"
+        );
+    }
+
+    #[test]
+    fn intra_file_repetition_is_not_a_cross_file_clone() {
+        let s = snap(vec![cf(
+            "src/a.rs",
+            vec![
+                sym("alpha", "HASH", 1, 10, false),
+                sym("beta", "HASH", 20, 29, false),
+            ],
+        )]);
+        assert!(
+            clone_suggestions(&s, &[]).is_empty(),
+            "intra-file repetition is tangled_file's concern, not a cross-file clone"
+        );
+    }
+
+    #[test]
+    fn empty_body_hash_is_unarmed_and_silent() {
+        let s = snap(vec![
+            cf("src/a.rs", vec![sym("alpha", "", 1, 10, false)]),
+            cf("src/b.rs", vec![sym("beta", "", 20, 29, false)]),
+        ]);
+        assert!(
+            clone_suggestions(&s, &[]).is_empty(),
+            "pre-v8 / feature-light facts carry no hash → instrument unarmed"
         );
     }
 }

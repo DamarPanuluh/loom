@@ -12,8 +12,8 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    cochange_suggestions, proof_locality_suggestions, AdjudicatedSmell, QuerySnapshot, Smell,
-    SmellReport,
+    clone_suggestions, cochange_suggestions, proof_locality_suggestions, AdjudicatedSmell,
+    QuerySnapshot, Smell, SmellReport,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
@@ -34,7 +34,10 @@ pub fn run_with_db(
     let snapshot = db.query_snapshot()?;
     let report = db.smell_report(&snapshot)?;
     let registry = db.vocab_term_count()?;
-    render(root, &snapshot, report, registry, limit, summary, printer)
+    let ignores = db.list_ignores()?;
+    render(
+        root, &snapshot, report, registry, &ignores, limit, summary, printer,
+    )
 }
 fn kind_counts(smells: &[Smell]) -> std::collections::BTreeMap<String, usize> {
     let mut counts = std::collections::BTreeMap::new();
@@ -54,11 +57,13 @@ fn adjudicated_kind_counts(
     counts
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render(
     root: &std::path::Path,
     snapshot: &QuerySnapshot,
     report: SmellReport,
     registry: usize,
+    ignores: &[crate::types::Ignore],
     limit: usize,
     summary: bool,
     printer: &Printer,
@@ -79,6 +84,17 @@ fn render(
     let proof_adv = proof_locality_suggestions(snapshot);
     let proof_total = proof_adv.len();
     let proof_shown: Vec<_> = proof_adv.into_iter().take(limit.max(1)).collect();
+
+    // Advisory code-clone detection: cross-file EXACT (Type-1) duplication via
+    // the `body_hash` already on every SymbolFact. Ignore-aware (reuse the
+    // coverage-exclusion globs), size-floored, never gates green.
+    let clone_patterns: Vec<glob::Pattern> = ignores
+        .iter()
+        .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
+        .collect();
+    let clone_adv = clone_suggestions(snapshot, &clone_patterns);
+    let clone_total = clone_adv.len();
+    let clone_shown: Vec<_> = clone_adv.into_iter().take(limit.max(1)).collect();
 
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
@@ -112,6 +128,7 @@ fn render(
                 "declared_layers": declared_layers,
                 "cochange_suggestions_total": suggestions_total,
                 "proof_locality_suggestions_total": proof_total,
+                "code_clones_total": clone_total,
                 "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Use `loom smells --json` only when per-item evidence is needed.",
             }));
         } else {
@@ -123,6 +140,7 @@ fn render(
             println!("  adjudicated findings: {}", adjudicated.len());
             println!("  co-change advisories: {suggestions_total}");
             println!("  proof-locality advisories: {proof_total}");
+            println!("  code-clone advisories: {clone_total}");
             println!("  tagged coded intents: {tagged}/{coded}");
             if blind > 0 {
                 println!("  duplicate detector blind spot: {blind} untagged coded intent(s)");
@@ -156,7 +174,9 @@ fn render(
             "cochange_suggestions_total": suggestions_total,
             "proof_locality_suggestions": proof_shown,
             "proof_locality_suggestions_total": proof_total,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` (git evolutionary coupling) and `proof_locality_suggestions` (a proven leaf whose only `test` proof lives in other files) are ADVISORY — they never gate green; explore or ignore.",
+            "code_clones": clone_shown,
+            "code_clones_total": clone_total,
+            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` (git evolutionary coupling), `proof_locality_suggestions` (a proven leaf whose only `test` proof lives in other files), and `code_clones` (cross-file exact-text duplication via per-symbol body_hash) are ADVISORY — they never gate green; explore or ignore.",
         }));
         return Ok(());
     }
@@ -231,6 +251,28 @@ fn render(
                 "  ({} more — `loom smells --limit {}`)",
                 proof_total - proof_shown.len(),
                 proof_total
+            );
+        }
+    }
+    if !clone_shown.is_empty() {
+        println!();
+        println!(
+            "── code clones ({}) — ADVISORY (identical code text in unrelated files; never gate green) ──",
+            clone_total
+        );
+        println!();
+        for s in &clone_shown {
+            println!("  [{}]  (score {:.1})", s.kind, s.score);
+            println!("    {}", s.summary);
+            println!("    evidence: {}", s.evidence);
+            println!("    remedy:   {}", s.remedy);
+            println!();
+        }
+        if clone_total > clone_shown.len() {
+            println!(
+                "  ({} more — `loom smells --limit {}`)",
+                clone_total - clone_shown.len(),
+                clone_total
             );
         }
     }
