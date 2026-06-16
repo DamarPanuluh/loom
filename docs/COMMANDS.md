@@ -636,9 +636,10 @@ loom rule seed iso5055|mobile|web-ui|service|data|concurrency
   says exactly what to look for). Idempotent (existing names skipped).
   iso5055 = baseline, applies to any code (10 CWE-grounded rules across
   Reliability/Security/Performance/Maintainability) · mobile = lifecycle,
-  offline, permissions, main thread, battery, platform divergence, deep links ·
-  web-ui = view states, a11y, XSS, client-side trust, feedback, responsive,
-  URL state · service = contract artifacts, idempotency, timeouts/retries,
+  offline, permissions, main thread, battery, platform divergence, deep links,
+  touch targets ·
+  web-ui = view states, a11y, contrast, touch targets, XSS, client-side trust,
+  feedback, responsive, URL state · service = contract artifacts, idempotency, timeouts/retries,
   saga compensation, boundary auth, observability, degradation, compatible
   evolution · data = migrations, ingest validation, loss accounting, PII,
   rerun idempotency, lineage · concurrency = sync discipline, no lock across

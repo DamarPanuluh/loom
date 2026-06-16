@@ -676,8 +676,12 @@ pub fn completeness_gaps_from_snapshot(snapshot: &QuerySnapshot) -> Vec<String> 
             .push(child.as_str());
     }
 
-    // Path coverage: a parent whose children include a happy path but no
-    // sad/fallback sibling.
+    // Path coverage (structural twin of the happy_path_only smell): a parent
+    // whose children include a family's TRIGGER aspect but not its required
+    // siblings. Shares super::smells::ASPECT_FAMILIES so the report and the
+    // gating smell never disagree on which states a parent owes (behavioral
+    // happy→sad/fallback, UI populated→empty/error). This is the structural
+    // check (aspect present?), not the realized+grounded+proven gating bar.
     for parent in intents {
         let mut child_aspects: std::collections::HashSet<String> = std::collections::HashSet::new();
         for child_id in children_by_parent
@@ -691,17 +695,18 @@ pub fn completeness_gaps_from_snapshot(snapshot: &QuerySnapshot) -> Vec<String> 
                 }
             }
         }
-        if child_aspects.contains("happy") {
-            let mut missing = Vec::new();
-            if !child_aspects.contains("sad") {
-                missing.push("sad");
+        for (trigger, required) in super::smells::ASPECT_FAMILIES {
+            if !child_aspects.contains(*trigger) {
+                continue;
             }
-            if !child_aspects.contains("fallback") {
-                missing.push("fallback");
-            }
+            let missing: Vec<&str> = required
+                .iter()
+                .copied()
+                .filter(|a| !child_aspects.contains(*a))
+                .collect();
             if !missing.is_empty() {
                 gaps.push(format!(
-                    "Feature group under '{}' has a happy path but no {} sibling.",
+                    "Group under '{}' has a '{trigger}' aspect but no {} sibling.",
                     parent.name,
                     missing.join("/")
                 ));

@@ -73,6 +73,9 @@ const MOBILE_PACK: &[(&str, &str, &str, &str)] = &[
     ("mobile-external-entry-validated", "error",
      "Mobile (CWE-20/939): externally-triggered entry points — deep links, intents/universal links, push payloads — validate their input before navigation or action.",
      "Trace each deep-link/push handler: is the payload parsed and validated with a rejection path before it drives navigation, auth, or writes?"),
+    ("mobile-touch-target-size", "warning",
+     "Mobile (HIG ~44pt / Material ~48dp): tap targets meet the platform minimum size and have adequate spacing, so controls are reliably hittable without mis-taps.",
+     "Check interactive controls' rendered size + padding against the platform minimum; flag dense rows, small icon buttons, and edge-crowded or closely-stacked tap targets."),
 ];
 
 /// Web-UI vantage point: view states, accessibility, XSS, responsiveness,
@@ -99,6 +102,12 @@ const WEBUI_PACK: &[(&str, &str, &str, &str)] = &[
     ("webui-url-state-recoverable", "warning",
      "Web UI: state needed to recreate a view travels in the URL — refresh, back, and shared links land where the user expects.",
      "For each stateful view: refresh it. If the result differs from what was on screen (lost filters/selection/page), the state isn't URL-recoverable."),
+    ("webui-color-contrast", "warning",
+     "Web UI (WCAG 1.4.3 / 1.4.11): text and meaningful UI meet the contrast ratio against their background (≥4.5:1 body text, ≥3:1 large text and UI/graphical components), and color is never the sole carrier of meaning.",
+     "Check the design tokens / computed styles for text-on-background and state indicators (error/success/disabled) against the WCAG ratio; flag low-contrast pairs and any status conveyed by color alone with no icon/label/text backup."),
+    ("webui-touch-target-size", "warning",
+     "Web UI (WCAG 2.5.5/2.5.8): interactive targets are large enough and spaced to hit reliably on touch and with imprecise pointers (~24px minimum, ~44px for primary actions), not tiny adjacent hit areas.",
+     "Measure interactive elements' rendered hit area and inter-target spacing; flag icon-only controls, dense list affordances, and close-packed buttons below the target size with no larger alternative."),
 ];
 
 /// Service/integration vantage point: contracts, idempotency, timeouts,
@@ -629,6 +638,63 @@ fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<Str
                 key,
                 shown
             )
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pack(name: &str) -> &'static [(&'static str, &'static str, &'static str, &'static str)] {
+        PACKS
+            .iter()
+            .find(|(n, _)| *n == name)
+            .expect("pack exists")
+            .1
+    }
+    fn has_rule(rules: &[(&str, &str, &str, &str)], name: &str) -> bool {
+        rules.iter().any(|(n, ..)| *n == name)
+    }
+
+    /// Design-system standards (`design-system standards via QualityRule packs`):
+    /// contrast and touch-target sticks ship in the web-ui/mobile packs so
+    /// screens GOVERN against them instead of inventing the bar per screen.
+    /// a11y, view states, and responsive breakpoints were already present.
+    #[test]
+    fn ui_packs_carry_the_design_system_standards() {
+        let webui = pack("web-ui");
+        for r in [
+            "webui-accessible-interactive", // a11y (pre-existing)
+            "webui-view-states-complete",   // loading/empty/error (pre-existing)
+            "webui-responsive-declared",    // breakpoints (pre-existing)
+            "webui-color-contrast",         // new
+            "webui-touch-target-size",      // new
+        ] {
+            assert!(
+                has_rule(webui, r),
+                "web-ui pack missing design-system rule '{r}'"
+            );
+        }
+        assert!(has_rule(pack("mobile"), "mobile-touch-target-size"));
+    }
+
+    /// New design-system rules default to mid inspection effort (no special-case
+    /// entry needed) and are advisory `warning` severity.
+    #[test]
+    fn new_design_system_rules_are_mid_effort_warnings() {
+        for name in [
+            "webui-color-contrast",
+            "webui-touch-target-size",
+            "mobile-touch-target-size",
+        ] {
+            assert_eq!(pack_rule_effort(name), "mid", "{name} effort");
+        }
+        let webui = pack("web-ui");
+        for (n, sev, ..) in webui {
+            if *n == "webui-color-contrast" || *n == "webui-touch-target-size" {
+                assert_eq!(*sev, "warning", "{n} severity");
+            }
         }
     }
 }

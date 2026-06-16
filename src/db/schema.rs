@@ -240,8 +240,10 @@ pub mod prop {
     pub const LAYER: &str = "layer";
     pub const SOURCE_REFS: &str = "source_refs";
     pub const STATUS: &str = "status";
-    /// Intent: behavioural facet for completeness — happy | sad | fallback | …
-    /// (open vocabulary; empty = unspecified).
+    /// Intent: behavioural facet for completeness. Two families the
+    /// happy_path_only audit reads: behavioral (happy | sad | fallback) and
+    /// UI-state (populated | empty | loading | error). Open vocabulary —
+    /// anything is allowed; empty = unspecified.
     pub const ASPECT: &str = "aspect";
     /// Intent: implementation lifecycle — planned | implemented | needs_change.
     /// The prescriptive axis (does the code need to be built/changed?), distinct

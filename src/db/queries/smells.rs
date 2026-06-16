@@ -54,6 +54,21 @@ pub fn scatter_threshold(level: &str) -> Option<usize> {
 /// A file implemented by this many intents or more is tangled.
 pub const TANGLE_INTENTS: usize = 3;
 
+/// Aspect families for the `happy_path_only` audit: a TRIGGER aspect implies its
+/// REQUIRED sibling aspects must also exist (and, in the gating detector, be
+/// realized+grounded+proven). Two families share one detector — the behavioral
+/// family (happy → sad/fallback) and the UI-state family (populated →
+/// empty/error). `loading` is a recognized UI state but deliberately NOT
+/// required: a screen can legitimately have no distinct loading view, so it
+/// never triggers and is never demanded. Aspect stays an OPEN vocabulary at
+/// write time — this table only drives the coverage smell, it does not validate
+/// the field. Shared verbatim by the `stats.rs` completeness-gaps report so the
+/// two never diverge on which states a parent owes.
+pub const ASPECT_FAMILIES: &[(&str, &[&str])] = &[
+    ("happy", &["sad", "fallback"]),
+    ("populated", &["empty", "error"]),
+];
+
 /// One derived finding, with the exact remedy that resolves it.
 #[derive(Debug, Clone, Serialize)]
 pub struct Smell {
@@ -241,14 +256,14 @@ fn teaching_for(kind: &str) -> SmellTeaching {
         },
         "recurrent_trouble" => recurrent_teaching("edge", "<id>"),
         "happy_path_only" => SmellTeaching {
-            principle: "Failure and degradation behavior are real only when realized, grounded, and proven; naming sad/fallback children is not enough.".into(),
+            principle: "The non-sunny states of a behavior are real only when realized, grounded, and proven; naming the trigger (a 'happy' behavior or a 'populated' UI state) without its required siblings is not enough. Two families: behavioral happy → sad/fallback, and UI-state populated → empty/error (loading is recognized but not required).".into(),
             inspect: vec![
-                "inspect the parent's aspect-tagged children".into(),
-                "check lifecycle, IMPLEMENTS groundings, and passed validations for sad/fallback paths".into(),
-                "add or prove the missing path, or record why it is not applicable".into(),
+                "inspect the parent's aspect-tagged children for the triggered family".into(),
+                "check lifecycle, IMPLEMENTS groundings, and passed validations for each required sibling (sad/fallback, or empty/error)".into(),
+                "add or prove the missing path/state, or record why it is not applicable".into(),
             ],
-            avoid: vec!["do not clear failure-path debt with planned or unproven child intents".into()],
-            done_when: "sad and fallback paths are implemented, grounded, and directly proven, or a current decision explains why they are not required".into(),
+            avoid: vec!["do not clear the debt with planned or unproven child intents".into()],
+            done_when: "the required sibling paths/states are implemented, grounded, and directly proven, or a current decision explains why they are not required".into(),
         },
         "unused_rule" => SmellTeaching {
             principle: "A rule connected to nothing is not a quality bar; it is dormant policy text.".into(),
@@ -1302,8 +1317,10 @@ pub fn compute_smells_from_parts(
                 .entry(p.as_str())
                 .or_default()
                 .insert(child.aspect.as_str());
-            if matches!(child.aspect.as_str(), "sad" | "fallback")
-                && child.lifecycle == "implemented"
+            // A required-sibling child counts as SATISFIED only when realized,
+            // grounded, and directly proven — the gating bar, applied to any
+            // family's required aspects (sad/fallback, empty/error, …).
+            if child.lifecycle == "implemented"
                 && files_of.contains_key(child.id.as_str())
                 && directly_proven_intents.contains(child.id.as_str())
             {
@@ -1318,70 +1335,73 @@ pub fn compute_smells_from_parts(
             }
         }
         for (parent_id, aspects) in &child_aspects {
-            if !aspects.contains("happy") {
-                continue;
-            }
             let satisfied = satisfied_aspects.get(parent_id);
-            let missing: Vec<&str> = ["sad", "fallback"]
-                .iter()
-                .filter(|a| !satisfied.is_some_and(|s| s.contains(*a)))
-                .copied()
-                .collect();
-            if missing.is_empty() {
-                continue;
-            }
-            // Adjudicated: a decision note on the parent newer than its newest
-            // aspect-carrying child records why the missing path is N/A. A new
-            // aspect-tagged child re-opens the question.
-            let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
-            if let Some(note) = adjudicated(
-                parent_id,
-                newest_aspect_child.get(parent_id).copied().unwrap_or(""),
-            ) {
-                adjudicated_out.push(AdjudicatedSmell {
+            // One finding per TRIGGERED family (a parent could own both a
+            // behavioral happy path and a UI populated state — each owes its own
+            // siblings). `loading` is recognized but never required.
+            for (trigger, required) in ASPECT_FAMILIES {
+                if !aspects.contains(trigger) {
+                    continue;
+                }
+                let missing: Vec<&str> = required
+                    .iter()
+                    .filter(|a| !satisfied.is_some_and(|s| s.contains(*a)))
+                    .copied()
+                    .collect();
+                if missing.is_empty() {
+                    continue;
+                }
+                // Adjudicated: a decision note on the parent newer than its
+                // newest aspect-carrying child records why the missing path is
+                // N/A. A new aspect-tagged child re-opens the question.
+                let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
+                let summary = format!(
+                    "'{pname}' declares a '{trigger}' aspect but no realized+proven {} sibling",
+                    missing.join("/")
+                );
+                if let Some(note) = adjudicated(
+                    parent_id,
+                    newest_aspect_child.get(parent_id).copied().unwrap_or(""),
+                ) {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "happy_path_only".into(),
+                        summary,
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "a new aspect-tagged child lands under this intent".into(),
+                        teaching: teaching_for("happy_path_only"),
+                    });
+                    continue;
+                }
+                smells.push(Smell {
                     kind: "happy_path_only".into(),
-                    summary: format!(
-                        "'{}' declares a happy path but no realized+proven {} behavior",
-                        pname,
+                    score: 2.0 + 2.0 * missing.len() as f64,
+                    summary,
+                    evidence: format!(
+                        "children carry aspects {{{}}}; realized+proven siblings {{{}}} — the '{trigger}' family's {} path(s) are not implemented, grounded, and directly proven",
+                        {
+                            let mut v: Vec<&str> = aspects.iter().copied().collect();
+                            v.sort();
+                            v.join(", ")
+                        },
+                        {
+                            let mut v: Vec<&str> = satisfied
+                                .map(|s| s.iter().copied().collect())
+                                .unwrap_or_default();
+                            v.sort();
+                            v.join(", ")
+                        },
                         missing.join("/")
                     ),
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "a new aspect-tagged child lands under this intent".into(),
+                    remedy: format!(
+                        "realize and prove the missing path(s): loom intent add --aspect {first} --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
+                        first = missing[0],
+                        m = missing.join("/")
+                    ),
                     teaching: teaching_for("happy_path_only"),
                 });
-                continue;
             }
-            smells.push(Smell {
-                kind: "happy_path_only".into(),
-                score: 2.0 + 2.0 * missing.len() as f64,
-                summary: format!(
-                    "'{}' declares a happy path but no realized+proven {} behavior",
-                    pname,
-                    missing.join("/")
-                ),
-                evidence: format!(
-                    "children carry aspects {{{}}}; realized+proven sad/fallback aspects {{{}}} — failure/degradation behavior is not implemented, grounded, and directly proven",
-                    {
-                        let mut v: Vec<&str> = aspects.iter().copied().collect();
-                        v.sort();
-                        v.join(", ")
-                    },
-                    {
-                        let mut v: Vec<&str> = satisfied
-                            .map(|s| s.iter().copied().collect())
-                            .unwrap_or_default();
-                        v.sort();
-                        v.join(", ")
-                    }
-                ),
-                remedy: format!(
-                    "realize and prove the missing path(s): loom intent add --aspect sad --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
-                    m = missing.join("/")
-                ),
-                teaching: teaching_for("happy_path_only"),
-            });
         }
     }
 
@@ -2894,6 +2914,77 @@ mod cycle_island_tests {
         assert!(
             of_kind(&r, "intent_island").is_empty(),
             "silent without a system root (missing-root is a different problem)"
+        );
+    }
+
+    fn with_aspect(id: &str, aspect: &str) -> Intent {
+        let mut i = intent(id, "feature");
+        aspect.clone_into(&mut i.aspect);
+        i
+    }
+
+    #[test]
+    fn ui_state_populated_without_empty_or_error_is_happy_path_only() {
+        // A screen with a populated state but no empty/error sibling — the new
+        // UI-state aspect family, sharing the happy_path_only detector.
+        let intents = vec![
+            intent("sys", "system"),
+            intent("screen", "component"),
+            with_aspect("populated_state", "populated"),
+        ];
+        let hierarchy = vec![
+            ("sys".to_string(), "screen".to_string()),
+            ("screen".to_string(), "populated_state".to_string()),
+        ];
+        let r = report(intents, hierarchy, vec![]);
+        let hp = of_kind(&r, "happy_path_only");
+        assert_eq!(
+            hp.len(),
+            1,
+            "populated with no empty/error sibling fires: {hp:?}"
+        );
+        assert!(
+            hp[0].summary.contains("populated") && hp[0].summary.contains("empty/error"),
+            "names the UI-state family: {}",
+            hp[0].summary
+        );
+    }
+
+    #[test]
+    fn behavioral_happy_without_sad_or_fallback_still_fires() {
+        // Regression: the original behavioral family still works through the
+        // generalized families table.
+        let intents = vec![
+            intent("sys", "system"),
+            intent("feat", "component"),
+            with_aspect("sunny", "happy"),
+        ];
+        let hierarchy = vec![
+            ("sys".to_string(), "feat".to_string()),
+            ("feat".to_string(), "sunny".to_string()),
+        ];
+        let r = report(intents, hierarchy, vec![]);
+        let hp = of_kind(&r, "happy_path_only");
+        assert_eq!(hp.len(), 1);
+        assert!(hp[0].summary.contains("happy") && hp[0].summary.contains("sad/fallback"));
+    }
+
+    #[test]
+    fn a_loading_only_state_does_not_trigger() {
+        // `loading` is recognized but never a trigger and never required.
+        let intents = vec![
+            intent("sys", "system"),
+            intent("screen", "component"),
+            with_aspect("spinner", "loading"),
+        ];
+        let hierarchy = vec![
+            ("sys".to_string(), "screen".to_string()),
+            ("screen".to_string(), "spinner".to_string()),
+        ];
+        let r = report(intents, hierarchy, vec![]);
+        assert!(
+            of_kind(&r, "happy_path_only").is_empty(),
+            "loading alone is not a triggering aspect"
         );
     }
 }

@@ -44,6 +44,10 @@ struct SessionCounts {
     rulings: i64,
     /// Proofs marked blocked — an external prerequisite only the user can provide.
     blocked: i64,
+    /// Pending manual_check proofs — the human-judged residue (does it look/feel
+    /// right?) a machine cannot settle, incl. visual/aesthetic confirmation. A
+    /// manual_check is human-inspected by definition; it's user-gated like align.
+    visual_confirm: i64,
     sagas: i64,
     phase: String,
     has_source: bool,
@@ -123,6 +127,17 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
                 c.blocked
             ),
             then: "loom validation list  (blocked ones name their prerequisite) → provide it → loom validate --all",
+        });
+    }
+    if c.visual_confirm > 0 {
+        recommend_next!();
+        menu.push(Offer {
+            ask: "Some manual confirmations await your judgment — including the visual/aesthetic 'does it look right?' pass. Go through them?".into(),
+            why: format!(
+                "{} pending manual_check proof(s) — the human-judged residue a machine can't settle, batched for when you're here",
+                c.visual_confirm
+            ),
+            then: "loom validation list  (manual_check, not_run) → loom validation mark <id> --result passed|failed --evidence \"…\"",
         });
     }
 
@@ -327,6 +342,14 @@ pub fn run_with_db(
         align: db.align_candidate_count(&snapshot)?,
         rulings,
         blocked: outside.blocked_validations,
+        visual_confirm: snapshot
+            .validations
+            .iter()
+            .filter(|v| {
+                v.validation_type == "manual_check"
+                    && (v.last_result.is_empty() || v.last_result == "not_run")
+            })
+            .count() as i64,
         sagas: snapshot
             .validations
             .iter()
@@ -376,6 +399,7 @@ mod tests {
             align: 0,
             rulings: 0,
             blocked: 0,
+            visual_confirm: 0,
             sagas: 0,
             phase: "discovery".into(),
             has_source: true,
@@ -404,6 +428,14 @@ mod tests {
         assert!(menu[rec].then.contains("validation list"));
 
         c.blocked = 0;
+        c.visual_confirm = 2;
+        let (menu, rec) = offers(&c);
+        assert!(
+            menu[rec].then.contains("manual_check"),
+            "pending manual confirmations are user-gated, ahead of the build backlog"
+        );
+
+        c.visual_confirm = 0;
         let (menu, rec) = offers(&c);
         assert!(menu[rec].then.contains("--mode build"));
     }

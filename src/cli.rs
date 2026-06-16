@@ -1169,8 +1169,9 @@ pub enum RuleCmd {
     /// are skipped (idempotent).
     Seed {
         /// Pack name. Available: iso5055 (baseline, any code), mobile
-        /// (lifecycle/offline/permissions), web-ui (view states/a11y/XSS),
-        /// service (contracts/idempotency/timeouts/sagas), data
+        /// (lifecycle/offline/permissions/touch targets), web-ui (view states/
+        /// a11y/contrast/touch targets/XSS), service
+        /// (contracts/idempotency/timeouts/sagas), data
         /// (migrations/ingest/PII/lineage), concurrency (sync discipline/
         /// lock hygiene/atomicity/proven perf budgets).
         pack: String,
