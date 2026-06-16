@@ -330,7 +330,77 @@ fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
     })
 }
 
-pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
+/// `loom guide --role <role>` — the role CHARGE. Derived ENTIRELY from the lane
+/// table (`gate::actions_for_role` for the lane, `gate::mode_for_role` for the
+/// queue) plus the role mandate, so it can never contradict what `gate.rs`
+/// actually enforces. This is how an LLM adopts a lane from loom itself, in any
+/// harness — no role-specific markdown to ship or drift. Opens no graph: an
+/// agent adopts its role before it touches anything.
+fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
+    use crate::db::schema::ROLES;
+    if !ROLES.contains(&role) {
+        anyhow::bail!(
+            "Unknown role '{role}'. Valid roles: {}. \
+             Each owns a lane — `loom guide --role <role>` prints its charge.",
+            ROLES.join(", "),
+        );
+    }
+    let mandate = ROLE_LANES
+        .iter()
+        .find(|(r, _, _)| *r == role)
+        .map(|(_, _, what)| *what)
+        .unwrap_or("");
+    let queue = crate::gate::mode_for_role(role)
+        .map(|m| format!("loom next --mode {m}"))
+        .unwrap_or_else(|| "loom next".to_string());
+    let lane: Vec<&str> = crate::gate::actions_for_role(role)
+        .iter()
+        .map(|l| l.action)
+        .collect();
+    let setup = format!("export LOOM_AGENT=llm:{role}");
+    let out_of_lane = "Acting outside the lane is a hard error naming the owner. \
+        Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "role": role,
+            "mandate": mandate,
+            "setup": setup,
+            "queue": queue,
+            "lane": lane,
+            "out_of_lane": out_of_lane,
+            "next_step": format!("{setup} && {queue}"),
+        }));
+        return Ok(());
+    }
+
+    println!(
+        "══ loom — role charge: {} ══════════════════════════════════",
+        role.to_uppercase()
+    );
+    println!();
+    println!("You are operating loom as the {role} lane. Adopt this role for the session.");
+    println!();
+    println!("  MANDATE  {mandate}");
+    println!("  SETUP    {setup}");
+    println!("  QUEUE    {queue}");
+    println!();
+    println!("YOUR LANE (what you MAY do — everything else errors, hand it to its owner):");
+    for action in &lane {
+        println!("  • {action}");
+    }
+    println!();
+    println!("{out_of_lane}");
+    println!("Full driving protocol: `loom guide`.");
+    println!();
+    println!("  → Next: {setup} && {queue}");
+    Ok(())
+}
+
+pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<()> {
+    if let Some(r) = role {
+        return run_role_charge(r, printer);
+    }
     let m = resolve_mode(mode)?;
     let steps = match m {
         "greenfield" => greenfield(),
@@ -380,6 +450,7 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
                 "lanes": ROLE_LANES.iter().map(|(role, mode, what)| serde_json::json!({
                     "role": role, "queue": format!("loom next --mode {mode}"), "does": what,
                 })).collect::<Vec<_>>(),
+                "adopt": "`loom guide --role <role>` prints one lane's full charge — mandate, lane (what it MAY do), queue, setup — derived from the enforced lane table so it can't drift. An agent adopts its role from loom itself, no harness-specific instructions.",
             },
             "orchestration": {
                 "principle": "loom defines the CONTRACT (roles, lanes, owned fields, the handoff dependency). It does NOT predefine the TOPOLOGY — you choose how agents are organized; loom enforces the lane when a role is declared, never when or how many.",
@@ -497,6 +568,8 @@ pub fn run(mode: Option<&str>, printer: &Printer) -> Result<()> {
     println!("  Bare 'llm'/'human' = solo mode (one agent, all lanes). Separation of duties:");
     println!("  builders never green-light their own work — verdicts live in other lanes,");
     println!("  and `loom doctor` audits provenance.");
+    println!("  Adopt one: `loom guide --role <role>` prints that lane's full charge");
+    println!("  (mandate, lane, queue, setup) — derived from the enforced lane table.");
     println!();
     println!(
         "ORCHESTRATION (you have loom access — usually an orchestrator that can spawn subagents)"
@@ -518,9 +591,65 @@ mod tests {
 
     fn guide_json(mode: &str) -> serde_json::Value {
         let p = Printer::capturing(true);
-        run(Some(mode), &p).expect("guide opens no graph — must never fail");
+        run(Some(mode), None, &p).expect("guide opens no graph — must never fail");
         serde_json::from_str(&p.captured().expect("captured json"))
             .expect("guide --json is valid json")
+    }
+
+    fn charge_json(role: &str) -> serde_json::Value {
+        let p = Printer::capturing(true);
+        run(None, Some(role), &p).expect("charge opens no graph — must never fail");
+        serde_json::from_str(&p.captured().expect("captured json"))
+            .expect("charge --json is valid json")
+    }
+
+    /// The charge is a pure VIEW on the enforced lane table: its lane list must
+    /// equal `gate::actions_for_role` and its queue `gate::mode_for_role`, for
+    /// every role — so it can never tell an agent it may do something the gate
+    /// will then reject (or hide something the gate allows).
+    #[test]
+    fn role_charge_is_derived_from_the_lane_table() {
+        for role in crate::db::schema::ROLES {
+            let v = charge_json(role);
+            assert_eq!(v["role"], serde_json::json!(role), "role echoed");
+            let mode = crate::gate::mode_for_role(role).expect("agent role has a queue");
+            assert_eq!(
+                v["queue"],
+                serde_json::json!(format!("loom next --mode {mode}")),
+                "queue must match gate::mode_for_role for '{role}'"
+            );
+            let want: Vec<&str> = crate::gate::actions_for_role(role)
+                .iter()
+                .map(|l| l.action)
+                .collect();
+            let got: Vec<String> = v["lane"]
+                .as_array()
+                .expect("lane is an array")
+                .iter()
+                .map(|x| x.as_str().unwrap().to_string())
+                .collect();
+            assert_eq!(
+                got, want,
+                "charge lane for '{role}' must equal the gate table"
+            );
+            assert!(!want.is_empty(), "every role owns ≥1 lane: '{role}'");
+            assert_eq!(
+                v["setup"],
+                serde_json::json!(format!("export LOOM_AGENT=llm:{role}")),
+                "setup names the role"
+            );
+        }
+    }
+
+    #[test]
+    fn role_charge_rejects_unknown_role() {
+        let p = Printer::capturing(true);
+        let err = run(None, Some("analyser"), &p).unwrap_err().to_string();
+        assert!(err.contains("Unknown role"), "got: {err}");
+        assert!(
+            err.contains("analyzer"),
+            "the error inlines the valid roles: {err}"
+        );
     }
 
     /// COMPLETENESS RATCHET (coverage leg): every section in the teaching

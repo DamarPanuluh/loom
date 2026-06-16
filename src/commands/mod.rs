@@ -76,7 +76,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Batch       { file }       => batch::run(&file, &printer),
         Command::Doctor                     => doctor::run(&printer),
         Command::Migrate                    => migrate::run(&printer),
-        Command::Guide       { mode }       => guide::run(mode.as_deref(), &printer),
+        Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),

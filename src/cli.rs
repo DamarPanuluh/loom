@@ -287,6 +287,11 @@ pub enum Command {
         /// refactor (change existing) | seed (interview user). Auto-detected from the repo if omitted.
         #[arg(long)]
         mode: Option<String>,
+        /// Adopt a role: print the charge for builder|analyzer|fixer|validator|quality
+        /// — its mandate, lane (what it MAY do), queue, and setup. Takes precedence
+        /// over --mode; derived from the enforced lane table so it can't drift.
+        #[arg(long)]
+        role: Option<String>,
     },
 
     /// Print loom's data model — node/edge types, properties, the inspection
