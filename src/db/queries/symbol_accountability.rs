@@ -447,7 +447,11 @@ mod tests {
             line_start: 1,
             line_end: 2,
             is_test,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
             body_hash: String::new(),
+            shape_hash: String::new(),
         }
     }
 

@@ -785,7 +785,11 @@ fn run_all(
     let snapshot = store.query_snapshot()?;
     let gs = store.graph_state(&snapshot)?;
     let doctor = store.doctor_report(&snapshot)?;
-    let all_smells = store.smell_report(&snapshot)?.open;
+    let all_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
+        Some(store.smell_report(&snapshot)?.open)
+    } else {
+        None
+    };
     let prove = store.prove_candidates(&snapshot)?;
     let supported_hypotheses = store.list_hypotheses(Some("supported"))?;
     let align = store.align_candidates(&snapshot)?;
@@ -813,7 +817,7 @@ fn render_all(
     snapshot: QuerySnapshot,
     gs: GraphState,
     doctor: DoctorReport,
-    all_smells: Vec<Smell>,
+    all_smells: Option<Vec<Smell>>,
     prove: Vec<(Hypothesis, f64)>,
     supported_hypotheses: Vec<Hypothesis>,
     align: Vec<AlignCandidate>,
@@ -830,6 +834,8 @@ fn render_all(
         .count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
+    let smells_computed = all_smells.is_some();
+    let all_smells = all_smells.unwrap_or_default();
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
 
@@ -977,6 +983,12 @@ fn render_all(
                 "unreached_codefiles_total": unreached_codefiles_total,
             },
             "smells_total": smells_total,
+            "smells_computed": smells_computed,
+            "smells_note": if smells_computed {
+                ""
+            } else {
+                "Audit scan deferred while another phase is active; run `loom smells --summary` for current findings."
+            },
             "smells_top": smells_top.iter().map(|s| serde_json::json!({
                 "kind": s.kind, "summary": s.summary, "remedy": s.remedy,
             })).collect::<Vec<_>>(),
@@ -1031,12 +1043,14 @@ fn render_all(
         println!("    human-gated ones into ONE agenda for the next conversation window.");
     }
     println!();
-    if smells_total > 0 {
+    if smells_computed && smells_total > 0 {
         println!(
             "  smells: {} finding(s), top: {} — `loom smells`",
             smells_total,
             smells_top.first().map(|s| s.summary.as_str()).unwrap_or("")
         );
+    } else if !smells_computed {
+        println!("  smells: deferred while another phase is active — `loom smells --summary`.");
     }
     if doctor.healthy() {
         println!(

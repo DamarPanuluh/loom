@@ -544,6 +544,19 @@ pub struct SymbolFact {
     pub line_end: usize,
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub is_test: bool,
+    /// Source string literals found inside this symbol. These are physical
+    /// facts, not ownership claims; smell detectors use them to catch repeated
+    /// user-facing/contract strings that can drift.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub string_literals: Vec<StringLiteralFact>,
+    /// Count of call/macro markers that can abort a path or leave it unfinished
+    /// (`panic`, `unwrap`, `expect`, `todo`, `unimplemented`). Extracted from
+    /// source tokens, excluding comments and string literals.
+    #[serde(default, skip_serializing_if = "usize_is_zero")]
+    pub panic_marker_count: usize,
+    /// Distinct uncontrolled-panic marker names seen in this symbol.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub panic_markers: Vec<String>,
     /// FNV-1a hash of this symbol's source lines — `loom sync`'s per-symbol
     /// change detector. Lets sync flip only the IMPLEMENTS edges whose locator
     /// targets a symbol whose BODY actually changed, instead of every edge on a
@@ -553,6 +566,19 @@ pub struct SymbolFact {
     /// every run, so it populates on the first sync after upgrade.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub body_hash: String,
+    /// FNV-1a hash of this symbol's normalized tree-sitter token shape. Unlike
+    /// `body_hash`, this is NOT a sync invalidation signal: it intentionally
+    /// ignores comments/formatting and canonicalizes identifiers/literals so
+    /// clone advisories can catch renamed or formatted copies without weakening
+    /// exact change detection.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub shape_hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StringLiteralFact {
+    pub value: String,
+    pub line: usize,
 }
 
 /// Named anti-pattern rule.
@@ -934,6 +960,10 @@ fn f64_is_zero(v: &f64) -> bool {
 
 fn bool_is_false(v: &bool) -> bool {
     !*v
+}
+
+fn usize_is_zero(v: &usize) -> bool {
+    *v == 0
 }
 
 /// "unknown" is the historical placeholder default — as empty as "".

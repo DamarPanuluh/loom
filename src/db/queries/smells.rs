@@ -35,6 +35,10 @@ pub const DUP_UNTAGGED_SIMILARITY: f64 = 0.30;
 /// Minimum shared tokens for the untagged fallback. This keeps one generic word
 /// from standing in for the missing vocabulary facet.
 pub const DUP_UNTAGGED_SHARED_TOKENS: usize = 2;
+/// Lexical duplicate detectors ignore words carried by more than this many
+/// intents (or the scale-adjusted cap below). A word that common is vocabulary
+/// background, not evidence that two behaviors are the same responsibility.
+pub const LEXICAL_SIGNAL_TOKEN_CARRIER_FLOOR: usize = 8;
 /// Proposed hypotheses are useful pressure, but a large queue means the
 /// pre-decision plane is becoming a note dump instead of a proof pipeline.
 pub const HYPOTHESIS_BACKLOG_LIMIT: usize = 10;
@@ -57,6 +61,13 @@ pub const TANGLE_INTENTS: usize = 3;
 /// identical bodies are boilerplate (trivial getters, single match arms), not
 /// a copy-paste worth flagging.
 pub const MIN_CLONE_LINES: usize = 5;
+/// Behavioral symbols above this span are large enough to inspect for splitting.
+/// Deliberately high: this is a coarse snapshot signal, not real complexity.
+pub const LARGE_BEHAVIORAL_SYMBOL_LINES: usize = 200;
+/// Repeated string-contract detection ignores short labels and implementation
+/// tokens. These floors are intentionally conservative for the first pass.
+pub const MIN_STRING_CONTRACT_CHARS: usize = 24;
+pub const MIN_STRING_CONTRACT_TOKENS: usize = 4;
 
 /// Aspect families for the `happy_path_only` audit: a TRIGGER aspect implies its
 /// REQUIRED sibling aspects must also exist (and, in the gating detector, be
@@ -82,7 +93,8 @@ pub struct Smell {
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
     /// | hypothesis_accumulation | symbol_accountability_gap | dependency_cycle
     /// | intent_island | transitive_layering_violation | cochange_coupling
-    /// | nonlocal_proof | code_clone
+    /// | nonlocal_proof | code_clone | large_behavioral_symbol
+    /// | string_contract_duplicate | panic_marker_risk | shotgun_surgery
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -239,6 +251,19 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             avoid: vec!["do not treat co-change as proof of a relationship without reading the code; a wide refactor couples files incidentally".into()],
             done_when: "the pair has a grounded or independent RELATES_TO verdict (this is advisory — it never gates phase=complete)".into(),
         },
+        "shotgun_surgery" => SmellTeaching {
+            principle: "When one owned behavior repeatedly changes with many unrelated owned files, the boundary may be too broad, too central, or missing explicit relationships; git history exposes change pressure the static graph cannot.".into(),
+            inspect: vec![
+                "read the named intent and the co-changing files in evidence".into(),
+                "decide whether the changes are one hidden contract, a wide mechanical refactor pattern, or a responsibility that should be split/reowned".into(),
+                "`loom edge explore <a> <b>` for real hidden contracts; use a decision note when the co-change is incidental".into(),
+            ],
+            avoid: vec![
+                "do not split a stable coordinator just because it is central; prove the maintenance pain first".into(),
+                "do not add relationship edges from history alone without reading the current code".into(),
+            ],
+            done_when: "the hidden relationships are grounded/refuted, the broad responsibility is split through a proven hypothesis, or a decision note records why the recurring wide co-change is incidental (this is advisory — it never gates phase=complete)".into(),
+        },
         "nonlocal_proof" => SmellTeaching {
             principle: "A passing LINKED validation is not a test that EXERCISES the intent's grounded code. The `proven` axis counts the link, so a leaf proven only by a test living in OTHER files reads green while its own code may have no direct test — partial-coverage overstatement. It is a SUGGESTION to investigate, not a defect.".into(),
             inspect: vec![
@@ -250,17 +275,56 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             done_when: "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)".into(),
         },
         "code_clone" => SmellTeaching {
-            principle: "Identical code text in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; an exact copy-paste in disjoint code has none. It is a SUGGESTION to investigate, not a defect: an exact clone can be legitimate (generated code, deliberately independent copies that must not be coupled).".into(),
+            principle: "Structurally identical code in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; copy-paste with renamed identifiers in disjoint code has none. It is a SUGGESTION to investigate, not a defect: a clone can be legitimate (generated code, deliberately independent copies that must not be coupled).".into(),
             inspect: vec![
-                "read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally identical".into(),
+                "read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally similar".into(),
                 "`loom intent show <intent>` / `loom codefile show <path>` to see who owns each copy".into(),
-                "if both copies are owned, `loom edge explore <a> <b>` — an exact clone is hard evidence for a `duplicated_responsibility` merge".into(),
+                "if both copies are owned, `loom edge explore <a> <b>` — a structural clone is evidence for a `duplicated_responsibility` merge".into(),
             ],
             avoid: vec![
                 "do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist".into(),
-                "do not treat a short identical body as proof; the size floor already filters trivia, but read before merging".into(),
+                "do not treat a short similar body as proof; the size floor already filters trivia, but read before merging".into(),
             ],
             done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, or a decision note records why the copies are deliberate (this is advisory — it never gates phase=complete)".into(),
+        },
+        "string_contract_duplicate" => SmellTeaching {
+            principle: "Repeated user-facing or contract strings drift when each copy becomes its own tiny source of truth. It is a suspicion to answer, not an automatic defect: exact repetition can be deliberate when the words belong to independent surfaces.".into(),
+            inspect: vec![
+                "read each listed symbol and decide whether the repeated text is one contract, help/error message, or command example".into(),
+                "check whether one constant/helper should own the wording or whether independent copies are intentional".into(),
+                "`loom intent show <intent>` / `loom codefile show <path>` when the repeated strings are owned by mapped behavior".into(),
+            ],
+            avoid: vec![
+                "do not centralize wording before confirming the copies must change together".into(),
+                "do not flag tiny labels, enum values, import paths, fixtures, or test strings as product contracts".into(),
+            ],
+            done_when: "the wording has one source of truth, the copies are intentionally independent and documented with a current decision note, or the owning intents have an explored relationship".into(),
+        },
+        "large_behavioral_symbol" => SmellTeaching {
+            principle: "A very large function, method, def, or impl is usually carrying multiple decisions; span is only a suspicion, so inspect the behavior before splitting.".into(),
+            inspect: vec![
+                "read the named symbol from top to bottom and identify distinct phases, modes, or responsibilities".into(),
+                "check whether the current intent ownership is broad because the behavior is broad, or because the code needs smaller internal boundaries".into(),
+                "look for validation gaps before extracting helpers so behavior stays pinned".into(),
+            ],
+            avoid: vec![
+                "do not split a deliberately linear workflow just to satisfy the threshold".into(),
+                "do not extract helpers that hide the same branchy behavior behind vague names".into(),
+            ],
+            done_when: "the behavior is split into smaller named units, or a current decision note on the file explains why this large symbol is deliberate".into(),
+        },
+        "panic_marker_risk" => SmellTeaching {
+            principle: "A panic/unwrap/expect/todo marker in non-test behavior can turn an expected sad path into a process abort or unfinished path; it needs an explicit boundary decision.".into(),
+            inspect: vec![
+                "read the symbol and identify whether each marker is on trusted setup code, impossible state, or user/repo input".into(),
+                "check whether the owning intent has a sad/fallback validation for the marker's failure mode".into(),
+                "replace accidental aborts with typed errors or record why the abort is the contract".into(),
+            ],
+            avoid: vec![
+                "do not blindly replace every unwrap; first classify invariant versus recoverable failure".into(),
+                "do not accept todo/unimplemented in implemented behavior without an explicit needs_change or decision".into(),
+            ],
+            done_when: "recoverable failures are handled/proven, unfinished markers are removed or moved to planned work, or a current file decision explains why the abort marker is deliberate".into(),
         },
         "layering_violation" => SmellTeaching {
             principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
@@ -407,6 +471,36 @@ pub fn jaccard(a: &HashSet<String>, b: &HashSet<String>) -> f64 {
     inter / union
 }
 
+fn lexical_signal_tokens<'a>(
+    intents: &'a [crate::types::Intent],
+    toks: &HashMap<&'a str, HashSet<String>>,
+) -> HashMap<&'a str, HashSet<String>> {
+    let max_carriers = (intents.len() / 50).max(LEXICAL_SIGNAL_TOKEN_CARRIER_FLOOR);
+    let mut carriers: HashMap<&str, usize> = HashMap::new();
+    for set in toks.values() {
+        for token in set {
+            *carriers.entry(token.as_str()).or_insert(0) += 1;
+        }
+    }
+    intents
+        .iter()
+        .map(|intent| {
+            let filtered = toks
+                .get(intent.id.as_str())
+                .map(|set| {
+                    set.iter()
+                        .filter(|token| {
+                            carriers.get(token.as_str()).copied().unwrap_or(0) <= max_carriers
+                        })
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default();
+            (intent.id.as_str(), filtered)
+        })
+        .collect()
+}
+
 pub struct SmellInputs<'a> {
     pub notes: &'a [Note],
     pub vocab_terms: &'a [VocabTerm],
@@ -456,6 +550,7 @@ pub fn compute_smells_from_parts(
         .iter()
         .map(|(id, toks)| (id.as_str(), toks.clone()))
         .collect();
+    let signal_toks = lexical_signal_tokens(intents, &toks);
 
     // The adjudication ledger: every note, loaded once. `last_decision` maps a
     // target id to its newest kind=decision note — the recorded "looked at it,
@@ -524,7 +619,7 @@ pub fn compute_smells_from_parts(
             {
                 continue;
             }
-            let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
+            let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
             if sim >= TWIN_SIMILARITY {
                 smells.push(Smell {
                     kind: "twin_intents".into(),
@@ -627,11 +722,11 @@ pub fn compute_smells_from_parts(
                 continue;
             }
             if ta.is_empty() || tb.is_empty() {
-                let shared_tokens: Vec<String> = toks[a.id.as_str()]
-                    .intersection(&toks[b.id.as_str()])
+                let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
+                    .intersection(&signal_toks[b.id.as_str()])
                     .cloned()
                     .collect();
-                let sim = jaccard(&toks[a.id.as_str()], &toks[b.id.as_str()]);
+                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
                 if sim < DUP_UNTAGGED_SIMILARITY || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
                 {
                     continue;
@@ -887,6 +982,208 @@ pub fn compute_smells_from_parts(
                 teaching: teaching_for("tangled_file"),
             });
         }
+    }
+
+    // 4b. Large behavioral symbol — a pure physical snapshot signal for
+    //     functions/methods/defs/impls whose span is large enough to deserve
+    //     inspection. No complexity field needed: this deliberately coarse pass
+    //     only says "read this large behavior before trusting the boundary".
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) {
+                continue;
+            }
+            let span = f.line_end.saturating_sub(f.line_start) + 1;
+            if span < LARGE_BEHAVIORAL_SYMBOL_LINES {
+                continue;
+            }
+            let summary = format!("{} in {} spans {} lines", f.label, cf.path, span);
+            if let Some(note) = adjudicated(cf.id.as_str(), cf.last_modified.as_str()) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "large_behavioral_symbol".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "the file is modified after the ruling".into(),
+                    teaching: teaching_for("large_behavioral_symbol"),
+                });
+                continue;
+            }
+            let visibility = if f.visibility.is_empty() {
+                "unknown"
+            } else {
+                f.visibility.as_str()
+            };
+            smells.push(Smell {
+                kind: "large_behavioral_symbol".into(),
+                score: span as f64 / 20.0,
+                summary,
+                evidence: format!(
+                    "{}:{}-{} is a non-test {} symbol (kind={}, visibility={}) above the {}-line threshold",
+                    cf.path,
+                    f.line_start,
+                    f.line_end,
+                    span,
+                    f.kind,
+                    visibility,
+                    LARGE_BEHAVIORAL_SYMBOL_LINES
+                ),
+                remedy: format!(
+                    "inspect {}:{}-{}; split distinct phases/modes into named helpers or smaller owned behavior, or record why the large symbol is deliberate: `loom note add --file {} --kind decision --text \"<why {} stays large>\"` resolves this finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label
+                ),
+                teaching: teaching_for("large_behavioral_symbol"),
+            });
+        }
+    }
+
+    // 4c. Panic/unwrap/todo markers in implemented behavior — token-derived
+    //     source facts populated during sync. These are not automatically bugs:
+    //     they are places where sad-path behavior depends on an invariant that
+    //     must be inspected, proven, or explicitly accepted.
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) || f.panic_marker_count == 0 {
+                continue;
+            }
+            let summary = format!(
+                "{} in {} has {} panic/unfinished marker(s)",
+                f.label, cf.path, f.panic_marker_count
+            );
+            if let Some(note) = adjudicated(cf.id.as_str(), cf.last_modified.as_str()) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "panic_marker_risk".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "the file is modified after the ruling".into(),
+                    teaching: teaching_for("panic_marker_risk"),
+                });
+                continue;
+            }
+            let markers = if f.panic_markers.is_empty() {
+                "unknown".to_string()
+            } else {
+                f.panic_markers.join(", ")
+            };
+            let path_weight = if command_or_public_surface(&cf.path, f) {
+                2.0
+            } else {
+                1.0
+            };
+            smells.push(Smell {
+                kind: "panic_marker_risk".into(),
+                score: f.panic_marker_count as f64 * path_weight,
+                summary,
+                evidence: format!(
+                    "{}:{}-{} markers=[{}] count={}{}",
+                    cf.path,
+                    f.line_start,
+                    f.line_end,
+                    markers,
+                    f.panic_marker_count,
+                    if path_weight > 1.0 {
+                        " on command/public surface"
+                    } else {
+                        ""
+                    }
+                ),
+                remedy: format!(
+                    "inspect {}:{}-{}; replace recoverable aborts with handled errors/proofs, move unfinished behavior to planned work, or accept the invariant: `loom note add --file {} --kind decision --text \"<why these markers are deliberate>\"` resolves this finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path
+                ),
+                teaching: teaching_for("panic_marker_risk"),
+            });
+        }
+    }
+
+    // 4d. Repeated string contracts — long user-facing/help/error/example
+    //     strings copied across symbols can drift silently. This is deliberately
+    //     conservative and ignores short labels, path-like values, and tests.
+    let mut strings: HashMap<String, Vec<StringContractLoc<'_>>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test {
+                continue;
+            }
+            for literal in &f.string_literals {
+                let Some(key) = normalized_contract_string(&literal.value) else {
+                    continue;
+                };
+                strings.entry(key).or_default().push(StringContractLoc {
+                    path: cf.path.as_str(),
+                    file_id: cf.id.as_str(),
+                    file_modified: cf.last_modified.as_str(),
+                    label: f.label.as_str(),
+                    line: literal.line,
+                    value: literal.value.as_str(),
+                });
+            }
+        }
+    }
+    for (_key, mut locs) in strings {
+        locs.sort_by(|a, b| {
+            a.path
+                .cmp(b.path)
+                .then_with(|| a.line.cmp(&b.line))
+                .then_with(|| a.label.cmp(b.label))
+        });
+        locs.dedup_by(|a, b| a.path == b.path && a.line == b.line && a.label == b.label);
+        let distinct_files = locs.iter().map(|l| l.path).collect::<HashSet<_>>().len();
+        let distinct_symbols = locs
+            .iter()
+            .map(|l| (l.path, l.label))
+            .collect::<HashSet<_>>()
+            .len();
+        if distinct_files < 2 && distinct_symbols < 2 {
+            continue;
+        }
+        let anchor = locs[0];
+        let newest = locs
+            .iter()
+            .map(|l| l.file_modified)
+            .max()
+            .unwrap_or(anchor.file_modified);
+        let excerpt = short_contract_excerpt(anchor.value);
+        let summary = format!(
+            "string contract repeated in {} location(s): \"{}\"",
+            locs.len(),
+            excerpt
+        );
+        if let Some(note) = adjudicated(anchor.file_id, newest) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "string_contract_duplicate".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "one of the files carrying the repeated string changes".into(),
+                teaching: teaching_for("string_contract_duplicate"),
+            });
+            continue;
+        }
+        let evidence = locs
+            .iter()
+            .take(8)
+            .map(|l| format!("{}:{} '{}'", l.path, l.line, l.label))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        smells.push(Smell {
+            kind: "string_contract_duplicate".into(),
+            score: locs.len() as f64 * (anchor.value.len() as f64 / 40.0).max(1.0),
+            summary,
+            evidence: format!(
+                "normalized repeated text appears in {} symbol(s) across {} file(s): {}",
+                distinct_symbols, distinct_files, evidence
+            ),
+            remedy: format!(
+                "inspect the repeated text; extract one source of truth if the wording must change together, or record deliberate independence: `loom note add --file {} --kind decision --text \"<why this repeated string is intentional>\"` resolves this finding (editing any carrying file re-opens it)",
+                anchor.path
+            ),
+            teaching: teaching_for("string_contract_duplicate"),
+        });
     }
 
     // 5. The measuring stick, unused — the normative plane only measures where
@@ -2247,6 +2544,291 @@ pub fn cochange_suggestions(
     out
 }
 
+/// `shotgun_surgery` suggestions — the higher-level sibling of
+/// `cochange_coupling`. Instead of serving one intent pair, it flags an intent
+/// whose owned files repeatedly co-change with MANY unrelated owned files. This
+/// is ADVISORY and git-derived: it never gates green.
+pub fn shotgun_surgery_suggestions(
+    snapshot: &QuerySnapshot,
+    pairs: &HashMap<(String, String), usize>,
+    individual: &HashMap<String, usize>,
+) -> Vec<Smell> {
+    const MIN_COCHANGE: usize = 3;
+    const MIN_CONFIDENCE: f64 = 0.45;
+    const MIN_PARTNER_INTENTS: usize = 4;
+    const MAX_SUGGESTIONS: usize = 10;
+    if pairs.is_empty() {
+        return Vec::new();
+    }
+
+    let active: HashSet<&str> = snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let name_of: HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.name.as_str()))
+        .collect();
+    let mut intents_on_file: HashMap<&str, Vec<&str>> = HashMap::new();
+    for im in &snapshot.implements {
+        intents_on_file
+            .entry(im.codefile_path.as_str())
+            .or_default()
+            .push(im.intent_id.as_str());
+    }
+    let mut linked: HashSet<(&str, &str)> = HashSet::new();
+    for e in &snapshot.relates {
+        linked.insert((e.from_id.as_str(), e.to_id.as_str()));
+        linked.insert((e.to_id.as_str(), e.from_id.as_str()));
+    }
+    for (p, c) in &snapshot.hierarchy {
+        linked.insert((p.as_str(), c.as_str()));
+        linked.insert((c.as_str(), p.as_str()));
+    }
+
+    #[derive(Default)]
+    struct Acc {
+        partners: HashSet<String>,
+        files: HashSet<String>,
+        best_count: usize,
+        best_confidence: f64,
+        examples: Vec<String>,
+    }
+
+    let mut acc: HashMap<String, Acc> = HashMap::new();
+    for ((fa, fb), &count) in pairs {
+        if count < MIN_COCHANGE {
+            continue;
+        }
+        let denom = (*individual.get(fa).unwrap_or(&count))
+            .min(*individual.get(fb).unwrap_or(&count))
+            .max(1);
+        let confidence = count as f64 / denom as f64;
+        if confidence < MIN_CONFIDENCE {
+            continue;
+        }
+        let (Some(owners_a), Some(owners_b)) = (
+            intents_on_file.get(fa.as_str()),
+            intents_on_file.get(fb.as_str()),
+        ) else {
+            continue;
+        };
+        for (owner, owner_file, partners, partner_file) in [
+            (owners_a, fa.as_str(), owners_b, fb.as_str()),
+            (owners_b, fb.as_str(), owners_a, fa.as_str()),
+        ] {
+            for a in owner {
+                if !active.contains(a) {
+                    continue;
+                }
+                for b in partners {
+                    if a == b || !active.contains(b) || linked.contains(&(*a, *b)) {
+                        continue;
+                    }
+                    let entry = acc.entry((*a).to_string()).or_default();
+                    entry.partners.insert((*b).to_string());
+                    entry.files.insert(owner_file.to_string());
+                    entry.best_count = entry.best_count.max(count);
+                    entry.best_confidence = entry.best_confidence.max(confidence);
+                    let example = format!("{owner_file} ↔ {partner_file} ({count}×)");
+                    if entry.examples.len() < 4 && !entry.examples.contains(&example) {
+                        entry.examples.push(example);
+                    }
+                }
+            }
+        }
+    }
+
+    let mut out: Vec<Smell> = acc
+        .into_iter()
+        .filter(|(_, a)| a.partners.len() >= MIN_PARTNER_INTENTS)
+        .map(|(intent_id, a)| {
+            let name = name_of
+                .get(intent_id.as_str())
+                .copied()
+                .unwrap_or(intent_id.as_str());
+            let mut partner_names: Vec<&str> = a
+                .partners
+                .iter()
+                .filter_map(|id| name_of.get(id.as_str()).copied())
+                .collect();
+            partner_names.sort();
+            let mut files: Vec<String> = a.files.into_iter().collect();
+            files.sort();
+            let score = a.partners.len() as f64 * a.best_count as f64 * a.best_confidence;
+            Smell {
+                kind: "shotgun_surgery".into(),
+                score,
+                summary: format!(
+                    "'{name}' changes with {} unrelated intent(s) in git history",
+                    a.partners.len()
+                ),
+                evidence: format!(
+                    "owned file(s): {} · partner intents: {} · examples: {} · best confidence {:.0}%",
+                    files.join(", "),
+                    partner_names.join(" · "),
+                    a.examples.join(", "),
+                    a.best_confidence * 100.0
+                ),
+                remedy: format!(
+                    "inspect '{name}' and its co-changing files; ground real hidden contracts with `loom edge explore`, split/reown broad behavior through a proven hypothesis, or record incidental history with `loom note add --intent {intent_id} --kind decision --text \"<why this recurring wide co-change is incidental>\"`"
+                ),
+                teaching: teaching_for("shotgun_surgery"),
+            }
+        })
+        .collect();
+    out.sort_by(|x, y| {
+        y.score
+            .partial_cmp(&x.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| x.summary.cmp(&y.summary))
+    });
+    out.truncate(MAX_SUGGESTIONS);
+    out
+}
+
+#[cfg(test)]
+mod shotgun_surgery_tests {
+    use super::*;
+    use crate::types::{CodeFile, Implements, Intent, RelatesTo};
+
+    fn intent(id: &str, name: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: name.into(),
+            description: String::new(),
+            abstraction_level: "feature".into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn cf(path: &str) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+        }
+    }
+
+    fn imp(intent_id: &str, path: &str) -> Implements {
+        Implements {
+            id: format!("{intent_id}:{path}"),
+            intent_id: intent_id.into(),
+            codefile_id: path.into(),
+            intent_name: intent_id.into(),
+            codefile_path: path.into(),
+            locator: String::new(),
+            created_at: "t".into(),
+            inspection_status: "passing".into(),
+            last_inspected: "t".into(),
+            inspected_by: String::new(),
+            criterion: String::new(),
+            evidence: String::new(),
+            notes: String::new(),
+            confidence: 1.0,
+        }
+    }
+
+    fn rel(a: &str, b: &str) -> RelatesTo {
+        RelatesTo {
+            id: format!("{a}:{b}"),
+            from_id: a.into(),
+            from_name: a.into(),
+            to_id: b.into(),
+            to_name: b.into(),
+            inspection_status: "passing".into(),
+            last_inspected: "t".into(),
+            inspected_by: String::new(),
+            criterion: String::new(),
+            evidence: String::new(),
+            notes: String::new(),
+            confidence: 1.0,
+            priority_score: 0.0,
+        }
+    }
+
+    fn snap(with_link: bool) -> QuerySnapshot {
+        let mut relates = Vec::new();
+        if with_link {
+            relates.push(rel("hub", "p4"));
+        }
+        QuerySnapshot::from_parts(
+            vec![
+                intent("hub", "hub behavior"),
+                intent("p1", "partner one"),
+                intent("p2", "partner two"),
+                intent("p3", "partner three"),
+                intent("p4", "partner four"),
+            ],
+            Vec::new(),
+            relates,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![
+                imp("hub", "src/hub.rs"),
+                imp("p1", "src/p1.rs"),
+                imp("p2", "src/p2.rs"),
+                imp("p3", "src/p3.rs"),
+                imp("p4", "src/p4.rs"),
+            ],
+            vec![
+                cf("src/hub.rs"),
+                cf("src/p1.rs"),
+                cf("src/p2.rs"),
+                cf("src/p3.rs"),
+                cf("src/p4.rs"),
+            ],
+            Some(Vec::new()),
+        )
+    }
+
+    fn history() -> (HashMap<(String, String), usize>, HashMap<String, usize>) {
+        let mut pairs = HashMap::new();
+        let mut individual = HashMap::new();
+        individual.insert("src/hub.rs".into(), 6);
+        for p in ["src/p1.rs", "src/p2.rs", "src/p3.rs", "src/p4.rs"] {
+            individual.insert(p.into(), 4);
+            pairs.insert(("src/hub.rs".into(), p.into()), 3);
+        }
+        (pairs, individual)
+    }
+
+    #[test]
+    fn hub_changing_with_many_unrelated_intents_flags() {
+        let (pairs, individual) = history();
+        let out = shotgun_surgery_suggestions(&snap(false), &pairs, &individual);
+        assert!(
+            out.iter()
+                .any(|s| s.kind == "shotgun_surgery" && s.summary.contains("hub behavior")),
+            "{out:?}"
+        );
+    }
+
+    #[test]
+    fn linked_partner_reduces_pressure_below_threshold() {
+        let (pairs, individual) = history();
+        assert!(
+            shotgun_surgery_suggestions(&snap(true), &pairs, &individual).is_empty(),
+            "one linked partner leaves only three unrelated partners"
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // proof-locality advisory — the `proven` axis's quality check
 // ---------------------------------------------------------------------------
@@ -2514,18 +3096,19 @@ fn parent_dir(path: &str) -> &str {
 }
 
 // ---------------------------------------------------------------------------
-// code-clone advisory — exact-text duplication the intent graph can't see
+// code-clone advisory — structural duplication the intent graph can't see
 // ---------------------------------------------------------------------------
 
-/// `code_clone` suggestions — cross-file EXACT (Type-1) clone detection, the
-/// one duplication the intent-level detectors are blind to by construction:
+/// `code_clone` suggestions — cross-file normalized structural clone detection,
+/// the duplication the intent-level detectors are blind to by construction:
 /// `twin_intents` needs shared wording, `duplicated_responsibility` needs shared
 /// tags, `overlapping_ownership` needs a shared file, `undeclared_coupling`
 /// needs an import — literally copy-pasted code in disjoint, untagged,
 /// unimported files has none of those. The primitive is already paid for: every
-/// `SymbolFact` carries a `body_hash` (FNV-1a over its source lines) that
-/// `loom sync` populates, so exact-clone detection is GROUP BY body_hash across
-/// files.
+/// `SymbolFact` carries a `shape_hash` (FNV-1a over normalized tree-sitter
+/// tokens) that `loom sync` populates, so clone detection is GROUP BY structural
+/// shape across files. Older/pre-upgrade facts fall back to `body_hash`, which
+/// keeps exact-text detection armed until the next sync self-heals them.
 ///
 /// Conservative by design (clone detection is famously noisy): a symbol is
 /// skipped when its hash is empty (pre-v8 / feature-light build — the instrument
@@ -2544,29 +3127,37 @@ pub fn clone_suggestions(
 
     let is_ignored = |path: &str| ignore_patterns.iter().any(|p| p.matches(path));
 
-    // Group eligible symbols by body_hash. Value: (file path, symbol fact).
-    let mut by_hash: HashMap<&str, Vec<(&str, &crate::types::SymbolFact)>> = HashMap::new();
+    // Group eligible symbols by shape_hash when available, falling back to the
+    // exact body_hash for older graphs. Value: (file path, symbol fact).
+    let mut by_hash: HashMap<(&str, &str), Vec<(&str, &crate::types::SymbolFact)>> = HashMap::new();
     for cf in &snapshot.codefiles {
         if is_ignored(cf.path.as_str()) {
             continue;
         }
         for f in &cf.symbol_facts {
-            if f.body_hash.is_empty() || f.is_test {
+            if f.is_test {
                 continue;
             }
+            let (hash_kind, hash) = if shape_hash_eligible(f) && !f.shape_hash.is_empty() {
+                ("shape_hash", f.shape_hash.as_str())
+            } else if !f.body_hash.is_empty() {
+                ("body_hash", f.body_hash.as_str())
+            } else {
+                continue;
+            };
             let span = f.line_end.saturating_sub(f.line_start) + 1;
             if span < MIN_CLONE_LINES {
                 continue;
             }
             by_hash
-                .entry(f.body_hash.as_str())
+                .entry((hash_kind, hash))
                 .or_default()
                 .push((cf.path.as_str(), f));
         }
     }
 
     let mut out: Vec<Smell> = Vec::new();
-    for members in by_hash.values() {
+    for ((hash_kind, _), members) in by_hash {
         let distinct_files: HashSet<&str> = members.iter().map(|(p, _)| *p).collect();
         if distinct_files.len() < 2 {
             continue; // cross-file only — intra-file repetition is tangled_file's
@@ -2583,16 +3174,26 @@ pub fn clone_suggestions(
             .unwrap_or(0);
         let first_label = locs[0].1.label.as_str();
         let count = locs.len();
+        let clone_phrase = if hash_kind == "shape_hash" {
+            "matching code shape"
+        } else {
+            "identical code"
+        };
         let summary = if count > 2 {
             format!(
-                "identical code in {count} locations: '{first_label}' (and {} others)",
+                "{clone_phrase} in {count} locations: '{first_label}' (and {} others)",
                 count - 1
             )
         } else {
-            format!("identical code in 2 locations: '{first_label}'")
+            format!("{clone_phrase} in 2 locations: '{first_label}'")
+        };
+        let hash_label = if hash_kind == "shape_hash" {
+            "normalized shape_hash"
+        } else {
+            "exact body_hash"
         };
         let evidence = format!(
-            "all share one exact body_hash ({} lines): {}",
+            "all share one {hash_label} ({} lines): {}",
             span,
             locs.iter()
                 .map(|(p, f)| format!("{}:{}-{} '{}'", p, f.line_start, f.line_end, f.label))
@@ -2605,7 +3206,7 @@ pub fn clone_suggestions(
             summary,
             evidence,
             remedy:
-                "read each copy; if both are owned by intents, `loom edge explore <a> <b>` to ground or refute the relationship (an exact clone is hard evidence for a `duplicated_responsibility` merge); if they are unowned or share one owner, dedupe the code or record why the copies are deliberate (`loom note add --file <path> --kind decision --text \"<why these copies are independent>\"`)".into(),
+                "read each copy; if both are owned by intents, `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); if they are unowned or share one owner, dedupe the code or record why the copies are deliberate (`loom note add --file <path> --kind decision --text \"<why these copies are independent>\"`)".into(),
             teaching: teaching_for("code_clone"),
         });
     }
@@ -2616,6 +3217,76 @@ pub fn clone_suggestions(
             .then_with(|| a.summary.cmp(&b.summary))
     });
     out.truncate(MAX_SUGGESTIONS);
+    out
+}
+
+fn shape_hash_eligible(f: &crate::types::SymbolFact) -> bool {
+    behavioral_symbol_kind(f.kind.as_str())
+}
+
+fn behavioral_symbol_kind(kind: &str) -> bool {
+    matches!(kind, "def" | "fn" | "function" | "impl" | "method")
+}
+
+fn command_or_public_surface(path: &str, fact: &crate::types::SymbolFact) -> bool {
+    path.starts_with("src/commands/")
+        || path.starts_with("src/main.")
+        || fact.visibility == "public"
+        || fact.label.starts_with("pub ")
+        || fact.label.starts_with("export ")
+}
+
+#[derive(Clone, Copy)]
+struct StringContractLoc<'a> {
+    path: &'a str,
+    file_id: &'a str,
+    file_modified: &'a str,
+    label: &'a str,
+    line: usize,
+    value: &'a str,
+}
+
+fn normalized_contract_string(value: &str) -> Option<String> {
+    let normalized = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    let trimmed = normalized.trim();
+    if trimmed.len() < MIN_STRING_CONTRACT_CHARS {
+        return None;
+    }
+    let tokens = trimmed
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| !t.is_empty())
+        .count();
+    if tokens < MIN_STRING_CONTRACT_TOKENS || string_contract_is_noise(trimmed) {
+        return None;
+    }
+    Some(trimmed.to_lowercase())
+}
+
+fn string_contract_is_noise(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    lower.starts_with("http://")
+        || lower.starts_with("https://")
+        || lower.starts_with("file://")
+        || lower.starts_with("src/")
+        || lower.ends_with(".rs")
+        || lower.ends_with(".ts")
+        || lower.ends_with(".tsx")
+        || lower.ends_with(".js")
+        || lower.ends_with(".py")
+        || lower.ends_with(".json")
+        || lower.ends_with(".yaml")
+        || lower.ends_with(".yml")
+        || lower.contains("::{")
+        || lower.contains("use ")
+}
+
+fn short_contract_excerpt(value: &str) -> String {
+    let mut out = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    const MAX: usize = 90;
+    if out.chars().count() > MAX {
+        out = out.chars().take(MAX - 1).collect::<String>();
+        out.push('…');
+    }
     out
 }
 
@@ -2655,7 +3326,11 @@ mod proof_locality_tests {
                 line_start: 1,
                 line_end: 2,
                 is_test: true,
+                string_literals: Vec::new(),
+                panic_marker_count: 0,
+                panic_markers: Vec::new(),
                 body_hash: String::new(),
+                shape_hash: String::new(),
             });
         }
         for s in code_syms {
@@ -2667,7 +3342,11 @@ mod proof_locality_tests {
                 line_start: 1,
                 line_end: 2,
                 is_test: false,
+                string_literals: Vec::new(),
+                panic_marker_count: 0,
+                panic_markers: Vec::new(),
                 body_hash: String::new(),
+                shape_hash: String::new(),
             });
         }
         CodeFile {
@@ -2943,6 +3622,7 @@ mod clone_tests {
     fn sym(
         name: &str,
         body_hash: &str,
+        shape_hash: &str,
         line_start: usize,
         line_end: usize,
         is_test: bool,
@@ -2955,7 +3635,11 @@ mod clone_tests {
             line_start,
             line_end,
             is_test,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
             body_hash: body_hash.into(),
+            shape_hash: shape_hash.into(),
         }
     }
 
@@ -2990,8 +3674,8 @@ mod clone_tests {
     #[test]
     fn two_files_with_one_shared_body_hash_flag_once() {
         let s = snap(vec![
-            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 10, false)]),
-            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, false)]),
+            cf("src/a.rs", vec![sym("alpha", "HASH", "", 1, 10, false)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", "", 20, 29, false)]),
         ]);
         let out = clone_suggestions(&s, &[]);
         assert_eq!(
@@ -3000,15 +3684,55 @@ mod clone_tests {
             "an exact cross-file clone should flag once: {out:?}"
         );
         assert_eq!(out[0].kind, "code_clone");
+        assert!(out[0].evidence.contains("body_hash"));
         assert!(out[0].evidence.contains("src/a.rs"));
         assert!(out[0].evidence.contains("src/b.rs"));
     }
 
     #[test]
+    fn shared_shape_hash_flags_renamed_clone() {
+        let s = snap(vec![
+            cf(
+                "src/a.rs",
+                vec![sym("alpha", "BODY_A", "SHAPE", 1, 10, false)],
+            ),
+            cf(
+                "src/b.rs",
+                vec![sym("beta", "BODY_B", "SHAPE", 20, 29, false)],
+            ),
+        ]);
+        let out = clone_suggestions(&s, &[]);
+        assert_eq!(
+            out.len(),
+            1,
+            "a normalized cross-file clone should flag once: {out:?}"
+        );
+        assert!(out[0].evidence.contains("shape_hash"));
+    }
+
+    #[test]
+    fn data_declarations_do_not_group_by_shape_hash() {
+        let mut alpha = sym("Alpha", "BODY_A", "SHAPE", 1, 10, false);
+        alpha.kind = "struct".into();
+        alpha.label = "struct Alpha".into();
+        let mut beta = sym("Beta", "BODY_B", "SHAPE", 20, 29, false);
+        beta.kind = "struct".into();
+        beta.label = "struct Beta".into();
+        let s = snap(vec![
+            cf("src/a.rs", vec![alpha]),
+            cf("src/b.rs", vec![beta]),
+        ]);
+        assert!(
+            clone_suggestions(&s, &[]).is_empty(),
+            "passive data declarations stay exact-text only"
+        );
+    }
+
+    #[test]
     fn test_symbols_are_skipped() {
         let s = snap(vec![
-            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 10, true)]),
-            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, true)]),
+            cf("src/a.rs", vec![sym("alpha", "HASH", "", 1, 10, true)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", "", 20, 29, true)]),
         ]);
         assert!(
             clone_suggestions(&s, &[]).is_empty(),
@@ -3020,8 +3744,8 @@ mod clone_tests {
     fn bodies_below_the_size_floor_are_skipped() {
         // span = line_end - line_start + 1 = 4 < MIN_CLONE_LINES (5).
         let s = snap(vec![
-            cf("src/a.rs", vec![sym("alpha", "HASH", 1, 4, false)]),
-            cf("src/b.rs", vec![sym("beta", "HASH", 20, 23, false)]),
+            cf("src/a.rs", vec![sym("alpha", "HASH", "", 1, 4, false)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", "", 20, 23, false)]),
         ]);
         assert!(
             clone_suggestions(&s, &[]).is_empty(),
@@ -3035,9 +3759,9 @@ mod clone_tests {
         let s = snap(vec![
             cf(
                 "src/generated/a.rs",
-                vec![sym("alpha", "HASH", 1, 10, false)],
+                vec![sym("alpha", "HASH", "", 1, 10, false)],
             ),
-            cf("src/b.rs", vec![sym("beta", "HASH", 20, 29, false)]),
+            cf("src/b.rs", vec![sym("beta", "HASH", "", 20, 29, false)]),
         ]);
         assert!(
             clone_suggestions(&s, &[pat]).is_empty(),
@@ -3050,8 +3774,8 @@ mod clone_tests {
         let s = snap(vec![cf(
             "src/a.rs",
             vec![
-                sym("alpha", "HASH", 1, 10, false),
-                sym("beta", "HASH", 20, 29, false),
+                sym("alpha", "HASH", "", 1, 10, false),
+                sym("beta", "HASH", "", 20, 29, false),
             ],
         )]);
         assert!(
@@ -3063,13 +3787,417 @@ mod clone_tests {
     #[test]
     fn empty_body_hash_is_unarmed_and_silent() {
         let s = snap(vec![
-            cf("src/a.rs", vec![sym("alpha", "", 1, 10, false)]),
-            cf("src/b.rs", vec![sym("beta", "", 20, 29, false)]),
+            cf("src/a.rs", vec![sym("alpha", "", "", 1, 10, false)]),
+            cf("src/b.rs", vec![sym("beta", "", "", 20, 29, false)]),
         ]);
         assert!(
             clone_suggestions(&s, &[]).is_empty(),
             "pre-v8 / feature-light facts carry no hash → instrument unarmed"
         );
+    }
+}
+
+#[cfg(test)]
+mod large_behavioral_symbol_tests {
+    use super::*;
+    use crate::types::{CodeFile, Note, SymbolFact};
+
+    fn sym(
+        kind: &str,
+        label: &str,
+        line_start: usize,
+        line_end: usize,
+        is_test: bool,
+    ) -> SymbolFact {
+        SymbolFact {
+            label: label.into(),
+            name: label.split_whitespace().last().unwrap_or(label).into(),
+            kind: kind.into(),
+            visibility: "private".into(),
+            line_start,
+            line_end,
+            is_test,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
+            body_hash: String::new(),
+            shape_hash: String::new(),
+        }
+    }
+
+    fn cf(path: &str, last_modified: &str, facts: Vec<SymbolFact>) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: last_modified.into(),
+            imports: Vec::new(),
+            symbols: facts.iter().map(|f| f.label.clone()).collect(),
+            symbol_facts: facts,
+            content_hash: String::new(),
+        }
+    }
+
+    fn report(codefiles: Vec<CodeFile>, notes: &[Note]) -> SmellReport {
+        let snapshot = QuerySnapshot::from_parts(
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            codefiles,
+            None,
+        );
+        compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes,
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap()
+    }
+
+    fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
+        r.open.iter().filter(|s| s.kind == kind).collect()
+    }
+
+    #[test]
+    fn non_test_behavioral_symbol_at_threshold_is_open() {
+        let r = report(
+            vec![cf(
+                "src/big.rs",
+                "2026-06-15T00:00:00+00:00",
+                vec![sym(
+                    "fn",
+                    "fn huge_behavior",
+                    1,
+                    LARGE_BEHAVIORAL_SYMBOL_LINES,
+                    false,
+                )],
+            )],
+            &[],
+        );
+        let found = of_kind(&r, "large_behavioral_symbol");
+        assert_eq!(found.len(), 1, "large behavior should flag once: {found:?}");
+        assert!(found[0].summary.contains("huge_behavior"));
+        assert!(found[0].evidence.contains(&format!(
+            "above the {}-line threshold",
+            LARGE_BEHAVIORAL_SYMBOL_LINES
+        )));
+        assert_eq!(
+            found[0].teaching.done_when,
+            teaching_for("large_behavioral_symbol").done_when
+        );
+    }
+
+    #[test]
+    fn tests_data_declarations_and_small_functions_are_skipped() {
+        let r = report(
+            vec![cf(
+                "src/mixed.rs",
+                "2026-06-15T00:00:00+00:00",
+                vec![
+                    sym(
+                        "fn",
+                        "fn huge_test",
+                        1,
+                        LARGE_BEHAVIORAL_SYMBOL_LINES + 50,
+                        true,
+                    ),
+                    sym(
+                        "struct",
+                        "struct HugeData",
+                        1,
+                        LARGE_BEHAVIORAL_SYMBOL_LINES + 50,
+                        false,
+                    ),
+                    sym(
+                        "fn",
+                        "fn small_behavior",
+                        1,
+                        LARGE_BEHAVIORAL_SYMBOL_LINES - 1,
+                        false,
+                    ),
+                ],
+            )],
+            &[],
+        );
+        assert!(
+            of_kind(&r, "large_behavioral_symbol").is_empty(),
+            "only non-test behavioral symbols over the threshold flag"
+        );
+    }
+
+    #[test]
+    fn current_file_decision_adjudicates_large_symbol() {
+        let note = Note {
+            id: "n1".into(),
+            kind: "decision".into(),
+            text: "large parser stays linear for now".into(),
+            author: "llm".into(),
+            target_kind: "file".into(),
+            target_id: "src/big.rs".into(),
+            audience: String::new(),
+            created_at: "2026-06-16T00:00:00+00:00".into(),
+        };
+        let r = report(
+            vec![cf(
+                "src/big.rs",
+                "2026-06-15T00:00:00+00:00",
+                vec![sym(
+                    "method",
+                    "method parse_everything",
+                    10,
+                    LARGE_BEHAVIORAL_SYMBOL_LINES + 20,
+                    false,
+                )],
+            )],
+            &[note],
+        );
+        assert!(
+            of_kind(&r, "large_behavioral_symbol").is_empty(),
+            "a current file decision suppresses the open finding"
+        );
+        assert!(
+            r.adjudicated
+                .iter()
+                .any(|s| s.kind == "large_behavioral_symbol"
+                    && s.summary.contains("parse_everything")),
+            "suppressed finding should be visible as adjudicated"
+        );
+    }
+}
+
+#[cfg(test)]
+mod lexical_signal_tests {
+    use super::*;
+    use crate::types::Intent;
+
+    fn intent(id: usize) -> Intent {
+        Intent {
+            id: format!("i{id}"),
+            name: format!("feature {id} handler"),
+            description:
+                "feature processes requests and transforms data within the synthetic benchmark system"
+                    .into(),
+            abstraction_level: "feature".into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "confirmed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    #[test]
+    fn ubiquitous_tokens_do_not_create_pairwise_twin_floods() {
+        let snapshot = QuerySnapshot::from_parts(
+            (0..40).map(intent).collect(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            None,
+        );
+        let report = compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap();
+        assert!(
+            report.open.iter().all(|s| s.kind != "twin_intents"),
+            "{:?}",
+            report
+                .open
+                .iter()
+                .filter(|s| s.kind == "twin_intents")
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
+#[cfg(test)]
+mod source_fact_smell_tests {
+    use super::*;
+    use crate::types::{CodeFile, Note, StringLiteralFact, SymbolFact};
+
+    fn sym(label: &str) -> SymbolFact {
+        SymbolFact {
+            label: label.into(),
+            name: label.split_whitespace().last().unwrap_or(label).into(),
+            kind: "fn".into(),
+            visibility: "private".into(),
+            line_start: 1,
+            line_end: 20,
+            is_test: false,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
+            body_hash: String::new(),
+            shape_hash: String::new(),
+        }
+    }
+
+    fn with_string(mut fact: SymbolFact, value: &str, line: usize) -> SymbolFact {
+        fact.string_literals.push(StringLiteralFact {
+            value: value.into(),
+            line,
+        });
+        fact
+    }
+
+    fn with_panic(mut fact: SymbolFact, markers: &[&str]) -> SymbolFact {
+        fact.panic_marker_count = markers.len();
+        fact.panic_markers = markers.iter().map(|m| (*m).into()).collect();
+        fact
+    }
+
+    fn cf(path: &str, facts: Vec<SymbolFact>) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: "2026-06-15T00:00:00+00:00".into(),
+            imports: Vec::new(),
+            symbols: facts.iter().map(|f| f.label.clone()).collect(),
+            symbol_facts: facts,
+            content_hash: String::new(),
+        }
+    }
+
+    fn report(codefiles: Vec<CodeFile>, notes: &[Note]) -> SmellReport {
+        let snapshot = QuerySnapshot::from_parts(
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            codefiles,
+            Some(Vec::new()),
+        );
+        compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes,
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap()
+    }
+
+    fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
+        r.open.iter().filter(|s| s.kind == kind).collect()
+    }
+
+    #[test]
+    fn repeated_long_string_contract_flags_once() {
+        let text = "Run loom sync before reading the status output again";
+        let r = report(
+            vec![
+                cf("src/a.rs", vec![with_string(sym("fn alpha"), text, 4)]),
+                cf("src/b.rs", vec![with_string(sym("fn beta"), text, 9)]),
+            ],
+            &[],
+        );
+        let found = of_kind(&r, "string_contract_duplicate");
+        assert_eq!(found.len(), 1, "repeated contract should flag: {found:?}");
+        assert!(found[0].summary.contains("string contract repeated"));
+        assert!(found[0].evidence.contains("src/a.rs:4"));
+        assert!(found[0].evidence.contains("src/b.rs:9"));
+    }
+
+    #[test]
+    fn short_or_path_like_strings_do_not_flag() {
+        let r = report(
+            vec![
+                cf(
+                    "src/a.rs",
+                    vec![
+                        with_string(sym("fn alpha"), "tiny label", 4),
+                        with_string(sym("fn beta"), "src/db/queries/smells.rs", 5),
+                    ],
+                ),
+                cf(
+                    "src/b.rs",
+                    vec![
+                        with_string(sym("fn gamma"), "tiny label", 6),
+                        with_string(sym("fn delta"), "src/db/queries/smells.rs", 7),
+                    ],
+                ),
+            ],
+            &[],
+        );
+        assert!(
+            of_kind(&r, "string_contract_duplicate").is_empty(),
+            "trivial strings should stay quiet"
+        );
+    }
+
+    #[test]
+    fn panic_marker_in_behavior_flags() {
+        let r = report(
+            vec![cf(
+                "src/commands/run.rs",
+                vec![with_panic(sym("fn run"), &["unwrap", "expect"])],
+            )],
+            &[],
+        );
+        let found = of_kind(&r, "panic_marker_risk");
+        assert_eq!(found.len(), 1, "panic marker should flag: {found:?}");
+        assert!(found[0].evidence.contains("markers=[unwrap, expect]"));
+        assert!(found[0].evidence.contains("command/public surface"));
+    }
+
+    #[test]
+    fn panic_marker_file_decision_adjudicates() {
+        let note = Note {
+            id: "n1".into(),
+            kind: "decision".into(),
+            text: "unwraps are construction-time invariants here".into(),
+            author: "llm".into(),
+            target_kind: "file".into(),
+            target_id: "src/a.rs".into(),
+            audience: String::new(),
+            created_at: "2026-06-16T00:00:00+00:00".into(),
+        };
+        let r = report(
+            vec![cf(
+                "src/a.rs",
+                vec![with_panic(sym("fn alpha"), &["unwrap"])],
+            )],
+            &[note],
+        );
+        assert!(of_kind(&r, "panic_marker_risk").is_empty());
+        assert!(r.adjudicated.iter().any(|s| s.kind == "panic_marker_risk"));
     }
 }
 

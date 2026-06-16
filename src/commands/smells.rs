@@ -12,8 +12,8 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    clone_suggestions, cochange_suggestions, proof_locality_suggestions, AdjudicatedSmell,
-    QuerySnapshot, Smell, SmellReport,
+    clone_suggestions, cochange_suggestions, proof_locality_suggestions,
+    shotgun_surgery_suggestions, AdjudicatedSmell, QuerySnapshot, Smell, SmellReport,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
@@ -77,6 +77,9 @@ fn render(
     let suggestions = cochange_suggestions(snapshot, &cc.pairs, &cc.individual);
     let suggestions_total = suggestions.len();
     let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
+    let shotgun_adv = shotgun_surgery_suggestions(snapshot, &cc.pairs, &cc.individual);
+    let shotgun_total = shotgun_adv.len();
+    let shotgun_shown: Vec<_> = shotgun_adv.into_iter().take(limit.max(1)).collect();
 
     // Advisory proof-locality: STATIC (no git, no coverage run), never gates
     // green. Flags leaves the `proven` axis counts whose only `test` proof
@@ -85,9 +88,10 @@ fn render(
     let proof_total = proof_adv.len();
     let proof_shown: Vec<_> = proof_adv.into_iter().take(limit.max(1)).collect();
 
-    // Advisory code-clone detection: cross-file EXACT (Type-1) duplication via
-    // the `body_hash` already on every SymbolFact. Ignore-aware (reuse the
-    // coverage-exclusion globs), size-floored, never gates green.
+    // Advisory code-clone detection: cross-file normalized structural
+    // duplication via SymbolFact.shape_hash, with body_hash fallback for
+    // pre-upgrade facts. Ignore-aware (reuse the coverage-exclusion globs),
+    // size-floored, never gates green.
     let clone_patterns: Vec<glob::Pattern> = ignores
         .iter()
         .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
@@ -127,6 +131,7 @@ fn render(
                 "coded_layers": coded_layers,
                 "declared_layers": declared_layers,
                 "cochange_suggestions_total": suggestions_total,
+                "shotgun_surgery_total": shotgun_total,
                 "proof_locality_suggestions_total": proof_total,
                 "code_clones_total": clone_total,
                 "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Use `loom smells --json` only when per-item evidence is needed.",
@@ -139,6 +144,7 @@ fn render(
             }
             println!("  adjudicated findings: {}", adjudicated.len());
             println!("  co-change advisories: {suggestions_total}");
+            println!("  shotgun-surgery advisories: {shotgun_total}");
             println!("  proof-locality advisories: {proof_total}");
             println!("  code-clone advisories: {clone_total}");
             println!("  tagged coded intents: {tagged}/{coded}");
@@ -172,11 +178,13 @@ fn render(
             "declared_layers": declared_layers,
             "cochange_suggestions": suggestions_shown,
             "cochange_suggestions_total": suggestions_total,
+            "shotgun_surgery": shotgun_shown,
+            "shotgun_surgery_total": shotgun_total,
             "proof_locality_suggestions": proof_shown,
             "proof_locality_suggestions_total": proof_total,
             "code_clones": clone_shown,
             "code_clones_total": clone_total,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` (git evolutionary coupling), `proof_locality_suggestions` (a proven leaf whose only `test` proof lives in other files), and `code_clones` (cross-file exact-text duplication via per-symbol body_hash) are ADVISORY — they never gate green; explore or ignore.",
+            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings WITH their rulings — review them; each names what re-opens it. `cochange_suggestions` (git evolutionary coupling), `shotgun_surgery` (one intent's owned files repeatedly co-change with many unrelated intents), `proof_locality_suggestions` (a proven leaf whose only `test` proof lives in other files), and `code_clones` (cross-file normalized structural duplication via per-symbol shape_hash, with exact body_hash fallback) are ADVISORY — they never gate green; explore or ignore.",
         }));
         return Ok(());
     }
@@ -186,8 +194,8 @@ fn render(
     if smells.is_empty() {
         if adjudicated.is_empty() {
             println!("  ✓ No open findings: no twins, no overlapping ownership, no scatter, no");
-            println!("    tangles, every rule considered against every coded intent. The audit");
-            println!("    gate is green.");
+            println!("    tangles, no source-fact risks, every rule considered against every");
+            println!("    coded intent. The audit gate is green.");
         } else {
             println!("  ✓ No OPEN findings — the audit gate is green.");
         }
@@ -232,6 +240,28 @@ fn render(
             );
         }
     }
+    if !shotgun_shown.is_empty() {
+        println!();
+        println!(
+            "── shotgun-surgery advisories ({}) — ADVISORY (wide git co-change; never gate green) ──",
+            shotgun_total
+        );
+        println!();
+        for s in &shotgun_shown {
+            println!("  [{}]  (score {:.1})", s.kind, s.score);
+            println!("    {}", s.summary);
+            println!("    evidence: {}", s.evidence);
+            println!("    remedy:   {}", s.remedy);
+            println!();
+        }
+        if shotgun_total > shotgun_shown.len() {
+            println!(
+                "  ({} more — `loom smells --limit {}`)",
+                shotgun_total - shotgun_shown.len(),
+                shotgun_total
+            );
+        }
+    }
     if !proof_shown.is_empty() {
         println!();
         println!(
@@ -257,7 +287,7 @@ fn render(
     if !clone_shown.is_empty() {
         println!();
         println!(
-            "── code clones ({}) — ADVISORY (identical code text in unrelated files; never gate green) ──",
+            "── code clones ({}) — ADVISORY (structurally duplicated code in unrelated files; never gate green) ──",
             clone_total
         );
         println!();

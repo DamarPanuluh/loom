@@ -1,12 +1,46 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    lane_depths_from_snapshot, status_report_from_snapshot,
-    uninspected_outside_queues_from_snapshot, GraphState, LaneDepths, UninspectedOutsideQueues,
+    clone_suggestions, cochange_suggestions, lane_depths_from_snapshot, proof_locality_suggestions,
+    shotgun_surgery_suggestions, status_report_from_snapshot,
+    uninspected_outside_queues_from_snapshot, GraphState, LaneDepths, QuerySnapshot, Smell,
+    UninspectedOutsideQueues,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, fmt_status, Printer};
-use crate::types::StatusReport;
+use crate::types::{Ignore, StatusReport};
+
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+struct AdvisoryCounts {
+    total: usize,
+    code_clones: usize,
+    cochange_suggestions: usize,
+    shotgun_surgery: usize,
+    proof_locality_suggestions: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct AuditPulse {
+    computed: bool,
+    open_findings: usize,
+    top_kinds: Vec<KindCount>,
+    top_findings: Vec<FindingPulse>,
+    recommended_command: String,
+    note: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct KindCount {
+    kind: String,
+    count: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct FindingPulse {
+    kind: String,
+    summary: String,
+    score: f64,
+}
 
 pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
@@ -26,6 +60,13 @@ pub fn run_with_db(
     let gs = db.graph_state(&snapshot)?;
     let lanes = lane_depths_from_snapshot(&snapshot);
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+    let ignores = db.list_ignores()?;
+    let advisories = advisory_counts(root, &snapshot, &ignores);
+    let audit = if should_compute_audit_pulse(&gs) {
+        audit_pulse(db.smell_report(&snapshot)?.open)
+    } else {
+        deferred_audit_pulse()
+    };
     let align_count = db.align_candidate_count(&snapshot)?;
     let prove = db.prove_candidates(&snapshot)?;
     let in_prove: std::collections::HashSet<&str> =
@@ -46,11 +87,83 @@ pub fn run_with_db(
         &gs,
         &lanes,
         &outside,
+        advisories,
+        audit,
         align_count,
         adopt_count,
         export_freshness,
         printer,
     )
+}
+
+fn should_compute_audit_pulse(gs: &GraphState) -> bool {
+    matches!(gs.phase.as_str(), "audit" | "complete")
+}
+
+fn deferred_audit_pulse() -> AuditPulse {
+    AuditPulse {
+        computed: false,
+        open_findings: 0,
+        top_kinds: Vec::new(),
+        top_findings: Vec::new(),
+        recommended_command: "loom smells --summary".to_string(),
+        note: "Audit scan deferred on non-audit phases to keep status hot; run the recommended command for current findings.".to_string(),
+    }
+}
+
+fn audit_pulse(open: Vec<Smell>) -> AuditPulse {
+    let mut counts = std::collections::BTreeMap::<String, usize>::new();
+    for smell in &open {
+        *counts.entry(smell.kind.clone()).or_insert(0) += 1;
+    }
+    let mut top_kinds: Vec<_> = counts
+        .into_iter()
+        .map(|(kind, count)| KindCount { kind, count })
+        .collect();
+    top_kinds.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.kind.cmp(&b.kind)));
+    top_kinds.truncate(5);
+    let top_findings = open
+        .iter()
+        .take(3)
+        .map(|smell| FindingPulse {
+            kind: smell.kind.clone(),
+            summary: smell.summary.clone(),
+            score: smell.score,
+        })
+        .collect();
+    AuditPulse {
+        computed: true,
+        open_findings: open.len(),
+        top_kinds,
+        top_findings,
+        recommended_command: "loom smells --summary".to_string(),
+        note: String::new(),
+    }
+}
+
+fn advisory_counts(
+    root: &std::path::Path,
+    snapshot: &QuerySnapshot,
+    ignores: &[Ignore],
+) -> AdvisoryCounts {
+    let paths: std::collections::HashSet<String> =
+        snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
+    let cc = crate::repo::git_cochange(root, &paths, 800);
+    let cochange_suggestions = cochange_suggestions(snapshot, &cc.pairs, &cc.individual).len();
+    let shotgun_surgery = shotgun_surgery_suggestions(snapshot, &cc.pairs, &cc.individual).len();
+    let proof_locality_suggestions = proof_locality_suggestions(snapshot).len();
+    let clone_patterns: Vec<glob::Pattern> = ignores
+        .iter()
+        .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
+        .collect();
+    let code_clones = clone_suggestions(snapshot, &clone_patterns).len();
+    AdvisoryCounts {
+        total: code_clones + cochange_suggestions + shotgun_surgery + proof_locality_suggestions,
+        code_clones,
+        cochange_suggestions,
+        shotgun_surgery,
+        proof_locality_suggestions,
+    }
 }
 
 /// Format the "other open lanes" footer: the autonomous work lanes that have
@@ -83,6 +196,8 @@ fn render_status(
     gs: &GraphState,
     lanes: &LaneDepths,
     outside: &UninspectedOutsideQueues,
+    advisories: AdvisoryCounts,
+    audit: AuditPulse,
     align_count: i64,
     adopt_count: i64,
     export_freshness: &str,
@@ -99,6 +214,8 @@ fn render_status(
                 "uninspected_outside_queues".to_string(),
                 serde_json::to_value(outside)?,
             );
+            obj.insert("advisories".to_string(), serde_json::to_value(advisories)?);
+            obj.insert("audit".to_string(), serde_json::to_value(&audit)?);
             obj.insert(
                 "committed_export".to_string(),
                 serde_json::json!(export_freshness),
@@ -140,6 +257,38 @@ fn render_status(
         if export_freshness == "stale" {
             println!(
                 "  ⚠ committed loom.graph.json is STALE — `loom export` before committing code."
+            );
+        }
+        if advisories.total > 0 {
+            println!(
+                "  advisories: {} waiting — code clones {} · co-change {} · shotgun {} · proof-locality {} (`loom smells --summary`).",
+                advisories.total,
+                advisories.code_clones,
+                advisories.cochange_suggestions,
+                advisories.shotgun_surgery,
+                advisories.proof_locality_suggestions
+            );
+        }
+        if audit.computed && audit.open_findings > 0 {
+            let kinds = audit
+                .top_kinds
+                .iter()
+                .map(|k| format!("{} {}", k.kind, k.count))
+                .collect::<Vec<_>>()
+                .join(" · ");
+            let top = audit
+                .top_findings
+                .first()
+                .map(|f| format!("; top: [{}] {}", f.kind, f.summary))
+                .unwrap_or_default();
+            println!(
+                "  audit: {} open finding(s) — {}{} (`{}`).",
+                audit.open_findings, kinds, top, audit.recommended_command
+            );
+        } else if !audit.computed {
+            println!(
+                "  audit: deferred while phase={} keeps another lane active (`{}`).",
+                gs.phase, audit.recommended_command
             );
         }
         if let Some(others) = other_lanes_line(lanes, &gs.phase) {

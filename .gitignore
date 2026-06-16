@@ -1,4 +1,5 @@
 /target
 .loom/
+.deepseek/
 .DS_Store
 reasonix.toml

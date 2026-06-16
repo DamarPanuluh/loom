@@ -462,9 +462,10 @@ fn detect_language(path: &str) -> String {
         "ts" | "tsx" => "typescript",
         "js" | "jsx" | "mjs" => "javascript",
         "py" => "python",
+        "dart" => "dart",
         "go" => "go",
         "java" => "java",
-        "kt" => "kotlin",
+        "kt" | "kts" => "kotlin",
         "swift" => "swift",
         "c" | "h" => "c",
         "cpp" | "cc" | "cxx" | "hpp" => "cpp",
@@ -475,6 +476,7 @@ fn detect_language(path: &str) -> String {
         "sql" => "sql",
         "html" | "htm" => "html",
         "css" | "scss" => "css",
+        "svelte" => "svelte",
         _ => "unknown",
     }
     .to_string()

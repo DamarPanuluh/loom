@@ -246,12 +246,22 @@ pub fn detect(root: &Path) -> Result<Detection> {
         ("composer.json", "php"),
         ("CMakeLists.txt", "c/cpp"),
         ("Package.swift", "swift"),
+        ("pubspec.yaml", "dart/flutter"),
+        ("bun.lock", "bun"),
+        ("bun.lockb", "bun"),
     ];
     let mut stacks: Vec<String> = Vec::new();
     for (file, name) in manifests {
         if root.join(file).exists() && !stacks.iter().any(|s| s == name) {
             stacks.push((*name).to_string());
         }
+    }
+    if ["svelte.config.js", "svelte.config.ts", "svelte.config.mjs"]
+        .iter()
+        .any(|file| root.join(file).exists())
+        && !stacks.iter().any(|s| s == "svelte")
+    {
+        stacks.push("svelte".to_string());
     }
 
     let mut counts: HashMap<String, usize> = HashMap::new();
@@ -312,8 +322,10 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
         })
     };
 
-    if stacks.iter().any(|s| s == "swift" || s == "java/kotlin")
-        || has_ext(&["swift", "kt"])
+    if stacks
+        .iter()
+        .any(|s| s == "swift" || s == "java/kotlin" || s == "dart/flutter")
+        || has_ext(&["swift", "kt", "kts", "dart"])
         || has_dir(&["ios", "android"])
         || files
             .iter()
@@ -324,7 +336,9 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
             reason: "mobile platform code detected (swift/kotlin/flutter or ios|android dirs) — lifecycle, offline, permissions, main thread".into(),
         });
     }
-    if has_ext(&["tsx", "jsx", "vue", "svelte", "html", "css"]) {
+    if stacks.iter().any(|s| s == "svelte")
+        || has_ext(&["tsx", "jsx", "vue", "svelte", "html", "css"])
+    {
         packs.push(PackHint {
             pack: "web-ui".into(),
             reason: "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust".into(),
@@ -333,7 +347,7 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
     if stacks.iter().any(|s| {
         matches!(
             s.as_str(),
-            "rust" | "go" | "node" | "python" | "java" | "java/kotlin" | "ruby" | "php"
+            "rust" | "go" | "node" | "bun" | "python" | "java" | "java/kotlin" | "ruby" | "php"
         )
     }) || root.join("Dockerfile").exists()
         || root.join("docker-compose.yml").exists()
@@ -390,9 +404,13 @@ pub fn extract_symbols(rel_path: &str, content: &str) -> Vec<String> {
     if let Some(facts) = crate::ts_imports::extract_physical_facts(rel_path, content) {
         return facts.symbols;
     }
-    let _ = rel_path;
-    let _ = content;
-    Vec::new()
+    let mut symbols: Vec<String> = extract_symbol_facts_heuristic(rel_path, content)
+        .into_iter()
+        .map(|fact| fact.label)
+        .collect();
+    symbols.sort();
+    symbols.dedup();
+    symbols
 }
 
 #[derive(Debug, Default)]
@@ -411,10 +429,21 @@ pub(crate) fn extract_physical_facts(root: &Path, rel_path: &str, content: &str)
             symbol_facts: facts.symbol_facts,
         };
     }
+    let mut symbol_facts = extract_symbol_facts_heuristic(rel_path, content);
+    let mut symbols: Vec<String> = symbol_facts.iter().map(|fact| fact.label.clone()).collect();
+    symbols.sort();
+    symbols.dedup();
+    symbol_facts.sort_by(|a, b| {
+        a.label
+            .cmp(&b.label)
+            .then_with(|| a.line_start.cmp(&b.line_start))
+            .then_with(|| a.line_end.cmp(&b.line_end))
+    });
+    symbol_facts.dedup_by(|a, b| a.label == b.label);
     PhysicalFacts {
         imports: extract_imports_heuristic(root, rel_path, content),
-        symbols: Vec::new(),
-        symbol_facts: Vec::new(),
+        symbols,
+        symbol_facts,
     }
 }
 
@@ -457,7 +486,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                 }
             }
         }
-        "ts" | "tsx" | "js" | "jsx" | "mjs" => {
+        "ts" | "tsx" | "js" | "jsx" | "mjs" | "svelte" => {
             for line in content.lines() {
                 for marker in [
                     "from '",
@@ -478,6 +507,58 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                         }
                         push_unique(&mut specs, spec);
                     }
+                }
+            }
+        }
+        "dart" => {
+            for line in content.lines() {
+                let t = line.trim();
+                for prefix in ["import ", "export ", "part "] {
+                    if let Some(rest) = t.strip_prefix(prefix) {
+                        if let Some(spec) = first_quoted(rest) {
+                            if spec.starts_with('.') || spec.starts_with("package:") {
+                                push_unique(&mut specs, spec);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "go" => {
+            let mut in_block = false;
+            for line in content.lines() {
+                let t = line.trim();
+                if t.starts_with("import (") {
+                    in_block = true;
+                    continue;
+                }
+                if in_block && t.starts_with(')') {
+                    in_block = false;
+                    continue;
+                }
+                if in_block {
+                    if let Some(spec) = first_quoted(t) {
+                        push_unique(&mut specs, spec);
+                    }
+                } else if let Some(rest) = t.strip_prefix("import ") {
+                    if let Some(spec) = first_quoted(rest) {
+                        push_unique(&mut specs, spec);
+                    }
+                }
+            }
+        }
+        "kt" | "kts" | "swift" => {
+            for line in content.lines() {
+                let t = line.trim();
+                if let Some(rest) = t.strip_prefix("import ") {
+                    push_unique(
+                        &mut specs,
+                        rest.split_whitespace()
+                            .next()
+                            .unwrap_or("")
+                            .trim_end_matches(';')
+                            .to_string(),
+                    );
                 }
             }
         }
@@ -543,10 +624,14 @@ fn resolve_import_specifiers(root: &Path, rel_path: &str, specs: &[String]) -> V
     for spec in specs {
         match ext {
             "rs" => resolve_rust_spec(root, rel_path, &dir, spec, &mut found),
-            "ts" | "tsx" | "js" | "jsx" | "mjs" => {
+            "ts" | "tsx" | "js" | "jsx" | "mjs" | "svelte" => {
                 resolve_js_spec(root, rel_path, &dir, spec, &mut found)
             }
             "py" => resolve_python_spec(root, rel_path, &dir, spec, &mut found),
+            "dart" => resolve_dart_spec(root, rel_path, &dir, spec, &mut found),
+            "go" => resolve_go_spec(root, rel_path, spec, &mut found),
+            "kt" | "kts" => resolve_kotlin_spec(root, rel_path, spec, &mut found),
+            "swift" => resolve_swift_spec(root, rel_path, spec, &mut found),
             _ => {}
         }
     }
@@ -584,10 +669,16 @@ fn resolve_js_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &m
     }
     let base = format!("{dir}/{spec}");
     push_if_file(root, rel_path, found, base.clone());
-    for e in [".ts", ".tsx", ".js", ".jsx", ".mjs"] {
+    for e in [".ts", ".tsx", ".js", ".jsx", ".mjs", ".svelte"] {
         push_if_file(root, rel_path, found, format!("{base}{e}"));
     }
-    for e in ["/index.ts", "/index.tsx", "/index.js", "/index.jsx"] {
+    for e in [
+        "/index.ts",
+        "/index.tsx",
+        "/index.js",
+        "/index.jsx",
+        "/index.svelte",
+    ] {
         push_if_file(root, rel_path, found, format!("{base}{e}"));
     }
 }
@@ -631,6 +722,235 @@ fn resolve_python_spec(
     );
 }
 
+fn resolve_dart_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &mut Vec<String>) {
+    if let Some(path) = spec
+        .strip_prefix("package:")
+        .and_then(|s| s.split_once('/').map(|(_, rest)| rest))
+    {
+        push_if_file(root, rel_path, found, format!("lib/{path}"));
+        return;
+    }
+    let base = format!("{dir}/{spec}");
+    push_if_file(root, rel_path, found, base.clone());
+    push_if_file(root, rel_path, found, format!("{base}.dart"));
+}
+
+fn resolve_go_spec(root: &Path, rel_path: &str, spec: &str, found: &mut Vec<String>) {
+    let Some(module_path) = go_module_path(root) else {
+        return;
+    };
+    let Some(rest) = spec.strip_prefix(&format!("{module_path}/")) else {
+        return;
+    };
+    push_if_file(root, rel_path, found, format!("{rest}.go"));
+    push_if_file(root, rel_path, found, format!("{rest}/mod.go"));
+    push_package_files(root, rel_path, found, rest, "go");
+}
+
+fn go_module_path(root: &Path) -> Option<String> {
+    let raw = std::fs::read_to_string(root.join("go.mod")).ok()?;
+    raw.lines().map(str::trim).find_map(|line| {
+        line.strip_prefix("module ")
+            .map(str::trim)
+            .map(str::to_string)
+    })
+}
+
+fn resolve_kotlin_spec(root: &Path, rel_path: &str, spec: &str, found: &mut Vec<String>) {
+    let path = spec.replace('.', "/");
+    for base in [
+        "src/main/kotlin",
+        "src/test/kotlin",
+        "app/src/main/java",
+        "app/src/main/kotlin",
+        "",
+    ] {
+        push_if_file(root, rel_path, found, format!("{base}/{path}.kt"));
+        push_if_file(root, rel_path, found, format!("{base}/{path}.kts"));
+    }
+}
+
+fn resolve_swift_spec(root: &Path, rel_path: &str, spec: &str, found: &mut Vec<String>) {
+    let name = spec.rsplit('.').next().unwrap_or(spec);
+    let dir = Path::new(rel_path)
+        .parent()
+        .map(|p| p.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_default();
+    push_if_file(root, rel_path, found, format!("{dir}/{name}.swift"));
+    for base in ["Sources", "Tests", ""] {
+        push_if_file(root, rel_path, found, format!("{base}/{name}.swift"));
+        push_package_files(root, rel_path, found, base, "swift");
+    }
+}
+
+fn push_package_files(root: &Path, rel_path: &str, found: &mut Vec<String>, dir: &str, ext: &str) {
+    let base = root.join(dir);
+    let Ok(entries) = std::fs::read_dir(base) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) == Some(ext) {
+            if let Ok(rel) = path.strip_prefix(root) {
+                push_if_file(
+                    root,
+                    rel_path,
+                    found,
+                    rel.to_string_lossy().replace('\\', "/"),
+                );
+            }
+        }
+    }
+}
+
+fn first_quoted(s: &str) -> Option<String> {
+    let start = s.find(['\'', '"'])?;
+    let quote = s.as_bytes().get(start).copied()? as char;
+    let rest = &s[start + 1..];
+    let end = rest.find(quote)?;
+    Some(rest[..end].to_string())
+}
+
+fn extract_symbol_facts_heuristic(rel_path: &str, content: &str) -> Vec<crate::types::SymbolFact> {
+    let ext = Path::new(rel_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let mut facts = Vec::new();
+    match ext {
+        "dart" => collect_simple_symbols(
+            rel_path,
+            content,
+            &mut facts,
+            &["class ", "enum ", "mixin ", "extension "],
+            &["void ", "Future<", "Stream<"],
+        ),
+        "go" => collect_go_symbols(rel_path, content, &mut facts),
+        "kt" | "kts" => collect_simple_symbols(
+            rel_path,
+            content,
+            &mut facts,
+            &["class ", "object ", "interface ", "enum class "],
+            &["fun "],
+        ),
+        "swift" => collect_simple_symbols(
+            rel_path,
+            content,
+            &mut facts,
+            &["class ", "struct ", "enum ", "protocol ", "extension "],
+            &["func "],
+        ),
+        "svelte" => collect_svelte_symbols(rel_path, content, &mut facts),
+        _ => {}
+    }
+    facts
+}
+
+fn collect_simple_symbols(
+    rel_path: &str,
+    content: &str,
+    out: &mut Vec<crate::types::SymbolFact>,
+    type_prefixes: &[&str],
+    fn_prefixes: &[&str],
+) {
+    for (idx, line) in content.lines().enumerate() {
+        let t = line.trim_start();
+        for prefix in type_prefixes {
+            if let Some(name) = symbol_name_after(t, prefix) {
+                push_heuristic_symbol(out, rel_path, content, idx, prefix.trim(), &name);
+            }
+        }
+        for prefix in fn_prefixes {
+            if let Some(name) = symbol_name_after(t, prefix) {
+                push_heuristic_symbol(out, rel_path, content, idx, "fn", &name);
+            }
+        }
+    }
+}
+
+fn collect_go_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types::SymbolFact>) {
+    for (idx, line) in content.lines().enumerate() {
+        let t = line.trim_start();
+        if let Some(name) = symbol_name_after(t, "func ") {
+            push_heuristic_symbol(out, rel_path, content, idx, "func", &name);
+        }
+        if let Some(rest) = t.strip_prefix("type ") {
+            if let Some(name) = rest.split_whitespace().next() {
+                push_heuristic_symbol(out, rel_path, content, idx, "type", name);
+            }
+        }
+    }
+}
+
+fn collect_svelte_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types::SymbolFact>) {
+    for (idx, line) in content.lines().enumerate() {
+        let t = line.trim_start();
+        if t.starts_with("<script") {
+            push_heuristic_symbol(out, rel_path, content, idx, "component", "script");
+        }
+        if let Some(name) = symbol_name_after(t, "export let ") {
+            push_heuristic_symbol(out, rel_path, content, idx, "prop", &name);
+        }
+        if let Some(name) = symbol_name_after(t, "function ") {
+            push_heuristic_symbol(out, rel_path, content, idx, "function", &name);
+        }
+    }
+}
+
+fn symbol_name_after(line: &str, prefix: &str) -> Option<String> {
+    let rest = line.strip_prefix(prefix)?;
+    let name: String = rest
+        .trim_start()
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
+        .collect();
+    (!name.is_empty()).then_some(name)
+}
+
+fn push_heuristic_symbol(
+    out: &mut Vec<crate::types::SymbolFact>,
+    rel_path: &str,
+    content: &str,
+    idx: usize,
+    kind: &str,
+    name: &str,
+) {
+    let label = format!("{kind} {name}");
+    if out.iter().any(|fact| fact.label == label) {
+        return;
+    }
+    let line = content.lines().nth(idx).unwrap_or_default();
+    out.push(crate::types::SymbolFact {
+        label,
+        name: name.to_string(),
+        kind: kind.to_string(),
+        visibility: "public".to_string(),
+        line_start: idx + 1,
+        line_end: idx + 1,
+        is_test: path_is_test_like(rel_path),
+        string_literals: Vec::new(),
+        panic_marker_count: 0,
+        panic_markers: Vec::new(),
+        body_hash: content_hash(line.as_bytes()),
+        shape_hash: content_hash(format!("{kind} _").as_bytes()),
+    });
+}
+
+fn path_is_test_like(rel_path: &str) -> bool {
+    let p = rel_path.replace('\\', "/");
+    p.contains("/test/")
+        || p.contains("/tests/")
+        || p.contains("/integration_test/")
+        || p.starts_with("test/")
+        || p.starts_with("tests/")
+        || p.starts_with("integration_test/")
+        || p.contains(".test.")
+        || p.contains(".spec.")
+        || p.ends_with("_test.dart")
+        || p.ends_with("_test.go")
+        || p.ends_with("Tests.swift")
+}
+
 fn push_if_file(root: &Path, rel_path: &str, found: &mut Vec<String>, cand: String) {
     let norm = normalize(&cand);
     if !norm.is_empty() && norm != rel_path && root.join(&norm).is_file() && !found.contains(&norm)
@@ -672,9 +992,10 @@ fn lang_of(path: &str) -> &'static str {
         "ts" | "tsx" => "typescript",
         "js" | "jsx" | "mjs" => "javascript",
         "py" => "python",
+        "dart" => "dart",
         "go" => "go",
         "java" => "java",
-        "kt" => "kotlin",
+        "kt" | "kts" => "kotlin",
         "swift" => "swift",
         "c" | "h" => "c",
         "cpp" | "cc" | "cxx" | "hpp" => "cpp",
@@ -683,6 +1004,7 @@ fn lang_of(path: &str) -> &'static str {
         "php" => "php",
         "sh" | "bash" => "shell",
         "sql" => "sql",
+        "svelte" => "svelte",
         _ => "other",
     }
 }
@@ -872,6 +1194,140 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn heuristic_imports_dart_go_kotlin_swift_and_svelte() {
+        let dir = std::env::temp_dir().join(format!("loom-imp-mobile-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("lib/src")).unwrap();
+        fs::create_dir_all(dir.join("pkg/util")).unwrap();
+        fs::create_dir_all(dir.join("src/main/kotlin/com/example")).unwrap();
+        fs::create_dir_all(dir.join("Sources/App")).unwrap();
+        fs::create_dir_all(dir.join("web/lib")).unwrap();
+        fs::write(dir.join("go.mod"), "module example.com/app\n").unwrap();
+        fs::write(dir.join("lib/src/helper.dart"), "class Helper {}\n").unwrap();
+        fs::write(
+            dir.join("lib/main.dart"),
+            "import 'package:demo/src/helper.dart';\nclass App {}\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("pkg/util/util.go"),
+            "package util\nfunc Use() {}\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("main.go"),
+            "package main\nimport \"example.com/app/pkg/util\"\nfunc main() {}\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("src/main/kotlin/com/example/Thing.kt"),
+            "class Thing\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("src/main/kotlin/App.kt"),
+            "import com.example.Thing\nfun run() {}\n",
+        )
+        .unwrap();
+        fs::write(dir.join("Sources/App/Widget.swift"), "struct Widget {}\n").unwrap();
+        fs::write(
+            dir.join("Sources/App/App.swift"),
+            "import Widget\nfunc boot() {}\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("web/lib/Widget.svelte"),
+            "<script>export let name;</script>\n",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("web/App.svelte"),
+            "<script>import Widget from './lib/Widget'; function boot() {}</script>\n",
+        )
+        .unwrap();
+
+        assert_eq!(
+            extract_imports(
+                &dir,
+                "lib/main.dart",
+                &fs::read_to_string(dir.join("lib/main.dart")).unwrap()
+            ),
+            vec!["lib/src/helper.dart".to_string()]
+        );
+        assert_eq!(
+            extract_imports(
+                &dir,
+                "main.go",
+                &fs::read_to_string(dir.join("main.go")).unwrap()
+            ),
+            vec!["pkg/util/util.go".to_string()]
+        );
+        assert_eq!(
+            extract_imports(
+                &dir,
+                "src/main/kotlin/App.kt",
+                &fs::read_to_string(dir.join("src/main/kotlin/App.kt")).unwrap()
+            ),
+            vec!["src/main/kotlin/com/example/Thing.kt".to_string()]
+        );
+        assert!(extract_imports(
+            &dir,
+            "Sources/App/App.swift",
+            &fs::read_to_string(dir.join("Sources/App/App.swift")).unwrap()
+        )
+        .contains(&"Sources/App/Widget.swift".to_string()));
+        assert_eq!(
+            extract_imports(
+                &dir,
+                "web/App.svelte",
+                &fs::read_to_string(dir.join("web/App.svelte")).unwrap()
+            ),
+            vec!["web/lib/Widget.svelte".to_string()]
+        );
+
+        let dart_symbols = extract_symbols(
+            "lib/main.dart",
+            &fs::read_to_string(dir.join("lib/main.dart")).unwrap(),
+        );
+        assert!(
+            dart_symbols.contains(&"class App".to_string()),
+            "{dart_symbols:?}"
+        );
+        let go_symbols =
+            extract_symbols("main.go", &fs::read_to_string(dir.join("main.go")).unwrap());
+        assert!(
+            go_symbols.contains(&"func main".to_string()),
+            "{go_symbols:?}"
+        );
+        let kotlin_symbols = extract_symbols(
+            "src/main/kotlin/App.kt",
+            &fs::read_to_string(dir.join("src/main/kotlin/App.kt")).unwrap(),
+        );
+        assert!(
+            kotlin_symbols.contains(&"fn run".to_string()),
+            "{kotlin_symbols:?}"
+        );
+        let swift_symbols = extract_symbols(
+            "Sources/App/App.swift",
+            &fs::read_to_string(dir.join("Sources/App/App.swift")).unwrap(),
+        );
+        assert!(
+            swift_symbols.contains(&"fn boot".to_string()),
+            "{swift_symbols:?}"
+        );
+        let svelte_symbols = extract_symbols(
+            "web/App.svelte",
+            &fs::read_to_string(dir.join("web/App.svelte")).unwrap(),
+        );
+        assert!(
+            svelte_symbols.contains(&"component script".to_string()),
+            "{svelte_symbols:?}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     #[cfg(feature = "treesitter")]
     #[test]
     fn tree_sitter_rust_extracts_grouped_and_reexport_imports() {
@@ -1034,6 +1490,10 @@ mod tests {
                 }
                 #[test]
                 fn tests_it() {}
+                #[cfg(test)]
+                mod tests {
+                    fn helper_uses_unwrap() {}
+                }
             "#;
         let symbols = extract_symbols("src/lib.rs", content);
         for expected in [
@@ -1067,6 +1527,48 @@ mod tests {
             .find(|fact| fact.name == "tests_it")
             .unwrap();
         assert!(test.is_test, "{test:?}");
+        let helper = facts
+            .symbol_facts
+            .iter()
+            .find(|fact| fact.name == "helper_uses_unwrap")
+            .unwrap();
+        assert!(
+            helper.is_test,
+            "symbols inside #[cfg(test)] modules should be test-only: {helper:?}"
+        );
+    }
+
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn tree_sitter_shape_hash_survives_renames_and_comments() {
+        let a = extract_physical_facts(
+            Path::new("."),
+            "src/a.rs",
+            "fn alpha(input: usize) -> usize {\n    // comment\n    input + 1\n}\n",
+        );
+        let b = extract_physical_facts(
+            Path::new("."),
+            "src/b.rs",
+            "fn beta(value: usize) -> usize {\n    value + 2\n}\n",
+        );
+        let alpha = a
+            .symbol_facts
+            .iter()
+            .find(|fact| fact.name == "alpha")
+            .unwrap();
+        let beta = b
+            .symbol_facts
+            .iter()
+            .find(|fact| fact.name == "beta")
+            .unwrap();
+        assert_ne!(
+            alpha.body_hash, beta.body_hash,
+            "raw body hashes stay exact for sync invalidation"
+        );
+        assert_eq!(
+            alpha.shape_hash, beta.shape_hash,
+            "normalized shape groups renamed/formatted clones"
+        );
     }
 
     #[cfg(feature = "treesitter")]

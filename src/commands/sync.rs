@@ -489,7 +489,9 @@ fn affected_intents(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{CodeFile, Implements, SymbolFact};
+    #[cfg(feature = "treesitter")]
+    use crate::types::Implements;
+    use crate::types::{CodeFile, SymbolFact};
 
     fn cf(symbol_facts: Vec<SymbolFact>) -> CodeFile {
         CodeFile {
@@ -503,6 +505,7 @@ mod tests {
             content_hash: String::new(),
         }
     }
+    #[cfg(feature = "treesitter")]
     fn imp(intent: &str, locator: &str) -> Implements {
         Implements {
             id: format!("imp:{intent}"),

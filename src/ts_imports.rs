@@ -7,7 +7,7 @@ use std::path::Path;
 
 use tree_sitter::{Language, Node, Parser, Tree};
 
-use crate::types::SymbolFact;
+use crate::types::{StringLiteralFact, SymbolFact};
 
 #[derive(Debug, Default)]
 pub struct PhysicalFacts {
@@ -257,8 +257,19 @@ fn collect_symbol_facts(
     content: &str,
     out: &mut Vec<SymbolFact>,
 ) {
+    collect_symbol_facts_in(root, lang, rel_path, content, false, out);
+}
+
+fn collect_symbol_facts_in(
+    root: Node<'_>,
+    lang: Lang,
+    rel_path: &str,
+    content: &str,
+    in_test_context: bool,
+    out: &mut Vec<SymbolFact>,
+) {
     for_each_named_child(root, |child| {
-        collect_top_level_symbol(child, lang, rel_path, content, false, out)
+        collect_top_level_symbol(child, lang, rel_path, content, false, in_test_context, out)
     });
 }
 
@@ -268,27 +279,33 @@ fn collect_top_level_symbol(
     rel_path: &str,
     content: &str,
     exported: bool,
+    in_test_context: bool,
     out: &mut Vec<SymbolFact>,
 ) {
     match node.kind() {
-        "declaration_list" => collect_symbol_facts(node, lang, rel_path, content, out),
+        "declaration_list" => {
+            collect_symbol_facts_in(node, lang, rel_path, content, in_test_context, out)
+        }
         "mod_item" if matches!(lang, Lang::Rust) => {
             if let Some(body) = node.child_by_field_name("body") {
-                collect_symbol_facts(body, lang, rel_path, content, out);
+                let child_test_context = in_test_context || rust_symbol_is_test(node, content);
+                collect_symbol_facts_in(body, lang, rel_path, content, child_test_context, out);
             }
         }
         "export_statement" if matches!(lang, Lang::TypeScript | Lang::Tsx | Lang::JavaScript) => {
             for_each_named_child(node, |child| {
-                collect_top_level_symbol(child, lang, rel_path, content, true, out)
+                collect_top_level_symbol(child, lang, rel_path, content, true, in_test_context, out)
             });
         }
         "lexical_declaration"
             if matches!(lang, Lang::TypeScript | Lang::Tsx | Lang::JavaScript) =>
         {
-            collect_js_ts_const_facts(node, rel_path, content, exported, out);
+            collect_js_ts_const_facts(node, rel_path, content, exported, in_test_context, out);
         }
         _ => {
-            if let Some(symbol) = symbol_fact(node, lang, rel_path, content, exported) {
+            if let Some(symbol) =
+                symbol_fact(node, lang, rel_path, content, exported, in_test_context)
+            {
                 push_unique_fact(out, symbol);
             }
         }
@@ -301,17 +318,23 @@ fn symbol_fact(
     rel_path: &str,
     content: &str,
     exported: bool,
+    in_test_context: bool,
 ) -> Option<SymbolFact> {
     match lang {
-        Lang::Rust => rust_symbol_fact(node, rel_path, content),
+        Lang::Rust => rust_symbol_fact(node, rel_path, content, in_test_context),
         Lang::TypeScript | Lang::Tsx | Lang::JavaScript => {
-            js_ts_symbol_fact(node, rel_path, content, exported)
+            js_ts_symbol_fact(node, rel_path, content, exported, in_test_context)
         }
-        Lang::Python => python_symbol_fact(node, rel_path, content),
+        Lang::Python => python_symbol_fact(node, rel_path, content, in_test_context),
     }
 }
 
-fn rust_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<SymbolFact> {
+fn rust_symbol_fact(
+    node: Node<'_>,
+    rel_path: &str,
+    content: &str,
+    in_test_context: bool,
+) -> Option<SymbolFact> {
     let name = || {
         node.child_by_field_name("name")
             .and_then(|n| text(n, content))
@@ -377,8 +400,12 @@ fn rust_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<Sym
         },
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
-        is_test: path_is_test(rel_path) || rust_symbol_is_test(node, content),
+        is_test: path_is_test(rel_path) || in_test_context || rust_symbol_is_test(node, content),
+        string_literals: string_literal_facts(node, content),
+        panic_marker_count: panic_marker_count(node, content),
+        panic_markers: panic_markers(node, content),
         body_hash: String::new(),
+        shape_hash: shape_hash(node, content),
     })
 }
 
@@ -387,6 +414,7 @@ fn js_ts_symbol_fact(
     rel_path: &str,
     content: &str,
     exported: bool,
+    in_test_context: bool,
 ) -> Option<SymbolFact> {
     let name = || {
         node.child_by_field_name("name")
@@ -417,8 +445,14 @@ fn js_ts_symbol_fact(
         },
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
-        is_test: path_is_test(rel_path) || js_ts_name_is_test(text(node, content).unwrap_or("")),
+        is_test: path_is_test(rel_path)
+            || in_test_context
+            || js_ts_name_is_test(text(node, content).unwrap_or("")),
+        string_literals: string_literal_facts(node, content),
+        panic_marker_count: panic_marker_count(node, content),
+        panic_markers: panic_markers(node, content),
         body_hash: String::new(),
+        shape_hash: shape_hash(node, content),
     })
 }
 
@@ -427,6 +461,7 @@ fn collect_js_ts_const_facts(
     rel_path: &str,
     content: &str,
     exported: bool,
+    in_test_context: bool,
     out: &mut Vec<SymbolFact>,
 ) {
     let Some(raw) = text(node, content).map(str::trim_start) else {
@@ -458,8 +493,14 @@ fn collect_js_ts_const_facts(
                                 },
                                 line_start: child.start_position().row + 1,
                                 line_end: child.end_position().row + 1,
-                                is_test: path_is_test(rel_path) || name.starts_with("test"),
+                                is_test: path_is_test(rel_path)
+                                    || in_test_context
+                                    || name.starts_with("test"),
+                                string_literals: string_literal_facts(child, content),
+                                panic_marker_count: panic_marker_count(child, content),
+                                panic_markers: panic_markers(child, content),
                                 body_hash: String::new(),
+                                shape_hash: shape_hash(child, content),
                             },
                         );
                     }
@@ -469,7 +510,12 @@ fn collect_js_ts_const_facts(
     });
 }
 
-fn python_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<SymbolFact> {
+fn python_symbol_fact(
+    node: Node<'_>,
+    rel_path: &str,
+    content: &str,
+    in_test_context: bool,
+) -> Option<SymbolFact> {
     let name = || {
         node.child_by_field_name("name")
             .and_then(|n| text(n, content))
@@ -487,13 +533,229 @@ fn python_symbol_fact(node: Node<'_>, rel_path: &str, content: &str) -> Option<S
         } else {
             "public".into()
         },
-        is_test: path_is_test(rel_path) || name.starts_with("test_"),
+        is_test: path_is_test(rel_path) || in_test_context || name.starts_with("test_"),
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
         kind: kind.into(),
         name,
+        string_literals: string_literal_facts(node, content),
+        panic_marker_count: panic_marker_count(node, content),
+        panic_markers: panic_markers(node, content),
         body_hash: String::new(),
+        shape_hash: shape_hash(node, content),
     })
+}
+
+fn string_literal_facts(node: Node<'_>, content: &str) -> Vec<StringLiteralFact> {
+    let mut out = Vec::new();
+    collect_string_literal_facts(node, content, &mut out);
+    out
+}
+
+fn collect_string_literal_facts(node: Node<'_>, content: &str, out: &mut Vec<StringLiteralFact>) {
+    if is_source_string_literal_kind(node.kind()) {
+        if let Some(value) = source_string_literal_value(node, content) {
+            out.push(StringLiteralFact {
+                value,
+                line: node.start_position().row + 1,
+            });
+        }
+        return;
+    }
+    for idx in 0..node.child_count() {
+        if let Some(child) = node.child(idx as u32) {
+            collect_string_literal_facts(child, content, out);
+        }
+    }
+}
+
+fn is_source_string_literal_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "raw_string_literal" | "string" | "string_literal" | "template_string"
+    )
+}
+
+fn source_string_literal_value(node: Node<'_>, content: &str) -> Option<String> {
+    let raw = text(node, content)?.trim();
+    let quote_idx = raw.find(['\'', '"', '`'])?;
+    let quote = raw.as_bytes().get(quote_idx).copied()? as char;
+    let prefix = &raw[..quote_idx];
+    if quote == '`' && raw.contains("${") {
+        return None;
+    }
+    if prefix.chars().any(|c| matches!(c, 'f' | 'F')) {
+        return None;
+    }
+    if quote == '"' && prefix.starts_with('r') && prefix[1..].chars().all(|c| c == '#') {
+        let hashes = prefix.len() - 1;
+        let suffix = "#".repeat(hashes);
+        if raw.ends_with(&suffix) {
+            let end = raw.len().checked_sub(hashes + 1)?;
+            if end > quote_idx + 1 {
+                return Some(raw[quote_idx + 1..end].to_string());
+            }
+        }
+    }
+    if raw[quote_idx..].starts_with(&quote.to_string().repeat(3))
+        && raw.ends_with(&quote.to_string().repeat(3))
+        && raw.len() >= quote_idx + 6
+    {
+        return Some(raw[quote_idx + 3..raw.len() - 3].to_string());
+    }
+    if raw.as_bytes().last().copied()? as char != quote || raw.len() <= quote_idx + 1 {
+        return None;
+    }
+    Some(raw[quote_idx + 1..raw.len() - 1].to_string())
+}
+
+fn panic_marker_count(node: Node<'_>, content: &str) -> usize {
+    panic_marker_hits(node, content).len()
+}
+
+fn panic_markers(node: Node<'_>, content: &str) -> Vec<String> {
+    let hits = panic_marker_hits(node, content);
+    let mut out = Vec::new();
+    for marker in ["panic", "unwrap", "expect", "todo", "unimplemented"] {
+        if hits.contains(&marker) {
+            out.push(marker.to_string());
+        }
+    }
+    out
+}
+
+fn panic_marker_hits(node: Node<'_>, content: &str) -> Vec<&'static str> {
+    let mut tokens = Vec::new();
+    source_tokens_without_literals(node, content, &mut tokens);
+    let mut hits = Vec::new();
+    for (idx, tok) in tokens.iter().enumerate() {
+        let Some(marker) = panic_marker(tok.as_str()) else {
+            continue;
+        };
+        if previous_token_is_definition(&tokens, idx) {
+            continue;
+        }
+        if next_token_is_call_or_macro(&tokens, idx) {
+            hits.push(marker);
+        }
+    }
+    hits
+}
+
+fn source_tokens_without_literals(node: Node<'_>, content: &str, out: &mut Vec<String>) {
+    let kind = node.kind();
+    if is_comment_kind(kind) || is_literal_kind(kind) {
+        return;
+    }
+    if node.child_count() == 0 {
+        if let Some(raw) = text(node, content).map(str::trim).filter(|s| !s.is_empty()) {
+            out.push(raw.to_string());
+        }
+        return;
+    }
+    for idx in 0..node.child_count() {
+        if let Some(child) = node.child(idx as u32) {
+            source_tokens_without_literals(child, content, out);
+        }
+    }
+}
+
+fn panic_marker(tok: &str) -> Option<&'static str> {
+    match tok {
+        "panic" => Some("panic"),
+        "unwrap" => Some("unwrap"),
+        "expect" => Some("expect"),
+        "todo" => Some("todo"),
+        "unimplemented" => Some("unimplemented"),
+        _ => None,
+    }
+}
+
+fn previous_token_is_definition(tokens: &[String], idx: usize) -> bool {
+    idx > 0 && matches!(tokens[idx - 1].as_str(), "fn" | "def" | "function")
+}
+
+fn next_token_is_call_or_macro(tokens: &[String], idx: usize) -> bool {
+    matches!(
+        tokens.get(idx + 1).map(String::as_str),
+        Some("(") | Some("!")
+    )
+}
+
+fn shape_hash(node: Node<'_>, content: &str) -> String {
+    let mut tokens = Vec::new();
+    normalized_shape_tokens(node, content, &mut tokens);
+    if tokens.is_empty() {
+        String::new()
+    } else {
+        crate::repo::content_hash(tokens.join(" ").as_bytes())
+    }
+}
+
+fn normalized_shape_tokens(node: Node<'_>, content: &str, out: &mut Vec<&'static str>) {
+    let kind = node.kind();
+    if is_comment_kind(kind) {
+        return;
+    }
+    if is_identifier_kind(kind) {
+        out.push("ID");
+        return;
+    }
+    if is_literal_kind(kind) {
+        out.push("LIT");
+        return;
+    }
+    if node.child_count() == 0 {
+        if text(node, content).map(str::trim).unwrap_or("").is_empty() {
+            return;
+        }
+        out.push(kind);
+        return;
+    }
+    for idx in 0..node.child_count() {
+        if let Some(child) = node.child(idx as u32) {
+            normalized_shape_tokens(child, content, out);
+        }
+    }
+}
+
+fn is_comment_kind(kind: &str) -> bool {
+    kind.contains("comment")
+}
+
+fn is_identifier_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "identifier"
+            | "field_identifier"
+            | "property_identifier"
+            | "shorthand_property_identifier"
+            | "shorthand_property_identifier_pattern"
+            | "type_identifier"
+            | "scoped_identifier"
+            | "namespace_identifier"
+            | "statement_identifier"
+            | "module_identifier"
+    ) || kind.ends_with("_identifier")
+}
+
+fn is_literal_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "char_literal"
+            | "false"
+            | "float_literal"
+            | "integer_literal"
+            | "negative_literal"
+            | "none"
+            | "null"
+            | "raw_string_literal"
+            | "string"
+            | "string_content"
+            | "string_literal"
+            | "template_string"
+            | "true"
+    ) || kind.ends_with("_literal")
 }
 
 fn rust_visibility_prefix(node: Node<'_>, content: &str) -> Option<String> {
@@ -520,10 +782,17 @@ fn rust_visibility_prefix(node: Node<'_>, content: &str) -> Option<String> {
 }
 
 fn rust_symbol_is_test(node: Node<'_>, content: &str) -> bool {
-    text(node, content).is_some_and(|raw| raw.contains("#[test") || raw.contains("::test]"))
+    text(node, content).is_some_and(rust_attr_text_marks_test)
         || preceding_attribute_lines(content, node.start_position().row)
             .iter()
-            .any(|line| line.contains("#[test") || line.contains("::test]"))
+            .any(|line| rust_attr_text_marks_test(line))
+}
+
+fn rust_attr_text_marks_test(raw: &str) -> bool {
+    raw.contains("#[test")
+        || raw.contains("::test]")
+        || raw.contains("#[cfg(test")
+        || raw.contains("#[cfg_attr(test")
 }
 
 fn preceding_attribute_lines(content: &str, row: usize) -> Vec<&str> {
