@@ -116,6 +116,17 @@ pub fn fmt_coverage(c: &crate::db::queries::Coverage360) -> String {
     format!("360°: {}", coverage_line(c))
 }
 
+/// The ambient session role as a compact pulse token: `as fixer` when a role is
+/// declared, `solo` otherwise. Pure — the env read lives in
+/// [`crate::agent::session_role`]; this just formats. Stamping it on every
+/// footer makes a silent drop to solo mode (lane enforcement off) visible.
+pub fn fmt_role_stamp(role: Option<&str>) -> String {
+    match role {
+        Some(r) => format!("as {r}"),
+        None => "solo".to_string(),
+    }
+}
+
 /// One-line graph pulse for an LLM's quick look (shown as a footer).
 /// Returns TWO lines: the pulse + the 360° coverage vector (callers print with
 /// a two-space indent; the embedded newline carries the same indent).
@@ -144,8 +155,9 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     } else {
         format!("graph '{}'", s.graph_name)
     };
+    let stamp = fmt_role_stamp(crate::agent::session_role().as_deref());
     let base = format!(
-        "{}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}\n  {}",
+        "{stamp} · {}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}\n  {}",
         ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase,
         fmt_coverage(&s.coverage)
     );
@@ -174,6 +186,13 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
         o.insert("graph".into(), ident.into());
     }
     o.insert("phase".into(), s.phase.clone().into());
+    // The ambient session role (or "solo") — parity with the human footer stamp.
+    o.insert(
+        "role".into(),
+        crate::agent::session_role()
+            .unwrap_or_else(|| "solo".to_string())
+            .into(),
+    );
     o.insert("vertical".into(), s.vertically_complete.into());
     o.insert("horizontal".into(), s.horizontally_explored.into());
     o.insert("intents".into(), s.intents.into());
@@ -625,6 +644,7 @@ mod tests {
         // Everything the next decision needs travels…
         for k in [
             "phase",
+            "role",
             "vertical",
             "horizontal",
             "intents",
@@ -768,6 +788,29 @@ mod tests {
             json["coverage"],
             serde_json::json!(cov),
             "json carries the byte-identical coverage line"
+        );
+        // The role stamp travels in BOTH (robust to whatever $LOOM_AGENT is in
+        // the test env — usually unset, i.e. "solo").
+        let role = crate::agent::session_role();
+        let expected = role.as_deref().unwrap_or("solo");
+        assert!(
+            human.contains(&fmt_role_stamp(role.as_deref())),
+            "human footer carries the role stamp: {human}"
+        );
+        assert_eq!(
+            json["role"],
+            serde_json::json!(expected),
+            "json carries the same role"
+        );
+    }
+
+    #[test]
+    fn fmt_role_stamp_marks_role_or_solo() {
+        assert_eq!(fmt_role_stamp(Some("fixer")), "as fixer");
+        assert_eq!(
+            fmt_role_stamp(None),
+            "solo",
+            "no declared role reads as solo"
         );
     }
 

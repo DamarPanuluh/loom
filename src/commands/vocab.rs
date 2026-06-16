@@ -16,7 +16,6 @@ use crate::db::queries::{
     nearest_terms, normalize_term, parse_tags, suggest_vocab_terms, tag_counts, terms_look_alike,
     MAX_TAGS_PER_INTENT,
 };
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
@@ -174,7 +173,7 @@ fn prepare_add_term(
     author: Option<String>,
     terms: &[VocabTerm],
 ) -> Result<(VocabTerm, usize)> {
-    let agent = gate::acting_in_lane("register a vocab term", &[role::BUILDER], author.as_deref())?;
+    let agent = gate::acting_in_lane(&gate::lane::ADD_VOCAB, author.as_deref())?;
     let term = normalize_term(&term)?;
     gate::require_substantive(
         "why",
@@ -269,7 +268,7 @@ fn run_add_with_sqlite(
 }
 
 fn prepare_merge_terms(from: &str, to: &str) -> Result<(String, String)> {
-    gate::acting_in_lane("merge vocab terms", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::MERGE_VOCAB, None)?;
     let from = normalize_term(from)?;
     let to = normalize_term(to)?;
     if from == to {

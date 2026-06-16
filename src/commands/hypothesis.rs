@@ -12,7 +12,6 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::HypothesisCmd;
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
@@ -138,11 +137,8 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             evidence,
             inspected_by,
         } => {
-            let prover = gate::acting_in_lane(
-                "prove a hypothesis",
-                &[role::ANALYZER],
-                inspected_by.as_deref(),
-            )?;
+            let prover =
+                gate::acting_in_lane(&gate::lane::PROVE_HYPOTHESIS, inspected_by.as_deref())?;
             if !matches!(verdict.as_str(), "supported" | "refuted") {
                 anyhow::bail!(
                     "--verdict must be 'supported' or 'refuted'. Adoption/rejection are separate decisions."
@@ -215,7 +211,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             spawned,
             reason,
         } => {
-            let by = gate::acting_in_lane("adopt a hypothesis", &[role::BUILDER], None)?;
+            let by = gate::acting_in_lane(&gate::lane::ADOPT_HYPOTHESIS, None)?;
             store.ensure_owned("adopt a hypothesis (a promise to change the code)")?;
             let hid = store.resolve_hypothesis(&id)?;
             let h = store.get_hypothesis(&hid)?.ok_or_else(|| {
@@ -344,7 +340,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
         }
 
         HypothesisCmd::Reject { id, reason } => {
-            let by = gate::acting_in_lane("reject a hypothesis", &[role::BUILDER], None)?;
+            let by = gate::acting_in_lane(&gate::lane::REJECT_HYPOTHESIS, None)?;
             gate::require_substantive(
                 "reason",
                 &reason,

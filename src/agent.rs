@@ -30,3 +30,14 @@ pub fn acting(explicit: Option<&str>) -> String {
     }
     "llm".to_string()
 }
+
+/// The ambient session role (`llm:fixer` → `Some("fixer")`), or `None` in solo
+/// mode. Display-only: the pulse footer stamps it so a silent drop to solo —
+/// `$LOOM_AGENT` unset or lost between calls, which turns lane enforcement OFF —
+/// is visible. Reads `$LOOM_AGENT` via [`acting`] (the one sanctioned env
+/// reader); an explicit per-command `--by` is deliberately NOT consulted — the
+/// stamp reflects the session identity, not a single write's provenance.
+pub fn session_role() -> Option<String> {
+    let agent = acting(None);
+    crate::gate::role_of(&agent).map(str::to_string)
+}

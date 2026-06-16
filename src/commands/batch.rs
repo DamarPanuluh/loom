@@ -39,7 +39,6 @@ use anyhow::Result;
 use std::io::Read;
 
 use crate::db::ensure_initialized;
-use crate::db::schema::role;
 use crate::gate;
 use crate::output::Printer;
 
@@ -160,11 +159,7 @@ fn apply_line_sqlite(
 
     match op {
         "ground" => {
-            let by = gate::acting_in_lane(
-                "ground a RELATES_TO edge",
-                &[role::ANALYZER, role::FIXER],
-                None,
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::GROUND_RELATES_TO, None)?;
             let snapshot = store.query_snapshot()?;
             let a = crate::db::queries::resolve_intent_from_snapshot(
                 &snapshot,
@@ -204,11 +199,7 @@ fn apply_line_sqlite(
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
         "issue" => {
-            let by = gate::acting_in_lane(
-                "record an issue on a RELATES_TO edge",
-                &[role::ANALYZER, role::FIXER],
-                None,
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::ISSUE_RELATES_TO, None)?;
             let snapshot = store.query_snapshot()?;
             let a = crate::db::queries::resolve_intent_from_snapshot(
                 &snapshot,
@@ -242,8 +233,7 @@ fn apply_line_sqlite(
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
         "independent" => {
-            let by =
-                gate::acting_in_lane("confirm two intents independent", &[role::ANALYZER], None)?;
+            let by = gate::acting_in_lane(&gate::lane::INDEPENDENT_RELATES_TO, None)?;
             let snapshot = store.query_snapshot()?;
             let a = crate::db::queries::resolve_intent_from_snapshot(
                 &snapshot,
@@ -264,7 +254,7 @@ fn apply_line_sqlite(
             Ok(format!("independent {} × {}", edge.from_name, edge.to_name))
         }
         "rule_verdict" => {
-            let by = gate::acting_in_lane("record a GOVERNS verdict", &[role::QUALITY], None)?;
+            let by = gate::acting_in_lane(&gate::lane::GOVERNS_VERDICT, None)?;
             let rule = store.resolve_rule(str_field(&v, op, "rule")?)?;
             let snapshot = store.query_snapshot()?;
             let intent = crate::db::queries::resolve_intent_from_snapshot(

@@ -9,7 +9,6 @@ use anyhow::Result;
 use std::collections::{HashMap, HashSet};
 
 use crate::cli::LayerCmd;
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
@@ -199,11 +198,7 @@ fn run_order_with_sqlite(
     printer: &Printer,
     deprecated_alias: bool,
 ) -> Result<()> {
-    gate::acting_in_lane(
-        "declare the architecture layer order",
-        &[role::BUILDER],
-        author.as_deref(),
-    )?;
+    gate::acting_in_lane(&gate::lane::SET_LAYER_ORDER, author.as_deref())?;
     validate_layer_order(&layers)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let usage = layer_usage(&store)?;
@@ -223,7 +218,7 @@ fn run_clear_with_sqlite(
     printer: &Printer,
     deprecated_alias: bool,
 ) -> Result<()> {
-    gate::acting_in_lane("clear the architecture layer order", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::CLEAR_LAYER_ORDER, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let previous = store.set_layer_order(&[])?;
     print_clear_result(&previous, alias_note(deprecated_alias), printer);

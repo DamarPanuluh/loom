@@ -68,14 +68,7 @@ fn run_add_with_sqlite(
     intent: Vec<String>,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "add a validation",
-        &[
-            crate::db::schema::role::BUILDER,
-            crate::db::schema::role::VALIDATOR,
-        ],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::ADD_VALIDATION, None)?;
     validation_type
         .parse::<crate::types::ValidationType>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -149,11 +142,7 @@ fn prepare_mark_result(
     evidence: Option<&str>,
     reason: Option<&str>,
 ) -> Result<(String, ValidationResult, String)> {
-    let marker = crate::gate::acting_in_lane(
-        "mark a validation result",
-        &[crate::db::schema::role::VALIDATOR],
-        None,
-    )?;
+    let marker = crate::gate::acting_in_lane(&crate::gate::lane::MARK_VALIDATION, None)?;
     let res: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
     if res == ValidationResult::NotRun {
         anyhow::bail!(
@@ -251,14 +240,7 @@ fn run_update_with_sqlite(
     description: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "update a validation definition",
-        &[
-            crate::db::schema::role::BUILDER,
-            crate::db::schema::role::VALIDATOR,
-        ],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::UPDATE_VALIDATION, None)?;
     if command.is_none() && description.is_none() {
         anyhow::bail!("Nothing to update — pass --command and/or --description.");
     }
@@ -283,14 +265,7 @@ fn run_update_with_sqlite(
 }
 
 fn run_delete_with_sqlite(root: &std::path::Path, id: String, printer: &Printer) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "delete a validation",
-        &[
-            crate::db::schema::role::BUILDER,
-            crate::db::schema::role::VALIDATOR,
-        ],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::DELETE_VALIDATION, None)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let vid = store.delete_validation(&id)?;
     if printer.json {

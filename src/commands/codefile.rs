@@ -35,11 +35,7 @@ fn run_add_with_sqlite(
     language: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "register a code file",
-        &[crate::db::schema::role::BUILDER],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::ADD_CODEFILE, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let existing: HashSet<String> = store
         .list_codefiles()?
@@ -59,11 +55,7 @@ fn run_remove_with_sqlite(
     path_or_id: String,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "remove a code file",
-        &[crate::db::schema::role::BUILDER],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::REMOVE_CODEFILE, None)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let Some(cf) = store.delete_codefile(&path_or_id)? else {
         anyhow::bail!(

@@ -4,7 +4,6 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::{ExploreSubCmd, PersonaCmd};
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::{apply_limit, fmt_pulse, with_read_anchor, Printer};
@@ -169,7 +168,7 @@ fn prepare_add_persona(
     description: String,
     author: Option<String>,
 ) -> Result<Persona> {
-    let agent = gate::acting_in_lane("add a persona", &[role::BUILDER], author.as_deref())?;
+    let agent = gate::acting_in_lane(&gate::lane::ADD_PERSONA, author.as_deref())?;
     gate::require_substantive(
         "description",
         &description,
@@ -411,11 +410,7 @@ fn run_serve_with_sqlite(
             confidence,
             inspected_by,
         }) => {
-            let by = gate::acting_in_lane(
-                "ground a SERVES edge",
-                &[role::ANALYZER, role::FIXER],
-                inspected_by.as_deref(),
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::GROUND_SERVES, inspected_by.as_deref())?;
             gate::require_substantive(
                 "criterion",
                 &criterion,
@@ -470,11 +465,7 @@ fn run_serve_with_sqlite(
             confidence,
             inspected_by,
         }) => {
-            let by = gate::acting_in_lane(
-                "issue a SERVES edge",
-                &[role::ANALYZER],
-                inspected_by.as_deref(),
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::ISSUE_SERVES, inspected_by.as_deref())?;
             gate::require_substantive("criterion", &criterion, "the failing serving criterion")?;
             gate::require_substantive("evidence", &evidence, "what was found to be wrong")?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
@@ -518,11 +509,8 @@ fn run_serve_with_sqlite(
             notes,
             inspected_by,
         }) => {
-            let by = gate::acting_in_lane(
-                "mark SERVES independent",
-                &[role::ANALYZER],
-                inspected_by.as_deref(),
-            )?;
+            let by =
+                gate::acting_in_lane(&gate::lane::INDEPENDENT_SERVES, inspected_by.as_deref())?;
             let edge = store.get_or_create_serves(&persona_id, &intent_id, &now)?;
             store.update_serves_independent(&persona_id, &intent_id, &notes, &by, &now)?;
             let next_step = "`loom next` for the next item.";

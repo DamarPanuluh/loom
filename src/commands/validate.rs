@@ -10,11 +10,7 @@ use crate::types::ValidationResult;
 pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> {
     // Running validations writes last_run/last_result and the VALIDATES
     // verdict — validator lane.
-    let marker = crate::gate::acting_in_lane(
-        "run validations",
-        &[crate::db::schema::role::VALIDATOR],
-        None,
-    )?;
+    let marker = crate::gate::acting_in_lane(&crate::gate::lane::RUN_VALIDATIONS, None)?;
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&sqlite_db_path(&cwd))?;
@@ -71,11 +67,7 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
 /// Passed/failed results are settled verdicts (re-run them per intent when you
 /// mean to); blocked proofs carry a recorded reason and stay out everywhere.
 pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
-    let marker = crate::gate::acting_in_lane(
-        "run validations",
-        &[crate::db::schema::role::VALIDATOR],
-        None,
-    )?;
+    let marker = crate::gate::acting_in_lane(&crate::gate::lane::RUN_VALIDATIONS, None)?;
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&sqlite_db_path(&cwd))?;

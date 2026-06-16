@@ -1,7 +1,6 @@
 use anyhow::Result;
 
 use crate::cli::{EdgeCmd, ExploreSubCmd};
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadRepository};
 use crate::gate;
 use crate::output::{
@@ -127,11 +126,7 @@ fn run_explore_with_sqlite(
             inspected_by,
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
-            let by = gate::acting_in_lane(
-                "ground a RELATES_TO edge",
-                &[role::ANALYZER, role::FIXER],
-                inspected_by.as_deref(),
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::GROUND_RELATES_TO, inspected_by.as_deref())?;
             gate::require_substantive(
                 "criterion",
                 &criterion,
@@ -186,11 +181,7 @@ fn run_explore_with_sqlite(
             inspected_by,
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
-            let by = gate::acting_in_lane(
-                "record an issue on a RELATES_TO edge",
-                &[role::ANALYZER, role::FIXER],
-                inspected_by.as_deref(),
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::ISSUE_RELATES_TO, inspected_by.as_deref())?;
             gate::require_substantive(
                 "criterion",
                 &criterion,
@@ -243,11 +234,8 @@ fn run_explore_with_sqlite(
             inspected_by,
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
-            let by = gate::acting_in_lane(
-                "confirm two intents independent",
-                &[role::ANALYZER],
-                inspected_by.as_deref(),
-            )?;
+            let by =
+                gate::acting_in_lane(&gate::lane::INDEPENDENT_RELATES_TO, inspected_by.as_deref())?;
             gate::require_substantive(
                 "notes",
                 &notes,
@@ -294,7 +282,7 @@ fn run_implement_with_sqlite(
     notes: String,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("create an IMPLEMENTS edge", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::IMPLEMENT, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let intent_id = resolve_intent_with_db(&store, &intent_key)?;
     let now = chrono::Utc::now().to_rfc3339();
@@ -359,7 +347,7 @@ fn run_unimplement_with_sqlite(
     codefile_key: String,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("remove an IMPLEMENTS edge", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::UNIMPLEMENT, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let intent_id = resolve_intent_with_db(&store, &intent_key)?;
     let targets = resolve_codefiles_with_db(&store, &codefile_key)?;
@@ -396,7 +384,7 @@ fn run_govern_with_sqlite(
     criterion: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("apply a quality rule (GOVERNS)", &[role::QUALITY], None)?;
+    gate::acting_in_lane(&gate::lane::APPLY_RULE_EDGE, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let rule_id = resolve_rule_with_db(&store, &rule_key)?;
     let intent_id = resolve_intent_with_db(&store, &intent_key)?;
@@ -441,7 +429,7 @@ fn run_hierarchy_with_sqlite(
     notes: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("create a HIERARCHY edge", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::HIERARCHY, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let parent_id = resolve_intent_with_db(&store, &parent_key)?;
     let child_id = resolve_intent_with_db(&store, &child_key)?;
@@ -479,11 +467,7 @@ fn run_validates_with_sqlite(
     notes: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane(
-        "link a validation (VALIDATES)",
-        &[role::BUILDER, role::VALIDATOR],
-        None,
-    )?;
+    gate::acting_in_lane(&gate::lane::LINK_VALIDATION, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let validation_id = resolve_validation_with_db(&store, &validation_key)?;
     let intent_id = resolve_intent_with_db(&store, &intent_key)?;
@@ -608,11 +592,7 @@ fn run_fix_with_sqlite(
     description: String,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane(
-        "mark a repaired RELATES_TO edge passing",
-        &[role::FIXER],
-        None,
-    )?;
+    gate::acting_in_lane(&gate::lane::FIX_RELATES_TO, None)?;
     gate::require_substantive(
         "description",
         &description,

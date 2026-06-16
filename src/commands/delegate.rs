@@ -42,11 +42,7 @@ fn run_add_with_sqlite(
     author: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
-    let by = crate::gate::acting_in_lane(
-        "delegate a subtree",
-        &[crate::db::schema::role::BUILDER],
-        author.as_deref(),
-    )?;
+    let by = crate::gate::acting_in_lane(&crate::gate::lane::ADD_DELEGATION, author.as_deref())?;
     glob::Pattern::new(&pattern)
         .map_err(|e| anyhow::anyhow!("Invalid glob '{}': {}", pattern, e))?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
@@ -78,11 +74,7 @@ fn run_remove_with_sqlite(
     pattern: String,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "remove a subtree delegation",
-        &[crate::db::schema::role::BUILDER],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::REMOVE_DELEGATION, None)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let Some(delegation) = store.delete_delegation(&pattern)? else {
         anyhow::bail!(

@@ -2,7 +2,6 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::RuleCmd;
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::{fmt_rule_row, Printer};
@@ -258,7 +257,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             severity,
             effort,
         } => {
-            gate::acting_in_lane("add a quality rule", &[role::QUALITY], None)?;
+            gate::acting_in_lane(&gate::lane::ADD_RULE, None)?;
             severity
                 .parse::<crate::types::Severity>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -286,7 +285,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
         }
 
         RuleCmd::Seed { pack } => {
-            gate::acting_in_lane("seed a rule pack", &[role::QUALITY], None)?;
+            gate::acting_in_lane(&gate::lane::SEED_RULES, None)?;
             let Some((_, rules)) = PACKS.iter().find(|(n, _)| *n == pack) else {
                 anyhow::bail!(
                     "Unknown pack '{}'. Available: {} — `loom detect` recommends which fit this repo.",
@@ -341,7 +340,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             intent_id,
             criterion,
         } => {
-            gate::acting_in_lane("apply a quality rule", &[role::QUALITY], None)?;
+            gate::acting_in_lane(&gate::lane::APPLY_RULE, None)?;
             let rule_id = store.resolve_rule(&rule_id)?;
             let intent_id = resolve_intent_with_db(&store, &intent_id)?;
             let now = chrono::Utc::now().to_rfc3339();
@@ -383,11 +382,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             confidence,
             inspected_by,
         } => {
-            let by = gate::acting_in_lane(
-                "record a GOVERNS verdict",
-                &[role::QUALITY],
-                inspected_by.as_deref(),
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::GOVERNS_VERDICT, inspected_by.as_deref())?;
             let rule_id = store.resolve_rule(&rule_id)?;
             let intent_id = resolve_intent_with_db(&store, &intent_id)?;
             if status != "passing" && status != "failing" && status != "independent" {

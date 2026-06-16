@@ -19,7 +19,6 @@ use anyhow::{Context, Result};
 use uuid::Uuid;
 
 use crate::cli::SagaCmd;
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::saga::spec::{load_spec_file, SagaSpec};
@@ -48,21 +47,13 @@ fn add_sqlite(
     under: Option<&str>,
     printer: &Printer,
 ) -> Result<()> {
-    crate::gate::acting_in_lane(
-        "register a saga proof",
-        &[role::BUILDER, role::VALIDATOR],
-        None,
-    )?;
+    crate::gate::acting_in_lane(&crate::gate::lane::ADD_SAGA, None)?;
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
 
     if spawn_missing {
-        crate::gate::acting_in_lane(
-            "spawn planned intents from a journey",
-            &[role::BUILDER],
-            None,
-        )?;
+        crate::gate::acting_in_lane(&crate::gate::lane::SPAWN_JOURNEY_INTENTS, None)?;
         store.ensure_owned("spawn planned intents from a journey (a promise to build the code)")?;
     }
     let parent_id = match under {
@@ -249,7 +240,7 @@ fn add_sqlite(
 }
 
 fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
-    let agent = crate::gate::acting_in_lane("run a saga proof", &[role::VALIDATOR], None)?;
+    let agent = crate::gate::acting_in_lane(&crate::gate::lane::RUN_SAGA, None)?;
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;

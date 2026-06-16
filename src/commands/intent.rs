@@ -2,7 +2,6 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::{IntentCmd, SourceCmd, TagCmd};
-use crate::db::schema::role;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::{fmt_edge_row, fmt_intent, fmt_intent_row, Printer};
@@ -43,7 +42,7 @@ fn run_source_with_sqlite(
     subcommand: SourceCmd,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("edit an intent's source refs", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::INTENT_SOURCE, None)?;
     let now = chrono::Utc::now().to_rfc3339();
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
@@ -103,7 +102,7 @@ fn run_tag_with_sqlite(
     subcommand: TagCmd,
     printer: &Printer,
 ) -> Result<()> {
-    gate::acting_in_lane("edit an intent's tags", &[role::BUILDER], None)?;
+    gate::acting_in_lane(&gate::lane::INTENT_TAG, None)?;
     let now = chrono::Utc::now().to_rfc3339();
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
@@ -201,7 +200,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             visibility,
             boundary,
         } => {
-            gate::acting_in_lane("add an intent", &[role::BUILDER], None)?;
+            gate::acting_in_lane(&gate::lane::ADD_INTENT, None)?;
             let level = level
                 .parse::<crate::types::AbstractionLevel>()
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -299,7 +298,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
         }
 
         IntentCmd::Confirm { id, visibility } => {
-            let by = gate::acting_in_lane("confirm an intent", &[role::VALIDATOR], None)?;
+            let by = gate::acting_in_lane(&gate::lane::CONFIRM_INTENT, None)?;
             let id = resolve_intent_with_db(&store, &id)?;
             let intent = store.get_intent(&id)?.ok_or_else(|| {
                 anyhow::anyhow!(
@@ -365,7 +364,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             if reason.trim().is_empty() {
                 anyhow::bail!("--reason is required: the recorded WHY behind the change.");
             }
-            let by = gate::acting_in_lane("update an intent", &[role::BUILDER], None)?;
+            let by = gate::acting_in_lane(&gate::lane::UPDATE_INTENT, None)?;
             store.ensure_owned(
                 "update an intent (the design decision belongs to the graph's owners)",
             )?;
@@ -608,11 +607,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             lifecycle,
             reason,
         } => {
-            let by = gate::acting_in_lane(
-                "set an intent lifecycle",
-                &[role::BUILDER, role::FIXER],
-                None,
-            )?;
+            let by = gate::acting_in_lane(&gate::lane::SET_LIFECYCLE, None)?;
             store.ensure_owned(
                 "change an intent's lifecycle (a claim about building/changing the code)",
             )?;
@@ -661,7 +656,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
         }
 
         IntentCmd::Delete { id } => {
-            gate::acting_in_lane("delete an intent", &[role::BUILDER], None)?;
+            gate::acting_in_lane(&gate::lane::DELETE_INTENT, None)?;
             let id = resolve_intent_with_db(&store, &id)?;
             if !store.delete_intent(&id)? {
                 anyhow::bail!(
@@ -685,7 +680,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             reason,
             replaced_by,
         } => {
-            gate::acting_in_lane("retire an intent", &[role::BUILDER], None)?;
+            gate::acting_in_lane(&gate::lane::RETIRE_INTENT, None)?;
             store.ensure_owned(
                 "retire an intent (the design decision belongs to the graph's owners)",
             )?;
