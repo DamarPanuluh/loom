@@ -3560,6 +3560,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.732224+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "VISIBILITY is captured AS each rung lands",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-12T13:04:50.535162+00:00",
         "criterion": "",
         "evidence": "",
@@ -3937,6 +3950,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.826601+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "mockup is contract, not realization",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-15T17:01:16.666081+00:00",
         "criterion": "",
         "evidence": "",
@@ -4064,6 +4090,32 @@
         "locator": "pub fn align_candidates_from_snapshot_notes",
         "notes": "last-confirmed freshness is derived from confirm notes while ranking align candidates",
         "to": "adbe2fbd-0766-497f-b877-90e8b30c975f"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.894481+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "ASPECT_FAMILIES",
+        "notes": "",
+        "to": "37581090-ca9d-48e6-95ef-eb1434b08eea"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.928694+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "ASPECT_FAMILIES",
+        "notes": "",
+        "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
       },
       {
         "confidence": 0.0,
@@ -4376,6 +4428,19 @@
         "locator": "runtime graph store is embedded SQLite via",
         "notes": "README documents embedded SQLite runtime and dogfood build guidance",
         "to": "3f32cd0f-9a87-464f-b131-d74ba13b0e66"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.861572+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "656c13fa-afce-4230-b52a-9461c6ec23a1",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "visual_confirm",
+        "notes": "",
+        "to": "66a3504e-1423-41b4-88cd-31b8e3835fe6"
       },
       {
         "confidence": 0.0,
@@ -4847,6 +4912,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.794546+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "80525ab5-087c-423d-ba64-40f2e06f7726",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "the visual register",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-11T04:51:12.500438+00:00",
         "criterion": "",
         "evidence": "",
@@ -4883,6 +4961,19 @@
         "locator": "fn create_table_batch",
         "notes": "",
         "to": "f4337842-82b4-41b6-9843-fc8fe9023c93"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.995072+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "84d78b39-eec3-43c2-8a32-f0fc47df94ea",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "transitive_layering_violation",
+        "notes": "",
+        "to": "37581090-ca9d-48e6-95ef-eb1434b08eea"
       },
       {
         "confidence": 0.0,
@@ -5172,6 +5263,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.763390+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "9d68003d-894b-4bab-83c0-0800395f33f2",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "stub the acceptance proof",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-13T08:46:37.984446+00:00",
         "criterion": "",
         "evidence": "",
@@ -5364,6 +5468,19 @@
         "locator": "top_intents_by_centrality",
         "notes": "",
         "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.701206+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c4844e43-fd87-46bd-95ba-b2a08970bc2b",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "seed ladder: want to contract to logic to physical",
+        "notes": "",
+        "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
       },
       {
         "confidence": 0.0,
@@ -5650,6 +5767,19 @@
         "locator": "\"seed\"",
         "notes": "",
         "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T04:34:22.962258+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "fdc5fd60-b655-463b-b1cf-49c85dc4382f",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "webui-touch-target-size",
+        "notes": "",
+        "to": "a12abcff-1325-4014-b5b6-0b56b6f543c1"
       },
       {
         "confidence": 0.0,
@@ -7429,7 +7559,7 @@
         "evidence": "Re-inspected the current staling-file group after the SQLite/delegate cleanup; the recorded relationship criterion still matches the current code shape, and cargo test plus SQLite parity passed after these edits.",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-15T04:52:10.171818+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -10406,7 +10536,7 @@
         "evidence": "Re-inspected the current staling-file group after the SQLite/delegate cleanup; the recorded relationship criterion still matches the current code shape, and cargo test plus SQLite parity passed after these edits.",
         "from": "e287ac20-f7af-44bf-ba45-078a282b8535",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-15T04:52:30.360267+00:00",
         "notes": "",
         "priority_score": 0.0,
@@ -10848,11 +10978,25 @@
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
       },
       {
+        "created_at": "2026-06-16T04:34:45.972145+00:00",
+        "from": "07a74797-b808-4802-a375-a00b0889c702",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda"
+      },
+      {
         "created_at": "2026-06-14T19:08:15.307727+00:00",
         "from": "07d67b29-0c47-4d4b-9dba-315d811087b2",
         "inspection_status": "passing",
         "notes": "",
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
+      },
+      {
+        "created_at": "2026-06-16T04:34:45.690567+00:00",
+        "from": "07e81579-bcc9-4dcc-abbe-1209e29295d8",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "c4844e43-fd87-46bd-95ba-b2a08970bc2b"
       },
       {
         "created_at": "2026-06-11T04:52:37.803357+00:00",
@@ -10888,6 +11032,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "6a41dcbc-4035-4d08-8315-0d77803ca862"
+      },
+      {
+        "created_at": "2026-06-16T04:34:45.929380+00:00",
+        "from": "0e4cf0b7-7405-494f-9edb-c1fa8156a07a",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "656c13fa-afce-4230-b52a-9461c6ec23a1"
       },
       {
         "created_at": "2026-06-15T11:57:25.614669+00:00",
@@ -10953,6 +11104,13 @@
         "to": "6f4dc39e-0179-4ed9-9e8c-5eff49545022"
       },
       {
+        "created_at": "2026-06-16T04:34:46.014042+00:00",
+        "from": "2bddf34a-c46b-4a86-86f8-fa9329b8b062",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "fdc5fd60-b655-463b-b1cf-49c85dc4382f"
+      },
+      {
         "created_at": "2026-06-15T11:58:17.148172+00:00",
         "from": "2cde3957-3c14-47b2-b0d6-dd7783449075",
         "inspection_status": "uninspected",
@@ -11002,6 +11160,13 @@
         "to": "2ddcf18d-9c6c-4205-bf98-81cf7fa7fad6"
       },
       {
+        "created_at": "2026-06-16T04:34:45.788503+00:00",
+        "from": "393f6bbc-574c-4514-8b17-9d9e632e6f4c",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "9d68003d-894b-4bab-83c0-0800395f33f2"
+      },
+      {
         "created_at": "2026-06-10T20:33:12.915599+00:00",
         "from": "394b1170-765b-4abc-bbed-58fdadbaed8a",
         "inspection_status": "passing",
@@ -11035,6 +11200,13 @@
         "inspection_status": "uninspected",
         "notes": "",
         "to": "9d68003d-894b-4bab-83c0-0800395f33f2"
+      },
+      {
+        "created_at": "2026-06-16T04:34:46.055385+00:00",
+        "from": "45a2a8a5-cd35-4ea8-afaf-74579eb9c1f9",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "84d78b39-eec3-43c2-8a32-f0fc47df94ea"
       },
       {
         "created_at": "2026-06-09T19:08:50.178692+00:00",
@@ -11317,11 +11489,25 @@
         "to": "667e3b6c-cea2-4ab1-83cb-e0911c80efa9"
       },
       {
+        "created_at": "2026-06-16T04:34:45.836919+00:00",
+        "from": "8d6665cd-45f5-4ea5-a931-f93d79a195d0",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "80525ab5-087c-423d-ba64-40f2e06f7726"
+      },
+      {
         "created_at": "2026-06-11T06:53:07.062089+00:00",
         "from": "8f660cd7-e7ef-400b-81bd-44e654e8706c",
         "inspection_status": "passing",
         "notes": "Final proof run passed: cargo test (80 tests), cargo build --release, release help/guide/schema/orientation smoke, hostile import fuzz, hypothesis outcome flow smoke, loom doctor --json, loom smells --json, benchmark 500/1000 under 2s, and benchmark 2000/5000 under 5s.",
         "to": "4c656525-4851-4f2f-bdcd-25a3c08522d4"
+      },
+      {
+        "created_at": "2026-06-16T04:34:45.882895+00:00",
+        "from": "917b971c-e31b-4876-91ec-070e20616b08",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "35525e22-88cc-4125-8a41-1f7a2fc071e5"
       },
       {
         "created_at": "2026-06-11T02:53:03.910851+00:00",
@@ -11357,6 +11543,13 @@
         "inspection_status": "uninspected",
         "notes": "",
         "to": "fdc5fd60-b655-463b-b1cf-49c85dc4382f"
+      },
+      {
+        "created_at": "2026-06-16T04:34:45.741398+00:00",
+        "from": "a44d8394-1779-42ba-bb86-4502bf9f7220",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1"
       },
       {
         "created_at": "2026-06-14T19:55:38.037087+00:00",
@@ -11987,11 +12180,11 @@
         ]
       },
       {
-        "content_hash": "8d78960556332eea",
+        "content_hash": "963fd667db6d3bf8",
         "id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-15T10:12:51.644381635+00:00",
+        "last_modified": "2026-06-16T04:03:39.088460339+00:00",
         "path": "src/db/schema.rs",
         "symbol_facts": [
           {
@@ -12025,8 +12218,8 @@
             "body_hash": "0f3cde28be1dbc48",
             "kind": "const",
             "label": "pub const ASPECT",
-            "line_end": 245,
-            "line_start": 245,
+            "line_end": 247,
+            "line_start": 247,
             "name": "ASPECT",
             "visibility": "public"
           },
@@ -12034,8 +12227,8 @@
             "body_hash": "80e127560252e1e0",
             "kind": "const",
             "label": "pub const AUDIENCE",
-            "line_end": 323,
-            "line_start": 323,
+            "line_end": 325,
+            "line_start": 325,
             "name": "AUDIENCE",
             "visibility": "public"
           },
@@ -12043,8 +12236,8 @@
             "body_hash": "df46e549d647108c",
             "kind": "const",
             "label": "pub const AUTHOR",
-            "line_end": 317,
-            "line_start": 317,
+            "line_end": 319,
+            "line_start": 319,
             "name": "AUTHOR",
             "visibility": "public"
           },
@@ -12052,8 +12245,8 @@
             "body_hash": "c455a0f9c3a8ac40",
             "kind": "const",
             "label": "pub const BOUNDARY",
-            "line_end": 269,
-            "line_start": 269,
+            "line_end": 271,
+            "line_start": 271,
             "name": "BOUNDARY",
             "visibility": "public"
           },
@@ -12070,8 +12263,8 @@
             "body_hash": "c57c37b106297f38",
             "kind": "const",
             "label": "pub const CLAIM",
-            "line_end": 334,
-            "line_start": 334,
+            "line_end": 336,
+            "line_start": 336,
             "name": "CLAIM",
             "visibility": "public"
           },
@@ -12088,8 +12281,8 @@
             "body_hash": "46d5ff56c72a168e",
             "kind": "const",
             "label": "pub const COMMAND",
-            "line_end": 301,
-            "line_start": 301,
+            "line_end": 303,
+            "line_start": 303,
             "name": "COMMAND",
             "visibility": "public"
           },
@@ -12097,8 +12290,8 @@
             "body_hash": "011564a72b4d5d38",
             "kind": "const",
             "label": "pub const CONFIDENCE",
-            "line_end": 307,
-            "line_start": 307,
+            "line_end": 309,
+            "line_start": 309,
             "name": "CONFIDENCE",
             "visibility": "public"
           },
@@ -12106,8 +12299,8 @@
             "body_hash": "80a288b999d7fac8",
             "kind": "const",
             "label": "pub const CONTENT_HASH",
-            "line_end": 290,
-            "line_start": 290,
+            "line_end": 292,
+            "line_start": 292,
             "name": "CONTENT_HASH",
             "visibility": "public"
           },
@@ -12124,8 +12317,8 @@
             "body_hash": "7019a1af4ab10b66",
             "kind": "const",
             "label": "pub const CRITERION",
-            "line_end": 306,
-            "line_start": 306,
+            "line_end": 308,
+            "line_start": 308,
             "name": "CRITERION",
             "visibility": "public"
           },
@@ -12151,8 +12344,8 @@
             "body_hash": "9d4cf1119eb3ec10",
             "kind": "const",
             "label": "pub const DETECTION_LOGIC",
-            "line_end": 292,
-            "line_start": 292,
+            "line_end": 294,
+            "line_start": 294,
             "name": "DETECTION_LOGIC",
             "visibility": "public"
           },
@@ -12178,8 +12371,8 @@
             "body_hash": "bc9fd6ebf652263c",
             "kind": "const",
             "label": "pub const EVIDENCE",
-            "line_end": 308,
-            "line_start": 308,
+            "line_end": 310,
+            "line_start": 310,
             "name": "EVIDENCE",
             "visibility": "public"
           },
@@ -12250,8 +12443,8 @@
             "body_hash": "f7973d82ff67f7e0",
             "kind": "const",
             "label": "pub const IMPORTS",
-            "line_end": 278,
-            "line_start": 278,
+            "line_end": 280,
+            "line_start": 280,
             "name": "IMPORTS",
             "visibility": "public"
           },
@@ -12259,8 +12452,8 @@
             "body_hash": "5f97fbfaee2f47f8",
             "kind": "const",
             "label": "pub const INSPECTED_BY",
-            "line_end": 310,
-            "line_start": 310,
+            "line_end": 312,
+            "line_start": 312,
             "name": "INSPECTED_BY",
             "visibility": "public"
           },
@@ -12268,8 +12461,8 @@
             "body_hash": "2231585363a6bdae",
             "kind": "const",
             "label": "pub const INSPECTION_EFFORT",
-            "line_end": 298,
-            "line_start": 298,
+            "line_end": 300,
+            "line_start": 300,
             "name": "INSPECTION_EFFORT",
             "visibility": "public"
           },
@@ -12277,8 +12470,8 @@
             "body_hash": "f14f310e542a8afa",
             "kind": "const",
             "label": "pub const INSPECTION_STATUS",
-            "line_end": 305,
-            "line_start": 305,
+            "line_end": 307,
+            "line_start": 307,
             "name": "INSPECTION_STATUS",
             "visibility": "public"
           },
@@ -12304,8 +12497,8 @@
             "body_hash": "69fe5f6b6728f880",
             "kind": "const",
             "label": "pub const KIND",
-            "line_end": 315,
-            "line_start": 315,
+            "line_end": 317,
+            "line_start": 317,
             "name": "KIND",
             "visibility": "public"
           },
@@ -12313,8 +12506,8 @@
             "body_hash": "e97688d9a6477c90",
             "kind": "const",
             "label": "pub const LANGUAGE",
-            "line_end": 272,
-            "line_start": 272,
+            "line_end": 274,
+            "line_start": 274,
             "name": "LANGUAGE",
             "visibility": "public"
           },
@@ -12322,8 +12515,8 @@
             "body_hash": "210a76c932c855e0",
             "kind": "const",
             "label": "pub const LAST_INSPECTED",
-            "line_end": 309,
-            "line_start": 309,
+            "line_end": 311,
+            "line_start": 311,
             "name": "LAST_INSPECTED",
             "visibility": "public"
           },
@@ -12331,8 +12524,8 @@
             "body_hash": "409fd85b338429b4",
             "kind": "const",
             "label": "pub const LAST_MODIFIED",
-            "line_end": 273,
-            "line_start": 273,
+            "line_end": 275,
+            "line_start": 275,
             "name": "LAST_MODIFIED",
             "visibility": "public"
           },
@@ -12340,8 +12533,8 @@
             "body_hash": "528fc4caeb87ac10",
             "kind": "const",
             "label": "pub const LAST_RESULT",
-            "line_end": 303,
-            "line_start": 303,
+            "line_end": 305,
+            "line_start": 305,
             "name": "LAST_RESULT",
             "visibility": "public"
           },
@@ -12349,8 +12542,8 @@
             "body_hash": "f493007453afd0c0",
             "kind": "const",
             "label": "pub const LAST_RUN",
-            "line_end": 302,
-            "line_start": 302,
+            "line_end": 304,
+            "line_start": 304,
             "name": "LAST_RUN",
             "visibility": "public"
           },
@@ -12367,8 +12560,8 @@
             "body_hash": "e63d6cab245e3c10",
             "kind": "const",
             "label": "pub const LIFECYCLE",
-            "line_end": 249,
-            "line_start": 249,
+            "line_end": 251,
+            "line_start": 251,
             "name": "LIFECYCLE",
             "visibility": "public"
           },
@@ -12376,8 +12569,8 @@
             "body_hash": "1481910258b9a884",
             "kind": "const",
             "label": "pub const LOCATOR",
-            "line_end": 313,
-            "line_start": 313,
+            "line_end": 315,
+            "line_start": 315,
             "name": "LOCATOR",
             "visibility": "public"
           },
@@ -12430,8 +12623,8 @@
             "body_hash": "374d516c00f568a0",
             "kind": "const",
             "label": "pub const PATH",
-            "line_end": 271,
-            "line_start": 271,
+            "line_end": 273,
+            "line_start": 273,
             "name": "PATH",
             "visibility": "public"
           },
@@ -12439,8 +12632,8 @@
             "body_hash": "c73d6f11df198414",
             "kind": "const",
             "label": "pub const PATTERN",
-            "line_end": 326,
-            "line_start": 326,
+            "line_end": 328,
+            "line_start": 328,
             "name": "PATTERN",
             "visibility": "public"
           },
@@ -12457,8 +12650,8 @@
             "body_hash": "beaf8728870677fa",
             "kind": "const",
             "label": "pub const PREDICTED_OUTCOME",
-            "line_end": 339,
-            "line_start": 339,
+            "line_end": 341,
+            "line_start": 341,
             "name": "PREDICTED_OUTCOME",
             "visibility": "public"
           },
@@ -12466,8 +12659,8 @@
             "body_hash": "d837da5473b26f1c",
             "kind": "const",
             "label": "pub const PRIORITY_SCORE",
-            "line_end": 311,
-            "line_start": 311,
+            "line_end": 313,
+            "line_start": 313,
             "name": "PRIORITY_SCORE",
             "visibility": "public"
           },
@@ -12475,8 +12668,8 @@
             "body_hash": "9811c1380b38bbe8",
             "kind": "const",
             "label": "pub const PROPOSAL",
-            "line_end": 336,
-            "line_start": 336,
+            "line_end": 338,
+            "line_start": 338,
             "name": "PROPOSAL",
             "visibility": "public"
           },
@@ -12502,8 +12695,8 @@
             "body_hash": "31d32bfbd01495e0",
             "kind": "const",
             "label": "pub const REASON",
-            "line_end": 327,
-            "line_start": 327,
+            "line_end": 329,
+            "line_start": 329,
             "name": "REASON",
             "visibility": "public"
           },
@@ -12547,8 +12740,8 @@
             "body_hash": "d978312acec3c0ac",
             "kind": "const",
             "label": "pub const SEVERITY",
-            "line_end": 293,
-            "line_start": 293,
+            "line_end": 295,
+            "line_start": 295,
             "name": "SEVERITY",
             "visibility": "public"
           },
@@ -12574,8 +12767,8 @@
             "body_hash": "ad5586b4c7d5c2a6",
             "kind": "const",
             "label": "pub const SYMBOLS",
-            "line_end": 282,
-            "line_start": 282,
+            "line_end": 284,
+            "line_start": 284,
             "name": "SYMBOLS",
             "visibility": "public"
           },
@@ -12583,8 +12776,8 @@
             "body_hash": "d8c3a1c386a1c344",
             "kind": "const",
             "label": "pub const SYMBOL_FACTS",
-            "line_end": 286,
-            "line_start": 286,
+            "line_end": 288,
+            "line_start": 288,
             "name": "SYMBOL_FACTS",
             "visibility": "public"
           },
@@ -12592,8 +12785,8 @@
             "body_hash": "1d1278ea2c05cda8",
             "kind": "const",
             "label": "pub const TAGS",
-            "line_end": 254,
-            "line_start": 254,
+            "line_end": 256,
+            "line_start": 256,
             "name": "TAGS",
             "visibility": "public"
           },
@@ -12601,8 +12794,8 @@
             "body_hash": "a1e20a3ccdbfe028",
             "kind": "const",
             "label": "pub const TARGET",
-            "line_end": 330,
-            "line_start": 330,
+            "line_end": 332,
+            "line_start": 332,
             "name": "TARGET",
             "visibility": "public"
           },
@@ -12619,8 +12812,8 @@
             "body_hash": "e62a66c09acdaf16",
             "kind": "const",
             "label": "pub const TARGET_ID",
-            "line_end": 324,
-            "line_start": 324,
+            "line_end": 326,
+            "line_start": 326,
             "name": "TARGET_ID",
             "visibility": "public"
           },
@@ -12628,8 +12821,8 @@
             "body_hash": "6a0aed6719f1df20",
             "kind": "const",
             "label": "pub const TARGET_KIND",
-            "line_end": 318,
-            "line_start": 318,
+            "line_end": 320,
+            "line_start": 320,
             "name": "TARGET_KIND",
             "visibility": "public"
           },
@@ -12637,8 +12830,8 @@
             "body_hash": "5a9f2749a140dee8",
             "kind": "const",
             "label": "pub const TEXT",
-            "line_end": 316,
-            "line_start": 316,
+            "line_end": 318,
+            "line_start": 318,
             "name": "TEXT",
             "visibility": "public"
           },
@@ -12673,8 +12866,8 @@
             "body_hash": "f30ef48ab2c655c0",
             "kind": "const",
             "label": "pub const VALIDATION_TYPE",
-            "line_end": 300,
-            "line_start": 300,
+            "line_end": 302,
+            "line_start": 302,
             "name": "VALIDATION_TYPE",
             "visibility": "public"
           },
@@ -12691,8 +12884,8 @@
             "body_hash": "d4433e8e869ac97c",
             "kind": "const",
             "label": "pub const VISIBILITY",
-            "line_end": 262,
-            "line_start": 262,
+            "line_end": 264,
+            "line_start": 264,
             "name": "VISIBILITY",
             "visibility": "public"
           },
@@ -12727,8 +12920,8 @@
             "body_hash": "be0a09a20b37d2cb",
             "kind": "fn",
             "label": "pub fn required_edge_props",
-            "line_end": 541,
-            "line_start": 462,
+            "line_end": 543,
+            "line_start": 464,
             "name": "required_edge_props",
             "visibility": "public"
           },
@@ -12736,8 +12929,8 @@
             "body_hash": "28f35f1cadf341b3",
             "kind": "fn",
             "label": "pub fn required_node_props",
-            "line_end": 459,
-            "line_start": 354,
+            "line_end": 461,
+            "line_start": 356,
             "name": "required_node_props",
             "visibility": "public"
           },
@@ -12745,8 +12938,8 @@
             "body_hash": "4371e54c3aa36f1c",
             "kind": "type",
             "label": "pub type FieldSpec",
-            "line_end": 351,
-            "line_start": 351,
+            "line_end": 353,
+            "line_start": 353,
             "name": "FieldSpec",
             "visibility": "public"
           }
@@ -13079,13 +13272,13 @@
         ]
       },
       {
-        "content_hash": "1244676239869e86",
+        "content_hash": "a95766c511437a45",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T16:19:43.902030228+00:00",
+        "last_modified": "2026-06-16T04:25:11.722297321+00:00",
         "path": "src/commands/guide.rs",
         "symbol_facts": [
           {
@@ -13206,7 +13399,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "da75bb9956c3c71c",
+            "body_hash": "64384a84946d3d3f",
             "kind": "fn",
             "label": "fn brownfield",
             "line_end": 244,
@@ -13219,8 +13412,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn every_mode_satisfies_the_contract",
-            "line_end": 556,
-            "line_start": 547,
+            "line_end": 593,
+            "line_start": 584,
             "name": "every_mode_satisfies_the_contract",
             "visibility": "private"
           },
@@ -13237,8 +13430,8 @@
             "body_hash": "fa23aba628903156",
             "kind": "fn",
             "label": "fn guide_json",
-            "line_end": 509,
-            "line_start": 504,
+            "line_end": 514,
+            "line_start": 509,
             "name": "guide_json",
             "visibility": "private"
           },
@@ -13247,8 +13440,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn guide_json_exposes_every_canonical_section",
-            "line_end": 525,
-            "line_start": 517,
+            "line_end": 530,
+            "line_start": 522,
             "name": "guide_json_exposes_every_canonical_section",
             "visibility": "private"
           },
@@ -13257,8 +13450,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn guide_names_every_pull_surface",
-            "line_end": 570,
-            "line_start": 562,
+            "line_end": 607,
+            "line_start": 599,
             "name": "guide_names_every_pull_surface",
             "visibility": "private"
           },
@@ -13267,8 +13460,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn lifecycle_contract_is_complete",
-            "line_end": 628,
-            "line_start": 589,
+            "line_end": 665,
+            "line_start": 626,
             "name": "lifecycle_contract_is_complete",
             "visibility": "private"
           },
@@ -13277,8 +13470,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn orchestration_section_stays_complete",
-            "line_end": 586,
-            "line_start": 578,
+            "line_end": 623,
+            "line_start": 615,
             "name": "orchestration_section_stays_complete",
             "visibility": "private"
           },
@@ -13287,8 +13480,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn performance_guidance_reaches_the_json_driver",
-            "line_end": 542,
-            "line_start": 531,
+            "line_end": 579,
+            "line_start": 568,
             "name": "performance_guidance_reaches_the_json_driver",
             "visibility": "private"
           },
@@ -13314,26 +13507,36 @@
             "body_hash": "513e11048c78a3a2",
             "kind": "fn",
             "label": "fn resolve_mode",
-            "line_end": 316,
-            "line_start": 294,
+            "line_end": 321,
+            "line_start": 299,
             "name": "resolve_mode",
             "visibility": "private"
           },
           {
-            "body_hash": "5a3b3744b73ee662",
+            "body_hash": "c4fab023a48b5a36",
             "kind": "fn",
             "label": "fn seed",
-            "line_end": 292,
+            "line_end": 297,
             "line_start": 282,
             "name": "seed",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "876b4de07def905b",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn seed_mode_stages_the_ladder_and_seed_time_audience",
+            "line_end": 562,
+            "line_start": 538,
+            "name": "seed_mode_stages_the_ladder_and_seed_time_audience",
             "visibility": "private"
           },
           {
             "body_hash": "f311bfd735226bca",
             "kind": "fn",
             "label": "pub fn run",
-            "line_end": 497,
-            "line_start": 318,
+            "line_end": 502,
+            "line_start": 323,
             "name": "run",
             "visibility": "public"
           }
@@ -13365,6 +13568,7 @@
           "fn refactor",
           "fn resolve_mode",
           "fn seed",
+          "fn seed_mode_stages_the_ladder_and_seed_time_audience",
           "pub fn run"
         ]
       },
@@ -13385,23 +13589,53 @@
         ]
       },
       {
-        "content_hash": "14f20bc3c08c38fb",
+        "content_hash": "6e37b61212d44bbd",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T17:34:32.221037319+00:00",
+        "last_modified": "2026-06-16T04:32:31.580191243+00:00",
         "path": "src/db/queries/smells.rs",
         "symbol_facts": [
+          {
+            "body_hash": "1d01aa1614c7c9f9",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_clean_chain_through_an_unlayered_intermediate_is_flagged",
+            "line_end": 3275,
+            "line_start": 3247,
+            "name": "a_clean_chain_through_an_unlayered_intermediate_is_flagged",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "d89603fcfb94638d",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_direct_violation_is_not_double_reported_as_transitive",
+            "line_end": 3323,
+            "line_start": 3304,
+            "name": "a_direct_violation_is_not_double_reported_as_transitive",
+            "visibility": "private"
+          },
           {
             "body_hash": "317292645caa949c",
             "is_test": true,
             "kind": "fn",
             "label": "fn a_disconnected_subgraph_is_an_island",
-            "line_end": 2875,
-            "line_start": 2859,
+            "line_end": 3058,
+            "line_start": 3042,
             "name": "a_disconnected_subgraph_is_an_island",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "621fb9b9587558d7",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_downward_chain_is_clean",
+            "line_end": 3299,
+            "line_start": 3280,
+            "name": "a_downward_chain_is_clean",
             "visibility": "private"
           },
           {
@@ -13409,8 +13643,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_fully_connected_graph_has_no_islands",
-            "line_end": 2886,
-            "line_start": 2878,
+            "line_end": 3069,
+            "line_start": 3061,
             "name": "a_fully_connected_graph_has_no_islands",
             "visibility": "private"
           },
@@ -13419,9 +13653,19 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_half_grounded_reciprocal_pair_does_not_fire",
-            "line_end": 2804,
-            "line_start": 2797,
+            "line_end": 2987,
+            "line_start": 2980,
             "name": "a_half_grounded_reciprocal_pair_does_not_fire",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "234685f18f067c04",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn a_loading_only_state_does_not_trigger",
+            "line_end": 3152,
+            "line_start": 3136,
+            "name": "a_loading_only_state_does_not_trigger",
             "visibility": "private"
           },
           {
@@ -13429,8 +13673,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_long_directed_cycle_is_not_a_dependency_cycle",
-            "line_end": 2754,
-            "line_start": 2743,
+            "line_end": 2937,
+            "line_start": 2926,
             "name": "a_long_directed_cycle_is_not_a_dependency_cycle",
             "visibility": "private"
           },
@@ -13439,8 +13683,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_module_path_selector_resolves_to_its_directory",
-            "line_end": 2601,
-            "line_start": 2574,
+            "line_end": 2784,
+            "line_start": 2757,
             "name": "a_module_path_selector_resolves_to_its_directory",
             "visibility": "private"
           },
@@ -13449,8 +13693,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_reciprocal_grounded_pair_is_a_dependency_cycle",
-            "line_end": 2769,
-            "line_start": 2757,
+            "line_end": 2952,
+            "line_start": 2940,
             "name": "a_reciprocal_grounded_pair_is_a_dependency_cycle",
             "visibility": "private"
           },
@@ -13459,8 +13703,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_sibling_test_in_the_same_module_is_local",
-            "line_end": 2571,
-            "line_start": 2542,
+            "line_end": 2754,
+            "line_start": 2725,
             "name": "a_sibling_test_in_the_same_module_is_local",
             "visibility": "private"
           },
@@ -13469,8 +13713,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_test_in_the_grounded_file_is_local_and_silent",
-            "line_end": 2482,
-            "line_start": 2455,
+            "line_end": 2665,
+            "line_start": 2638,
             "name": "a_test_in_the_grounded_file_is_local_and_silent",
             "visibility": "private"
           },
@@ -13479,8 +13723,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_acyclic_chain_reports_no_cycle",
-            "line_end": 2777,
-            "line_start": 2772,
+            "line_end": 2960,
+            "line_start": 2955,
             "name": "an_acyclic_chain_reports_no_cycle",
             "visibility": "private"
           },
@@ -13489,8 +13733,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_adjudicated_reciprocal_pair_is_suppressed",
-            "line_end": 2856,
-            "line_start": 2832,
+            "line_end": 3039,
+            "line_start": 3015,
             "name": "an_adjudicated_reciprocal_pair_is_suppressed",
             "visibility": "private"
           },
@@ -13499,8 +13743,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_e2e_assertion_proof_exempts_the_leaf",
-            "line_end": 2509,
-            "line_start": 2485,
+            "line_end": 2692,
+            "line_start": 2668,
             "name": "an_e2e_assertion_proof_exempts_the_leaf",
             "visibility": "private"
           },
@@ -13509,8 +13753,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_independent_reverse_does_not_make_a_reciprocal_pair",
-            "line_end": 2814,
-            "line_start": 2807,
+            "line_end": 2997,
+            "line_start": 2990,
             "name": "an_independent_reverse_does_not_make_a_reciprocal_pair",
             "visibility": "private"
           },
@@ -13519,8 +13763,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_uninspected_reciprocal_pair_does_not_fire",
-            "line_end": 2794,
-            "line_start": 2780,
+            "line_end": 2977,
+            "line_start": 2963,
             "name": "an_uninspected_reciprocal_pair_does_not_fire",
             "visibility": "private"
           },
@@ -13529,17 +13773,27 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_unresolvable_command_is_unknown_never_nonlocal",
-            "line_end": 2539,
-            "line_start": 2512,
+            "line_end": 2722,
+            "line_start": 2695,
             "name": "an_unresolvable_command_is_unknown_never_nonlocal",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "e76e8bf3cfe976e7",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn behavioral_happy_without_sad_or_fallback_still_fires",
+            "line_end": 3133,
+            "line_start": 3117,
+            "name": "behavioral_happy_without_sad_or_fallback_still_fires",
             "visibility": "private"
           },
           {
             "body_hash": "cf2f3d0a90b81193",
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 2376,
-            "line_start": 2340,
+            "line_end": 2559,
+            "line_start": 2523,
             "name": "cf",
             "visibility": "private"
           },
@@ -13548,8 +13802,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
-            "line_end": 2452,
-            "line_start": 2423,
+            "line_end": 2635,
+            "line_start": 2606,
             "name": "flags_a_leaf_proven_only_by_a_test_in_other_files",
             "visibility": "private"
           },
@@ -13557,8 +13811,8 @@
             "body_hash": "4ade4c484e71996c",
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 2395,
-            "line_start": 2378,
+            "line_end": 2578,
+            "line_start": 2561,
             "name": "imp",
             "visibility": "private"
           },
@@ -13566,8 +13820,8 @@
             "body_hash": "7750085ecd8ba03c",
             "kind": "fn",
             "label": "fn intent",
-            "line_end": 2654,
-            "line_start": 2636,
+            "line_end": 2837,
+            "line_start": 2819,
             "name": "intent",
             "visibility": "private"
           },
@@ -13576,8 +13830,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn island_detector_is_unarmed_without_a_system_root",
-            "line_end": 2898,
-            "line_start": 2889,
+            "line_end": 3081,
+            "line_start": 3072,
             "name": "island_detector_is_unarmed_without_a_system_root",
             "visibility": "private"
           },
@@ -13585,8 +13839,8 @@
             "body_hash": "abfd2c4fe730f877",
             "kind": "fn",
             "label": "fn leaf",
-            "line_end": 2338,
-            "line_start": 2320,
+            "line_end": 2521,
+            "line_start": 2503,
             "name": "leaf",
             "visibility": "private"
           },
@@ -13594,8 +13848,8 @@
             "body_hash": "b3500edb49b3029a",
             "kind": "fn",
             "label": "fn locate_test_proof",
-            "line_end": 2242,
-            "line_start": 2216,
+            "line_end": 2425,
+            "line_start": 2399,
             "name": "locate_test_proof",
             "visibility": "private"
           },
@@ -13604,8 +13858,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn no_symbol_facts_means_the_instrument_is_unarmed",
-            "line_end": 2628,
-            "line_start": 2604,
+            "line_end": 2811,
+            "line_start": 2787,
             "name": "no_symbol_facts_means_the_instrument_is_unarmed",
             "visibility": "private"
           },
@@ -13613,8 +13867,8 @@
             "body_hash": "be51dad1bf2e3ccf",
             "kind": "fn",
             "label": "fn of_kind",
-            "line_end": 2728,
-            "line_start": 2726,
+            "line_end": 2911,
+            "line_start": 2909,
             "name": "of_kind",
             "visibility": "private"
           },
@@ -13622,8 +13876,8 @@
             "body_hash": "3d5fba833195903c",
             "kind": "fn",
             "label": "fn parent_dir",
-            "line_end": 2313,
-            "line_start": 2311,
+            "line_end": 2496,
+            "line_start": 2494,
             "name": "parent_dir",
             "visibility": "private"
           },
@@ -13631,8 +13885,8 @@
             "body_hash": "7e8d21c631604527",
             "kind": "fn",
             "label": "fn parse_cargo_test_selectors",
-            "line_end": 2297,
-            "line_start": 2247,
+            "line_end": 2480,
+            "line_start": 2430,
             "name": "parse_cargo_test_selectors",
             "visibility": "private"
           },
@@ -13640,8 +13894,8 @@
             "body_hash": "d3f67f8e0d692538",
             "kind": "fn",
             "label": "fn path_matches_module",
-            "line_end": 2307,
-            "line_start": 2302,
+            "line_end": 2490,
+            "line_start": 2485,
             "name": "path_matches_module",
             "visibility": "private"
           },
@@ -13649,8 +13903,8 @@
             "body_hash": "24c677b82db52751",
             "kind": "fn",
             "label": "fn proof_locality_from_parts",
-            "line_end": 2211,
-            "line_start": 2085,
+            "line_end": 2394,
+            "line_start": 2268,
             "name": "proof_locality_from_parts",
             "visibility": "private"
           },
@@ -13659,8 +13913,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
-            "line_end": 2829,
-            "line_start": 2817,
+            "line_end": 3012,
+            "line_start": 3000,
             "name": "reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
             "visibility": "private"
           },
@@ -13668,8 +13922,8 @@
             "body_hash": "583c59d6a1a62b9a",
             "kind": "fn",
             "label": "fn recurrent_teaching",
-            "line_end": 355,
-            "line_start": 339,
+            "line_end": 380,
+            "line_start": 364,
             "name": "recurrent_teaching",
             "visibility": "private"
           },
@@ -13677,8 +13931,8 @@
             "body_hash": "ff9182c9d3dcda49",
             "kind": "fn",
             "label": "fn rel",
-            "line_end": 2661,
-            "line_start": 2656,
+            "line_end": 2844,
+            "line_start": 2839,
             "name": "rel",
             "visibility": "private"
           },
@@ -13686,8 +13940,8 @@
             "body_hash": "c909892ee5b59b7c",
             "kind": "fn",
             "label": "fn rel_st",
-            "line_end": 2685,
-            "line_start": 2663,
+            "line_end": 2868,
+            "line_start": 2846,
             "name": "rel_st",
             "visibility": "private"
           },
@@ -13695,8 +13949,8 @@
             "body_hash": "8602db62e1065d5a",
             "kind": "fn",
             "label": "fn report",
-            "line_end": 2693,
-            "line_start": 2687,
+            "line_end": 2876,
+            "line_start": 2870,
             "name": "report",
             "visibility": "private"
           },
@@ -13704,8 +13958,8 @@
             "body_hash": "fc1fc436440f5acd",
             "kind": "fn",
             "label": "fn report_with_notes",
-            "line_end": 2724,
-            "line_start": 2695,
+            "line_end": 2907,
+            "line_start": 2878,
             "name": "report_with_notes",
             "visibility": "private"
           },
@@ -13713,26 +13967,36 @@
             "body_hash": "202c06c86767f88d",
             "kind": "fn",
             "label": "fn rooted",
-            "line_end": 2740,
-            "line_start": 2732,
+            "line_end": 2923,
+            "line_start": 2915,
             "name": "rooted",
             "visibility": "private"
           },
           {
-            "body_hash": "d8ebd2cbf06f4bcd",
+            "body_hash": "71f2864ea2ed1bdd",
             "kind": "fn",
             "label": "fn teaching_for",
-            "line_end": 337,
-            "line_start": 130,
+            "line_end": 362,
+            "line_start": 145,
             "name": "teaching_for",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "dd90d663d7b4190a",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn ui_state_populated_without_empty_or_error_is_happy_path_only",
+            "line_end": 3114,
+            "line_start": 3090,
+            "name": "ui_state_populated_without_empty_or_error_is_happy_path_only",
             "visibility": "private"
           },
           {
             "body_hash": "ee70e2b9a6b5a62b",
             "kind": "fn",
             "label": "fn val",
-            "line_end": 2407,
-            "line_start": 2397,
+            "line_end": 2590,
+            "line_start": 2580,
             "name": "val",
             "visibility": "private"
           },
@@ -13740,10 +14004,28 @@
             "body_hash": "1819ed08198a8455",
             "kind": "fn",
             "label": "fn vedge",
-            "line_end": 2420,
-            "line_start": 2409,
+            "line_end": 2603,
+            "line_start": 2592,
             "name": "vedge",
             "visibility": "private"
+          },
+          {
+            "body_hash": "b0baf542835986ed",
+            "kind": "fn",
+            "label": "fn with_aspect",
+            "line_end": 3087,
+            "line_start": 3083,
+            "name": "with_aspect",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "a324124f38d36bf2",
+            "kind": "const",
+            "label": "pub const ASPECT_FAMILIES",
+            "line_end": 70,
+            "line_start": 67,
+            "name": "ASPECT_FAMILIES",
+            "visibility": "public"
           },
           {
             "body_hash": "581a76f524173e1b",
@@ -13812,17 +14094,17 @@
             "body_hash": "3933d7307773495e",
             "kind": "fn",
             "label": "pub fn cochange_suggestions",
-            "line_end": 2047,
-            "line_start": 1932,
+            "line_end": 2230,
+            "line_start": 2115,
             "name": "cochange_suggestions",
             "visibility": "public"
           },
           {
-            "body_hash": "e4e6cf386f66f3d1",
+            "body_hash": "177d7949d57752d5",
             "kind": "fn",
             "label": "pub fn compute_smells_from_parts",
-            "line_end": 1922,
-            "line_start": 377,
+            "line_end": 2105,
+            "line_start": 402,
             "name": "compute_smells_from_parts",
             "visibility": "public"
           },
@@ -13830,8 +14112,8 @@
             "body_hash": "22e4917b07124d97",
             "kind": "fn",
             "label": "pub fn jaccard",
-            "line_end": 365,
-            "line_start": 358,
+            "line_end": 390,
+            "line_start": 383,
             "name": "jaccard",
             "visibility": "public"
           },
@@ -13839,8 +14121,8 @@
             "body_hash": "4c03c20305903f6f",
             "kind": "fn",
             "label": "pub fn proof_locality_suggestions",
-            "line_end": 2083,
-            "line_start": 2074,
+            "line_end": 2266,
+            "line_start": 2257,
             "name": "proof_locality_suggestions",
             "visibility": "public"
           },
@@ -13857,17 +14139,17 @@
             "body_hash": "6f876a52ce824d85",
             "kind": "struct",
             "label": "pub struct AdjudicatedSmell",
-            "line_end": 98,
-            "line_start": 86,
+            "line_end": 113,
+            "line_start": 101,
             "name": "AdjudicatedSmell",
             "visibility": "public"
           },
           {
-            "body_hash": "9e0bbb79ab15fec1",
+            "body_hash": "775e8e500f6d99c2",
             "kind": "struct",
             "label": "pub struct Smell",
-            "line_end": 78,
-            "line_start": 59,
+            "line_end": 93,
+            "line_start": 74,
             "name": "Smell",
             "visibility": "public"
           },
@@ -13875,8 +14157,8 @@
             "body_hash": "2d77d5c611e44c48",
             "kind": "struct",
             "label": "pub struct SmellInputs",
-            "line_end": 373,
-            "line_start": 367,
+            "line_end": 398,
+            "line_start": 392,
             "name": "SmellInputs",
             "visibility": "public"
           },
@@ -13884,8 +14166,8 @@
             "body_hash": "fa8fdf4d5d2580c5",
             "kind": "struct",
             "label": "pub struct SmellReport",
-            "line_end": 128,
-            "line_start": 112,
+            "line_end": 143,
+            "line_start": 127,
             "name": "SmellReport",
             "visibility": "public"
           },
@@ -13893,16 +14175,20 @@
             "body_hash": "797e1bb20f6a48ad",
             "kind": "struct",
             "label": "pub struct SmellTeaching",
-            "line_end": 106,
-            "line_start": 101,
+            "line_end": 121,
+            "line_start": 116,
             "name": "SmellTeaching",
             "visibility": "public"
           }
         ],
         "symbols": [
+          "fn a_clean_chain_through_an_unlayered_intermediate_is_flagged",
+          "fn a_direct_violation_is_not_double_reported_as_transitive",
           "fn a_disconnected_subgraph_is_an_island",
+          "fn a_downward_chain_is_clean",
           "fn a_fully_connected_graph_has_no_islands",
           "fn a_half_grounded_reciprocal_pair_does_not_fire",
+          "fn a_loading_only_state_does_not_trigger",
           "fn a_long_directed_cycle_is_not_a_dependency_cycle",
           "fn a_module_path_selector_resolves_to_its_directory",
           "fn a_reciprocal_grounded_pair_is_a_dependency_cycle",
@@ -13914,6 +14200,7 @@
           "fn an_independent_reverse_does_not_make_a_reciprocal_pair",
           "fn an_uninspected_reciprocal_pair_does_not_fire",
           "fn an_unresolvable_command_is_unknown_never_nonlocal",
+          "fn behavioral_happy_without_sad_or_fallback_still_fires",
           "fn cf",
           "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
           "fn imp",
@@ -13935,8 +14222,11 @@
           "fn report_with_notes",
           "fn rooted",
           "fn teaching_for",
+          "fn ui_state_populated_without_empty_or_error_is_happy_path_only",
           "fn val",
           "fn vedge",
+          "fn with_aspect",
+          "pub const ASPECT_FAMILIES",
           "pub const DUP_TAG_WEIGHT",
           "pub const DUP_UNTAGGED_SHARED_TOKENS",
           "pub const DUP_UNTAGGED_SIMILARITY",
@@ -15371,7 +15661,7 @@
         ]
       },
       {
-        "content_hash": "9ac4d39261f7d6cd",
+        "content_hash": "d9b82b7430e36637",
         "id": "66a3504e-1423-41b4-88cd-31b8e3835fe6",
         "imports": [
           "src/db/mod.rs",
@@ -15379,25 +15669,158 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-14T20:48:07.899091453+00:00",
+        "last_modified": "2026-06-16T04:24:02.509312883+00:00",
         "path": "src/commands/session.rs",
         "symbol_facts": [
-          "{\"label\":\"const ASK\",\"name\":\"ASK\",\"kind\":\"const\",\"visibility\":\"private\",\"line_start\":52,\"line_end\":52,\"body_hash\":\"74615daef0bc2cdd\"}",
-          "{\"label\":\"const DOCTRINE\",\"name\":\"DOCTRINE\",\"kind\":\"const\",\"visibility\":\"private\",\"line_start\":54,\"line_end\":58,\"body_hash\":\"c6ed85ab749c7b06\"}",
-          "{\"label\":\"fn complete_graph_recommends_saga_proposal\",\"name\":\"complete_graph_recommends_saga_proposal\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":426,\"line_end\":431,\"is_test\":true,\"body_hash\":\"b0033e09391a6cc4\"}",
-          "{\"label\":\"fn counts\",\"name\":\"counts\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":369,\"line_end\":383,\"body_hash\":\"c5f9c01f6b831494\"}",
-          "{\"label\":\"fn drainable_backlog_recommends_handoff\",\"name\":\"drainable_backlog_recommends_handoff\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":415,\"line_end\":422,\"is_test\":true,\"body_hash\":\"870aee7aeb22fbfd\"}",
-          "{\"label\":\"fn empty_graph_routes_by_source\",\"name\":\"empty_graph_routes_by_source\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":436,\"line_end\":445,\"is_test\":true,\"body_hash\":\"10dc30a212ff0496\"}",
-          "{\"label\":\"fn menu_json\",\"name\":\"menu_json\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":219,\"line_end\":230,\"body_hash\":\"b8b34ca78cf14e11\"}",
-          "{\"label\":\"fn offers\",\"name\":\"offers\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":61,\"line_end\":183,\"body_hash\":\"8b7cedfe76f6aa9f\"}",
-          "{\"label\":\"fn offers_uninitialized\",\"name\":\"offers_uninitialized\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":186,\"line_end\":208,\"body_hash\":\"73b5bd2b60ac4bdb\"}",
-          "{\"label\":\"fn print_menu\",\"name\":\"print_menu\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":210,\"line_end\":217,\"body_hash\":\"33e5d379cbe8d81f\"}",
-          "{\"label\":\"fn uninitialized_prefers_import\",\"name\":\"uninitialized_prefers_import\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":449,\"line_end\":458,\"is_test\":true,\"body_hash\":\"a1bff885a88425bb\"}",
-          "{\"label\":\"fn user_gated_work_outranks_build\",\"name\":\"user_gated_work_outranks_build\",\"kind\":\"fn\",\"visibility\":\"private\",\"line_start\":388,\"line_end\":409,\"is_test\":true,\"body_hash\":\"ee4b767aee23f1f6\"}",
-          "{\"label\":\"pub fn run\",\"name\":\"run\",\"kind\":\"fn\",\"visibility\":\"public\",\"line_start\":232,\"line_end\":265,\"body_hash\":\"0627bf5d8e7b3588\"}",
-          "{\"label\":\"pub fn run_with_db\",\"name\":\"run_with_db\",\"kind\":\"fn\",\"visibility\":\"public\",\"line_start\":267,\"line_end\":363,\"body_hash\":\"60f80f5a813c0ff6\"}",
-          "{\"label\":\"struct Offer\",\"name\":\"Offer\",\"kind\":\"struct\",\"visibility\":\"private\",\"line_start\":27,\"line_end\":31,\"body_hash\":\"fd2d1e05fc541fbc\"}",
-          "{\"label\":\"struct SessionCounts\",\"name\":\"SessionCounts\",\"kind\":\"struct\",\"visibility\":\"private\",\"line_start\":35,\"line_end\":50,\"body_hash\":\"fce724c8e2b84568\"}"
+          {
+            "body_hash": "74615daef0bc2cdd",
+            "kind": "const",
+            "label": "const ASK",
+            "line_end": 56,
+            "line_start": 56,
+            "name": "ASK",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c6ed85ab749c7b06",
+            "kind": "const",
+            "label": "const DOCTRINE",
+            "line_end": 62,
+            "line_start": 58,
+            "name": "DOCTRINE",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b0033e09391a6cc4",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn complete_graph_recommends_saga_proposal",
+            "line_end": 463,
+            "line_start": 458,
+            "name": "complete_graph_recommends_saga_proposal",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ee90a1c974a2f9af",
+            "kind": "fn",
+            "label": "fn counts",
+            "line_end": 407,
+            "line_start": 392,
+            "name": "counts",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "870aee7aeb22fbfd",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn drainable_backlog_recommends_handoff",
+            "line_end": 454,
+            "line_start": 447,
+            "name": "drainable_backlog_recommends_handoff",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "10dc30a212ff0496",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn empty_graph_routes_by_source",
+            "line_end": 477,
+            "line_start": 468,
+            "name": "empty_graph_routes_by_source",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b8b34ca78cf14e11",
+            "kind": "fn",
+            "label": "fn menu_json",
+            "line_end": 245,
+            "line_start": 234,
+            "name": "menu_json",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4d31dcd3ad8930f5",
+            "kind": "fn",
+            "label": "fn offers",
+            "line_end": 198,
+            "line_start": 65,
+            "name": "offers",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "73b5bd2b60ac4bdb",
+            "kind": "fn",
+            "label": "fn offers_uninitialized",
+            "line_end": 223,
+            "line_start": 201,
+            "name": "offers_uninitialized",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "33e5d379cbe8d81f",
+            "kind": "fn",
+            "label": "fn print_menu",
+            "line_end": 232,
+            "line_start": 225,
+            "name": "print_menu",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "a1bff885a88425bb",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn uninitialized_prefers_import",
+            "line_end": 490,
+            "line_start": 481,
+            "name": "uninitialized_prefers_import",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "52009cd2bf26b2b2",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn user_gated_work_outranks_build",
+            "line_end": 441,
+            "line_start": 412,
+            "name": "user_gated_work_outranks_build",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "0627bf5d8e7b3588",
+            "kind": "fn",
+            "label": "pub fn run",
+            "line_end": 280,
+            "line_start": 247,
+            "name": "run",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "10653b0100cd56d2",
+            "kind": "fn",
+            "label": "pub fn run_with_db",
+            "line_end": 386,
+            "line_start": 282,
+            "name": "run_with_db",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "fd2d1e05fc541fbc",
+            "kind": "struct",
+            "label": "struct Offer",
+            "line_end": 31,
+            "line_start": 27,
+            "name": "Offer",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "46b043fff62c47f5",
+            "kind": "struct",
+            "label": "struct SessionCounts",
+            "line_end": 54,
+            "line_start": 35,
+            "name": "SessionCounts",
+            "visibility": "private"
+          }
         ],
         "symbols": [
           "const ASK",
@@ -16851,7 +17274,7 @@
         ]
       },
       {
-        "content_hash": "b46b7916ce41352c",
+        "content_hash": "9270f60861467526",
         "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
         "imports": [
           "src/cli.rs",
@@ -16862,15 +17285,15 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T09:43:26.750221838+00:00",
+        "last_modified": "2026-06-16T04:09:11.165887258+00:00",
         "path": "src/commands/rule.rs",
         "symbol_facts": [
           {
             "body_hash": "adca6aa9010e7a57",
             "kind": "const",
             "label": "const CONCURRENCY_PACK",
-            "line_end": 182,
-            "line_start": 160,
+            "line_end": 191,
+            "line_start": 169,
             "name": "CONCURRENCY_PACK",
             "visibility": "private"
           },
@@ -16878,8 +17301,8 @@
             "body_hash": "ac9e2735213dcc98",
             "kind": "const",
             "label": "const DATA_PACK",
-            "line_end": 154,
-            "line_start": 135,
+            "line_end": 163,
+            "line_start": 144,
             "name": "DATA_PACK",
             "visibility": "private"
           },
@@ -16893,10 +17316,10 @@
             "visibility": "private"
           },
           {
-            "body_hash": "953e1cd3ccec6247",
+            "body_hash": "cdb42e271140ac2f",
             "kind": "const",
             "label": "const MOBILE_PACK",
-            "line_end": 76,
+            "line_end": 79,
             "line_start": 54,
             "name": "MOBILE_PACK",
             "visibility": "private"
@@ -16905,8 +17328,8 @@
             "body_hash": "854c77bca17c6950",
             "kind": "const",
             "label": "const PACKS",
-            "line_end": 196,
-            "line_start": 189,
+            "line_end": 205,
+            "line_start": 198,
             "name": "PACKS",
             "visibility": "private"
           },
@@ -16914,26 +17337,54 @@
             "body_hash": "ad444bf575b66f1c",
             "kind": "const",
             "label": "const SERVICE_PACK",
-            "line_end": 131,
-            "line_start": 106,
+            "line_end": 140,
+            "line_start": 115,
             "name": "SERVICE_PACK",
             "visibility": "private"
           },
           {
-            "body_hash": "880907c74b420905",
+            "body_hash": "80c500d1c047aa2d",
             "kind": "const",
             "label": "const WEBUI_PACK",
-            "line_end": 102,
-            "line_start": 80,
+            "line_end": 111,
+            "line_start": 83,
             "name": "WEBUI_PACK",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "0873031f0c1d081f",
+            "kind": "fn",
+            "label": "fn has_rule",
+            "line_end": 658,
+            "line_start": 656,
+            "name": "has_rule",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "8dd374b8c9568d72",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn new_design_system_rules_are_mid_effort_warnings",
+            "line_end": 699,
+            "line_start": 685,
+            "name": "new_design_system_rules_are_mid_effort_warnings",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "0cd6bbc1231c0db6",
+            "kind": "fn",
+            "label": "fn pack",
+            "line_end": 655,
+            "line_start": 649,
+            "name": "pack",
             "visibility": "private"
           },
           {
             "body_hash": "d9914da906c90705",
             "kind": "fn",
             "label": "fn pack_rule_effort",
-            "line_end": 223,
-            "line_start": 209,
+            "line_end": 232,
+            "line_start": 218,
             "name": "pack_rule_effort",
             "visibility": "private"
           },
@@ -16941,8 +17392,8 @@
             "body_hash": "09c884afce62900f",
             "kind": "fn",
             "label": "fn resolve_intent_with_db",
-            "line_end": 634,
-            "line_start": 580,
+            "line_end": 643,
+            "line_start": 589,
             "name": "resolve_intent_with_db",
             "visibility": "private"
           },
@@ -16950,8 +17401,8 @@
             "body_hash": "93a092b13ba56f35",
             "kind": "fn",
             "label": "fn run_check_with_db",
-            "line_end": 578,
-            "line_start": 506,
+            "line_end": 587,
+            "line_start": 515,
             "name": "run_check_with_db",
             "visibility": "private"
           },
@@ -16959,8 +17410,8 @@
             "body_hash": "d8ca9ca74e1b4777",
             "kind": "fn",
             "label": "fn run_list_with_db",
-            "line_end": 504,
-            "line_start": 482,
+            "line_end": 513,
+            "line_start": 491,
             "name": "run_list_with_db",
             "visibility": "private"
           },
@@ -16968,17 +17419,27 @@
             "body_hash": "38abf15d503ff592",
             "kind": "fn",
             "label": "fn run_with_sqlite",
-            "line_end": 480,
-            "line_start": 243,
+            "line_end": 489,
+            "line_start": 252,
             "name": "run_with_sqlite",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "744cf2400ab649e0",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn ui_packs_carry_the_design_system_standards",
+            "line_end": 680,
+            "line_start": 665,
+            "name": "ui_packs_carry_the_design_system_standards",
             "visibility": "private"
           },
           {
             "body_hash": "77a584a242681f4d",
             "kind": "fn",
             "label": "pub fn pack_names",
-            "line_end": 201,
-            "line_start": 199,
+            "line_end": 210,
+            "line_start": 208,
             "name": "pack_names",
             "visibility": "public"
           },
@@ -16986,8 +17447,8 @@
             "body_hash": "0bfe5f1ebdff7706",
             "kind": "fn",
             "label": "pub fn run",
-            "line_end": 241,
-            "line_start": 225,
+            "line_end": 250,
+            "line_start": 234,
             "name": "run",
             "visibility": "public"
           },
@@ -16995,8 +17456,8 @@
             "body_hash": "aeba40b70311d27f",
             "kind": "type",
             "label": "type Pack",
-            "line_end": 187,
-            "line_start": 187,
+            "line_end": 196,
+            "line_start": 196,
             "name": "Pack",
             "visibility": "private"
           },
@@ -17004,8 +17465,8 @@
             "body_hash": "6dd5a2531304af6b",
             "kind": "type",
             "label": "type PackRule",
-            "line_end": 186,
-            "line_start": 186,
+            "line_end": 195,
+            "line_start": 195,
             "name": "PackRule",
             "visibility": "private"
           }
@@ -17018,11 +17479,15 @@
           "const PACKS",
           "const SERVICE_PACK",
           "const WEBUI_PACK",
+          "fn has_rule",
+          "fn new_design_system_rules_are_mid_effort_warnings",
+          "fn pack",
           "fn pack_rule_effort",
           "fn resolve_intent_with_db",
           "fn run_check_with_db",
           "fn run_list_with_db",
           "fn run_with_sqlite",
+          "fn ui_packs_carry_the_design_system_standards",
           "pub fn pack_names",
           "pub fn run",
           "type Pack",
@@ -18567,11 +19032,11 @@
         ]
       },
       {
-        "content_hash": "63d0d44197688d92",
+        "content_hash": "f98b5d5feb0bb798",
         "id": "c9f29777-86bc-4395-808f-eea18a497cb2",
         "imports": [],
         "language": "unknown",
-        "last_modified": "2026-06-15T16:20:14.085889479+00:00",
+        "last_modified": "2026-06-16T04:08:00.159824862+00:00",
         "path": "docs/COMMANDS.md",
         "symbol_facts": [],
         "symbols": []
@@ -18587,13 +19052,13 @@
         "symbols": []
       },
       {
-        "content_hash": "7ab53de225c29dcd",
+        "content_hash": "c27d4b35eb7d87f5",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-15T16:55:26.747193800+00:00",
+        "last_modified": "2026-06-16T04:03:05.358131533+00:00",
         "path": "src/db/queries/stats.rs",
         "symbol_facts": [
           {
@@ -18601,8 +19066,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn all_blocked_is_zero_runnable_not_a_divide_by_zero",
-            "line_end": 868,
-            "line_start": 863,
+            "line_end": 873,
+            "line_start": 868,
             "name": "all_blocked_is_zero_runnable_not_a_divide_by_zero",
             "visibility": "private"
           },
@@ -18611,8 +19076,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
-            "line_end": 1078,
-            "line_start": 1036,
+            "line_end": 1083,
+            "line_start": 1041,
             "name": "betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
             "visibility": "private"
           },
@@ -18621,8 +19086,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn compass_marks_directive_vs_recommended",
-            "line_end": 1033,
-            "line_start": 1012,
+            "line_end": 1038,
+            "line_start": 1017,
             "name": "compass_marks_directive_vs_recommended",
             "visibility": "private"
           },
@@ -18631,8 +19096,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn compass_phase_always_has_a_nonempty_queue",
-            "line_end": 1009,
-            "line_start": 968,
+            "line_end": 1014,
+            "line_start": 973,
             "name": "compass_phase_always_has_a_nonempty_queue",
             "visibility": "private"
           },
@@ -18640,8 +19105,8 @@
             "body_hash": "fcd0ef14a098da4d",
             "kind": "fn",
             "label": "fn gs_of",
-            "line_end": 941,
-            "line_start": 929,
+            "line_end": 946,
+            "line_start": 934,
             "name": "gs_of",
             "visibility": "private"
           },
@@ -18649,8 +19114,8 @@
             "body_hash": "cf02064b74bc5043",
             "kind": "fn",
             "label": "fn intent",
-            "line_end": 894,
-            "line_start": 876,
+            "line_end": 899,
+            "line_start": 881,
             "name": "intent",
             "visibility": "private"
           },
@@ -18659,8 +19124,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn no_bridges_leaves_scoring_on_pure_degree",
-            "line_end": 1190,
-            "line_start": 1167,
+            "line_end": 1195,
+            "line_start": 1172,
             "name": "no_bridges_leaves_scoring_on_pure_degree",
             "visibility": "private"
           },
@@ -18668,8 +19133,8 @@
             "body_hash": "c6d4f0b2151b7d0f",
             "kind": "fn",
             "label": "fn phase_of",
-            "line_end": 945,
-            "line_start": 943,
+            "line_end": 950,
+            "line_start": 948,
             "name": "phase_of",
             "visibility": "private"
           },
@@ -18677,8 +19142,8 @@
             "body_hash": "c9ca314a294d8cfa",
             "kind": "fn",
             "label": "fn queue_nonempty_for_phase",
-            "line_end": 965,
-            "line_start": 951,
+            "line_end": 970,
+            "line_start": 956,
             "name": "queue_nonempty_for_phase",
             "visibility": "private"
           },
@@ -18686,8 +19151,8 @@
             "body_hash": "1562a8c2294ec8f9",
             "kind": "fn",
             "label": "fn rel",
-            "line_end": 912,
-            "line_start": 896,
+            "line_end": 917,
+            "line_start": 901,
             "name": "rel",
             "visibility": "private"
           },
@@ -18696,8 +19161,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ripple_bump_decays_with_distance_from_the_stale_frontier",
-            "line_end": 1114,
-            "line_start": 1081,
+            "line_end": 1119,
+            "line_start": 1086,
             "name": "ripple_bump_decays_with_distance_from_the_stale_frontier",
             "visibility": "private"
           },
@@ -18706,8 +19171,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ripple_bump_empty_without_stale_edges",
-            "line_end": 1127,
-            "line_start": 1117,
+            "line_end": 1132,
+            "line_start": 1122,
             "name": "ripple_bump_empty_without_stale_edges",
             "visibility": "private"
           },
@@ -18716,8 +19181,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ripple_elevates_an_edge_near_a_stale_region",
-            "line_end": 1164,
-            "line_start": 1130,
+            "line_end": 1169,
+            "line_start": 1135,
             "name": "ripple_elevates_an_edge_near_a_stale_region",
             "visibility": "private"
           },
@@ -18726,8 +19191,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn runnable_rate_equals_all_up_when_nothing_blocked",
-            "line_end": 860,
-            "line_start": 855,
+            "line_end": 865,
+            "line_start": 860,
             "name": "runnable_rate_equals_all_up_when_nothing_blocked",
             "visibility": "private"
           },
@@ -18736,8 +19201,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn runnable_rate_excludes_blocked_from_the_denominator",
-            "line_end": 852,
-            "line_start": 845,
+            "line_end": 857,
+            "line_start": 850,
             "name": "runnable_rate_excludes_blocked_from_the_denominator",
             "visibility": "private"
           },
@@ -18745,8 +19210,8 @@
             "body_hash": "e6d02bf1bde4f679",
             "kind": "fn",
             "label": "fn snap",
-            "line_end": 927,
-            "line_start": 914,
+            "line_end": 932,
+            "line_start": 919,
             "name": "snap",
             "visibility": "private"
           },
@@ -18754,8 +19219,8 @@
             "body_hash": "e826d43aea01c1c3",
             "kind": "fn",
             "label": "fn val",
-            "line_end": 842,
-            "line_start": 832,
+            "line_end": 847,
+            "line_start": 837,
             "name": "val",
             "visibility": "private"
           },
@@ -18772,16 +19237,16 @@
             "body_hash": "9e0d30f10b043c41",
             "kind": "fn",
             "label": "pub fn blocked_count_and_runnable_rate",
-            "line_end": 792,
-            "line_start": 776,
+            "line_end": 797,
+            "line_start": 781,
             "name": "blocked_count_and_runnable_rate",
             "visibility": "public"
           },
           {
-            "body_hash": "325356b69274c068",
+            "body_hash": "d1b941fc77aef05c",
             "kind": "fn",
             "label": "pub fn completeness_gaps_from_snapshot",
-            "line_end": 712,
+            "line_end": 717,
             "line_start": 645,
             "name": "completeness_gaps_from_snapshot",
             "visibility": "public"
@@ -18799,8 +19264,8 @@
             "body_hash": "7b720628aa4b1777",
             "kind": "fn",
             "label": "pub fn failing_governs_from_snapshot",
-            "line_end": 744,
-            "line_start": 735,
+            "line_end": 749,
+            "line_start": 740,
             "name": "failing_governs_from_snapshot",
             "visibility": "public"
           },
@@ -18817,8 +19282,8 @@
             "body_hash": "671ebc9e5fa0186d",
             "kind": "fn",
             "label": "pub fn intents_without_validations_count_from_snapshot",
-            "line_end": 815,
-            "line_start": 794,
+            "line_end": 820,
+            "line_start": 799,
             "name": "intents_without_validations_count_from_snapshot",
             "visibility": "public"
           },
@@ -18835,8 +19300,8 @@
             "body_hash": "d0a9f24281452d0c",
             "kind": "fn",
             "label": "pub fn recent_passing_from_snapshot",
-            "line_end": 756,
-            "line_start": 746,
+            "line_end": 761,
+            "line_start": 751,
             "name": "recent_passing_from_snapshot",
             "visibility": "public"
           },
@@ -18853,8 +19318,8 @@
             "body_hash": "e7f8f35109f233df",
             "kind": "fn",
             "label": "pub fn tangled_files_from_snapshot",
-            "line_end": 826,
-            "line_start": 817,
+            "line_end": 831,
+            "line_start": 822,
             "name": "tangled_files_from_snapshot",
             "visibility": "public"
           },
@@ -18862,8 +19327,8 @@
             "body_hash": "69796d3d8ebd4194",
             "kind": "fn",
             "label": "pub fn top_intents_by_centrality_from_snapshot",
-            "line_end": 733,
-            "line_start": 714,
+            "line_end": 738,
+            "line_start": 719,
             "name": "top_intents_by_centrality_from_snapshot",
             "visibility": "public"
           },
@@ -18880,8 +19345,8 @@
             "body_hash": "3917fc04d250134f",
             "kind": "fn",
             "label": "pub fn validation_pass_rate_from_snapshot",
-            "line_end": 769,
-            "line_start": 758,
+            "line_end": 774,
+            "line_start": 763,
             "name": "validation_pass_rate_from_snapshot",
             "visibility": "public"
           },
@@ -19126,11 +19591,11 @@
         ]
       },
       {
-        "content_hash": "5ec7400d161bb9b9",
+        "content_hash": "d13c440554171277",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-15T12:45:55.303663133+00:00",
+        "last_modified": "2026-06-16T04:07:42.737920322+00:00",
         "path": "src/cli.rs",
         "symbol_facts": [
           {
@@ -19138,8 +19603,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn clap_tree_is_well_formed",
-            "line_end": 1767,
-            "line_start": 1764,
+            "line_end": 1768,
+            "line_start": 1765,
             "name": "clap_tree_is_well_formed",
             "visibility": "private"
           },
@@ -19157,8 +19622,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn deepest_subcommand_walk_finds_the_failing_command",
-            "line_end": 1811,
-            "line_start": 1796,
+            "line_end": 1812,
+            "line_start": 1797,
             "name": "deepest_subcommand_walk_finds_the_failing_command",
             "visibility": "private"
           },
@@ -19167,8 +19632,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn every_flag_requiring_command_ships_an_example",
-            "line_end": 1849,
-            "line_start": 1819,
+            "line_end": 1850,
+            "line_start": 1820,
             "name": "every_flag_requiring_command_ships_an_example",
             "visibility": "private"
           },
@@ -19177,8 +19642,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent_update_positional_text_is_caught_for_teaching",
-            "line_end": 1864,
-            "line_start": 1854,
+            "line_end": 1865,
+            "line_start": 1855,
             "name": "intent_update_positional_text_is_caught_for_teaching",
             "visibility": "private"
           },
@@ -19187,8 +19652,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn unknown_tokens_parse_into_the_teaching_catchall",
-            "line_end": 1791,
-            "line_start": 1773,
+            "line_end": 1792,
+            "line_start": 1774,
             "name": "unknown_tokens_parse_into_the_teaching_catchall",
             "visibility": "private"
           },
@@ -19205,8 +19670,8 @@
             "body_hash": "ada73bca9c954aa7",
             "kind": "enum",
             "label": "pub enum CodefileCmd",
-            "line_end": 1586,
-            "line_start": 1550,
+            "line_end": 1587,
+            "line_start": 1551,
             "name": "CodefileCmd",
             "visibility": "public"
           },
@@ -19259,8 +19724,8 @@
             "body_hash": "d9d6d66c4f94409e",
             "kind": "enum",
             "label": "pub enum HypothesisCmd",
-            "line_end": 1364,
-            "line_start": 1235,
+            "line_end": 1365,
+            "line_start": 1236,
             "name": "HypothesisCmd",
             "visibility": "public"
           },
@@ -19295,8 +19760,8 @@
             "body_hash": "da9c774157c2f220",
             "kind": "enum",
             "label": "pub enum NoteCmd",
-            "line_end": 1543,
-            "line_start": 1439,
+            "line_end": 1544,
+            "line_start": 1440,
             "name": "NoteCmd",
             "visibility": "public"
           },
@@ -19304,16 +19769,16 @@
             "body_hash": "39b1c0c16b28fd8f",
             "kind": "enum",
             "label": "pub enum PersonaCmd",
-            "line_end": 1755,
-            "line_start": 1689,
+            "line_end": 1756,
+            "line_start": 1690,
             "name": "PersonaCmd",
             "visibility": "public"
           },
           {
-            "body_hash": "982599e0ce443c1e",
+            "body_hash": "ce139cd1ca7bef88",
             "kind": "enum",
             "label": "pub enum RuleCmd",
-            "line_end": 1228,
+            "line_end": 1229,
             "line_start": 1130,
             "name": "RuleCmd",
             "visibility": "public"
@@ -19322,8 +19787,8 @@
             "body_hash": "901d688dcc852bd2",
             "kind": "enum",
             "label": "pub enum SagaCmd",
-            "line_end": 1432,
-            "line_start": 1371,
+            "line_end": 1433,
+            "line_start": 1372,
             "name": "SagaCmd",
             "visibility": "public"
           },
@@ -19349,8 +19814,8 @@
             "body_hash": "5370c17b74afd846",
             "kind": "enum",
             "label": "pub enum ValidationCmd",
-            "line_end": 1682,
-            "line_start": 1593,
+            "line_end": 1683,
+            "line_start": 1594,
             "name": "ValidationCmd",
             "visibility": "public"
           },
@@ -21120,12 +21585,12 @@
         "domain": "cli",
         "id": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "visibility captured at seed time",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:47.456005+00:00",
+        "updated_at": "2026-06-16T04:34:45.704297+00:00",
         "visibility": "internal"
       },
       {
@@ -21433,12 +21898,12 @@
         "domain": "cli",
         "id": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
         "layer": "presentation",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "mockup is contract not realization",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:58:17.041332+00:00",
+        "updated_at": "2026-06-16T04:34:45.849755+00:00",
         "visibility": "internal"
       },
       {
@@ -21554,12 +22019,12 @@
         "domain": "cli",
         "id": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "layer": "presentation",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "UI state coverage via aspect",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:58:17.185021+00:00",
+        "updated_at": "2026-06-16T04:34:45.941987+00:00",
         "visibility": "internal"
       },
       {
@@ -21830,12 +22295,12 @@
         "domain": "cli",
         "id": "656c13fa-afce-4230-b52a-9461c6ec23a1",
         "layer": "presentation",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "visual-confirm user-gated queue",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:58:17.276220+00:00",
+        "updated_at": "2026-06-16T04:34:45.897582+00:00",
         "visibility": "user_visible"
       },
       {
@@ -22004,12 +22469,12 @@
         "domain": "cli",
         "id": "80525ab5-087c-423d-ba64-40f2e06f7726",
         "layer": "presentation",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "reaction-driven mockup loop",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:58:16.952819+00:00",
+        "updated_at": "2026-06-16T04:34:45.801978+00:00",
         "visibility": "user_visible"
       },
       {
@@ -22062,12 +22527,12 @@
         "domain": "analysis",
         "id": "84d78b39-eec3-43c2-8a32-f0fc47df94ea",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "transitive layering-violation detection",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:25.653498+00:00",
+        "updated_at": "2026-06-16T04:34:46.026359+00:00",
         "visibility": "internal"
       },
       {
@@ -22257,12 +22722,12 @@
         "domain": "cli",
         "id": "9d68003d-894b-4bab-83c0-0800395f33f2",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "auto-stub the acceptance validation at the contract stage",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:47.545593+00:00",
+        "updated_at": "2026-06-16T04:34:45.754852+00:00",
         "visibility": "internal"
       },
       {
@@ -22417,12 +22882,12 @@
         "domain": "cli",
         "id": "c4844e43-fd87-46bd-95ba-b2a08970bc2b",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "staged want-to-physical seed ladder",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:57:47.367444+00:00",
+        "updated_at": "2026-06-16T04:34:45.635522+00:00",
         "visibility": "internal"
       },
       {
@@ -22451,12 +22916,12 @@
         "domain": "cli",
         "id": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "UI/UX visual-register seed flow",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:55:54.216608+00:00",
+        "updated_at": "2026-06-16T04:35:17.762325+00:00",
         "visibility": "user_visible"
       },
       {
@@ -22555,12 +23020,12 @@
         "domain": "cli",
         "id": "e21d2c64-f9fa-46c0-aaec-1985efbf8152",
         "layer": "application",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "intent-spectrum seed-flow guidance",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:55:54.186178+00:00",
+        "updated_at": "2026-06-16T04:35:17.748360+00:00",
         "visibility": "user_visible"
       },
       {
@@ -22684,12 +23149,12 @@
         "domain": "cli",
         "id": "fdc5fd60-b655-463b-b1cf-49c85dc4382f",
         "layer": "presentation",
-        "lifecycle": "planned",
+        "lifecycle": "implemented",
         "name": "design-system standards via QualityRule packs",
         "source_refs": [],
         "status": "proposed",
         "tags": [],
-        "updated_at": "2026-06-15T11:58:17.362732+00:00",
+        "updated_at": "2026-06-16T04:34:45.983880+00:00",
         "visibility": "internal"
       },
       {
@@ -22714,6 +23179,16 @@
       }
     ],
     "Note": [
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.941987+00:00",
+        "id": "0003f3f7-2098-4846-a386-81a71d3aec10",
+        "kind": "decision",
+        "target_id": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
       {
         "audience": "",
         "author": "llm:quality",
@@ -22833,6 +23308,16 @@
         "target_id": "gov:40432472-8004-405c-95b9-428c5087179f:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.801978+00:00",
+        "id": "010ded16-0314-4ef6-a5a3-b600072e8dc9",
+        "kind": "decision",
+        "target_id": "80525ab5-087c-423d-ba64-40f2e06f7726",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
       },
       {
         "audience": "",
@@ -23456,6 +23941,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.849755+00:00",
+        "id": "06312ec0-aaea-42ae-abff-f6b3e8402b2d",
+        "kind": "decision",
+        "target_id": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-15T04:52:09.066332+00:00",
         "id": "063551cf-bcd8-4b2a-9ecf-6836d90fa7bc",
@@ -23993,6 +24488,16 @@
         "target_id": "rt:20bf582e-df31-4f96-8b37-6171c38e3478:809761fa-9de9-4b00-b3e4-eda65efb65ab",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.801978+00:00",
+        "id": "0aff58a0-4bb0-4fab-88ea-46895ae8fa79",
+        "kind": "transition",
+        "target_id": "80525ab5-087c-423d-ba64-40f2e06f7726",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -26796,6 +27301,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:35:17.762325+00:00",
+        "id": "21bee508-ff07-4e88-9cc5-7770d3427d8a",
+        "kind": "decision",
+        "target_id": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Rollup: all children (reaction loop, mockup-contract, UI-state, design-system, visual-confirm) built+validated"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T10:15:30.449353+00:00",
         "id": "21d44049-db26-45d7-810f-8b5506ca6c01",
@@ -27196,6 +27711,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.897582+00:00",
+        "id": "246a883e-d890-4336-bf2d-383ec3114254",
+        "kind": "decision",
+        "target_id": "656c13fa-afce-4230-b52a-9461c6ec23a1",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-09T20:24:58.739623+00:00",
         "id": "248c085a-b459-4c6a-af77-55523dc22f70",
@@ -27223,6 +27748,16 @@
         "target_id": "rt:2ddcf18d-9c6c-4205-bf98-81cf7fa7fad6:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:37:25.979426+00:00",
+        "id": "24b092cd-2b4a-4f11-831f-e969061772f4",
+        "kind": "decision",
+        "target_id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
+        "target_kind": "codefile",
+        "text": "Deliberate-for-now coordinator: smells.rs is the single derived-signal engine — each detector is a numbered section over ONE shared snapshot + adjudication helper + SmellReport, so they cohabit by design. The file is now ~3.2k lines; a real future option is extracting detector sections into submodules (track via a hypothesis if it impedes change). Accepted as cohabitation for now."
       },
       {
         "audience": "",
@@ -28033,6 +28568,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:809761fa-9de9-4b00-b3e4-eda65efb65ab",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:35:17.748360+00:00",
+        "id": "2c116454-bc5f-4f11-8066-6816c17d0889",
+        "kind": "transition",
+        "target_id": "e21d2c64-f9fa-46c0-aaec-1985efbf8152",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -30196,6 +30741,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.704297+00:00",
+        "id": "3c2d3a08-866f-4f2e-9fa0-d103f3274a4f",
+        "kind": "decision",
+        "target_id": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "3c39bb63-325d-4dd3-8b03-e330c5d5cf71",
@@ -31823,6 +32378,16 @@
         "target_id": "8a538909-a622-45bd-803b-1d96f4ffd40a",
         "target_kind": "intent",
         "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:37:25.946422+00:00",
+        "id": "4b21d8a0-b954-4e6c-98dc-e75f6411603a",
+        "kind": "decision",
+        "target_id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
+        "target_kind": "codefile",
+        "text": "Deliberate coordinator module: guide.rs hosts every driving-mode playbook (greenfield/brownfield/refactor/port/seed) as one self-teaching surface sharing the render contract and ratchet tests. The seed mode legitimately gained several owners (the seed-flow + visual-register guidance leaves); cohabitation is by design. Split a mode out only if its playbook grows independently complex."
       },
       {
         "audience": "",
@@ -35746,6 +36311,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:35:17.762325+00:00",
+        "id": "6b3c717b-61b5-4a88-aea3-8352b5750ae7",
+        "kind": "transition",
+        "target_id": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T06:01:23.649892+00:00",
         "id": "6b748e5e-3545-4e2a-a2fa-7fd3562240e3",
@@ -36623,6 +37198,16 @@
         "target_id": "gov:25901364-0607-4ca6-bf98-d60ec49d5cce:4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.983880+00:00",
+        "id": "71fa5dec-0afe-411b-82d2-0b4cbbcd1745",
+        "kind": "transition",
+        "target_id": "fdc5fd60-b655-463b-b1cf-49c85dc4382f",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -39006,6 +39591,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.897582+00:00",
+        "id": "8462d6c9-570a-4737-843a-dda87c936bd2",
+        "kind": "transition",
+        "target_id": "656c13fa-afce-4230-b52a-9461c6ec23a1",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T04:07:39.202626+00:00",
         "id": "846903e4-71f3-4a5a-bc82-3279cca7576b",
@@ -39273,6 +39868,16 @@
         "target_id": "gov:25901364-0607-4ca6-bf98-d60ec49d5cce:f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.849755+00:00",
+        "id": "865321ea-ab26-4186-bc91-8ba6818f617f",
+        "kind": "transition",
+        "target_id": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -39937,6 +40542,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-16T04:34:45.635522+00:00",
+        "id": "8cdf3860-c749-4120-be47-4c9018e5714d",
+        "kind": "transition",
+        "target_id": "c4844e43-fd87-46bd-95ba-b2a08970bc2b",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-12T20:38:24.809163+00:00",
         "id": "8cfc1b57-219a-49a3-b02f-f6b88351a778",
         "kind": "transition",
@@ -40473,6 +41088,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:cf0d57d3-60d5-4c28-ad85-91bb448dd945",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/scoring.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-16T04:34:21.787938+00:00",
+        "id": "90d3cef8-7df3-4bc9-8049-a302a92e8a18",
+        "kind": "transition",
+        "target_id": "rt:e287ac20-f7af-44bf-ba45-078a282b8535:f93166ae-30d7-4708-ac50-f202c45cbbed",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -41906,6 +42531,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.941987+00:00",
+        "id": "9ba345af-de1b-4828-a182-1a4e6c8a8719",
+        "kind": "transition",
+        "target_id": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T09:47:55.641199+00:00",
         "id": "9bbc8016-079e-40c7-8222-66b5ad403fd1",
@@ -43303,6 +43938,16 @@
         "target_id": "gov:25901364-0607-4ca6-bf98-d60ec49d5cce:5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:46.026359+00:00",
+        "id": "a59daffa-62b8-4fb8-aefb-f25f9eb918a3",
+        "kind": "transition",
+        "target_id": "84d78b39-eec3-43c2-8a32-f0fc47df94ea",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -48956,6 +49601,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.635522+00:00",
+        "id": "d37627e0-0ed8-4d9f-9c9b-bde45700c086",
+        "kind": "decision",
+        "target_id": "c4844e43-fd87-46bd-95ba-b2a08970bc2b",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-15T04:52:09.904378+00:00",
         "id": "d39091fb-783d-4c61-a7b5-e13aa1e2db15",
@@ -49886,6 +50541,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.704297+00:00",
+        "id": "dc4e2ccc-9771-403d-bf87-3b53b5e55338",
+        "kind": "transition",
+        "target_id": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
+        "target_kind": "intent",
+        "text": "planned → implemented"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T04:07:39.202626+00:00",
         "id": "dc4e89dc-be92-40f3-8c00-e6a136ab8904",
@@ -50083,6 +50748,16 @@
         "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:f93166ae-30d7-4708-ac50-f202c45cbbed",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-16T04:34:21.787938+00:00",
+        "id": "ddc93420-8279-4006-a3ab-d5a9f8ee899b",
+        "kind": "transition",
+        "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:f93166ae-30d7-4708-ac50-f202c45cbbed",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/commands/guide.rs changed)"
       },
       {
         "audience": "",
@@ -50993,6 +51668,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:344b406f-c0db-466f-b987-e30bf44322ab",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.754852+00:00",
+        "id": "e43f412e-cc9c-4f79-b3a6-6ee3b98e0986",
+        "kind": "transition",
+        "target_id": "9d68003d-894b-4bab-83c0-0800395f33f2",
+        "target_kind": "intent",
+        "text": "planned → implemented"
       },
       {
         "audience": "",
@@ -52336,6 +53021,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:35:17.748360+00:00",
+        "id": "ef5e8d52-9d03-49e6-8024-d0b5f6072c86",
+        "kind": "decision",
+        "target_id": "e21d2c64-f9fa-46c0-aaec-1985efbf8152",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Rollup: all children (staged ladder, visibility-at-seed, auto-stub) built+validated"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T10:15:30.449353+00:00",
         "id": "efaecb75-3231-46cc-a2e1-cad0e2c8bee5",
@@ -52827,6 +53522,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-16T04:34:45.754852+00:00",
+        "id": "f452a2b2-37b3-4db9-b13c-b9a82fa663c8",
+        "kind": "decision",
+        "target_id": "9d68003d-894b-4bab-83c0-0800395f33f2",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-11T07:32:21.156013+00:00",
         "id": "f46d6dcb-e3dd-4b4f-8e04-7caffe73618f",
         "kind": "transition",
@@ -52983,6 +53688,16 @@
         "target_id": "2bd1db29-7898-4800-a450-3dc084409197",
         "target_kind": "intent",
         "text": "planned → implemented"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:46.026359+00:00",
+        "id": "f569c05a-b9b1-4e2e-8e0c-4b42ec783f4a",
+        "kind": "decision",
+        "target_id": "84d78b39-eec3-43c2-8a32-f0fc47df94ea",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
       },
       {
         "audience": "",
@@ -53413,6 +54128,16 @@
         "target_id": "rt:bb8ee237-2d84-46ee-b254-c8bc39c16fc1:a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T04:34:45.983880+00:00",
+        "id": "f96fddbd-f3d7-4128-befe-d3dd527d0695",
+        "kind": "decision",
+        "target_id": "fdc5fd60-b655-463b-b1cf-49c85dc4382f",
+        "target_kind": "intent",
+        "text": "lifecycle → implemented: Built+tested this turn; grounded to code, proven by the named cargo test"
       },
       {
         "audience": "",
@@ -54540,12 +55265,30 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test -- ui_state_populated a_loading_only behavioral_happy",
+        "description": "",
+        "id": "07a74797-b808-4802-a375-a00b0889c702",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:58.509388+00:00",
+        "name": "UI state coverage via aspect — tests",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
         "last_result": "not_run",
         "last_run": "",
         "name": "sqlite next all command parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
+        "description": "",
+        "id": "07e81579-bcc9-4dcc-abbe-1209e29295d8",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:46.087973+00:00",
+        "name": "staged want-to-physical seed ladder — tests",
         "validation_type": "test"
       },
       {
@@ -54582,6 +55325,15 @@
         "last_result": "not_run",
         "last_run": "",
         "name": "backend read repository boundary parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test user_gated_work_outranks_build",
+        "description": "",
+        "id": "0e4cf0b7-7405-494f-9edb-c1fa8156a07a",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:57.242897+00:00",
+        "name": "visual-confirm user-gated queue — tests",
         "validation_type": "test"
       },
       {
@@ -54666,6 +55418,15 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test -- ui_packs_carry new_design_system",
+        "description": "",
+        "id": "2bddf34a-c46b-4a86-86f8-fa9329b8b062",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:59.827490+00:00",
+        "name": "design-system standards via QualityRule packs — tests",
+        "validation_type": "test"
+      },
+      {
         "command": "",
         "description": "A production screen whose only artifact is a mockup remains planned and is not counted realized by vertical completeness; a prototype intent IMPLEMENTS-linked to a mockup is counted realized",
         "id": "2cde3957-3c14-47b2-b0d6-dd7783449075",
@@ -54696,8 +55457,8 @@
         "command": "sh -c 'target/debug/loom guide --mode seed | grep \"terminate on completeness\" >/dev/null'",
         "description": "",
         "id": "33dd8b15-98a2-4c21-9a92-1a7df5fa7b10",
-        "last_result": "passed",
-        "last_run": "2026-06-15T04:56:24.351604+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "seed playbook prints and routes",
         "validation_type": "assertion"
       },
@@ -54727,6 +55488,15 @@
         "last_run": "2026-06-11T07:24:47.831126+00:00",
         "name": "hypothesis outcome: incremental coupling index",
         "validation_type": "manual_check"
+      },
+      {
+        "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
+        "description": "",
+        "id": "393f6bbc-574c-4514-8b17-9d9e632e6f4c",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:52.692720+00:00",
+        "name": "auto-stub the acceptance validation at the contract stage — tests",
+        "validation_type": "test"
       },
       {
         "command": "cargo test audience_and_effort",
@@ -54774,6 +55544,15 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test transitive_layering",
+        "description": "",
+        "id": "45a2a8a5-cd35-4ea8-afaf-74579eb9c1f9",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:35:01.209096+00:00",
+        "name": "transitive layering-violation detection — tests",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test build_queue_defers_planned_parents_until_children_done 2>/dev/null",
         "description": "",
         "id": "4bb6ef5a-46a2-4aac-ac17-8807468c996f",
@@ -54786,8 +55565,8 @@
         "command": "./target/debug/loom --help > /dev/null",
         "description": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
-        "last_result": "passed",
-        "last_run": "2026-06-15T13:35:02.192116+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
       },
@@ -54954,6 +55733,15 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
+        "description": "",
+        "id": "8d6665cd-45f5-4ea5-a931-f93d79a195d0",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:54.261518+00:00",
+        "name": "reaction-driven mockup loop — tests",
+        "validation_type": "test"
+      },
+      {
         "command": "",
         "description": "hypothesis:b4d474e7-4a79-4405-ba43-ebd8d1c1ee1f\nPredicted outcome to verify after adoption: status/next/report load each bulk graph slice once per command and the 2000-intent orientation benchmark improves without changing output semantics.",
         "id": "8f660cd7-e7ef-400b-81bd-44e654e8706c",
@@ -54961,6 +55749,15 @@
         "last_run": "2026-06-11T07:24:47.921634+00:00",
         "name": "hypothesis outcome: thread graph-state snapshots",
         "validation_type": "manual_check"
+      },
+      {
+        "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
+        "description": "",
+        "id": "917b971c-e31b-4876-91ec-070e20616b08",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:55.756847+00:00",
+        "name": "mockup is contract not realization — tests",
+        "validation_type": "test"
       },
       {
         "command": "",
@@ -55006,6 +55803,15 @@
         "last_run": "",
         "name": "design-system standards via QualityRule packs — acceptance",
         "validation_type": "manual_check"
+      },
+      {
+        "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
+        "description": "",
+        "id": "a44d8394-1779-42ba-bb86-4502bf9f7220",
+        "last_result": "passed",
+        "last_run": "2026-06-16T04:34:51.381703+00:00",
+        "name": "visibility captured at seed time — tests",
+        "validation_type": "test"
       },
       {
         "command": "cargo test sqlite_find_command_parity",
@@ -55200,8 +56006,8 @@
         "command": "cargo test hypothesis",
         "description": "query-layer regression: hypothesis state machine writes, TARGETS endpoint matching, export/import round trip incl. older exports and --as-planned proof reset",
         "id": "d7cb683e-456e-4b90-a453-30dbbe92b31c",
-        "last_result": "passed",
-        "last_run": "2026-06-15T10:43:41.896826+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "hypothesis plane round trip",
         "validation_type": "test"
       },
