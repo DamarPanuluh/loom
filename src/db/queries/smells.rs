@@ -18,7 +18,7 @@
 
 use anyhow::Result;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 use crate::types::{Hypothesis, Note, TargetsEdge, VocabTerm};
@@ -77,7 +77,7 @@ pub struct Smell {
     /// | undeclared_coupling | layering_violation | recurrent_trouble
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
     /// | hypothesis_accumulation | symbol_accountability_gap | dependency_cycle
-    /// | intent_island
+    /// | intent_island | transitive_layering_violation
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
     pub score: f64,
@@ -331,6 +331,16 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             ],
             avoid: vec!["do not keep both directions as the default; do not 'fix' an uninspected saga round-trip flow as if it were graph-hygiene debt (those edges are never flagged here — only deliberately grounded pairs are)".into()],
             done_when: "the redundant direction is marked independent (or the two intents merged), or a current decision note on the smaller-id intent records why both directions deliberately hold".into(),
+        },
+        "transitive_layering_violation" => SmellTeaching {
+            principle: "The direct layering check exempts unlayered intents, so an illegal up-the-order dependency can hide by routing THROUGH them — every single hop looks clean, but the composed path makes a deeper layer depend on a shallower one. Direction is violated end-to-end even though no one import is.".into(),
+            inspect: vec![
+                "read the path in the evidence — the unlayered intermediate(s) are where the violation hides".into(),
+                "decide: should the intermediate carry a layer (arming the direct check), or is the end-to-end dependency itself wrong?".into(),
+                "fix the real direction (move shared code down / invert), or `loom layer order` the intermediate, or record a deliberate exception on the importing intent".into(),
+            ],
+            avoid: vec!["do not assume an all-clean-hops path is fine — the order is violated across the whole chain; do not silence it by adding a relationship".into()],
+            done_when: "the end-to-end dependency points down (or the intermediate is layered so the direct check governs the hop), or a current decision note on the importing intent justifies it".into(),
         },
         "intent_island" => SmellTeaching {
             principle: "Every intent should reach a system-level purpose through HIERARCHY or RELATES_TO; an island has no such path, so nothing in the graph explains why it exists in this product.".into(),
@@ -1084,6 +1094,159 @@ pub fn compute_smells_from_parts(
                     ),
                     teaching: teaching_for("layering_violation"),
                 });
+            }
+        }
+    }
+
+    // 6c. Transitive layering violation — an up-the-order dependency that is
+    //     CLEAN at every single hop (6b never fires) but illegal across the
+    //     whole path. Because a chain of declared, non-violating hops keeps the
+    //     layer rank non-decreasing, the only way to reach a SHALLOWER layer
+    //     through all-clean hops is to route through UNLAYERED intermediates —
+    //     so this catches exactly what the direct check is blind to.
+    {
+        let layer_rank: HashMap<&str, usize> = inputs
+            .layer_order
+            .iter()
+            .enumerate()
+            .map(|(r, l)| (l.as_str(), r))
+            .collect();
+        if !layer_rank.is_empty() {
+            let layer_of: HashMap<&str, &str> = intents
+                .iter()
+                .map(|i| (i.id.as_str(), i.layer.as_str()))
+                .collect();
+            let rank = |id: &str| layer_of.get(id).and_then(|l| layer_rank.get(*l)).copied();
+            // Intent-level import graph. `adj` keeps only CLEAN hops (a hop a→b
+            // is dropped when both are layered and rank(a) > rank(b) — those are
+            // 6b's). `direct` records every direct import so we never re-report
+            // a direct pair here.
+            let mut adj: HashMap<&str, HashSet<&str>> = HashMap::new();
+            let mut direct: HashSet<(&str, &str)> = HashSet::new();
+            for cf in &snapshot.codefiles {
+                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+                    continue;
+                };
+                for target in &cf.imports {
+                    let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                        continue;
+                    };
+                    for a in owners_a {
+                        for b in owners_b {
+                            if a == b {
+                                continue;
+                            }
+                            direct.insert((*a, *b));
+                            if let (Some(ra), Some(rb)) = (rank(a), rank(b)) {
+                                if ra > rb {
+                                    continue; // directly-violating hop — 6b owns it
+                                }
+                            }
+                            adj.entry(*a).or_default().insert(*b);
+                        }
+                    }
+                }
+            }
+            let mut layered: Vec<&str> = intents
+                .iter()
+                .filter(|i| i.status != "deprecated" && rank(i.id.as_str()).is_some())
+                .map(|i| i.id.as_str())
+                .collect();
+            layered.sort();
+            for &a in &layered {
+                let ra = rank(a).unwrap();
+                // BFS over clean hops from `a`, tracking a parent for one path.
+                let mut parent: HashMap<&str, &str> = HashMap::new();
+                let mut seen: HashSet<&str> = HashSet::new();
+                let mut q: VecDeque<&str> = VecDeque::new();
+                seen.insert(a);
+                q.push_back(a);
+                while let Some(v) = q.pop_front() {
+                    if let Some(nbrs) = adj.get(v) {
+                        let mut ns: Vec<&str> = nbrs.iter().copied().collect();
+                        ns.sort(); // deterministic path reconstruction
+                        for w in ns {
+                            if seen.insert(w) {
+                                parent.insert(w, v);
+                                q.push_back(w);
+                            }
+                        }
+                    }
+                }
+                let mut reached: Vec<&str> = seen.iter().copied().filter(|&c| c != a).collect();
+                reached.sort();
+                for c in reached {
+                    let Some(rc) = rank(c) else {
+                        continue;
+                    };
+                    if rc >= ra || direct.contains(&(a, c)) {
+                        continue; // not a violating direction, or 6b's direct case
+                    }
+                    // Reconstruct the clean path a → … → c (≥1 unlayered hop).
+                    let mut path = vec![c];
+                    let mut cur = c;
+                    while let Some(&p) = parent.get(cur) {
+                        path.push(p);
+                        if p == a {
+                            break;
+                        }
+                        cur = p;
+                    }
+                    path.reverse();
+                    if path.len() < 3 {
+                        continue; // need at least one intermediate
+                    }
+                    let trail = path
+                        .iter()
+                        .map(|id| {
+                            let n = name_of.get(*id).copied().unwrap_or(id);
+                            let l = layer_of.get(*id).copied().unwrap_or("");
+                            if l.is_empty() {
+                                format!("'{n}' (unlayered)")
+                            } else {
+                                format!("'{n}' ({l})")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" → ");
+                    let (na, nc) = (
+                        name_of.get(a).copied().unwrap_or(a),
+                        name_of.get(c).copied().unwrap_or(c),
+                    );
+                    let (la, lc) = (
+                        layer_of.get(a).copied().unwrap_or(""),
+                        layer_of.get(c).copied().unwrap_or(""),
+                    );
+                    let summary = format!(
+                        "'{na}' ({la}) transitively depends on '{nc}' ({lc}) against the declared layer order — clean at every hop"
+                    );
+                    if let Some(note) =
+                        adjudicated(a, newest_grounding.get(a).copied().unwrap_or(""))
+                    {
+                        adjudicated_out.push(AdjudicatedSmell {
+                            kind: "transitive_layering_violation".into(),
+                            summary,
+                            ruling: note.text.clone(),
+                            ruled_by: note.author.clone(),
+                            ruled_at: note.created_at.clone(),
+                            reopens_when: "a new grounding lands on the importing intent".into(),
+                            teaching: teaching_for("transitive_layering_violation"),
+                        });
+                        continue;
+                    }
+                    smells.push(Smell {
+                        kind: "transitive_layering_violation".into(),
+                        score: 6.0 + (path.len() - 2) as f64,
+                        summary,
+                        evidence: format!(
+                            "every hop is clean (6b sees nothing), but the chain routes a deeper layer up to a shallower one through unlayered intermediate(s): {trail}"
+                        ),
+                        remedy: format!(
+                            "fix the END-TO-END direction: whatever '{la}' reaches up to use belongs at or below '{la}' (move it down / extract a lower shared module); OR give the unlayered intermediate(s) a `--layer` so the direct check governs each hop; OR if this up-dependency is DELIBERATE, record it: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` (a new grounding re-opens it)"
+                        ),
+                        teaching: teaching_for("transitive_layering_violation"),
+                    });
+                }
             }
         }
     }
@@ -2985,6 +3148,177 @@ mod cycle_island_tests {
         assert!(
             of_kind(&r, "happy_path_only").is_empty(),
             "loading alone is not a triggering aspect"
+        );
+    }
+}
+
+#[cfg(test)]
+mod transitive_layering_tests {
+    use super::*;
+    use crate::types::{CodeFile, Implements, Intent};
+
+    fn intent(id: &str, layer: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: format!("intent {id}"),
+            description: String::new(),
+            abstraction_level: "component".into(),
+            domain: String::new(),
+            layer: layer.into(),
+            source_refs: Vec::new(),
+            status: "confirmed".into(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: "implemented".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+    fn cf(path: &str, imports: &[&str]) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: imports.iter().map(|s| s.to_string()).collect(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+        }
+    }
+    fn imp(intent: &str, path: &str) -> Implements {
+        Implements {
+            id: format!("imp:{intent}:{path}"),
+            intent_id: intent.into(),
+            codefile_id: path.into(),
+            intent_name: intent.into(),
+            codefile_path: path.into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: String::new(),
+            notes: String::new(),
+            created_at: "t".into(),
+        }
+    }
+    fn report(
+        intents: Vec<Intent>,
+        codefiles: Vec<CodeFile>,
+        implements: Vec<Implements>,
+        order: &[&str],
+    ) -> SmellReport {
+        let snapshot = QuerySnapshot::from_parts(
+            intents,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            implements,
+            codefiles,
+            None,
+        );
+        let order: Vec<String> = order.iter().map(|s| s.to_string()).collect();
+        compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &order,
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap()
+    }
+    fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
+        r.open.iter().filter(|s| s.kind == kind).collect()
+    }
+
+    // storage → (unlayered) → presentation: each hop is exempt, but storage
+    // depending on presentation across the chain violates the order.
+    #[test]
+    fn a_clean_chain_through_an_unlayered_intermediate_is_flagged() {
+        let intents = vec![
+            intent("a", "storage"),
+            intent("m", ""), // unlayered intermediate hides the violation
+            intent("c", "presentation"),
+        ];
+        let codefiles = vec![
+            cf("a.rs", &["m.rs"]),
+            cf("m.rs", &["c.rs"]),
+            cf("c.rs", &[]),
+        ];
+        let implements = vec![imp("a", "a.rs"), imp("m", "m.rs"), imp("c", "c.rs")];
+        let r = report(
+            intents,
+            codefiles,
+            implements,
+            &["presentation", "application", "storage"],
+        );
+        let found = of_kind(&r, "transitive_layering_violation");
+        assert_eq!(
+            found.len(),
+            1,
+            "the masked up-dependency must surface: {found:?}"
+        );
+        assert!(found[0].summary.contains("intent a") && found[0].summary.contains("intent c"));
+        assert!(found[0].evidence.contains("unlayered"));
+        // It is NOT a direct layering_violation (no single hop violates).
+        assert!(of_kind(&r, "layering_violation").is_empty());
+    }
+
+    // All hops point DOWN the order (presentation→application→storage): clean
+    // end-to-end, nothing to flag.
+    #[test]
+    fn a_downward_chain_is_clean() {
+        let intents = vec![
+            intent("a", "presentation"),
+            intent("m", ""),
+            intent("c", "storage"),
+        ];
+        let codefiles = vec![
+            cf("a.rs", &["m.rs"]),
+            cf("m.rs", &["c.rs"]),
+            cf("c.rs", &[]),
+        ];
+        let implements = vec![imp("a", "a.rs"), imp("m", "m.rs"), imp("c", "c.rs")];
+        let r = report(
+            intents,
+            codefiles,
+            implements,
+            &["presentation", "application", "storage"],
+        );
+        assert!(of_kind(&r, "transitive_layering_violation").is_empty());
+    }
+
+    // A DIRECT up-dependency is the direct check's job (6b), not the transitive
+    // one — the transitive detector must not double-report it.
+    #[test]
+    fn a_direct_violation_is_not_double_reported_as_transitive() {
+        let intents = vec![intent("a", "storage"), intent("c", "presentation")];
+        let codefiles = vec![cf("a.rs", &["c.rs"]), cf("c.rs", &[])];
+        let implements = vec![imp("a", "a.rs"), imp("c", "c.rs")];
+        let r = report(
+            intents,
+            codefiles,
+            implements,
+            &["presentation", "application", "storage"],
+        );
+        assert_eq!(
+            of_kind(&r, "layering_violation").len(),
+            1,
+            "direct check fires"
+        );
+        assert!(
+            of_kind(&r, "transitive_layering_violation").is_empty(),
+            "transitive check defers direct pairs to 6b"
         );
     }
 }
