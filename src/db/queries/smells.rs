@@ -275,17 +275,19 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             done_when: "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)".into(),
         },
         "code_clone" => SmellTeaching {
-            principle: "Structurally identical code in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; copy-paste with renamed identifiers in disjoint code has none. It is a SUGGESTION to investigate, not a defect: a clone can be legitimate (generated code, deliberately independent copies that must not be coupled).".into(),
+            principle: "Structurally identical code in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; copy-paste with renamed identifiers in disjoint code has none. It is a SUGGESTION to investigate, not a defect: a clone can be legitimate (generated code, deliberately independent copies that must not be coupled). Detection is not the decision — the same shape_hash flags both a coincidental dispatch shim (leave it) and a real five-copy utility (dedupe it); only reading the code tells them apart.".into(),
             inspect: vec![
                 "read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally similar".into(),
                 "`loom intent show <intent>` / `loom codefile show <path>` to see who owns each copy".into(),
                 "if both copies are owned, `loom edge explore <a> <b>` — a structural clone is evidence for a `duplicated_responsibility` merge".into(),
+                "real dup you are not deduping this pass? capture it as work, not a note: `loom hypothesis add` — the clone is the claim, the shape collapsing to one definition is the predicted outcome; `adopt --spawned` makes it a planned refactor".into(),
             ],
             avoid: vec![
                 "do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist".into(),
                 "do not treat a short similar body as proof; the size floor already filters trivia, but read before merging".into(),
+                "do not bury a real-but-deferred dedupe in a decision note — this advisory is recomputed from code and never reads notes, so the note neither tracks the work nor lowers the count; a hypothesis does both".into(),
             ],
-            done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, or a decision note records why the copies are deliberate (this is advisory — it never gates phase=complete)".into(),
+            done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, a refactor hypothesis tracks a deliberately deferred dedupe, or a decision note marks copies that must stay independent (this is advisory — it never gates phase=complete)".into(),
         },
         "string_contract_duplicate" => SmellTeaching {
             principle: "Repeated user-facing or contract strings drift when each copy becomes its own tiny source of truth. It is a suspicion to answer, not an automatic defect: exact repetition can be deliberate when the words belong to independent surfaces.".into(),
@@ -3206,7 +3208,7 @@ pub fn clone_suggestions(
             summary,
             evidence,
             remedy:
-                "read each copy; if both are owned by intents, `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); if they are unowned or share one owner, dedupe the code or record why the copies are deliberate (`loom note add --file <path> --kind decision --text \"<why these copies are independent>\"`)".into(),
+                "read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. A `--kind decision` note (`loom note add --file <path> --kind decision --text \"<why these copies must stay independent>\"`) only MARKS deliberate copies — this advisory is recomputed from code, so it stays counted until the duplication is actually gone".into(),
             teaching: teaching_for("code_clone"),
         });
     }

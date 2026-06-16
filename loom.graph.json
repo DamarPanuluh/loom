@@ -3185,6 +3185,12 @@
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
       {
+        "created_at": "2026-06-16T20:20:52.512929+00:00",
+        "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "notes": "",
+        "to": "fcf2f089-6dbe-46f0-8296-d50512420ff8"
+      },
+      {
         "created_at": "2026-06-12T04:29:50.866358+00:00",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "notes": "",
@@ -3513,6 +3519,24 @@
         "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "notes": "",
         "to": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b"
+      },
+      {
+        "created_at": "2026-06-16T20:20:52.515562+00:00",
+        "from": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "notes": "",
+        "to": "bf39f175-67f8-4800-844a-68d7b7b34bdc"
+      },
+      {
+        "created_at": "2026-06-16T20:20:52.630084+00:00",
+        "from": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "notes": "",
+        "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
+      },
+      {
+        "created_at": "2026-06-16T20:20:52.626753+00:00",
+        "from": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "notes": "",
+        "to": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4"
       }
     ],
     "IMPLEMENTS": [
@@ -10777,6 +10801,78 @@
     "SERVES": [],
     "TARGETS": [
       {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:15.892551+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "1f673868-272c-48cf-8afd-240aa812414c",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:15.892551+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "1f673868-272c-48cf-8afd-240aa812414c",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:15.948978+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3bfa2d6f-8234-4316-aa81-362431bbe3a1",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "ea9c7e3e-9f95-4d58-ade9-d771fcf50cc3"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:42:59.223374+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3c878754-57c9-4e56-bd31-f0ccc1e3f03f",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "4d16b78b-0ace-4827-b041-f6d5031e16f4"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:15.832999+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "44f0e229-2a0b-4a0e-bd52-2401e3fd4ac2",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "246d039f-08d0-4b01-b194-5917bb3a3a25"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:15.832999+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "44f0e229-2a0b-4a0e-bd52-2401e3fd4ac2",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "e1506d82-8210-4ce8-bee5-322025d7c906"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-11T06:55:14.421589+00:00",
         "criterion": "hypothesis proof establishes whether this target is affected",
@@ -10907,6 +11003,30 @@
         "last_inspected": "2026-06-11T06:55:37.744146+00:00",
         "notes": "stale: src/db/queries/mod.rs changed",
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:42:59.168014+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a11b9aec-b2f2-4584-a01e-5b3910628111",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:42:59.106412+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "a11b9aec-b2f2-4584-a01e-5b3910628111",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "d7d485d7-c342-4c44-a57f-d08f7cf31941"
       },
       {
         "confidence": 0.9,
@@ -11063,6 +11183,54 @@
         "last_inspected": "2026-06-14T10:16:33.370984+00:00",
         "notes": "",
         "to": "be7990bd-7f82-40d9-8064-c72c52c0a04c"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-16T20:20:15.019903+00:00",
+        "criterion": "hypothesis proof establishes whether this target is affected",
+        "evidence": "Read src/saga/spec.rs: Step has name, intent, request, expect, capture; Request has method/url/headers/body, but there is no endpoint/interface identity field beyond raw request data. Read src/commands/saga.rs add_sqlite: saga add creates or updates a Validation(type=saga), VALIDATES edges to step intents, RELATES_TO path edges between consecutive step intents, and registers the YAML as CodeFile; it does not create any node for method/path surfaces or call edges. Read src/db/schema.rs NODE_LABELS and EDGE_TYPES plus src/types.rs ValidationType: graph vocabulary has Intent/CodeFile/QualityRule/Validation/etc. and saga validation, but no Endpoint/Interface/Surface node and no CALLS edge. The claimed query blind spot is real.",
+        "from": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-16T20:20:30.728703+00:00",
+        "notes": "",
+        "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-16T20:20:15.019903+00:00",
+        "criterion": "hypothesis proof establishes whether this target is affected",
+        "evidence": "Read src/saga/spec.rs: Step has name, intent, request, expect, capture; Request has method/url/headers/body, but there is no endpoint/interface identity field beyond raw request data. Read src/commands/saga.rs add_sqlite: saga add creates or updates a Validation(type=saga), VALIDATES edges to step intents, RELATES_TO path edges between consecutive step intents, and registers the YAML as CodeFile; it does not create any node for method/path surfaces or call edges. Read src/db/schema.rs NODE_LABELS and EDGE_TYPES plus src/types.rs ValidationType: graph vocabulary has Intent/CodeFile/QualityRule/Validation/etc. and saga validation, but no Endpoint/Interface/Surface node and no CALLS edge. The claimed query blind spot is real.",
+        "from": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-16T20:20:30.728703+00:00",
+        "notes": "",
+        "to": "4c752ad2-e332-4148-87e2-88340991e2a5"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-16T20:20:15.019903+00:00",
+        "criterion": "hypothesis proof establishes whether this target is affected",
+        "evidence": "Read src/saga/spec.rs: Step has name, intent, request, expect, capture; Request has method/url/headers/body, but there is no endpoint/interface identity field beyond raw request data. Read src/commands/saga.rs add_sqlite: saga add creates or updates a Validation(type=saga), VALIDATES edges to step intents, RELATES_TO path edges between consecutive step intents, and registers the YAML as CodeFile; it does not create any node for method/path surfaces or call edges. Read src/db/schema.rs NODE_LABELS and EDGE_TYPES plus src/types.rs ValidationType: graph vocabulary has Intent/CodeFile/QualityRule/Validation/etc. and saga validation, but no Endpoint/Interface/Surface node and no CALLS edge. The claimed query blind spot is real.",
+        "from": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "inspected_by": "llm:analyzer",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-16T20:20:30.728703+00:00",
+        "notes": "",
+        "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-16T20:26:16.005264+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "fb4bdd5c-88db-4d27-9598-06e1d3af6666",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "ea9c7e3e-9f95-4d58-ade9-d771fcf50cc3"
       }
     ],
     "VALIDATES": [
@@ -11415,6 +11583,34 @@
         "inspection_status": "passing",
         "notes": "Final proof run passed: cargo test (80 tests), cargo build --release, release help/guide/schema/orientation smoke, hostile import fuzz, hypothesis outcome flow smoke, loom doctor --json, loom smells --json, benchmark 500/1000 under 2s, and benchmark 2000/5000 under 5s.",
         "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
+      },
+      {
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "from": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
+        "inspection_status": "uninspected",
+        "notes": "hypothesis outcome proof",
+        "to": "bf39f175-67f8-4800-844a-68d7b7b34bdc"
+      },
+      {
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "from": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
+        "inspection_status": "uninspected",
+        "notes": "hypothesis outcome proof",
+        "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
+      },
+      {
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "from": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
+        "inspection_status": "uninspected",
+        "notes": "hypothesis outcome proof",
+        "to": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4"
+      },
+      {
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "from": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
+        "inspection_status": "uninspected",
+        "notes": "hypothesis outcome proof",
+        "to": "fcf2f089-6dbe-46f0-8296-d50512420ff8"
       },
       {
         "created_at": "2026-06-09T20:29:01.599993+00:00",
@@ -62215,6 +62411,62 @@
     "Delegation": [],
     "Hypothesis": [
       {
+        "author": "llm",
+        "claim": "fn resolve_intent_with_db is duplicated verbatim (55 lines) across src/commands/intent.rs, note.rs, rule.rs, edge.rs, persona.rs and fn resolve_validation_with_db (30 lines) across edge.rs and persona.rs — the id/name/fragment resolution contract, including its ambiguity and not-found teaching messages, is maintained in five-plus places, so any change to that matching or messaging must be applied N times or silently drift",
+        "created_at": "2026-06-16T20:26:15.892551+00:00",
+        "evidence": "",
+        "id": "1f673868-272c-48cf-8afd-240aa812414c",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "command resolvers copy-pasted across modules",
+        "predicted_outcome": "one definition of each resolver; the code_clone groups for resolve_intent_with_db and resolve_validation_with_db collapse to a single location each; ambiguity and not-found CLI messages are byte-identical to today (existing command tests stay green)",
+        "proposal": "extract the shared resolvers into one home (a resolve helper module, or methods on the GraphReadRepository) and have each command delegate to it",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:26:15.892551+00:00"
+      },
+      {
+        "author": "llm",
+        "claim": "fn contains_identifier_word (21 lines) and fn symbol_identifier (7 lines) are duplicated between src/commands/coverage.rs and src/db/queries/symbol_accountability.rs — identical identifier-matching logic copy-pasted across the command/query boundary, so the two views of 'does this symbol match' can drift apart",
+        "created_at": "2026-06-16T20:26:15.948978+00:00",
+        "evidence": "",
+        "id": "3bfa2d6f-8234-4316-aa81-362431bbe3a1",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "symbol-identifier helpers duplicated across layers",
+        "predicted_outcome": "one definition of each helper shared by both call sites; the two code_clone groups for these symbols collapse to one file; coverage's symbol-accountability output is unchanged",
+        "proposal": "lift the shared symbol-identifier matching into the query layer (symbol_accountability.rs or a small shared module) and have coverage.rs call it",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:26:15.948978+00:00"
+      },
+      {
+        "author": "llm",
+        "claim": "a local mutating command auto-refreshes the git-tracked loom.graph.json from the live sqlite, so uncommitted live-graph drift — including doctor-unhealthy edges — silently lands in the committed export without an explicit loom export. Reproduced this session: seeding hypotheses rewrote loom.graph.json and dragged 3 pre-existing leaked-default TARGETS edges into it, breaking the sqlite_regression test, even though HEAD's committed export was clean",
+        "created_at": "2026-06-16T20:42:04.804980+00:00",
+        "evidence": "",
+        "id": "3c878754-57c9-4e56-bd31-f0ccc1e3f03f",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "mutations auto-export and leak live drift into git",
+        "predicted_outcome": "a mutating command leaves loom.graph.json untouched; git status stays clean after pure graph edits until loom export is run explicitly; live-graph drift can no longer reach git without passing loom export --check",
+        "proposal": "make committed-export refresh a deliberate act (loom export / loom export --check), not a side effect of unrelated mutations — matching the portability design where .loom is the local cache and loom.graph.json is committed on purpose; at minimum gate any auto-refresh behind a doctor-clean check so drift cannot reach git silently",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:42:04.804980+00:00"
+      },
+      {
+        "author": "llm",
+        "claim": "the code_clone advisory is computed outside the decision-note ledger — clone_suggestions(snapshot, ignore_patterns) takes no notes — so its remedy's --kind decision note suppresses nothing and tracks nothing; every clone reads as open forever even after a human rules it deliberate, and clones have no node to anchor a ruling to (they are keyed by a shape_hash spanning N files, not an intent/edge/codefile)",
+        "created_at": "2026-06-16T20:26:15.832999+00:00",
+        "evidence": "",
+        "id": "44f0e229-2a0b-4a0e-bd52-2401e3fd4ac2",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "clones carry an adjudicated disposition",
+        "predicted_outcome": "loom smells reports each code_clone's disposition plus a roll-up like 'N clones — D deliberate, H tracked, O open'; a decision note anchored to a clone's shape_hash moves it out of open and re-opens when sync changes that hash; the raw code_clones_total never drops below the number of duplications physically present on disk",
+        "proposal": "thread a clone disposition into clone_suggestions: anchor a ruling to the shape_hash itself (which doubles as the staleness anchor — a changed hash re-opens it automatically), and surface each clone WITH its disposition (open / ruled-deliberate / tracked-by-hypothesis) the same way compute_smells_from surfaces adjudicated gating findings; annotate, never subtract, so the physical-duplication count stays honest",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:26:15.832999+00:00"
+      },
+      {
         "author": "llm:quality",
         "claim": "smells still rebuild import-derived coupling evidence from raw codefile state on each run, so large-graph smell generation repeats adjacency work that changes only after sync.",
         "created_at": "2026-06-11T06:55:14.421589+00:00",
@@ -62271,6 +62523,20 @@
         "updated_at": "2026-06-11T15:16:44.447401+00:00"
       },
       {
+        "author": "llm",
+        "claim": "insert_targets creates every TARGETS edge at confidence 0 (src/db/sqlite.rs:2902) and set_targets_status_for_hypothesis — the only writer loom hypothesis prove uses — updates inspection_status/criterion/evidence but never confidence (src/db/sqlite.rs:2923), so any hypothesis proven under the current code lands its targets at passing/independent with confidence 0.0: the exact 'uninspected default leaked into a verdict' loom doctor forbids (src/db/queries/integrity.rs:432). Older hypotheses escaped only because a prior insert_targets defaulted to 0.9; cb1a109a 'first-class interface surface plane' was the first proven under the new path and tripped doctor — its 3 edges were just hand-repaired to 0.9",
+        "created_at": "2026-06-16T20:42:04.737033+00:00",
+        "evidence": "",
+        "id": "a11b9aec-b2f2-4584-a01e-5b3910628111",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "prove stamps TARGETS verdicts without confidence",
+        "predicted_outcome": "a freshly added then proven hypothesis has its TARGETS edges at the prover's stated confidence, never 0.0; loom doctor stays healthy after any prove; no future loom export trips the sqlite_imported_export_read_surface regression on leaked-default TARGETS edges",
+        "proposal": "make the prove verdict record a real confidence on the TARGETS edges it stamps: add a --confidence flag to loom hypothesis prove (honest prover confidence is the loom ethos, not a hardcoded default) and have set_targets_status_for_hypothesis write it alongside the status",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:42:04.737033+00:00"
+      },
+      {
         "author": "llm:quality",
         "claim": "optional discovery still rebuilds token sets, file ownership, and import adjacency for pair scoring on each command, leaving unexplored pair ranking as the main large-graph cost.",
         "created_at": "2026-06-11T06:52:23.443799+00:00",
@@ -62311,6 +62577,34 @@
         "proposal": "Replace live graph persistence with typed SQLite-backed graph storage behind a backend-neutral repository/query API, while keeping deterministic loom.graph.json as the migration bridge and global-control artifact.",
         "status": "adopted",
         "updated_at": "2026-06-14T10:16:34.353053+00:00"
+      },
+      {
+        "author": "human",
+        "claim": "The current saga model stores HTTP method/path/request details inside saga YAML and Validation records, while the graph has no node for an externally callable surface. As a result Loom cannot directly answer per-endpoint/interface questions such as coverage, implementing code, auth/idempotency rule verdicts, or which journeys call a given surface without reparsing saga specs and inferring from intent bindings.",
+        "created_at": "2026-06-16T20:20:15.019903+00:00",
+        "evidence": "Read src/saga/spec.rs: Step has name, intent, request, expect, capture; Request has method/url/headers/body, but there is no endpoint/interface identity field beyond raw request data. Read src/commands/saga.rs add_sqlite: saga add creates or updates a Validation(type=saga), VALIDATES edges to step intents, RELATES_TO path edges between consecutive step intents, and registers the YAML as CodeFile; it does not create any node for method/path surfaces or call edges. Read src/db/schema.rs NODE_LABELS and EDGE_TYPES plus src/types.rs ValidationType: graph vocabulary has Intent/CodeFile/QualityRule/Validation/etc. and saga validation, but no Endpoint/Interface/Surface node and no CALLS edge. The claimed query blind spot is real.",
+        "id": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "inspected_by": "llm:analyzer",
+        "last_inspected": "2026-06-16T20:20:30.728703+00:00",
+        "name": "first-class interface surface plane",
+        "predicted_outcome": "The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint.",
+        "proposal": "Introduce a first-class external interface surface node, preferably generic enough for http_endpoint, cli_command, rpc_method, and event_topic, then connect sagas to those surfaces through ordered CALLS edges while preserving Intent as the semantic behavior being proven.",
+        "status": "adopted",
+        "updated_at": "2026-06-16T20:20:56.696854+00:00"
+      },
+      {
+        "author": "llm",
+        "claim": "fn push_unique (5 lines: push only if absent) is duplicated between src/repo.rs and src/ts_imports.rs — small, but a genuine cross-module copy of one utility rather than a coincidental shape",
+        "created_at": "2026-06-16T20:26:16.005264+00:00",
+        "evidence": "",
+        "id": "fb4bdd5c-88db-4d27-9598-06e1d3af6666",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "push_unique duplicated across import modules",
+        "predicted_outcome": "either a single definition imported by both modules and the code_clone group collapses to one file, or a recorded deliberate-copies disposition that stops it reading as an open clone",
+        "proposal": "move push_unique to one shared utility location both modules import (or accept it as deliberately local and mark it once the disposition feature from H1 lands)",
+        "status": "proposed",
+        "updated_at": "2026-06-16T20:26:16.005264+00:00"
       }
     ],
     "Ignore": [
@@ -63794,6 +64088,23 @@
         "visibility": ""
       },
       {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "boundary": "",
+        "created_at": "2026-06-16T20:20:46.117275+00:00",
+        "description": "Add the schema/type/export/import vocabulary for a generic interface surface node and a stable call edge, with identity fields that support HTTP endpoints first and leave room for CLI commands, RPC methods, and event topics.",
+        "domain": "db",
+        "id": "bf39f175-67f8-4800-844a-68d7b7b34bdc",
+        "layer": "",
+        "lifecycle": "planned",
+        "name": "interface surface schema vocabulary",
+        "source_refs": [],
+        "status": "proposed",
+        "tags": [],
+        "updated_at": "2026-06-16T20:20:46.117275+00:00",
+        "visibility": "internal"
+      },
+      {
         "abstraction_level": "component",
         "aspect": "happy",
         "boundary": "",
@@ -64074,6 +64385,23 @@
         "abstraction_level": "feature",
         "aspect": "",
         "boundary": "",
+        "created_at": "2026-06-16T20:20:46.190576+00:00",
+        "description": "Expose CLI reads that list and inspect interface surfaces, showing method/path or equivalent identity, owning intent or implementation grounding, saga callers, validation state, and quality-rule verdict coverage.",
+        "domain": "cli",
+        "id": "ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "layer": "",
+        "lifecycle": "planned",
+        "name": "interface surface inspection commands",
+        "source_refs": [],
+        "status": "proposed",
+        "tags": [],
+        "updated_at": "2026-06-16T20:20:46.190576+00:00",
+        "visibility": "user_visible"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "boundary": "",
         "created_at": "2026-06-11T08:42:24.061202+00:00",
         "description": "The YAML saga format: every step names the intent it proves; specs are validated at load (method/JSONPath/json-xor-body) and {{ var }}/{{ env.X }} interpolation resolves vars from initial vars and earlier captures, failing hard on unknown names.",
         "domain": "validation",
@@ -64088,6 +64416,23 @@
         "tags": [],
         "updated_at": "2026-06-11T08:42:24.061202+00:00",
         "visibility": ""
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "boundary": "",
+        "created_at": "2026-06-16T20:20:46.190335+00:00",
+        "description": "During saga add, normalize each step request into an interface surface, resolve or create that surface, and record the ordered call relationship while keeping the step intent binding as the semantic behavior under proof.",
+        "domain": "validation",
+        "id": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4",
+        "layer": "",
+        "lifecycle": "planned",
+        "name": "saga steps resolve interface calls",
+        "source_refs": [],
+        "status": "proposed",
+        "tags": [],
+        "updated_at": "2026-06-16T20:20:46.190335+00:00",
+        "visibility": "user_visible"
       },
       {
         "abstraction_level": "component",
@@ -64124,6 +64469,23 @@
         "tags": [],
         "updated_at": "2026-06-15T10:36:47.219308+00:00",
         "visibility": ""
+      },
+      {
+        "abstraction_level": "component",
+        "aspect": "",
+        "boundary": "",
+        "created_at": "2026-06-16T20:20:46.117273+00:00",
+        "description": "Represent externally callable surfaces as first-class graph nodes so ownership, journey coverage, quality rules, and implementation grounding can address an interface independently of the saga YAML that calls it.",
+        "domain": "validation",
+        "id": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "layer": "",
+        "lifecycle": "planned",
+        "name": "external interface surface plane",
+        "source_refs": [],
+        "status": "proposed",
+        "tags": [],
+        "updated_at": "2026-06-16T20:20:46.117273+00:00",
+        "visibility": "user_visible"
       },
       {
         "abstraction_level": "feature",
@@ -69846,6 +70208,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "2764616f-e299-4403-a36e-1940326af23b",
+        "kind": "decision",
+        "target_id": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4",
+        "target_kind": "intent",
+        "text": "spawned from hypothesis 'first-class interface surface plane' (cb1a109a-5b4d-44ce-98e5-b5cd35ecf783) - predicted outcome (acceptance contract): The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint."
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T07:09:57.928974+00:00",
         "id": "277a983d-465c-400b-9343-ebc1e9a6d23e",
@@ -70943,6 +71315,16 @@
         "target_id": "rt:1adf640a-6a66-452c-8e22-ab4c2e3a98bb:bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/output.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "2f2bf1fb-9deb-4a7c-85bc-e4dc0bc37099",
+        "kind": "decision",
+        "target_id": "bf39f175-67f8-4800-844a-68d7b7b34bdc",
+        "target_kind": "intent",
+        "text": "spawned from hypothesis 'first-class interface surface plane' (cb1a109a-5b4d-44ce-98e5-b5cd35ecf783) - predicted outcome (acceptance contract): The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint."
       },
       {
         "audience": "",
@@ -74337,6 +74719,16 @@
       {
         "audience": "",
         "author": "llm:analyzer",
+        "created_at": "2026-06-16T20:20:30.728703+00:00",
+        "id": "487c0d6f-8217-49ef-80fc-ff7236065dc0",
+        "kind": "transition",
+        "target_id": "tgt:cb1a109a-5b4d-44ce-98e5-b5cd35ecf783:29288a6c-3f0b-4762-a34d-ad4a714b5390",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm:analyzer",
         "created_at": "2026-06-15T04:52:21.538692+00:00",
         "id": "487d5eee-413e-49a6-abd2-e480e7fe4887",
         "kind": "transition",
@@ -76103,6 +76495,16 @@
         "target_id": "rt:c3cc2a54-cf7f-4b47-9f19-677839166343:be7990bd-7f82-40d9-8064-c72c52c0a04c",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "551f003d-c131-4eec-acae-f3868d4c6a75",
+        "kind": "transition",
+        "target_id": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "target_kind": "hypothesis",
+        "text": "supported → adopted"
       },
       {
         "audience": "",
@@ -80346,6 +80748,16 @@
       },
       {
         "audience": "",
+        "author": "llm:analyzer",
+        "created_at": "2026-06-16T20:20:30.728703+00:00",
+        "id": "72af323c-59cb-4d51-afd9-738722c945f9",
+        "kind": "transition",
+        "target_id": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "target_kind": "hypothesis",
+        "text": "proposed → supported"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T13:43:24.706304+00:00",
         "id": "72b2f177-84ea-431f-9c6f-666e5724e877",
@@ -83916,6 +84328,16 @@
       },
       {
         "audience": "",
+        "author": "llm:analyzer",
+        "created_at": "2026-06-16T20:20:30.728703+00:00",
+        "id": "8bd17c26-a247-481b-9f5d-b2342e78fc6e",
+        "kind": "transition",
+        "target_id": "tgt:cb1a109a-5b4d-44ce-98e5-b5cd35ecf783:5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-13T09:53:22.984822+00:00",
         "id": "8bd2fc85-7573-445c-87b1-e19f2c4b4209",
@@ -85423,6 +85845,16 @@
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:20bf582e-df31-4f96-8b37-6171c38e3478",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:26:33.059803+00:00",
+        "id": "94da7f76-19bf-4d07-bcb1-da0ee827ac60",
+        "kind": "decision",
+        "target_id": "246d039f-08d0-4b01-b194-5917bb3a3a25",
+        "target_kind": "intent",
+        "text": "v3: the code_clone ADVISORY remedy + teaching now also emit 'loom hypothesis add' as the third disposition (real dup, deferred → tracked refactor proposal), extending v2's gating-smell coverage to the advisory tier. Unlike the gating smells, code_clone is recomputed from shape_hash and reads no notes, so the routing only files the work — honoring a deliberate-copies ruling on a clone (anchor on shape_hash, annotate-don't-suppress) is tracked separately as hypothesis 'clones carry an adjudicated disposition' (44f0e229)."
       },
       {
         "audience": "",
@@ -87826,6 +88258,16 @@
       },
       {
         "audience": "",
+        "author": "llm:analyzer",
+        "created_at": "2026-06-16T20:20:30.728703+00:00",
+        "id": "a4e49e51-19b9-473e-91ac-d7936a4c402a",
+        "kind": "transition",
+        "target_id": "tgt:cb1a109a-5b4d-44ce-98e5-b5cd35ecf783:4c752ad2-e332-4148-87e2-88340991e2a5",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T06:01:23.649892+00:00",
         "id": "a4faa222-b095-44c0-9603-d131529da657",
@@ -89183,6 +89625,16 @@
         "target_id": "rt:6cc267b6-6052-48bd-b914-674fabe48eee:988027a3-d33a-40c8-8f32-c5140b0d1937",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/codefile.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "ad6a4a76-0b1e-4349-b01a-80d65feaae33",
+        "kind": "decision",
+        "target_id": "ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "target_kind": "intent",
+        "text": "spawned from hypothesis 'first-class interface surface plane' (cb1a109a-5b4d-44ce-98e5-b5cd35ecf783) - predicted outcome (acceptance contract): The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint."
       },
       {
         "audience": "",
@@ -96027,6 +96479,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "defbf0ba-0875-4ed9-9a0e-409c2304bd07",
+        "kind": "decision",
+        "target_id": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "target_kind": "intent",
+        "text": "spawned from hypothesis 'first-class interface surface plane' (cb1a109a-5b4d-44ce-98e5-b5cd35ecf783) - predicted outcome (acceptance contract): The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint."
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:14:25.512916+00:00",
         "id": "defeb975-6634-424a-85ba-f55ebcb969a3",
         "kind": "transition",
@@ -99016,6 +99478,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-16T20:20:56.696854+00:00",
+        "id": "f36cc14a-da39-41ce-9b4e-d160e1f32eab",
+        "kind": "decision",
+        "target_id": "cb1a109a-5b4d-44ce-98e5-b5cd35ecf783",
+        "target_kind": "hypothesis",
+        "text": "adopted: spawned 'external interface surface plane' (fcf2f089-6dbe-46f0-8296-d50512420ff8), 'interface surface schema vocabulary' (bf39f175-67f8-4800-844a-68d7b7b34bdc), 'saga steps resolve interface calls' (f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4), 'interface surface inspection commands' (ebb7441b-bb63-4908-80bf-9c8cefe2c198) - The supported claim shows the current saga-only model cannot answer interface-level ownership, journey coverage, or quality-rule questions; adopt as a planned interface surface plane with schema, saga-binding, and inspection work."
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-16T13:33:42.928258+00:00",
         "id": "f38f7b34-f57f-402b-b766-7c027acaaada",
@@ -101384,6 +101856,15 @@
         "last_run": "2026-06-15T04:56:24.351604+00:00",
         "name": "build-altitude and queue tests",
         "validation_type": "test"
+      },
+      {
+        "command": "",
+        "description": "hypothesis:cb1a109a-5b4d-44ce-98e5-b5cd35ecf783\nPredicted outcome to verify after adoption: The schema/model exposes an interface surface node and CALLS-style edge; saga add registers or resolves HTTP surfaces from each step; saga list/show or a dedicated query can report every surface, its implementing/owning intent, and journey coverage; service quality rules can be verdicted against surfaces without treating a full saga as the endpoint.",
+        "id": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
+        "last_result": "not_run",
+        "last_run": "",
+        "name": "hypothesis outcome: first-class interface surface plane",
+        "validation_type": "manual_check"
       },
       {
         "command": "./target/debug/loom --help > /dev/null",
