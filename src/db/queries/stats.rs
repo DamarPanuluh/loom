@@ -1193,4 +1193,56 @@ mod tests {
         let first = scored[0].1;
         assert!(scored.iter().all(|(_, s)| (*s - first).abs() < 1e-9));
     }
+
+    #[test]
+    fn deferred_intents_are_excluded_from_the_build_queue() {
+        let s = snap(
+            vec![intent("p", "planned"), intent("d", "deferred")],
+            vec![],
+        );
+        let build = build_candidates_from_snapshot(&s);
+        let ids: Vec<&str> = build.iter().map(|b| b.intent.id.as_str()).collect();
+        assert!(ids.contains(&"p"), "planned work is queued");
+        assert!(
+            !ids.contains(&"d"),
+            "a deferred (parked) intent never enters the build queue"
+        );
+    }
+
+    #[test]
+    fn a_deferred_child_does_not_block_parent_rollup() {
+        // A planned parent whose children are implemented OR deferred rolls up —
+        // the parked child is not pending work.
+        let intents = vec![
+            intent("parent", "planned"),
+            intent("done", "implemented"),
+            intent("parked", "deferred"),
+        ];
+        let hierarchy = vec![
+            ("parent".to_string(), "done".to_string()),
+            ("parent".to_string(), "parked".to_string()),
+        ];
+        let s = QuerySnapshot::from_parts(
+            intents,
+            hierarchy,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            None,
+        );
+        let build = build_candidates_from_snapshot(&s);
+        let parent = build
+            .iter()
+            .find(|b| b.intent.id == "parent")
+            .expect("the parent surfaces as a roll-up candidate");
+        assert!(parent.rollup, "a deferred child must not block the roll-up");
+        assert!(
+            !build.iter().any(|b| b.intent.id == "parked"),
+            "the deferred child itself is not queued"
+        );
+    }
 }

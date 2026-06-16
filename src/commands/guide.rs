@@ -92,7 +92,7 @@ const ORCHESTRATION: &[&str] = &[
 /// construction. Single-source is the OCP fix: extend in one place.
 const PERFORMANCE_GUIDANCE: &str = "SQLite is the active embedded graph store: every command opens `.loom/graph.sqlite` directly, uses transactions for multi-step mutations, and exports `loom.graph.json` as the portable review/commit artifact. `loom serve` is retired; there is no daemon to start, drain, or tune.";
 
-const LIFECYCLE_SUMMARY: &str = "Intent.lifecycle is the implementation-work axis: `planned` means designed but not built, `implemented` means grounded in code, and `needs_change` means known work remains. Superseded meanings are retired with `loom intent retire`, which moves the intent to status=deprecated rather than inventing a fourth active lifecycle state.";
+const LIFECYCLE_SUMMARY: &str = "Intent.lifecycle is the implementation-work axis: `planned` means designed but not built, `implemented` means grounded in code, `needs_change` means known work remains, and `deferred` means consciously PARKED — the design is valid and still wanted, just not being built now (e.g. premature for current scale). `deferred` is distinct from retirement: `loom intent retire` (status=deprecated) is for meanings that are SUPERSEDED or out of scope — dead, kept for history — whereas a deferred intent is alive and may resume. Faking deferral as `planned` (it nags the build queue) or as `deprecated` (it isn't superseded) would both be dishonest, which is why deferral earns its own work-axis state. A deferred intent leaves the build queue and never blocks a parent roll-up; resume it with `loom intent mark <id> --lifecycle planned`.";
 
 const LIFECYCLE_STATES: &[(&str, &str, &str)] = &[
     (
@@ -109,6 +109,11 @@ const LIFECYCLE_STATES: &[(&str, &str, &str)] = &[
         "needs_change",
         "Known issue or refactor target; the graph admits work is still needed.",
         "`loom next --mode build`/fixer work repairs it, then `loom intent mark <id> --lifecycle implemented` closes the implementation loop.",
+    ),
+    (
+        "deferred",
+        "Consciously parked: the design is valid and still wanted, but not being built now (e.g. premature for current scale). Distinct from retire (superseded/deprecated) — deferred is alive, just not active work.",
+        "Out of the build queue and never blocks a parent roll-up; the deferral rationale belongs in a `loom note add --kind decision`. Resume with `loom intent mark <id> --lifecycle planned`.",
     ),
 ];
 
@@ -127,6 +132,11 @@ const LIFECYCLE_TRANSITIONS: &[(&str, &str, &str)] = &[
         "repair",
         "implemented -> needs_change -> implemented",
         "Use `loom intent mark ... --lifecycle needs_change --reason ...` for known issues; fix, re-ground, and mark implemented.",
+    ),
+    (
+        "defer_or_resume",
+        "planned <-> deferred",
+        "`loom intent mark ... --lifecycle deferred --reason ...` parks valid-but-not-now work (record the why in a decision note); `--lifecycle planned` resumes it. Distinct from retire, which is for superseded design.",
     ),
     (
         "meaning_change",
@@ -642,7 +652,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             state_names,
-            vec!["planned", "implemented", "needs_change"],
+            vec!["planned", "implemented", "needs_change", "deferred"],
             "guide must teach every active implementation lifecycle state in schema order"
         );
 

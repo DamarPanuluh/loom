@@ -161,7 +161,7 @@ fn teach_unknown(tokens: &[String]) -> Result<()> {
         ),
         "mark" => anyhow::bail!(
             "`mark` lives under its noun:\n  \
-             loom intent mark {arg} --lifecycle planned|implemented|needs_change [--reason \"<why>\"]\n  \
+             loom intent mark {arg} --lifecycle planned|implemented|needs_change|deferred [--reason \"<why>\"]\n  \
              loom validation mark <id> --result passed|failed|blocked [--reason \"<why>\"]"
         ),
         "verdict" => anyhow::bail!(

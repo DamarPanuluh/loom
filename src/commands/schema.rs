@@ -99,7 +99,7 @@ pub fn run(printer: &Printer) -> Result<()> {
             "values": ["feature", "component", "system", "cross_cutting"],
             "granularity": "system: 1–3 per repo (the product's purpose) · component: 5–15 (cohesive subsystems) · feature: many, ATOMIC — independently verifiable · cross_cutting: spans everything. Test: one falsifiable criterion per intent; a description needing 'and' is several intents.",
         },
-        "lifecycle": ["planned", "implemented", "needs_change"],
+        "lifecycle": ["planned", "implemented", "needs_change", "deferred"],
         "lifecycle_model": {
             "active_states": {
                 "planned": "designed promise, not expected to be grounded in current code yet",
@@ -198,7 +198,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  abstraction_level: feature | component | system | cross_cutting");
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
-    println!("  lifecycle:         planned | implemented | needs_change");
+    println!("  lifecycle:         planned | implemented | needs_change | deferred");
     println!("                     retired/superseded intents use status=deprecated via `loom intent retire`, not a fourth active lifecycle state");
     println!("                     porting with `import --as-planned` resets incoming work to planned design");
     println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");

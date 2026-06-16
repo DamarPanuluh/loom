@@ -124,7 +124,7 @@ loom next [--mode discovery|fix|build|validate|quality|review|prove|align] [--ta
   No second lookup needed. LLM can act immediately.
 
 loom intent add --name --description --level [--domain] [--layer] [--source ...]
-loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change] [--tag <term> ...] [--visibility user_visible|internal]
+loom intent add ... [--aspect happy|sad|fallback|…] [--lifecycle planned|implemented|needs_change|deferred] [--tag <term> ...] [--visibility user_visible|internal]
   --domain = product/business facet (auth, billing) — discovery/scoring, NO
   layering effect. --layer = ARCHITECTURE layer (presentation, application,
   storage) — the input `loom layer order` ranks and `layering_violation` reads
@@ -153,7 +153,7 @@ loom intent update <id> [--name "<new>"] [--description "<new>"] [--reword] --re
   Lifecycle is NOT auto-flipped — the staled IMPLEMENTS routes the honest
   question through the fix queue instead of faking a needs_change verdict.
   Builder lane.
-loom intent mark <id> --lifecycle planned|implemented|needs_change [--reason "<why>"]
+loom intent mark <id> --lifecycle planned|implemented|needs_change|deferred [--reason "<why>"]
   Set the prescriptive lifecycle. needs_change = a known issue/refactor (honest,
   no faked verdict); --reason is recorded as a note. Feeds `loom next --mode build`.
 loom intent delete <id>          (remove a mistake: node + its edges + notes)

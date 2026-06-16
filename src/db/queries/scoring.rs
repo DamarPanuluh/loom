@@ -212,6 +212,8 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
     }
     let mut pending: Vec<(&Intent, f64, bool)> = Vec::new();
     for intent in &snapshot.intents {
+        // `deferred` (and `implemented`) fall through here: a parked intent is
+        // never served by the build queue.
         let urgency = match intent.lifecycle.as_str() {
             "needs_change" => 4.0,
             "planned" => 2.0,
@@ -221,6 +223,10 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
         let mut rollup = false;
         if intent.lifecycle == "planned" {
             if let Some(kids) = kids {
+                // Only planned/needs_change children are PENDING work. A
+                // `deferred` child is consciously parked, so it does NOT hold
+                // the parent open — the parent rolls up once its active children
+                // are all implemented.
                 let pending_child = kids.iter().any(|c| {
                     matches!(
                         lifecycle_of.get(c.as_str()),

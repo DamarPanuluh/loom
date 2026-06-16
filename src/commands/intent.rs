@@ -644,6 +644,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                 "implemented" => {
                     "if this leaf is fully grounded, prove it: `loom next --mode validate`"
                 }
+                "deferred" => {
+                    "parked: out of the build queue and never blocks a roll-up. Record WHY with `loom note add --intent <id> --kind decision`; resume with `--lifecycle planned`."
+                }
                 _ => "`loom next` serves the next item",
             };
             if printer.json {

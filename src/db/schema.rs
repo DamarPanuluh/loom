@@ -63,7 +63,13 @@
 ///
 /// v8: `CodeFile.symbol_facts` records rich symbol metadata for accountability
 /// diagnostics. It is additive and not required for doctor green.
-pub const SCHEMA_VERSION: &str = "8";
+///
+/// v9: `Intent.lifecycle` gains a fourth state, `deferred` — work consciously
+/// PARKED (the design is valid and still wanted, just not being built now),
+/// distinct from `retire`'s `status=deprecated` (superseded/out of scope). The
+/// `lifecycle` CHECK widens to admit it; additive, and old graphs upgrade by
+/// the usual export → re-init → import path.
+pub const SCHEMA_VERSION: &str = "9";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
 /// LLM knows which fields are lists (native since v5) or numbers without
@@ -245,7 +251,8 @@ pub mod prop {
     /// UI-state (populated | empty | loading | error). Open vocabulary —
     /// anything is allowed; empty = unspecified.
     pub const ASPECT: &str = "aspect";
-    /// Intent: implementation lifecycle — planned | implemented | needs_change.
+    /// Intent: implementation lifecycle — planned | implemented | needs_change
+    /// | deferred (consciously parked; not building now, not superseded).
     /// The prescriptive axis (does the code need to be built/changed?), distinct
     /// from `status` (is this a valid intent?).
     pub const LIFECYCLE: &str = "lifecycle";

@@ -364,7 +364,11 @@ impl SqliteGraphStore {
                 last_synced, transition_cap, layer_order
              ) VALUES(1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
-                str_top(data, "schema_version"),
+                // Stamp the ACTIVE schema version, not the export's: the data is
+                // normalized into THIS loom's schema on import, so an older
+                // export upgrades to the current version instead of carrying a
+                // stale one (which would trip the doctor version check).
+                crate::db::schema::SCHEMA_VERSION,
                 str_top(data, "graph_id"),
                 str_top(data, "graph_name"),
                 str_top(data, "custody"),
@@ -4018,7 +4022,7 @@ CREATE TABLE IF NOT EXISTS intent(
   source_refs TEXT NOT NULL CHECK(json_valid(source_refs)),
   status TEXT NOT NULL,
   aspect TEXT NOT NULL DEFAULT '',
-  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change')),
+  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   tags TEXT NOT NULL CHECK(json_valid(tags)),
@@ -4441,6 +4445,12 @@ fn symbol_facts(raw: &str) -> Result<Vec<SymbolFact>> {
 
 #[cfg(test)]
 pub fn normalized_for_semantic_compare(mut value: JsonValue) -> JsonValue {
+    // schema_version is metadata that import legitimately upgrades to the active
+    // version — it is not part of the SEMANTIC graph, so a round-trip that
+    // upgrades an older export is still faithful. Exclude it from the compare.
+    if let JsonValue::Object(map) = &mut value {
+        map.remove("schema_version");
+    }
     normalize_lists(&mut value);
     value
 }

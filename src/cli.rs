@@ -716,15 +716,17 @@ pub enum IntentCmd {
         extra: Vec<String>,
     },
 
-    /// Set an intent's lifecycle (planned | implemented | needs_change). Use
-    /// needs_change to flag a known issue/refactor without faking a verdict.
+    /// Set an intent's lifecycle (planned | implemented | needs_change |
+    /// deferred). Use needs_change to flag a known issue/refactor without faking
+    /// a verdict; use deferred to PARK valid-but-not-now work (out of the build
+    /// queue, never blocks a roll-up) — distinct from retire (superseded).
     #[command(after_help = "EXAMPLE:\n  \
         loom intent mark \"request routing\" --lifecycle needs_change \\\n    \
           --reason \"routing table rebuilt on every call — known hotspot\"")]
     Mark {
         id: String,
 
-        /// New lifecycle: planned | implemented | needs_change
+        /// New lifecycle: planned | implemented | needs_change | deferred
         #[arg(long)]
         lifecycle: String,
 

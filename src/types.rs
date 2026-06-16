@@ -358,6 +358,12 @@ pub enum LifecycleState {
     /// Code exists but must change (refactor / known issue). The criterion
     /// describes the desired end state; notes hold the rationale.
     NeedsChange,
+    /// Consciously PARKED: the design is valid and still wanted, but not being
+    /// built now (e.g. premature for current scale). Out of the build queue and
+    /// never blocks a parent roll-up; resume with `--lifecycle planned`. Distinct
+    /// from retire (status=deprecated), which is for SUPERSEDED/out-of-scope
+    /// design — deferred is alive, just not active work.
+    Deferred,
 }
 
 impl std::fmt::Display for LifecycleState {
@@ -366,6 +372,7 @@ impl std::fmt::Display for LifecycleState {
             Self::Planned => "planned",
             Self::Implemented => "implemented",
             Self::NeedsChange => "needs_change",
+            Self::Deferred => "deferred",
         };
         write!(f, "{s}")
     }
@@ -378,8 +385,9 @@ impl std::str::FromStr for LifecycleState {
             "planned" => Ok(Self::Planned),
             "implemented" => Ok(Self::Implemented),
             "needs_change" => Ok(Self::NeedsChange),
+            "deferred" => Ok(Self::Deferred),
             other => anyhow::bail!(
-                "Unknown lifecycle '{}'. Valid: planned, implemented, needs_change",
+                "Unknown lifecycle '{}'. Valid: planned, implemented, needs_change, deferred",
                 other
             ),
         }
@@ -489,7 +497,7 @@ pub struct Intent {
     /// intents from older graphs (reads as "").
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub boundary: String,
-    /// Implementation lifecycle: planned | implemented | needs_change.
+    /// Implementation lifecycle: planned | implemented | needs_change | deferred.
     pub lifecycle: String,
     pub created_at: String,
     pub updated_at: String,
