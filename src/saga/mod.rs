@@ -14,6 +14,7 @@
 //! an ordinary command-based Validation. Pure Rust by design (reqwest on
 //! rustls + serde_json_path) — no libcurl, loom stays one static binary.
 
+pub mod diagnose;
 pub mod runner;
 pub mod spec;
 

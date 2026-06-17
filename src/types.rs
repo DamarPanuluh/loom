@@ -747,9 +747,9 @@ pub struct InboxItem {
     pub raw_text: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub normalized_claim: String,
-    /// observation | user_request | bug_suspicion | refactor_suspicion |
-    /// missing_intent | missing_validation | missing_story | terminology |
-    /// rough_edge | external_blocker | question
+    /// observation | user_request | feature_proposal | bug_suspicion |
+    /// refactor_suspicion | missing_intent | missing_validation |
+    /// missing_story | terminology | rough_edge | external_blocker | question
     pub kind: String,
     /// new | triaged | routed | rejected | deferred | duplicate
     pub status: String,

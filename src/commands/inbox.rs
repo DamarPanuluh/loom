@@ -16,6 +16,7 @@ use crate::types::InboxItem;
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
     "user_request",
+    "feature_proposal",
     "bug_suspicion",
     "refactor_suspicion",
     "missing_intent",
@@ -61,7 +62,7 @@ pub const INBOX_ROUTE_KINDS: &[&str] = &[
 const ROUTE_MENU: &[(&str, &str, &str)] = &[
     (
         "new desired behavior",
-        "intent",
+        "feature_proposal → intent",
         "loom intent add --name … --description … --level feature --lifecycle planned …",
     ),
     (

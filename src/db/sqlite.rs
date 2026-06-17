@@ -4529,7 +4529,7 @@ CREATE TABLE IF NOT EXISTS inbox_item(
   raw_text TEXT NOT NULL,
   normalized_claim TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL CHECK(kind IN (
-    'observation','user_request','bug_suspicion','refactor_suspicion',
+    'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
     'missing_intent','missing_validation','missing_story','terminology',
     'rough_edge','external_blocker','question'
   )),
@@ -4691,6 +4691,7 @@ impl SqliteGraphStore {
     fn create_schema(&self) -> Result<()> {
         self.conn.execute_batch(create_table_batch())?;
         self.ensure_meta_columns()?;
+        self.ensure_inbox_feature_proposal_kind()?;
         Ok(())
     }
 
@@ -4707,6 +4708,66 @@ impl SqliteGraphStore {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    fn ensure_inbox_feature_proposal_kind(&self) -> Result<()> {
+        let create_sql: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'inbox_item'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?;
+        if match create_sql.as_deref() {
+            None => true,
+            Some(sql) => sql.contains("'feature_proposal'"),
+        } {
+            return Ok(());
+        }
+
+        self.conn.execute_batch(
+            r#"
+ALTER TABLE inbox_item RENAME TO inbox_item_old;
+CREATE TABLE inbox_item(
+  id TEXT PRIMARY KEY,
+  raw_text TEXT NOT NULL,
+  normalized_claim TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL CHECK(kind IN (
+    'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
+    'missing_intent','missing_validation','missing_story','terminology',
+    'rough_edge','external_blocker','question'
+  )),
+  status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),
+  source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),
+  author TEXT NOT NULL,
+  tags TEXT NOT NULL CHECK(json_valid(tags)),
+  links TEXT NOT NULL CHECK(json_valid(links)),
+  route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (
+    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','answer','none',''
+  )),
+  route_command TEXT NOT NULL DEFAULT '',
+  route_target_kind TEXT NOT NULL DEFAULT '',
+  route_target_id TEXT NOT NULL DEFAULT '',
+  resolution TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+INSERT INTO inbox_item(
+  id, raw_text, normalized_claim, kind, status, source, author, tags, links,
+  route_kind, route_command, route_target_kind, route_target_id, resolution,
+  created_at, updated_at
+)
+SELECT
+  id, raw_text, normalized_claim, kind, status, source, author, tags, links,
+  route_kind, route_command, route_target_kind, route_target_id, resolution,
+  created_at, updated_at
+FROM inbox_item_old;
+DROP TABLE inbox_item_old;
+CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
+"#,
+        )?;
         Ok(())
     }
 }

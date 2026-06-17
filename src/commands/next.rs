@@ -1478,7 +1478,8 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
                 .iter()
                 .find(|v| v.validation_type == "saga")
                 .map(|v| format!(
-                    "\nA saga proof is linked — run it directly for step-level output: loom saga run {}",
+                    "\nA saga proof is linked — triage failures without stamping via `loom saga diagnose {}`, then stamp proof with `loom saga run {}`.",
+                    v.name,
                     v.name
                 ))
                 .unwrap_or_default();

@@ -21,6 +21,7 @@ use uuid::Uuid;
 use crate::cli::SagaCmd;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
+use crate::saga::diagnose::{diagnose_missing_env, diagnose_report, SagaDiagnosis};
 use crate::saga::spec::{load_spec_file, SagaSpec};
 use crate::saga::{run_saga, SagaRunReport};
 use crate::types::{CodeFile, Intent, Validation};
@@ -33,6 +34,7 @@ pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
             under,
         } => add_sqlite(&file, spawn_missing, under.as_deref(), printer),
         SagaCmd::Run { saga } => execute_sqlite(&saga, printer),
+        SagaCmd::Diagnose { saga } => diagnose_sqlite(&saga, printer),
         SagaCmd::List => list(printer),
     }
 }
@@ -280,30 +282,7 @@ fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
     ensure_initialized(&cwd)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
 
-    let rel = if cwd.join(arg).is_file() || std::path::Path::new(arg).is_file() {
-        relative_to_root(arg, &cwd)?
-    } else {
-        let validation = resolve_validation_sqlite(&store, arg)?;
-        if validation.validation_type != "saga" {
-            anyhow::bail!(
-                "'{}' is a {} validation, not a saga. Run it via `loom validate <intent>`.",
-                validation.name,
-                validation.validation_type
-            );
-        }
-        let recorded = spec_path_of(&validation).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Saga validation '{}' has no `spec:` line in its description — re-register it: `loom saga add <file>`.",
-                validation.name
-            )
-        })?;
-        relative_to_root(&recorded, &cwd).with_context(|| {
-            format!(
-                "Saga validation '{}' records spec path '{}'. Re-register it with `loom saga add <file>` using a file under the graph root.",
-                validation.name, recorded
-            )
-        })?
-    };
+    let rel = resolve_saga_spec_arg(&store, arg, &cwd)?;
     let spec = load_spec_file(&cwd.join(&rel))?;
     let validation = store
         .list_validations()?
@@ -392,6 +371,117 @@ fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
     if !report.passed {
         std::process::exit(1);
     }
+    Ok(())
+}
+
+fn diagnose_sqlite(arg: &str, printer: &Printer) -> Result<()> {
+    crate::gate::acting_in_lane(&crate::gate::lane::RUN_SAGA, None)?;
+    let cwd = crate::db::resolve_root()?;
+    ensure_initialized(&cwd)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+
+    let rel = resolve_saga_spec_arg(&store, arg, &cwd)?;
+    let spec = load_spec_file(&cwd.join(&rel))?;
+    let missing = crate::saga::spec::missing_env(&spec);
+    if !missing.is_empty() {
+        let diagnosis = diagnose_missing_env(&spec, &missing, run_invocation(&spec.saga, &missing));
+        print_diagnosis_sqlite(&diagnosis, &store, printer)?;
+        std::process::exit(1);
+    }
+
+    drop(store);
+    let report = run_saga(&spec)?;
+    let diagnosis = diagnose_report(&spec, &report);
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    print_diagnosis_sqlite(&diagnosis, &store, printer)?;
+    if !diagnosis.passed {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn print_diagnosis_sqlite(
+    diagnosis: &SagaDiagnosis,
+    store: &crate::db::sqlite::SqliteGraphStore,
+    printer: &Printer,
+) -> Result<()> {
+    let next_step = if diagnosis.passed {
+        "`loom saga run <saga>` can stamp the passing proof if this was only a diagnosis run"
+            .to_string()
+    } else {
+        "fix the first failed root cause, then rerun `loom saga diagnose` or `loom saga run`"
+            .to_string()
+    };
+    if printer.json {
+        printer.print_json(&crate::output::with_read_anchor(
+            serde_json::json!({
+                "status": if diagnosis.passed { "passed" } else { "failed" },
+                "diagnosis": diagnosis,
+            }),
+            store,
+            &next_step,
+        )?);
+        return Ok(());
+    }
+
+    println!(
+        "── Saga: {} ─────────────────────────────────────────",
+        diagnosis.saga
+    );
+    for step in &diagnosis.steps {
+        match step.outcome.as_str() {
+            "passed" => println!(
+                "  Step {} ✓ ({} {}) — {}",
+                step.step, step.method, step.url, step.detail
+            ),
+            "skipped" => {
+                println!("  Step {} ⊘ (skipped)", step.step);
+                if let Some(root) = &step.root_cause {
+                    println!("    Root cause: {}", root.title);
+                    for field in &root.fields {
+                        println!("      {:<12} {}", format!("{}:", field.name), field.value);
+                    }
+                    println!("      {:<12} {}", "Fix:", root.fix);
+                }
+            }
+            _ => {
+                let status = step
+                    .http_status
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "no response".to_string());
+                println!("  Step {} ✗ ({status})", step.step);
+                if let Some(root) = &step.root_cause {
+                    println!();
+                    println!("  Root cause: {}", root.title);
+                    for field in &root.fields {
+                        println!("    {:<14} {}", format!("{}:", field.name), field.value);
+                    }
+                    println!("    {:<14} {}", "Fix:", root.fix);
+                } else {
+                    println!("    {}", step.detail);
+                }
+            }
+        }
+    }
+    println!();
+    println!("── Summary ─────────────────────────────────────────");
+    println!("  {} saga diagnosed", diagnosis.summary.diagnosed_sagas);
+    println!("  Failed:        {}", diagnosis.summary.failed);
+    println!("  Passed:        {}", diagnosis.summary.passed);
+    println!("  Skipped steps: {}", diagnosis.summary.skipped_steps);
+    for item in &diagnosis.summary.by_kind {
+        println!("  {:<14} {}", format!("{}:", item.kind), item.count);
+    }
+    if !diagnosis.summary.suggested_order.is_empty() {
+        println!(
+            "  Suggested order: {}",
+            diagnosis.summary.suggested_order.join(" → ")
+        );
+    }
+    println!("  → Next: {next_step}");
+    let snapshot = store.query_snapshot()?;
+    let graph_state = store.graph_state(&snapshot)?;
+    println!("  {}", crate::output::fmt_pulse(&graph_state));
     Ok(())
 }
 
@@ -569,6 +659,36 @@ fn resolve_validation_sqlite(
             subs.len()
         ),
     }
+}
+
+fn resolve_saga_spec_arg(
+    store: &crate::db::sqlite::SqliteGraphStore,
+    arg: &str,
+    cwd: &std::path::Path,
+) -> Result<String> {
+    if cwd.join(arg).is_file() || std::path::Path::new(arg).is_file() {
+        return relative_to_root(arg, cwd);
+    }
+    let validation = resolve_validation_sqlite(store, arg)?;
+    if validation.validation_type != "saga" {
+        anyhow::bail!(
+            "'{}' is a {} validation, not a saga. Run it via `loom validate <intent>`.",
+            validation.name,
+            validation.validation_type
+        );
+    }
+    let recorded = spec_path_of(&validation).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Saga validation '{}' has no `spec:` line in its description — re-register it: `loom saga add <file>`.",
+            validation.name
+        )
+    })?;
+    relative_to_root(&recorded, cwd).with_context(|| {
+        format!(
+            "Saga validation '{}' records spec path '{}'. Re-register it with `loom saga add <file>` using a file under the graph root.",
+            validation.name, recorded
+        )
+    })
 }
 
 fn resolve_step_intents_sqlite(

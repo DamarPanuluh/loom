@@ -467,7 +467,10 @@ fn run_journey_with_sqlite(
     let validation_id = resolve_validation_with_db(&store, &saga_key)?;
     let now = chrono::Utc::now().to_rfc3339();
     let edge = store.get_or_create_journeys(&persona_id, &validation_id, &now)?;
-    let next_step = format!("Run the saga: loom saga run {}", edge.validation_name);
+    let next_step = format!(
+        "Diagnose if needed: loom saga diagnose {}; stamp proof: loom saga run {}",
+        edge.validation_name, edge.validation_name
+    );
     if printer.json {
         let v = with_read_anchor(serde_json::to_value(&edge)?, &store, &next_step)?;
         printer.print_json(&v);

@@ -236,6 +236,7 @@ loom validate <intent-id> | --all
   proofs keep their recorded reason and stay out.
 
 loom saga add <spec.yaml> [--spawn-missing [--under <parent>]]
+loom saga diagnose <name|spec.yaml>
 loom saga run <name|spec.yaml>
 loom saga list
   THE CONSUMER PLANE: an external-consumer proof — an ordered chain of endpoint
@@ -279,6 +280,12 @@ loom saga list
   RELATES_TO path edges between consecutive step intents (uninspected — green
   is earned by running) + the spec registered as a CodeFile (it travels in the
   export, counts in coverage). Idempotent; re-add after editing reconciles.
+  `diagnose` executes the same saga without stamping graph verdicts and
+  returns a structured root-cause readout for common triage failures: missing
+  env, unexpanded templates, auth-like 401/403, 404/resource misses,
+  body/status mismatches, request failures, and skipped dependent steps. Use it
+  before `run` when you are bringing up a live target or investigating a
+  failure; use `run` when you are ready to stamp proof evidence into the graph.
   `run` executes (DB closed while HTTP runs, same lock discipline as
   `loom validate`) and translates outcomes into graph verdicts — the failure
   semantics: consecutive steps that BOTH passed → their RELATES_TO edge goes

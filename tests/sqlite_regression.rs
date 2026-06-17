@@ -54,6 +54,7 @@ fn run_json_as(cwd: &Path, args: &[&str], agent: &str) -> Value {
         .current_dir(cwd)
         .env("LOOM_AGENT", agent)
         .env_remove("LOOM_GRAPH")
+        .env_remove("LOOM_DIAGNOSE_MISSING_BASE")
         .output()
         .unwrap_or_else(|err| panic!("failed to run loom {args:?}: {err}"));
 
@@ -72,6 +73,34 @@ fn run_json_as(cwd: &Path, args: &[&str], agent: &str) -> Value {
             "loom {:?} emitted invalid JSON: {err}\nstdout:\n{}",
             args,
             String::from_utf8_lossy(&output.stdout)
+        )
+    })
+}
+
+fn run_json_failure_as(cwd: &Path, args: &[&str], agent: &str) -> Value {
+    let output = Command::new(loom_bin())
+        .args(args)
+        .current_dir(cwd)
+        .env("LOOM_AGENT", agent)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .unwrap_or_else(|err| panic!("failed to run loom {args:?}: {err}"));
+
+    if output.status.success() {
+        panic!(
+            "loom {:?} unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
+            args,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
+        panic!(
+            "loom {:?} emitted invalid JSON after failure: {err}\nstdout:\n{}\nstderr:\n{}",
+            args,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
         )
     })
 }
@@ -683,6 +712,40 @@ fn sqlite_status_surfaces_populate_gap_lane() {
 }
 
 #[test]
+fn sqlite_saga_diagnose_reports_missing_env_without_stamping() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-saga-diagnose-env");
+    write_scratch_file(
+        &graph.root,
+        "journeys/diagnose-env.yaml",
+        r#"
+saga: diagnose-env
+base: "{{ env.LOOM_DIAGNOSE_MISSING_BASE }}"
+steps:
+  - name: call target
+    intent: saga runner halt-on-failure semantics
+    request: { method: GET, url: /health }
+    expect: { status: 200 }
+"#,
+    );
+
+    let diagnosed = run_json_failure_as(
+        &graph.root,
+        &["saga", "diagnose", "journeys/diagnose-env.yaml", "--json"],
+        "llm:validator",
+    );
+    assert_eq!(diagnosed["status"], "failed");
+    assert_eq!(
+        diagnosed["diagnosis"]["steps"][0]["root_cause"]["kind"],
+        "env_var_missing"
+    );
+    assert!(diagnosed["diagnosis"]["steps"][0]["root_cause"]["fix"]
+        .as_str()
+        .unwrap()
+        .contains("LOOM_DIAGNOSE_MISSING_BASE=<value> loom saga run diagnose-env"));
+}
+
+#[test]
 fn sqlite_inbox_add_normalize_mark_and_export() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-inbox-flow");
@@ -740,6 +803,41 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     );
     assert_eq!(normalized["item"]["status"], "triaged");
     assert_eq!(normalized["item"]["route_kind"], "note");
+
+    let proposed = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "add",
+            "add saga diagnose so failed HTTP proofs explain root causes",
+            "--source",
+            "chat",
+            "--json",
+        ],
+    );
+    let proposal_id = proposed["item"]["id"]
+        .as_str()
+        .expect("proposal inbox id")
+        .to_string();
+    let proposal = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "normalize",
+            &proposal_id,
+            "--kind",
+            "feature_proposal",
+            "--claim",
+            "saga failures should produce structured diagnosis",
+            "--route",
+            "intent",
+            "--command",
+            "loom intent add --name 'saga failure diagnosis' --description 'diagnose failed saga runs' --level feature --lifecycle planned",
+            "--json",
+        ],
+    );
+    assert_eq!(proposal["item"]["kind"], "feature_proposal");
+    assert_eq!(proposal["item"]["route_kind"], "intent");
 
     let marked = run_json(
         &graph.root,

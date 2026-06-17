@@ -1465,6 +1465,16 @@ pub enum SagaCmd {
         saga: String,
     },
 
+    /// Run a saga without stamping graph verdicts and explain the first failed
+    /// boundary as a structured, repo-agnostic diagnosis. This is for triage:
+    /// missing env/template problems, auth-like status failures, 404/resource
+    /// misses, body/status mismatches, request failures, and skipped dependent
+    /// steps. Repo-specific scope/state probes can layer on top later.
+    Diagnose {
+        /// Saga name (the registered validation) or a spec file path.
+        saga: String,
+    },
+
     /// List registered sagas (validations of type=saga) with their last result.
     List,
 }
@@ -1995,6 +2005,17 @@ mod tests {
                 assert_eq!(discovery_class.as_deref(), Some("impact-map"));
             }
             _ => panic!("expected next command"),
+        }
+    }
+
+    #[test]
+    fn saga_diagnose_parses_as_consumer_plane_command() {
+        let cli = Cli::parse_from(["loom", "saga", "diagnose", "journeys/checkout.yaml"]);
+        match cli.command {
+            Some(Command::Saga {
+                subcommand: SagaCmd::Diagnose { saga },
+            }) => assert_eq!(saga, "journeys/checkout.yaml"),
+            _ => panic!("expected saga diagnose command"),
         }
     }
 

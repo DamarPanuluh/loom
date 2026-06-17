@@ -169,9 +169,15 @@ fn execute_and_record(
                     .map(|v| format!("{v}=<value> "))
                     .chain([format!("loom saga run {}", validation.name)])
                     .collect();
+                let diagnose_invocation: String = missing
+                    .iter()
+                    .map(|v| format!("{v}=<value> "))
+                    .chain([format!("loom saga diagnose {}", validation.name)])
+                    .collect();
                 let reason = format!(
-                    "missing env value(s): {} — bring up the live target the way this repo does (docker-compose / Makefile / scripts / README), then run `{}`; mark blocked only if it genuinely can't run yet",
+                    "missing env value(s): {} — bring up the live target the way this repo does (docker-compose / Makefile / scripts / README), diagnose with `{}`, then stamp proof with `{}`; mark blocked only if it genuinely can't run yet",
                     missing.join(", "),
+                    diagnose_invocation,
                     invocation
                 );
                 outcomes.push((
