@@ -3,9 +3,9 @@ use anyhow::Result;
 use crate::db::queries::{
     build_candidates_from_snapshot, parse_sync_cause, quality_candidates_from_snapshot,
     review_candidates_from_snapshot, scored_candidates_from_snapshot,
-    unexplored_pairs_scored_from_snapshot, validate_candidates_from_snapshot,
-    vertical_completeness_from_snapshot, AlignCandidate, DoctorReport, GraphState, QuerySnapshot,
-    Smell,
+    unexplored_pairs_scored_from_snapshot, uninspected_outside_queues_from_snapshot,
+    validate_candidates_from_snapshot, vertical_completeness_from_snapshot, AlignCandidate,
+    DoctorReport, GraphState, QuerySnapshot, Smell,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{
@@ -847,6 +847,7 @@ fn render_all(
         .count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
+    let outside = uninspected_outside_queues_from_snapshot(&snapshot);
     let smells_computed = all_smells.is_some();
     let all_smells = all_smells.unwrap_or_default();
     let smells_total = all_smells.len();
@@ -980,6 +981,14 @@ fn render_all(
             "queue": "align", "role": "validator", "gate": "human", "optional": true,
             "count": align.len(), "command": "loom next --mode align",
             "top": format!("'{}' — re-affirm its meaning with the user", align[0].intent.name),
+        }));
+    }
+    if outside.blocked_validations > 0 {
+        queues.push(serde_json::json!({
+            "queue": "blocked-validations", "role": "validator", "gate": "human",
+            "count": outside.blocked_validations,
+            "command": "loom validation list  (review blocked reasons, then unblock by changing prerequisites or marking the proof)",
+            "top": "blocked proof edge(s) with recorded prerequisites; not runnable until the user/environment changes",
         }));
     }
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;

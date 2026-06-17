@@ -48687,7 +48687,7 @@
         ]
       },
       {
-        "content_hash": "c0b5e5a621317361",
+        "content_hash": "56fd58d0402d716d",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
           "src/db/mod.rs",
@@ -48696,7 +48696,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-17T09:16:46.023771846+00:00",
+        "last_modified": "2026-06-17T11:32:28.090968799+00:00",
         "path": "src/commands/next.rs",
         "symbol_facts": [
           {
@@ -48728,8 +48728,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn addressed_notes_survive_the_cap",
-            "line_end": 2314,
-            "line_start": 2296,
+            "line_end": 2323,
+            "line_start": 2305,
             "name": "addressed_notes_survive_the_cap",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -48738,47 +48738,47 @@
             "shape_hash": "2375f4ceb43a0dfe",
             "string_literals": [
               {
-                "line": 2299,
+                "line": 2308,
                 "value": "commentary"
               },
               {
-                "line": 2299,
+                "line": 2308,
                 "value": "ambient {i}"
               },
               {
-                "line": 2299,
+                "line": 2308,
                 "value": ""
               },
               {
-                "line": 2301,
+                "line": 2310,
                 "value": "decision"
               },
               {
-                "line": 2301,
+                "line": 2310,
                 "value": "directed handoff"
               },
               {
-                "line": 2301,
+                "line": 2310,
                 "value": "analyzer"
-              },
-              {
-                "line": 2302,
-                "value": "analyzer"
-              },
-              {
-                "line": 2306,
-                "value": "directed handoff"
-              },
-              {
-                "line": 2307,
-                "value": "addressed-to-role notes surface first"
               },
               {
                 "line": 2311,
+                "value": "analyzer"
+              },
+              {
+                "line": 2315,
+                "value": "directed handoff"
+              },
+              {
+                "line": 2316,
+                "value": "addressed-to-role notes surface first"
+              },
+              {
+                "line": 2320,
                 "value": "ambient 11"
               },
               {
-                "line": 2312,
+                "line": 2321,
                 "value": "remaining slots go to the newest ambient notes"
               }
             ],
@@ -48788,37 +48788,37 @@
             "body_hash": "01bc5db9504f22d6",
             "kind": "fn",
             "label": "fn build_action",
-            "line_end": 1891,
-            "line_start": 1848,
+            "line_end": 1900,
+            "line_start": 1857,
             "name": "build_action",
             "shape_hash": "1ce21f0e8684e8bc",
             "string_literals": [
               {
-                "line": 1852,
+                "line": 1861,
                 "value": "planned"
               },
               {
-                "line": 1853,
+                "line": 1862,
                 "value": "ROLL UP this intent — all its children are implemented; nothing is built \\\n             at this altitude directly.\n\\\n             1. Check each child fulfils its criterion (`loom intent show {id}` lists children).\n  \\\n             2. If satisfied: loom intent mark {id} --lifecycle implemented\n  \\\n             3. If a child falls short: loom intent mark <child-id> --lifecycle needs_change --reason \\\"…\\\""
               },
               {
-                "line": 1863,
+                "line": 1872,
                 "value": "planned"
               },
               {
-                "line": 1864,
+                "line": 1873,
                 "value": "BUILD this intent — its description/criteria are the spec/acceptance check.\n\\\n             1. Write the code.\n  \\\n             2. Register it: loom codefile add <path>\n  \\\n             3. Ground it: loom edge implement {id} <codefile> --locator \\\"<symbol>\\\"\n  \\\n             4. Mark done: loom intent mark {id} --lifecycle implemented\n  \\\n             5. Baseline it: loom sync   (stamps the new files; future edits ripple correctly)"
               },
               {
-                "line": 1877,
+                "line": 1886,
                 "value": "needs_change"
               },
               {
-                "line": 1878,
+                "line": 1887,
                 "value": "CHANGE the code for this intent (the description/criteria + notes describe the desired end state).\n\\\n             1. Make the minimal change.\n  \\\n             2. Flag the ripple: loom sync   (stales every claim the change touched)\n  \\\n             3. Mark done: loom intent mark {id} --lifecycle implemented\n  \\\n             4. Re-verify what sync flagged: loom next --mode fix"
               },
               {
-                "line": 1889,
+                "line": 1898,
                 "value": "Intent '{}' has lifecycle '{}' — review it."
               }
             ],
@@ -48912,8 +48912,8 @@
             "body_hash": "7289cbc7f08511c0",
             "kind": "fn",
             "label": "fn cap_section",
-            "line_end": 2204,
-            "line_start": 2200,
+            "line_end": 2213,
+            "line_start": 2209,
             "name": "cap_section",
             "shape_hash": "4f94004540fb8f12",
             "visibility": "private"
@@ -48923,69 +48923,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn compact_action_is_one_runnable_line",
-            "line_end": 2355,
-            "line_start": 2317,
+            "line_end": 2364,
+            "line_start": 2326,
             "name": "compact_action_is_one_runnable_line",
             "shape_hash": "96e7caf701c1f63d",
             "string_literals": [
               {
-                "line": 2319,
+                "line": 2328,
                 "value": "rt:a:b"
               },
               {
-                "line": 2320,
+                "line": 2329,
                 "value": "a"
               },
               {
-                "line": 2321,
+                "line": 2330,
                 "value": "b"
               },
               {
-                "line": 2322,
+                "line": 2331,
                 "value": "A"
               },
               {
-                "line": 2323,
+                "line": 2332,
                 "value": "B"
               },
               {
-                "line": 2334,
+                "line": 2343,
                 "value": "unexplored"
               },
               {
-                "line": 2335,
+                "line": 2344,
                 "value": "uninspected"
               },
               {
-                "line": 2336,
+                "line": 2345,
                 "value": "failing"
-              },
-              {
-                "line": 2337,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 2343,
-                "value": "[{status}] compact action must be one line: {action}"
               },
               {
                 "line": 2346,
-                "value": "loom "
-              },
-              {
-                "line": 2347,
-                "value": "[{status}] must carry a runnable command: {action}"
-              },
-              {
-                "line": 2350,
-                "value": "failing"
+                "value": "needs_reverification"
               },
               {
                 "line": 2352,
+                "value": "[{status}] compact action must be one line: {action}"
+              },
+              {
+                "line": 2355,
+                "value": "loom "
+              },
+              {
+                "line": 2356,
+                "value": "[{status}] must carry a runnable command: {action}"
+              },
+              {
+                "line": 2359,
+                "value": "failing"
+              },
+              {
+                "line": 2361,
                 "value": "rt:a:b"
               },
               {
-                "line": 2353,
+                "line": 2362,
                 "value": "failing routes through `loom edge fix <id>`"
               }
             ],
@@ -49016,29 +49016,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn note",
-            "line_end": 2266,
-            "line_start": 2255,
+            "line_end": 2275,
+            "line_start": 2264,
             "name": "note",
             "shape_hash": "9d4273ae7538504a",
             "string_literals": [
               {
-                "line": 2257,
+                "line": 2266,
                 "value": "{kind}:{text}"
               },
               {
-                "line": 2260,
+                "line": 2269,
                 "value": "loom"
               },
               {
-                "line": 2261,
+                "line": 2270,
                 "value": "edge"
               },
               {
-                "line": 2262,
+                "line": 2271,
                 "value": "e"
               },
               {
-                "line": 2264,
+                "line": 2273,
                 "value": "t"
               }
             ],
@@ -49048,20 +49048,20 @@
             "body_hash": "522ad69a0e57e261",
             "kind": "fn",
             "label": "fn note_surfaces",
-            "line_end": 2249,
-            "line_start": 2213,
+            "line_end": 2258,
+            "line_start": 2222,
             "name": "note_surfaces",
             "shape_hash": "78e1962d224d18c1",
             "visibility": "private"
           },
           {
-            "body_hash": "6c9857aae568fe28",
+            "body_hash": "44f3e9764d7f8beb",
             "kind": "fn",
             "label": "fn render_all",
-            "line_end": 1105,
+            "line_end": 1114,
             "line_start": 828,
             "name": "render_all",
-            "shape_hash": "2b5bd409fe50f4e7",
+            "shape_hash": "6adb09c4d4af0c68",
             "string_literals": [
               {
                 "line": 842,
@@ -49072,495 +49072,495 @@
                 "value": "uninspected"
               },
               {
-                "line": 870,
+                "line": 871,
                 "value": "interface_from_sagas: {} stale saga call set(s), {} missing surface(s)"
               },
               {
-                "line": 875,
+                "line": 876,
                 "value": "interface_gaps: {} total ({} surface/no-calls, {} boundary/no-calls, {} calls/no-validates)"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "queue"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "populate"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "role"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "builder"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "gate"
               },
               {
-                "line": 883,
+                "line": 884,
                 "value": "autonomous"
-              },
-              {
-                "line": 884,
-                "value": "count"
-              },
-              {
-                "line": 884,
-                "value": "command"
-              },
-              {
-                "line": 884,
-                "value": "loom next --mode populate"
               },
               {
                 "line": 885,
+                "value": "count"
+              },
+              {
+                "line": 885,
+                "value": "command"
+              },
+              {
+                "line": 885,
+                "value": "loom next --mode populate"
+              },
+              {
+                "line": 886,
                 "value": "top"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "queue"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "build"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "role"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "needs_change"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "fixer"
               },
               {
-                "line": 891,
+                "line": 892,
                 "value": "builder"
               },
               {
-                "line": 892,
+                "line": 893,
                 "value": "gate"
               },
               {
-                "line": 892,
+                "line": 893,
                 "value": "autonomous"
               },
               {
-                "line": 893,
+                "line": 894,
                 "value": "count"
               },
               {
-                "line": 893,
+                "line": 894,
                 "value": "command"
               },
               {
-                "line": 893,
+                "line": 894,
                 "value": "loom next --mode build"
               },
               {
-                "line": 894,
+                "line": 895,
                 "value": "top"
               },
               {
-                "line": 894,
+                "line": 895,
                 "value": "'{}' ({})"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "queue"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "fix"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "role"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "fixer"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "gate"
               },
               {
-                "line": 900,
+                "line": 901,
                 "value": "autonomous"
               },
               {
-                "line": 901,
+                "line": 902,
                 "value": "count"
               },
               {
-                "line": 901,
+                "line": 902,
                 "value": "command"
               },
               {
-                "line": 901,
+                "line": 902,
                 "value": "loom next --mode fix"
               },
               {
-                "line": 902,
+                "line": 903,
                 "value": "top"
               },
               {
-                "line": 902,
+                "line": 903,
                 "value": "'{}' × '{}' [{}]"
               },
               {
-                "line": 910,
+                "line": 911,
                 "value": "unrealized leaf intent '{n}'"
               },
               {
-                "line": 914,
+                "line": 915,
                 "value": "unreached file {p}"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "queue"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "ground"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "role"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "builder"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "gate"
               },
               {
-                "line": 918,
+                "line": 919,
                 "value": "autonomous"
-              },
-              {
-                "line": 919,
-                "value": "count"
-              },
-              {
-                "line": 919,
-                "value": "command"
-              },
-              {
-                "line": 919,
-                "value": "loom report  (then `loom edge implement` / `loom edge hierarchy` / `loom ignore`)"
               },
               {
                 "line": 920,
+                "value": "count"
+              },
+              {
+                "line": 920,
+                "value": "command"
+              },
+              {
+                "line": 920,
+                "value": "loom report  (then `loom edge implement` / `loom edge hierarchy` / `loom ignore`)"
+              },
+              {
+                "line": 921,
                 "value": "top"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "queue"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "validate"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "role"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "validator"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "gate"
               },
               {
-                "line": 926,
+                "line": 927,
                 "value": "autonomous"
               },
               {
-                "line": 927,
+                "line": 928,
                 "value": "count"
               },
               {
-                "line": 927,
+                "line": 928,
                 "value": "command"
               },
               {
-                "line": 927,
+                "line": 928,
                 "value": "loom next --mode validate"
               },
               {
-                "line": 928,
+                "line": 929,
                 "value": "top"
               },
               {
-                "line": 928,
+                "line": 929,
                 "value": "'{}' — {}"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "queue"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "quality"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "role"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "quality"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "gate"
               },
               {
-                "line": 934,
+                "line": 935,
                 "value": "autonomous"
               },
               {
-                "line": 935,
+                "line": 936,
                 "value": "count"
               },
               {
-                "line": 935,
+                "line": 936,
                 "value": "command"
               },
               {
-                "line": 935,
+                "line": 936,
                 "value": "loom next --mode quality"
               },
               {
-                "line": 936,
+                "line": 937,
                 "value": "top"
               },
               {
-                "line": 936,
+                "line": 937,
                 "value": "rule '{}' → '{}' [{}]"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "queue"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "review"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "role"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "reviewer"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "gate"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "autonomous"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "optional"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "effort"
               },
               {
-                "line": 942,
+                "line": 943,
                 "value": "high"
               },
               {
-                "line": 943,
+                "line": 944,
                 "value": "count"
               },
               {
-                "line": 943,
+                "line": 944,
                 "value": "command"
               },
               {
-                "line": 943,
+                "line": 944,
                 "value": "loom next --mode review"
               },
               {
-                "line": 944,
+                "line": 945,
                 "value": "top"
               },
               {
-                "line": 944,
+                "line": 945,
                 "value": "low-confidence verdicts × centrality — the tiered double-check"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "queue"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "prove"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "role"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "analyzer"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "gate"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "autonomous"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "optional"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "effort"
               },
               {
-                "line": 950,
+                "line": 951,
                 "value": "high"
               },
               {
-                "line": 951,
+                "line": 952,
                 "value": "count"
               },
               {
-                "line": 951,
+                "line": 952,
                 "value": "command"
               },
               {
-                "line": 951,
+                "line": 952,
                 "value": "loom next --mode prove"
               },
               {
-                "line": 952,
+                "line": 953,
                 "value": "top"
-              },
-              {
-                "line": 952,
-                "value": "supported"
               },
               {
                 "line": 953,
+                "value": "supported"
+              },
+              {
+                "line": 954,
                 "value": "hypothesis '{}' — support went stale (target code changed)"
               },
               {
-                "line": 955,
+                "line": 956,
                 "value": "hypothesis '{}' awaits its proof"
               },
               {
-                "line": 970,
+                "line": 971,
                 "value": "queue"
-              },
-              {
-                "line": 970,
-                "value": "adopt"
-              },
-              {
-                "line": 970,
-                "value": "role"
-              },
-              {
-                "line": 970,
-                "value": "builder"
-              },
-              {
-                "line": 970,
-                "value": "gate"
-              },
-              {
-                "line": 970,
-                "value": "human"
               },
               {
                 "line": 971,
-                "value": "count"
+                "value": "adopt"
               },
               {
-                "line": 972,
-                "value": "command"
-              },
-              {
-                "line": 972,
-                "value": "loom hypothesis show <id>  → loom hypothesis adopt <id> --spawned <planned-intent>… | loom hypothesis reject <id> --reason …"
-              },
-              {
-                "line": 973,
-                "value": "top"
-              },
-              {
-                "line": 973,
-                "value": "hypothesis '{}' is supported — awaiting the adopt/reject ruling"
-              },
-              {
-                "line": 980,
-                "value": "queue"
-              },
-              {
-                "line": 980,
-                "value": "align"
-              },
-              {
-                "line": 980,
+                "line": 971,
                 "value": "role"
               },
               {
-                "line": 980,
-                "value": "validator"
+                "line": 971,
+                "value": "builder"
               },
               {
-                "line": 980,
+                "line": 971,
                 "value": "gate"
               },
               {
-                "line": 980,
+                "line": 971,
                 "value": "human"
               },
               {
-                "line": 980,
-                "value": "optional"
-              },
-              {
-                "line": 981,
+                "line": 972,
                 "value": "count"
               },
               {
-                "line": 981,
+                "line": 973,
                 "value": "command"
               },
               {
-                "line": 981,
-                "value": "loom next --mode align"
+                "line": 973,
+                "value": "loom hypothesis show <id>  → loom hypothesis adopt <id> --spawned <planned-intent>… | loom hypothesis reject <id> --reason …"
               },
               {
-                "line": 982,
+                "line": 974,
                 "value": "top"
               },
               {
+                "line": 974,
+                "value": "hypothesis '{}' is supported — awaiting the adopt/reject ruling"
+              },
+              {
+                "line": 981,
+                "value": "queue"
+              },
+              {
+                "line": 981,
+                "value": "align"
+              },
+              {
+                "line": 981,
+                "value": "role"
+              },
+              {
+                "line": 981,
+                "value": "validator"
+              },
+              {
+                "line": 981,
+                "value": "gate"
+              },
+              {
+                "line": 981,
+                "value": "human"
+              },
+              {
+                "line": 981,
+                "value": "optional"
+              },
+              {
                 "line": 982,
+                "value": "count"
+              },
+              {
+                "line": 982,
+                "value": "command"
+              },
+              {
+                "line": 982,
+                "value": "loom next --mode align"
+              },
+              {
+                "line": 983,
+                "value": "top"
+              },
+              {
+                "line": 983,
                 "value": "'{}' — re-affirm its meaning with the user"
               },
               {
@@ -49569,7 +49569,7 @@
               },
               {
                 "line": 988,
-                "value": "discovery"
+                "value": "blocked-validations"
               },
               {
                 "line": 988,
@@ -49577,7 +49577,7 @@
               },
               {
                 "line": 988,
-                "value": "analyzer"
+                "value": "validator"
               },
               {
                 "line": 988,
@@ -49585,31 +49585,43 @@
               },
               {
                 "line": 988,
-                "value": "autonomous"
-              },
-              {
-                "line": 988,
-                "value": "optional"
+                "value": "human"
               },
               {
                 "line": 989,
                 "value": "count"
               },
               {
-                "line": 989,
+                "line": 990,
                 "value": "command"
               },
               {
-                "line": 989,
-                "value": "loom next"
+                "line": 990,
+                "value": "loom validation list  (review blocked reasons, then unblock by changing prerequisites or marking the proof)"
               },
               {
-                "line": 990,
+                "line": 991,
                 "value": "top"
               },
               {
-                "line": 990,
-                "value": "the horizontal N×N grid — understanding/cleanup, not required for done"
+                "line": 991,
+                "value": "blocked proof edge(s) with recorded prerequisites; not runnable until the user/environment changes"
+              },
+              {
+                "line": 997,
+                "value": "queue"
+              },
+              {
+                "line": 997,
+                "value": "discovery"
+              },
+              {
+                "line": 997,
+                "value": "role"
+              },
+              {
+                "line": 997,
+                "value": "analyzer"
               },
               {
                 "line": 997,
@@ -49617,250 +49629,282 @@
               },
               {
                 "line": 997,
-                "value": "human"
+                "value": "autonomous"
+              },
+              {
+                "line": 997,
+                "value": "optional"
               },
               {
                 "line": 998,
                 "value": "count"
               },
               {
-                "line": 1007,
-                "value": "mode"
-              },
-              {
-                "line": 1007,
-                "value": "all"
-              },
-              {
-                "line": 1008,
-                "value": "doctor"
-              },
-              {
-                "line": 1008,
-                "value": "healthy"
-              },
-              {
-                "line": 1008,
-                "value": "issues"
-              },
-              {
-                "line": 1008,
-                "value": "hints"
-              },
-              {
-                "line": 1009,
-                "value": "committed_export"
-              },
-              {
-                "line": 1010,
-                "value": "queues"
-              },
-              {
-                "line": 1011,
-                "value": "human_gated"
-              },
-              {
-                "line": 1012,
-                "value": "human_gated_note"
-              },
-              {
-                "line": 1013,
-                "value": "These items need the user. Drain autonomous queues now; batch human-gated items into ONE agenda for the next conversation window."
-              },
-              {
-                "line": 1014,
-                "value": ""
-              },
-              {
-                "line": 1015,
-                "value": "vertical_gaps"
-              },
-              {
-                "line": 1016,
-                "value": "unrealized_leaves"
-              },
-              {
-                "line": 1017,
-                "value": "unreached_codefiles"
-              },
-              {
-                "line": 1018,
-                "value": "unrealized_leaves_total"
-              },
-              {
-                "line": 1019,
-                "value": "unreached_codefiles_total"
-              },
-              {
-                "line": 1021,
-                "value": "smells_total"
-              },
-              {
-                "line": 1022,
-                "value": "smells_computed"
-              },
-              {
-                "line": 1023,
-                "value": "smells_note"
-              },
-              {
-                "line": 1024,
-                "value": ""
-              },
-              {
-                "line": 1026,
-                "value": "Audit scan deferred while another phase is active; run `loom smells --summary` for current findings."
-              },
-              {
-                "line": 1028,
-                "value": "smells_top"
-              },
-              {
-                "line": 1029,
-                "value": "kind"
-              },
-              {
-                "line": 1029,
-                "value": "summary"
-              },
-              {
-                "line": 1029,
-                "value": "remedy"
-              },
-              {
-                "line": 1031,
-                "value": "next_step"
-              },
-              {
-                "line": 1032,
-                "value": "graph_state"
-              },
-              {
-                "line": 1037,
-                "value": "── Closeout — every lane, one list ─────────────────────────────────"
-              },
-              {
-                "line": 1041,
-                "value": "  0. [integrity] {} issue(s) — fix these first: `loom doctor`"
-              },
-              {
-                "line": 1045,
-                "value": "stale"
-              },
-              {
-                "line": 1046,
-                "value": "  ⚠ committed loom.graph.json is STALE — `loom export` before committing code."
-              },
-              {
-                "line": 1049,
-                "value": "  ✓ Nothing left in any queue — every lane is clear."
-              },
-              {
-                "line": 1052,
-                "value": "optional"
-              },
-              {
-                "line": 1053,
-                "value": "  (optional)"
-              },
-              {
-                "line": 1055,
-                "value": ""
-              },
-              {
-                "line": 1057,
-                "value": "gate"
-              },
-              {
-                "line": 1057,
-                "value": "human"
-              },
-              {
-                "line": 1058,
-                "value": "  ⚑ human-gated"
-              },
-              {
-                "line": 1060,
-                "value": ""
-              },
-              {
-                "line": 1063,
-                "value": "  {}. [{:<9}] {:<9} {:>4} item(s)   → {}{}{}"
-              },
-              {
-                "line": 1065,
-                "value": "role"
-              },
-              {
-                "line": 1065,
-                "value": ""
-              },
-              {
-                "line": 1066,
-                "value": "queue"
-              },
-              {
-                "line": 1066,
-                "value": ""
-              },
-              {
-                "line": 1067,
-                "value": "count"
-              },
-              {
-                "line": 1068,
+                "line": 998,
                 "value": "command"
               },
               {
-                "line": 1068,
-                "value": ""
+                "line": 998,
+                "value": "loom next"
               },
               {
-                "line": 1072,
-                "value": "       top: {}"
-              },
-              {
-                "line": 1072,
+                "line": 999,
                 "value": "top"
               },
               {
-                "line": 1072,
+                "line": 999,
+                "value": "the horizontal N×N grid — understanding/cleanup, not required for done"
+              },
+              {
+                "line": 1006,
+                "value": "gate"
+              },
+              {
+                "line": 1006,
+                "value": "human"
+              },
+              {
+                "line": 1007,
+                "value": "count"
+              },
+              {
+                "line": 1016,
+                "value": "mode"
+              },
+              {
+                "line": 1016,
+                "value": "all"
+              },
+              {
+                "line": 1017,
+                "value": "doctor"
+              },
+              {
+                "line": 1017,
+                "value": "healthy"
+              },
+              {
+                "line": 1017,
+                "value": "issues"
+              },
+              {
+                "line": 1017,
+                "value": "hints"
+              },
+              {
+                "line": 1018,
+                "value": "committed_export"
+              },
+              {
+                "line": 1019,
+                "value": "queues"
+              },
+              {
+                "line": 1020,
+                "value": "human_gated"
+              },
+              {
+                "line": 1021,
+                "value": "human_gated_note"
+              },
+              {
+                "line": 1022,
+                "value": "These items need the user. Drain autonomous queues now; batch human-gated items into ONE agenda for the next conversation window."
+              },
+              {
+                "line": 1023,
                 "value": ""
+              },
+              {
+                "line": 1024,
+                "value": "vertical_gaps"
+              },
+              {
+                "line": 1025,
+                "value": "unrealized_leaves"
+              },
+              {
+                "line": 1026,
+                "value": "unreached_codefiles"
+              },
+              {
+                "line": 1027,
+                "value": "unrealized_leaves_total"
+              },
+              {
+                "line": 1028,
+                "value": "unreached_codefiles_total"
+              },
+              {
+                "line": 1030,
+                "value": "smells_total"
+              },
+              {
+                "line": 1031,
+                "value": "smells_computed"
+              },
+              {
+                "line": 1032,
+                "value": "smells_note"
+              },
+              {
+                "line": 1033,
+                "value": ""
+              },
+              {
+                "line": 1035,
+                "value": "Audit scan deferred while another phase is active; run `loom smells --summary` for current findings."
+              },
+              {
+                "line": 1037,
+                "value": "smells_top"
+              },
+              {
+                "line": 1038,
+                "value": "kind"
+              },
+              {
+                "line": 1038,
+                "value": "summary"
+              },
+              {
+                "line": 1038,
+                "value": "remedy"
+              },
+              {
+                "line": 1040,
+                "value": "next_step"
+              },
+              {
+                "line": 1041,
+                "value": "graph_state"
+              },
+              {
+                "line": 1046,
+                "value": "── Closeout — every lane, one list ─────────────────────────────────"
+              },
+              {
+                "line": 1050,
+                "value": "  0. [integrity] {} issue(s) — fix these first: `loom doctor`"
+              },
+              {
+                "line": 1054,
+                "value": "stale"
+              },
+              {
+                "line": 1055,
+                "value": "  ⚠ committed loom.graph.json is STALE — `loom export` before committing code."
+              },
+              {
+                "line": 1058,
+                "value": "  ✓ Nothing left in any queue — every lane is clear."
+              },
+              {
+                "line": 1061,
+                "value": "optional"
+              },
+              {
+                "line": 1062,
+                "value": "  (optional)"
+              },
+              {
+                "line": 1064,
+                "value": ""
+              },
+              {
+                "line": 1066,
+                "value": "gate"
+              },
+              {
+                "line": 1066,
+                "value": "human"
+              },
+              {
+                "line": 1067,
+                "value": "  ⚑ human-gated"
+              },
+              {
+                "line": 1069,
+                "value": ""
+              },
+              {
+                "line": 1072,
+                "value": "  {}. [{:<9}] {:<9} {:>4} item(s)   → {}{}{}"
+              },
+              {
+                "line": 1074,
+                "value": "role"
+              },
+              {
+                "line": 1074,
+                "value": ""
+              },
+              {
+                "line": 1075,
+                "value": "queue"
+              },
+              {
+                "line": 1075,
+                "value": ""
+              },
+              {
+                "line": 1076,
+                "value": "count"
               },
               {
                 "line": 1077,
-                "value": "  ⚑ {human_gated} item(s) need the user. Drain the autonomous queues now; batch the"
+                "value": "command"
               },
               {
-                "line": 1079,
-                "value": "    human-gated ones into ONE agenda for the next conversation window."
-              },
-              {
-                "line": 1084,
-                "value": "  smells: {} finding(s), top: {} — `loom smells`"
-              },
-              {
-                "line": 1086,
+                "line": 1077,
                 "value": ""
               },
               {
-                "line": 1089,
-                "value": "  smells: deferred while another phase is active — `loom smells --summary`."
+                "line": 1081,
+                "value": "       top: {}"
+              },
+              {
+                "line": 1081,
+                "value": "top"
+              },
+              {
+                "line": 1081,
+                "value": ""
+              },
+              {
+                "line": 1086,
+                "value": "  ⚑ {human_gated} item(s) need the user. Drain the autonomous queues now; batch the"
+              },
+              {
+                "line": 1088,
+                "value": "    human-gated ones into ONE agenda for the next conversation window."
               },
               {
                 "line": 1093,
-                "value": "  doctor: ✓ healthy{}"
+                "value": "  smells: {} finding(s), top: {} — `loom smells`"
               },
               {
-                "line": 1097,
-                "value": "  ({} hint(s) — `loom doctor`)"
+                "line": 1095,
+                "value": ""
+              },
+              {
+                "line": 1098,
+                "value": "  smells: deferred while another phase is active — `loom smells --summary`."
               },
               {
                 "line": 1102,
+                "value": "  doctor: ✓ healthy{}"
+              },
+              {
+                "line": 1106,
+                "value": "  ({} hint(s) — `loom doctor`)"
+              },
+              {
+                "line": 1111,
                 "value": "  Start here → {}"
               },
               {
-                "line": 1103,
+                "line": 1112,
                 "value": "  {}"
               }
             ],
@@ -49871,69 +49915,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn repeated_notes_collapse_into_a_count",
-            "line_end": 2293,
-            "line_start": 2269,
+            "line_end": 2302,
+            "line_start": 2278,
             "name": "repeated_notes_collapse_into_a_count",
             "shape_hash": "e30563a3fc167b39",
             "string_literals": [
               {
-                "line": 2272,
+                "line": 2281,
                 "value": "transition"
               },
               {
-                "line": 2273,
+                "line": 2282,
                 "value": "passing → needs_reverification (sync: a.rs changed)"
-              },
-              {
-                "line": 2274,
-                "value": ""
-              },
-              {
-                "line": 2276,
-                "value": "transition"
-              },
-              {
-                "line": 2276,
-                "value": "needs_reverification → passing"
-              },
-              {
-                "line": 2276,
-                "value": ""
-              },
-              {
-                "line": 2278,
-                "value": "transition"
-              },
-              {
-                "line": 2279,
-                "value": "passing → needs_reverification (sync: a.rs changed)"
-              },
-              {
-                "line": 2280,
-                "value": ""
               },
               {
                 "line": 2283,
+                "value": ""
+              },
+              {
+                "line": 2285,
                 "value": "transition"
               },
               {
-                "line": 2284,
-                "value": "passing → needs_reverification (sync: a.rs changed)"
+                "line": 2285,
+                "value": "needs_reverification → passing"
               },
               {
                 "line": 2285,
                 "value": ""
               },
               {
+                "line": 2287,
+                "value": "transition"
+              },
+              {
                 "line": 2288,
-                "value": "analyzer"
+                "value": "passing → needs_reverification (sync: a.rs changed)"
               },
               {
                 "line": 2289,
+                "value": ""
+              },
+              {
+                "line": 2292,
+                "value": "transition"
+              },
+              {
+                "line": 2293,
+                "value": "passing → needs_reverification (sync: a.rs changed)"
+              },
+              {
+                "line": 2294,
+                "value": ""
+              },
+              {
+                "line": 2297,
+                "value": "analyzer"
+              },
+              {
+                "line": 2298,
                 "value": "total counts UNIQUE notes"
               },
               {
-                "line": 2291,
+                "line": 2300,
                 "value": "the flap count is the signal"
               }
             ],
@@ -49999,333 +50043,333 @@
             "body_hash": "40a534efb55593f6",
             "kind": "fn",
             "label": "fn run_align",
-            "line_end": 1706,
-            "line_start": 1429,
+            "line_end": 1715,
+            "line_start": 1438,
             "name": "run_align",
             "shape_hash": "6b149c71a9015cb6",
             "string_literals": [
               {
-                "line": 1437,
+                "line": 1446,
                 "value": "status"
               },
               {
-                "line": 1437,
+                "line": 1446,
                 "value": "empty"
               },
               {
-                "line": 1437,
+                "line": 1446,
                 "value": "mode"
-              },
-              {
-                "line": 1437,
-                "value": "align"
-              },
-              {
-                "line": 1438,
-                "value": "message"
-              },
-              {
-                "line": 1438,
-                "value": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done."
-              },
-              {
-                "line": 1439,
-                "value": "next_step"
-              },
-              {
-                "line": 1440,
-                "value": "graph_state"
-              },
-              {
-                "line": 1443,
-                "value": "✓ No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done."
-              },
-              {
-                "line": 1445,
-                "value": "  {}"
               },
               {
                 "line": 1446,
-                "value": "  → Next: {}"
-              },
-              {
-                "line": 1454,
-                "value": "validator"
-              },
-              {
-                "line": 1455,
-                "value": "never"
-              },
-              {
-                "line": 1488,
-                "value": "independent"
-              },
-              {
-                "line": 1499,
-                "value": "untriaged"
-              },
-              {
-                "line": 1504,
-                "value": "internal"
-              },
-              {
-                "line": 1504,
-                "value": "internal machinery (serves other parts; the user never touches it directly)"
-              },
-              {
-                "line": 1506,
-                "value": "user_visible"
-              },
-              {
-                "line": 1506,
-                "value": "a user-visible capability (the user can see or feel it)"
-              },
-              {
-                "line": 1507,
-                "value": "untriaged — decide from the groundings whether this is user-visible capability or \\\n              internal machinery, OPEN with that framing, and let the user correct you"
-              },
-              {
-                "line": 1514,
-                "value": "{} → {}"
-              },
-              {
-                "line": 1514,
-                "value": " → "
-              },
-              {
-                "line": 1519,
-                "value": "sibling concepts (distinct on purpose): {}"
-              },
-              {
-                "line": 1520,
-                "value": " · "
-              },
-              {
-                "line": 1525,
-                "value": "verified independent of: {}"
-              },
-              {
-                "line": 1526,
-                "value": " · "
-              },
-              {
-                "line": 1532,
-                "value": "\\n  what it is NOT: {}"
-              },
-              {
-                "line": 1532,
-                "value": "; "
-              },
-              {
-                "line": 1535,
-                "value": "Interview move — align the CONCEPT, not the wording. Present, in the user's plain \\\n         language:\\n  \\\n         1. what the product can DO because this exists — one or two sentences, no file \\\n         paths, no internal nouns (jargon test: would a non-coder nod?)\\n  \\\n         2. why it matters: its place in the design — {where_it_sits}\\n  \\\n         3. its audience, UP FRONT: {audience_brief}{not_this}\\n\\\n         Vocabulary stays out of the question unless the user asks, gets confused, or uses \\\n         a term that conflicts with the graph — then reconcile terms, not before.\\n\\\n         \\n  meaning on record (graph-speak — source material, never read aloud): {description}\\n\\\n         \\nAsk: \\\"does that match what you expect this product to do here?\\\" \\\n         Record exactly ONE outcome:\\n  \\\n         - concept still right → loom intent confirm {id}\\n  \\\n         - words confusing, concept right → loom intent update {id} --description \\\"…\\\" \\\n         --reword --reason \\\"…\\\"  (no ripple; the clock still resets)\\n  \\\n         - concept evolved → translate their answer into a falsifiable description: \\\n         loom intent update {id} --description \\\"…\\\" --reason \\\"…\\\"  (ripples; audience re-triaged)\\n  \\\n         - internal machinery, stop asking → loom intent confirm {id} --visibility internal  \\\n         (leaves this queue until the meaning is redefined)\\n  \\\n         - superseded → loom intent retire {id} --reason \\\"…\\\" --replaced-by <successor>\\n  \\\n         - missing concept revealed → loom intent add … --lifecycle planned\\n\\\n         \\nThe user rules on BEHAVIOR, never on wording."
-              },
-              {
-                "line": 1561,
-                "value": "this is validator work — fills the alignment outcome: present the CONCEPT \\\n         to the USER, then record exactly ONE of `loom intent confirm` (optionally \\\n         `--visibility internal`) / `update` (`--reword` for wording-only) / `retire` / \\\n         `add` (update/retire/add are builder-lane: a solo agent records them directly; a \\\n         role-split validator hands the user's words to a builder). Whoever takes it declares \\\n         `LOOM_AGENT=llm:validator` (or stay bare `llm` for solo); its queue is \\\n         `loom next --mode align`. One item per question — after recording the outcome, pull \\\n         the queue AGAIN: it admits only drift suspects and every outcome resets that intent's \\\n         clock, so it drains to empty. Iterate until it reports clean; never stop after one \\\n         answer, never interrogate beyond what it serves."
-              },
-              {
-                "line": 1574,
-                "value": "mode"
-              },
-              {
-                "line": 1574,
                 "value": "align"
               },
               {
-                "line": 1576,
-                "value": "intent"
+                "line": 1447,
+                "value": "message"
               },
               {
-                "line": 1580,
-                "value": "last_confirmed"
+                "line": 1447,
+                "value": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done."
               },
               {
-                "line": 1584,
-                "value": "churn_since_confirm"
+                "line": 1448,
+                "value": "next_step"
               },
               {
-                "line": 1587,
-                "value": "degree"
-              },
-              {
-                "line": 1588,
-                "value": "score"
-              },
-              {
-                "line": 1590,
-                "value": "queue_depth"
-              },
-              {
-                "line": 1593,
-                "value": "visibility"
-              },
-              {
-                "line": 1595,
-                "value": "where_it_sits"
-              },
-              {
-                "line": 1599,
-                "value": "not_to_confuse_with"
-              },
-              {
-                "line": 1601,
-                "value": "siblings"
-              },
-              {
-                "line": 1602,
-                "value": "verified_independent"
-              },
-              {
-                "line": 1606,
-                "value": "groundings"
-              },
-              {
-                "line": 1613,
-                "value": "groundings_total"
-              },
-              {
-                "line": 1616,
-                "value": "notes"
-              },
-              {
-                "line": 1617,
-                "value": "notes_total"
-              },
-              {
-                "line": 1618,
-                "value": "suggested_action"
-              },
-              {
-                "line": 1619,
+                "line": 1449,
                 "value": "graph_state"
               },
               {
-                "line": 1620,
-                "value": "owner_role"
+                "line": 1452,
+                "value": "✓ No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done."
               },
               {
-                "line": 1620,
+                "line": 1454,
+                "value": "  {}"
+              },
+              {
+                "line": 1455,
+                "value": "  → Next: {}"
+              },
+              {
+                "line": 1463,
                 "value": "validator"
               },
               {
-                "line": 1621,
-                "value": "effort"
+                "line": 1464,
+                "value": "never"
               },
               {
-                "line": 1621,
-                "value": "mid"
+                "line": 1497,
+                "value": "independent"
               },
               {
-                "line": 1622,
-                "value": "dispatch"
+                "line": 1508,
+                "value": "untriaged"
               },
               {
-                "line": 1628,
-                "value": "── Next Align Item  [score={:.2}]  ({} drift suspect(s) queued) ─────"
+                "line": 1513,
+                "value": "internal"
               },
               {
-                "line": 1633,
-                "value": "── Intent ──────────────────────────────────────────────────────────"
+                "line": 1513,
+                "value": "internal machinery (serves other parts; the user never touches it directly)"
               },
               {
-                "line": 1634,
-                "value": "  {}  ({})"
+                "line": 1515,
+                "value": "user_visible"
               },
               {
-                "line": 1635,
-                "value": "  level: {}"
+                "line": 1515,
+                "value": "a user-visible capability (the user can see or feel it)"
               },
               {
-                "line": 1636,
-                "value": "  description: {}"
+                "line": 1516,
+                "value": "untriaged — decide from the groundings whether this is user-visible capability or \\\n              internal machinery, OPEN with that framing, and let the user correct you"
               },
               {
-                "line": 1638,
-                "value": "  lifecycle: {}  status: {}"
+                "line": 1523,
+                "value": "{} → {}"
               },
               {
-                "line": 1641,
-                "value": "  audience: {}"
+                "line": 1523,
+                "value": " → "
               },
               {
-                "line": 1642,
-                "value": "  sits under: {}"
+                "line": 1528,
+                "value": "sibling concepts (distinct on purpose): {}"
               },
               {
-                "line": 1644,
-                "value": "  not this: {}"
+                "line": 1529,
+                "value": " · "
               },
               {
-                "line": 1644,
+                "line": 1534,
+                "value": "verified independent of: {}"
+              },
+              {
+                "line": 1535,
+                "value": " · "
+              },
+              {
+                "line": 1541,
+                "value": "\\n  what it is NOT: {}"
+              },
+              {
+                "line": 1541,
                 "value": "; "
               },
               {
-                "line": 1646,
-                "value": "  last_confirmed: {}"
+                "line": 1544,
+                "value": "Interview move — align the CONCEPT, not the wording. Present, in the user's plain \\\n         language:\\n  \\\n         1. what the product can DO because this exists — one or two sentences, no file \\\n         paths, no internal nouns (jargon test: would a non-coder nod?)\\n  \\\n         2. why it matters: its place in the design — {where_it_sits}\\n  \\\n         3. its audience, UP FRONT: {audience_brief}{not_this}\\n\\\n         Vocabulary stays out of the question unless the user asks, gets confused, or uses \\\n         a term that conflicts with the graph — then reconcile terms, not before.\\n\\\n         \\n  meaning on record (graph-speak — source material, never read aloud): {description}\\n\\\n         \\nAsk: \\\"does that match what you expect this product to do here?\\\" \\\n         Record exactly ONE outcome:\\n  \\\n         - concept still right → loom intent confirm {id}\\n  \\\n         - words confusing, concept right → loom intent update {id} --description \\\"…\\\" \\\n         --reword --reason \\\"…\\\"  (no ripple; the clock still resets)\\n  \\\n         - concept evolved → translate their answer into a falsifiable description: \\\n         loom intent update {id} --description \\\"…\\\" --reason \\\"…\\\"  (ripples; audience re-triaged)\\n  \\\n         - internal machinery, stop asking → loom intent confirm {id} --visibility internal  \\\n         (leaves this queue until the meaning is redefined)\\n  \\\n         - superseded → loom intent retire {id} --reason \\\"…\\\" --replaced-by <successor>\\n  \\\n         - missing concept revealed → loom intent add … --lifecycle planned\\n\\\n         \\nThe user rules on BEHAVIOR, never on wording."
               },
               {
-                "line": 1648,
-                "value": "  churn since confirm: {} staled-claim flip(s)"
+                "line": 1570,
+                "value": "this is validator work — fills the alignment outcome: present the CONCEPT \\\n         to the USER, then record exactly ONE of `loom intent confirm` (optionally \\\n         `--visibility internal`) / `update` (`--reword` for wording-only) / `retire` / \\\n         `add` (update/retire/add are builder-lane: a solo agent records them directly; a \\\n         role-split validator hands the user's words to a builder). Whoever takes it declares \\\n         `LOOM_AGENT=llm:validator` (or stay bare `llm` for solo); its queue is \\\n         `loom next --mode align`. One item per question — after recording the outcome, pull \\\n         the queue AGAIN: it admits only drift suspects and every outcome resets that intent's \\\n         clock, so it drains to empty. Iterate until it reports clean; never stop after one \\\n         answer, never interrogate beyond what it serves."
+              },
+              {
+                "line": 1583,
+                "value": "mode"
+              },
+              {
+                "line": 1583,
+                "value": "align"
+              },
+              {
+                "line": 1585,
+                "value": "intent"
+              },
+              {
+                "line": 1589,
+                "value": "last_confirmed"
+              },
+              {
+                "line": 1593,
+                "value": "churn_since_confirm"
+              },
+              {
+                "line": 1596,
+                "value": "degree"
+              },
+              {
+                "line": 1597,
+                "value": "score"
+              },
+              {
+                "line": 1599,
+                "value": "queue_depth"
+              },
+              {
+                "line": 1602,
+                "value": "visibility"
+              },
+              {
+                "line": 1604,
+                "value": "where_it_sits"
+              },
+              {
+                "line": 1608,
+                "value": "not_to_confuse_with"
+              },
+              {
+                "line": 1610,
+                "value": "siblings"
+              },
+              {
+                "line": 1611,
+                "value": "verified_independent"
+              },
+              {
+                "line": 1615,
+                "value": "groundings"
+              },
+              {
+                "line": 1622,
+                "value": "groundings_total"
+              },
+              {
+                "line": 1625,
+                "value": "notes"
+              },
+              {
+                "line": 1626,
+                "value": "notes_total"
+              },
+              {
+                "line": 1627,
+                "value": "suggested_action"
+              },
+              {
+                "line": 1628,
+                "value": "graph_state"
+              },
+              {
+                "line": 1629,
+                "value": "owner_role"
+              },
+              {
+                "line": 1629,
+                "value": "validator"
+              },
+              {
+                "line": 1630,
+                "value": "effort"
+              },
+              {
+                "line": 1630,
+                "value": "mid"
+              },
+              {
+                "line": 1631,
+                "value": "dispatch"
+              },
+              {
+                "line": 1637,
+                "value": "── Next Align Item  [score={:.2}]  ({} drift suspect(s) queued) ─────"
+              },
+              {
+                "line": 1642,
+                "value": "── Intent ──────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 1643,
+                "value": "  {}  ({})"
+              },
+              {
+                "line": 1644,
+                "value": "  level: {}"
+              },
+              {
+                "line": 1645,
+                "value": "  description: {}"
+              },
+              {
+                "line": 1647,
+                "value": "  lifecycle: {}  status: {}"
+              },
+              {
+                "line": 1650,
+                "value": "  audience: {}"
+              },
+              {
+                "line": 1651,
+                "value": "  sits under: {}"
               },
               {
                 "line": 1653,
+                "value": "  not this: {}"
+              },
+              {
+                "line": 1653,
+                "value": "; "
+              },
+              {
+                "line": 1655,
+                "value": "  last_confirmed: {}"
+              },
+              {
+                "line": 1657,
+                "value": "  churn since confirm: {} staled-claim flip(s)"
+              },
+              {
+                "line": 1662,
                 "value": "── Groundings ──────────────────────────────────────────────────────"
               },
               {
-                "line": 1658,
+                "line": 1667,
                 "value": "  @ {}"
               },
               {
-                "line": 1660,
+                "line": 1669,
                 "value": "  {}{}"
               },
               {
-                "line": 1665,
+                "line": 1674,
                 "value": "loom intent show {}"
               },
               {
-                "line": 1667,
+                "line": 1676,
                 "value": "  {m}"
               },
               {
-                "line": 1674,
+                "line": 1683,
                 "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
               },
               {
-                "line": 1680,
+                "line": 1689,
                 "value": "── Notes ({}) ──────────────────────────────────────────────────────"
               },
               {
-                "line": 1686,
+                "line": 1695,
                 "value": "  [{}] {}  ({}, ×{})"
               },
               {
-                "line": 1688,
+                "line": 1697,
                 "value": "  [{}] {}  ({})"
               },
               {
-                "line": 1694,
+                "line": 1703,
                 "value": "loom note list --intent {}"
               },
               {
-                "line": 1696,
+                "line": 1705,
                 "value": "  {m}"
               },
               {
-                "line": 1700,
+                "line": 1709,
                 "value": "── Suggested Action ────────────────────────────────────────────────"
               },
               {
-                "line": 1701,
+                "line": 1710,
                 "value": "{}"
               },
               {
-                "line": 1703,
+                "line": 1712,
                 "value": "  Dispatch — {dispatch}  [effort: mid]"
               },
               {
-                "line": 1704,
+                "line": 1713,
                 "value": "  {}"
               }
             ],
@@ -50371,177 +50415,177 @@
             "body_hash": "d109cf6461c50c11",
             "kind": "fn",
             "label": "fn run_build",
-            "line_end": 1247,
-            "line_start": 1111,
+            "line_end": 1256,
+            "line_start": 1120,
             "name": "run_build",
             "shape_hash": "ff7be23e507b6511",
             "string_literals": [
               {
-                "line": 1112,
+                "line": 1121,
                 "value": "work the build queue (there is nothing to build in someone else's repo)"
               },
               {
-                "line": 1123,
+                "line": 1132,
                 "value": "status"
               },
               {
-                "line": 1123,
+                "line": 1132,
                 "value": "empty"
               },
               {
-                "line": 1123,
+                "line": 1132,
                 "value": "mode"
               },
               {
-                "line": 1123,
+                "line": 1132,
                 "value": "build"
               },
               {
-                "line": 1124,
+                "line": 1133,
                 "value": "message"
               },
               {
-                "line": 1124,
+                "line": 1133,
                 "value": "No planned or needs_change intents — nothing to build."
               },
               {
-                "line": 1125,
+                "line": 1134,
                 "value": "next_step"
               },
               {
-                "line": 1126,
+                "line": 1135,
                 "value": "graph_state"
               },
               {
-                "line": 1129,
+                "line": 1138,
                 "value": "✓ No planned/needs_change intents — nothing to build."
               },
               {
-                "line": 1131,
+                "line": 1140,
                 "value": "  {}"
               },
               {
-                "line": 1132,
+                "line": 1141,
                 "value": "  → Next: {}"
               },
               {
-                "line": 1147,
+                "line": 1156,
                 "value": "needs_change"
               },
               {
-                "line": 1148,
+                "line": 1157,
                 "value": "fixer"
               },
               {
-                "line": 1148,
+                "line": 1157,
                 "value": "high"
               },
               {
-                "line": 1150,
+                "line": 1159,
                 "value": "builder"
               },
               {
-                "line": 1150,
+                "line": 1159,
                 "value": "mid"
               },
               {
-                "line": 1152,
+                "line": 1161,
                 "value": "builder"
               },
               {
-                "line": 1152,
+                "line": 1161,
                 "value": "high"
               },
               {
-                "line": 1158,
+                "line": 1167,
                 "value": "BUILD"
               },
               {
-                "line": 1175,
+                "line": 1184,
                 "value": "graph_state"
               },
               {
-                "line": 1176,
+                "line": 1185,
                 "value": "notes_total"
               },
               {
-                "line": 1177,
+                "line": 1186,
                 "value": "implements_total"
               },
               {
-                "line": 1178,
+                "line": 1187,
                 "value": "validations_total"
               },
               {
-                "line": 1186,
+                "line": 1195,
                 "value": "── Next Build Item  [{}  priority={:.2}] ───────────────────────────────"
               },
               {
-                "line": 1190,
+                "line": 1199,
                 "value": "── Intent ──────────────────────────────────────────────────────────"
               },
               {
-                "line": 1191,
+                "line": 1200,
                 "value": "{}"
               },
               {
-                "line": 1194,
+                "line": 1203,
                 "value": "── Currently grounded at ───────────────────────────────────────────"
               },
               {
-                "line": 1199,
+                "line": 1208,
                 "value": "  @ {}"
               },
               {
-                "line": 1201,
+                "line": 1210,
                 "value": "  {}{}"
               },
               {
-                "line": 1206,
+                "line": 1215,
                 "value": "loom intent show {}"
               },
               {
-                "line": 1208,
+                "line": 1217,
                 "value": "  {m}"
               },
               {
-                "line": 1215,
+                "line": 1224,
                 "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
               },
               {
-                "line": 1221,
+                "line": 1230,
                 "value": "── Notes ({}) ──────────────────────────────────────────────────────"
               },
               {
-                "line": 1227,
+                "line": 1236,
                 "value": "  [{}] {}  ({}, ×{})"
               },
               {
-                "line": 1229,
+                "line": 1238,
                 "value": "  [{}] {}  ({})"
               },
               {
-                "line": 1235,
+                "line": 1244,
                 "value": "loom note list --intent {}"
               },
               {
-                "line": 1237,
+                "line": 1246,
                 "value": "  {m}"
               },
               {
-                "line": 1241,
+                "line": 1250,
                 "value": "── Suggested Action ────────────────────────────────────────────────"
               },
               {
-                "line": 1242,
+                "line": 1251,
                 "value": "{}"
               },
               {
-                "line": 1244,
+                "line": 1253,
                 "value": "  Dispatch — {}"
               },
               {
-                "line": 1245,
+                "line": 1254,
                 "value": "  {}"
               }
             ],
@@ -50707,265 +50751,265 @@
             "body_hash": "fc34aa017b92dad3",
             "kind": "fn",
             "label": "fn run_prove",
-            "line_end": 2196,
-            "line_start": 2027,
+            "line_end": 2205,
+            "line_start": 2036,
             "name": "run_prove",
             "shape_hash": "f98d7da39f42f1b4",
             "string_literals": [
               {
-                "line": 2035,
+                "line": 2044,
                 "value": "status"
               },
               {
-                "line": 2035,
+                "line": 2044,
                 "value": "empty"
               },
               {
-                "line": 2035,
+                "line": 2044,
                 "value": "mode"
               },
               {
-                "line": 2035,
+                "line": 2044,
                 "value": "prove"
-              },
-              {
-                "line": 2036,
-                "value": "message"
-              },
-              {
-                "line": 2036,
-                "value": "No proposed hypotheses and no stale support — the pre-decision plane is clear."
-              },
-              {
-                "line": 2037,
-                "value": "next_step"
-              },
-              {
-                "line": 2038,
-                "value": "graph_state"
-              },
-              {
-                "line": 2042,
-                "value": "✓ No proposed hypotheses and no stale support — the pre-decision plane is clear."
               },
               {
                 "line": 2045,
-                "value": "  {}"
+                "value": "message"
+              },
+              {
+                "line": 2045,
+                "value": "No proposed hypotheses and no stale support — the pre-decision plane is clear."
               },
               {
                 "line": 2046,
-                "value": "  → Next: {}"
+                "value": "next_step"
               },
               {
-                "line": 2057,
-                "value": "analyzer"
-              },
-              {
-                "line": 2060,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 2063,
-                "value": "supported"
-              },
-              {
-                "line": 2065,
-                "value": "RE-PROVE this hypothesis — its support was earned against code that has since changed \\\n             (stale target(s): {stale}; the TARGETS transition notes name the files).\\n\\\n             Re-check the claim against the code as it is NOW, then re-record:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what still holds>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<the change resolved it>\\\" --confidence 0.9\\\n             \\nRe-proving re-stamps every TARGETS edge, clearing the staleness."
-              },
-              {
-                "line": 2072,
-                "value": ", "
-              },
-              {
-                "line": 2076,
-                "value": "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\\n\\\n             Read the targeted intents' groundings, check the claim, record what you found:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what you found>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<why the claim doesn't hold>\\\" --confidence 0.9\\\n             \\nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \\\n             A supported verdict hands the adopt/reject decision to the builder lane."
-              },
-              {
-                "line": 2091,
-                "value": "mode"
-              },
-              {
-                "line": 2091,
-                "value": "prove"
-              },
-              {
-                "line": 2092,
-                "value": "priority_score"
-              },
-              {
-                "line": 2093,
-                "value": "hypothesis"
-              },
-              {
-                "line": 2094,
-                "value": "targets"
-              },
-              {
-                "line": 2095,
-                "value": "implements"
-              },
-              {
-                "line": 2096,
-                "value": "notes"
-              },
-              {
-                "line": 2097,
-                "value": "targets_total"
-              },
-              {
-                "line": 2098,
-                "value": "implements_total"
-              },
-              {
-                "line": 2099,
-                "value": "notes_total"
-              },
-              {
-                "line": 2100,
-                "value": "suggested_action"
-              },
-              {
-                "line": 2101,
-                "value": "owner_role"
-              },
-              {
-                "line": 2101,
-                "value": "analyzer"
-              },
-              {
-                "line": 2102,
-                "value": "effort"
-              },
-              {
-                "line": 2102,
-                "value": "high"
-              },
-              {
-                "line": 2103,
-                "value": "dispatch"
-              },
-              {
-                "line": 2103,
-                "value": "analyzer"
-              },
-              {
-                "line": 2104,
+                "line": 2047,
                 "value": "graph_state"
               },
               {
-                "line": 2110,
-                "value": "── Next Prove Item  [{}  priority={:.2}] ─────────────────────────"
+                "line": 2051,
+                "value": "✓ No proposed hypotheses and no stale support — the pre-decision plane is clear."
               },
               {
-                "line": 2111,
-                "value": "supported"
+                "line": 2054,
+                "value": "  {}"
               },
               {
-                "line": 2112,
-                "value": "stale support"
+                "line": 2055,
+                "value": "  → Next: {}"
               },
               {
-                "line": 2114,
-                "value": "proposed"
-              },
-              {
-                "line": 2119,
-                "value": "  hypothesis:        {}  ({})"
-              },
-              {
-                "line": 2120,
-                "value": "  claim:             {}"
-              },
-              {
-                "line": 2121,
-                "value": "  proposal:          {}"
-              },
-              {
-                "line": 2122,
-                "value": "  predicted_outcome: {}"
-              },
-              {
-                "line": 2123,
-                "value": "  proposed by:       {}"
-              },
-              {
-                "line": 2127,
-                "value": "── Targets ({}) ─────────────────────────────────────────────────────"
-              },
-              {
-                "line": 2131,
-                "value": "  → {}  ({})"
-              },
-              {
-                "line": 2136,
-                "value": "loom hypothesis show {}"
-              },
-              {
-                "line": 2138,
-                "value": "  {m}"
-              },
-              {
-                "line": 2143,
-                "value": "── Targeted code ───────────────────────────────────────────────────"
-              },
-              {
-                "line": 2148,
-                "value": "  @ {}"
-              },
-              {
-                "line": 2150,
-                "value": "  {}{}"
-              },
-              {
-                "line": 2155,
-                "value": "loom hypothesis show {}"
-              },
-              {
-                "line": 2157,
-                "value": "  {m}"
-              },
-              {
-                "line": 2164,
-                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
-              },
-              {
-                "line": 2170,
-                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
-              },
-              {
-                "line": 2176,
-                "value": "  [{}] {}  ({}, ×{})"
-              },
-              {
-                "line": 2178,
-                "value": "  [{}] {}  ({})"
-              },
-              {
-                "line": 2184,
-                "value": "loom note list --intent {}"
-              },
-              {
-                "line": 2186,
-                "value": "  {m}"
-              },
-              {
-                "line": 2190,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 2191,
-                "value": "{}"
-              },
-              {
-                "line": 2193,
-                "value": "  Dispatch — {}  [effort: high]"
-              },
-              {
-                "line": 2193,
+                "line": 2066,
                 "value": "analyzer"
               },
               {
-                "line": 2194,
+                "line": 2069,
+                "value": "needs_reverification"
+              },
+              {
+                "line": 2072,
+                "value": "supported"
+              },
+              {
+                "line": 2074,
+                "value": "RE-PROVE this hypothesis — its support was earned against code that has since changed \\\n             (stale target(s): {stale}; the TARGETS transition notes name the files).\\n\\\n             Re-check the claim against the code as it is NOW, then re-record:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what still holds>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<the change resolved it>\\\" --confidence 0.9\\\n             \\nRe-proving re-stamps every TARGETS edge, clearing the staleness."
+              },
+              {
+                "line": 2081,
+                "value": ", "
+              },
+              {
+                "line": 2085,
+                "value": "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\\n\\\n             Read the targeted intents' groundings, check the claim, record what you found:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what you found>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<why the claim doesn't hold>\\\" --confidence 0.9\\\n             \\nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \\\n             A supported verdict hands the adopt/reject decision to the builder lane."
+              },
+              {
+                "line": 2100,
+                "value": "mode"
+              },
+              {
+                "line": 2100,
+                "value": "prove"
+              },
+              {
+                "line": 2101,
+                "value": "priority_score"
+              },
+              {
+                "line": 2102,
+                "value": "hypothesis"
+              },
+              {
+                "line": 2103,
+                "value": "targets"
+              },
+              {
+                "line": 2104,
+                "value": "implements"
+              },
+              {
+                "line": 2105,
+                "value": "notes"
+              },
+              {
+                "line": 2106,
+                "value": "targets_total"
+              },
+              {
+                "line": 2107,
+                "value": "implements_total"
+              },
+              {
+                "line": 2108,
+                "value": "notes_total"
+              },
+              {
+                "line": 2109,
+                "value": "suggested_action"
+              },
+              {
+                "line": 2110,
+                "value": "owner_role"
+              },
+              {
+                "line": 2110,
+                "value": "analyzer"
+              },
+              {
+                "line": 2111,
+                "value": "effort"
+              },
+              {
+                "line": 2111,
+                "value": "high"
+              },
+              {
+                "line": 2112,
+                "value": "dispatch"
+              },
+              {
+                "line": 2112,
+                "value": "analyzer"
+              },
+              {
+                "line": 2113,
+                "value": "graph_state"
+              },
+              {
+                "line": 2119,
+                "value": "── Next Prove Item  [{}  priority={:.2}] ─────────────────────────"
+              },
+              {
+                "line": 2120,
+                "value": "supported"
+              },
+              {
+                "line": 2121,
+                "value": "stale support"
+              },
+              {
+                "line": 2123,
+                "value": "proposed"
+              },
+              {
+                "line": 2128,
+                "value": "  hypothesis:        {}  ({})"
+              },
+              {
+                "line": 2129,
+                "value": "  claim:             {}"
+              },
+              {
+                "line": 2130,
+                "value": "  proposal:          {}"
+              },
+              {
+                "line": 2131,
+                "value": "  predicted_outcome: {}"
+              },
+              {
+                "line": 2132,
+                "value": "  proposed by:       {}"
+              },
+              {
+                "line": 2136,
+                "value": "── Targets ({}) ─────────────────────────────────────────────────────"
+              },
+              {
+                "line": 2140,
+                "value": "  → {}  ({})"
+              },
+              {
+                "line": 2145,
+                "value": "loom hypothesis show {}"
+              },
+              {
+                "line": 2147,
+                "value": "  {m}"
+              },
+              {
+                "line": 2152,
+                "value": "── Targeted code ───────────────────────────────────────────────────"
+              },
+              {
+                "line": 2157,
+                "value": "  @ {}"
+              },
+              {
+                "line": 2159,
+                "value": "  {}{}"
+              },
+              {
+                "line": 2164,
+                "value": "loom hypothesis show {}"
+              },
+              {
+                "line": 2166,
+                "value": "  {m}"
+              },
+              {
+                "line": 2173,
+                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
+              },
+              {
+                "line": 2179,
+                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
+              },
+              {
+                "line": 2185,
+                "value": "  [{}] {}  ({}, ×{})"
+              },
+              {
+                "line": 2187,
+                "value": "  [{}] {}  ({})"
+              },
+              {
+                "line": 2193,
+                "value": "loom note list --intent {}"
+              },
+              {
+                "line": 2195,
+                "value": "  {m}"
+              },
+              {
+                "line": 2199,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 2200,
+                "value": "{}"
+              },
+              {
+                "line": 2202,
+                "value": "  Dispatch — {}  [effort: high]"
+              },
+              {
+                "line": 2202,
+                "value": "analyzer"
+              },
+              {
+                "line": 2203,
                 "value": "  {}"
               }
             ],
@@ -50975,118 +51019,78 @@
             "body_hash": "15d810aec154fcd7",
             "kind": "fn",
             "label": "fn run_quality",
-            "line_end": 1846,
-            "line_start": 1712,
+            "line_end": 1855,
+            "line_start": 1721,
             "name": "run_quality",
             "shape_hash": "21b7011c37968834",
             "string_literals": [
               {
-                "line": 1720,
+                "line": 1729,
                 "value": "status"
               },
               {
-                "line": 1720,
+                "line": 1729,
                 "value": "empty"
               },
               {
-                "line": 1720,
+                "line": 1729,
                 "value": "mode"
-              },
-              {
-                "line": 1720,
-                "value": "quality"
-              },
-              {
-                "line": 1721,
-                "value": "message"
-              },
-              {
-                "line": 1721,
-                "value": "No uninspected, failing, or stale GOVERNS edges — the green gate holds."
-              },
-              {
-                "line": 1722,
-                "value": "next_step"
-              },
-              {
-                "line": 1723,
-                "value": "graph_state"
-              },
-              {
-                "line": 1726,
-                "value": "✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds."
-              },
-              {
-                "line": 1728,
-                "value": "  {}"
               },
               {
                 "line": 1729,
+                "value": "quality"
+              },
+              {
+                "line": 1730,
+                "value": "message"
+              },
+              {
+                "line": 1730,
+                "value": "No uninspected, failing, or stale GOVERNS edges — the green gate holds."
+              },
+              {
+                "line": 1731,
+                "value": "next_step"
+              },
+              {
+                "line": 1732,
+                "value": "graph_state"
+              },
+              {
+                "line": 1735,
+                "value": "✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds."
+              },
+              {
+                "line": 1737,
+                "value": "  {}"
+              },
+              {
+                "line": 1738,
                 "value": "  → Next: {}"
               },
               {
-                "line": 1743,
+                "line": 1752,
                 "value": "quality"
               },
               {
-                "line": 1750,
+                "line": 1759,
                 "value": "mid"
               },
               {
-                "line": 1751,
+                "line": 1760,
                 "value": "unmeasured"
               },
               {
-                "line": 1753,
+                "line": 1762,
                 "value": "MEASURE: rule '{rule}' has never been held against intent '{name}' (no GOVERNS edge \\\n             here or on any ancestor). One command records the measurement — the verdict CREATES the edge:\\n\\\n             \\n  loom rule verdict {rid} {iid} --status passing --criterion \\\"<what compliance looks like>\\\" --evidence \\\"<what you found>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status failing --criterion \\\"<criterion>\\\" --evidence \\\"<the violation>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status independent --criterion \\\"<criterion>\\\" --evidence \\\"<why the rule has no surface here>\\\"\\\n             \\nPrefer the highest HONEST altitude: a verdict on a component covers its descendants \\\n             (check `loom intent show {iid}` — if this rule reads the same for the whole subtree, \\\n             verdict the parent instead)."
               },
               {
-                "line": 1768,
+                "line": 1777,
                 "value": "Inspect intent '{name}' against rule '{rule}' and record the verdict:\\n\\\n             \\n  loom rule verdict {rid} {iid} --status passing --criterion \\\"<what compliance looks like>\\\" --evidence \\\"<what you found>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status failing --criterion \\\"<criterion>\\\" --evidence \\\"<the violation>\\\""
               },
               {
-                "line": 1780,
-                "value": "mode"
-              },
-              {
-                "line": 1780,
-                "value": "quality"
-              },
-              {
-                "line": 1781,
-                "value": "priority_score"
-              },
-              {
-                "line": 1782,
-                "value": "governs"
-              },
-              {
-                "line": 1783,
-                "value": "intent"
-              },
-              {
-                "line": 1784,
-                "value": "implements"
-              },
-              {
-                "line": 1785,
-                "value": "implements_total"
-              },
-              {
-                "line": 1786,
-                "value": "notes"
-              },
-              {
-                "line": 1787,
-                "value": "notes_total"
-              },
-              {
-                "line": 1788,
-                "value": "suggested_action"
-              },
-              {
                 "line": 1789,
-                "value": "owner_role"
+                "value": "mode"
               },
               {
                 "line": 1789,
@@ -51094,86 +51098,126 @@
               },
               {
                 "line": 1790,
-                "value": "effort"
+                "value": "priority_score"
               },
               {
                 "line": 1791,
-                "value": "dispatch"
-              },
-              {
-                "line": 1791,
-                "value": "quality"
+                "value": "governs"
               },
               {
                 "line": 1792,
-                "value": "graph_state"
+                "value": "intent"
+              },
+              {
+                "line": 1793,
+                "value": "implements"
+              },
+              {
+                "line": 1794,
+                "value": "implements_total"
+              },
+              {
+                "line": 1795,
+                "value": "notes"
+              },
+              {
+                "line": 1796,
+                "value": "notes_total"
+              },
+              {
+                "line": 1797,
+                "value": "suggested_action"
               },
               {
                 "line": 1798,
-                "value": "── Next Quality Item  [{}  priority={:.2}] ─────────────────────────────"
+                "value": "owner_role"
               },
               {
-                "line": 1802,
-                "value": "  rule:   {}  → intent: {}"
-              },
-              {
-                "line": 1804,
-                "value": "  criterion: {}"
-              },
-              {
-                "line": 1807,
-                "value": "  evidence:  {}"
-              },
-              {
-                "line": 1810,
-                "value": "  {}"
-              },
-              {
-                "line": 1814,
-                "value": "── Intent ──────────────────────────────────────────────────────────"
-              },
-              {
-                "line": 1815,
-                "value": "{}"
-              },
-              {
-                "line": 1819,
-                "value": "── Grounded at ─────────────────────────────────────────────────────"
-              },
-              {
-                "line": 1824,
-                "value": "  @ {}"
-              },
-              {
-                "line": 1826,
-                "value": "  {}{}"
-              },
-              {
-                "line": 1831,
-                "value": "loom intent show {}"
-              },
-              {
-                "line": 1833,
-                "value": "  {m}"
-              },
-              {
-                "line": 1837,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 1838,
-                "value": "{}"
-              },
-              {
-                "line": 1841,
-                "value": "  Dispatch — {}  [effort: {rule_effort}]"
-              },
-              {
-                "line": 1842,
+                "line": 1798,
                 "value": "quality"
               },
               {
-                "line": 1844,
+                "line": 1799,
+                "value": "effort"
+              },
+              {
+                "line": 1800,
+                "value": "dispatch"
+              },
+              {
+                "line": 1800,
+                "value": "quality"
+              },
+              {
+                "line": 1801,
+                "value": "graph_state"
+              },
+              {
+                "line": 1807,
+                "value": "── Next Quality Item  [{}  priority={:.2}] ─────────────────────────────"
+              },
+              {
+                "line": 1811,
+                "value": "  rule:   {}  → intent: {}"
+              },
+              {
+                "line": 1813,
+                "value": "  criterion: {}"
+              },
+              {
+                "line": 1816,
+                "value": "  evidence:  {}"
+              },
+              {
+                "line": 1819,
+                "value": "  {}"
+              },
+              {
+                "line": 1823,
+                "value": "── Intent ──────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 1824,
+                "value": "{}"
+              },
+              {
+                "line": 1828,
+                "value": "── Grounded at ─────────────────────────────────────────────────────"
+              },
+              {
+                "line": 1833,
+                "value": "  @ {}"
+              },
+              {
+                "line": 1835,
+                "value": "  {}{}"
+              },
+              {
+                "line": 1840,
+                "value": "loom intent show {}"
+              },
+              {
+                "line": 1842,
+                "value": "  {m}"
+              },
+              {
+                "line": 1846,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 1847,
+                "value": "{}"
+              },
+              {
+                "line": 1850,
+                "value": "  Dispatch — {}  [effort: {rule_effort}]"
+              },
+              {
+                "line": 1851,
+                "value": "quality"
+              },
+              {
+                "line": 1853,
                 "value": "  {}"
               }
             ],
@@ -51447,285 +51491,285 @@
             "body_hash": "dc12c3b8f8c3ac4f",
             "kind": "fn",
             "label": "fn run_review",
-            "line_end": 2019,
-            "line_start": 1902,
+            "line_end": 2028,
+            "line_start": 1911,
             "name": "run_review",
             "shape_hash": "c1e8f10e42714103",
             "string_literals": [
               {
-                "line": 1912,
+                "line": 1921,
                 "value": "status"
               },
               {
-                "line": 1912,
+                "line": 1921,
                 "value": "empty"
               },
               {
-                "line": 1912,
+                "line": 1921,
                 "value": "mode"
               },
               {
-                "line": 1912,
+                "line": 1921,
                 "value": "review"
-              },
-              {
-                "line": 1913,
-                "value": "message"
-              },
-              {
-                "line": 1913,
-                "value": "No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."
-              },
-              {
-                "line": 1914,
-                "value": "next_step"
-              },
-              {
-                "line": 1915,
-                "value": "graph_state"
-              },
-              {
-                "line": 1919,
-                "value": "✓ No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."
               },
               {
                 "line": 1922,
-                "value": "  {}"
+                "value": "message"
+              },
+              {
+                "line": 1922,
+                "value": "No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."
               },
               {
                 "line": 1923,
-                "value": "  → Next: {}"
+                "value": "next_step"
               },
               {
-                "line": 1929,
-                "value": "INDEPENDENT RE-INSPECTION: form your own hypothesis from the intents and the \\\ncode BEFORE reading the recorded evidence (anchoring on a low-confidence claim defeats the \\\nreview). Then re-record: confirm with your own confidence (≥ 0.7 resolves this item) or overturn."
-              },
-              {
-                "line": 1937,
-                "value": "analyzer"
-              },
-              {
-                "line": 1939,
-                "value": "{protocol}\n\n  loom edge explore {a} {b} ground --criterion \\\"…\\\" --confidence 0.9\n  loom edge explore {a} {b} issue --criterion \\\"…\\\" --evidence \\\"…\\\"\n  loom edge explore {a} {b} independent --notes \\\"…\\\""
-              },
-              {
-                "line": 1949,
-                "value": "mode"
-              },
-              {
-                "line": 1949,
-                "value": "review"
-              },
-              {
-                "line": 1949,
-                "value": "kind"
-              },
-              {
-                "line": 1949,
-                "value": "relates_to"
-              },
-              {
-                "line": 1949,
-                "value": "priority_score"
-              },
-              {
-                "line": 1950,
-                "value": "edge"
-              },
-              {
-                "line": 1950,
-                "value": "intent_a"
-              },
-              {
-                "line": 1951,
-                "value": "intent_b"
-              },
-              {
-                "line": 1951,
-                "value": "notes"
-              },
-              {
-                "line": 1952,
-                "value": "notes_total"
-              },
-              {
-                "line": 1953,
-                "value": "suggested_action"
-              },
-              {
-                "line": 1954,
-                "value": "owner_role"
-              },
-              {
-                "line": 1954,
-                "value": "analyzer"
-              },
-              {
-                "line": 1954,
-                "value": "effort"
-              },
-              {
-                "line": 1954,
-                "value": "high"
-              },
-              {
-                "line": 1955,
-                "value": "dispatch"
-              },
-              {
-                "line": 1955,
-                "value": "analyzer"
-              },
-              {
-                "line": 1956,
+                "line": 1924,
                 "value": "graph_state"
               },
               {
-                "line": 1961,
-                "value": "── Next Review Item  [relates_to  confidence={:.2}  priority={:.2}] ──────"
+                "line": 1928,
+                "value": "✓ No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."
               },
               {
-                "line": 1965,
-                "value": "  {} × {}"
-              },
-              {
-                "line": 1967,
-                "value": "  recorded verdict: {}  (by {})"
-              },
-              {
-                "line": 1970,
-                "value": "  criterion: {}"
-              },
-              {
-                "line": 1972,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 1973,
-                "value": "{action}"
-              },
-              {
-                "line": 1975,
-                "value": "  Dispatch — {}  [effort: high]"
-              },
-              {
-                "line": 1975,
-                "value": "analyzer"
-              },
-              {
-                "line": 1976,
+                "line": 1931,
                 "value": "  {}"
               },
               {
-                "line": 1980,
-                "value": "quality"
+                "line": 1932,
+                "value": "  → Next: {}"
               },
               {
-                "line": 1982,
-                "value": "{protocol}\n\n  loom rule verdict {r} {i} --status passing|failing|independent --criterion \\\"…\\\" --evidence \\\"…\\\" --confidence 0.9"
+                "line": 1938,
+                "value": "INDEPENDENT RE-INSPECTION: form your own hypothesis from the intents and the \\\ncode BEFORE reading the recorded evidence (anchoring on a low-confidence claim defeats the \\\nreview). Then re-record: confirm with your own confidence (≥ 0.7 resolves this item) or overturn."
               },
               {
-                "line": 1989,
+                "line": 1946,
+                "value": "analyzer"
+              },
+              {
+                "line": 1948,
+                "value": "{protocol}\n\n  loom edge explore {a} {b} ground --criterion \\\"…\\\" --confidence 0.9\n  loom edge explore {a} {b} issue --criterion \\\"…\\\" --evidence \\\"…\\\"\n  loom edge explore {a} {b} independent --notes \\\"…\\\""
+              },
+              {
+                "line": 1958,
                 "value": "mode"
               },
               {
-                "line": 1989,
+                "line": 1958,
                 "value": "review"
               },
               {
-                "line": 1989,
+                "line": 1958,
                 "value": "kind"
               },
               {
-                "line": 1989,
-                "value": "governs"
+                "line": 1958,
+                "value": "relates_to"
               },
               {
-                "line": 1989,
+                "line": 1958,
                 "value": "priority_score"
               },
               {
-                "line": 1990,
-                "value": "governs"
+                "line": 1959,
+                "value": "edge"
               },
               {
-                "line": 1990,
-                "value": "intent"
+                "line": 1959,
+                "value": "intent_a"
               },
               {
-                "line": 1990,
+                "line": 1960,
+                "value": "intent_b"
+              },
+              {
+                "line": 1960,
                 "value": "notes"
               },
               {
-                "line": 1991,
+                "line": 1961,
                 "value": "notes_total"
               },
               {
-                "line": 1992,
+                "line": 1962,
                 "value": "suggested_action"
               },
               {
-                "line": 1993,
+                "line": 1963,
                 "value": "owner_role"
               },
               {
-                "line": 1993,
-                "value": "quality"
+                "line": 1963,
+                "value": "analyzer"
               },
               {
-                "line": 1993,
+                "line": 1963,
                 "value": "effort"
               },
               {
-                "line": 1993,
+                "line": 1963,
                 "value": "high"
               },
               {
-                "line": 1994,
+                "line": 1964,
                 "value": "dispatch"
               },
               {
-                "line": 1994,
-                "value": "quality"
+                "line": 1964,
+                "value": "analyzer"
               },
               {
-                "line": 1995,
+                "line": 1965,
                 "value": "graph_state"
               },
               {
-                "line": 2000,
-                "value": "── Next Review Item  [governs  confidence={:.2}  priority={:.2}] ─────────"
+                "line": 1970,
+                "value": "── Next Review Item  [relates_to  confidence={:.2}  priority={:.2}] ──────"
               },
               {
-                "line": 2004,
-                "value": "  rule {} → intent {}"
+                "line": 1974,
+                "value": "  {} × {}"
               },
               {
-                "line": 2006,
+                "line": 1976,
                 "value": "  recorded verdict: {}  (by {})"
               },
               {
-                "line": 2009,
+                "line": 1979,
                 "value": "  criterion: {}"
               },
               {
-                "line": 2011,
+                "line": 1981,
                 "value": "── Suggested Action ────────────────────────────────────────────────"
               },
               {
-                "line": 2012,
+                "line": 1982,
                 "value": "{action}"
               },
               {
-                "line": 2014,
+                "line": 1984,
                 "value": "  Dispatch — {}  [effort: high]"
               },
               {
-                "line": 2014,
+                "line": 1984,
+                "value": "analyzer"
+              },
+              {
+                "line": 1985,
+                "value": "  {}"
+              },
+              {
+                "line": 1989,
                 "value": "quality"
               },
               {
+                "line": 1991,
+                "value": "{protocol}\n\n  loom rule verdict {r} {i} --status passing|failing|independent --criterion \\\"…\\\" --evidence \\\"…\\\" --confidence 0.9"
+              },
+              {
+                "line": 1998,
+                "value": "mode"
+              },
+              {
+                "line": 1998,
+                "value": "review"
+              },
+              {
+                "line": 1998,
+                "value": "kind"
+              },
+              {
+                "line": 1998,
+                "value": "governs"
+              },
+              {
+                "line": 1998,
+                "value": "priority_score"
+              },
+              {
+                "line": 1999,
+                "value": "governs"
+              },
+              {
+                "line": 1999,
+                "value": "intent"
+              },
+              {
+                "line": 1999,
+                "value": "notes"
+              },
+              {
+                "line": 2000,
+                "value": "notes_total"
+              },
+              {
+                "line": 2001,
+                "value": "suggested_action"
+              },
+              {
+                "line": 2002,
+                "value": "owner_role"
+              },
+              {
+                "line": 2002,
+                "value": "quality"
+              },
+              {
+                "line": 2002,
+                "value": "effort"
+              },
+              {
+                "line": 2002,
+                "value": "high"
+              },
+              {
+                "line": 2003,
+                "value": "dispatch"
+              },
+              {
+                "line": 2003,
+                "value": "quality"
+              },
+              {
+                "line": 2004,
+                "value": "graph_state"
+              },
+              {
+                "line": 2009,
+                "value": "── Next Review Item  [governs  confidence={:.2}  priority={:.2}] ─────────"
+              },
+              {
+                "line": 2013,
+                "value": "  rule {} → intent {}"
+              },
+              {
                 "line": 2015,
+                "value": "  recorded verdict: {}  (by {})"
+              },
+              {
+                "line": 2018,
+                "value": "  criterion: {}"
+              },
+              {
+                "line": 2020,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 2021,
+                "value": "{action}"
+              },
+              {
+                "line": 2023,
+                "value": "  Dispatch — {}  [effort: high]"
+              },
+              {
+                "line": 2023,
+                "value": "quality"
+              },
+              {
+                "line": 2024,
                 "value": "  {}"
               }
             ],
@@ -52259,273 +52303,273 @@
             "body_hash": "98fdb30105c78acc",
             "kind": "fn",
             "label": "fn run_validate",
-            "line_end": 1423,
-            "line_start": 1253,
+            "line_end": 1432,
+            "line_start": 1262,
             "name": "run_validate",
             "shape_hash": "aae4c86f1c1f54f2",
             "string_literals": [
               {
-                "line": 1263,
+                "line": 1272,
                 "value": "status"
               },
               {
-                "line": 1263,
+                "line": 1272,
                 "value": "empty"
               },
               {
-                "line": 1263,
+                "line": 1272,
                 "value": "mode"
-              },
-              {
-                "line": 1263,
-                "value": "validate"
-              },
-              {
-                "line": 1264,
-                "value": "message"
-              },
-              {
-                "line": 1264,
-                "value": "Every intent's proof is green — nothing to validate."
-              },
-              {
-                "line": 1265,
-                "value": "next_step"
-              },
-              {
-                "line": 1266,
-                "value": "graph_state"
-              },
-              {
-                "line": 1269,
-                "value": "✓ Every intent's proof is green — nothing to validate."
-              },
-              {
-                "line": 1271,
-                "value": "  {}"
               },
               {
                 "line": 1272,
-                "value": "  → Next: {}"
-              },
-              {
-                "line": 1279,
-                "value": "validator"
-              },
-              {
-                "line": 1282,
-                "value": "PROVE this intent — it has no validations:\\n\\\n             1. Decide how it can be proven (test | assertion | benchmark | manual_check —\\n     \\\n                or, if it's part of an endpoint-reachable journey, a consumer saga:\\n     \\\n                `loom saga add <spec.yaml>` proves the whole chain by executing it).\\n  \\\n             2. loom validation add --name \\\"…\\\" --type test --command \\\"…\\\" --intent {id}\\n  \\\n             3. loom validate {id}"
-              },
-              {
-                "line": 1295,
-                "value": "not_run"
-              },
-              {
-                "line": 1303,
-                "value": "  - {}: loom validation update {} --command \\\"…\\\"  OR  loom validation mark {} --result passed|failed --evidence \\\"…\\\""
-              },
-              {
-                "line": 1308,
-                "value": "\\n"
-              },
-              {
-                "line": 1310,
-                "value": "This intent has validation(s) with no command; `loom validate {id}` will skip them.\\n\\\n                 Add commands or record manual verdicts:\\n{fixes}"
-              },
-              {
-                "line": 1317,
-                "value": "saga"
-              },
-              {
-                "line": 1319,
-                "value": "\\nA saga proof is linked — run it directly for step-level output: loom saga run {}"
-              },
-              {
-                "line": 1324,
-                "value": "Run this intent's validations and record the verdicts:\\n\\\n                 \\n  loom validate {id}\\n\\\n                 \\nIf one fails, the intent is not fulfilled — flag it: \\\n                 loom intent mark {id} --lifecycle needs_change --reason \\\"<validation failure>\\\"{saga_hint}"
-              },
-              {
-                "line": 1336,
-                "value": "mode"
-              },
-              {
-                "line": 1336,
                 "value": "validate"
               },
               {
-                "line": 1337,
-                "value": "reason"
+                "line": 1273,
+                "value": "message"
               },
               {
-                "line": 1338,
-                "value": "priority_score"
+                "line": 1273,
+                "value": "Every intent's proof is green — nothing to validate."
               },
               {
-                "line": 1339,
-                "value": "intent"
+                "line": 1274,
+                "value": "next_step"
               },
               {
-                "line": 1340,
-                "value": "validations"
-              },
-              {
-                "line": 1341,
-                "value": "validations_total"
-              },
-              {
-                "line": 1342,
-                "value": "notes"
-              },
-              {
-                "line": 1343,
-                "value": "notes_total"
-              },
-              {
-                "line": 1344,
-                "value": "suggested_action"
-              },
-              {
-                "line": 1345,
-                "value": "owner_role"
-              },
-              {
-                "line": 1345,
-                "value": "validator"
-              },
-              {
-                "line": 1346,
-                "value": "effort"
-              },
-              {
-                "line": 1346,
-                "value": "mid"
-              },
-              {
-                "line": 1346,
-                "value": "low"
-              },
-              {
-                "line": 1347,
-                "value": "dispatch"
-              },
-              {
-                "line": 1347,
-                "value": "validator"
-              },
-              {
-                "line": 1348,
+                "line": 1275,
                 "value": "graph_state"
               },
               {
-                "line": 1354,
-                "value": "── Next Validation Item  [priority={:.2}] ──────────────────────────────"
+                "line": 1278,
+                "value": "✓ Every intent's proof is green — nothing to validate."
               },
               {
-                "line": 1358,
-                "value": "  why: {}"
+                "line": 1280,
+                "value": "  {}"
               },
               {
-                "line": 1360,
-                "value": "── Intent ──────────────────────────────────────────────────────────"
+                "line": 1281,
+                "value": "  → Next: {}"
               },
               {
-                "line": 1361,
-                "value": "{}"
-              },
-              {
-                "line": 1364,
-                "value": "── Linked Validations ──────────────────────────────────────────────"
-              },
-              {
-                "line": 1367,
-                "value": "passed"
-              },
-              {
-                "line": 1367,
-                "value": "✓"
-              },
-              {
-                "line": 1368,
-                "value": "failed"
-              },
-              {
-                "line": 1368,
-                "value": "✗"
-              },
-              {
-                "line": 1369,
-                "value": "blocked"
-              },
-              {
-                "line": 1369,
-                "value": "⊘"
-              },
-              {
-                "line": 1370,
-                "value": "?"
-              },
-              {
-                "line": 1373,
-                "value": "  {} {}  [{}]  cmd: {}"
-              },
-              {
-                "line": 1377,
-                "value": "loom validation list"
-              },
-              {
-                "line": 1378,
-                "value": "  {m}"
-              },
-              {
-                "line": 1387,
-                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
-              },
-              {
-                "line": 1393,
-                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
-              },
-              {
-                "line": 1399,
-                "value": "  [{}] {}  ({}, ×{})"
-              },
-              {
-                "line": 1401,
-                "value": "  [{}] {}  ({})"
-              },
-              {
-                "line": 1407,
-                "value": "loom note list --intent {}"
-              },
-              {
-                "line": 1409,
-                "value": "  {m}"
-              },
-              {
-                "line": 1413,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 1414,
-                "value": "{}"
-              },
-              {
-                "line": 1417,
-                "value": "  Dispatch — {}  [effort: {}]"
-              },
-              {
-                "line": 1418,
+                "line": 1288,
                 "value": "validator"
               },
               {
-                "line": 1419,
+                "line": 1291,
+                "value": "PROVE this intent — it has no validations:\\n\\\n             1. Decide how it can be proven (test | assertion | benchmark | manual_check —\\n     \\\n                or, if it's part of an endpoint-reachable journey, a consumer saga:\\n     \\\n                `loom saga add <spec.yaml>` proves the whole chain by executing it).\\n  \\\n             2. loom validation add --name \\\"…\\\" --type test --command \\\"…\\\" --intent {id}\\n  \\\n             3. loom validate {id}"
+              },
+              {
+                "line": 1304,
+                "value": "not_run"
+              },
+              {
+                "line": 1312,
+                "value": "  - {}: loom validation update {} --command \\\"…\\\"  OR  loom validation mark {} --result passed|failed --evidence \\\"…\\\""
+              },
+              {
+                "line": 1317,
+                "value": "\\n"
+              },
+              {
+                "line": 1319,
+                "value": "This intent has validation(s) with no command; `loom validate {id}` will skip them.\\n\\\n                 Add commands or record manual verdicts:\\n{fixes}"
+              },
+              {
+                "line": 1326,
+                "value": "saga"
+              },
+              {
+                "line": 1328,
+                "value": "\\nA saga proof is linked — run it directly for step-level output: loom saga run {}"
+              },
+              {
+                "line": 1333,
+                "value": "Run this intent's validations and record the verdicts:\\n\\\n                 \\n  loom validate {id}\\n\\\n                 \\nIf one fails, the intent is not fulfilled — flag it: \\\n                 loom intent mark {id} --lifecycle needs_change --reason \\\"<validation failure>\\\"{saga_hint}"
+              },
+              {
+                "line": 1345,
+                "value": "mode"
+              },
+              {
+                "line": 1345,
+                "value": "validate"
+              },
+              {
+                "line": 1346,
+                "value": "reason"
+              },
+              {
+                "line": 1347,
+                "value": "priority_score"
+              },
+              {
+                "line": 1348,
+                "value": "intent"
+              },
+              {
+                "line": 1349,
+                "value": "validations"
+              },
+              {
+                "line": 1350,
+                "value": "validations_total"
+              },
+              {
+                "line": 1351,
+                "value": "notes"
+              },
+              {
+                "line": 1352,
+                "value": "notes_total"
+              },
+              {
+                "line": 1353,
+                "value": "suggested_action"
+              },
+              {
+                "line": 1354,
+                "value": "owner_role"
+              },
+              {
+                "line": 1354,
+                "value": "validator"
+              },
+              {
+                "line": 1355,
+                "value": "effort"
+              },
+              {
+                "line": 1355,
                 "value": "mid"
               },
               {
-                "line": 1419,
+                "line": 1355,
                 "value": "low"
               },
               {
-                "line": 1421,
+                "line": 1356,
+                "value": "dispatch"
+              },
+              {
+                "line": 1356,
+                "value": "validator"
+              },
+              {
+                "line": 1357,
+                "value": "graph_state"
+              },
+              {
+                "line": 1363,
+                "value": "── Next Validation Item  [priority={:.2}] ──────────────────────────────"
+              },
+              {
+                "line": 1367,
+                "value": "  why: {}"
+              },
+              {
+                "line": 1369,
+                "value": "── Intent ──────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 1370,
+                "value": "{}"
+              },
+              {
+                "line": 1373,
+                "value": "── Linked Validations ──────────────────────────────────────────────"
+              },
+              {
+                "line": 1376,
+                "value": "passed"
+              },
+              {
+                "line": 1376,
+                "value": "✓"
+              },
+              {
+                "line": 1377,
+                "value": "failed"
+              },
+              {
+                "line": 1377,
+                "value": "✗"
+              },
+              {
+                "line": 1378,
+                "value": "blocked"
+              },
+              {
+                "line": 1378,
+                "value": "⊘"
+              },
+              {
+                "line": 1379,
+                "value": "?"
+              },
+              {
+                "line": 1382,
+                "value": "  {} {}  [{}]  cmd: {}"
+              },
+              {
+                "line": 1386,
+                "value": "loom validation list"
+              },
+              {
+                "line": 1387,
+                "value": "  {m}"
+              },
+              {
+                "line": 1396,
+                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
+              },
+              {
+                "line": 1402,
+                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
+              },
+              {
+                "line": 1408,
+                "value": "  [{}] {}  ({}, ×{})"
+              },
+              {
+                "line": 1410,
+                "value": "  [{}] {}  ({})"
+              },
+              {
+                "line": 1416,
+                "value": "loom note list --intent {}"
+              },
+              {
+                "line": 1418,
+                "value": "  {m}"
+              },
+              {
+                "line": 1422,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 1423,
+                "value": "{}"
+              },
+              {
+                "line": 1426,
+                "value": "  Dispatch — {}  [effort: {}]"
+              },
+              {
+                "line": 1427,
+                "value": "validator"
+              },
+              {
+                "line": 1428,
+                "value": "mid"
+              },
+              {
+                "line": 1428,
+                "value": "low"
+              },
+              {
+                "line": 1430,
                 "value": "  {}"
               }
             ],
@@ -84850,6 +84894,16 @@
         "target_id": "rt:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd:f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: docs/COMMANDS.md changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:33:21.991989+00:00",
+        "id": "1bd1b8ec-e48f-4f41-acbd-29214ccf2693",
+        "kind": "decision",
+        "target_id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
+        "target_kind": "codefile",
+        "text": "Audit reopen after blocked-validation closeout fix: render_all, run_align, and run_relates_with_repo remain deliberately centralized command-rendering/queue orchestration functions for now; splitting them is separate behavior-preserving cleanup, not required for this discrepancy fix. The repeated strings are intentional CLI affordances repeated across human and JSON/queue surfaces so the same commands and warnings stay visible at each point of use."
       },
       {
         "audience": "",
