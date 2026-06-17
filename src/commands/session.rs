@@ -1,7 +1,8 @@
 //! `loom session` — turn zero, before any utterance exists.
 //!
-//! `loom door` routes a user statement; this command handles the ABSENCE of
-//! one: the user said "use loom" / "loom session" / "loom mode" and stopped.
+//! `loom door` captures and routes a user statement; this command handles the
+//! ABSENCE of one: the user said "use loom" / "loom session" / "loom mode" and
+//! stopped.
 //! Loom cannot read minds, and the doctrine that keeps `loom smells`
 //! trustworthy applies here too — pure computation in the tool, judgment in
 //! the LLM. So the tool computes the OFFER MENU: every way this session could
@@ -57,9 +58,13 @@ const ASK: &str = "What do you want from this session?";
 
 const DOCTRINE: &str = "One question, in the user's language, recommendation first — an offer, \
     never a quiz. If code or the graph can answer it, don't ask (explore instead). A free-form \
-    answer routes through `loom door \"<their words>\"`; \"you decide\" means take the recommended \
-    offer and go. Land every conversational fragment before going autonomous — conversation \
-    residue is the failure mode.";
+    answer is captured through `loom door \"<their words>\"` and then normalized with \
+    `loom inbox triage`; \"you decide\" means take the recommended offer and go. Land every \
+    conversational fragment before going autonomous — conversation residue is the failure mode.";
+
+fn print_ask_line() {
+    println!("ASK: \"{ASK}\" — and offer:");
+}
 
 /// Build the menu + the recommended index. Pure: counts in, offers out.
 fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
@@ -81,7 +86,7 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
         menu.push(Offer {
             ask: "Or just tell me what's on your mind".into(),
             why: "their words, any altitude — story, complaint, term, question".into(),
-            then: "loom door \"<their words>\"  (routes it to a landing)",
+            then: "loom door \"<their words>\"  (captures it in Inbox, then routes)",
         });
         // Code on disk → mapping grounds the interview; no code → interview is all there is.
         return (menu, if c.has_source { 1 } else { 0 });
@@ -183,7 +188,7 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
     menu.push(Offer {
         ask: "Something specific on your mind? Just say it".into(),
         why: "their words, any altitude — story, complaint, term, question".into(),
-        then: "loom door \"<their words>\"  (routes it to a landing)",
+        then: "loom door \"<their words>\"  (captures it in Inbox, then routes)",
     });
     // Nothing user-gated, no build backlog, not complete → honest default:
     // the agent can work alone; recommend exactly that.
@@ -268,7 +273,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         println!("  The user opened a loom session but no graph exists here. Don't");
         println!("  guess — ASK, then set up accordingly.");
         println!();
-        println!("ASK: \"{ASK}\" — and offer:");
+        print_ask_line();
         print_menu(&menu, recommended);
         println!();
         println!("  {DOCTRINE}");
@@ -376,7 +381,7 @@ pub fn run_with_db(
     println!("  The user opened a loom session without stating a goal. Loom cannot");
     println!("  read minds — ASK before acting.");
     println!();
-    println!("ASK: \"{ASK}\" — and offer:");
+    print_ask_line();
     print_menu(&menu, recommended);
     println!();
     println!("  {DOCTRINE}");

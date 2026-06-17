@@ -33,6 +33,11 @@ pub trait GraphReadRepository {
     fn validations_for_intent(&self, id: &str) -> Result<Vec<crate::types::Validation>>;
     fn list_interface_surfaces(&self) -> Result<Vec<crate::types::InterfaceSurface>>;
     fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>>;
+    fn list_inbox_items(
+        &self,
+        status: Option<&str>,
+        kind: Option<&str>,
+    ) -> Result<Vec<crate::types::InboxItem>>;
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>>;
     fn notes_by_kind(&self, kind: &str) -> Result<Vec<crate::types::Note>>;
     fn list_notes(
@@ -139,6 +144,14 @@ impl GraphReadRepository for sqlite::SqliteGraphStore {
 
     fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>> {
         self.list_all_calls()
+    }
+
+    fn list_inbox_items(
+        &self,
+        status: Option<&str>,
+        kind: Option<&str>,
+    ) -> Result<Vec<crate::types::InboxItem>> {
+        self.list_inbox_items(status, kind)
     }
 
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>> {
@@ -312,6 +325,14 @@ impl GraphReadRepository for GraphReadHandle {
 
     fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>> {
         self.0.list_all_calls()
+    }
+
+    fn list_inbox_items(
+        &self,
+        status: Option<&str>,
+        kind: Option<&str>,
+    ) -> Result<Vec<crate::types::InboxItem>> {
+        self.0.list_inbox_items(status, kind)
     }
 
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>> {

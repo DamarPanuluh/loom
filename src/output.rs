@@ -1,5 +1,23 @@
 use serde::Serialize;
 
+pub fn note_list_intent_command(id: &str) -> String {
+    format!("loom note list --intent {id}")
+}
+
+pub fn intent_show_command(id: &str) -> String {
+    format!("`loom intent show {id}`")
+}
+
+pub fn intent_not_found_list(id: &str) -> String {
+    format!("Intent '{id}' not found.\nRun `loom intent list` to see available intents.")
+}
+
+pub fn intent_not_found_find(id: &str) -> String {
+    format!("Intent '{id}' not found. Run `loom intent list` (or `loom find \"<words>\"`).")
+}
+
+pub const STATUS_RECHECK_NEXT_STEP: &str = "`loom status` re-checks the compass";
+
 pub struct Printer {
     pub json: bool,
     /// When `Some`, JSON output is appended to this buffer instead of being

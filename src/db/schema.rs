@@ -73,6 +73,10 @@
 /// Still v9 after the InterfaceSurface plane (the InterfaceSurface label +
 /// CALLS edge): additive — older graphs simply have no interface surfaces until
 /// sagas are re-registered or new journeys land.
+///
+/// Still v9 after the InboxItem plane: additive — free-form language can be
+/// captured as durable intake cards before it becomes graph truth. Older
+/// graphs simply open with an empty inbox table.
 pub const SCHEMA_VERSION: &str = "9";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
@@ -84,7 +88,8 @@ pub fn prop_type(p: &str) -> &'static str {
             || x == prop::SOURCE_REFS
             || x == prop::IMPORTS
             || x == prop::SYMBOLS
-            || x == prop::SYMBOL_FACTS =>
+            || x == prop::SYMBOL_FACTS
+            || x == prop::LINKS =>
         {
             "list"
         }
@@ -145,6 +150,10 @@ pub mod label {
     /// concrete kind; the node is deliberately generic for CLI/RPC/event
     /// surfaces later.
     pub const INTERFACE_SURFACE: &str = "InterfaceSurface";
+    /// A durable intake card for raw human/LLM language. Inbox items are
+    /// candidates, not graph truth; routing them proposes the graph noun they
+    /// should become.
+    pub const INBOX_ITEM: &str = "InboxItem";
 }
 
 /// Every content node label (excludes the `LoomMeta` sentinel).
@@ -160,6 +169,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::VOCAB_TERM,
     label::PERSONA,
     label::INTERFACE_SURFACE,
+    label::INBOX_ITEM,
 ];
 
 // ---------------------------------------------------------------------------
@@ -359,6 +369,16 @@ pub mod prop {
     // Delegation (federation: subtree owned by another graph)
     /// Delegation: path to the child graph's committed export (loom.graph.json).
     pub const TARGET: &str = "target";
+    // InboxItem
+    pub const RAW_TEXT: &str = "raw_text";
+    pub const NORMALIZED_CLAIM: &str = "normalized_claim";
+    pub const SOURCE: &str = "source";
+    pub const LINKS: &str = "links";
+    pub const ROUTE_KIND: &str = "route_kind";
+    pub const ROUTE_COMMAND: &str = "route_command";
+    pub const ROUTE_TARGET_KIND: &str = "route_target_kind";
+    pub const ROUTE_TARGET_ID: &str = "route_target_id";
+    pub const RESOLUTION: &str = "resolution";
     // Hypothesis (the pre-decision plane)
     /// Hypothesis: what is wrong/suboptimal — falsifiable, provable against
     /// the code as it is NOW.
@@ -492,6 +512,24 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (SURFACE_KIND, BUILDER),
             (METHOD, BUILDER),
             (TARGET, BUILDER),
+            (CREATED_AT, LOOM),
+            (UPDATED_AT, LOOM),
+        ],
+        self::label::INBOX_ITEM => &[
+            (ID, LOOM),
+            (RAW_TEXT, ANY),
+            (NORMALIZED_CLAIM, ANY),
+            (KIND, ANY),
+            (STATUS, ANY),
+            (SOURCE, ANY),
+            (AUTHOR, ANY),
+            (TAGS, ANY),
+            (LINKS, ANY),
+            (ROUTE_KIND, ANY),
+            (ROUTE_COMMAND, ANY),
+            (ROUTE_TARGET_KIND, ANY),
+            (ROUTE_TARGET_ID, ANY),
+            (RESOLUTION, ANY),
             (CREATED_AT, LOOM),
             (UPDATED_AT, LOOM),
         ],

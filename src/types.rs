@@ -735,6 +735,52 @@ pub fn interface_surface_name(surface_kind: &str, method: &str, target: &str) ->
 }
 
 // ---------------------------------------------------------------------------
+// InboxItem — raw language intake before graph truth
+// ---------------------------------------------------------------------------
+
+/// A durable intake card for free-form human/LLM language. Inbox items are
+/// candidates, not graph truth: normalization proposes a route, and existing
+/// graph commands still perform the actual mutation in v1.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InboxItem {
+    pub id: String,
+    pub raw_text: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub normalized_claim: String,
+    /// observation | user_request | bug_suspicion | refactor_suspicion |
+    /// missing_intent | missing_validation | missing_story | terminology |
+    /// rough_edge | external_blocker | question
+    pub kind: String,
+    /// new | triaged | routed | rejected | deferred | duplicate
+    pub status: String,
+    /// chat | user | llm | code_audit | validation | import | unknown
+    pub source: String,
+    pub author: String,
+    /// Existing VocabTerm names. Empty is honest absence.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    /// Lightweight backlinks such as `intent:<id>`, `file:src/main.rs`, or
+    /// `inbox:<id>`. These make the card OKF/wiki-ready without creating a
+    /// separate knowledge-base subsystem.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub links: Vec<String>,
+    /// intent | hypothesis | validation | quality_rule | vocab | note |
+    /// ignore | answer | none
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub route_kind: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub route_command: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub route_target_kind: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub route_target_id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub resolution: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Delegation — a subtree owned by ANOTHER loom graph (monorepo/federation)
 // ---------------------------------------------------------------------------
 

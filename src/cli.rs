@@ -82,6 +82,12 @@ pub enum Command {
         subcommand: IntentCmd,
     },
 
+    /// Capture and triage raw human/LLM language before it becomes graph truth.
+    Inbox {
+        #[command(subcommand)]
+        subcommand: InboxCmd,
+    },
+
     /// Manage edges between nodes (RELATES_TO, IMPLEMENTS, GOVERNS, HIERARCHY, VALIDATES).
     Edge {
         #[command(subcommand)]
@@ -325,18 +331,14 @@ pub enum Command {
         limit: usize,
     },
 
-    /// The entrance: route a user utterance to its landing. Returns what the
-    /// graph already knows about the topic (intents, vocab terms, sagas,
-    /// rules), the compass state, and the LANDING MENU — every way a user
-    /// statement becomes a graph noun, each an existing command. Loom never
-    /// interprets; the driving LLM reads the matches and picks the landing.
-    /// The door advises, never blocks: any noun can land at any time — queues
-    /// re-derive and the compass re-sorts.
+    /// The entrance: capture a user utterance in Inbox, then return routing
+    /// context and the landing menu. Door captures first; the LLM normalizes
+    /// and routes the inbox card before mutating graph truth.
     #[command(after_help = "EXAMPLE:\n  \
         loom door \"users should be able to reset their password\"\n  \
         loom door \"checkout keeps breaking when the cart is empty\"\n  \
-        (read matches → pick ONE landing from the menu → run that command; \
-        land every conversational fragment before going autonomous)")]
+        (creates an InboxItem → read matches → normalize/route it with \
+        loom inbox normalize/mark before going autonomous)")]
     Door {
         /// The user's statement, in their words.
         utterance: String,
@@ -355,7 +357,7 @@ pub enum Command {
     #[command(after_help = "EXAMPLE:\n  \
         loom session\n  \
         (ask the user the ONE question, lead with the ▸ recommended offer; \
-        a free-form answer routes through `loom door \"<their words>\"`)")]
+        a free-form answer is captured by `loom door \"<their words>\"`, then normalized with `loom inbox triage`)")]
     Session,
 
     /// Structural hot spots: most-central intents and most-tangled files
@@ -1610,6 +1612,132 @@ pub enum NoteCmd {
         /// grows forever; the tail is the live context.
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Inbox subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum InboxCmd {
+    /// Capture raw language as an intake card. This is the single boundary for
+    /// free-form human/LLM input before it becomes graph truth.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom inbox add \"status debt feels scarier than reality\" --source chat --tag status")]
+    Add {
+        raw_text: String,
+
+        /// Source: chat | user | llm | code_audit | validation | import | unknown
+        #[arg(long, default_value = "unknown")]
+        source: String,
+
+        /// Existing VocabTerm name. Repeatable.
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+
+        /// Link to an existing graph object: intent:<id>, file:<path>,
+        /// validation:<id>, hypothesis:<id>, rule:<id>, vocab:<term>, inbox:<id>.
+        #[arg(long = "link")]
+        links: Vec<String>,
+
+        /// Who captured it. Defaults to $LOOM_AGENT, else "llm".
+        #[arg(long)]
+        author: Option<String>,
+    },
+
+    /// List inbox cards.
+    List {
+        /// Filter by status: new | triaged | routed | rejected | deferred | duplicate
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Filter by kind.
+        #[arg(long)]
+        kind: Option<String>,
+
+        /// Max rows, newest first. 0 = all.
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
+    /// Show one inbox card.
+    Show { id: String },
+
+    /// Return triage context for new/triaged cards: matches, vocab, route menu,
+    /// and exact normalize templates.
+    Triage {
+        /// Number of cards to serve.
+        #[arg(long, default_value_t = 20)]
+        take: usize,
+    },
+
+    /// Store the LLM's normalized reading and route proposal. This does not
+    /// mutate graph truth; run the proposed command separately, then mark routed.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom inbox normalize <id> --kind missing_intent \\\n    \
+          --claim \"password reset is a planned user-visible capability\" \\\n    \
+          --route intent \\\n    \
+          --command \"loom intent add --name 'password reset' --description 'users can request a reset link' --level feature --lifecycle planned\"")]
+    Normalize {
+        id: String,
+
+        /// Inbox kind.
+        #[arg(long)]
+        kind: String,
+
+        /// Normalized claim, in loom vocabulary.
+        #[arg(long)]
+        claim: String,
+
+        /// Route kind: intent | hypothesis | validation | quality_rule | vocab | note | ignore | answer | none
+        #[arg(long = "route")]
+        route_kind: String,
+
+        /// Exact command or answer the operator should execute/review.
+        #[arg(long)]
+        command: String,
+
+        /// Existing VocabTerm name. Repeatable; replaces current tags.
+        #[arg(long = "tag")]
+        tags: Vec<String>,
+
+        /// Link to an existing graph object. Repeatable; replaces current links.
+        #[arg(long = "link")]
+        links: Vec<String>,
+
+        /// Optional expected target kind for the route.
+        #[arg(long = "target-kind")]
+        route_target_kind: Option<String>,
+
+        /// Optional expected target id/name for the route.
+        #[arg(long = "target-id")]
+        route_target_id: Option<String>,
+    },
+
+    /// Mark an inbox card after a decision or after executing its route command.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom inbox mark <id> --status routed \\\n    \
+          --reason \"created planned intent password reset with loom intent add\" \\\n    \
+          --target-kind intent --target-id <intent-id>")]
+    Mark {
+        id: String,
+
+        /// Status: routed | rejected | duplicate | deferred
+        #[arg(long)]
+        status: String,
+
+        /// Why this status is correct, or what command/result routed it.
+        #[arg(long)]
+        reason: String,
+
+        /// Graph object kind produced/used by the route.
+        #[arg(long = "target-kind")]
+        route_target_kind: Option<String>,
+
+        /// Graph object id/name produced/used by the route.
+        #[arg(long = "target-id")]
+        route_target_id: Option<String>,
     },
 }
 

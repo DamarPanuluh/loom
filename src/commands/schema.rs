@@ -36,6 +36,7 @@ fn node_desc(label: &str) -> &'static str {
         "VocabTerm" => "A registered tag term — the bounded vocabulary intents may carry in `tags` (max 3). A key, not a knowledge node: its value is forcing two descriptions of one responsibility to collide (`duplicated_responsibility`). Registry: `loom vocab list`.",
         "Persona" => "A named audience segment. SERVES edges verify which intents serve it; JOURNEYS edges bind saga proofs to its end-to-end path.",
         "InterfaceSurface" => "An externally callable surface such as an HTTP endpoint. Sagas CALL these surfaces; intents still describe the behavior being proven.",
+        "InboxItem" => "A durable intake card for raw human/LLM language. Candidates only: normalize and route before creating graph truth.",
         _ => "",
     }
 }

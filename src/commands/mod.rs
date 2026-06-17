@@ -19,6 +19,7 @@ pub mod hotspots;
 pub mod hypothesis;
 pub mod ignore;
 pub mod import;
+pub mod inbox;
 pub mod init;
 pub mod intent;
 pub mod interface;
@@ -41,6 +42,11 @@ pub mod validate;
 pub mod validation;
 pub mod vocab;
 
+pub(crate) const POPULATE_NEXT_COMMAND: &str = "loom next --mode populate";
+pub(crate) const EXPORT_STALE_WARNING: &str =
+    "⚠ committed loom.graph.json is STALE — `loom export` before committing code.";
+pub(crate) const REQUIRED_HUMAN_GATED_DEBT_KEY: &str = "required_human_gated_debt";
+
 pub fn dispatch(cli: Cli) -> Result<()> {
     let printer = Printer::new(cli.json);
     if let Some(g) = &cli.graph {
@@ -54,6 +60,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Init        { path, name, observed } =>
             init::run(&path, name.as_deref(), observed, &printer),
         Command::Status                     => status::run(&printer),
+        Command::Inbox       { subcommand } => inbox::run(subcommand, &printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
         Command::Next        { mode, all, take, compact } => next::run(&mode, all, take, compact, &printer),
@@ -182,7 +189,7 @@ fn teach_unknown(tokens: &[String]) -> Result<()> {
         "start" | "begin" | "hello" | "hi" | "mode" | "talk" | "chat" | "interview" => anyhow::bail!(
             "opening a session is its own command:\n  \
              loom session   (turn zero: the ask-the-user playbook — one question, a state-aware offer menu)\n  \
-             loom door \"<their words>\"   (the user already said something? route it to its landing)"
+             loom door \"<their words>\"   (the user already said something? capture it in Inbox, then route)"
         ),
         "show" | "list" => anyhow::bail!(
             "`{verb}` needs a noun:\n  \
@@ -249,7 +256,8 @@ fn orient(printer: &Printer) -> Result<()> {
                 "loom next       — get the next thing to inspect",
                 "loom next --all — the closeout view: every role queue + gaps in one list",
                 "loom find <q>   — ask the map: keyword search over intents (with groundings)",
-                "loom door \"<utterance>\" — route a user statement to its landing (matches + landing menu)",
+                "loom door \"<utterance>\" — capture a user statement in Inbox, then show routing context",
+                "loom inbox triage --take 20 — normalize captured language before graph mutation",
                 "loom session   — turn zero: user opened a session with no stated goal? ask them (offer menu)",
                 "loom sync       — run after ANY code change (flags stale edges/verdicts/proofs)",
                 "loom export --check — fail if the committed graph export went stale",
@@ -266,7 +274,8 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("  loom next        get the next thing to inspect");
         println!("  loom next --all  closeout: every role queue + gaps in one list");
         println!("  loom find <q>    ask the map: keyword search over intents");
-        println!("  loom door \"…\"   user said something? route it to its landing");
+        println!("  loom door \"…\"   user said something? capture it, then route it");
+        println!("  loom inbox triage --take 20  normalize captured language");
         println!("  loom session     user said \"use loom\" and nothing else? ask them");
         println!("  loom sync        run after ANY code change");
         println!();

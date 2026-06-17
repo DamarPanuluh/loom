@@ -18,12 +18,9 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
     let intent_id = crate::db::queries::resolve_intent_from_snapshot(&snapshot, intent_id)?;
 
     // Ensure intent exists
-    store.get_intent(&intent_id)?.ok_or_else(|| {
-        anyhow::anyhow!(
-            "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-            intent_id
-        )
-    })?;
+    store
+        .get_intent(&intent_id)?
+        .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_list(&intent_id)))?;
 
     let to_run = store.validations_for_intent(&intent_id)?;
     if to_run.is_empty() {
@@ -265,7 +262,7 @@ fn execute_and_record(
     let next_step = if failed > 0 {
         "`loom next --mode fix`"
     } else {
-        "`loom status` re-checks the compass"
+        crate::output::STATUS_RECHECK_NEXT_STEP
     };
     if printer.json {
         let (scope_key, scope_val) = scope;

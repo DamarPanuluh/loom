@@ -493,9 +493,10 @@ loom guide [--mode greenfield|brownfield|refactor|port|seed]
   port = adopt a source graph's design (`import --as-planned`) and re-realize
   it in a new language/repo; seed = the USER interview (explicit-only, never
   auto-detected — the binary can't detect "the user wants to talk"): elicit a
-  head into planned intents (altitude-calibrated, one question per landing,
-  terminate on enumerable gaps, not exhaustion) or re-align a populated graph
-  via `loom next --mode align`. An empty graph's compass routes phase=seed here.
+  head through Inbox first, then into planned intents (altitude-calibrated, one
+  question per inbox card and landing, terminate on enumerable gaps, not
+  exhaustion) or re-align a populated graph via `loom next --mode align`. An
+  empty graph's compass routes phase=seed here.
 
 loom schema
   The data model — node/edge types + properties, the inspection state machine,
@@ -512,25 +513,27 @@ loom find <query> [--limit N]
   A miss distinguishes
   "not mapped" (points at `loom coverage`) from "doesn't exist".
 
+loom inbox add "<raw>" [--source chat|user|llm|code_audit|validation|import|unknown] [--tag <term>] [--link kind:value]
+loom inbox list [--status new|triaged|routed|rejected|deferred|duplicate] [--kind <kind>] [--limit N]
+loom inbox show <id>
+loom inbox triage [--take N]
+loom inbox normalize <id> --kind <kind> --claim "<normalized claim>" --route <route-kind> --command "<exact command or answer>" [--tag <term>] [--link kind:value]
+loom inbox mark <id> --status routed|rejected|duplicate|deferred --reason "<why>"
+  THE SINGLE FREE-FORM INPUT BOUNDARY. Raw human/LLM language enters as an
+  InboxItem first. Inbox cards are candidates, not graph truth: triage gives
+  matches and route templates; normalize stores the LLM's loom-vocabulary
+  reading and exact proposed command; the operator runs that command separately
+  and then marks the card routed/rejected/duplicate/deferred. Links are light
+  knowledge-card backlinks (`intent:`, `file:`, `validation:`, `hypothesis:`,
+  `rule:`, `vocab:`, `inbox:`), making future wiki/OKF projection possible
+  without turning loom into a note app.
+
 loom door "<utterance>" [--limit N]
-  THE ENTRANCE — progressive disclosure at turn zero: route a USER UTTERANCE
-  to its landing. Loom never interprets (pure computation in the tool,
-  judgment in the LLM): it assembles the routing context mechanically — what
-  every plane already knows about the topic (intents by BM25 = `loom find`,
-  vocab/sagas/rules by token overlap), the compass pulse, and the LANDING
-  MENU: the total enumeration of ways an utterance becomes a graph noun, each
-  an existing command (new behavior → intent add planned · story → saga
-  [--spawn-missing] · complaint → mark needs_change · redesign → hypothesis
-  add · norm → rule add · term → vocab add · meaning shift → intent update ·
-  ruling/declined scope → decision note · question → answer from matches,
-  nothing lands · "go work" → status/next). Two contracts keep the corridor
-  clear: TOTALITY (no good landing = a menu bug, not a user problem) and THE
-  DOOR ADVISES, NEVER BLOCKS (state lives in the graph, not the conversation —
-  any noun lands at any time; queues re-derive, the compass re-sorts; there is
-  no wrong moment to say anything). Discipline: ONE landing per utterance,
-  landed before the next question; before going autonomous, sweep — every
-  conversational fragment must have landed (conversation residue is the
-  failure mode).
+  THE ENTRANCE — capture first, then route. Door creates an InboxItem from the
+  user's utterance, then assembles routing context mechanically: intent matches,
+  vocab/saga/rule matches, compass pulse, and the LANDING MENU. Loom never
+  interprets; the LLM normalizes the captured card with `loom inbox normalize`,
+  runs the proposed graph command separately, then marks the card routed.
 
 loom session
   TURN ZERO, BEFORE ANY UTTERANCE — the door's complement: the user said
@@ -544,8 +547,9 @@ loom session
   (align drift > hypothesis rulings > blocked proofs — the agent cannot drain
   these alone), then the build backlog, then (phase=complete) saga
   enrichment, else autonomous handoff ("or should I just get to work?").
-  Free-form answers route through `loom door "<their words>"`; "you decide"
-  = take the recommended offer and go. Works before `loom init` (offers:
+  Free-form answers are captured with `loom door "<their words>"` and normalized
+  through `loom inbox triage`; "you decide" = take the recommended offer and go.
+  Works before `loom init` (offers:
   restore the committed export > map the code > interview) and on an empty
   graph (interview vs map, picked by source on disk). Synonym verbs
   (`loom start|begin|hello|mode|talk|chat|interview`) teach this command.

@@ -51,13 +51,26 @@ struct PopulatePulse {
     next_command: String,
 }
 
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+struct IntakeCounts {
+    untriaged: i64,
+    triaged: i64,
+    deferred: i64,
+}
+
+impl IntakeCounts {
+    fn active(self) -> i64 {
+        self.untriaged + self.triaged
+    }
+}
+
 impl PopulatePulse {
     fn from_plan(plan: &crate::commands::populate::PopulatePlan) -> Self {
         Self {
             total: plan.pending_count(),
             interface_from_sagas: plan.interface_from_sagas.sagas_needing_repopulate,
             interface_gaps: plan.interface_gaps.total(),
-            next_command: "loom next --mode populate".to_string(),
+            next_command: crate::commands::POPULATE_NEXT_COMMAND.to_string(),
         }
     }
 }
@@ -83,6 +96,7 @@ pub fn run_with_db(
     let populate_pulse = PopulatePulse::from_plan(&populate);
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
     let blocked = blocked_validation_summary_from_snapshot(&snapshot);
+    let intake = intake_counts(db)?;
     let ignores = db.list_ignores()?;
     let decision_notes = db.notes_by_kind("decision")?;
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
@@ -113,6 +127,7 @@ pub fn run_with_db(
         &populate_pulse,
         &outside,
         &blocked,
+        intake,
         advisories,
         audit,
         align_count,
@@ -120,6 +135,18 @@ pub fn run_with_db(
         export_freshness,
         printer,
     )
+}
+
+fn intake_counts(db: &dyn GraphReadRepository) -> Result<IntakeCounts> {
+    let items = db.list_inbox_items(None, None)?;
+    Ok(IntakeCounts {
+        untriaged: items.iter().filter(|item| item.status == "new").count() as i64,
+        triaged: items.iter().filter(|item| item.status == "triaged").count() as i64,
+        deferred: items
+            .iter()
+            .filter(|item| item.status == "deferred")
+            .count() as i64,
+    })
 }
 
 fn should_compute_audit_pulse(gs: &GraphState) -> bool {
@@ -305,8 +332,10 @@ fn completion_json(
     gs: &GraphState,
 ) -> serde_json::Value {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
-    serde_json::json!({
-        "required_autonomous_debt": {
+    let mut completion = serde_json::Map::new();
+    completion.insert(
+        "required_autonomous_debt".to_string(),
+        serde_json::json!({
             "total": totals.required_autonomous,
             "populate": populate.total,
             "build": lanes.build,
@@ -314,21 +343,28 @@ fn completion_json(
             "validate": lanes.validate,
             "quality": lanes.quality,
             "blocked_validation_audit": totals.blocked_validation_audit,
-        },
-        "required_human_gated_debt": {
+        }),
+    );
+    completion.insert(
+        crate::commands::REQUIRED_HUMAN_GATED_DEBT_KEY.to_string(),
+        serde_json::json!({
             "total": totals.required_human,
             "align_confirmations": align_count,
             "adopt_rulings": adopt_count,
             "blocked_validations": totals.human_blocked,
             "affected_proof_edges": blocked.affected_proof_edges,
             "by_gate_reason": gate_reason_counts(align_count, adopt_count, blocked),
-        },
-        "optional_graph_enrichment": {
+        }),
+    );
+    completion.insert(
+        "optional_graph_enrichment".to_string(),
+        serde_json::json!({
             "unexplored_relationship_pairs": gs.unexplored_pairs,
             "horizontally_explored": gs.horizontally_explored,
             "note_hygiene": gs.note_hygiene,
-        }
-    })
+        }),
+    );
+    serde_json::Value::Object(completion)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -339,6 +375,7 @@ fn render_status(
     populate: &PopulatePulse,
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
+    intake: IntakeCounts,
     advisories: AdvisoryCounts,
     audit: AuditPulse,
     align_count: i64,
@@ -369,6 +406,7 @@ fn render_status(
                 }),
             );
             obj.insert("populate".to_string(), serde_json::to_value(populate)?);
+            obj.insert("intake".to_string(), serde_json::to_value(intake)?);
             obj.insert(
                 "uninspected_outside_queues".to_string(),
                 serde_json::to_value(outside)?,
@@ -407,6 +445,7 @@ fn render_status(
             populate,
             outside,
             blocked,
+            intake,
             advisories,
             &audit,
             align_count,
@@ -426,6 +465,7 @@ fn render_plain_status(
     populate: &PopulatePulse,
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
+    intake: IntakeCounts,
     advisories: AdvisoryCounts,
     audit: &AuditPulse,
     align_count: i64,
@@ -453,6 +493,12 @@ fn render_plain_status(
         "  optional graph enrichment: {} relationship pair(s), not required for done",
         gs.unexplored_pairs
     );
+    if intake.active() > 0 || intake.deferred > 0 {
+        println!(
+            "  inbox intake: {} untriaged · {} triaged · {} deferred (candidates, not graph truth)",
+            intake.untriaged, intake.triaged, intake.deferred
+        );
+    }
     println!();
     println!("Validation Health:");
     println!(
@@ -520,7 +566,7 @@ fn render_plain_status(
         );
     }
     if export_freshness == "stale" {
-        println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
+        println!("  {}", crate::commands::EXPORT_STALE_WARNING);
     }
     if advisories.total > 0 {
         println!(

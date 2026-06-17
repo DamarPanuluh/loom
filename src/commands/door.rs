@@ -1,27 +1,25 @@
-//! `loom door` — the entrance: progressive disclosure at turn zero.
+//! `loom door` — the entrance: capture first, then route.
 //!
 //! A user utterance arrives at an arbitrary altitude — a story, a complaint,
-//! a norm, a term, a question. Loom never interprets it (the doctrine that
-//! keeps `loom smells` trustworthy applies verbatim: pure computation in the
-//! tool, judgment in the LLM). The door assembles the ROUTING CONTEXT
-//! mechanically: what every plane already knows about the topic (intents by
-//! BM25, vocab/sagas/rules by token overlap), the compass state, and the
-//! LANDING MENU — the total enumeration of ways an utterance becomes a graph
-//! noun, each an existing command.
+//! a norm, a term, a question. Door persists that raw language as an InboxItem
+//! before any graph noun is created. Loom never interprets it (the doctrine
+//! that keeps `loom smells` trustworthy applies verbatim: pure computation in
+//! the tool, judgment in the LLM). The door then assembles the ROUTING CONTEXT
+//! mechanically: what every plane already knows about the topic, the compass
+//! state, and the LANDING MENU — the total enumeration of ways an utterance
+//! becomes a graph noun, each an existing command.
 //!
 //! Two contracts make the corridor clear:
-//! - TOTALITY: every utterance either lands as a noun, is answered from the
-//!   matches (no landing), or dispatches autonomous queue work. An utterance
-//!   with no good landing is a bug in this menu, not a user problem.
-//! - THE DOOR ADVISES, NEVER BLOCKS: state lives in the graph, not the
-//!   conversation, so any noun can land at any time — queues re-derive and
-//!   the compass re-sorts. There is no wrong moment to say anything.
+//! - CAPTURE FIRST: every utterance gets a durable InboxItem id before any
+//!   graph noun can be created from it.
+//! - PROPOSE, THEN ROUTE: door/triage only produce context and command shapes;
+//!   existing graph commands still perform the actual mutation.
 
 use anyhow::Result;
 
 use crate::db::queries::{DoorMatches, FindHit, GraphState};
-use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, pulse_json, Printer};
+use crate::types::InboxItem;
 
 /// The landing menu: (utterance class, what lands, the exact command shape).
 /// Total over the noun set — extend it when a new noun is born, never let an
@@ -79,34 +77,42 @@ const LANDINGS: &[(&str, &str, &str)] = &[
     ),
 ];
 
-const DOCTRINE: &str = "The door advises, never blocks — any noun can land at any time; queues \
-    re-derive and the compass re-sorts. Pick ONE landing per utterance and run it before the \
-    next question. Before going autonomous, sweep: every conversational fragment must have \
-    landed (conversation residue is the failure mode). An utterance with no good landing is a \
-    menu bug — record it: loom note add --kind idea --text \"door gap: …\".";
+const DOCTRINE: &str = "The door captures first, then advises — the raw utterance is now an \
+    InboxItem, not graph truth. Normalize it with `loom inbox normalize <id> …`, run the proposed \
+    graph command separately, then `loom inbox mark <id> --status routed --reason \"…\"`. Before \
+    going autonomous, sweep: every conversational fragment must have landed or been rejected.";
 
 pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
-    let store = GraphReadHandle::open(&cwd)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     run_with_db(&store, &cwd, utterance, limit, printer)
 }
 
 pub fn run_with_db(
-    db: &dyn GraphReadRepository,
+    db: &crate::db::sqlite::SqliteGraphStore,
     _root: &std::path::Path,
     utterance: &str,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
+    let inbox_item = crate::commands::inbox::create_item(
+        db,
+        utterance.to_string(),
+        "user".to_string(),
+        Vec::new(),
+        Vec::new(),
+        None,
+    )?;
     let (intents, _match_total) = db.find_intents(utterance, limit)?;
     let planes = db.door_matches(utterance, limit)?;
     let snapshot = db.query_snapshot()?;
     let gs = db.graph_state(&snapshot)?;
-    render(utterance, intents, planes, gs, printer)
+    render(utterance, inbox_item, intents, planes, gs, printer)
 }
 
 fn render(
     utterance: &str,
+    inbox_item: InboxItem,
     intents: Vec<FindHit>,
     planes: DoorMatches,
     gs: GraphState,
@@ -120,6 +126,7 @@ fn render(
     if printer.json {
         printer.print_json(&serde_json::json!({
             "utterance": utterance,
+            "inbox_item": inbox_item,
             "matches": {
                 "intents": intents.iter().map(|h| serde_json::json!({
                     "id": h.intent.id,
@@ -143,12 +150,17 @@ fn render(
                 "when": when, "lands": lands, "command": command,
             })).collect::<Vec<_>>(),
             "doctrine": DOCTRINE,
+            "next_step": format!(
+                "loom inbox normalize {} --kind <kind> --claim \"<normalized claim>\" --route <route_kind> --command \"<exact command or answer>\"",
+                inbox_item.id
+            ),
             "graph_state": pulse_json(&gs),
         }));
         return Ok(());
     }
 
     println!("── loom door — \"{utterance}\" ─────────────────────────────────────");
+    println!("captured inbox item: {}", inbox_item.id);
     println!();
     println!("WHAT THE GRAPH KNOWS");
     if nothing_known {
@@ -187,6 +199,10 @@ fn render(
     }
     println!();
     println!("  {DOCTRINE}");
+    println!(
+        "  Normalize: loom inbox normalize {} --kind <kind> --claim \"…\" --route <route_kind> --command \"…\"",
+        inbox_item.id
+    );
     println!();
     println!("  {}", fmt_pulse(&gs));
     Ok(())

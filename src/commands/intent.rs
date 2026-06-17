@@ -52,29 +52,23 @@ fn run_source_with_sqlite(
         SourceCmd::Add { id, path } => {
             let id = crate::db::queries::resolve_intent_from_snapshot(&snapshot, &id)?;
             let Some(parsed) = store.add_source_ref(&id, &path, &now)? else {
-                anyhow::bail!(
-                    "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\").",
-                    id
-                );
+                anyhow::bail!(crate::output::intent_not_found_find(&id));
             };
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": id, "added": path,
                     "source_refs": parsed,
-                    "next_step": format!("`loom intent show {id}`"),
+                    "next_step": crate::output::intent_show_command(&id),
                 }));
             } else {
                 println!("✓ Source ref added to intent {id}: {path}");
-                println!("  → Next: `loom intent show {id}`");
+                println!("  → Next: {}", crate::output::intent_show_command(&id));
             }
         }
         SourceCmd::Remove { id, path } => {
             let id = crate::db::queries::resolve_intent_from_snapshot(&snapshot, &id)?;
             match store.remove_source_ref(&id, &path, &now)? {
-                None => anyhow::bail!(
-                    "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\").",
-                    id
-                ),
+                None => anyhow::bail!(crate::output::intent_not_found_find(&id)),
                 Some(false) => anyhow::bail!(
                     "Intent {} has no source ref '{}' — `loom intent show {}` lists them.",
                     id,
@@ -85,11 +79,11 @@ fn run_source_with_sqlite(
                     if printer.json {
                         printer.print_json(&serde_json::json!({
                             "status": "ok", "id": id, "removed": path,
-                            "next_step": format!("`loom intent show {id}`"),
+                            "next_step": crate::output::intent_show_command(&id),
                         }));
                     } else {
                         println!("✓ Source ref removed from intent {id}: {path}");
-                        println!("  → Next: `loom intent show {id}`");
+                        println!("  → Next: {}", crate::output::intent_show_command(&id));
                     }
                 }
             }
@@ -122,12 +116,7 @@ fn run_tag_with_sqlite(
                 .intents
                 .iter()
                 .find(|intent| intent.id == id)
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).",
-                        id
-                    )
-                })?;
+                .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_find(&id)))?;
             let mut tags = intent.tags.clone();
             tags.push(term);
             let tags = crate::commands::vocab::validate_tags_from_registry(
@@ -139,11 +128,11 @@ fn run_tag_with_sqlite(
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": id, "tags": tags,
-                    "next_step": format!("`loom intent show {id}`"),
+                    "next_step": crate::output::intent_show_command(&id),
                 }));
             } else {
                 println!("✓ Intent {id} tagged: [{}]", tags.join(", "));
-                println!("  → Next: `loom intent show {id}`");
+                println!("  → Next: {}", crate::output::intent_show_command(&id));
             }
         }
         TagCmd::Remove { id, term } => {
@@ -152,12 +141,7 @@ fn run_tag_with_sqlite(
                 .intents
                 .iter()
                 .find(|intent| intent.id == id)
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).",
-                        id
-                    )
-                })?;
+                .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_find(&id)))?;
             let term = crate::db::queries::normalize_term(&term)?;
             let mut tags = intent.tags.clone();
             let before = tags.len();
@@ -174,11 +158,11 @@ fn run_tag_with_sqlite(
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": id, "removed": term, "tags": tags,
-                    "next_step": format!("`loom intent show {id}`"),
+                    "next_step": crate::output::intent_show_command(&id),
                 }));
             } else {
                 println!("✓ Tag '{term}' removed from intent {id}");
-                println!("  → Next: `loom intent show {id}`");
+                println!("  → Next: {}", crate::output::intent_show_command(&id));
             }
         }
     }
@@ -301,12 +285,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
         IntentCmd::Confirm { id, visibility } => {
             let by = gate::acting_in_lane(&gate::lane::CONFIRM_INTENT, None)?;
             let id = resolve_intent_with_db(&store, &id)?;
-            let intent = store.get_intent(&id)?.ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-                    id
-                )
-            })?;
+            let intent = store
+                .get_intent(&id)?
+                .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_list(&id)))?;
             if intent.status == "deprecated" {
                 anyhow::bail!(
                     "Intent '{}' is retired (status=deprecated). Retirement is permanent history: create a successor intent and link the lineage instead of confirming it.",
@@ -320,10 +301,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             }
             let now = chrono::Utc::now().to_rfc3339();
             if !store.confirm_intent(&id, visibility.as_deref(), &by, &now)? {
-                anyhow::bail!(
-                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-                    id
-                );
+                anyhow::bail!(crate::output::intent_not_found_list(&id));
             }
             let confirmed_msg = match visibility.as_deref() {
                 Some("internal") => "confirmed + ruled internal — out of the align interview until its meaning is redefined",
@@ -371,12 +349,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             )?;
             gate::require_substantive("reason", &reason, "why the meaning moved")?;
             let id = resolve_intent_with_db(&store, &id)?;
-            let intent = store.get_intent(&id)?.ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-                    id
-                )
-            })?;
+            let intent = store
+                .get_intent(&id)?
+                .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_list(&id)))?;
             if intent.status == "deprecated" {
                 anyhow::bail!(
                     "Intent '{}' is retired (status=deprecated). Create a successor intent instead of rewriting it.",
@@ -618,10 +593,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             let id = resolve_intent_with_db(&store, &id)?;
             let now = chrono::Utc::now().to_rfc3339();
             if !store.set_intent_lifecycle(&id, &lifecycle, &by, &now)? {
-                anyhow::bail!(
-                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-                    id
-                );
+                anyhow::bail!(crate::output::intent_not_found_list(&id));
             }
             if let Some(ref r) = reason {
                 store.insert_note(&crate::types::Note {
@@ -660,19 +632,16 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             gate::acting_in_lane(&gate::lane::DELETE_INTENT, None)?;
             let id = resolve_intent_with_db(&store, &id)?;
             if !store.delete_intent(&id)? {
-                anyhow::bail!(
-                    "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-                    id
-                );
+                anyhow::bail!(crate::output::intent_not_found_list(&id));
             }
             if printer.json {
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "id": id, "deleted": true,
-                    "next_step": "`loom status` re-checks the compass",
+                    "next_step": crate::output::STATUS_RECHECK_NEXT_STEP,
                 }));
             } else {
                 println!("✓ Intent {} deleted (with its edges and notes).", id);
-                println!("  → Next: `loom status` re-checks the compass");
+                println!("  → Next: {}", crate::output::STATUS_RECHECK_NEXT_STEP);
             }
         }
 
@@ -700,10 +669,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             let fallout = store.retire_fallout(&id)?;
             let now = chrono::Utc::now().to_rfc3339();
             if !store.retire_intent(&id, &reason, successor.as_deref(), &now)? {
-                anyhow::bail!(
-                    "Intent '{}' not found. Run `loom intent list` (or `loom find \"<words>\"`).",
-                    id
-                );
+                anyhow::bail!(crate::output::intent_not_found_find(&id));
             }
             let next_step =
                 "`loom status` re-checks the compass; `loom coverage` shows any new gaps.";
@@ -811,10 +777,7 @@ fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer)
     let id = resolve_intent_with_db(db, &id)?;
     let intent = db.get_intent(&id)?;
     match intent {
-        None => anyhow::bail!(
-            "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-            id
-        ),
+        None => anyhow::bail!(crate::output::intent_not_found_list(&id)),
         Some(ref i) => {
             let mut edges = db.edges_for_intent(&id)?;
             let edges_total = crate::output::apply_limit(&mut edges, crate::output::SECTION_CAP);
@@ -928,7 +891,7 @@ fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer)
                     if let Some(m) = crate::output::more_marker(
                         notes_total,
                         notes.len(),
-                        &format!("loom note list --intent {id}"),
+                        &crate::output::note_list_intent_command(&id),
                     ) {
                         println!("  {m}");
                     }

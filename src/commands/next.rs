@@ -9,11 +9,19 @@ use crate::db::queries::{
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{
-    fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, pulse_json, Printer, SECTION_CAP,
+    fmt_edge_detail, fmt_intent_surface, fmt_pulse, more_marker, note_list_intent_command,
+    pulse_json, Printer, SECTION_CAP,
 };
 use crate::types::{
     EdgeType, GroundingSurface, Hypothesis, IntentSurface, ValidationSurface, WorkItem,
 };
+
+const QUALITY_EMPTY_MESSAGE: &str =
+    "No uninspected, failing, or stale GOVERNS edges — the green gate holds.";
+const ALIGN_EMPTY_MESSAGE: &str =
+    "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.";
+const BATCH_TEMPLATE_TITLE: &str =
+    "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──";
 
 pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
@@ -36,8 +44,8 @@ fn run_with_repo(
     if mode == "triage" {
         anyhow::bail!(
             "Mode 'triage' was renamed to 'prove' (it proves proposed hypotheses; \
-             'triage' now belongs to the door — `loom door \"<utterance>\"` routes \
-             user input to its landing). Run: loom next --mode prove"
+             'triage' now belongs to Inbox — `loom door \"<utterance>\"` captures \
+             user input, then `loom inbox triage` routes it). Run: loom next --mode prove"
         );
     }
     if !matches!(
@@ -299,7 +307,7 @@ fn run_relates_with_repo(
             }
         }
         let fetch = if top_edge.id.is_empty() {
-            format!("loom note list --intent {}", top_edge.from_id)
+            note_list_intent_command(&top_edge.from_id)
         } else {
             format!("loom note list --edge {}", top_edge.id)
         };
@@ -327,12 +335,12 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
-                "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
+                "message": QUALITY_EMPTY_MESSAGE,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
-            println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
+            println!("✓ {QUALITY_EMPTY_MESSAGE}");
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -429,9 +437,7 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
         }
     }
     println!();
-    println!(
-        "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──"
-    );
+    println!("{BATCH_TEMPLATE_TITLE}");
     for l in &batch_lines {
         println!("  {l}");
     }
@@ -571,9 +577,7 @@ fn run_take(
         }
     }
     println!();
-    println!(
-        "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──"
-    );
+    println!("{BATCH_TEMPLATE_TITLE}");
     for l in &batch_lines {
         println!("  {l}");
     }
@@ -810,6 +814,7 @@ fn run_all(
     let supported_hypotheses = store.list_hypotheses(Some("supported"))?;
     let align = store.align_candidates(&snapshot)?;
     let populate = crate::commands::populate::plan_with_repo(store, root)?;
+    let inbox_items = store.list_inbox_items(None, None)?;
     let export_freshness = match store.committed_export_stale(root)? {
         Some(true) => "stale",
         Some(false) => "fresh",
@@ -825,9 +830,20 @@ fn run_all(
         supported_hypotheses,
         align,
         populate,
+        inbox_items,
         export_freshness,
         printer,
     )
+}
+
+fn inbox_counts(items: &[crate::types::InboxItem]) -> (i64, i64, i64) {
+    let untriaged = items.iter().filter(|item| item.status == "new").count() as i64;
+    let triaged = items.iter().filter(|item| item.status == "triaged").count() as i64;
+    let deferred = items
+        .iter()
+        .filter(|item| item.status == "deferred")
+        .count() as i64;
+    (untriaged, triaged, deferred)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -840,6 +856,7 @@ fn render_all(
     supported_hypotheses: Vec<Hypothesis>,
     align: Vec<AlignCandidate>,
     populate: crate::commands::populate::PopulatePlan,
+    inbox_items: Vec<crate::types::InboxItem>,
     export_freshness: String,
     printer: &Printer,
 ) -> Result<()> {
@@ -860,6 +877,7 @@ fn render_all(
     let all_smells = all_smells.unwrap_or_default();
     let smells_total = all_smells.len();
     let smells_top: Vec<_> = all_smells.into_iter().take(3).collect();
+    let (inbox_untriaged, inbox_triaged, inbox_deferred) = inbox_counts(&inbox_items);
 
     // Queues in dependency order (the handoff order from `loom guide`), each
     // with its count + top item. Vertical gaps slot in as builder work; the
@@ -890,8 +908,16 @@ fn render_all(
         };
         queues.push(serde_json::json!({
             "queue": "populate", "role": "builder", "gate": "autonomous",
-            "count": populate.pending_count(), "command": "loom next --mode populate",
+            "count": populate.pending_count(), "command": crate::commands::POPULATE_NEXT_COMMAND,
             "top": top,
+        }));
+    }
+    if inbox_untriaged + inbox_triaged > 0 {
+        queues.push(serde_json::json!({
+            "queue": "inbox", "role": "builder", "gate": "autonomous", "optional": true,
+            "count": inbox_untriaged + inbox_triaged,
+            "command": "loom inbox triage --take 20",
+            "top": format!("{} untriaged, {} triaged intake card(s); candidates, not graph truth", inbox_untriaged, inbox_triaged),
         }));
     }
     if !build.is_empty() {
@@ -1046,18 +1072,41 @@ fn render_all(
             .filter(|q| q["queue"].as_str() == Some("optional-enrichment"))
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();
+        let mut completion = serde_json::Map::new();
+        completion.insert(
+            "required_autonomous_debt".to_string(),
+            serde_json::json!(required_autonomous),
+        );
+        completion.insert(
+            crate::commands::REQUIRED_HUMAN_GATED_DEBT_KEY.to_string(),
+            serde_json::json!(human_gated),
+        );
+        completion.insert(
+            "optional_graph_enrichment".to_string(),
+            serde_json::json!(optional_enrichment),
+        );
+        completion.insert(
+            "blocked_validations".to_string(),
+            serde_json::json!(human_blocked_validations),
+        );
+        completion.insert(
+            "blocked_validation_audit".to_string(),
+            serde_json::json!(blocked_validation_audit),
+        );
+        completion.insert(
+            "affected_proof_edges".to_string(),
+            serde_json::json!(blocked.affected_proof_edges),
+        );
         printer.print_json(&serde_json::json!({
             "mode": "all",
             "doctor": { "healthy": doctor.healthy(), "issues": doctor.issues, "hints": doctor.hints },
             "committed_export": export_freshness,
             "queues": queues,
-            "completion": {
-                "required_autonomous_debt": required_autonomous,
-                "required_human_gated_debt": human_gated,
-                "optional_graph_enrichment": optional_enrichment,
-                "blocked_validations": human_blocked_validations,
-                "blocked_validation_audit": blocked_validation_audit,
-                "affected_proof_edges": blocked.affected_proof_edges,
+            "completion": completion,
+            "intake": {
+                "untriaged": inbox_untriaged,
+                "triaged": inbox_triaged,
+                "deferred": inbox_deferred,
             },
             "human_gated": human_gated,
             "human_gated_note": if human_gated > 0 {
@@ -1094,7 +1143,7 @@ fn render_all(
         );
     }
     if export_freshness == "stale" {
-        println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
+        println!("  {}", crate::commands::EXPORT_STALE_WARNING);
     }
     if queues.is_empty() && doctor.healthy() {
         println!("  ✓ Nothing left in any queue — every lane is clear.");
@@ -1283,7 +1332,7 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         if let Some(m) = more_marker(
             notes_total,
             item.notes.len(),
-            &format!("loom note list --intent {}", intent.id),
+            &note_list_intent_command(&intent.id),
         ) {
             println!("  {m}");
         }
@@ -1455,7 +1504,7 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         if let Some(m) = more_marker(
             notes_total,
             notes.len(),
-            &format!("loom note list --intent {}", c.intent.id),
+            &note_list_intent_command(&c.intent.id),
         ) {
             println!("  {m}");
         }
@@ -1486,7 +1535,7 @@ fn run_take_align(store: &dyn GraphReadRepository, take: usize, printer: &Printe
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "align",
-                "message": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.",
+                "message": ALIGN_EMPTY_MESSAGE,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
@@ -1598,12 +1647,12 @@ fn run_align(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "align",
-                "message": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.",
+                "message": ALIGN_EMPTY_MESSAGE,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
-            println!("✓ No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.");
+            println!("✓ {ALIGN_EMPTY_MESSAGE}");
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -1854,7 +1903,7 @@ fn run_align(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         if let Some(m) = more_marker(
             notes_total,
             notes.len(),
-            &format!("loom note list --intent {}", c.intent.id),
+            &note_list_intent_command(&c.intent.id),
         ) {
             println!("  {m}");
         }
@@ -1881,12 +1930,12 @@ fn run_quality(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()>
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
-                "message": "No uninspected, failing, or stale GOVERNS edges — the green gate holds.",
+                "message": QUALITY_EMPTY_MESSAGE,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
-            println!("✓ No uninspected, failing, or stale GOVERNS edges — the green gate holds.");
+            println!("✓ {QUALITY_EMPTY_MESSAGE}");
             println!();
             println!("  {}", fmt_pulse(&gs));
             println!("  → Next: {}", gs.next_action);
@@ -2341,11 +2390,7 @@ fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
                 println!("  [{}] {}  ({})", n.kind, n.text, n.author);
             }
         }
-        if let Some(m) = more_marker(
-            notes_total,
-            notes.len(),
-            &format!("loom note list --intent {}", h.id),
-        ) {
+        if let Some(m) = more_marker(notes_total, notes.len(), &note_list_intent_command(&h.id)) {
             println!("  {m}");
         }
         println!();

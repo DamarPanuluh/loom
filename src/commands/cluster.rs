@@ -19,12 +19,9 @@ pub fn run_with_db(
     let snapshot = db.query_snapshot()?;
     let intent_id = &resolve_intent_from_snapshot(&snapshot, intent_id)?;
 
-    let intent = db.get_intent(intent_id)?.ok_or_else(|| {
-        anyhow::anyhow!(
-            "Intent '{}' not found.\nRun `loom intent list` to see available intents.",
-            intent_id
-        )
-    })?;
+    let intent = db
+        .get_intent(intent_id)?
+        .ok_or_else(|| anyhow::anyhow!(crate::output::intent_not_found_list(intent_id)))?;
 
     let edges = unresolved_edges_for_intent_from_snapshot(&snapshot, intent_id);
 

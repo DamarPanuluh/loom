@@ -683,6 +683,106 @@ fn sqlite_status_surfaces_populate_gap_lane() {
 }
 
 #[test]
+fn sqlite_inbox_add_normalize_mark_and_export() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-inbox-flow");
+
+    let added = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "add",
+            "status debt feels scarier than reality",
+            "--source",
+            "chat",
+            "--json",
+        ],
+    );
+    let id = added["item"]["id"].as_str().expect("inbox id").to_string();
+    assert_eq!(added["item"]["status"], "new");
+
+    let status = run_json(&graph.root, &["status", "--json"]);
+    assert_eq!(status["intake"]["untriaged"], 1);
+    assert_eq!(status["completion"]["required_autonomous_debt"]["total"], 0);
+
+    let next = run_json(&graph.root, &["next", "--all", "--json"]);
+    assert!(next["queues"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|queue| queue["queue"] == "inbox" && queue["optional"] == true));
+
+    let normalized = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "normalize",
+            &id,
+            "--kind",
+            "rough_edge",
+            "--claim",
+            "status should separate required debt from optional enrichment",
+            "--route",
+            "note",
+            "--command",
+            "loom note add --kind decision --text \"status taxonomy accepted\"",
+            "--json",
+        ],
+    );
+    assert_eq!(normalized["item"]["status"], "triaged");
+    assert_eq!(normalized["item"]["route_kind"], "note");
+
+    let marked = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "mark",
+            &id,
+            "--status",
+            "routed",
+            "--reason",
+            "route command reviewed and no graph mutation was needed for this fixture",
+            "--json",
+        ],
+    );
+    assert_eq!(marked["item"]["status"], "routed");
+
+    let exported = run_json(&graph.root, &["export", "-", "--json"]);
+    let inbox = exported["nodes"]["InboxItem"].as_array().unwrap();
+    assert!(inbox.iter().any(|item| item["id"] == id));
+}
+
+#[test]
+fn sqlite_door_captures_inbox_item_before_routing() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-door-inbox");
+
+    let door = run_json(
+        &graph.root,
+        &[
+            "door",
+            "users need a better intake boundary",
+            "--limit",
+            "3",
+            "--json",
+        ],
+    );
+    let id = door["inbox_item"]["id"]
+        .as_str()
+        .expect("door inbox id")
+        .to_string();
+    assert_eq!(door["inbox_item"]["status"], "new");
+    assert!(door["next_step"].as_str().unwrap().contains(&id));
+
+    let listed = run_json(&graph.root, &["inbox", "list", "--status", "new", "--json"]);
+    assert!(listed["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["id"] == id));
+}
+
+#[test]
 fn sqlite_interface_gaps_detect_surface_without_calls() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("sqlite-interface-gap-surface");

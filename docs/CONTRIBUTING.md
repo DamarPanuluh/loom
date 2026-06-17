@@ -81,7 +81,8 @@ src/
     ├── guide.rs          loom guide
     ├── schema.rs         loom schema
     ├── find.rs           loom find (ask the map)
-    ├── door.rs           loom door (the entrance: utterance → matches + landing menu)
+    ├── inbox.rs          loom inbox (raw language intake cards)
+    ├── door.rs           loom door (capture utterance → InboxItem + matches + landing menu)
     ├── session.rs        loom session (turn zero: ask-the-user playbook + offer menu)
     ├── hotspots.rs       loom hotspots
     ├── coverage.rs       loom coverage

@@ -26,8 +26,9 @@ use crate::db::queries::{
 use crate::db::schema::{edge, label, prop};
 use crate::types::{
     interface_surface_name, CallsEdge, CodeFile, Delegation, Governs, Hierarchy, Hypothesis,
-    Ignore, Implements, Intent, InterfaceSurface, JourneysEdge, Note, Persona, QualityRule,
-    RelatesTo, ServesEdge, SymbolFact, TargetsEdge, ValidatesEdge, Validation, VocabTerm,
+    Ignore, Implements, InboxItem, Intent, InterfaceSurface, JourneysEdge, Note, Persona,
+    QualityRule, RelatesTo, ServesEdge, SymbolFact, TargetsEdge, ValidatesEdge, Validation,
+    VocabTerm,
 };
 
 pub struct SqliteGraphStore {
@@ -167,6 +168,25 @@ const INTERFACE_SURFACE_PROPS: &[&str] = &[
     prop::UPDATED_AT,
 ];
 
+const INBOX_ITEM_PROPS: &[&str] = &[
+    prop::ID,
+    prop::RAW_TEXT,
+    prop::NORMALIZED_CLAIM,
+    prop::KIND,
+    prop::STATUS,
+    prop::SOURCE,
+    prop::AUTHOR,
+    prop::TAGS,
+    prop::LINKS,
+    prop::ROUTE_KIND,
+    prop::ROUTE_COMMAND,
+    prop::ROUTE_TARGET_KIND,
+    prop::ROUTE_TARGET_ID,
+    prop::RESOLUTION,
+    prop::CREATED_AT,
+    prop::UPDATED_AT,
+];
+
 const INSPECTABLE_PROPS_WITH_PRIORITY: &[&str] = &[
     prop::INSPECTION_STATUS,
     prop::CRITERION,
@@ -216,6 +236,7 @@ const CONFIDENCE_AND_PRIORITY: &[&str] = &[prop::CONFIDENCE, prop::PRIORITY_SCOR
 const EMPTY_LIST_PROPS: &[&str] = &[];
 const INTENT_LIST_PROPS: &[&str] = &[prop::SOURCE_REFS, prop::TAGS];
 const CODEFILE_LIST_PROPS: &[&str] = &[prop::IMPORTS, prop::SYMBOLS, prop::SYMBOL_FACTS];
+const INBOX_ITEM_LIST_PROPS: &[&str] = &[prop::TAGS, prop::LINKS];
 
 const NODE_SPECS: &[NodeSpec] = &[
     NodeSpec {
@@ -283,6 +304,12 @@ const NODE_SPECS: &[NodeSpec] = &[
         table: "interface_surface",
         props: INTERFACE_SURFACE_PROPS,
         list_props: EMPTY_LIST_PROPS,
+    },
+    NodeSpec {
+        label: label::INBOX_ITEM,
+        table: "inbox_item",
+        props: INBOX_ITEM_PROPS,
+        list_props: INBOX_ITEM_LIST_PROPS,
     },
 ];
 
@@ -2584,6 +2611,138 @@ impl SqliteGraphStore {
             .map_err(Into::into)
     }
 
+    pub fn list_inbox_items(
+        &self,
+        status: Option<&str>,
+        kind: Option<&str>,
+    ) -> Result<Vec<InboxItem>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, raw_text, normalized_claim, kind, status, source, author,
+                    tags, links, route_kind, route_command, route_target_kind,
+                    route_target_id, resolution, created_at, updated_at
+             FROM inbox_item
+             ORDER BY created_at",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(InboxItem {
+                id: row.get(0)?,
+                raw_text: row.get(1)?,
+                normalized_claim: row.get(2)?,
+                kind: row.get(3)?,
+                status: row.get(4)?,
+                source: row.get(5)?,
+                author: row.get(6)?,
+                tags: string_list_sql(row.get::<_, String>(7)?.as_str())?,
+                links: string_list_sql(row.get::<_, String>(8)?.as_str())?,
+                route_kind: row.get(9)?,
+                route_command: row.get(10)?,
+                route_target_kind: row.get(11)?,
+                route_target_id: row.get(12)?,
+                resolution: row.get(13)?,
+                created_at: row.get(14)?,
+                updated_at: row.get(15)?,
+            })
+        })?;
+        let mut items = rows
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(anyhow::Error::from)?;
+        if let Some(status) = status {
+            items.retain(|item| item.status == status);
+        }
+        if let Some(kind) = kind {
+            items.retain(|item| item.kind == kind);
+        }
+        Ok(items)
+    }
+
+    pub fn resolve_inbox_item(&self, key: &str) -> Result<InboxItem> {
+        let items = self.list_inbox_items(None, None)?;
+        if let Some(item) = items.iter().find(|item| item.id == key) {
+            return Ok(item.clone());
+        }
+        let matches: Vec<_> = items
+            .iter()
+            .filter(|item| item.id.starts_with(key))
+            .collect();
+        match matches.len() {
+            1 => Ok(matches[0].clone()),
+            0 => anyhow::bail!("No inbox item matches '{}'. Run `loom inbox list`.", key),
+            _ => anyhow::bail!(
+                "'{}' is ambiguous — matches {} inbox items. Use the full id (`loom inbox list`).",
+                key,
+                matches.len()
+            ),
+        }
+    }
+
+    pub fn insert_inbox_item(&self, item: &InboxItem) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO inbox_item(
+                id, raw_text, normalized_claim, kind, status, source, author,
+                tags, links, route_kind, route_command, route_target_kind,
+                route_target_id, resolution, created_at, updated_at
+             ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![
+                item.id,
+                item.raw_text,
+                item.normalized_claim,
+                item.kind,
+                item.status,
+                item.source,
+                item.author,
+                serde_json::to_string(&item.tags)?,
+                serde_json::to_string(&item.links)?,
+                item.route_kind,
+                item.route_command,
+                item.route_target_kind,
+                item.route_target_id,
+                item.resolution,
+                item.created_at,
+                item.updated_at
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_inbox_item(&self, item: &InboxItem) -> Result<()> {
+        self.conn.execute(
+            "UPDATE inbox_item
+             SET raw_text = ?2,
+                 normalized_claim = ?3,
+                 kind = ?4,
+                 status = ?5,
+                 source = ?6,
+                 author = ?7,
+                 tags = ?8,
+                 links = ?9,
+                 route_kind = ?10,
+                 route_command = ?11,
+                 route_target_kind = ?12,
+                 route_target_id = ?13,
+                 resolution = ?14,
+                 updated_at = ?15
+             WHERE id = ?1",
+            params![
+                item.id,
+                item.raw_text,
+                item.normalized_claim,
+                item.kind,
+                item.status,
+                item.source,
+                item.author,
+                serde_json::to_string(&item.tags)?,
+                serde_json::to_string(&item.links)?,
+                item.route_kind,
+                item.route_command,
+                item.route_target_kind,
+                item.route_target_id,
+                item.resolution,
+                item.updated_at
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn resolve_interface_surface(&self, key: &str) -> Result<InterfaceSurface> {
         let surfaces = self.list_interface_surfaces()?;
         if let Some(surface) = surfaces.iter().find(|surface| surface.id == key) {
@@ -4356,6 +4515,31 @@ CREATE TABLE IF NOT EXISTS interface_surface(
   UNIQUE(surface_kind, method, target)
 );
 
+CREATE TABLE IF NOT EXISTS inbox_item(
+  id TEXT PRIMARY KEY,
+  raw_text TEXT NOT NULL,
+  normalized_claim TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL CHECK(kind IN (
+    'observation','user_request','bug_suspicion','refactor_suspicion',
+    'missing_intent','missing_validation','missing_story','terminology',
+    'rough_edge','external_blocker','question'
+  )),
+  status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),
+  source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),
+  author TEXT NOT NULL,
+  tags TEXT NOT NULL CHECK(json_valid(tags)),
+  links TEXT NOT NULL CHECK(json_valid(links)),
+  route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (
+    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','answer','none',''
+  )),
+  route_command TEXT NOT NULL DEFAULT '',
+  route_target_kind TEXT NOT NULL DEFAULT '',
+  route_target_id TEXT NOT NULL DEFAULT '',
+  resolution TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS relates_to(
   from_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
   to_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
@@ -4479,6 +4663,7 @@ CREATE INDEX IF NOT EXISTS idx_targets_status ON targets(inspection_status);
 CREATE INDEX IF NOT EXISTS idx_serves_status ON serves(inspection_status);
 CREATE INDEX IF NOT EXISTS idx_interface_surface_identity ON interface_surface(surface_kind, method, target);
 CREATE INDEX IF NOT EXISTS idx_calls_interface ON calls(interface_id);
+CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
 CREATE INDEX IF NOT EXISTS idx_note_target ON note(target_kind, target_id, kind, created_at);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
@@ -4659,15 +4844,19 @@ fn parse_json_array(raw: &str) -> Result<JsonValue> {
     }
 }
 
+fn parse_json_array_items(raw: &str) -> Result<Vec<JsonValue>> {
+    match parse_json_array(raw)? {
+        JsonValue::Array(items) => Ok(items),
+        _ => unreachable!("parse_json_array enforces array shape"),
+    }
+}
+
 fn parse_json_array_sql(raw: &str) -> rusqlite::Result<JsonValue> {
     parse_json_array(raw).map_err(|err| rusqlite::Error::ToSqlConversionFailure(err.into()))
 }
 
 fn string_list(raw: &str) -> Result<Vec<String>> {
-    let JsonValue::Array(items) = parse_json_array(raw)? else {
-        unreachable!("parse_json_array only returns arrays");
-    };
-    items
+    parse_json_array_items(raw)?
         .into_iter()
         .map(|item| match item {
             JsonValue::String(s) => Ok(s),
@@ -4681,10 +4870,7 @@ fn string_list_sql(raw: &str) -> rusqlite::Result<Vec<String>> {
 }
 
 fn symbol_facts(raw: &str) -> Result<Vec<SymbolFact>> {
-    let JsonValue::Array(items) = parse_json_array(raw)? else {
-        unreachable!("parse_json_array only returns arrays");
-    };
-    items
+    parse_json_array_items(raw)?
         .into_iter()
         .map(|item| match item {
             JsonValue::String(s) => serde_json::from_str::<SymbolFact>(&s)
