@@ -1,9 +1,9 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    build_candidates_from_snapshot, parse_sync_cause, quality_candidates_from_snapshot,
-    review_candidates_from_snapshot, scored_candidates_from_snapshot,
-    unexplored_pairs_scored_from_snapshot, uninspected_outside_queues_from_snapshot,
+    blocked_validation_summary_from_snapshot, build_candidates_from_snapshot, parse_sync_cause,
+    quality_candidates_from_snapshot, review_candidates_from_snapshot,
+    scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
     validate_candidates_from_snapshot, vertical_completeness_from_snapshot, AlignCandidate,
     DoctorReport, GraphState, QuerySnapshot, Smell,
 };
@@ -853,7 +853,9 @@ fn render_all(
         .count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
-    let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+    let blocked = blocked_validation_summary_from_snapshot(&snapshot);
+    let blocked_validation_audit = blocked.autonomous_validation_count();
+    let human_blocked_validations = blocked.human_validation_count();
     let smells_computed = all_smells.is_some();
     let all_smells = all_smells.unwrap_or_default();
     let smells_total = all_smells.len();
@@ -985,24 +987,37 @@ fn render_all(
     if !align.is_empty() {
         queues.push(serde_json::json!({
             "queue": "align", "role": "validator", "gate": "human", "optional": true,
-            "count": align.len(), "command": "loom next --mode align",
+            "gate_reason": "user_intent_confirmation",
+            "count": align.len(), "command": "loom next --mode align --take 50",
             "top": format!("'{}' — re-affirm its meaning with the user", align[0].intent.name),
         }));
     }
-    if outside.blocked_validations > 0 {
+    if blocked_validation_audit > 0 {
+        queues.push(serde_json::json!({
+            "queue": "blocked-validation-audit", "role": "fixer", "gate": "autonomous",
+            "gate_reason": "missing_artifact_or_stale_blocker",
+            "count": blocked_validation_audit,
+            "command": "loom validation list --result blocked --limit 0  (audit missing artifacts/stale blockers; regenerate artifacts or reclassify honestly)",
+            "top": "blocked validation(s) whose blocker looks locally fixable or stale",
+        }));
+    }
+    if human_blocked_validations > 0 {
         queues.push(serde_json::json!({
             "queue": "blocked-validations", "role": "validator", "gate": "human",
-            "count": outside.blocked_validations,
+            "gate_reason": "blocked_prerequisite",
+            "count": human_blocked_validations,
+            "affected_proof_edges": blocked.affected_proof_edges,
+            "by_gate_reason": blocked.human_gate_reasons(),
             "command": "loom validation list --result blocked --limit 0  (review blocked reasons, then unblock by changing prerequisites or marking the proof)",
-            "top": "blocked proof edge(s) with recorded prerequisites; not runnable until the user/environment changes",
+            "top": "blocked validation object(s) with recorded prerequisites; one may affect many proof edges",
         }));
     }
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
-            "queue": "discovery", "role": "analyzer", "gate": "autonomous", "optional": true,
+            "queue": "optional-enrichment", "role": "analyzer", "gate": "autonomous", "optional": true,
             "count": discovery_backlog, "command": "loom next",
-            "top": "the horizontal N×N grid — understanding/cleanup, not required for done",
+            "top": "optional graph enrichment: horizontal N×N discovery, not required for done",
         }));
     }
 
@@ -1018,14 +1033,35 @@ fn render_all(
         let unreached_codefiles_total = vc.unreached_codefiles.len();
         vc.unrealized_leaves.truncate(20);
         vc.unreached_codefiles.truncate(20);
+        let required_autonomous: i64 = queues
+            .iter()
+            .filter(|q| {
+                q["gate"].as_str() == Some("autonomous")
+                    && q.get("optional").and_then(|v| v.as_bool()).unwrap_or(false) == false
+            })
+            .map(|q| q["count"].as_i64().unwrap_or(0))
+            .sum();
+        let optional_enrichment: i64 = queues
+            .iter()
+            .filter(|q| q["queue"].as_str() == Some("optional-enrichment"))
+            .map(|q| q["count"].as_i64().unwrap_or(0))
+            .sum();
         printer.print_json(&serde_json::json!({
             "mode": "all",
             "doctor": { "healthy": doctor.healthy(), "issues": doctor.issues, "hints": doctor.hints },
             "committed_export": export_freshness,
             "queues": queues,
+            "completion": {
+                "required_autonomous_debt": required_autonomous,
+                "required_human_gated_debt": human_gated,
+                "optional_graph_enrichment": optional_enrichment,
+                "blocked_validations": human_blocked_validations,
+                "blocked_validation_audit": blocked_validation_audit,
+                "affected_proof_edges": blocked.affected_proof_edges,
+            },
             "human_gated": human_gated,
             "human_gated_note": if human_gated > 0 {
-                "These items need the user. Drain autonomous queues now; batch human-gated items into ONE agenda for the next conversation window."
+                "These items need the user or external prerequisites. Drain autonomous queues now; batch true user decisions into ONE agenda."
             } else { "" },
             "vertical_gaps": {
                 "unrealized_leaves": vc.unrealized_leaves,

@@ -2,9 +2,9 @@
 
 use anyhow::Result;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
-use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport};
+use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation};
 
 use super::completeness::vertical_completeness_from_snapshot;
 use super::meta::GraphMeta;
@@ -523,6 +523,60 @@ pub struct UninspectedOutsideQueues {
     pub blocked_validations: i64,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct GateReasonCount {
+    pub reason: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct BlockedValidationSummary {
+    /// Current blocked validation nodes. This is the actionable work count.
+    pub validations: i64,
+    /// Uninspected VALIDATES edges affected by those blocked validation nodes.
+    /// Diagnostic only: one validation can prove many intents.
+    pub affected_proof_edges: i64,
+    /// Blocked validation nodes grouped by the best read-side reason we can infer
+    /// from their recorded blocker text and validation metadata.
+    pub by_reason: Vec<GateReasonCount>,
+}
+
+pub const GATE_REASON_MANUAL_ACCEPTANCE: &str = "manual_acceptance";
+pub const GATE_REASON_MISSING_ARTIFACT: &str = "missing_artifact";
+pub const GATE_REASON_MISSING_SECRET: &str = "missing_secret";
+pub const GATE_REASON_MISSING_LOCAL_ENV: &str = "missing_local_env";
+pub const GATE_REASON_EXTERNAL_SERVICE_REQUIRED: &str = "external_service_required";
+pub const GATE_REASON_STALE_BLOCKER_NEEDS_AUDIT: &str = "stale_blocker_needs_audit";
+
+impl BlockedValidationSummary {
+    pub fn autonomous_validation_count(&self) -> i64 {
+        self.by_reason
+            .iter()
+            .filter(|item| blocked_gate_reason_is_autonomous(&item.reason))
+            .map(|item| item.count)
+            .sum()
+    }
+
+    pub fn human_validation_count(&self) -> i64 {
+        self.validations - self.autonomous_validation_count()
+    }
+
+    pub fn human_gate_reasons(&self) -> Vec<GateReasonCount> {
+        self.by_reason
+            .iter()
+            .filter(|item| !blocked_gate_reason_is_autonomous(&item.reason))
+            .cloned()
+            .collect()
+    }
+}
+
+pub fn blocked_gate_reason_is_autonomous(reason: &str) -> bool {
+    matches!(
+        reason,
+        GATE_REASON_MISSING_ARTIFACT | GATE_REASON_STALE_BLOCKER_NEEDS_AUDIT
+    )
+}
+
 pub fn uninspected_outside_queues_from_snapshot(
     snapshot: &QuerySnapshot,
 ) -> UninspectedOutsideQueues {
@@ -550,6 +604,146 @@ pub fn uninspected_outside_queues_from_snapshot(
         implements,
         blocked_validations,
     }
+}
+
+pub fn blocked_validation_summary_from_snapshot(
+    snapshot: &QuerySnapshot,
+) -> BlockedValidationSummary {
+    let current_blocked = current_blocked_validation_ids(snapshot);
+    if current_blocked.is_empty() {
+        return BlockedValidationSummary {
+            validations: 0,
+            affected_proof_edges: 0,
+            by_reason: Vec::new(),
+        };
+    }
+    let lifecycle_by_intent: HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
+        .collect();
+    let mut notes_by_validation: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut affected_proof_edges = 0;
+    for edge in &snapshot.validates {
+        let validation_id = edge.validation_id.as_str();
+        if edge.inspection_status == "uninspected"
+            && current_blocked.contains(validation_id)
+            && lifecycle_by_intent.get(edge.intent_id.as_str()).copied() != Some("deferred")
+        {
+            affected_proof_edges += 1;
+            notes_by_validation
+                .entry(validation_id)
+                .or_default()
+                .push(edge.notes.as_str());
+        }
+    }
+
+    let mut counts: BTreeMap<String, i64> = BTreeMap::new();
+    for validation in &snapshot.validations {
+        if !current_blocked.contains(validation.id.as_str()) {
+            continue;
+        }
+        let edge_notes = notes_by_validation
+            .get(validation.id.as_str())
+            .map(|notes| notes.join("\n"))
+            .unwrap_or_default();
+        let reason = classify_blocked_gate_reason(validation, &edge_notes);
+        *counts.entry(reason.to_string()).or_insert(0) += 1;
+    }
+    let by_reason = counts
+        .into_iter()
+        .map(|(reason, count)| GateReasonCount { reason, count })
+        .collect();
+    BlockedValidationSummary {
+        validations: current_blocked.len() as i64,
+        affected_proof_edges,
+        by_reason,
+    }
+}
+
+fn classify_blocked_gate_reason(validation: &Validation, edge_notes: &str) -> &'static str {
+    let haystack = format!(
+        "{}\n{}\n{}\n{}\n{}",
+        validation.name,
+        validation.description,
+        validation.validation_type,
+        validation.command,
+        edge_notes
+    )
+    .to_ascii_lowercase();
+    if validation.validation_type == "manual_check"
+        || contains_any(
+            &haystack,
+            &["manual", "acceptance", "human", "visual", "sign-off"],
+        )
+    {
+        return GATE_REASON_MANUAL_ACCEPTANCE;
+    }
+    if contains_any(
+        &haystack,
+        &[
+            "missing saga spec",
+            "missing spec",
+            "missing file",
+            "missing artifact",
+            "no such file",
+            "not found",
+        ],
+    ) {
+        return GATE_REASON_MISSING_ARTIFACT;
+    }
+    if contains_any(
+        &haystack,
+        &[
+            "secret",
+            "credential",
+            "token",
+            "password",
+            "private key",
+            "api key",
+        ],
+    ) {
+        return GATE_REASON_MISSING_SECRET;
+    }
+    if contains_any(
+        &haystack,
+        &[
+            "missing env",
+            "env value",
+            "environment variable",
+            ".env",
+            "local env",
+        ],
+    ) {
+        return GATE_REASON_MISSING_LOCAL_ENV;
+    }
+    if contains_any(
+        &haystack,
+        &[
+            "external",
+            "live target",
+            "service",
+            "staging",
+            "base_url",
+            "target_url",
+            "server",
+            "docker",
+            "compose",
+        ],
+    ) {
+        return GATE_REASON_EXTERNAL_SERVICE_REQUIRED;
+    }
+    if contains_any(
+        &haystack,
+        &["stale", "misclassified", "reclassify", "audit blocker"],
+    ) {
+        return GATE_REASON_STALE_BLOCKER_NEEDS_AUDIT;
+    }
+    GATE_REASON_EXTERNAL_SERVICE_REQUIRED
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
 }
 
 /// Edge inspection_status histogram from an already-loaded snapshot — the hot
@@ -1000,6 +1194,33 @@ mod tests {
         assert_eq!(blocked, 1);
         assert_eq!(outside.blocked_validations, 1);
         assert_eq!(runnable, 0.0);
+    }
+
+    #[test]
+    fn blocked_validation_summary_leads_with_validation_objects_not_edges() {
+        let snapshot = validation_snapshot(
+            vec![
+                intent("a", "implemented"),
+                intent("b", "implemented"),
+                intent("future", "deferred"),
+            ],
+            vec![val("blocked-saga", "blocked")],
+            vec![
+                validates("blocked-saga", "a", "uninspected"),
+                validates("blocked-saga", "b", "uninspected"),
+                validates("blocked-saga", "future", "uninspected"),
+            ],
+        );
+        let summary = blocked_validation_summary_from_snapshot(&snapshot);
+        assert_eq!(summary.validations, 1);
+        assert_eq!(summary.affected_proof_edges, 2);
+        assert_eq!(
+            summary.by_reason,
+            vec![GateReasonCount {
+                reason: "manual_acceptance".to_string(),
+                count: 1,
+            }]
+        );
     }
 
     use super::super::scoring::{

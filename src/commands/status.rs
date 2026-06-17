@@ -1,13 +1,14 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    clone_suggestions, cochange_suggestions, lane_depths_from_snapshot, proof_locality_suggestions,
-    shotgun_surgery_suggestions, status_report_from_snapshot,
-    uninspected_outside_queues_from_snapshot, GraphState, LaneDepths, QuerySnapshot, Smell,
-    UninspectedOutsideQueues,
+    blocked_validation_summary_from_snapshot, clone_suggestions, cochange_suggestions,
+    lane_depths_from_snapshot, proof_locality_suggestions, shotgun_surgery_suggestions,
+    status_report_from_snapshot, uninspected_outside_queues_from_snapshot,
+    BlockedValidationSummary, GraphState, LaneDepths, QuerySnapshot, Smell,
+    UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
-use crate::output::{fmt_pulse, fmt_status, Printer};
+use crate::output::{fmt_pulse, Printer};
 use crate::types::{Ignore, StatusReport};
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
@@ -81,6 +82,7 @@ pub fn run_with_db(
     let populate = crate::commands::populate::plan_with_repo(db, root)?;
     let populate_pulse = PopulatePulse::from_plan(&populate);
     let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+    let blocked = blocked_validation_summary_from_snapshot(&snapshot);
     let ignores = db.list_ignores()?;
     let decision_notes = db.notes_by_kind("decision")?;
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
@@ -110,6 +112,7 @@ pub fn run_with_db(
         &lanes,
         &populate_pulse,
         &outside,
+        &blocked,
         advisories,
         audit,
         align_count,
@@ -245,6 +248,89 @@ fn other_lanes_json(lanes: &LaneDepths, populate: &PopulatePulse) -> serde_json:
     })
 }
 
+fn gate_reason_counts(
+    align_count: i64,
+    adopt_count: i64,
+    blocked: &BlockedValidationSummary,
+) -> serde_json::Value {
+    let mut counts = std::collections::BTreeMap::<String, i64>::new();
+    if align_count > 0 {
+        counts.insert("user_intent_confirmation".to_string(), align_count);
+    }
+    if adopt_count > 0 {
+        counts.insert(GATE_REASON_MANUAL_ACCEPTANCE.to_string(), adopt_count);
+    }
+    for item in blocked.human_gate_reasons() {
+        *counts.entry(item.reason.clone()).or_insert(0) += item.count;
+    }
+    serde_json::json!(counts)
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CompletionTotals {
+    blocked_validation_audit: i64,
+    human_blocked: i64,
+    required_autonomous: i64,
+    required_human: i64,
+}
+
+fn completion_totals(
+    lanes: &LaneDepths,
+    populate: &PopulatePulse,
+    align_count: i64,
+    adopt_count: i64,
+    blocked: &BlockedValidationSummary,
+) -> CompletionTotals {
+    let blocked_validation_audit = blocked.autonomous_validation_count();
+    let human_blocked = blocked.human_validation_count();
+    CompletionTotals {
+        blocked_validation_audit,
+        human_blocked,
+        required_autonomous: populate.total as i64
+            + lanes.build
+            + lanes.fix
+            + lanes.validate
+            + lanes.quality
+            + blocked_validation_audit,
+        required_human: align_count + adopt_count + human_blocked,
+    }
+}
+
+fn completion_json(
+    lanes: &LaneDepths,
+    populate: &PopulatePulse,
+    align_count: i64,
+    adopt_count: i64,
+    blocked: &BlockedValidationSummary,
+    gs: &GraphState,
+) -> serde_json::Value {
+    let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
+    serde_json::json!({
+        "required_autonomous_debt": {
+            "total": totals.required_autonomous,
+            "populate": populate.total,
+            "build": lanes.build,
+            "fix": lanes.fix,
+            "validate": lanes.validate,
+            "quality": lanes.quality,
+            "blocked_validation_audit": totals.blocked_validation_audit,
+        },
+        "required_human_gated_debt": {
+            "total": totals.required_human,
+            "align_confirmations": align_count,
+            "adopt_rulings": adopt_count,
+            "blocked_validations": totals.human_blocked,
+            "affected_proof_edges": blocked.affected_proof_edges,
+            "by_gate_reason": gate_reason_counts(align_count, adopt_count, blocked),
+        },
+        "optional_graph_enrichment": {
+            "unexplored_relationship_pairs": gs.unexplored_pairs,
+            "horizontally_explored": gs.horizontally_explored,
+            "note_hygiene": gs.note_hygiene,
+        }
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 fn render_status(
     report: &StatusReport,
@@ -252,6 +338,7 @@ fn render_status(
     lanes: &LaneDepths,
     populate: &PopulatePulse,
     outside: &UninspectedOutsideQueues,
+    blocked: &BlockedValidationSummary,
     advisories: AdvisoryCounts,
     audit: AuditPulse,
     align_count: i64,
@@ -259,13 +346,28 @@ fn render_status(
     export_freshness: &str,
     printer: &Printer,
 ) -> Result<()> {
-    let human_gated = align_count + adopt_count + outside.blocked_validations;
+    let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
+    let human_gated = totals.required_human;
 
     if printer.json {
         let mut v = serde_json::to_value(report)?;
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(gs)?);
             obj.insert("other_lanes".to_string(), other_lanes_json(lanes, populate));
+            obj.insert(
+                "completion".to_string(),
+                completion_json(lanes, populate, align_count, adopt_count, blocked, gs),
+            );
+            obj.insert(
+                "validation_health".to_string(),
+                serde_json::json!({
+                    "runnable_pass_rate": report.validation_pass_rate_runnable,
+                    "all_pass_rate": report.validation_pass_rate,
+                    "blocked_validations": blocked.validations,
+                    "affected_proof_edges": blocked.affected_proof_edges,
+                    "blocked_by_gate_reason": blocked.by_reason,
+                }),
+            );
             obj.insert("populate".to_string(), serde_json::to_value(populate)?);
             obj.insert(
                 "uninspected_outside_queues".to_string(),
@@ -281,9 +383,12 @@ fn render_status(
                 "total": human_gated,
                 "align_drift_suspects": align_count,
                 "adopt_rulings": adopt_count,
-                "blocked_validations": outside.blocked_validations,
+                "blocked_validations": totals.human_blocked,
+                "blocked_validation_audits": totals.blocked_validation_audit,
+                "affected_proof_edges": blocked.affected_proof_edges,
+                "by_gate_reason": gate_reason_counts(align_count, adopt_count, blocked),
                 "note": if human_gated > 0 {
-                    "These need the USER. Drain autonomous queues now; batch these into ONE agenda for the next conversation window (`loom next --all` tags each queue's gate)."
+                    "These need the USER or external prerequisites. Drain autonomous queues now; batch true user decisions into ONE agenda (`loom next --mode align --take 50` for align)."
                 } else { "" },
             }));
             if export_freshness == "stale" {
@@ -295,81 +400,180 @@ fn render_status(
         }
         printer.print_json(&v);
     } else {
-        println!("{}", fmt_status(report));
-        println!();
-        println!("  {}", fmt_pulse(gs));
-        if outside.implements + outside.blocked_validations > 0 {
-            println!(
-                "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons).",
-                outside.implements + outside.blocked_validations,
-                outside.implements, outside.blocked_validations
-            );
-        }
-        if human_gated > 0 {
-            println!(
-                "  ⚑ {human_gated} item(s) need the user: {align_count} align drift suspect(s), {adopt_count} adopt ruling(s), {} blocked proof(s). Batch them into one agenda; drain autonomous queues meanwhile (`loom next --all` tags each queue's gate).",
-                outside.blocked_validations
-            );
-        }
-        if export_freshness == "stale" {
-            println!(
-                "  ⚠ committed loom.graph.json is STALE — `loom export` before committing code."
-            );
-        }
-        if advisories.total > 0 {
-            println!(
-                "  advisories: {} waiting — code clones {} · co-change {} · shotgun {} · proof-locality {} (`loom smells --summary`).",
-                advisories.total,
-                advisories.code_clones,
-                advisories.cochange_suggestions,
-                advisories.shotgun_surgery,
-                advisories.proof_locality_suggestions
-            );
-        }
-        if audit.computed && audit.open_findings > 0 {
-            let kinds = audit
-                .top_kinds
-                .iter()
-                .map(|k| format!("{} {}", k.kind, k.count))
-                .collect::<Vec<_>>()
-                .join(" · ");
-            let top = audit
-                .top_findings
-                .first()
-                .map(|f| format!("; top: [{}] {}", f.kind, f.summary))
-                .unwrap_or_default();
-            println!(
-                "  audit: {} open finding(s) — {}{} (`{}`).",
-                audit.open_findings, kinds, top, audit.recommended_command
-            );
-        } else if !audit.computed {
-            println!(
-                "  audit: deferred while phase={} keeps another lane active (`{}`).",
-                gs.phase, audit.recommended_command
-            );
-        }
-        if populate.total > 0 {
-            println!(
-                "  populate: {} gap(s) waiting — interface backfill {} · interface gaps {} (`{}`).",
-                populate.total,
-                populate.interface_from_sagas,
-                populate.interface_gaps,
-                populate.next_command
-            );
-        }
-        if let Some(others) = other_lanes_line(lanes, populate, &gs.phase) {
-            println!("  other open lanes: {others}");
-        }
-        // The verb signals the compass's own confidence: a directive phase (a
-        // failure or binding gap) reads as a command; a recommended phase
-        // (discretionary work the agent may sequence against the lanes above)
-        // reads as a suggestion the agent can override with context loom lacks.
-        let anchor = if gs.next_kind == "recommended" {
-            "→ Recommended"
-        } else {
-            "→ Next"
-        };
-        println!("  {anchor}: {}", gs.next_action);
+        render_plain_status(
+            report,
+            gs,
+            lanes,
+            populate,
+            outside,
+            blocked,
+            advisories,
+            &audit,
+            align_count,
+            adopt_count,
+            export_freshness,
+            totals,
+        );
     }
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_plain_status(
+    report: &StatusReport,
+    gs: &GraphState,
+    lanes: &LaneDepths,
+    populate: &PopulatePulse,
+    outside: &UninspectedOutsideQueues,
+    blocked: &BlockedValidationSummary,
+    advisories: AdvisoryCounts,
+    audit: &AuditPulse,
+    align_count: i64,
+    adopt_count: i64,
+    export_freshness: &str,
+    totals: CompletionTotals,
+) {
+    println!("Completion:");
+    println!("  required autonomous debt: {}", totals.required_autonomous);
+    println!(
+        "    populate {} · build {} · fix {} · validate {} · quality {} · blocker audit {}",
+        populate.total,
+        lanes.build,
+        lanes.fix,
+        lanes.validate,
+        lanes.quality,
+        totals.blocked_validation_audit
+    );
+    println!("  required human-gated debt: {}", totals.required_human);
+    println!(
+        "    align confirmations {} · adopt rulings {} · blocked validations {}",
+        align_count, adopt_count, totals.human_blocked
+    );
+    println!(
+        "  optional graph enrichment: {} relationship pair(s), not required for done",
+        gs.unexplored_pairs
+    );
+    println!();
+    println!("Validation Health:");
+    println!(
+        "  runnable validations: {:.1}% passing",
+        report.validation_pass_rate_runnable * 100.0
+    );
+    if blocked.validations > 0 {
+        println!(
+            "  blocked validations: {} awaiting prerequisites, affecting {} proof edge(s)",
+            blocked.validations, blocked.affected_proof_edges
+        );
+    } else {
+        println!("  blocked validations: 0");
+    }
+    println!(
+        "  all validations: {:.1}% passing including blocked prerequisites",
+        report.validation_pass_rate * 100.0
+    );
+    println!();
+    println!("Inventory:");
+    println!(
+        "  nodes: {} intents · {} code files · {} validations",
+        report.total_intents, report.total_codefiles, report.total_validations
+    );
+    println!(
+        "  raw edge states: {} total · {} passing · {} independent · {} failing · {} stale · {} uninspected",
+        report.total_edges,
+        report.passing_edges,
+        report.independent_edges,
+        report.failing_edges,
+        report.needs_reverification,
+        report.uninspected_edges
+    );
+    println!(
+        "  proof coverage: {} intent(s) without validation",
+        report.intents_without_validations
+    );
+    println!();
+    println!("  {}", fmt_pulse(gs));
+    if blocked.validations > 0 {
+        println!(
+            "  validations: runnable {:.0}% passing; {} blocked validation(s) await prerequisites, affecting {} proof edge(s).",
+            report.validation_pass_rate_runnable * 100.0,
+            blocked.validations,
+            blocked.affected_proof_edges
+        );
+    }
+    if outside.implements + blocked.affected_proof_edges > 0 {
+        println!(
+            "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons).",
+            outside.implements + blocked.affected_proof_edges,
+            outside.implements, blocked.affected_proof_edges
+        );
+    }
+    if totals.required_human > 0 {
+        println!(
+            "  ⚑ {} human/prerequisite-gated item(s): {align_count} align drift suspect(s), {adopt_count} adopt ruling(s), {} blocked validation(s). Batch align with `loom next --mode align --take 50`; drain autonomous queues meanwhile.",
+            totals.required_human, totals.human_blocked
+        );
+    }
+    if totals.blocked_validation_audit > 0 {
+        println!(
+            "  autonomous blocker audit: {} blocked validation(s) look locally fixable or stale; inspect `loom validation list --result blocked --limit 0`.",
+            totals.blocked_validation_audit
+        );
+    }
+    if export_freshness == "stale" {
+        println!("  ⚠ committed loom.graph.json is STALE — `loom export` before committing code.");
+    }
+    if advisories.total > 0 {
+        println!(
+            "  advisories: {} waiting — code clones {} · co-change {} · shotgun {} · proof-locality {} (`loom smells --summary`).",
+            advisories.total,
+            advisories.code_clones,
+            advisories.cochange_suggestions,
+            advisories.shotgun_surgery,
+            advisories.proof_locality_suggestions
+        );
+    }
+    if audit.computed && audit.open_findings > 0 {
+        let kinds = audit
+            .top_kinds
+            .iter()
+            .map(|k| format!("{} {}", k.kind, k.count))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        let top = audit
+            .top_findings
+            .first()
+            .map(|f| format!("; top: [{}] {}", f.kind, f.summary))
+            .unwrap_or_default();
+        println!(
+            "  audit: {} open finding(s) — {}{} (`{}`).",
+            audit.open_findings, kinds, top, audit.recommended_command
+        );
+    } else if !audit.computed {
+        println!(
+            "  audit: deferred while phase={} keeps another lane active (`{}`).",
+            gs.phase, audit.recommended_command
+        );
+    }
+    if populate.total > 0 {
+        println!(
+            "  populate: {} gap(s) waiting — interface backfill {} · interface gaps {} (`{}`).",
+            populate.total,
+            populate.interface_from_sagas,
+            populate.interface_gaps,
+            populate.next_command
+        );
+    }
+    if let Some(others) = other_lanes_line(lanes, populate, &gs.phase) {
+        println!("  other open lanes: {others}");
+    }
+    // The verb signals the compass's own confidence: a directive phase (a
+    // failure or binding gap) reads as a command; a recommended phase
+    // (discretionary work the agent may sequence against the lanes above)
+    // reads as a suggestion the agent can override with context loom lacks.
+    let anchor = if gs.next_kind == "recommended" {
+        "→ Recommended"
+    } else {
+        "→ Next"
+    };
+    println!("  {anchor}: {}", gs.next_action);
 }
