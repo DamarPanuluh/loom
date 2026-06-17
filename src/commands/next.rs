@@ -67,10 +67,10 @@ fn run_with_repo(
         );
     }
 
-    if take > 0 && !matches!(mode, "discovery" | "fix" | "quality") {
+    if take > 0 && !matches!(mode, "discovery" | "fix" | "quality" | "align") {
         anyhow::bail!(
-            "--take is a bulk read of the discovery/fix/quality queues (the post-sync drain path: \
-             read each hot neighborhood once, verdict its whole group via `loom batch`). \
+            "--take is a bulk read of the discovery/fix/quality queues (post-sync/post-rule batch reads) \
+             and the align queue (a human-interview agenda). \
              The other modes resolve one command per item — use `loom next --mode {mode}`."
         );
     }
@@ -87,7 +87,13 @@ fn run_with_repo(
         "build" => return run_build(db, printer),
         "populate" => return crate::commands::populate::render_next(db, root, printer),
         "validate" => return run_validate(db, printer),
-        "align" => return run_align(db, printer),
+        "align" => {
+            return if take > 0 {
+                run_take_align(db, take, printer)
+            } else {
+                run_align(db, printer)
+            }
+        }
         "quality" => {
             return if take > 0 {
                 run_take_quality(db, take, printer)
@@ -987,7 +993,7 @@ fn render_all(
         queues.push(serde_json::json!({
             "queue": "blocked-validations", "role": "validator", "gate": "human",
             "count": outside.blocked_validations,
-            "command": "loom validation list  (review blocked reasons, then unblock by changing prerequisites or marking the proof)",
+            "command": "loom validation list --result blocked --limit 0  (review blocked reasons, then unblock by changing prerequisites or marking the proof)",
             "top": "blocked proof edge(s) with recorded prerequisites; not runnable until the user/environment changes",
         }));
     }
@@ -1434,6 +1440,118 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 // Align mode: the validator's user↔intent drift queue — meaning to re-affirm
 // ---------------------------------------------------------------------------
+
+fn run_take_align(store: &dyn GraphReadRepository, take: usize, printer: &Printer) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let candidates = store.align_candidates(&snapshot)?;
+    let gs = store.graph_state(&snapshot)?;
+
+    if candidates.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "empty", "mode": "align",
+                "message": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done.",
+                "next_step": gs.next_action,
+                "graph_state": pulse_json(&gs),
+            }));
+        } else {
+            println!("✓ No drift suspected — nothing to batch for alignment.");
+            println!();
+            println!("  {}", fmt_pulse(&gs));
+            println!("  → Next: {}", gs.next_action);
+        }
+        return Ok(());
+    }
+
+    const TAKE_CAP: usize = 50;
+    let n = take.min(TAKE_CAP).min(candidates.len());
+    let queue_total = candidates.len();
+    let items: Vec<_> = candidates
+        .iter()
+        .take(n)
+        .map(|c| {
+            let visibility = if c.intent.visibility.is_empty() {
+                "untriaged"
+            } else {
+                c.intent.visibility.as_str()
+            };
+            let audience = match visibility {
+                "user_visible" => "user-visible capability",
+                "internal" => "internal machinery",
+                _ => "untriaged: ask whether this is user-visible capability or internal machinery",
+            };
+            let id = c.intent.id.as_str();
+            serde_json::json!({
+                "intent": {
+                    "id": id,
+                    "name": c.intent.name,
+                    "level": c.intent.abstraction_level,
+                    "visibility": visibility,
+                    "description": c.intent.description,
+                },
+                "last_confirmed": c.last_confirmed,
+                "churn_since_confirm": c.churn_since_confirm,
+                "degree": c.degree,
+                "score": c.score,
+                "ask": format!("Does '{}' still match what you expect loom to do here?", c.intent.name),
+                "audience_prompt": audience,
+                "commands": {
+                    "confirm": format!("loom intent confirm {id}"),
+                    "confirm_internal": format!("loom intent confirm {id} --visibility internal"),
+                    "reword": format!("loom intent update {id} --description \"…\" --reword --reason \"user clarified wording during align\""),
+                    "update_meaning": format!("loom intent update {id} --description \"…\" --reason \"user changed expected behavior during align\""),
+                    "retire": format!("loom intent retire {id} --reason \"superseded during align\" --replaced-by <successor>"),
+                },
+            })
+        })
+        .collect();
+    let guidance = "Use this as ONE human agenda. For each item, align the concept in plain language, not implementation wording. Record exactly one outcome: confirm, confirm --visibility internal, reword, update meaning, retire, or add a newly revealed missing concept. After recording outcomes, rerun `loom next --mode align --take <N>` until it is empty.";
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "mode": "align",
+            "taken": n,
+            "queue_total": queue_total,
+            "items": items,
+            "guidance": guidance,
+            "dispatch": { "role": "validator", "effort": "mid", "gate": "human" },
+            "graph_state": pulse_json(&gs),
+        }));
+        return Ok(());
+    }
+
+    println!("── Align agenda: {n} of {queue_total} human-gated meaning check(s) ────");
+    for (idx, item) in items.iter().enumerate() {
+        println!();
+        println!(
+            "  {}. {}  [{} · {}]",
+            idx + 1,
+            item["intent"]["name"].as_str().unwrap_or(""),
+            item["intent"]["visibility"].as_str().unwrap_or(""),
+            item["intent"]["id"].as_str().unwrap_or("")
+        );
+        println!(
+            "     {}",
+            item["intent"]["description"].as_str().unwrap_or("")
+        );
+        println!("     ask: {}", item["ask"].as_str().unwrap_or(""));
+        println!(
+            "     confirm: {}",
+            item["commands"]["confirm"].as_str().unwrap_or("")
+        );
+        if item["intent"]["visibility"].as_str() == Some("untriaged") {
+            println!(
+                "     internal: {}",
+                item["commands"]["confirm_internal"].as_str().unwrap_or("")
+            );
+        }
+    }
+    println!();
+    println!("  {guidance}");
+    println!("  {}", fmt_pulse(&gs));
+    Ok(())
+}
 
 fn run_align(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     let snapshot = store.query_snapshot()?;

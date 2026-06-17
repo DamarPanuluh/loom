@@ -9,9 +9,9 @@ use crate::types::{Validation, ValidationResult};
 pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     match cmd {
-        ValidationCmd::List { limit } => {
+        ValidationCmd::List { result, limit } => {
             let db = GraphReadHandle::open(&cwd)?;
-            run_list_with_db(&db, limit, printer)
+            run_list_with_db(&db, result, limit, printer)
         }
         ValidationCmd::Show { id } => {
             let db = GraphReadHandle::open(&cwd)?;
@@ -281,18 +281,39 @@ fn run_delete_with_sqlite(root: &std::path::Path, id: String, printer: &Printer)
     Ok(())
 }
 
-fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer) -> Result<()> {
+fn run_list_with_db(
+    db: &dyn GraphReadRepository,
+    result: Option<String>,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
     let mut validations = db.query_snapshot()?.validations;
+    let result_filter = if let Some(result) = result {
+        let parsed: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let result = parsed.to_string();
+        validations.retain(|validation| validation.last_result == result);
+        Some(result)
+    } else {
+        None
+    };
     let total = crate::output::apply_limit(&mut validations, limit);
     if printer.json {
         printer.print_json(&serde_json::json!({
             "validations": validations,
             "total":       total,
             "truncated":   validations.len() < total,
+            "result_filter": result_filter,
         }));
     } else if validations.is_empty() {
-        println!("(no validations defined)");
+        if let Some(result) = result_filter {
+            println!("(no validations with result={result})");
+        } else {
+            println!("(no validations defined)");
+        }
     } else {
+        if let Some(result) = &result_filter {
+            println!("  result filter: {result}");
+        }
         println!(
             "  {result:<8}  {vtype:<14}  {name:<40}  id",
             result = "RESULT",

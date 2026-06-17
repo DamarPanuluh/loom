@@ -109,11 +109,10 @@ pub enum Command {
         all: bool,
 
         /// Bulk-read: up to N COMPACT items from this mode's queue in ONE
-        /// call — grouped by the file that staled them, with a prefilled
-        /// `loom batch` template — instead of one rich item per call. The
-        /// token-bounded way to drain a large post-sync queue: read each hot
-        /// file once, then verdict its whole group in one `loom batch`.
-        /// Supported for discovery and fix (capped at 50).
+        /// call. For discovery/fix this groups by the file that staled them
+        /// with a prefilled `loom batch` template; for quality it groups rule
+        /// verdicts by intent; for align it serves a user-interview agenda.
+        /// Supported for discovery, fix, quality, and align (capped at 50).
         #[arg(long, default_value_t = 0, conflicts_with = "all")]
         take: usize,
 
@@ -1744,6 +1743,10 @@ pub enum ValidationCmd {
 
     /// List all validation nodes.
     List {
+        /// Filter by last result: passed | failed | blocked | not_run.
+        #[arg(long)]
+        result: Option<String>,
+
         /// Max rows (0 = all).
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
