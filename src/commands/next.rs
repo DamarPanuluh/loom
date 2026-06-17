@@ -5,7 +5,7 @@ use crate::db::queries::{
     quality_candidates_from_snapshot, review_candidates_from_snapshot,
     scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
     validate_candidates_from_snapshot, vertical_completeness_from_snapshot, AlignCandidate,
-    DoctorReport, GraphState, QuerySnapshot, Smell,
+    DiscoveryClassFilter, DoctorReport, GraphState, QuerySnapshot, Smell,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{
@@ -23,10 +23,26 @@ const ALIGN_EMPTY_MESSAGE: &str =
 const BATCH_TEMPLATE_TITLE: &str =
     "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──";
 
-pub fn run(mode: &str, all: bool, take: usize, compact: bool, printer: &Printer) -> Result<()> {
+pub fn run(
+    mode: &str,
+    all: bool,
+    take: usize,
+    discovery_class: Option<&str>,
+    compact: bool,
+    printer: &Printer,
+) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
-    run_with_repo(&store, &cwd, mode, all, take, compact, printer)
+    run_with_repo(
+        &store,
+        &cwd,
+        mode,
+        all,
+        take,
+        discovery_class,
+        compact,
+        printer,
+    )
 }
 
 fn run_with_repo(
@@ -35,6 +51,7 @@ fn run_with_repo(
     mode: &str,
     all: bool,
     take: usize,
+    discovery_class: Option<&str>,
     compact: bool,
     printer: &Printer,
 ) -> Result<()> {
@@ -83,6 +100,14 @@ fn run_with_repo(
         );
     }
 
+    if discovery_class.is_some() && mode != "discovery" {
+        anyhow::bail!(
+            "--class only applies to generated discovery pairs. Use it with \
+             `loom next --mode discovery --class suspected-coupling|impact-map|all`."
+        );
+    }
+    let discovery_class = DiscoveryClassFilter::parse(discovery_class)?;
+
     if compact && !matches!(mode, "discovery" | "fix") {
         anyhow::bail!(
             "--compact projects a RELATES_TO work item down to its verdict coordinates \
@@ -114,13 +139,14 @@ fn run_with_repo(
         _ => {}
     }
 
-    run_relates_with_repo(db, mode, take, compact, printer)
+    run_relates_with_repo(db, mode, take, discovery_class, compact, printer)
 }
 
 fn run_relates_with_repo(
     store: &dyn GraphReadRepository,
     mode: &str,
     take: usize,
+    discovery_class: DiscoveryClassFilter,
     compact: bool,
     printer: &Printer,
 ) -> Result<()> {
@@ -128,7 +154,7 @@ fn run_relates_with_repo(
     let mut candidates = scored_candidates_from_snapshot(&snapshot, mode);
 
     if candidates.is_empty() && mode == "discovery" {
-        candidates = unexplored_pairs_scored_from_snapshot(&snapshot)?;
+        candidates = unexplored_pairs_scored_from_snapshot(&snapshot, discovery_class)?;
     }
 
     if candidates.is_empty() {
@@ -137,6 +163,7 @@ fn run_relates_with_repo(
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
                 "mode":    mode,
+                "discovery_class": discovery_class.as_cli_value(),
                 "message": "No work items found for this mode.",
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
@@ -200,6 +227,9 @@ fn run_relates_with_repo(
         criterion: top_edge.criterion.clone(),
         evidence: top_edge.evidence.clone(),
         priority_score: *score,
+        discovery_class: top_edge.discovery_class.clone(),
+        discovery_signals: top_edge.discovery_signals.clone(),
+        discovery_centrality: top_edge.discovery_centrality.clone(),
         intent_a: IntentSurface::from(&intent_a),
         intent_b: intent_b_opt.as_ref().map(IntentSurface::from),
         implements: implements_a.iter().map(GroundingSurface::from).collect(),
@@ -514,6 +544,10 @@ fn run_take(
             "b": { "id": edge.to_id, "name": edge.to_name },
             "inspection_status": edge.inspection_status,
             "criterion": edge.criterion,
+            "notes": edge.notes,
+            "discovery_class": edge.discovery_class,
+            "discovery_signals": edge.discovery_signals,
+            "discovery_centrality": edge.discovery_centrality,
             "priority_score": score,
         });
         match groups.iter_mut().find(|(f, _)| *f == staled_by) {
@@ -562,8 +596,18 @@ fn run_take(
             println!("  {} ({} claim(s) staled by this file)", file, items.len());
         }
         for it in items {
+            let mut suffix = String::new();
+            if let Some(class) = it["discovery_class"]
+                .as_str()
+                .filter(|class| !class.is_empty())
+            {
+                suffix.push_str(&format!(" — class: {class}"));
+            }
+            if let Some(notes) = it["notes"].as_str().filter(|notes| !notes.is_empty()) {
+                suffix.push_str(&format!(" — {notes}"));
+            }
             println!(
-                "    [{:<21} {:>5.2}]  {} × {}  ({})",
+                "    [{:<21} {:>5.2}]  {} × {}  ({}){}",
                 it["inspection_status"].as_str().unwrap_or(""),
                 it["priority_score"].as_f64().unwrap_or(0.0),
                 it["a"]["name"].as_str().unwrap_or(""),
@@ -573,6 +617,7 @@ fn run_take(
                 } else {
                     it["edge_id"].as_str().unwrap_or("")
                 },
+                suffix,
             );
         }
     }
@@ -648,6 +693,9 @@ fn run_compact(
             "edge_id": edge.id,
             "inspection_status": edge.inspection_status,
             "priority_score": score,
+            "discovery_class": edge.discovery_class,
+            "discovery_signals": edge.discovery_signals,
+            "discovery_centrality": edge.discovery_centrality,
             "a": { "id": edge.from_id, "name": edge.from_name },
             "b": { "id": edge.to_id, "name": edge.to_name },
             "implements": grounded,
@@ -679,6 +727,17 @@ fn run_compact(
             String::new()
         };
         println!("  code: {}{}", grounded.join(" · "), more);
+    }
+    if !edge.discovery_class.is_empty() {
+        println!(
+            "  discovery: {}{}",
+            edge.discovery_class,
+            if edge.notes.is_empty() {
+                String::new()
+            } else {
+                format!(" — {}", edge.notes)
+            }
+        );
     }
     println!("  → {suggested_action}");
     println!("  Dispatch — {role}  [effort: {effort}]   dig: {dig}");
@@ -1261,6 +1320,9 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         criterion: String::new(),
         evidence: String::new(),
         priority_score: *score,
+        discovery_class: String::new(),
+        discovery_signals: Vec::new(),
+        discovery_centrality: Default::default(),
         intent_a: IntentSurface::from(intent),
         intent_b: None,
         implements: implements.iter().map(GroundingSurface::from).collect(),
@@ -2537,6 +2599,9 @@ mod tests {
             inspected_by: String::new(),
             priority_score: 0.0,
             notes: String::new(),
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: Default::default(),
         };
         for status in [
             "unexplored",

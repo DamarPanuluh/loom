@@ -788,7 +788,9 @@ pub fn status_report_from_snapshot(snapshot: &QuerySnapshot) -> StatusReport {
 
     let by_status = edge_status_counts_from_snapshot(snapshot);
     let total_edges = by_status.values().sum::<i64>();
-    let uninspected = *by_status.get("uninspected").unwrap_or(&0);
+    let raw_uninspected = *by_status.get("uninspected").unwrap_or(&0);
+    let uninspected =
+        (raw_uninspected - noncurrent_uninspected_validation_edges_from_snapshot(snapshot)).max(0);
     let passing = *by_status.get("passing").unwrap_or(&0);
     let failing = *by_status.get("failing").unwrap_or(&0);
     let independent = *by_status.get("independent").unwrap_or(&0);
@@ -815,6 +817,24 @@ pub fn status_report_from_snapshot(snapshot: &QuerySnapshot) -> StatusReport {
         validation_pass_rate_runnable,
         open_issues: failing,
     }
+}
+
+fn noncurrent_uninspected_validation_edges_from_snapshot(snapshot: &QuerySnapshot) -> i64 {
+    let current_blocked = current_blocked_validation_ids(snapshot);
+    let validation_result: HashMap<&str, &str> = snapshot
+        .validations
+        .iter()
+        .map(|v| (v.id.as_str(), v.last_result.as_str()))
+        .collect();
+    snapshot
+        .validates
+        .iter()
+        .filter(|edge| {
+            edge.inspection_status == "uninspected"
+                && validation_result.get(edge.validation_id.as_str()).copied() == Some("blocked")
+                && !current_blocked.contains(edge.validation_id.as_str())
+        })
+        .count() as i64
 }
 
 pub fn intents_without_validations_from_snapshot(snapshot: &QuerySnapshot) -> Vec<Intent> {
@@ -1074,7 +1094,7 @@ pub fn tangled_files_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{ValidatesEdge, Validation};
+    use crate::types::{CodeFile, Implements, ValidatesEdge, Validation};
 
     fn val(id: &str, result: &str) -> Validation {
         Validation {
@@ -1171,8 +1191,10 @@ mod tests {
         );
         let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
         let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+        let report = status_report_from_snapshot(&snapshot);
         assert_eq!(blocked, 0);
         assert_eq!(outside.blocked_validations, 0);
+        assert_eq!(report.uninspected_edges, 0);
         assert!((runnable - 1.0).abs() < f64::EPSILON);
     }
 
@@ -1191,8 +1213,10 @@ mod tests {
         );
         let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
         let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+        let report = status_report_from_snapshot(&snapshot);
         assert_eq!(blocked, 1);
         assert_eq!(outside.blocked_validations, 1);
+        assert_eq!(report.uninspected_edges, 2);
         assert_eq!(runnable, 0.0);
     }
 
@@ -1225,7 +1249,8 @@ mod tests {
 
     use super::super::scoring::{
         build_candidates_from_snapshot, quality_candidates_from_snapshot, ripple_bump_by_intent,
-        scored_candidates_from_snapshot, validate_candidates_from_snapshot, RIPPLE_BUMP_HOP2,
+        scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
+        validate_candidates_from_snapshot, DiscoveryClassFilter, RIPPLE_BUMP_HOP2,
         RIPPLE_BUMP_HOP3,
     };
 
@@ -1264,6 +1289,9 @@ mod tests {
             inspected_by: String::new(),
             priority_score: 0.0,
             notes: String::new(),
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: Default::default(),
         }
     }
 
@@ -1282,6 +1310,58 @@ mod tests {
         )
     }
 
+    fn codefile(path: &str, imports: Vec<&str>) -> CodeFile {
+        CodeFile {
+            id: format!("cf:{path}"),
+            path: path.to_string(),
+            language: "rust".to_string(),
+            last_modified: String::new(),
+            imports: imports.into_iter().map(str::to_string).collect(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+        }
+    }
+
+    fn implements(intent_id: &str, path: &str) -> Implements {
+        Implements {
+            id: format!("imp:{intent_id}:{path}"),
+            intent_id: intent_id.to_string(),
+            codefile_id: format!("cf:{path}"),
+            intent_name: intent_id.to_string(),
+            codefile_path: path.to_string(),
+            inspection_status: "passing".to_string(),
+            criterion: String::new(),
+            confidence: 1.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: String::new(),
+            notes: String::new(),
+            created_at: String::new(),
+        }
+    }
+
+    fn snap_with_code(
+        intents: Vec<Intent>,
+        relates: Vec<RelatesTo>,
+        implements: Vec<Implements>,
+        codefiles: Vec<CodeFile>,
+    ) -> QuerySnapshot {
+        QuerySnapshot::from_parts(
+            intents,
+            vec![],
+            relates,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            implements,
+            codefiles,
+            None,
+        )
+    }
+
     fn gs_of(snapshot: &QuerySnapshot) -> GraphState {
         graph_state_from_snapshot_parts(
             snapshot,
@@ -1294,6 +1374,111 @@ mod tests {
             || Ok(0),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn unexplored_shared_file_pair_is_suspected_coupling() {
+        let snapshot = snap_with_code(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![],
+            vec![
+                implements("a", "src/shared.rs"),
+                implements("b", "src/shared.rs"),
+            ],
+            vec![codefile("src/shared.rs", vec![])],
+        );
+
+        let scored = unexplored_pairs_scored_from_snapshot(
+            &snapshot,
+            DiscoveryClassFilter::SuspectedCoupling,
+        )
+        .unwrap();
+
+        assert_eq!(scored.len(), 1);
+        let edge = &scored[0].0;
+        assert_eq!(edge.discovery_class, "suspected_coupling");
+        assert!(edge
+            .discovery_signals
+            .iter()
+            .any(|s| s.kind == "shared_file" && s.detail == "src/shared.rs"));
+    }
+
+    #[test]
+    fn unexplored_import_pair_is_suspected_coupling() {
+        let snapshot = snap_with_code(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![],
+            vec![implements("a", "src/a.rs"), implements("b", "src/b.rs")],
+            vec![
+                codefile("src/a.rs", vec!["src/b.rs"]),
+                codefile("src/b.rs", vec![]),
+            ],
+        );
+
+        let scored = unexplored_pairs_scored_from_snapshot(
+            &snapshot,
+            DiscoveryClassFilter::SuspectedCoupling,
+        )
+        .unwrap();
+
+        assert_eq!(scored.len(), 1);
+        let edge = &scored[0].0;
+        assert_eq!(edge.discovery_class, "suspected_coupling");
+        assert!(edge
+            .discovery_signals
+            .iter()
+            .any(|s| s.kind == "import_link"));
+    }
+
+    #[test]
+    fn unexplored_same_domain_pair_is_suspected_coupling() {
+        let mut a = intent("a", "implemented");
+        a.domain = "db".to_string();
+        let mut b = intent("b", "implemented");
+        b.domain = "db".to_string();
+        let snapshot = snap(vec![a, b], vec![]);
+
+        let scored = unexplored_pairs_scored_from_snapshot(
+            &snapshot,
+            DiscoveryClassFilter::SuspectedCoupling,
+        )
+        .unwrap();
+
+        assert_eq!(scored.len(), 1);
+        let edge = &scored[0].0;
+        assert_eq!(edge.discovery_class, "suspected_coupling");
+        assert!(edge
+            .discovery_signals
+            .iter()
+            .any(|s| s.kind == "same_domain" && s.detail == "db"));
+    }
+
+    #[test]
+    fn centrality_only_pairs_route_to_impact_map_not_default_discovery() {
+        let snapshot = snap(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![],
+        );
+
+        let default = unexplored_pairs_scored_from_snapshot(
+            &snapshot,
+            DiscoveryClassFilter::SuspectedCoupling,
+        )
+        .unwrap();
+        assert!(default.is_empty());
+
+        let impact =
+            unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::ImpactMap)
+                .unwrap();
+        assert_eq!(impact.len(), 1);
+        let edge = &impact[0].0;
+        assert_eq!(edge.discovery_class, "impact_map");
+        assert!(edge.discovery_signals.is_empty());
+        assert!(edge.notes.contains("structural centrality only"));
+
+        let all =
+            unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
+        assert_eq!(all.len(), 1);
     }
 
     fn phase_of(snapshot: &QuerySnapshot) -> String {

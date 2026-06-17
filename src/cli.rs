@@ -122,6 +122,12 @@ pub enum Command {
         #[arg(long, default_value_t = 0, conflicts_with = "all")]
         take: usize,
 
+        /// For generated discovery pairs, choose which class to serve:
+        /// suspected-coupling (default: code/vocab/domain signal), impact-map
+        /// (centrality-only), or all. Only valid with --mode discovery.
+        #[arg(long = "class", conflicts_with = "all")]
+        discovery_class: Option<String>,
+
         /// Serve the single item as a PROJECTION: intent ids/names, edge id,
         /// top grounded paths, and a one-line suggested command — no
         /// validations/notes/descriptions/pulse (each names its dig command
@@ -1967,6 +1973,29 @@ mod tests {
     fn clap_tree_is_well_formed() {
         use clap::CommandFactory;
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn next_discovery_class_parses_as_explicit_selector() {
+        let cli = Cli::parse_from([
+            "loom",
+            "next",
+            "--mode",
+            "discovery",
+            "--class",
+            "impact-map",
+        ]);
+        match cli.command {
+            Some(Command::Next {
+                mode,
+                discovery_class,
+                ..
+            }) => {
+                assert_eq!(mode, "discovery");
+                assert_eq!(discovery_class.as_deref(), Some("impact-map"));
+            }
+            _ => panic!("expected next command"),
+        }
     }
 
     /// Unrecognized top-level tokens must CAPTURE into the catch-all (not

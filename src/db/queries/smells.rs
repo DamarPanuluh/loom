@@ -2763,6 +2763,9 @@ mod shotgun_surgery_tests {
             notes: String::new(),
             confidence: 1.0,
             priority_score: 0.0,
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: Default::default(),
         }
     }
 
@@ -4291,6 +4294,9 @@ mod cycle_island_tests {
             inspected_by: String::new(),
             priority_score: 0.0,
             notes: String::new(),
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: Default::default(),
         }
     }
 

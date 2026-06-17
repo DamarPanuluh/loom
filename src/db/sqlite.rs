@@ -1801,6 +1801,9 @@ impl SqliteGraphStore {
                     inspected_by: row.get(9)?,
                     priority_score: row.get(10)?,
                     notes: row.get(11)?,
+                    discovery_class: String::new(),
+                    discovery_signals: Vec::new(),
+                    discovery_centrality: Default::default(),
                 })
             })?;
             for row in rows {
@@ -2024,6 +2027,9 @@ impl SqliteGraphStore {
                 inspected_by: row.get(9)?,
                 priority_score: row.get(10)?,
                 notes: row.get(11)?,
+                discovery_class: String::new(),
+                discovery_signals: Vec::new(),
+                discovery_centrality: Default::default(),
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -2058,6 +2064,9 @@ impl SqliteGraphStore {
                         inspected_by: row.get(9)?,
                         priority_score: row.get(10)?,
                         notes: row.get(11)?,
+                        discovery_class: String::new(),
+                        discovery_signals: Vec::new(),
+                        discovery_centrality: Default::default(),
                     })
                 },
             )

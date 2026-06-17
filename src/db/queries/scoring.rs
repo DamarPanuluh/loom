@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use chrono::{DateTime, Utc};
 
 use crate::types::{
-    Governs, Hypothesis, InspectionStatus, Intent, Note, QualityRule, RelatesTo, TargetsEdge,
-    ValidatesEdge, Validation,
+    DiscoveryCentrality, DiscoverySignal, Governs, Hypothesis, InspectionStatus, Intent, Note,
+    QualityRule, RelatesTo, TargetsEdge, ValidatesEdge, Validation,
 };
 
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
@@ -43,6 +43,42 @@ pub const BRIDGE_WEIGHT: f64 = 3.0;
 /// has actually been invalidated. HOP2 (two hops from the change) > HOP3.
 pub const RIPPLE_BUMP_HOP2: f64 = 2.0;
 pub const RIPPLE_BUMP_HOP3: f64 = 1.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiscoveryClassFilter {
+    SuspectedCoupling,
+    ImpactMap,
+    All,
+}
+
+impl DiscoveryClassFilter {
+    pub fn parse(value: Option<&str>) -> Result<Self> {
+        match value.unwrap_or("suspected-coupling") {
+            "suspected-coupling" | "suspected_coupling" => Ok(Self::SuspectedCoupling),
+            "impact-map" | "impact_map" => Ok(Self::ImpactMap),
+            "all" => Ok(Self::All),
+            other => anyhow::bail!(
+                "invalid discovery class '{other}'. Valid values: suspected-coupling, impact-map, all"
+            ),
+        }
+    }
+
+    fn accepts(self, class: &str) -> bool {
+        match self {
+            Self::SuspectedCoupling => class == "suspected_coupling",
+            Self::ImpactMap => class == "impact_map",
+            Self::All => true,
+        }
+    }
+
+    pub fn as_cli_value(self) -> &'static str {
+        match self {
+            Self::SuspectedCoupling => "suspected-coupling",
+            Self::ImpactMap => "impact-map",
+            Self::All => "all",
+        }
+    }
+}
 
 /// Per-intent graded-ripple priority bump derived from the CURRENT stale
 /// frontier — the set of intents that are an endpoint of a `needs_reverification`
@@ -787,6 +823,7 @@ pub fn count_unexplored_pairs_from(
 /// never loads the same graph twice).
 pub fn unexplored_pairs_scored_from_snapshot(
     snapshot: &QuerySnapshot,
+    class_filter: DiscoveryClassFilter,
 ) -> Result<Vec<(RelatesTo, f64)>> {
     use super::smells::jaccard;
 
@@ -828,23 +865,64 @@ pub fn unexplored_pairs_scored_from_snapshot(
                 .filter(|p| discovery.import_links.contains(p))
                 .count();
             let mut why: Vec<String> = Vec::new();
+            let mut signals: Vec<DiscoverySignal> = Vec::new();
             if imports > 0 {
+                let detail = format!("{imports} import link(s)");
                 why.push(format!("their code imports each other ({imports} link(s))"));
+                signals.push(DiscoverySignal {
+                    kind: "import_link".to_string(),
+                    detail,
+                    weight: 5.0 * imports as f64,
+                });
             }
             if shared > 0 {
+                let mut paths: Vec<&str> = fa
+                    .intersection(fb)
+                    .filter_map(|idx| snapshot.codefiles.get(*idx).map(|cf| cf.path.as_str()))
+                    .collect();
+                paths.sort_unstable();
+                let detail = if paths.len() <= 3 {
+                    paths.join(", ")
+                } else {
+                    format!(
+                        "{}, +{} more",
+                        paths.iter().take(3).copied().collect::<Vec<_>>().join(", "),
+                        paths.len() - 3
+                    )
+                };
                 why.push(format!("share {shared} implemented file(s)"));
+                signals.push(DiscoverySignal {
+                    kind: "shared_file".to_string(),
+                    detail,
+                    weight: 3.0 * shared as f64,
+                });
             }
             if sim >= 0.25 {
                 why.push(format!("descriptions overlap ({sim:.2})"));
+                signals.push(DiscoverySignal {
+                    kind: "description_overlap".to_string(),
+                    detail: format!("{sim:.2}"),
+                    weight: 4.0 * sim,
+                });
             }
             if tag_weight > 0.0 {
                 why.push(format!(
                     "tagged with the same vocabulary ({}, weight {tag_weight:.2})",
                     shared_tags.join(", ")
                 ));
+                signals.push(DiscoverySignal {
+                    kind: "shared_vocab".to_string(),
+                    detail: shared_tags.join(", "),
+                    weight: 4.0 * tag_weight,
+                });
             }
             if same_domain {
                 why.push(format!("same domain '{}'", a.domain));
+                signals.push(DiscoverySignal {
+                    kind: "same_domain".to_string(),
+                    detail: a.domain.clone(),
+                    weight: 1.0,
+                });
             }
             // Tag collisions are graded by rarity (Σ 1/freq), so a collision on
             // a near-unique term outranks the binary same_domain bump — the
@@ -856,10 +934,23 @@ pub fn unexplored_pairs_scored_from_snapshot(
                 + 4.0 * tag_weight
                 + if same_domain { 1.0 } else { 0.0 };
 
-            let score = *snapshot.degrees.get(&a.id).unwrap_or(&0) as f64
-                + *snapshot.degrees.get(&b.id).unwrap_or(&0) as f64
-                + base_urgency
-                + suspicion;
+            let degree_a = *snapshot.degrees.get(&a.id).unwrap_or(&0);
+            let degree_b = *snapshot.degrees.get(&b.id).unwrap_or(&0);
+            let discovery_class = if signals.is_empty() {
+                why.push(format!(
+                    "ranked by structural centrality only (degree {} + {})",
+                    degree_a, degree_b
+                ));
+                "impact_map"
+            } else {
+                why.push(format!("structural degree {} + {}", degree_a, degree_b));
+                "suspected_coupling"
+            };
+            if !class_filter.accepts(discovery_class) {
+                continue;
+            }
+
+            let score = degree_a as f64 + degree_b as f64 + base_urgency + suspicion;
             scored.push((
                 RelatesTo {
                     id: String::new(),
@@ -874,10 +965,12 @@ pub fn unexplored_pairs_scored_from_snapshot(
                     last_inspected: String::new(),
                     inspected_by: String::new(),
                     priority_score: score,
-                    notes: if why.is_empty() {
-                        String::new()
-                    } else {
-                        format!("suspicion: {}", why.join("; "))
+                    notes: format!("discovery signal: {}", why.join("; ")),
+                    discovery_class: discovery_class.to_string(),
+                    discovery_signals: signals,
+                    discovery_centrality: DiscoveryCentrality {
+                        a_degree: degree_a,
+                        b_degree: degree_b,
                     },
                 },
                 score,

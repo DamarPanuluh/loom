@@ -864,6 +864,34 @@ pub struct RelatesTo {
     pub priority_score: f64,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    /// Synthetic discovery queue metadata. Empty for stored RELATES_TO edges.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub discovery_class: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub discovery_signals: Vec<DiscoverySignal>,
+    #[serde(default, skip_serializing_if = "DiscoveryCentrality::is_empty")]
+    pub discovery_centrality: DiscoveryCentrality,
+}
+
+/// A mechanical reason an unexplored pair was offered to the analyzer.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DiscoverySignal {
+    pub kind: String,
+    pub detail: String,
+    pub weight: f64,
+}
+
+/// Structural importance for the generated discovery pair.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiscoveryCentrality {
+    pub a_degree: i64,
+    pub b_degree: i64,
+}
+
+impl DiscoveryCentrality {
+    pub fn is_empty(&self) -> bool {
+        self.a_degree == 0 && self.b_degree == 0
+    }
 }
 
 /// HIERARCHY: Intent → Intent — parent/child zoom relationship.
@@ -1204,6 +1232,12 @@ pub struct WorkItem {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub evidence: String,
     pub priority_score: f64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub discovery_class: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub discovery_signals: Vec<DiscoverySignal>,
+    #[serde(skip_serializing_if = "DiscoveryCentrality::is_empty")]
+    pub discovery_centrality: DiscoveryCentrality,
     /// The subject intent (always present).
     pub intent_a: IntentSurface,
     /// The related intent (present for RELATES_TO edges).
