@@ -97,6 +97,18 @@ const ROUTE_MENU: &[(&str, &str, &str)] = &[
     ("question about the system", "answer", "answer from matches; no graph mutation"),
 ];
 
+pub fn normalize_template(id: &str) -> String {
+    format!(
+        "loom inbox normalize {id} --kind <kind> --claim \"<normalized claim>\" --route <route_kind> --command \"<exact command or answer>\""
+    )
+}
+
+pub fn normalize_hint(id: &str) -> String {
+    format!(
+        "loom inbox normalize {id} --kind <kind> --claim \"…\" --route <route_kind> --command \"…\""
+    )
+}
+
 pub fn run(cmd: InboxCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     match cmd {
@@ -325,6 +337,7 @@ fn run_list_with_db(
         validate_enum("kind", kind, INBOX_KINDS)?;
     }
     let mut items = db.list_inbox_items(status, kind)?;
+    let total = items.len();
     items.reverse();
     if limit > 0 && items.len() > limit {
         items.truncate(limit);
@@ -332,6 +345,13 @@ fn run_list_with_db(
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok",
+            "count": items.len(),
+            "total": total,
+            "filters": {
+                "status": status,
+                "kind": kind,
+                "limit": limit,
+            },
             "items": items,
         }));
         return Ok(());
@@ -362,6 +382,7 @@ fn run_triage_with_db(db: &dyn GraphReadRepository, take: usize, printer: &Print
     let mut items = db.list_inbox_items(None, None)?;
     items.retain(|item| matches!(item.status.as_str(), "new" | "triaged"));
     items.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+    let queue_total = items.len();
     items.truncate(take);
     let snapshot = db.query_snapshot()?;
     let gs = db.graph_state(&snapshot)?;
@@ -379,18 +400,23 @@ fn run_triage_with_db(db: &dyn GraphReadRepository, take: usize, printer: &Print
                     "sagas": planes.sagas,
                     "rules": planes.rules,
                 },
-                "normalize_template": format!(
-                    "loom inbox normalize {} --kind <kind> --claim \"<normalized claim>\" --route <route_kind> --command \"<exact command or answer>\"",
-                    item.id
-                ),
+                "normalize_template": normalize_template(&item.id),
             }))
         })
         .collect::<Result<Vec<_>>>()?;
+    let normalize_templates: Vec<_> = triage_items
+        .iter()
+        .filter_map(|value| value["normalize_template"].as_str().map(str::to_string))
+        .collect();
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "mode": "inbox_triage",
+            "count": triage_items.len(),
+            "taken": triage_items.len(),
+            "queue_total": queue_total,
             "items": triage_items,
+            "normalize_templates": normalize_templates,
             "route_menu": route_menu_json(),
             "vocab_terms": vocab,
             "doctrine": "Inbox captures raw language first. Normalize one card at a time; run the proposed graph command separately; then mark the card routed/rejected/duplicate/deferred.",
@@ -405,10 +431,7 @@ fn run_triage_with_db(db: &dyn GraphReadRepository, take: usize, printer: &Print
         println!();
         println!("{}  [{} / {}]", item.id, item.status, item.kind);
         println!("  raw: {}", item.raw_text);
-        println!(
-            "  normalize: loom inbox normalize {} --kind <kind> --claim \"…\" --route <route_kind> --command \"…\"",
-            item.id
-        );
+        println!("  normalize: {}", normalize_hint(&item.id));
     }
     println!();
     println!("Route menu:");

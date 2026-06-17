@@ -3558,6 +3558,12 @@
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
       },
       {
+        "created_at": "2026-06-17T15:08:38.808141+00:00",
+        "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "notes": "",
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
         "created_at": "2026-06-10T23:58:10.629043+00:00",
         "from": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "notes": "",
@@ -3627,6 +3633,19 @@
         "locator": "PERFORMANCE_GUIDANCE",
         "notes": "guide surfaces active SQLite storage and retired serve behavior",
         "to": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T15:08:39.037537+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "0401f1f2-443f-42c0-b833-b113f1633299",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "30616f5e-e134-422d-8f9f-70f2531ef026"
       },
       {
         "confidence": 0.0,
@@ -5905,6 +5924,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-17T15:08:39.119314+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "b67c4a48-965a-47f1-9ff7-56c3c7dc3c1d"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-17T08:53:36.211654+00:00",
         "criterion": "",
         "evidence": "",
@@ -6331,6 +6363,19 @@
         "locator": "\"seed\"",
         "notes": "",
         "to": "d1e1c4bd-8017-42e1-9da5-a467edccca38"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T15:08:38.953049+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "f93c6052-280d-40a4-996d-617647982800",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "pub fn run",
+        "notes": "",
+        "to": "06f150bd-4010-4ffc-a8a7-593d4381c2c7"
       },
       {
         "confidence": 0.0,
@@ -10561,6 +10606,19 @@
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
       },
       {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.599586+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.599586+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
         "confidence": 0.92,
         "created_at": "2026-06-17T10:29:25.451089+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -13942,6 +14000,19 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.259102+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.259102+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:12.050414+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
         "evidence": "Re-inspected the Inbox intake implementation after sync: schema/repository changes add InboxItem as an additive typed node in src/db/schema.rs, src/db/sqlite.rs, src/db/mod.rs, and src/types.rs; command changes in src/commands/inbox.rs, src/commands/door.rs, src/commands/status.rs, and src/commands/next.rs keep intake separate from graph-truth mutations; docs/help describe the same capture-normalize-route lifecycle; cargo test passed after the change.",
@@ -14537,6 +14608,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.396732+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.396732+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
       },
       {
         "confidence": 0.9,
@@ -15398,6 +15482,19 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.169128+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.169128+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:15.253728+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
         "evidence": "Re-inspected the final Inbox intake and cleanup implementation after sync: InboxItem remains an additive typed schema/repository node, door captures first, inbox normalize/mark only proposes or records routing, status/next expose intake as optional candidates, shared output helpers remove duplicated command strings, and smell audit is clean.",
@@ -15930,6 +16027,19 @@
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
       },
       {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.733372+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.733372+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
         "confidence": 0.92,
         "created_at": "2026-06-17T10:29:26.471711+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -16409,6 +16519,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.465353+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "6cc267b6-6052-48bd-b914-674fabe48eee",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.465353+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
       },
       {
         "confidence": 0.92,
@@ -19129,6 +19252,19 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.532795+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.532795+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:24.580134+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
         "evidence": "Re-inspected the final Inbox intake and cleanup implementation after sync: InboxItem remains an additive typed schema/repository node, door captures first, inbox normalize/mark only proposes or records routing, status/next expose intake as optional candidates, shared output helpers remove duplicated command strings, and smell audit is clean.",
@@ -19360,6 +19496,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.873106+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "bf39f175-67f8-4800-844a-68d7b7b34bdc",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.873106+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
       },
       {
         "confidence": 0.92,
@@ -20168,6 +20317,19 @@
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
       },
       {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.666456+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "d7d485d7-c342-4c44-a57f-d08f7cf31941",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.666456+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
         "confidence": 0.92,
         "created_at": "2026-06-17T10:29:26.098371+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -20558,6 +20720,19 @@
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
       },
       {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.327276+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.327276+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
+      },
+      {
         "confidence": 0.92,
         "created_at": "2026-06-17T10:29:12.734299+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -20738,6 +20913,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
+      },
+      {
+        "confidence": 0.9,
+        "created_at": "2026-06-17T15:10:45.801130+00:00",
+        "criterion": "Inbox intake boundary remains coupled to this existing responsibility when that responsibility imports, dispatches, stores, renders, or validates InboxItem behavior; removing the shared command/schema/storage surface should make this edge independent.",
+        "evidence": "Dogfood registration made src/commands/inbox.rs a first-class CodeFile. The coupling is real: existing command/schema/storage/output surfaces import or call the Inbox command/types so door can capture first, CLI can dispatch inbox, status/next can count intake, and SQLite/schema can store InboxItem without treating intake as graph truth.",
+        "from": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T15:10:45.801130+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f93c6052-280d-40a4-996d-617647982800"
       },
       {
         "confidence": 0.92,
@@ -22065,6 +22253,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "933385b5-48eb-47c4-af6b-5312299f1914"
+      },
+      {
+        "created_at": "2026-06-17T15:08:48.728177+00:00",
+        "from": "b2d4611d-8b1e-4fc9-afef-663d47fc076f",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f93c6052-280d-40a4-996d-617647982800"
       },
       {
         "created_at": "2026-06-11T06:53:07.272045+00:00",
@@ -23420,6 +23615,991 @@
           "pub(crate) struct SkippedSaga",
           "struct ExpectedCall",
           "struct SagaExpectation"
+        ]
+      },
+      {
+        "content_hash": "2319c209c4b42fa5",
+        "id": "06f150bd-4010-4ffc-a8a7-593d4381c2c7",
+        "imports": [
+          "src/cli.rs",
+          "src/db/mod.rs",
+          "src/output.rs",
+          "src/types.rs"
+        ],
+        "language": "rust",
+        "last_modified": "2026-06-17T15:10:07.659295801+00:00",
+        "path": "src/commands/inbox.rs",
+        "symbol_facts": [
+          {
+            "body_hash": "09a72ec6764766e9",
+            "kind": "const",
+            "label": "const ROUTE_MENU",
+            "line_end": 98,
+            "line_start": 61,
+            "name": "ROUTE_MENU",
+            "shape_hash": "ca637007ef586b42",
+            "string_literals": [
+              {
+                "line": 63,
+                "value": "new desired behavior"
+              },
+              {
+                "line": 64,
+                "value": "intent"
+              },
+              {
+                "line": 65,
+                "value": "loom intent add --name … --description … --level feature --lifecycle planned …"
+              },
+              {
+                "line": 68,
+                "value": "user journey / story walkthrough"
+              },
+              {
+                "line": 69,
+                "value": "validation/saga"
+              },
+              {
+                "line": 70,
+                "value": "write saga YAML → loom saga add <spec.yaml> [--spawn-missing]"
+              },
+              {
+                "line": 73,
+                "value": "complaint about existing behavior"
+              },
+              {
+                "line": 74,
+                "value": "intent needs_change"
+              },
+              {
+                "line": 75,
+                "value": "loom intent mark <id> --lifecycle needs_change --reason \\\"…\\\""
+              },
+              {
+                "line": 78,
+                "value": "redesign idea / recurring breakage"
+              },
+              {
+                "line": 79,
+                "value": "hypothesis"
+              },
+              {
+                "line": 80,
+                "value": "loom hypothesis add --name … --claim … --proposal … --predicted-outcome … --target <intent>"
+              },
+              {
+                "line": 83,
+                "value": "norm or standard to enforce"
+              },
+              {
+                "line": 84,
+                "value": "quality_rule"
+              },
+              {
+                "line": 85,
+                "value": "loom rule add --name … --description … --severity warning|error"
+              },
+              {
+                "line": 88,
+                "value": "term of art / naming decision"
+              },
+              {
+                "line": 89,
+                "value": "vocab"
+              },
+              {
+                "line": 90,
+                "value": "loom vocab add <term> --why \\\"covers X, not Y\\\""
+              },
+              {
+                "line": 93,
+                "value": "decision / scope tradeoff"
+              },
+              {
+                "line": 94,
+                "value": "note"
+              },
+              {
+                "line": 95,
+                "value": "loom note add --kind decision --intent <id> --text \\\"…\\\""
+              },
+              {
+                "line": 97,
+                "value": "question about the system"
+              },
+              {
+                "line": 97,
+                "value": "answer"
+              },
+              {
+                "line": 97,
+                "value": "answer from matches; no graph mutation"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "000306cc11e44bb5",
+            "kind": "fn",
+            "label": "fn mark_item",
+            "line_end": 324,
+            "line_start": 292,
+            "name": "mark_item",
+            "shape_hash": "464a2f5b56706adf",
+            "string_literals": [
+              {
+                "line": 301,
+                "value": "status"
+              },
+              {
+                "line": 303,
+                "value": "routed"
+              },
+              {
+                "line": 303,
+                "value": "rejected"
+              },
+              {
+                "line": 303,
+                "value": "duplicate"
+              },
+              {
+                "line": 303,
+                "value": "deferred"
+              },
+              {
+                "line": 306,
+                "value": "reason"
+              },
+              {
+                "line": 308,
+                "value": "what decision was made or what graph command/result handled this card"
+              },
+              {
+                "line": 312,
+                "value": "invalid --target-kind/--target-id {kind}:{id}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "d577ce675f652f45",
+            "kind": "fn",
+            "label": "fn next_step_for",
+            "line_end": 490,
+            "line_start": 481,
+            "name": "next_step_for",
+            "shape_hash": "e32fd01fefb080c2",
+            "string_literals": [
+              {
+                "line": 483,
+                "value": "new"
+              },
+              {
+                "line": 483,
+                "value": "loom inbox triage --take 20"
+              },
+              {
+                "line": 484,
+                "value": "triaged"
+              },
+              {
+                "line": 485,
+                "value": "run the route command, then `loom inbox mark <id> --status routed --reason \\\"…\\\"`"
+              },
+              {
+                "line": 487,
+                "value": "routed"
+              },
+              {
+                "line": 487,
+                "value": "rejected"
+              },
+              {
+                "line": 487,
+                "value": "duplicate"
+              },
+              {
+                "line": 487,
+                "value": "deferred"
+              },
+              {
+                "line": 487,
+                "value": "loom inbox list"
+              },
+              {
+                "line": 488,
+                "value": "loom inbox list"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "4bb3f45263b2c096",
+            "kind": "fn",
+            "label": "fn normalize_item",
+            "line_end": 290,
+            "line_start": 253,
+            "name": "normalize_item",
+            "shape_hash": "61de427cc948db89",
+            "string_literals": [
+              {
+                "line": 265,
+                "value": "kind"
+              },
+              {
+                "line": 266,
+                "value": "route"
+              },
+              {
+                "line": 268,
+                "value": "claim"
+              },
+              {
+                "line": 270,
+                "value": "the normalized loom-vocabulary reading of the raw card"
+              },
+              {
+                "line": 273,
+                "value": "command"
+              },
+              {
+                "line": 275,
+                "value": "the exact command or answer proposal the operator can review"
+              },
+              {
+                "line": 287,
+                "value": "triaged"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "721952152d23ad88",
+            "kind": "fn",
+            "label": "fn normalize_links",
+            "line_end": 545,
+            "line_start": 527,
+            "name": "normalize_links",
+            "shape_hash": "65b0b2f8d29e7719",
+            "string_literals": [
+              {
+                "line": 541,
+                "value": "Inbox link '{}' must be kind:value"
+              },
+              {
+                "line": 542,
+                "value": "invalid link '{link}'"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "e7c22ec4bda89065",
+            "kind": "fn",
+            "label": "fn normalize_tags",
+            "line_end": 525,
+            "line_start": 500,
+            "name": "normalize_tags",
+            "shape_hash": "1ae41ec530dfd0fd",
+            "string_literals": [
+              {
+                "line": 519,
+                "value": "Unknown vocab tag '{}'. Run `loom vocab list` or add it first."
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "6103c4a28ddabbf3",
+            "kind": "fn",
+            "label": "fn prepare_new_item",
+            "line_end": 250,
+            "line_start": 215,
+            "name": "prepare_new_item",
+            "shape_hash": "fde2cc642a341d17",
+            "string_literals": [
+              {
+                "line": 224,
+                "value": "raw-text"
+              },
+              {
+                "line": 226,
+                "value": "the user/LLM observation to preserve before routing"
+              },
+              {
+                "line": 228,
+                "value": "source"
+              },
+              {
+                "line": 236,
+                "value": "observation"
+              },
+              {
+                "line": 237,
+                "value": "new"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "c295dd9502871402",
+            "kind": "fn",
+            "label": "fn render_show",
+            "line_end": 479,
+            "line_start": 444,
+            "name": "render_show",
+            "shape_hash": "9291b711426218f1",
+            "string_literals": [
+              {
+                "line": 447,
+                "value": "status"
+              },
+              {
+                "line": 447,
+                "value": "ok"
+              },
+              {
+                "line": 448,
+                "value": "item"
+              },
+              {
+                "line": 449,
+                "value": "next_step"
+              },
+              {
+                "line": 454,
+                "value": "── Inbox Item {} ─────────────────────────────────"
+              },
+              {
+                "line": 458,
+                "value": "status: {}    kind: {}    source: {}"
+              },
+              {
+                "line": 461,
+                "value": "raw: {}"
+              },
+              {
+                "line": 463,
+                "value": "claim: {}"
+              },
+              {
+                "line": 466,
+                "value": "tags: {}"
+              },
+              {
+                "line": 466,
+                "value": ", "
+              },
+              {
+                "line": 469,
+                "value": "links: {}"
+              },
+              {
+                "line": 469,
+                "value": ", "
+              },
+              {
+                "line": 472,
+                "value": "route: {} → {}"
+              },
+              {
+                "line": 475,
+                "value": "resolution: {}"
+              },
+              {
+                "line": 477,
+                "value": "→ Next: {}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "beb0e4d184113eb5",
+            "kind": "fn",
+            "label": "fn route_menu_json",
+            "line_end": 614,
+            "line_start": 603,
+            "name": "route_menu_json",
+            "shape_hash": "23ba87f26b412722",
+            "string_literals": [
+              {
+                "line": 608,
+                "value": "when"
+              },
+              {
+                "line": 609,
+                "value": "route"
+              },
+              {
+                "line": 610,
+                "value": "command"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "f8839ec2bfa2c5f6",
+            "kind": "fn",
+            "label": "fn run_list_with_db",
+            "line_end": 378,
+            "line_start": 326,
+            "name": "run_list_with_db",
+            "shape_hash": "34863b993fdc73f0",
+            "string_literals": [
+              {
+                "line": 334,
+                "value": "status"
+              },
+              {
+                "line": 337,
+                "value": "kind"
+              },
+              {
+                "line": 347,
+                "value": "status"
+              },
+              {
+                "line": 347,
+                "value": "ok"
+              },
+              {
+                "line": 348,
+                "value": "count"
+              },
+              {
+                "line": 349,
+                "value": "total"
+              },
+              {
+                "line": 350,
+                "value": "filters"
+              },
+              {
+                "line": 351,
+                "value": "status"
+              },
+              {
+                "line": 352,
+                "value": "kind"
+              },
+              {
+                "line": 353,
+                "value": "limit"
+              },
+              {
+                "line": 355,
+                "value": "items"
+              },
+              {
+                "line": 360,
+                "value": "✓ Inbox empty for the requested filter."
+              },
+              {
+                "line": 364,
+                "value": "{}  [{} / {}]  {}"
+              },
+              {
+                "line": 371,
+                "value": "    claim: {}"
+              },
+              {
+                "line": 374,
+                "value": "    route: {} → {}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "dae23666f86ae7ca",
+            "kind": "fn",
+            "label": "fn run_triage_with_db",
+            "line_end": 442,
+            "line_start": 380,
+            "name": "run_triage_with_db",
+            "shape_hash": "3c663496b1f855b3",
+            "string_literals": [
+              {
+                "line": 383,
+                "value": "new"
+              },
+              {
+                "line": 383,
+                "value": "triaged"
+              },
+              {
+                "line": 396,
+                "value": "item"
+              },
+              {
+                "line": 397,
+                "value": "matches"
+              },
+              {
+                "line": 398,
+                "value": "intents"
+              },
+              {
+                "line": 399,
+                "value": "vocab"
+              },
+              {
+                "line": 400,
+                "value": "sagas"
+              },
+              {
+                "line": 401,
+                "value": "rules"
+              },
+              {
+                "line": 403,
+                "value": "normalize_template"
+              },
+              {
+                "line": 409,
+                "value": "normalize_template"
+              },
+              {
+                "line": 413,
+                "value": "status"
+              },
+              {
+                "line": 413,
+                "value": "ok"
+              },
+              {
+                "line": 414,
+                "value": "mode"
+              },
+              {
+                "line": 414,
+                "value": "inbox_triage"
+              },
+              {
+                "line": 415,
+                "value": "count"
+              },
+              {
+                "line": 416,
+                "value": "taken"
+              },
+              {
+                "line": 417,
+                "value": "queue_total"
+              },
+              {
+                "line": 418,
+                "value": "items"
+              },
+              {
+                "line": 419,
+                "value": "normalize_templates"
+              },
+              {
+                "line": 420,
+                "value": "route_menu"
+              },
+              {
+                "line": 421,
+                "value": "vocab_terms"
+              },
+              {
+                "line": 422,
+                "value": "doctrine"
+              },
+              {
+                "line": 422,
+                "value": "Inbox captures raw language first. Normalize one card at a time; run the proposed graph command separately; then mark the card routed/rejected/duplicate/deferred."
+              },
+              {
+                "line": 423,
+                "value": "next_step"
+              },
+              {
+                "line": 423,
+                "value": "loom inbox normalize <id> …  → run proposed command → loom inbox mark <id> --status routed --reason \\\"…\\\""
+              },
+              {
+                "line": 424,
+                "value": "graph_state"
+              },
+              {
+                "line": 428,
+                "value": "── Inbox Triage ───────────────────────────────────────────────────"
+              },
+              {
+                "line": 430,
+                "value": "item"
+              },
+              {
+                "line": 432,
+                "value": "{}  [{} / {}]"
+              },
+              {
+                "line": 433,
+                "value": "  raw: {}"
+              },
+              {
+                "line": 434,
+                "value": "  normalize: {}"
+              },
+              {
+                "line": 437,
+                "value": "Route menu:"
+              },
+              {
+                "line": 439,
+                "value": "  · {when} → {route}: {command}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "04b4701d16018fbb",
+            "kind": "fn",
+            "label": "fn short_id",
+            "line_end": 618,
+            "line_start": 616,
+            "name": "short_id",
+            "shape_hash": "4762f4366a6b15a2",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b708fd182e8903c4",
+            "kind": "fn",
+            "label": "fn validate_enum",
+            "line_end": 498,
+            "line_start": 492,
+            "name": "validate_enum",
+            "shape_hash": "a6680916afd8591d",
+            "string_literals": [
+              {
+                "line": 496,
+                "value": "Unknown {name} '{}'. Valid: {}"
+              },
+              {
+                "line": 496,
+                "value": ", "
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "3711ed483648c752",
+            "kind": "fn",
+            "label": "fn validate_target_ref",
+            "line_end": 601,
+            "line_start": 547,
+            "name": "validate_target_ref",
+            "shape_hash": "144b0b84690a94c6",
+            "string_literals": [
+              {
+                "line": 553,
+                "value": "intent"
+              },
+              {
+                "line": 557,
+                "value": "file"
+              },
+              {
+                "line": 563,
+                "value": "no code file matches '{}'"
+              },
+              {
+                "line": 566,
+                "value": "validation"
+              },
+              {
+                "line": 572,
+                "value": "no validation matches '{}'"
+              },
+              {
+                "line": 575,
+                "value": "hypothesis"
+              },
+              {
+                "line": 578,
+                "value": "rule"
+              },
+              {
+                "line": 584,
+                "value": "no quality rule matches '{}'"
+              },
+              {
+                "line": 587,
+                "value": "vocab"
+              },
+              {
+                "line": 589,
+                "value": "no vocab term matches '{}'"
+              },
+              {
+                "line": 592,
+                "value": "inbox"
+              },
+              {
+                "line": 596,
+                "value": "Unknown link kind '{}'. Valid: intent, file, validation, hypothesis, rule, vocab, inbox"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "a5541ff57e7c8600",
+            "kind": "const",
+            "label": "pub const INBOX_KINDS",
+            "line_end": 28,
+            "line_start": 16,
+            "name": "INBOX_KINDS",
+            "shape_hash": "d3c95ed8c6aaa1a3",
+            "string_literals": [
+              {
+                "line": 17,
+                "value": "observation"
+              },
+              {
+                "line": 18,
+                "value": "user_request"
+              },
+              {
+                "line": 19,
+                "value": "bug_suspicion"
+              },
+              {
+                "line": 20,
+                "value": "refactor_suspicion"
+              },
+              {
+                "line": 21,
+                "value": "missing_intent"
+              },
+              {
+                "line": 22,
+                "value": "missing_validation"
+              },
+              {
+                "line": 23,
+                "value": "missing_story"
+              },
+              {
+                "line": 24,
+                "value": "terminology"
+              },
+              {
+                "line": 25,
+                "value": "rough_edge"
+              },
+              {
+                "line": 26,
+                "value": "external_blocker"
+              },
+              {
+                "line": 27,
+                "value": "question"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "fd5915db8a8bf1e6",
+            "kind": "const",
+            "label": "pub const INBOX_ROUTE_KINDS",
+            "line_end": 59,
+            "line_start": 49,
+            "name": "INBOX_ROUTE_KINDS",
+            "shape_hash": "8c12503742bc9e7b",
+            "string_literals": [
+              {
+                "line": 50,
+                "value": "intent"
+              },
+              {
+                "line": 51,
+                "value": "hypothesis"
+              },
+              {
+                "line": 52,
+                "value": "validation"
+              },
+              {
+                "line": 53,
+                "value": "quality_rule"
+              },
+              {
+                "line": 54,
+                "value": "vocab"
+              },
+              {
+                "line": 55,
+                "value": "note"
+              },
+              {
+                "line": 56,
+                "value": "ignore"
+              },
+              {
+                "line": 57,
+                "value": "answer"
+              },
+              {
+                "line": 58,
+                "value": "none"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "3e58baddedc96e4e",
+            "kind": "const",
+            "label": "pub const INBOX_SOURCES",
+            "line_end": 47,
+            "line_start": 39,
+            "name": "INBOX_SOURCES",
+            "shape_hash": "67fde81ecf2db4f3",
+            "string_literals": [
+              {
+                "line": 40,
+                "value": "chat"
+              },
+              {
+                "line": 41,
+                "value": "user"
+              },
+              {
+                "line": 42,
+                "value": "llm"
+              },
+              {
+                "line": 43,
+                "value": "code_audit"
+              },
+              {
+                "line": 44,
+                "value": "validation"
+              },
+              {
+                "line": 45,
+                "value": "import"
+              },
+              {
+                "line": 46,
+                "value": "unknown"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "a6970e37125de454",
+            "kind": "const",
+            "label": "pub const INBOX_STATUSES",
+            "line_end": 37,
+            "line_start": 30,
+            "name": "INBOX_STATUSES",
+            "shape_hash": "e515a7086effb5a2",
+            "string_literals": [
+              {
+                "line": 31,
+                "value": "new"
+              },
+              {
+                "line": 32,
+                "value": "triaged"
+              },
+              {
+                "line": 33,
+                "value": "routed"
+              },
+              {
+                "line": 34,
+                "value": "rejected"
+              },
+              {
+                "line": 35,
+                "value": "deferred"
+              },
+              {
+                "line": 36,
+                "value": "duplicate"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "bc8bc7b8ea71a3df",
+            "kind": "fn",
+            "label": "pub fn create_item",
+            "line_end": 213,
+            "line_start": 202,
+            "name": "create_item",
+            "shape_hash": "9334d6d3bb63f00e",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "4a2d727651b3e150",
+            "kind": "fn",
+            "label": "pub fn normalize_hint",
+            "line_end": 110,
+            "line_start": 106,
+            "name": "normalize_hint",
+            "shape_hash": "2c4121c616afb985",
+            "string_literals": [
+              {
+                "line": 108,
+                "value": "loom inbox normalize {id} --kind <kind> --claim \\\"…\\\" --route <route_kind> --command \\\"…\\\""
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "75ce86f3547c8805",
+            "kind": "fn",
+            "label": "pub fn normalize_template",
+            "line_end": 104,
+            "line_start": 100,
+            "name": "normalize_template",
+            "shape_hash": "2c4121c616afb985",
+            "string_literals": [
+              {
+                "line": 102,
+                "value": "loom inbox normalize {id} --kind <kind> --claim \\\"<normalized claim>\\\" --route <route_kind> --command \\\"<exact command or answer>\\\""
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "734c3a723a84069f",
+            "kind": "fn",
+            "label": "pub fn run",
+            "line_end": 200,
+            "line_start": 112,
+            "name": "run",
+            "shape_hash": "ad3eaa9bd2214859",
+            "visibility": "public"
+          }
+        ],
+        "symbols": [
+          "const ROUTE_MENU",
+          "fn mark_item",
+          "fn next_step_for",
+          "fn normalize_item",
+          "fn normalize_links",
+          "fn normalize_tags",
+          "fn prepare_new_item",
+          "fn render_show",
+          "fn route_menu_json",
+          "fn run_list_with_db",
+          "fn run_triage_with_db",
+          "fn short_id",
+          "fn validate_enum",
+          "fn validate_target_ref",
+          "pub const INBOX_KINDS",
+          "pub const INBOX_ROUTE_KINDS",
+          "pub const INBOX_SOURCES",
+          "pub const INBOX_STATUSES",
+          "pub fn create_item",
+          "pub fn normalize_hint",
+          "pub fn normalize_template",
+          "pub fn run"
         ]
       },
       {
@@ -27731,11 +28911,11 @@
         ]
       },
       {
-        "content_hash": "db95153029db3eac",
+        "content_hash": "1d0931b23d282eaa",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-17T14:40:38.945379171+00:00",
+        "last_modified": "2026-06-17T15:06:31.200725504+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -28117,98 +29297,102 @@
             "visibility": "private"
           },
           {
-            "body_hash": "0399f3e8757e862c",
+            "body_hash": "d13bf3cef437e747",
             "is_test": true,
             "kind": "fn",
             "label": "fn sqlite_door_captures_inbox_item_before_routing",
-            "line_end": 783,
-            "line_start": 756,
+            "line_end": 793,
+            "line_start": 765,
             "name": "sqlite_door_captures_inbox_item_before_routing",
             "panic_marker_count": 3,
             "panic_markers": [
               "unwrap",
               "expect"
             ],
-            "shape_hash": "83c6b2dbf97bb879",
+            "shape_hash": "d0243165b984364e",
             "string_literals": [
               {
-                "line": 758,
+                "line": 767,
                 "value": "sqlite-door-inbox"
               },
               {
-                "line": 763,
+                "line": 772,
                 "value": "door"
               },
               {
-                "line": 764,
+                "line": 773,
                 "value": "users need a better intake boundary"
               },
               {
-                "line": 765,
+                "line": 774,
                 "value": "--limit"
               },
               {
-                "line": 766,
+                "line": 775,
                 "value": "3"
               },
               {
-                "line": 767,
+                "line": 776,
                 "value": "--json"
               },
               {
-                "line": 770,
+                "line": 779,
                 "value": "inbox_item"
               },
               {
-                "line": 770,
+                "line": 779,
                 "value": "id"
               },
               {
-                "line": 772,
+                "line": 781,
                 "value": "door inbox id"
               },
               {
-                "line": 774,
+                "line": 783,
                 "value": "inbox_item"
               },
               {
-                "line": 774,
+                "line": 783,
                 "value": "status"
               },
               {
-                "line": 774,
+                "line": 783,
                 "value": "new"
               },
               {
-                "line": 775,
+                "line": 784,
                 "value": "next_step"
               },
               {
-                "line": 777,
+                "line": 786,
                 "value": "inbox"
               },
               {
-                "line": 777,
+                "line": 786,
                 "value": "list"
               },
               {
-                "line": 777,
+                "line": 786,
                 "value": "--status"
               },
               {
-                "line": 777,
+                "line": 786,
                 "value": "new"
               },
               {
-                "line": 777,
+                "line": 786,
                 "value": "--json"
               },
               {
-                "line": 778,
+                "line": 787,
+                "value": "count"
+              },
+              {
+                "line": 788,
                 "value": "items"
               },
               {
-                "line": 782,
+                "line": 792,
                 "value": "id"
               }
             ],
@@ -28360,19 +29544,19 @@
             "visibility": "private"
           },
           {
-            "body_hash": "4ecf6dd217388fbc",
+            "body_hash": "42533106d7ee4f49",
             "is_test": true,
             "kind": "fn",
             "label": "fn sqlite_inbox_add_normalize_mark_and_export",
-            "line_end": 753,
+            "line_end": 762,
             "line_start": 686,
             "name": "sqlite_inbox_add_normalize_mark_and_export",
-            "panic_marker_count": 3,
+            "panic_marker_count": 4,
             "panic_markers": [
               "unwrap",
               "expect"
             ],
-            "shape_hash": "5fa9da0ff5feba54",
+            "shape_hash": "f2f5c03db8cf3394",
             "string_literals": [
               {
                 "line": 688,
@@ -28456,11 +29640,19 @@
               },
               {
                 "line": 708,
-                "value": "next"
+                "value": "inbox"
               },
               {
                 "line": 708,
-                "value": "--all"
+                "value": "triage"
+              },
+              {
+                "line": 708,
+                "value": "--take"
+              },
+              {
+                "line": 708,
+                "value": "5"
               },
               {
                 "line": 708,
@@ -28468,150 +29660,178 @@
               },
               {
                 "line": 709,
-                "value": "queues"
+                "value": "count"
               },
               {
-                "line": 713,
-                "value": "queue"
+                "line": 710,
+                "value": "taken"
               },
               {
-                "line": 713,
-                "value": "inbox"
+                "line": 711,
+                "value": "queue_total"
               },
               {
-                "line": 713,
-                "value": "optional"
+                "line": 712,
+                "value": "normalize_templates"
+              },
+              {
+                "line": 717,
+                "value": "next"
+              },
+              {
+                "line": 717,
+                "value": "--all"
+              },
+              {
+                "line": 717,
+                "value": "--json"
               },
               {
                 "line": 718,
-                "value": "inbox"
-              },
-              {
-                "line": 719,
-                "value": "normalize"
-              },
-              {
-                "line": 721,
-                "value": "--kind"
+                "value": "queues"
               },
               {
                 "line": 722,
-                "value": "rough_edge"
+                "value": "queue"
               },
               {
-                "line": 723,
-                "value": "--claim"
-              },
-              {
-                "line": 724,
-                "value": "status should separate required debt from optional enrichment"
-              },
-              {
-                "line": 725,
-                "value": "--route"
-              },
-              {
-                "line": 726,
-                "value": "note"
-              },
-              {
-                "line": 727,
-                "value": "--command"
-              },
-              {
-                "line": 728,
-                "value": "loom note add --kind decision --text \\\"status taxonomy accepted\\\""
-              },
-              {
-                "line": 729,
-                "value": "--json"
-              },
-              {
-                "line": 732,
-                "value": "item"
-              },
-              {
-                "line": 732,
-                "value": "status"
-              },
-              {
-                "line": 732,
-                "value": "triaged"
-              },
-              {
-                "line": 733,
-                "value": "item"
-              },
-              {
-                "line": 733,
-                "value": "route_kind"
-              },
-              {
-                "line": 733,
-                "value": "note"
-              },
-              {
-                "line": 738,
+                "line": 722,
                 "value": "inbox"
               },
               {
-                "line": 739,
-                "value": "mark"
+                "line": 722,
+                "value": "optional"
+              },
+              {
+                "line": 727,
+                "value": "inbox"
+              },
+              {
+                "line": 728,
+                "value": "normalize"
+              },
+              {
+                "line": 730,
+                "value": "--kind"
+              },
+              {
+                "line": 731,
+                "value": "rough_edge"
+              },
+              {
+                "line": 732,
+                "value": "--claim"
+              },
+              {
+                "line": 733,
+                "value": "status should separate required debt from optional enrichment"
+              },
+              {
+                "line": 734,
+                "value": "--route"
+              },
+              {
+                "line": 735,
+                "value": "note"
+              },
+              {
+                "line": 736,
+                "value": "--command"
+              },
+              {
+                "line": 737,
+                "value": "loom note add --kind decision --text \\\"status taxonomy accepted\\\""
+              },
+              {
+                "line": 738,
+                "value": "--json"
               },
               {
                 "line": 741,
-                "value": "--status"
-              },
-              {
-                "line": 742,
-                "value": "routed"
-              },
-              {
-                "line": 743,
-                "value": "--reason"
-              },
-              {
-                "line": 744,
-                "value": "route command reviewed and no graph mutation was needed for this fixture"
-              },
-              {
-                "line": 745,
-                "value": "--json"
-              },
-              {
-                "line": 748,
                 "value": "item"
               },
               {
-                "line": 748,
+                "line": 741,
                 "value": "status"
               },
               {
+                "line": 741,
+                "value": "triaged"
+              },
+              {
+                "line": 742,
+                "value": "item"
+              },
+              {
+                "line": 742,
+                "value": "route_kind"
+              },
+              {
+                "line": 742,
+                "value": "note"
+              },
+              {
+                "line": 747,
+                "value": "inbox"
+              },
+              {
                 "line": 748,
+                "value": "mark"
+              },
+              {
+                "line": 750,
+                "value": "--status"
+              },
+              {
+                "line": 751,
                 "value": "routed"
               },
               {
-                "line": 750,
-                "value": "export"
+                "line": 752,
+                "value": "--reason"
               },
               {
-                "line": 750,
-                "value": "-"
+                "line": 753,
+                "value": "route command reviewed and no graph mutation was needed for this fixture"
               },
               {
-                "line": 750,
+                "line": 754,
                 "value": "--json"
               },
               {
-                "line": 751,
+                "line": 757,
+                "value": "item"
+              },
+              {
+                "line": 757,
+                "value": "status"
+              },
+              {
+                "line": 757,
+                "value": "routed"
+              },
+              {
+                "line": 759,
+                "value": "export"
+              },
+              {
+                "line": 759,
+                "value": "-"
+              },
+              {
+                "line": 759,
+                "value": "--json"
+              },
+              {
+                "line": 760,
                 "value": "nodes"
               },
               {
-                "line": 751,
+                "line": 760,
                 "value": "InboxItem"
               },
               {
-                "line": 752,
+                "line": 761,
                 "value": "id"
               }
             ],
@@ -28775,8 +29995,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn sqlite_interface_gaps_detect_call_without_validates",
-            "line_end": 857,
-            "line_start": 808,
+            "line_end": 867,
+            "line_start": 818,
             "name": "sqlite_interface_gaps_detect_call_without_validates",
             "panic_marker_count": 2,
             "panic_markers": [
@@ -28785,171 +30005,171 @@
             "shape_hash": "9e0be0b61713dcb6",
             "string_literals": [
               {
-                "line": 810,
+                "line": 820,
                 "value": "sqlite-interface-gap-validates"
               },
               {
-                "line": 811,
+                "line": 821,
                 "value": "init"
               },
               {
-                "line": 811,
+                "line": 821,
                 "value": "."
               },
               {
-                "line": 811,
-                "value": "--json"
-              },
-              {
-                "line": 816,
-                "value": "intent"
-              },
-              {
-                "line": 817,
-                "value": "add"
-              },
-              {
-                "line": 818,
-                "value": "--name"
-              },
-              {
-                "line": 819,
-                "value": "payment capture endpoint"
-              },
-              {
-                "line": 820,
-                "value": "--description"
-              },
-              {
                 "line": 821,
-                "value": "customer payment can be captured through the HTTP checkout boundary"
-              },
-              {
-                "line": 822,
-                "value": "--level"
-              },
-              {
-                "line": 823,
-                "value": "feature"
-              },
-              {
-                "line": 824,
-                "value": "--lifecycle"
-              },
-              {
-                "line": 825,
-                "value": "implemented"
+                "value": "--json"
               },
               {
                 "line": 826,
-                "value": "--visibility"
+                "value": "intent"
               },
               {
                 "line": 827,
-                "value": "user_visible"
-              },
-              {
-                "line": 828,
-                "value": "--boundary"
-              },
-              {
-                "line": 829,
-                "value": "inbound"
-              },
-              {
-                "line": 830,
-                "value": "--json"
-              },
-              {
-                "line": 832,
-                "value": "llm:builder"
-              },
-              {
-                "line": 834,
-                "value": "id"
-              },
-              {
-                "line": 834,
-                "value": "intent id"
-              },
-              {
-                "line": 837,
-                "value": "journeys/payment.yaml"
-              },
-              {
-                "line": 839,
-                "value": "saga: payment-flow\\nsteps:\\n  - name: capture payment\\n    intent: {intent_id}\\n    request:\\n      method: POST\\n      url: /payments/capture\\n    expect:\\n      status: 200\\n"
-              },
-              {
-                "line": 844,
-                "value": "saga"
-              },
-              {
-                "line": 844,
                 "value": "add"
               },
               {
-                "line": 844,
-                "value": "journeys/payment.yaml"
+                "line": 828,
+                "value": "--name"
               },
               {
-                "line": 844,
+                "line": 829,
+                "value": "payment capture endpoint"
+              },
+              {
+                "line": 830,
+                "value": "--description"
+              },
+              {
+                "line": 831,
+                "value": "customer payment can be captured through the HTTP checkout boundary"
+              },
+              {
+                "line": 832,
+                "value": "--level"
+              },
+              {
+                "line": 833,
+                "value": "feature"
+              },
+              {
+                "line": 834,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 835,
+                "value": "implemented"
+              },
+              {
+                "line": 836,
+                "value": "--visibility"
+              },
+              {
+                "line": 837,
+                "value": "user_visible"
+              },
+              {
+                "line": 838,
+                "value": "--boundary"
+              },
+              {
+                "line": 839,
+                "value": "inbound"
+              },
+              {
+                "line": 840,
                 "value": "--json"
               },
               {
-                "line": 845,
+                "line": 842,
                 "value": "llm:builder"
               },
               {
-                "line": 847,
-                "value": "validation_id"
+                "line": 844,
+                "value": "id"
+              },
+              {
+                "line": 844,
+                "value": "intent id"
               },
               {
                 "line": 847,
-                "value": "validation id"
+                "value": "journeys/payment.yaml"
               },
               {
-                "line": 850,
-                "value": "interface"
+                "line": 849,
+                "value": "saga: payment-flow\\nsteps:\\n  - name: capture payment\\n    intent: {intent_id}\\n    request:\\n      method: POST\\n      url: /payments/capture\\n    expect:\\n      status: 200\\n"
               },
               {
-                "line": 850,
-                "value": "gaps"
+                "line": 854,
+                "value": "saga"
               },
               {
-                "line": 850,
+                "line": 854,
+                "value": "add"
+              },
+              {
+                "line": 854,
+                "value": "journeys/payment.yaml"
+              },
+              {
+                "line": 854,
                 "value": "--json"
               },
               {
-                "line": 851,
+                "line": 855,
+                "value": "llm:builder"
+              },
+              {
+                "line": 857,
+                "value": "validation_id"
+              },
+              {
+                "line": 857,
+                "value": "validation id"
+              },
+              {
+                "line": 860,
+                "value": "interface"
+              },
+              {
+                "line": 860,
+                "value": "gaps"
+              },
+              {
+                "line": 860,
+                "value": "--json"
+              },
+              {
+                "line": 861,
                 "value": "interface_gaps"
               },
               {
-                "line": 851,
+                "line": 861,
                 "value": "call_without_validates"
               },
               {
-                "line": 852,
+                "line": 862,
                 "value": "interface_gaps"
               },
               {
-                "line": 852,
+                "line": 862,
                 "value": "total"
               },
               {
-                "line": 854,
+                "line": 864,
                 "value": "interface_gaps"
               },
               {
-                "line": 854,
+                "line": 864,
                 "value": "examples"
               },
               {
-                "line": 854,
+                "line": 864,
                 "value": "kind"
               },
               {
-                "line": 855,
+                "line": 865,
                 "value": "call_without_validates"
               }
             ],
@@ -28960,85 +30180,85 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn sqlite_interface_gaps_detect_surface_without_calls",
-            "line_end": 805,
-            "line_start": 786,
+            "line_end": 815,
+            "line_start": 796,
             "name": "sqlite_interface_gaps_detect_surface_without_calls",
             "shape_hash": "b7fdf4e7dfca61c4",
             "string_literals": [
               {
-                "line": 788,
+                "line": 798,
                 "value": "sqlite-interface-gap-surface"
               },
               {
-                "line": 789,
+                "line": 799,
                 "value": "init"
               },
               {
-                "line": 789,
+                "line": 799,
                 "value": "."
               },
               {
-                "line": 789,
+                "line": 799,
                 "value": "--json"
               },
               {
-                "line": 792,
+                "line": 802,
                 "value": "surface-without-calls"
               },
               {
-                "line": 793,
+                "line": 803,
                 "value": "GET /health"
               },
               {
-                "line": 794,
+                "line": 804,
                 "value": "GET"
               },
               {
-                "line": 795,
+                "line": 805,
                 "value": "/health"
               },
               {
-                "line": 798,
+                "line": 808,
                 "value": "interface"
               },
               {
-                "line": 798,
+                "line": 808,
                 "value": "gaps"
               },
               {
-                "line": 798,
+                "line": 808,
                 "value": "--json"
               },
               {
-                "line": 799,
+                "line": 809,
                 "value": "interface_gaps"
               },
               {
-                "line": 799,
+                "line": 809,
                 "value": "surface_without_calls"
               },
               {
-                "line": 800,
+                "line": 810,
                 "value": "interface_gaps"
               },
               {
-                "line": 800,
+                "line": 810,
                 "value": "total"
               },
               {
-                "line": 802,
+                "line": 812,
                 "value": "interface_gaps"
               },
               {
-                "line": 802,
+                "line": 812,
                 "value": "examples"
               },
               {
-                "line": 802,
+                "line": 812,
                 "value": "kind"
               },
               {
-                "line": 803,
+                "line": 813,
                 "value": "surface_without_calls"
               }
             ],
@@ -29407,8 +30627,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn sqlite_populate_next_prioritizes_deterministic_backfill_before_interface_gaps",
-            "line_end": 922,
-            "line_start": 860,
+            "line_end": 932,
+            "line_start": 870,
             "name": "sqlite_populate_next_prioritizes_deterministic_backfill_before_interface_gaps",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -29417,183 +30637,183 @@
             "shape_hash": "0b7cf548fa151e1f",
             "string_literals": [
               {
-                "line": 862,
+                "line": 872,
                 "value": "sqlite-populate-priority"
               },
               {
-                "line": 863,
+                "line": 873,
                 "value": "init"
               },
               {
-                "line": 863,
+                "line": 873,
                 "value": "."
               },
               {
-                "line": 863,
-                "value": "--json"
-              },
-              {
-                "line": 868,
-                "value": "intent"
-              },
-              {
-                "line": 869,
-                "value": "add"
-              },
-              {
-                "line": 870,
-                "value": "--name"
-              },
-              {
-                "line": 871,
-                "value": "cart priority endpoint"
-              },
-              {
-                "line": 872,
-                "value": "--description"
-              },
-              {
                 "line": 873,
-                "value": "customer can create a cart through the HTTP priority endpoint"
-              },
-              {
-                "line": 874,
-                "value": "--level"
-              },
-              {
-                "line": 875,
-                "value": "feature"
-              },
-              {
-                "line": 876,
-                "value": "--lifecycle"
-              },
-              {
-                "line": 877,
-                "value": "implemented"
+                "value": "--json"
               },
               {
                 "line": 878,
-                "value": "--visibility"
+                "value": "intent"
               },
               {
                 "line": 879,
-                "value": "user_visible"
-              },
-              {
-                "line": 880,
-                "value": "--boundary"
-              },
-              {
-                "line": 881,
-                "value": "inbound"
-              },
-              {
-                "line": 882,
-                "value": "--json"
-              },
-              {
-                "line": 884,
-                "value": "llm:builder"
-              },
-              {
-                "line": 886,
-                "value": "id"
-              },
-              {
-                "line": 886,
-                "value": "intent id"
-              },
-              {
-                "line": 889,
-                "value": "journeys/priority.yaml"
-              },
-              {
-                "line": 891,
-                "value": "saga: priority-flow\\nsteps:\\n  - name: create priority cart\\n    intent: {intent_id}\\n    request:\\n      method: POST\\n      url: /priority-carts\\n    expect:\\n      status: 201\\n"
-              },
-              {
-                "line": 896,
-                "value": "saga"
-              },
-              {
-                "line": 896,
                 "value": "add"
               },
               {
+                "line": 880,
+                "value": "--name"
+              },
+              {
+                "line": 881,
+                "value": "cart priority endpoint"
+              },
+              {
+                "line": 882,
+                "value": "--description"
+              },
+              {
+                "line": 883,
+                "value": "customer can create a cart through the HTTP priority endpoint"
+              },
+              {
+                "line": 884,
+                "value": "--level"
+              },
+              {
+                "line": 885,
+                "value": "feature"
+              },
+              {
+                "line": 886,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 887,
+                "value": "implemented"
+              },
+              {
+                "line": 888,
+                "value": "--visibility"
+              },
+              {
+                "line": 889,
+                "value": "user_visible"
+              },
+              {
+                "line": 890,
+                "value": "--boundary"
+              },
+              {
+                "line": 891,
+                "value": "inbound"
+              },
+              {
+                "line": 892,
+                "value": "--json"
+              },
+              {
+                "line": 894,
+                "value": "llm:builder"
+              },
+              {
                 "line": 896,
+                "value": "id"
+              },
+              {
+                "line": 896,
+                "value": "intent id"
+              },
+              {
+                "line": 899,
                 "value": "journeys/priority.yaml"
               },
               {
-                "line": 896,
+                "line": 901,
+                "value": "saga: priority-flow\\nsteps:\\n  - name: create priority cart\\n    intent: {intent_id}\\n    request:\\n      method: POST\\n      url: /priority-carts\\n    expect:\\n      status: 201\\n"
+              },
+              {
+                "line": 906,
+                "value": "saga"
+              },
+              {
+                "line": 906,
+                "value": "add"
+              },
+              {
+                "line": 906,
+                "value": "journeys/priority.yaml"
+              },
+              {
+                "line": 906,
                 "value": "--json"
               },
               {
-                "line": 897,
+                "line": 907,
                 "value": "llm:builder"
-              },
-              {
-                "line": 901,
-                "value": "unbound-extra-surface"
-              },
-              {
-                "line": 902,
-                "value": "GET /unbound"
-              },
-              {
-                "line": 903,
-                "value": "GET"
-              },
-              {
-                "line": 904,
-                "value": "/unbound"
-              },
-              {
-                "line": 909,
-                "value": "unbound-extra-surface"
-              },
-              {
-                "line": 910,
-                "value": "GET /unbound"
               },
               {
                 "line": 911,
-                "value": "GET"
+                "value": "unbound-extra-surface"
               },
               {
                 "line": 912,
+                "value": "GET /unbound"
+              },
+              {
+                "line": 913,
+                "value": "GET"
+              },
+              {
+                "line": 914,
                 "value": "/unbound"
               },
               {
-                "line": 917,
-                "value": "next"
-              },
-              {
-                "line": 917,
-                "value": "--mode"
-              },
-              {
-                "line": 917,
-                "value": "populate"
-              },
-              {
-                "line": 917,
-                "value": "--json"
-              },
-              {
-                "line": 918,
-                "value": "llm:builder"
+                "line": 919,
+                "value": "unbound-extra-surface"
               },
               {
                 "line": 920,
-                "value": "kind"
-              },
-              {
-                "line": 920,
-                "value": "interface_from_sagas"
+                "value": "GET /unbound"
               },
               {
                 "line": 921,
+                "value": "GET"
+              },
+              {
+                "line": 922,
+                "value": "/unbound"
+              },
+              {
+                "line": 927,
+                "value": "next"
+              },
+              {
+                "line": 927,
+                "value": "--mode"
+              },
+              {
+                "line": 927,
+                "value": "populate"
+              },
+              {
+                "line": 927,
+                "value": "--json"
+              },
+              {
+                "line": 928,
+                "value": "llm:builder"
+              },
+              {
+                "line": 930,
+                "value": "kind"
+              },
+              {
+                "line": 930,
+                "value": "interface_from_sagas"
+              },
+              {
+                "line": 931,
                 "value": "missing_surfaces"
               }
             ],
@@ -33672,6 +34892,16 @@
         "symbols": [
           "pub fn run"
         ]
+      },
+      {
+        "content_hash": "0b684a898b55285f",
+        "id": "30616f5e-e134-422d-8f9f-70f2531ef026",
+        "imports": [],
+        "language": "unknown",
+        "last_modified": "2026-06-17T14:39:16.225075468+00:00",
+        "path": "docs/CONTRIBUTING.md",
+        "symbol_facts": [],
+        "symbols": []
       },
       {
         "content_hash": "bddd333048fd00bf",
@@ -60724,6 +61954,16 @@
         ]
       },
       {
+        "content_hash": "d90529ae875e1e93",
+        "id": "b67c4a48-965a-47f1-9ff7-56c3c7dc3c1d",
+        "imports": [],
+        "language": "unknown",
+        "last_modified": "2026-06-15T11:48:19.150430747+00:00",
+        "path": "docs/ui-ux-flow-proposal.md",
+        "symbol_facts": [],
+        "symbols": []
+      },
+      {
         "content_hash": "67cf959d9d79973e",
         "id": "b71a9811-845a-434e-bc20-3bd62aa2aec1",
         "imports": [
@@ -78389,7 +79629,7 @@
         ]
       },
       {
-        "content_hash": "4fbf4cdef0dde500",
+        "content_hash": "b80ba7921efab064",
         "id": "fc2ec17b-070d-4042-b5aa-752112118a4d",
         "imports": [
           "src/db/mod.rs",
@@ -78398,7 +79638,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-17T14:40:03.753431093+00:00",
+        "last_modified": "2026-06-17T15:10:23.524797244+00:00",
         "path": "src/commands/door.rs",
         "symbol_facts": [
           {
@@ -78550,13 +79790,13 @@
             "visibility": "private"
           },
           {
-            "body_hash": "f892caeba35a38f5",
+            "body_hash": "7c604dc3a7511f89",
             "kind": "fn",
             "label": "fn render",
-            "line_end": 209,
+            "line_end": 206,
             "line_start": 113,
             "name": "render",
-            "shape_hash": "13f9fe2765cc4db6",
+            "shape_hash": "2a219a706d97752c",
             "string_literals": [
               {
                 "line": 128,
@@ -78660,82 +79900,78 @@
               },
               {
                 "line": 154,
-                "value": "loom inbox normalize {} --kind <kind> --claim \\\"<normalized claim>\\\" --route <route_kind> --command \\\"<exact command or answer>\\\""
-              },
-              {
-                "line": 157,
                 "value": "graph_state"
               },
               {
-                "line": 162,
+                "line": 159,
                 "value": "── loom door — \\\"{utterance}\\\" ─────────────────────────────────────"
               },
               {
-                "line": 163,
+                "line": 160,
                 "value": "captured inbox item: {}"
               },
               {
-                "line": 165,
+                "line": 162,
                 "value": "WHAT THE GRAPH KNOWS"
               },
               {
-                "line": 167,
+                "line": 164,
                 "value": "  nothing matched — likely NEW scope. Land it (see the menu) and it"
               },
               {
-                "line": 168,
+                "line": 165,
                 "value": "  becomes findable; or reformulate (the map may use different words)."
               },
               {
-                "line": 172,
+                "line": 169,
                 "value": "  intent {:>5.2}  [{}/{}] {}  ({})"
               },
               {
-                "line": 176,
+                "line": 173,
                 "value": "         under: {}"
               },
               {
-                "line": 176,
+                "line": 173,
                 "value": " › "
               },
               {
-                "line": 180,
+                "line": 177,
                 "value": "         ⚠ {} stale claim(s) — code changed since verification"
               },
               {
-                "line": 186,
+                "line": 183,
                 "value": "  vocab  '{}' — {}"
               },
               {
-                "line": 189,
+                "line": 186,
                 "value": "  saga   '{}' — {}"
               },
               {
-                "line": 192,
+                "line": 189,
                 "value": "  rule   '{}' — {}"
               },
               {
-                "line": 195,
+                "line": 192,
                 "value": "THE LANDING MENU (pick ONE per utterance; each is an existing command)"
               },
               {
-                "line": 197,
+                "line": 194,
                 "value": "  · {when}  →  {lands}"
               },
               {
-                "line": 198,
+                "line": 195,
                 "value": "      {command}"
               },
               {
-                "line": 201,
+                "line": 198,
                 "value": "  {DOCTRINE}"
               },
               {
-                "line": 203,
-                "value": "  Normalize: loom inbox normalize {} --kind <kind> --claim \\\"…\\\" --route <route_kind> --command \\\"…\\\""
+                "line": 200,
+                "value": "  Normalize: {}"
               },
               {
-                "line": 207,
+                "line": 204,
                 "value": "  {}"
               }
             ],
@@ -81435,6 +82671,27 @@
         "tags": [],
         "updated_at": "2026-06-17T12:08:51.512814+00:00",
         "visibility": "user_visible"
+      },
+      {
+        "abstraction_level": "feature",
+        "aspect": "",
+        "boundary": "",
+        "created_at": "2026-06-17T15:08:38.791125+00:00",
+        "description": "loom inbox and door provide the single capture-first boundary for free-form human or LLM language: raw text is stored as an InboxItem, triage supplies context and route proposals, normalize records a proposed graph command or answer, and mark closes the card after the real graph command runs separately so intake candidates never masquerade as graph truth or required completion debt.",
+        "domain": "unknown",
+        "id": "f93c6052-280d-40a4-996d-617647982800",
+        "layer": "",
+        "lifecycle": "implemented",
+        "name": "inbox intake boundary",
+        "source_refs": [
+          "src/commands/inbox.rs"
+        ],
+        "status": "confirmed",
+        "tags": [
+          "schema"
+        ],
+        "updated_at": "2026-06-17T15:10:34.003386+00:00",
+        "visibility": "internal"
       },
       {
         "abstraction_level": "component",
@@ -86442,6 +87699,16 @@
         "target_id": "rt:2bd1db29-7898-4800-a450-3dc084409197:e1506d82-8210-4ce8-bee5-322025d7c906",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:34.145764+00:00",
+        "id": "0e4b72e9-9567-46c7-a3cb-de89d3dfb667",
+        "kind": "decision",
+        "target_id": "0401f1f2-443f-42c0-b833-b113f1633299",
+        "target_kind": "intent",
+        "text": "Documentation spread is deliberate for the storage/guide refresh intent: README, COMMANDS, CONTRIBUTING, and related docs are separate reader entry points that must carry the same SQLite/current-command story. Splitting the docs intent would hide the consistency contract this feature is meant to preserve."
       },
       {
         "audience": "",
@@ -98896,6 +100163,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T15:10:45.666456+00:00",
+        "id": "2f566edc-ff3b-4b6c-902b-cdc42b31ad01",
+        "kind": "transition",
+        "target_id": "rt:d7d485d7-c342-4c44-a57f-d08f7cf31941:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T01:35:47.232376+00:00",
         "id": "2f5f464b-3197-4524-bc68-31e4259f0eae",
         "kind": "transition",
@@ -101402,6 +102679,16 @@
         "target_id": "rt:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd:8f96ca18-2ad0-48f3-985e-e4025141093d",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/next.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.259102+00:00",
+        "id": "3680a58f-63fa-4cdb-a0ac-f9fa631d8999",
+        "kind": "transition",
+        "target_id": "rt:5f876b50-7945-4df0-8aab-da0017ed580a:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -106585,6 +107872,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:11:24.039436+00:00",
+        "id": "4458b0e4-ac8a-423f-8e7c-596598a20a16",
+        "kind": "decision",
+        "target_id": "fc2ec17b-070d-4042-b5aa-752112118a4d",
+        "target_kind": "codefile",
+        "text": "Door and Inbox intentionally repeat the same route-menu vocabulary for complaint and redesign cases so capture-first and triage surfaces teach identical landing choices. The phrases are shared concept language, not independent contracts; if the route taxonomy changes, update both surfaces together."
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T14:54:13.887271+00:00",
         "id": "445c42ec-1aa4-46b0-85e2-7e0b692ac74e",
@@ -110785,6 +112082,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:09:07.197292+00:00",
+        "id": "4fea4fa8-63b8-4fe2-88b9-011535fd797a",
+        "kind": "confirm",
+        "target_id": "f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-11T07:36:23.489583+00:00",
         "id": "4ff70a7a-9dde-46f4-8f22-d97959f3b693",
@@ -111922,6 +113229,16 @@
         "target_id": "rt:21f9f668-c79d-49e6-9702-9da8f9229b36:3fe71c5a-d357-4c51-9363-e9874a755f83",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: intent 'dependency-cycle smell over RELATES_TO' redefined)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:09:07.197292+00:00",
+        "id": "531efbaa-a581-49d8-9d7b-4e7701ccefbe",
+        "kind": "decision",
+        "target_id": "f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "intent",
+        "text": "visibility ruled internal during alignment"
       },
       {
         "audience": "",
@@ -113352,6 +114669,16 @@
         "target_id": "gov:9e3a1396-d05f-4c34-9d61-8d977a37e6fc:47c9182c-f7a8-4a50-9281-6d05507e646c",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.396732+00:00",
+        "id": "57c82ff3-2a42-4d8b-bfaa-87207af2d3c4",
+        "kind": "transition",
+        "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -130366,6 +131693,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T15:10:45.733372+00:00",
+        "id": "880dda23-be33-4bd6-9122-3ae716c095e7",
+        "kind": "transition",
+        "target_id": "rt:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T12:00:48.566594+00:00",
         "id": "8818c71b-805b-49f4-9443-2922902106e9",
         "kind": "confirm",
@@ -142485,6 +143822,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.327276+00:00",
+        "id": "a78a511a-8361-4c1f-b321-4edda1e4994c",
+        "kind": "transition",
+        "target_id": "rt:ebb7441b-bb63-4908-80bf-9c8cefe2c198:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T14:42:51.352499+00:00",
         "id": "a7973a71-f315-4ac8-aa29-ddb1bf110c3e",
@@ -143955,6 +145302,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.532795+00:00",
+        "id": "ab1e201b-f2b4-4561-9c2b-218a5e8ee23a",
+        "kind": "transition",
+        "target_id": "rt:bb8ee237-2d84-46ee-b254-c8bc39c16fc1:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T02:22:03.904931+00:00",
         "id": "ab2553be-9e62-4639-8c7b-37c37ffcfc1f",
@@ -144302,6 +145659,16 @@
         "target_id": "rt:e2d64ed4-b10f-48fd-995b-f533a6250a18:f93166ae-30d7-4708-ac50-f202c45cbbed",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/queries/meta.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.169128+00:00",
+        "id": "abf28a5a-5bad-451e-810c-a93ef2498c40",
+        "kind": "transition",
+        "target_id": "rt:6a41dcbc-4035-4d08-8315-0d77803ca862:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -146990,6 +148357,16 @@
         "id": "b3d6258f-bd96-48c0-8f84-94bc4e085da3",
         "kind": "transition",
         "target_id": "rt:e5bba339-3f44-47be-8065-9630cc482e9b:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.873106+00:00",
+        "id": "b3e0593e-3ff9-484b-b68c-fa7a78eb1759",
+        "kind": "transition",
+        "target_id": "rt:bf39f175-67f8-4800-844a-68d7b7b34bdc:f93c6052-280d-40a4-996d-617647982800",
         "target_kind": "edge",
         "text": "uninspected → passing"
       },
@@ -150295,6 +151672,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:11:23.926127+00:00",
+        "id": "bd206f79-1d24-4e2c-840c-aefba82daee9",
+        "kind": "decision",
+        "target_id": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "target_kind": "intent",
+        "text": "Duplicate-detection blind spot accepted for this dogfood fix: 77 historical coded intents remain untagged, but the new inbox intake boundary is tagged with schema. Exhaustive vocabulary tagging is a separate graph-hygiene pass and should not block the Inbox intake/global binary validation."
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T05:22:32.198719+00:00",
         "id": "bd26bf6d-0ac8-44cd-90bf-3020d26e5bb6",
@@ -152152,6 +153539,16 @@
         "target_id": "gov:8f79a769-f6e4-4fc8-87b1-326bb8472451:988027a3-d33a-40c8-8f32-c5140b0d1937",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.599586+00:00",
+        "id": "c2c57dfa-6750-4c48-9036-6aa0cf2acd58",
+        "kind": "transition",
+        "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -158062,6 +159459,16 @@
         "target_id": "rt:578fa082-38fd-4021-ae5f-62cc5016ebf8:5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.801130+00:00",
+        "id": "d2ad0767-aa24-48a8-accd-9cf897e57640",
+        "kind": "transition",
+        "target_id": "rt:f3a922b5-11ba-4bd8-80c9-9f1762e96b54:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -165135,6 +166542,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:10:45.465353+00:00",
+        "id": "e639d1bf-86bb-41f2-af2a-58d0c4bc5c5c",
+        "kind": "transition",
+        "target_id": "rt:6cc267b6-6052-48bd-b914-674fabe48eee:f93c6052-280d-40a4-996d-617647982800",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-14T20:12:32.114432+00:00",
         "id": "e6533d7b-c97b-46d7-9e98-6595877ee891",
@@ -166182,6 +167599,16 @@
         "target_id": "0401f1f2-443f-42c0-b833-b113f1633299",
         "target_kind": "intent",
         "text": "lifecycle → implemented: SQLite source cutover completed: Grafeo dependency and legacy query files removed, active commands use SQLite/read snapshots, docs updated, cargo check and cargo test pass, and target/debug/loom successfully synced/routed the live SQLite graph. Global binary remains untouched until explicit promotion."
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T15:11:24.119450+00:00",
+        "id": "e91f2124-fa22-4ac8-a416-e593aa5e0085",
+        "kind": "decision",
+        "target_id": "06f150bd-4010-4ffc-a8a7-593d4381c2c7",
+        "target_kind": "codefile",
+        "text": "The literal loom inbox triage --take 20 appears as both the next step for a new card and the command surface for intake queue work. Keeping the exact command visible in both places is deliberate operator guidance, not separate behavior."
       },
       {
         "audience": "",
@@ -175251,6 +176678,15 @@
         "last_run": "2026-06-17T14:58:44.033928+00:00",
         "name": "bulk drain reads are fast and complete",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_inbox_add_normalize_mark_and_export && cargo test --test sqlite_regression sqlite_door_captures_inbox_item_before_routing",
+        "description": "",
+        "id": "b2d4611d-8b1e-4fc9-afef-663d47fc076f",
+        "last_result": "passed",
+        "last_run": "2026-06-17T15:08:48.809513+00:00",
+        "name": "inbox intake flow regression",
+        "validation_type": "test"
       },
       {
         "command": "",

@@ -705,6 +705,15 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     assert_eq!(status["intake"]["untriaged"], 1);
     assert_eq!(status["completion"]["required_autonomous_debt"]["total"], 0);
 
+    let triage = run_json(&graph.root, &["inbox", "triage", "--take", "5", "--json"]);
+    assert_eq!(triage["count"], 1);
+    assert_eq!(triage["taken"], 1);
+    assert_eq!(triage["queue_total"], 1);
+    assert!(triage["normalize_templates"][0]
+        .as_str()
+        .unwrap()
+        .contains(&id));
+
     let next = run_json(&graph.root, &["next", "--all", "--json"]);
     assert!(next["queues"]
         .as_array()
@@ -775,6 +784,7 @@ fn sqlite_door_captures_inbox_item_before_routing() {
     assert!(door["next_step"].as_str().unwrap().contains(&id));
 
     let listed = run_json(&graph.root, &["inbox", "list", "--status", "new", "--json"]);
+    assert_eq!(listed["count"], 1);
     assert!(listed["items"]
         .as_array()
         .unwrap()

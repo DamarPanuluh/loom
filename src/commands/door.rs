@@ -150,10 +150,7 @@ fn render(
                 "when": when, "lands": lands, "command": command,
             })).collect::<Vec<_>>(),
             "doctrine": DOCTRINE,
-            "next_step": format!(
-                "loom inbox normalize {} --kind <kind> --claim \"<normalized claim>\" --route <route_kind> --command \"<exact command or answer>\"",
-                inbox_item.id
-            ),
+            "next_step": crate::commands::inbox::normalize_template(&inbox_item.id),
             "graph_state": pulse_json(&gs),
         }));
         return Ok(());
@@ -200,8 +197,8 @@ fn render(
     println!();
     println!("  {DOCTRINE}");
     println!(
-        "  Normalize: loom inbox normalize {} --kind <kind> --claim \"…\" --route <route_kind> --command \"…\"",
-        inbox_item.id
+        "  Normalize: {}",
+        crate::commands::inbox::normalize_hint(&inbox_item.id)
     );
     println!();
     println!("  {}", fmt_pulse(&gs));
