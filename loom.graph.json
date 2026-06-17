@@ -101687,6 +101687,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T11:56:57.246682+00:00",
+        "id": "5a8ef485-93c1-4bbb-a89d-07d8da3da67e",
+        "kind": "decision",
+        "target_id": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
+        "target_kind": "intent",
+        "text": "Audit advisory decision: this wide co-change is accepted as incidental centrality history. Betweenness/priority scoring lives in shared scoring/snapshot query files that naturally move with many queue and command surfaces; this commit did not reveal a hidden single responsibility to split before continuing debt work."
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:14:36.926749+00:00",
         "id": "5a95e7f8-2880-4eed-9d6a-f13a8cbc2840",
         "kind": "transition",
@@ -128436,6 +128446,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:56:57.271989+00:00",
+        "id": "bdaf1bc6-fd58-44bc-af5f-4cb7501b3fd5",
+        "kind": "decision",
+        "target_id": "936cf0e6-342e-4599-8d6c-92fb4e3901c8",
+        "target_kind": "intent",
+        "text": "Audit advisory decision: this wide co-change is accepted as incidental audit-surface history. Advisory adjudication spans smells command rendering and smell query detectors, which naturally co-change with many graph signals; no immediate split is required before continuing debt work."
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T06:01:23.649892+00:00",
         "id": "bdc266f8-8701-4162-87f7-c447e02770d1",
@@ -139563,6 +139583,16 @@
         "target_id": "rt:4cbd6b69-9bdf-4edb-8567-9e3a6c561363:e2d64ed4-b10f-48fd-995b-f533a6250a18",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:56:57.261980+00:00",
+        "id": "e8367ccc-610a-4e12-afa7-00cb5785f9f5",
+        "kind": "decision",
+        "target_id": "8f96ca18-2ad0-48f3-985e-e4025141093d",
+        "target_kind": "intent",
+        "text": "Audit advisory decision: this wide co-change is accepted as intentional queue-surface churn. Align ranking shares next/scoring surfaces with many closeout and command flows; the align --take agenda change is a read-only operator surface, not evidence that align owns those unrelated behaviors."
       },
       {
         "audience": "",
