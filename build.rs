@@ -1,7 +1,7 @@
 //! Stamp the build with the git commit (short, + `-dirty`) so `loom --version`
 //! distinguishes local binaries — the crate version is intentionally stable at
-//! "0.1.0", so the git stamp is the useful identity during dogfood and release
-//! checks. Falls back to "unknown" when git is unavailable.
+//! stable across feature work, so the git stamp is the useful identity during
+//! dogfood and release checks. Falls back to "unknown" when git is unavailable.
 
 use std::process::Command;
 

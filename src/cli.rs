@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 
 /// Crate version + git build stamp (from build.rs) — shown by `loom --version`.
-/// The bare crate version is permanently "0.1.0"; the build id is what tells two
-/// binaries apart in local dogfood builds.
+/// The bare crate version tracks intentional release bumps; the build id is
+/// what tells two binaries apart in local dogfood builds.
 pub const LONG_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (build ",
