@@ -181,6 +181,24 @@ fn sqlite_imported_export_read_surface() {
 }
 
 #[test]
+fn sqlite_migrate_reports_open_time_schema_contract() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-migrate-schema");
+
+    let migrated = run_json(&graph.root, &["migrate", "--json"]);
+    assert_eq!(migrated["status"], "ok");
+    assert_eq!(migrated["backend"], "sqlite");
+    assert_eq!(migrated["migrated"], false);
+    assert_eq!(migrated["version"], "9");
+    assert!(
+        migrated["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("created on open")),
+        "migrate should teach the current SQLite schema contract: {migrated}"
+    );
+}
+
+#[test]
 fn sqlite_audit_summary_surfaces_stay_bounded() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-audit-summary");

@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::HashMap;
 
-use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation};
+use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport};
 
 use super::completeness::vertical_completeness_from_snapshot;
 use super::meta::GraphMeta;
@@ -526,10 +526,11 @@ pub struct UninspectedOutsideQueues {
 pub fn uninspected_outside_queues_from_snapshot(
     snapshot: &QuerySnapshot,
 ) -> UninspectedOutsideQueues {
-    let validation_result: HashMap<&str, &str> = snapshot
-        .validations
+    let current_blocked = current_blocked_validation_ids(snapshot);
+    let lifecycle_by_intent: HashMap<&str, &str> = snapshot
+        .intents
         .iter()
-        .map(|v| (v.id.as_str(), v.last_result.as_str()))
+        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
         .collect();
     let implements = snapshot
         .implements
@@ -541,7 +542,8 @@ pub fn uninspected_outside_queues_from_snapshot(
         .iter()
         .filter(|e| {
             e.inspection_status == "uninspected"
-                && validation_result.get(e.validation_id.as_str()) == Some(&"blocked")
+                && current_blocked.contains(e.validation_id.as_str())
+                && lifecycle_by_intent.get(e.intent_id.as_str()).copied() != Some("deferred")
         })
         .count() as i64;
     UninspectedOutsideQueues {
@@ -600,7 +602,7 @@ pub fn status_report_from_snapshot(snapshot: &QuerySnapshot) -> StatusReport {
 
     let pass_rate = validation_pass_rate_from_snapshot(snapshot);
     let (blocked_validations, validation_pass_rate_runnable) =
-        blocked_count_and_runnable_rate(&snapshot.validations);
+        blocked_count_and_runnable_rate_from_snapshot(snapshot);
     let no_val_count = intents_without_validations_count_from_snapshot(snapshot);
 
     StatusReport {
@@ -773,27 +775,72 @@ pub fn validation_pass_rate_from_snapshot(snapshot: &QuerySnapshot) -> f64 {
     passed as f64 / total as f64
 }
 
-/// (blocked count, runnable pass rate) for a set of validations. The runnable
-/// rate is passed / (total − blocked): the health of proofs that CAN run, so a
-/// wall of environmentally-blocked sagas (live target down) doesn't make the
-/// headline rate read as failures. Falls back to the all-up rate when nothing
-/// is blocked; 0.0 when nothing is runnable.
-pub fn blocked_count_and_runnable_rate(validations: &[Validation]) -> (i64, f64) {
-    let blocked = validations
+/// Current blocked proof count plus runnable pass rate. A blocked validation
+/// attached only to deferred intents is future work, not a human-gated item for
+/// the current lane; it stays recorded on the validation node but is suppressed
+/// from status/closeout debt until the target intent becomes current again.
+///
+/// The runnable rate is still passed / (total - all blocked): the health of
+/// proofs that CAN run, so blocked sagas and deferred acceptance checks do not
+/// make the headline rate read as failures.
+pub fn blocked_count_and_runnable_rate_from_snapshot(snapshot: &QuerySnapshot) -> (i64, f64) {
+    let blocked = current_blocked_validation_ids(snapshot).len();
+    let all_blocked = snapshot
+        .validations
         .iter()
         .filter(|v| v.last_result == "blocked")
         .count();
+    let validations = &snapshot.validations;
     let passed = validations
         .iter()
         .filter(|v| v.last_result == "passed")
         .count();
-    let runnable = validations.len() - blocked;
+    let runnable = validations.len() - all_blocked;
     let rate = if runnable > 0 {
         passed as f64 / runnable as f64
     } else {
         0.0
     };
     (blocked as i64, rate)
+}
+
+fn current_blocked_validation_ids(snapshot: &QuerySnapshot) -> std::collections::HashSet<&str> {
+    let blocked_ids: std::collections::HashSet<&str> = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.last_result == "blocked")
+        .map(|v| v.id.as_str())
+        .collect();
+    if blocked_ids.is_empty() {
+        return std::collections::HashSet::new();
+    }
+
+    let lifecycle_by_intent: HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.lifecycle.as_str()))
+        .collect();
+    let mut linked_blocked = std::collections::HashSet::new();
+    let mut current = std::collections::HashSet::new();
+    for edge in &snapshot.validates {
+        let validation_id = edge.validation_id.as_str();
+        if !blocked_ids.contains(validation_id) {
+            continue;
+        }
+        linked_blocked.insert(validation_id);
+        if lifecycle_by_intent.get(edge.intent_id.as_str()).copied() != Some("deferred") {
+            current.insert(validation_id);
+        }
+    }
+
+    // A blocked validation with no VALIDATES edge is malformed enough to be
+    // current operator debt: there is no deferred target proving it is parked.
+    for validation_id in blocked_ids {
+        if !linked_blocked.contains(validation_id) {
+            current.insert(validation_id);
+        }
+    }
+    current
 }
 
 pub fn intents_without_validations_count_from_snapshot(snapshot: &QuerySnapshot) -> i64 {
@@ -833,11 +880,12 @@ pub fn tangled_files_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{ValidatesEdge, Validation};
 
-    fn val(result: &str) -> Validation {
+    fn val(id: &str, result: &str) -> Validation {
         Validation {
-            id: result.into(),
-            name: result.into(),
+            id: id.into(),
+            name: id.into(),
             description: String::new(),
             validation_type: "manual_check".into(),
             command: String::new(),
@@ -846,29 +894,111 @@ mod tests {
         }
     }
 
+    fn validates(validation_id: &str, intent_id: &str, status: &str) -> ValidatesEdge {
+        ValidatesEdge {
+            id: format!("val:{validation_id}:{intent_id}"),
+            validation_id: validation_id.to_string(),
+            intent_id: intent_id.to_string(),
+            validation_name: validation_id.to_string(),
+            intent_name: intent_id.to_string(),
+            created_at: String::new(),
+            inspection_status: status.to_string(),
+            notes: String::new(),
+        }
+    }
+
+    fn validation_snapshot(
+        intents: Vec<Intent>,
+        validations: Vec<Validation>,
+        validates: Vec<ValidatesEdge>,
+    ) -> QuerySnapshot {
+        QuerySnapshot::from_parts(
+            intents,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            validates,
+            validations,
+            vec![],
+            vec![],
+            None,
+        )
+    }
+
     #[test]
     fn runnable_rate_excludes_blocked_from_the_denominator() {
         // 2 passed, 1 blocked: all-up 2/3, but blocked is environmental — the
         // runnable rate is 2/2 = 100%, and the blocked count is surfaced.
-        let vs = vec![val("passed"), val("passed"), val("blocked")];
-        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        let snapshot = validation_snapshot(
+            vec![intent("a", "implemented")],
+            vec![
+                val("p1", "passed"),
+                val("p2", "passed"),
+                val("b", "blocked"),
+            ],
+            vec![validates("b", "a", "uninspected")],
+        );
+        let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
         assert_eq!(blocked, 1);
         assert!((runnable - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn runnable_rate_equals_all_up_when_nothing_blocked() {
-        let vs = vec![val("passed"), val("failed")];
-        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        let snapshot =
+            validation_snapshot(vec![], vec![val("p", "passed"), val("f", "failed")], vec![]);
+        let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
         assert_eq!(blocked, 0);
         assert!((runnable - 0.5).abs() < f64::EPSILON);
     }
 
     #[test]
     fn all_blocked_is_zero_runnable_not_a_divide_by_zero() {
-        let vs = vec![val("blocked"), val("blocked")];
-        let (blocked, runnable) = blocked_count_and_runnable_rate(&vs);
+        let snapshot = validation_snapshot(
+            vec![intent("a", "implemented"), intent("b", "implemented")],
+            vec![val("b1", "blocked"), val("b2", "blocked")],
+            vec![
+                validates("b1", "a", "uninspected"),
+                validates("b2", "b", "uninspected"),
+            ],
+        );
+        let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
         assert_eq!(blocked, 2);
+        assert_eq!(runnable, 0.0);
+    }
+
+    #[test]
+    fn deferred_blocked_validation_is_not_current_human_gate() {
+        let snapshot = validation_snapshot(
+            vec![intent("done", "implemented"), intent("future", "deferred")],
+            vec![val("passed", "passed"), val("future-proof", "blocked")],
+            vec![validates("future-proof", "future", "uninspected")],
+        );
+        let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
+        let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+        assert_eq!(blocked, 0);
+        assert_eq!(outside.blocked_validations, 0);
+        assert!((runnable - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn mixed_deferred_and_current_blocked_validation_stays_current() {
+        let snapshot = validation_snapshot(
+            vec![
+                intent("current", "implemented"),
+                intent("future", "deferred"),
+            ],
+            vec![val("mixed", "blocked")],
+            vec![
+                validates("mixed", "future", "uninspected"),
+                validates("mixed", "current", "uninspected"),
+            ],
+        );
+        let (blocked, runnable) = blocked_count_and_runnable_rate_from_snapshot(&snapshot);
+        let outside = uninspected_outside_queues_from_snapshot(&snapshot);
+        assert_eq!(blocked, 1);
+        assert_eq!(outside.blocked_validations, 1);
         assert_eq!(runnable, 0.0);
     }
 

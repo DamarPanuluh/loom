@@ -11,9 +11,12 @@ use anyhow::{Context, Result};
 use crate::cli::PopulateCmd;
 use crate::db::{ensure_initialized, GraphReadRepository};
 use crate::output::{pulse_json, Printer};
-use crate::types::{CallsEdge, Intent, Validation};
+use crate::types::{interface_surface_name, CallsEdge, Intent, Validation};
 
 const GAP_EXAMPLE_LIMIT: usize = 10;
+pub(crate) const POPULATE_INTERFACES_FROM_SAGAS_CMD: &str = "loom populate interfaces --from-sagas";
+pub(crate) const NO_INTERFACE_GAPS_MESSAGE: &str = "✓ No interface-plane gaps detected.";
+const BOUNDARY_INTENT_WITHOUT_CALLS: &str = "boundary_intent_without_calls";
 
 pub fn run(cmd: PopulateCmd, printer: &Printer) -> Result<()> {
     match cmd {
@@ -389,7 +392,7 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
             push_gap_example(
                 &mut examples,
                 InterfaceGap {
-                    kind: "boundary_intent_without_calls",
+                    kind: BOUNDARY_INTENT_WITHOUT_CALLS,
                     summary: format!(
                         "{} boundary intent '{}' has no CALLS binding",
                         intent.boundary, intent.name
@@ -543,14 +546,6 @@ fn calls_match_expected(existing: &[&CallsEdge], expected: &[ExpectedCall]) -> b
     })
 }
 
-fn interface_surface_name(surface_kind: &str, method: &str, target: &str) -> String {
-    if surface_kind == "http_endpoint" && !method.trim().is_empty() {
-        format!("{} {}", method.trim().to_uppercase(), target.trim())
-    } else {
-        target.trim().to_string()
-    }
-}
-
 fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<()> {
     let p = &plan.interface_from_sagas;
     let gaps = &plan.interface_gaps;
@@ -569,7 +564,7 @@ fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<
                     "missing_surfaces": p.missing_surfaces,
                     "stale_call_sets": p.stale_call_sets,
                     "sagas_needing_repopulate": p.sagas_needing_repopulate,
-                    "command": "loom populate interfaces --from-sagas",
+                    "command": POPULATE_INTERFACES_FROM_SAGAS_CMD,
                 },
                 "interface_gaps": {
                     "pending": gaps.is_pending(),
@@ -598,7 +593,7 @@ fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<
         p.expected_calls, p.existing_calls, p.missing_surfaces, p.stale_call_sets
     );
     if p.is_pending() {
-        println!("    → Run: loom populate interfaces --from-sagas");
+        println!("    → Run: {POPULATE_INTERFACES_FROM_SAGAS_CMD}");
     } else {
         println!("    ✓ No deterministic interface backfill pending.");
     }
@@ -612,17 +607,11 @@ fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<
         }
     }
     println!("  interface gaps:");
-    println!(
-        "    total: {} · surfaces without calls: {} · boundary intents without calls: {} · calls without validates: {}",
-        gaps.total(),
-        gaps.surface_without_calls,
-        gaps.boundary_intent_without_calls,
-        gaps.call_without_validates
-    );
+    println!("    {}", interface_gap_totals_line(gaps));
     if gaps.is_pending() {
         println!("    → Inspect: loom interface gaps");
     } else {
-        println!("    ✓ No interface-plane gaps detected.");
+        println!("    {NO_INTERFACE_GAPS_MESSAGE}");
     }
     Ok(())
 }
@@ -649,6 +638,16 @@ pub(crate) fn interface_gaps_json(gaps: &InterfaceGapPlan) -> serde_json::Value 
         "call_without_validates": gaps.call_without_validates,
         "examples": interface_gap_examples_json(&gaps.examples),
     })
+}
+
+pub(crate) fn interface_gap_totals_line(gaps: &InterfaceGapPlan) -> String {
+    format!(
+        "total: {} · surfaces without calls: {} · boundary intents without calls: {} · calls without validates: {}",
+        gaps.total(),
+        gaps.surface_without_calls,
+        gaps.boundary_intent_without_calls,
+        gaps.call_without_validates
+    )
 }
 
 fn interface_gap_examples_json(examples: &[InterfaceGap]) -> Vec<serde_json::Value> {
@@ -721,7 +720,7 @@ pub(crate) fn render_next(
             "expected_calls": p.expected_calls,
             "existing_calls": p.existing_calls,
             "skipped_sagas": skipped_json(&p.sagas_skipped),
-            "suggested_action": "loom populate interfaces --from-sagas",
+            "suggested_action": POPULATE_INTERFACES_FROM_SAGAS_CMD,
             "graph_state": pulse_json(&gs),
         }));
         return Ok(());
@@ -738,7 +737,7 @@ pub(crate) fn render_next(
         p.missing_surfaces, p.stale_call_sets, p.expected_calls, p.existing_calls
     );
     println!();
-    println!("  Run: loom populate interfaces --from-sagas");
+    println!("  Run: {POPULATE_INTERFACES_FROM_SAGAS_CMD}");
     Ok(())
 }
 

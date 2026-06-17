@@ -726,6 +726,14 @@ pub struct InterfaceSurface {
     pub updated_at: String,
 }
 
+pub fn interface_surface_name(surface_kind: &str, method: &str, target: &str) -> String {
+    if surface_kind == "http_endpoint" && !method.trim().is_empty() {
+        format!("{} {}", method.trim().to_uppercase(), target.trim())
+    } else {
+        target.trim().to_string()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Delegation — a subtree owned by ANOTHER loom graph (monorepo/federation)
 // ---------------------------------------------------------------------------

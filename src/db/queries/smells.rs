@@ -3011,7 +3011,8 @@ fn locate_test_proof<'a>(
     for sel in parse_cargo_test_selectors(command) {
         if sel.contains("::") {
             // module-path selector (a::b[::tests]) → a source-path fragment.
-            let modpath = sel.strip_suffix("::tests").unwrap_or(&sel);
+            let sel = sel.trim_end_matches("::");
+            let modpath = sel.strip_suffix("::tests").unwrap_or(sel);
             let frag = modpath.replace("::", "/");
             for p in all_paths {
                 if path_matches_module(p, &frag) {
@@ -3589,6 +3590,36 @@ mod proof_locality_tests {
         assert!(
             out.is_empty(),
             "a module-path selector resolves to its directory → local: {out:?}"
+        );
+    }
+
+    #[test]
+    fn a_trailing_module_path_selector_resolves_to_its_module() {
+        let codefiles = vec![cf(
+            "src/saga/spec.rs",
+            &["good_spec_parses"],
+            &["load_spec"],
+        )];
+        let intents = vec![leaf("i1", "saga spec")];
+        let implements = vec![imp("i1", "src/saga/spec.rs")];
+        let validations = vec![val(
+            "v1",
+            "test",
+            "cargo test saga::spec::tests::",
+            "passed",
+        )];
+        let validates = vec![vedge("v1", "i1")];
+        let out = proof_locality_from_parts(
+            &intents,
+            &implements,
+            &validates,
+            &validations,
+            &codefiles,
+            &[],
+        );
+        assert!(
+            out.is_empty(),
+            "a trailing module selector resolves to the grounded module: {out:?}"
         );
     }
 

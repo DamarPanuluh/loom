@@ -25,9 +25,9 @@ use crate::db::queries::{
 };
 use crate::db::schema::{edge, label, prop};
 use crate::types::{
-    CallsEdge, CodeFile, Delegation, Governs, Hierarchy, Hypothesis, Ignore, Implements, Intent,
-    InterfaceSurface, JourneysEdge, Note, Persona, QualityRule, RelatesTo, ServesEdge, SymbolFact,
-    TargetsEdge, ValidatesEdge, Validation, VocabTerm,
+    interface_surface_name, CallsEdge, CodeFile, Delegation, Governs, Hierarchy, Hypothesis,
+    Ignore, Implements, Intent, InterfaceSurface, JourneysEdge, Note, Persona, QualityRule,
+    RelatesTo, ServesEdge, SymbolFact, TargetsEdge, ValidatesEdge, Validation, VocabTerm,
 };
 
 pub struct SqliteGraphStore {
@@ -1435,13 +1435,22 @@ impl SqliteGraphStore {
         now: &str,
     ) -> Result<()> {
         let changed = self.conn.execute(
-            "INSERT OR IGNORE INTO implements(
+            "INSERT INTO implements(
                 intent_id, codefile_id, inspection_status, criterion, confidence, evidence,
                 last_inspected, inspected_by, locator, notes, created_at
              )
              SELECT ?1, ?2, 'passing', '', 0, '', '', '', ?3, ?4, ?5
              WHERE EXISTS(SELECT 1 FROM intent WHERE id = ?1)
-               AND EXISTS(SELECT 1 FROM codefile WHERE id = ?2)",
+               AND EXISTS(SELECT 1 FROM codefile WHERE id = ?2)
+             ON CONFLICT(intent_id, codefile_id) DO UPDATE SET
+                inspection_status = 'passing',
+                criterion = '',
+                confidence = 0,
+                evidence = '',
+                last_inspected = '',
+                inspected_by = '',
+                locator = excluded.locator,
+                notes = excluded.notes",
             params![intent_id, codefile_id, locator, notes, now],
         )?;
         if changed == 0 {
@@ -4079,14 +4088,6 @@ fn hierarchy_reaches(edges: &[(String, String)], start: &str, target: &str) -> b
     false
 }
 
-fn interface_surface_name(surface_kind: &str, method: &str, target: &str) -> String {
-    if surface_kind == "http_endpoint" && !method.trim().is_empty() {
-        format!("{} {}", method.trim().to_uppercase(), target.trim())
-    } else {
-        target.trim().to_string()
-    }
-}
-
 fn calls_edge_key(validation_id: &str, interface_id: &str, step_index: usize) -> String {
     format!("call:{validation_id}:{interface_id}:{step_index}")
 }
@@ -4852,6 +4853,75 @@ mod tests {
             "degrees": sorted_degrees(&snapshot.degrees),
             "notes": sorted_json(notes),
         })
+    }
+
+    #[test]
+    fn sqlite_implements_regrounding_updates_locator_and_status() {
+        let now = "2026-01-01T00:00:00Z";
+        let store = SqliteGraphStore::in_memory().unwrap();
+        store
+            .initialize(
+                crate::db::schema::SCHEMA_VERSION,
+                "graph-a",
+                "test",
+                "owned",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_intent(&Intent {
+                id: "intent-a".into(),
+                name: "locator update".into(),
+                description: "Grounding can move to a better symbol.".into(),
+                abstraction_level: "feature".into(),
+                domain: "".into(),
+                layer: "".into(),
+                source_refs: Vec::new(),
+                status: "proposed".into(),
+                aspect: "happy".into(),
+                lifecycle: "implemented".into(),
+                created_at: now.into(),
+                updated_at: now.into(),
+                tags: Vec::new(),
+                visibility: "internal".into(),
+                boundary: "".into(),
+            })
+            .unwrap();
+        store
+            .insert_codefile(&CodeFile {
+                id: "code-a".into(),
+                path: "src/example.rs".into(),
+                language: "rust".into(),
+                last_modified: now.into(),
+                imports: Vec::new(),
+                symbols: vec!["better_anchor".into()],
+                symbol_facts: Vec::new(),
+                content_hash: "hash-a".into(),
+            })
+            .unwrap();
+
+        store
+            .insert_implements("intent-a", "code-a", "old anchor", "old notes", now)
+            .unwrap();
+        store
+            .flag_implements_needs_reverification("intent-a", "code-a")
+            .unwrap();
+        store
+            .insert_implements(
+                "intent-a",
+                "code-a",
+                "better_anchor",
+                "updated notes",
+                "2026-01-02T00:00:00Z",
+            )
+            .unwrap();
+
+        let grounding = store.list_implements_for_intent("intent-a").unwrap();
+        assert_eq!(grounding.len(), 1);
+        assert_eq!(grounding[0].locator, "better_anchor");
+        assert_eq!(grounding[0].notes, "updated notes");
+        assert_eq!(grounding[0].inspection_status, "passing");
+        assert_eq!(grounding[0].created_at, now);
     }
 
     #[test]

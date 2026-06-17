@@ -93,17 +93,14 @@ fn gaps(printer: &Printer) -> Result<()> {
     }
 
     if !gaps.is_pending() {
-        println!("✓ No interface-plane gaps detected.");
+        println!("{}", crate::commands::populate::NO_INTERFACE_GAPS_MESSAGE);
         return Ok(());
     }
 
     println!("── Interface Gaps ──────────────────────────────────────────────");
     println!(
-        "  total: {} · surfaces without calls: {} · boundary intents without calls: {} · calls without validates: {}",
-        gaps.total(),
-        gaps.surface_without_calls,
-        gaps.boundary_intent_without_calls,
-        gaps.call_without_validates
+        "  {}",
+        crate::commands::populate::interface_gap_totals_line(&gaps)
     );
     println!();
     for gap in &gaps.examples {
