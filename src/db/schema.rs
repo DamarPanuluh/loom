@@ -69,6 +69,10 @@
 /// distinct from `retire`'s `status=deprecated` (superseded/out of scope). The
 /// `lifecycle` CHECK widens to admit it; additive, and old graphs upgrade by
 /// the usual export → re-init → import path.
+///
+/// Still v9 after the InterfaceSurface plane (the InterfaceSurface label +
+/// CALLS edge): additive — older graphs simply have no interface surfaces until
+/// sagas are re-registered or new journeys land.
 pub const SCHEMA_VERSION: &str = "9";
 
 /// The storage type of a property — surfaced by `loom schema` so a driving
@@ -101,6 +105,7 @@ pub fn edge_key(etype: &str, from_id: &str, to_id: &str) -> String {
         edge::TARGETS => "tgt",
         edge::SERVES => "srv",
         edge::JOURNEYS => "jrn",
+        edge::CALLS => "call",
         other => other,
     };
     format!("{prefix}:{from_id}:{to_id}")
@@ -136,6 +141,10 @@ pub mod label {
     /// actually serve this persona?) and to saga validations via JOURNEYS edges
     /// (structural: this saga exercises this persona's path end-to-end).
     pub const PERSONA: &str = "Persona";
+    /// An externally callable boundary surface. HTTP endpoints are the first
+    /// concrete kind; the node is deliberately generic for CLI/RPC/event
+    /// surfaces later.
+    pub const INTERFACE_SURFACE: &str = "InterfaceSurface";
 }
 
 /// Every content node label (excludes the `LoomMeta` sentinel).
@@ -150,6 +159,7 @@ pub const NODE_LABELS: &[&str] = &[
     label::HYPOTHESIS,
     label::VOCAB_TERM,
     label::PERSONA,
+    label::INTERFACE_SURFACE,
 ];
 
 // ---------------------------------------------------------------------------
@@ -176,6 +186,10 @@ pub mod edge {
     /// end-to-end path. STRUCTURAL — like HIERARCHY, no inspection state; its
     /// value is enabling persona-scoped journey coverage checks.
     pub const JOURNEYS: &str = "JOURNEYS";
+    /// Validation → InterfaceSurface: an ordered proof step calls an external
+    /// surface. Structural inventory edge; the proof verdict remains on
+    /// VALIDATES and saga-stamped RELATES_TO edges.
+    pub const CALLS: &str = "CALLS";
 }
 
 pub const EDGE_TYPES: &[&str] = &[
@@ -187,6 +201,7 @@ pub const EDGE_TYPES: &[&str] = &[
     edge::TARGETS,
     edge::SERVES,
     edge::JOURNEYS,
+    edge::CALLS,
 ];
 
 // ---------------------------------------------------------------------------
@@ -276,6 +291,9 @@ pub mod prop {
     /// about the intent, like `aspect`/`layer`). NOT in the required-property
     /// table (additive; absent on intents from older graphs, reads as "").
     pub const BOUNDARY: &str = "boundary";
+    // InterfaceSurface
+    pub const SURFACE_KIND: &str = "surface_kind";
+    pub const METHOD: &str = "method";
     // CodeFile
     pub const PATH: &str = "path";
     pub const LANGUAGE: &str = "language";
@@ -331,6 +349,10 @@ pub mod prop {
     /// to the work item's owner role first.
     pub const AUDIENCE: &str = "audience";
     pub const TARGET_ID: &str = "target_id";
+    // CALLS edge
+    pub const STEP_INDEX: &str = "step_index";
+    pub const STEP_NAME: &str = "step_name";
+    pub const INTENT_ID: &str = "intent_id";
     // Ignore (coverage escape hatch)
     pub const PATTERN: &str = "pattern";
     pub const REASON: &str = "reason";
@@ -463,6 +485,16 @@ pub fn required_node_props(label: &str) -> &'static [FieldSpec] {
             (CREATED_AT, LOOM),
             (UPDATED_AT, LOOM),
         ],
+        self::label::INTERFACE_SURFACE => &[
+            (ID, LOOM),
+            (NAME, BUILDER),
+            (DESCRIPTION, BUILDER),
+            (SURFACE_KIND, BUILDER),
+            (METHOD, BUILDER),
+            (TARGET, BUILDER),
+            (CREATED_AT, LOOM),
+            (UPDATED_AT, LOOM),
+        ],
         _ => &[],
     }
 }
@@ -545,6 +577,16 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
         // state (the saga run IS the proof; the VALIDATES edges carry the
         // verdict). Like HIERARCHY: a tree/binding edge, enforced at insert.
         self::edge::JOURNEYS => &[(NOTES, ANY), (CREATED_AT, LOOM)],
+        // CALLS: Validation → InterfaceSurface. Structural inventory edge for
+        // an ordered saga step. The Validation/VALIDATES/RELATES_TO path carries
+        // the actual proof verdict.
+        self::edge::CALLS => &[
+            (STEP_INDEX, BUILDER),
+            (STEP_NAME, BUILDER),
+            (INTENT_ID, BUILDER),
+            (NOTES, ANY),
+            (CREATED_AT, LOOM),
+        ],
         _ => &[],
     }
 }

@@ -285,7 +285,7 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             avoid: vec![
                 "do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist".into(),
                 "do not treat a short similar body as proof; the size floor already filters trivia, but read before merging".into(),
-                "do not bury a real-but-deferred dedupe in a decision note — this advisory is recomputed from code and never reads notes, so the note neither tracks the work nor lowers the count; a hypothesis does both".into(),
+                "do not bury a real-but-deferred dedupe in a decision note — use a hypothesis when there is real work to do; use a file decision only when the copies are deliberately independent".into(),
             ],
             done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, a refactor hypothesis tracks a deliberately deferred dedupe, or a decision note marks copies that must stay independent (this is advisory — it never gates phase=complete)".into(),
         },
@@ -1471,7 +1471,9 @@ pub fn compute_smells_from_parts(
                 .collect();
             layered.sort();
             for &a in &layered {
-                let ra = rank(a).unwrap();
+                let Some(ra) = rank(a) else {
+                    continue;
+                };
                 // BFS over clean hops from `a`, tracking a parent for one path.
                 let mut parent: HashMap<&str, &str> = HashMap::new();
                 let mut seen: HashSet<&str> = HashSet::new();
@@ -1714,49 +1716,48 @@ pub fn compute_smells_from_parts(
                     .iter()
                     .filter(|h| !targeted.contains(h.id.as_str()))
                     .count();
-                let oldest = proposed
-                    .iter()
-                    .min_by(|a, b| {
-                        a.created_at
-                            .cmp(&b.created_at)
-                            .then_with(|| a.name.cmp(&b.name))
-                    })
-                    .expect("proposed is not empty");
-                let sample: Vec<&str> = proposed.iter().take(5).map(|h| h.name.as_str()).collect();
-                let stale_names: Vec<&str> =
-                    stale.iter().take(5).map(|h| h.name.as_str()).collect();
-                let stale_detail = if stale_names.is_empty() {
-                    "none".to_string()
-                } else {
-                    stale_names.join(" · ")
-                };
-                smells.push(Smell {
-                    kind: "hypothesis_accumulation".into(),
-                    score: proposed.len() as f64 + 3.0 * stale.len() as f64,
-                    summary: format!(
-                        "{} proposed hypothesis(es) are waiting for proof; {} stale, {} untargeted",
-                        proposed.len(),
-                        stale.len(),
-                        untargeted
-                    ),
-                    evidence: format!(
-                        "{} proposed hypothesis(es), {} older than {}d, {} without TARGETS; oldest is '{}' created at {}; examples: {}; stale examples: {}",
-                        proposed.len(),
-                        stale.len(),
-                        HYPOTHESIS_STALE_DAYS,
-                        untargeted,
-                        oldest.name,
-                        oldest.created_at,
-                        sample.join(" · "),
-                        stale_detail
-                    ),
-                    remedy: format!(
-                        "drain the pre-decision plane: `loom next --mode prove` then `loom hypothesis prove <id> --verdict supported|refuted --evidence \"…\"`; for supported claims, adopt or reject them (`loom hypothesis adopt|reject`); for untargeted claims, add TARGETS first (`loom hypothesis target <id> <intent>`). Green requires fewer than {limit} proposed hypotheses and none older than {days}d.",
-                        limit = HYPOTHESIS_BACKLOG_LIMIT,
-                        days = HYPOTHESIS_STALE_DAYS,
-                    ),
-                    teaching: teaching_for("hypothesis_accumulation"),
-                });
+                if let Some(oldest) = proposed.iter().min_by(|a, b| {
+                    a.created_at
+                        .cmp(&b.created_at)
+                        .then_with(|| a.name.cmp(&b.name))
+                }) {
+                    let sample: Vec<&str> =
+                        proposed.iter().take(5).map(|h| h.name.as_str()).collect();
+                    let stale_names: Vec<&str> =
+                        stale.iter().take(5).map(|h| h.name.as_str()).collect();
+                    let stale_detail = if stale_names.is_empty() {
+                        "none".to_string()
+                    } else {
+                        stale_names.join(" · ")
+                    };
+                    smells.push(Smell {
+                        kind: "hypothesis_accumulation".into(),
+                        score: proposed.len() as f64 + 3.0 * stale.len() as f64,
+                        summary: format!(
+                            "{} proposed hypothesis(es) are waiting for proof; {} stale, {} untargeted",
+                            proposed.len(),
+                            stale.len(),
+                            untargeted
+                        ),
+                        evidence: format!(
+                            "{} proposed hypothesis(es), {} older than {}d, {} without TARGETS; oldest is '{}' created at {}; examples: {}; stale examples: {}",
+                            proposed.len(),
+                            stale.len(),
+                            HYPOTHESIS_STALE_DAYS,
+                            untargeted,
+                            oldest.name,
+                            oldest.created_at,
+                            sample.join(" · "),
+                            stale_detail
+                        ),
+                        remedy: format!(
+                            "drain the pre-decision plane: `loom next --mode prove` then `loom hypothesis prove <id> --verdict supported|refuted --evidence \"…\"`; for supported claims, adopt or reject them (`loom hypothesis adopt|reject`); for untargeted claims, add TARGETS first (`loom hypothesis target <id> <intent>`). Green requires fewer than {limit} proposed hypotheses and none older than {days}d.",
+                            limit = HYPOTHESIS_BACKLOG_LIMIT,
+                            days = HYPOTHESIS_STALE_DAYS,
+                        ),
+                        teaching: teaching_for("hypothesis_accumulation"),
+                    });
+                }
             }
         }
     }
@@ -2541,6 +2542,9 @@ pub fn cochange_suggestions(
         y.score
             .partial_cmp(&x.score)
             .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| x.summary.cmp(&y.summary))
+            .then_with(|| x.remedy.cmp(&y.remedy))
+            .then_with(|| x.evidence.cmp(&y.evidence))
     });
     out.truncate(MAX_SUGGESTIONS);
     out
@@ -3208,7 +3212,7 @@ pub fn clone_suggestions(
             summary,
             evidence,
             remedy:
-                "read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. A `--kind decision` note (`loom note add --file <path> --kind decision --text \"<why these copies must stay independent>\"`) only MARKS deliberate copies — this advisory is recomputed from code, so it stays counted until the duplication is actually gone".into(),
+                "read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. If the copies must stay deliberately independent, record that ruling with `loom note add --file <participating-path> --kind decision --text \"<why these copies must stay independent>\"`; the advisory moves to adjudicated until a participating file changes".into(),
             teaching: teaching_for("code_clone"),
         });
     }

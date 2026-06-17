@@ -11,6 +11,7 @@ mod saga;
 #[cfg(feature = "treesitter")]
 mod ts_imports;
 mod types;
+mod vec_utils;
 
 fn main() -> Result<()> {
     // parse_or_teach: any syntax failure appends the failing command's

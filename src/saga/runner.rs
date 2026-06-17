@@ -184,10 +184,17 @@ fn run_step(
     };
 
     // Build the request.
-    let mut req = client.request(
-        reqwest::Method::from_bytes(method.as_bytes()).expect("method validated at load"),
-        &url,
-    );
+    let method_parsed = match reqwest::Method::from_bytes(method.as_bytes()) {
+        Ok(method) => method,
+        Err(e) => {
+            return Ok(fail(
+                url,
+                None,
+                format!("invalid HTTP method '{method}': {e}"),
+            ))
+        }
+    };
+    let mut req = client.request(method_parsed, &url);
     for (k, v) in &step.request.headers {
         match interpolate(v, vars) {
             Ok(v) => req = req.header(k, v),
@@ -264,7 +271,13 @@ fn run_step(
 
     if let Some(body) = &json_body {
         for (path, expectation) in &step.expect.body {
-            let jp = serde_json_path::JsonPath::parse(path).expect("validated at load");
+            let jp = match serde_json_path::JsonPath::parse(path) {
+                Ok(jp) => jp,
+                Err(e) => {
+                    problems.push(format!("body {path}: invalid JSONPath: {e}"));
+                    continue;
+                }
+            };
             let nodes = jp.query(body).all();
             match expectation {
                 BodyExpectation::Exists { exists } => {
@@ -307,7 +320,13 @@ fn run_step(
     if problems.is_empty() {
         if let Some(body) = &json_body {
             for (var, path) in &step.capture {
-                let jp = serde_json_path::JsonPath::parse(path).expect("validated at load");
+                let jp = match serde_json_path::JsonPath::parse(path) {
+                    Ok(jp) => jp,
+                    Err(e) => {
+                        problems.push(format!("capture '{var}': invalid JSONPath {path}: {e}"));
+                        continue;
+                    }
+                };
                 match jp.query(body).all().first() {
                     None => problems.push(format!("capture '{var}': {path} matched nothing")),
                     Some(node) => {

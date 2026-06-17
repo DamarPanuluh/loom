@@ -616,7 +616,11 @@ pub fn align_candidates_from_snapshot_notes(
         let redefined = redefined_at.get(intent.id.as_str()).copied();
         let baseline = match (last_confirmed.as_deref(), redefined) {
             (None, None) => intent.created_at.as_str(),
-            (a, b) => a.into_iter().chain(b).max().unwrap(),
+            (a, b) => a
+                .into_iter()
+                .chain(b)
+                .max()
+                .unwrap_or(intent.created_at.as_str()),
         };
 
         let edge_ids = edge_ids_by_intent

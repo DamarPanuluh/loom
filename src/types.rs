@@ -704,6 +704,29 @@ pub struct Persona {
 }
 
 // ---------------------------------------------------------------------------
+// InterfaceSurface — an externally callable boundary surface
+// ---------------------------------------------------------------------------
+
+/// A named boundary surface the outside world can call, or that a journey calls
+/// as a consumer. HTTP endpoints are the first concrete kind; the shape remains
+/// generic enough for CLI commands, RPC methods, and event topics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InterfaceSurface {
+    pub id: String,
+    /// Human-readable identity, e.g. `POST /carts/{id}/payment`.
+    pub name: String,
+    pub description: String,
+    /// http_endpoint | cli_command | rpc_method | event_topic | …
+    pub surface_kind: String,
+    /// HTTP verb for http_endpoint; empty for surfaces that do not use verbs.
+    pub method: String,
+    /// The route/path/topic/command identity, without environment-specific host.
+    pub target: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+// ---------------------------------------------------------------------------
 // Delegation — a subtree owned by ANOTHER loom graph (monorepo/federation)
 // ---------------------------------------------------------------------------
 
@@ -926,6 +949,26 @@ pub struct JourneysEdge {
     pub validation_id: String,
     pub persona_name: String,
     pub validation_name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub notes: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
+}
+
+/// CALLS: Validation → InterfaceSurface — one ordered saga step invokes one
+/// externally callable surface. The semantic proof remains on VALIDATES
+/// (Validation → Intent); CALLS makes the interface inventory queryable.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallsEdge {
+    pub id: String,
+    pub validation_id: String,
+    pub interface_id: String,
+    pub validation_name: String,
+    pub interface_name: String,
+    pub step_index: usize,
+    pub step_name: String,
+    pub intent_id: String,
+    pub intent_name: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]

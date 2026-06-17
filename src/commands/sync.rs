@@ -292,9 +292,9 @@ fn run_with_sqlite(
 
     if printer.json {
         let mut v = serde_json::to_value(&report)?;
-        let obj = v
-            .as_object_mut()
-            .expect("SyncReport serializes to an object");
+        let Some(obj) = v.as_object_mut() else {
+            anyhow::bail!("SyncReport did not serialize to a JSON object");
+        };
         for (key, total_key) in [
             ("changes", "changes_total"),
             ("missing_files", "missing_files_total"),

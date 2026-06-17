@@ -8,6 +8,7 @@ use std::path::Path;
 use tree_sitter::{Language, Node, Parser, Tree};
 
 use crate::types::{StringLiteralFact, SymbolFact};
+use crate::vec_utils::push_unique_nonempty;
 
 #[derive(Debug, Default)]
 pub struct PhysicalFacts {
@@ -118,7 +119,7 @@ fn rust_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
                 .child_by_field_name("name")
                 .and_then(|n| text(n, content))
             {
-                push_unique(out, format!("mod:{name}"));
+                push_unique_nonempty(out, format!("mod:{name}"));
             }
         }
         _ => {}
@@ -193,7 +194,7 @@ fn rust_path_segments(node: Node<'_>, content: &str) -> Vec<String> {
 
 fn push_rust_path(out: &mut Vec<String>, segs: Vec<String>) {
     if !segs.is_empty() {
-        push_unique(out, segs.join("::"));
+        push_unique_nonempty(out, segs.join("::"));
     }
 }
 
@@ -204,7 +205,7 @@ fn js_ts_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
                 .child_by_field_name("source")
                 .and_then(|n| string_value(n, content))
             {
-                push_unique(out, source);
+                push_unique_nonempty(out, source);
             }
         }
         "call_expression" => {
@@ -215,7 +216,7 @@ fn js_ts_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
             if matches!(function, "require" | "import") {
                 if let Some(args) = node.child_by_field_name("arguments") {
                     if let Some(source) = first_string_descendant(args, content) {
-                        push_unique(out, source);
+                        push_unique_nonempty(out, source);
                     }
                 }
             }
@@ -235,12 +236,12 @@ fn python_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
                 .child_by_field_name("module_name")
                 .and_then(|n| text(n, content))
             {
-                push_unique(out, module.to_string());
+                push_unique_nonempty(out, module.to_string());
                 if module.chars().all(|c| c == '.') {
                     let mut names = Vec::new();
                     collect_descendant_text(node, content, "dotted_name", &mut names);
                     for name in names {
-                        push_unique(out, format!("{module}{name}"));
+                        push_unique_nonempty(out, format!("{module}{name}"));
                     }
                 }
             }
@@ -847,7 +848,7 @@ fn for_each_named_child(node: Node<'_>, mut f: impl FnMut(Node<'_>)) {
 fn collect_descendant_text(node: Node<'_>, content: &str, kind: &str, out: &mut Vec<String>) {
     if node.kind() == kind {
         if let Some(s) = text(node, content) {
-            push_unique(out, s.to_string());
+            push_unique_nonempty(out, s.to_string());
         }
     }
     for_each_named_child(node, |child| {
@@ -887,12 +888,6 @@ fn string_value(node: Node<'_>, content: &str) -> Option<String> {
 
 fn normalize_ws(s: &str) -> String {
     s.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn push_unique(out: &mut Vec<String>, item: String) {
-    if !item.is_empty() && !out.contains(&item) {
-        out.push(item);
-    }
 }
 
 fn push_unique_fact(out: &mut Vec<SymbolFact>, item: SymbolFact) {

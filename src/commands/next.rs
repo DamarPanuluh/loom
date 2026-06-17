@@ -42,13 +42,22 @@ fn run_with_repo(
     }
     if !matches!(
         mode,
-        "discovery" | "fix" | "build" | "validate" | "align" | "quality" | "review" | "prove"
+        "discovery"
+            | "fix"
+            | "build"
+            | "populate"
+            | "validate"
+            | "align"
+            | "quality"
+            | "review"
+            | "prove"
     ) {
         anyhow::bail!(
-            "Unknown mode '{}'. Valid values: discovery, fix, build, validate, align, quality, review, prove
+            "Unknown mode '{}'. Valid values: discovery, fix, build, populate, validate, align, quality, review, prove
 \
              discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \
              build = realize planned/needs_change intents (builder) · \
+             populate = backfill derived graph structure (builder) · \
              validate = run/repair proofs (validator) · \
              align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \
              quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \
@@ -76,6 +85,7 @@ fn run_with_repo(
 
     match mode {
         "build" => return run_build(db, printer),
+        "populate" => return crate::commands::populate::render_next(db, root, printer),
         "validate" => return run_validate(db, printer),
         "align" => return run_align(db, printer),
         "quality" => {
@@ -793,6 +803,7 @@ fn run_all(
     let prove = store.prove_candidates(&snapshot)?;
     let supported_hypotheses = store.list_hypotheses(Some("supported"))?;
     let align = store.align_candidates(&snapshot)?;
+    let populate = crate::commands::populate::plan_with_repo(store, root)?;
     let export_freshness = match store.committed_export_stale(root)? {
         Some(true) => "stale",
         Some(false) => "fresh",
@@ -807,6 +818,7 @@ fn run_all(
         prove,
         supported_hypotheses,
         align,
+        populate,
         export_freshness,
         printer,
     )
@@ -821,6 +833,7 @@ fn render_all(
     prove: Vec<(Hypothesis, f64)>,
     supported_hypotheses: Vec<Hypothesis>,
     align: Vec<AlignCandidate>,
+    populate: crate::commands::populate::PopulatePlan,
     export_freshness: String,
     printer: &Printer,
 ) -> Result<()> {
@@ -849,6 +862,29 @@ fn render_all(
     // plannable: drain autonomous queues now, BATCH human-gated items into one
     // agenda for the next conversation window instead of dribbling questions.
     let mut queues: Vec<serde_json::Value> = Vec::new();
+    if populate.pending_count() > 0 {
+        let p = &populate.interface_from_sagas;
+        let gaps = &populate.interface_gaps;
+        let top = if p.is_pending() {
+            format!(
+                "interface_from_sagas: {} stale saga call set(s), {} missing surface(s)",
+                p.stale_call_sets, p.missing_surfaces
+            )
+        } else {
+            format!(
+                "interface_gaps: {} total ({} surface/no-calls, {} boundary/no-calls, {} calls/no-validates)",
+                gaps.total(),
+                gaps.surface_without_calls,
+                gaps.boundary_intent_without_calls,
+                gaps.call_without_validates
+            )
+        };
+        queues.push(serde_json::json!({
+            "queue": "populate", "role": "builder", "gate": "autonomous",
+            "count": populate.pending_count(), "command": "loom next --mode populate",
+            "top": top,
+        }));
+    }
     if !build.is_empty() {
         let c = &build[0];
         queues.push(serde_json::json!({
@@ -2029,8 +2065,8 @@ fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
             "RE-PROVE this hypothesis — its support was earned against code that has since changed \
              (stale target(s): {stale}; the TARGETS transition notes name the files).\n\
              Re-check the claim against the code as it is NOW, then re-record:\n\
-             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what still holds>\"\
-             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<the change resolved it>\"\
+             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what still holds>\" --confidence 0.9\
+             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<the change resolved it>\" --confidence 0.9\
              \nRe-proving re-stamps every TARGETS edge, clearing the staleness.",
             id = h.id,
             stale = stale_targets.join(", "),
@@ -2039,8 +2075,8 @@ fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
         format!(
             "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\n\
              Read the targeted intents' groundings, check the claim, record what you found:\n\
-             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what you found>\"\
-             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<why the claim doesn't hold>\"\
+             \n  loom hypothesis prove {id} --verdict supported --evidence \"<what you found>\" --confidence 0.9\
+             \n  loom hypothesis prove {id} --verdict refuted  --evidence \"<why the claim doesn't hold>\" --confidence 0.9\
              \nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \
              A supported verdict hands the adopt/reject decision to the builder lane.",
             id = h.id,

@@ -25,9 +25,9 @@ use crate::db::queries::{
 };
 use crate::db::schema::{edge, label, prop};
 use crate::types::{
-    CodeFile, Delegation, Governs, Hierarchy, Hypothesis, Ignore, Implements, Intent, JourneysEdge,
-    Note, Persona, QualityRule, RelatesTo, ServesEdge, SymbolFact, TargetsEdge, ValidatesEdge,
-    Validation, VocabTerm,
+    CallsEdge, CodeFile, Delegation, Governs, Hierarchy, Hypothesis, Ignore, Implements, Intent,
+    InterfaceSurface, JourneysEdge, Note, Persona, QualityRule, RelatesTo, ServesEdge, SymbolFact,
+    TargetsEdge, ValidatesEdge, Validation, VocabTerm,
 };
 
 pub struct SqliteGraphStore {
@@ -156,6 +156,16 @@ const PERSONA_PROPS: &[&str] = &[
     prop::CREATED_AT,
     prop::UPDATED_AT,
 ];
+const INTERFACE_SURFACE_PROPS: &[&str] = &[
+    prop::ID,
+    prop::NAME,
+    prop::DESCRIPTION,
+    prop::SURFACE_KIND,
+    prop::METHOD,
+    prop::TARGET,
+    prop::CREATED_AT,
+    prop::UPDATED_AT,
+];
 
 const INSPECTABLE_PROPS_WITH_PRIORITY: &[&str] = &[
     prop::INSPECTION_STATUS,
@@ -194,6 +204,13 @@ const IMPLEMENTS_PROPS: &[&str] = &[
 
 const STRUCTURAL_PROPS: &[&str] = &[prop::NOTES, prop::CREATED_AT];
 const VALIDATES_PROPS: &[&str] = &[prop::INSPECTION_STATUS, prop::NOTES, prop::CREATED_AT];
+const CALLS_PROPS: &[&str] = &[
+    prop::STEP_INDEX,
+    prop::STEP_NAME,
+    prop::INTENT_ID,
+    prop::NOTES,
+    prop::CREATED_AT,
+];
 const CONFIDENCE_ONLY: &[&str] = &[prop::CONFIDENCE];
 const CONFIDENCE_AND_PRIORITY: &[&str] = &[prop::CONFIDENCE, prop::PRIORITY_SCORE];
 const EMPTY_LIST_PROPS: &[&str] = &[];
@@ -261,6 +278,12 @@ const NODE_SPECS: &[NodeSpec] = &[
         props: PERSONA_PROPS,
         list_props: EMPTY_LIST_PROPS,
     },
+    NodeSpec {
+        label: label::INTERFACE_SURFACE,
+        table: "interface_surface",
+        props: INTERFACE_SURFACE_PROPS,
+        list_props: EMPTY_LIST_PROPS,
+    },
 ];
 
 const EDGE_SPECS: &[EdgeSpec] = &[
@@ -326,6 +349,14 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         from_col: "persona_id",
         to_col: "validation_id",
         props: STRUCTURAL_PROPS,
+        numeric_props: EMPTY_LIST_PROPS,
+    },
+    EdgeSpec {
+        edge_type: edge::CALLS,
+        table: "calls",
+        from_col: "validation_id",
+        to_col: "interface_id",
+        props: CALLS_PROPS,
         numeric_props: EMPTY_LIST_PROPS,
     },
 ];
@@ -469,7 +500,6 @@ impl SqliteGraphStore {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn count_all_intents(&self) -> Result<usize> {
         count_table(&self.conn, "intent")
     }
@@ -497,7 +527,6 @@ impl SqliteGraphStore {
         ))
     }
 
-    #[allow(dead_code)]
     pub fn query_snapshot(&self) -> Result<QuerySnapshot> {
         Ok(QuerySnapshot::from_parts(
             self.list_active_intents()?,
@@ -513,7 +542,6 @@ impl SqliteGraphStore {
         ))
     }
 
-    #[allow(dead_code)]
     pub fn graph_state(&self, snapshot: &QuerySnapshot) -> Result<GraphState> {
         let loaded_notes;
         let notes = if let Some(notes) = snapshot.cached_notes() {
@@ -624,7 +652,6 @@ impl SqliteGraphStore {
         )
     }
 
-    #[allow(dead_code)]
     pub fn align_candidate_count(&self, snapshot: &QuerySnapshot) -> Result<i64> {
         let loaded_notes;
         let notes = if let Some(notes) = snapshot.cached_notes() {
@@ -636,7 +663,6 @@ impl SqliteGraphStore {
         Ok(align_candidates_from_snapshot_notes(snapshot, notes).len() as i64)
     }
 
-    #[allow(dead_code)]
     pub fn prove_candidates(&self, snapshot: &QuerySnapshot) -> Result<Vec<(Hypothesis, f64)>> {
         Ok(prove_candidates_from_parts(
             self.list_hypotheses(None)?,
@@ -645,7 +671,6 @@ impl SqliteGraphStore {
         ))
     }
 
-    #[allow(dead_code)]
     pub fn committed_export_stale(&self, root: &Path) -> Result<Option<bool>> {
         let path = root.join("loom.graph.json");
         if !path.exists() {
@@ -1345,6 +1370,12 @@ impl SqliteGraphStore {
     fn collect_edge_ids(&self) -> Result<std::collections::HashSet<String>> {
         let mut ids = std::collections::HashSet::new();
         for spec in EDGE_SPECS {
+            if spec.edge_type == edge::CALLS {
+                for call in self.list_all_calls()? {
+                    ids.insert(call.id);
+                }
+                continue;
+            }
             let sql = format!(
                 "SELECT {}, {} FROM {}",
                 spec.from_col, spec.to_col, spec.table
@@ -1745,7 +1776,6 @@ impl SqliteGraphStore {
         Ok(edges)
     }
 
-    #[allow(dead_code)]
     pub fn list_codefiles(&self) -> Result<Vec<CodeFile>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, path, language, last_modified, imports, symbols, symbol_facts, content_hash
@@ -1865,7 +1895,6 @@ impl SqliteGraphStore {
             .map_err(Into::into)
     }
 
-    #[allow(dead_code)]
     pub fn graph_meta(&self) -> Result<Option<GraphMeta>> {
         self.conn
             .query_row(
@@ -1911,7 +1940,6 @@ impl SqliteGraphStore {
         Ok(())
     }
 
-    #[allow(dead_code)]
     pub fn layer_order(&self) -> Result<Vec<String>> {
         let raw = self
             .conn
@@ -1933,7 +1961,6 @@ impl SqliteGraphStore {
         Ok(previous)
     }
 
-    #[allow(dead_code)]
     fn list_relates_to(&self) -> Result<Vec<RelatesTo>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
@@ -2189,7 +2216,6 @@ impl SqliteGraphStore {
         Ok(true)
     }
 
-    #[allow(dead_code)]
     fn list_all_governs(&self) -> Result<Vec<Governs>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.rule_id, e.intent_id, r.name, i.name, e.inspection_status, e.criterion,
@@ -2221,7 +2247,6 @@ impl SqliteGraphStore {
             .map_err(Into::into)
     }
 
-    #[allow(dead_code)]
     fn list_all_validates(&self) -> Result<Vec<ValidatesEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.validation_id, e.intent_id, v.name, i.name, e.created_at,
@@ -2297,7 +2322,6 @@ impl SqliteGraphStore {
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn list_all_implements(&self) -> Result<Vec<Implements>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.intent_id, e.codefile_id, i.name, cf.path, e.inspection_status,
@@ -2332,7 +2356,6 @@ impl SqliteGraphStore {
             .map_err(Into::into)
     }
 
-    #[allow(dead_code)]
     pub fn list_hypotheses(&self, status: Option<&str>) -> Result<Vec<Hypothesis>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, claim, proposal, predicted_outcome, status, author, evidence,
@@ -2490,7 +2513,6 @@ impl SqliteGraphStore {
         Ok(true)
     }
 
-    #[allow(dead_code)]
     fn count_hypotheses(&self, status: Option<&str>) -> Result<usize> {
         Ok(self.list_hypotheses(status)?.len())
     }
@@ -2529,6 +2551,176 @@ impl SqliteGraphStore {
             ],
         )?;
         Ok(())
+    }
+
+    pub fn list_interface_surfaces(&self) -> Result<Vec<InterfaceSurface>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, surface_kind, method, target, created_at, updated_at
+             FROM interface_surface
+             ORDER BY surface_kind, method, target",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(InterfaceSurface {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                surface_kind: row.get(3)?,
+                method: row.get(4)?,
+                target: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
+    }
+
+    pub fn resolve_interface_surface(&self, key: &str) -> Result<InterfaceSurface> {
+        let surfaces = self.list_interface_surfaces()?;
+        if let Some(surface) = surfaces.iter().find(|surface| surface.id == key) {
+            return Ok(surface.clone());
+        }
+        let kl = key.to_lowercase();
+        let exact: Vec<_> = surfaces
+            .iter()
+            .filter(|surface| surface.name.to_lowercase() == kl)
+            .collect();
+        if exact.len() == 1 {
+            return Ok(exact[0].clone());
+        }
+        let subs: Vec<_> = surfaces
+            .iter()
+            .filter(|surface| {
+                surface.name.to_lowercase().contains(&kl)
+                    || surface.target.to_lowercase().contains(&kl)
+            })
+            .collect();
+        match subs.len() {
+            1 => Ok(subs[0].clone()),
+            0 => anyhow::bail!(
+                "No interface surface matches '{}' (by id, name, or target fragment). Run `loom interface list`.",
+                key
+            ),
+            _ => anyhow::bail!(
+                "'{}' is ambiguous — matches {} interface surfaces. Use the id (`loom interface list`).",
+                key,
+                subs.len()
+            ),
+        }
+    }
+
+    pub fn get_or_create_interface_surface(
+        &self,
+        surface_kind: &str,
+        method: &str,
+        target: &str,
+        description: &str,
+        now: &str,
+    ) -> Result<InterfaceSurface> {
+        let name = interface_surface_name(surface_kind, method, target);
+        self.conn.execute(
+            "INSERT OR IGNORE INTO interface_surface(
+                id, name, description, surface_kind, method, target, created_at, updated_at
+             )
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+            params![
+                uuid::Uuid::new_v4().to_string(),
+                name,
+                description,
+                surface_kind,
+                method,
+                target,
+                now
+            ],
+        )?;
+        self.conn
+            .query_row(
+                "SELECT id, name, description, surface_kind, method, target, created_at, updated_at
+                 FROM interface_surface
+                 WHERE surface_kind = ?1 AND method = ?2 AND target = ?3",
+                params![surface_kind, method, target],
+                |row| {
+                    Ok(InterfaceSurface {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        description: row.get(2)?,
+                        surface_kind: row.get(3)?,
+                        method: row.get(4)?,
+                        target: row.get(5)?,
+                        created_at: row.get(6)?,
+                        updated_at: row.get(7)?,
+                    })
+                },
+            )
+            .map_err(Into::into)
+    }
+
+    pub fn insert_call(
+        &self,
+        validation_id: &str,
+        interface_id: &str,
+        step_index: usize,
+        step_name: &str,
+        intent_id: &str,
+        now: &str,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO calls(
+                validation_id, interface_id, step_index, step_name, intent_id, notes, created_at
+             )
+             SELECT ?1, ?2, ?3, ?4, ?5, '', ?6
+             WHERE EXISTS(SELECT 1 FROM validation WHERE id = ?1)
+               AND EXISTS(SELECT 1 FROM interface_surface WHERE id = ?2)
+               AND EXISTS(SELECT 1 FROM intent WHERE id = ?5)",
+            params![
+                validation_id,
+                interface_id,
+                step_index.to_string(),
+                step_name,
+                intent_id,
+                now
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_calls_for_validation(&self, validation_id: &str) -> Result<usize> {
+        let deleted = self.conn.execute(
+            "DELETE FROM calls WHERE validation_id = ?1",
+            params![validation_id],
+        )?;
+        Ok(deleted)
+    }
+
+    pub fn list_calls_for_interface(&self, interface_id: &str) -> Result<Vec<CallsEdge>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT c.validation_id, c.interface_id, v.name, s.name, c.step_index,
+                    c.step_name, c.intent_id, i.name, c.notes, c.created_at
+             FROM calls c
+             JOIN validation v ON v.id = c.validation_id
+             JOIN interface_surface s ON s.id = c.interface_id
+             JOIN intent i ON i.id = c.intent_id
+             WHERE c.interface_id = ?1
+             ORDER BY v.name, CAST(c.step_index AS INTEGER)",
+        )?;
+        let rows = stmt.query_map(params![interface_id], calls_edge_from_row)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
+    }
+
+    pub fn list_all_calls(&self) -> Result<Vec<CallsEdge>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT c.validation_id, c.interface_id, v.name, s.name, c.step_index,
+                    c.step_name, c.intent_id, i.name, c.notes, c.created_at
+             FROM calls c
+             JOIN validation v ON v.id = c.validation_id
+             JOIN interface_surface s ON s.id = c.interface_id
+             JOIN intent i ON i.id = c.intent_id
+             ORDER BY v.name, CAST(c.step_index AS INTEGER)",
+        )?;
+        let rows = stmt.query_map([], calls_edge_from_row)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn get_or_create_serves(
@@ -2926,6 +3118,7 @@ impl SqliteGraphStore {
         status: &str,
         criterion: &str,
         evidence: &str,
+        confidence: f64,
         inspected_by: &str,
         now: &str,
     ) -> Result<usize> {
@@ -2936,13 +3129,15 @@ impl SqliteGraphStore {
              SET inspection_status = ?1,
                  criterion = ?2,
                  evidence = ?3,
-                 inspected_by = ?4,
-                 last_inspected = ?5
-             WHERE hypothesis_id = ?6",
+                 confidence = ?4,
+                 inspected_by = ?5,
+                 last_inspected = ?6
+             WHERE hypothesis_id = ?7",
             params![
                 status,
                 criterion,
                 evidence,
+                confidence,
                 inspected_by,
                 now,
                 hypothesis_id
@@ -2964,7 +3159,6 @@ impl SqliteGraphStore {
         Ok(changed)
     }
 
-    #[allow(dead_code)]
     pub fn list_all_targets(&self) -> Result<Vec<TargetsEdge>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.hypothesis_id, e.intent_id, h.name, i.name, e.inspection_status,
@@ -3172,7 +3366,6 @@ impl SqliteGraphStore {
         Ok((relates + governs + validates + implements) as usize)
     }
 
-    #[allow(dead_code)]
     pub fn list_vocab_terms(&self) -> Result<Vec<VocabTerm>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, author, created_at FROM vocab_term ORDER BY name",
@@ -3255,7 +3448,6 @@ impl SqliteGraphStore {
         Ok(retagged)
     }
 
-    #[allow(dead_code)]
     pub fn list_validations(&self) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, name, description, validation_type, command, last_run, last_result
@@ -3673,7 +3865,6 @@ impl SqliteGraphStore {
         Ok(true)
     }
 
-    #[allow(dead_code)]
     pub fn list_notes(&self, target_id: Option<&str>, kind: Option<&str>) -> Result<Vec<Note>> {
         let mut notes = self.list_all_notes()?;
         if let Some(target_id) = target_id {
@@ -3781,7 +3972,6 @@ impl SqliteGraphStore {
         Ok(false)
     }
 
-    #[allow(dead_code)]
     fn list_all_notes(&self) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
@@ -3889,6 +4079,38 @@ fn hierarchy_reaches(edges: &[(String, String)], start: &str, target: &str) -> b
     false
 }
 
+fn interface_surface_name(surface_kind: &str, method: &str, target: &str) -> String {
+    if surface_kind == "http_endpoint" && !method.trim().is_empty() {
+        format!("{} {}", method.trim().to_uppercase(), target.trim())
+    } else {
+        target.trim().to_string()
+    }
+}
+
+fn calls_edge_key(validation_id: &str, interface_id: &str, step_index: usize) -> String {
+    format!("call:{validation_id}:{interface_id}:{step_index}")
+}
+
+fn calls_edge_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CallsEdge> {
+    let validation_id: String = row.get(0)?;
+    let interface_id: String = row.get(1)?;
+    let raw_step_index: String = row.get(4)?;
+    let step_index = raw_step_index.parse::<usize>().unwrap_or(0);
+    Ok(CallsEdge {
+        id: calls_edge_key(&validation_id, &interface_id, step_index),
+        validation_id,
+        interface_id,
+        validation_name: row.get(2)?,
+        interface_name: row.get(3)?,
+        step_index,
+        step_name: row.get(5)?,
+        intent_id: row.get(6)?,
+        intent_name: row.get(7)?,
+        notes: row.get(8)?,
+        created_at: row.get(9)?,
+    })
+}
+
 fn configure_connection(conn: &Connection, persistent: bool) -> Result<()> {
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
@@ -3919,6 +4141,7 @@ fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool
 
 fn clear_all(tx: &rusqlite::Transaction<'_>) -> Result<()> {
     for table in [
+        "calls",
         "journeys",
         "serves",
         "targets",
@@ -3928,6 +4151,7 @@ fn clear_all(tx: &rusqlite::Transaction<'_>) -> Result<()> {
         "hierarchy",
         "relates_to",
         "persona",
+        "interface_surface",
         "vocab_term",
         "hypothesis",
         "delegation",
@@ -4119,6 +4343,18 @@ CREATE TABLE IF NOT EXISTS persona(
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS interface_surface(
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  surface_kind TEXT NOT NULL,
+  method TEXT NOT NULL DEFAULT '',
+  target TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(surface_kind, method, target)
+);
+
 CREATE TABLE IF NOT EXISTS relates_to(
   from_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
   to_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
@@ -4218,6 +4454,17 @@ CREATE TABLE IF NOT EXISTS journeys(
   PRIMARY KEY(persona_id, validation_id)
 );
 
+CREATE TABLE IF NOT EXISTS calls(
+  validation_id TEXT NOT NULL REFERENCES validation(id) ON DELETE CASCADE,
+  interface_id TEXT NOT NULL REFERENCES interface_surface(id) ON DELETE CASCADE,
+  step_index TEXT NOT NULL,
+  step_name TEXT NOT NULL DEFAULT '',
+  intent_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(validation_id, step_index)
+);
+
 CREATE INDEX IF NOT EXISTS idx_intent_lifecycle_status ON intent(lifecycle, status);
 CREATE INDEX IF NOT EXISTS idx_intent_name ON intent(name);
 CREATE INDEX IF NOT EXISTS idx_codefile_path ON codefile(path);
@@ -4229,6 +4476,8 @@ CREATE INDEX IF NOT EXISTS idx_governs_status ON governs(inspection_status);
 CREATE INDEX IF NOT EXISTS idx_validates_status ON validates(inspection_status);
 CREATE INDEX IF NOT EXISTS idx_targets_status ON targets(inspection_status);
 CREATE INDEX IF NOT EXISTS idx_serves_status ON serves(inspection_status);
+CREATE INDEX IF NOT EXISTS idx_interface_surface_identity ON interface_surface(surface_kind, method, target);
+CREATE INDEX IF NOT EXISTS idx_calls_interface ON calls(interface_id);
 CREATE INDEX IF NOT EXISTS idx_note_target ON note(target_kind, target_id, kind, created_at);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
@@ -4335,10 +4584,13 @@ fn section_array<'a>(
     section: &str,
     key: &str,
 ) -> Result<&'a Vec<JsonValue>> {
-    obj.get(key)
-        .with_context(|| format!("Export is missing `{section}.{key}` array"))?
-        .as_array()
-        .with_context(|| format!("Export `{section}.{key}` is not an array"))
+    static EMPTY: std::sync::OnceLock<Vec<JsonValue>> = std::sync::OnceLock::new();
+    match obj.get(key) {
+        Some(value) => value
+            .as_array()
+            .with_context(|| format!("Export `{section}.{key}` is not an array")),
+        None => Ok(EMPTY.get_or_init(Vec::new)),
+    }
 }
 
 fn item_object<'a>(item: &'a JsonValue, ctx: &str) -> Result<&'a Map<String, JsonValue>> {
@@ -4383,7 +4635,7 @@ fn number_value(value: Option<&JsonValue>) -> f64 {
 
 fn list_json_text(value: Option<&JsonValue>) -> Result<String> {
     match value {
-        Some(JsonValue::Array(_)) => compact_json(value.expect("matched Some")),
+        Some(array @ JsonValue::Array(_)) => compact_json(array),
         Some(JsonValue::String(s)) if s.trim().is_empty() => Ok("[]".to_string()),
         Some(JsonValue::String(s)) => match serde_json::from_str::<JsonValue>(s) {
             Ok(JsonValue::Array(_)) => compact_json(&serde_json::from_str::<JsonValue>(s)?),
@@ -4427,7 +4679,6 @@ fn string_list_sql(raw: &str) -> rusqlite::Result<Vec<String>> {
     string_list(raw).map_err(|err| rusqlite::Error::ToSqlConversionFailure(err.into()))
 }
 
-#[allow(dead_code)]
 fn symbol_facts(raw: &str) -> Result<Vec<SymbolFact>> {
     let JsonValue::Array(items) = parse_json_array(raw)? else {
         unreachable!("parse_json_array only returns arrays");
@@ -4450,6 +4701,20 @@ pub fn normalized_for_semantic_compare(mut value: JsonValue) -> JsonValue {
     // upgrades an older export is still faithful. Exclude it from the compare.
     if let JsonValue::Object(map) = &mut value {
         map.remove("schema_version");
+        if let Some(JsonValue::Object(nodes)) = map.get_mut("nodes") {
+            for spec in NODE_SPECS {
+                nodes
+                    .entry(spec.label.to_string())
+                    .or_insert_with(|| JsonValue::Array(Vec::new()));
+            }
+        }
+        if let Some(JsonValue::Object(edges)) = map.get_mut("edges") {
+            for spec in EDGE_SPECS {
+                edges
+                    .entry(spec.edge_type.to_string())
+                    .or_insert_with(|| JsonValue::Array(Vec::new()));
+            }
+        }
     }
     normalize_lists(&mut value);
     value
@@ -4752,6 +5017,159 @@ mod tests {
             saw_plane_match,
             "door search must exercise at least one non-intent plane"
         );
+    }
+
+    #[test]
+    fn sqlite_interface_surface_calls_round_trip() {
+        let now = "2026-01-01T00:00:00Z";
+        let store = SqliteGraphStore::in_memory().unwrap();
+        store
+            .initialize(
+                crate::db::schema::SCHEMA_VERSION,
+                "graph-a",
+                "test",
+                "owned",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_intent(&Intent {
+                id: "intent-a".into(),
+                name: "create cart".into(),
+                description: "Creates a cart over HTTP.".into(),
+                abstraction_level: "feature".into(),
+                domain: "checkout".into(),
+                layer: "".into(),
+                source_refs: Vec::new(),
+                status: "proposed".into(),
+                aspect: "happy".into(),
+                lifecycle: "implemented".into(),
+                created_at: now.into(),
+                updated_at: now.into(),
+                tags: Vec::new(),
+                visibility: "user_visible".into(),
+                boundary: "inbound".into(),
+            })
+            .unwrap();
+        store
+            .insert_validation(&Validation {
+                id: "validation-a".into(),
+                name: "checkout-flow".into(),
+                description: "spec:checkout.yaml".into(),
+                validation_type: "saga".into(),
+                command: "loom saga run checkout-flow".into(),
+                last_run: "".into(),
+                last_result: "not_run".into(),
+            })
+            .unwrap();
+
+        let surface = store
+            .get_or_create_interface_surface(
+                "http_endpoint",
+                "POST",
+                "/carts",
+                "HTTP endpoint called by saga 'checkout-flow'",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_call(
+                "validation-a",
+                &surface.id,
+                1,
+                "create cart",
+                "intent-a",
+                now,
+            )
+            .unwrap();
+
+        let exported = store.export_json().unwrap();
+        assert_eq!(
+            exported["nodes"]["InterfaceSurface"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(exported["edges"]["CALLS"].as_array().unwrap().len(), 1);
+
+        let mut imported = SqliteGraphStore::in_memory().unwrap();
+        imported.import_export_json(&exported).unwrap();
+        let calls = imported.list_calls_for_interface(&surface.id).unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].validation_name, "checkout-flow");
+        assert_eq!(calls[0].interface_name, "POST /carts");
+        assert_eq!(calls[0].intent_name, "create cart");
+    }
+
+    #[test]
+    fn sqlite_targets_status_update_records_confidence() {
+        let now = "2026-01-01T00:00:00Z";
+        let mut store = SqliteGraphStore::in_memory().unwrap();
+        store
+            .initialize(
+                crate::db::schema::SCHEMA_VERSION,
+                "graph-a",
+                "test",
+                "owned",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_intent(&Intent {
+                id: "intent-a".into(),
+                name: "hypothesis lifecycle commands".into(),
+                description: "Commands manage hypothesis proof lifecycle.".into(),
+                abstraction_level: "feature".into(),
+                domain: "analysis".into(),
+                layer: "".into(),
+                source_refs: Vec::new(),
+                status: "proposed".into(),
+                aspect: "happy".into(),
+                lifecycle: "implemented".into(),
+                created_at: now.into(),
+                updated_at: now.into(),
+                tags: Vec::new(),
+                visibility: "internal".into(),
+                boundary: "inbound".into(),
+            })
+            .unwrap();
+        store
+            .insert_hypothesis(&Hypothesis {
+                id: "hypothesis-a".into(),
+                name: "prove stamps confidence".into(),
+                claim: "Prove should write confidence to TARGETS.".into(),
+                proposal: "Pass explicit confidence when stamping TARGETS.".into(),
+                predicted_outcome: "Doctor sees passing TARGETS as earned.".into(),
+                status: "proposed".into(),
+                author: "llm:analyzer".into(),
+                evidence: String::new(),
+                inspected_by: String::new(),
+                last_inspected: String::new(),
+                created_at: now.into(),
+                updated_at: now.into(),
+            })
+            .unwrap();
+        store
+            .insert_targets("hypothesis-a", "intent-a", now)
+            .unwrap();
+
+        store
+            .set_targets_status_for_hypothesis(
+                "hypothesis-a",
+                "passing",
+                "proof establishes target impact",
+                "read the proof path and verified confidence is passed through",
+                0.87,
+                "llm:analyzer",
+                now,
+            )
+            .unwrap();
+
+        let targets = store.list_targets_for_hypothesis("hypothesis-a").unwrap();
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].inspection_status, "passing");
+        assert_eq!(targets[0].confidence, 0.87);
     }
 
     #[test]

@@ -222,6 +222,10 @@ pub mod lane {
         action: "spawn planned intents from a journey",
         allowed: &[role::BUILDER],
     };
+    pub const POPULATE_GRAPH: Lane = Lane {
+        action: "populate derived graph structure",
+        allowed: &[role::BUILDER],
+    };
 
     // validator — proof
     pub const CONFIRM_INTENT: Lane = Lane {
@@ -307,6 +311,7 @@ pub const LANES: &[&Lane] = &[
     &lane::ADD_DELEGATION,
     &lane::REMOVE_DELEGATION,
     &lane::SPAWN_JOURNEY_INTENTS,
+    &lane::POPULATE_GRAPH,
     &lane::CONFIRM_INTENT,
     &lane::MARK_VALIDATION,
     &lane::RUN_VALIDATIONS,

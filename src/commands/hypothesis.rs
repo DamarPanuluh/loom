@@ -90,7 +90,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 if let Some(obj) = v.as_object_mut() {
                     obj.insert("targets".to_string(), serde_json::json!(linked));
                     obj.insert("next_steps".to_string(), serde_json::json!([
-                        format!("Prove it (a DIFFERENT agent, analyzer lane): `loom hypothesis prove {id} --verdict supported|refuted --evidence \"…\"`."),
+                        format!("Prove it (a DIFFERENT agent, analyzer lane): `loom hypothesis prove {id} --verdict supported|refuted --evidence \"…\" --confidence 0.9`."),
                         "Link more affected intents: `loom hypothesis target <hypothesis> <intent>`.",
                     ]));
                 }
@@ -101,7 +101,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 if !linked.is_empty() {
                     println!("  targets:     {} intent(s) linked", linked.len());
                 }
-                println!("  → Next: a DIFFERENT agent proves it — `loom hypothesis prove {id} --verdict supported|refuted --evidence \"…\"`.");
+                println!("  → Next: a DIFFERENT agent proves it — `loom hypothesis prove {id} --verdict supported|refuted --evidence \"…\" --confidence 0.9`.");
             }
         }
 
@@ -115,7 +115,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             let now = chrono::Utc::now().to_rfc3339();
             store.insert_targets(&hid, &iid, &now)?;
             let next_step = format!(
-                "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} …` when evidence is ready"
+                "`loom hypothesis show {hid}` lists targets; `loom hypothesis prove {hid} … --confidence 0.9` when evidence is ready"
             );
             if printer.json {
                 printer.print_json(&serde_json::json!({
@@ -135,6 +135,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             id,
             verdict,
             evidence,
+            confidence,
             inspected_by,
         } => {
             let prover =
@@ -149,6 +150,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 &evidence,
                 "what was actually found while checking the claim against the code",
             )?;
+            gate::require_confidence(confidence)?;
             let hid = store.resolve_hypothesis(&id)?;
             let h = store.get_hypothesis(&hid)?.ok_or_else(|| {
                 anyhow::anyhow!(
@@ -184,6 +186,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 target_status,
                 "hypothesis proof establishes whether this target is affected",
                 &evidence,
+                confidence,
                 &prover,
                 &now,
             )?;

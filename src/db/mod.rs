@@ -31,6 +31,8 @@ pub trait GraphReadRepository {
     fn list_implements_for_intent(&self, id: &str) -> Result<Vec<crate::types::Implements>>;
     fn list_validations(&self) -> Result<Vec<crate::types::Validation>>;
     fn validations_for_intent(&self, id: &str) -> Result<Vec<crate::types::Validation>>;
+    fn list_interface_surfaces(&self) -> Result<Vec<crate::types::InterfaceSurface>>;
+    fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>>;
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>>;
     fn notes_by_kind(&self, kind: &str) -> Result<Vec<crate::types::Note>>;
     fn list_notes(
@@ -129,6 +131,14 @@ impl GraphReadRepository for sqlite::SqliteGraphStore {
 
     fn validations_for_intent(&self, id: &str) -> Result<Vec<crate::types::Validation>> {
         self.validations_for_intent(id)
+    }
+
+    fn list_interface_surfaces(&self) -> Result<Vec<crate::types::InterfaceSurface>> {
+        self.list_interface_surfaces()
+    }
+
+    fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>> {
+        self.list_all_calls()
     }
 
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>> {
@@ -294,6 +304,14 @@ impl GraphReadRepository for GraphReadHandle {
 
     fn validations_for_intent(&self, id: &str) -> Result<Vec<crate::types::Validation>> {
         self.0.validations_for_intent(id)
+    }
+
+    fn list_interface_surfaces(&self) -> Result<Vec<crate::types::InterfaceSurface>> {
+        self.0.list_interface_surfaces()
+    }
+
+    fn list_all_calls(&self) -> Result<Vec<crate::types::CallsEdge>> {
+        self.0.list_all_calls()
     }
 
     fn notes_for_target(&self, target_id: &str) -> Result<Vec<crate::types::Note>> {

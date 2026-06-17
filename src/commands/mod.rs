@@ -21,12 +21,15 @@ pub mod ignore;
 pub mod import;
 pub mod init;
 pub mod intent;
+pub mod interface;
 pub mod layer;
 pub mod migrate;
 pub mod next;
 pub mod note;
 pub mod persona;
+pub mod populate;
 pub mod report;
+pub mod resolve;
 pub mod rule;
 pub mod saga;
 pub mod schema;
@@ -59,6 +62,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
         Command::Validation  { subcommand } => validation::run(subcommand, &printer),
         Command::Saga        { subcommand } => saga::run(subcommand, &printer),
+        Command::Interface   { subcommand } => interface::run(subcommand, &printer),
+        Command::Populate    { subcommand } => populate::run(subcommand, &printer),
         Command::Hypothesis  { subcommand } => hypothesis::run(subcommand, &printer),
         Command::Note        { subcommand } => note::run(subcommand, &printer),
         Command::Vocab       { subcommand } => vocab::run(subcommand, &printer),

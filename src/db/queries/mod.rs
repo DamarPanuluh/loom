@@ -16,6 +16,7 @@ pub mod smells;
 pub mod snapshot;
 pub mod stats;
 pub mod symbol_accountability;
+pub mod symbol_match;
 pub mod vocab;
 
 pub use completeness::*;
@@ -29,4 +30,5 @@ pub use smells::*;
 pub use snapshot::*;
 pub use stats::*;
 pub use symbol_accountability::*;
+pub use symbol_match::*;
 pub use vocab::*;

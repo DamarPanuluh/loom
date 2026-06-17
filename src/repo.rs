@@ -9,6 +9,8 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 
+use crate::vec_utils::push_unique_nonempty;
+
 /// Build/dependency/VCS directories that are never source — skipped
 /// unconditionally so coverage is meaningful even in a repo with no `.gitignore`
 /// (e.g. cargo's `target/` holds thousands of artifacts). `.gitignore` is still
@@ -470,7 +472,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                     if let Some(name) = rest.strip_suffix(';') {
                         let name = name.trim();
                         if name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                            push_unique(&mut specs, format!("mod:{name}"));
+                            push_unique_nonempty(&mut specs, format!("mod:{name}"));
                         }
                     }
                 }
@@ -481,7 +483,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                         .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == ':')
                         .collect();
                     if !path_part.is_empty() {
-                        push_unique(&mut specs, format!("crate::{path_part}"));
+                        push_unique_nonempty(&mut specs, format!("crate::{path_part}"));
                     }
                 }
             }
@@ -505,7 +507,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                         if !spec.starts_with('.') {
                             continue; // package import, not a repo file
                         }
-                        push_unique(&mut specs, spec);
+                        push_unique_nonempty(&mut specs, spec);
                     }
                 }
             }
@@ -517,7 +519,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                     if let Some(rest) = t.strip_prefix(prefix) {
                         if let Some(spec) = first_quoted(rest) {
                             if spec.starts_with('.') || spec.starts_with("package:") {
-                                push_unique(&mut specs, spec);
+                                push_unique_nonempty(&mut specs, spec);
                             }
                         }
                     }
@@ -538,11 +540,11 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                 }
                 if in_block {
                     if let Some(spec) = first_quoted(t) {
-                        push_unique(&mut specs, spec);
+                        push_unique_nonempty(&mut specs, spec);
                     }
                 } else if let Some(rest) = t.strip_prefix("import ") {
                     if let Some(spec) = first_quoted(rest) {
-                        push_unique(&mut specs, spec);
+                        push_unique_nonempty(&mut specs, spec);
                     }
                 }
             }
@@ -551,7 +553,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
             for line in content.lines() {
                 let t = line.trim();
                 if let Some(rest) = t.strip_prefix("import ") {
-                    push_unique(
+                    push_unique_nonempty(
                         &mut specs,
                         rest.split_whitespace()
                             .next()
@@ -601,7 +603,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                     } else {
                         format!("{base}.{name}")
                     };
-                    push_unique(&mut specs, spec);
+                    push_unique_nonempty(&mut specs, spec);
                 }
             }
         }
@@ -956,12 +958,6 @@ fn push_if_file(root: &Path, rel_path: &str, found: &mut Vec<String>, cand: Stri
     if !norm.is_empty() && norm != rel_path && root.join(&norm).is_file() && !found.contains(&norm)
     {
         found.push(norm);
-    }
-}
-
-fn push_unique(out: &mut Vec<String>, item: String) {
-    if !item.is_empty() && !out.contains(&item) {
-        out.push(item);
     }
 }
 

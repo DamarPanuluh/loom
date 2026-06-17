@@ -35,6 +35,7 @@ fn node_desc(label: &str) -> &'static str {
         "Hypothesis" => "An improvement proposal (the pre-decision plane): claim + proposal + predicted outcome. proposed → supported|refuted (proven by a DIFFERENT agent) → adopted → confirmed (outcome verified) or rejected. Invisible to coverage/completeness until adopted.",
         "VocabTerm" => "A registered tag term — the bounded vocabulary intents may carry in `tags` (max 3). A key, not a knowledge node: its value is forcing two descriptions of one responsibility to collide (`duplicated_responsibility`). Registry: `loom vocab list`.",
         "Persona" => "A named audience segment. SERVES edges verify which intents serve it; JOURNEYS edges bind saga proofs to its end-to-end path.",
+        "InterfaceSurface" => "An externally callable surface such as an HTTP endpoint. Sagas CALL these surfaces; intents still describe the behavior being proven.",
         _ => "",
     }
 }
@@ -49,6 +50,7 @@ fn edge_desc(etype: &str) -> &'static str {
         "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
         "SERVES" => "Persona → Intent — inspectable claim that the intent serves that audience segment.",
         "JOURNEYS" => "Persona → Validation — structural binding from an audience segment to a saga proof exercising its path.",
+        "CALLS" => "Validation → InterfaceSurface — an ordered saga step calls a boundary surface; proof verdicts remain on VALIDATES and RELATES_TO.",
         _ => "",
     }
 }
@@ -134,7 +136,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     if printer.json {
         printer.print_json(&serde_json::json!({
             "schema_version": SCHEMA_VERSION,
-            "edge_identity": "Derived, never stored: <prefix>:<from-id>:<to-id> with prefixes rt (RELATES_TO), hy (HIERARCHY), imp (IMPLEMENTS), gov (GOVERNS), val (VALIDATES), tgt (TARGETS), srv (SERVES), jrn (JOURNEYS). Stable across export/import; this is the id `loom edge show` and notes reference.",
+            "edge_identity": "Derived, never stored: <prefix>:<from-id>:<to-id> with prefixes rt (RELATES_TO), hy (HIERARCHY), imp (IMPLEMENTS), gov (GOVERNS), val (VALIDATES), tgt (TARGETS), srv (SERVES), jrn (JOURNEYS), call (CALLS). Stable across export/import; CALLS uses the step index in its command-facing id.",
             "node_labels": nodes,
             "edge_types": edges,
             "inspection_states": states,
@@ -167,7 +169,7 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!(
         "  rt=RELATES_TO  hy=HIERARCHY  imp=IMPLEMENTS  gov=GOVERNS  val=VALIDATES  tgt=TARGETS"
     );
-    println!("  srv=SERVES     jrn=JOURNEYS.");
+    println!("  srv=SERVES     jrn=JOURNEYS  call=CALLS.");
     println!("  Stable across export/import; it is the id `loom edge show` and notes reference.");
     println!();
     println!("Nodes:");

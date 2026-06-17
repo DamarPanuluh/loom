@@ -154,10 +154,11 @@ fn has_cycle(edges: &[(String, String)]) -> bool {
         processed += 1;
         if let Some(children) = adj.get(n) {
             for &ch in children {
-                let e = indeg.get_mut(ch).expect("child in indeg");
-                *e -= 1;
-                if *e == 0 {
-                    queue.push(ch);
+                if let Some(e) = indeg.get_mut(ch) {
+                    *e -= 1;
+                    if *e == 0 {
+                        queue.push(ch);
+                    }
                 }
             }
         }

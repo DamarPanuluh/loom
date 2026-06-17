@@ -2,6 +2,7 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::cli::{IntentCmd, SourceCmd, TagCmd};
+use crate::commands::resolve::resolve_intent_with_db;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::{fmt_edge_row, fmt_intent, fmt_intent_row, Printer};
@@ -936,60 +937,4 @@ fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer)
         }
     }
     Ok(())
-}
-
-fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
-    let intents = db.list_intents(None, None)?;
-    if intents.iter().any(|i| i.id == key) {
-        return Ok(key.to_string());
-    }
-    let kl = key.to_lowercase();
-    let exact: Vec<_> = intents
-        .iter()
-        .filter(|i| i.name.to_lowercase() == kl)
-        .collect();
-    if exact.len() == 1 {
-        return Ok(exact[0].id.clone());
-    }
-    if exact.len() > 1 {
-        anyhow::bail!(
-            "Intent name '{}' is not unique ({} intents carry it) — use the id. `loom intent list` to see them.",
-            key,
-            exact.len()
-        );
-    }
-    let subs: Vec<_> = intents
-        .iter()
-        .filter(|i| i.name.to_lowercase().contains(&kl))
-        .collect();
-    match subs.len() {
-        1 => Ok(subs[0].id.clone()),
-        0 => anyhow::bail!(
-            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
-            key
-        ),
-        _ => {
-            let total = subs.len();
-            let shown = subs
-                .iter()
-                .take(10)
-                .map(|i| format!("'{}'", i.name))
-                .collect::<Vec<_>>()
-                .join(", ");
-            if total > 10 {
-                anyhow::bail!(
-                    "'{}' is ambiguous — it matches: {} … +{} more — narrow the fragment or `loom find \"{}\"`.",
-                    key,
-                    shown,
-                    total - 10,
-                    key
-                );
-            }
-            anyhow::bail!(
-                "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id.",
-                key,
-                shown
-            )
-        }
-    }
 }

@@ -5,7 +5,10 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-use crate::db::queries::{symbol_accountability_from_parts_with_notes, QuerySnapshot};
+use crate::db::queries::{
+    contains_identifier_word, symbol_accountability_from_parts_with_notes, symbol_identifier,
+    QuerySnapshot,
+};
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::{CodeFile, Implements, Intent};
@@ -410,36 +413,6 @@ fn symbol_is_grounded(symbol: &str, locators: &[String]) -> bool {
         }
         l == symbol || l.contains(symbol) || contains_identifier_word(l, ident)
     })
-}
-
-fn symbol_identifier(symbol: &str) -> &str {
-    symbol
-        .split_whitespace()
-        .last()
-        .unwrap_or(symbol)
-        .trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
-}
-
-fn contains_identifier_word(haystack: &str, needle: &str) -> bool {
-    if needle.is_empty() {
-        return false;
-    }
-    let bytes = haystack.as_bytes();
-    let needle_bytes = needle.as_bytes();
-    for (idx, _) in haystack.match_indices(needle) {
-        let before = idx
-            .checked_sub(1)
-            .and_then(|i| bytes.get(i))
-            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_');
-        let after_idx = idx + needle_bytes.len();
-        let after = bytes
-            .get(after_idx)
-            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_');
-        if !before && !after {
-            return true;
-        }
-    }
-    false
 }
 
 #[cfg(test)]

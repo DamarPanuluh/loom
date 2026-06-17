@@ -93,7 +93,8 @@ pub enum Command {
     Next {
         /// Work mode — one queue per agent role: discovery (analyzer: inspect
         /// relationships) | fix (fixer: resolve failures/stale) | build
-        /// (builder: realize planned/needs_change intents) | validate
+        /// (builder: realize planned/needs_change intents) | populate
+        /// (builder: backfill derived graph structure) | validate
         /// (validator: run/repair proofs) | align (validator: re-affirm intent
         /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect low-confidence verdicts) | prove (analyzer:
@@ -159,6 +160,21 @@ pub enum Command {
     Saga {
         #[command(subcommand)]
         subcommand: SagaCmd,
+    },
+
+    /// Inspect externally callable surfaces discovered from journeys, starting
+    /// with HTTP endpoints registered by `loom saga add`.
+    Interface {
+        #[command(subcommand)]
+        subcommand: InterfaceCmd,
+    },
+
+    /// Populate derived graph structure from existing evidence. This is the
+    /// brownfield/schema-upgrade lane: it backfills graph surfaces without
+    /// claiming product code is built or changed.
+    Populate {
+        #[command(subcommand)]
+        subcommand: PopulateCmd,
     },
 
     /// Manage improvement hypotheses — the PRE-DECISION plane. Any lane
@@ -1295,7 +1311,8 @@ pub enum HypothesisCmd {
     #[command(after_help = "EXAMPLE:\n  \
         loom hypothesis prove split-the-scoring \\\n    \
           --verdict supported \\\n    \
-          --evidence \"read scoring.rs: discovery ranking (L312-660) shares no types with priority scoring; 4 intents ground here\"")]
+          --evidence \"read scoring.rs: discovery ranking (L312-660) shares no types with priority scoring; 4 intents ground here\" \\\n    \
+          --confidence 0.9")]
     Prove {
         /// Hypothesis id, name, or unique fragment.
         id: String,
@@ -1308,6 +1325,12 @@ pub enum HypothesisCmd {
         /// What you actually found while checking the claim (substantive).
         #[arg(long)]
         evidence: String,
+
+        /// Confidence in the proof verdict. Written to the TARGETS verdicts
+        /// stamped by this proof so doctor can distinguish earned green from
+        /// the uninspected default.
+        #[arg(long)]
+        confidence: f64,
 
         /// Who proved it — role-aware (e.g. llm:analyzer). Defaults to
         /// $LOOM_AGENT, else "llm".
@@ -1437,6 +1460,47 @@ pub enum SagaCmd {
 
     /// List registered sagas (validations of type=saga) with their last result.
     List,
+}
+
+// ---------------------------------------------------------------------------
+// Interface subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum InterfaceCmd {
+    /// List interface surfaces and the number of saga steps that call each one.
+    List,
+
+    /// Show gaps in the already-populated InterfaceSurface/CALLS plane.
+    Gaps,
+
+    /// Show one interface surface with its saga callers.
+    Show {
+        /// Surface id, exact name, or unique name/target fragment.
+        surface: String,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Populate subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum PopulateCmd {
+    /// Show computed population work without changing the graph.
+    Plan,
+
+    /// Populate/repopulate interface surfaces and CALLS edges.
+    Interfaces {
+        /// Rebuild HTTP endpoint surfaces and CALLS edges from registered saga
+        /// specs. Existing calls for each saga validation are replaced.
+        #[arg(long)]
+        from_sagas: bool,
+
+        /// Report what would change without writing to the graph.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 // ---------------------------------------------------------------------------

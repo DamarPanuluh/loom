@@ -6,6 +6,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 
+use super::symbol_match::{contains_identifier_word, symbol_identifier};
 use crate::types::{CodeFile, Implements, Intent, Note, SymbolFact};
 
 #[derive(Debug, Clone, Serialize, Default, PartialEq)]
@@ -295,36 +296,6 @@ pub fn fact_is_grounded(fact: &SymbolFact, locators: &[String]) -> bool {
             || contains_identifier_word(l, &fact.name)
             || contains_identifier_word(l, symbol_identifier(&fact.label))
     })
-}
-
-fn symbol_identifier(symbol: &str) -> &str {
-    symbol
-        .split_whitespace()
-        .last()
-        .unwrap_or(symbol)
-        .trim_matches(|c: char| !c.is_alphanumeric() && c != '_')
-}
-
-fn contains_identifier_word(haystack: &str, needle: &str) -> bool {
-    if needle.is_empty() {
-        return false;
-    }
-    let bytes = haystack.as_bytes();
-    let needle_bytes = needle.as_bytes();
-    for (idx, _) in haystack.match_indices(needle) {
-        let before = idx
-            .checked_sub(1)
-            .and_then(|i| bytes.get(i))
-            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_');
-        let after_idx = idx + needle_bytes.len();
-        let after = bytes
-            .get(after_idx)
-            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_');
-        if !before && !after {
-            return true;
-        }
-    }
-    false
 }
 
 fn adjudicating_note<'a>(

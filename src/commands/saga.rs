@@ -140,6 +140,31 @@ fn add_sqlite(
         }
     }
 
+    let mut interface_calls = 0usize;
+    let mut interface_surfaces = Vec::new();
+    for (idx, step) in spec.steps.iter().enumerate() {
+        let method = step.request.method.trim().to_uppercase();
+        let target = normalize_step_target(&step.request.url);
+        let description = format!("HTTP endpoint called by saga '{}'", spec.saga);
+        let surface = store.get_or_create_interface_surface(
+            "http_endpoint",
+            &method,
+            &target,
+            &description,
+            &now,
+        )?;
+        store.insert_call(
+            &validation_id,
+            &surface.id,
+            idx + 1,
+            &step.name,
+            &step_intents[idx].0,
+            &now,
+        )?;
+        interface_surfaces.push(surface);
+        interface_calls += 1;
+    }
+
     let mut registered_spec = false;
     if !store
         .list_codefiles()?
@@ -196,6 +221,14 @@ fn add_sqlite(
             })).collect::<Vec<_>>(),
             "validates_linked": linked,
             "path_edges_ensured": path_edges,
+            "interface_calls": interface_calls,
+            "interfaces": interface_surfaces.iter().map(|surface| serde_json::json!({
+                "id": surface.id,
+                "name": surface.name,
+                "kind": surface.surface_kind,
+                "method": surface.method,
+                "target": surface.target,
+            })).collect::<Vec<_>>(),
             "spec_registered_as_codefile": registered_spec,
             "requires_env": required_env,
             "next_steps": next_steps,
@@ -221,7 +254,9 @@ fn add_sqlite(
                 );
             }
         }
-        println!("  VALIDATES edges added: {linked} · path RELATES_TO ensured: {path_edges}");
+        println!(
+            "  VALIDATES edges added: {linked} · path RELATES_TO ensured: {path_edges} · interface CALLS recorded: {interface_calls}"
+        );
         if registered_spec {
             println!("  Spec registered as a CodeFile — ground it under a consumer-journeys intent when you have one.");
         }
@@ -629,6 +664,24 @@ fn resolve_step_intents_sqlite(
 fn run_invocation(saga_name: &str, env_vars: &[String]) -> String {
     let prefix: String = env_vars.iter().map(|v| format!("{v}=<value> ")).collect();
     format!("{prefix}loom saga run {saga_name}")
+}
+
+pub(crate) fn normalize_step_target(url: &str) -> String {
+    let trimmed = url.trim();
+    if let Ok(parsed) = reqwest::Url::parse(trimmed) {
+        let mut target = parsed.path().to_string();
+        if let Some(query) = parsed.query() {
+            target.push('?');
+            target.push_str(query);
+        }
+        if target.is_empty() {
+            "/".to_string()
+        } else {
+            target
+        }
+    } else {
+        trimmed.to_string()
+    }
 }
 
 /// The spec path recorded in a saga validation's description (`spec:<path>`).
