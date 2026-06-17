@@ -17218,6 +17218,19 @@
       },
       {
         "confidence": 0.9,
+        "created_at": "2026-06-17T11:28:44.604045+00:00",
+        "criterion": "Align drift ranking and hypothesis TARGETS proof scoring share queue/scoring command behavior; git history shows they move together across hypothesis, next, cli, and scoring paths.",
+        "evidence": "co-change: src/commands/hypothesis.rs ↔ src/commands/next.rs (8×), src/commands/hypothesis.rs ↔ src/db/queries/scoring.rs (7×), src/cli.rs ↔ src/db/queries/scoring.rs (18×) · confidence 100%",
+        "from": "8f96ca18-2ad0-48f3-985e-e4025141093d",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T11:28:44.604045+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54"
+      },
+      {
+        "confidence": 0.9,
         "created_at": "2026-06-12T05:37:26.810790+00:00",
         "criterion": "'bulk quality read grouped by intent' and 'triage queue for hypotheses' both claim 1 file(s) but no relationship is recorded; evidence: shared: src/commands/next.rs",
         "evidence": "",
@@ -17841,6 +17854,19 @@
         "to": "d7d485d7-c342-4c44-a57f-d08f7cf31941"
       },
       {
+        "confidence": 0.88,
+        "created_at": "2026-06-17T11:28:44.694403+00:00",
+        "criterion": "Directed handoff notes and import-as-planned porting guidance share the guide/note/next teaching surface; git history shows the behaviors move together and should be explicit for audit visibility.",
+        "evidence": "co-change: src/commands/guide.rs ↔ src/db/sqlite.rs (3×), src/commands/guide.rs ↔ src/commands/note.rs (9×), src/commands/guide.rs ↔ src/commands/next.rs (22×) · confidence 100%",
+        "from": "9baf3a4e-51af-40c1-8c80-a5f745588092",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T11:28:44.694403+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "e287ac20-f7af-44bf-ba45-078a282b8535"
+      },
+      {
         "confidence": 0.92,
         "created_at": "2026-06-17T10:29:10.786700+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -17852,6 +17878,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
+      },
+      {
+        "confidence": 0.88,
+        "created_at": "2026-06-17T11:28:44.750452+00:00",
+        "criterion": "Directed handoff notes and the self-teaching surface share the guide/note/schema persistence teaching path; git history shows the behaviors move together and should be explicit for audit visibility.",
+        "evidence": "co-change: src/commands/schema.rs ↔ src/db/sqlite.rs (3×), src/commands/guide.rs ↔ src/db/sqlite.rs (3×), src/commands/guide.rs ↔ src/commands/note.rs (9×) · confidence 100%",
+        "from": "9baf3a4e-51af-40c1-8c80-a5f745588092",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-17T11:28:44.750452+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
       },
       {
         "confidence": 0.92,
@@ -32328,13 +32367,13 @@
         ]
       },
       {
-        "content_hash": "eb500e85df451240",
+        "content_hash": "e07ed2b8ccfee801",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-17T10:33:33.912760393+00:00",
+        "last_modified": "2026-06-17T11:23:58.017920603+00:00",
         "path": "src/db/queries/smells.rs",
         "symbol_facts": [
           {
@@ -32342,113 +32381,113 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_clean_chain_through_an_unlayered_intermediate_is_flagged",
-            "line_end": 4668,
-            "line_start": 4640,
+            "line_end": 4671,
+            "line_start": 4643,
             "name": "a_clean_chain_through_an_unlayered_intermediate_is_flagged",
             "shape_hash": "761c3b933cfe3d81",
             "string_literals": [
               {
-                "line": 4642,
+                "line": 4645,
                 "value": "a"
               },
               {
-                "line": 4642,
+                "line": 4645,
                 "value": "storage"
               },
               {
-                "line": 4643,
+                "line": 4646,
                 "value": "m"
               },
               {
-                "line": 4643,
+                "line": 4646,
                 "value": ""
               },
               {
-                "line": 4644,
+                "line": 4647,
                 "value": "c"
               },
               {
-                "line": 4644,
+                "line": 4647,
                 "value": "presentation"
               },
               {
-                "line": 4647,
+                "line": 4650,
                 "value": "a.rs"
               },
               {
-                "line": 4647,
+                "line": 4650,
                 "value": "m.rs"
-              },
-              {
-                "line": 4648,
-                "value": "m.rs"
-              },
-              {
-                "line": 4648,
-                "value": "c.rs"
-              },
-              {
-                "line": 4649,
-                "value": "c.rs"
               },
               {
                 "line": 4651,
+                "value": "m.rs"
+              },
+              {
+                "line": 4651,
+                "value": "c.rs"
+              },
+              {
+                "line": 4652,
+                "value": "c.rs"
+              },
+              {
+                "line": 4654,
                 "value": "a"
               },
               {
-                "line": 4651,
+                "line": 4654,
                 "value": "a.rs"
               },
               {
-                "line": 4651,
+                "line": 4654,
                 "value": "m"
               },
               {
-                "line": 4651,
+                "line": 4654,
                 "value": "m.rs"
               },
               {
-                "line": 4651,
+                "line": 4654,
                 "value": "c"
               },
               {
-                "line": 4651,
+                "line": 4654,
                 "value": "c.rs"
               },
               {
-                "line": 4656,
+                "line": 4659,
                 "value": "presentation"
               },
               {
-                "line": 4656,
+                "line": 4659,
                 "value": "application"
               },
               {
-                "line": 4656,
+                "line": 4659,
                 "value": "storage"
               },
               {
-                "line": 4658,
+                "line": 4661,
                 "value": "transitive_layering_violation"
               },
               {
-                "line": 4662,
+                "line": 4665,
                 "value": "the masked up-dependency must surface: {found:?}"
               },
               {
-                "line": 4664,
+                "line": 4667,
                 "value": "intent a"
               },
               {
-                "line": 4664,
+                "line": 4667,
                 "value": "intent c"
               },
               {
-                "line": 4665,
+                "line": 4668,
                 "value": "unlayered"
               },
               {
-                "line": 4667,
+                "line": 4670,
                 "value": "layering_violation"
               }
             ],
@@ -32459,81 +32498,81 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_direct_violation_is_not_double_reported_as_transitive",
-            "line_end": 4716,
-            "line_start": 4697,
+            "line_end": 4719,
+            "line_start": 4700,
             "name": "a_direct_violation_is_not_double_reported_as_transitive",
             "shape_hash": "49cde5e66c85faf5",
             "string_literals": [
               {
-                "line": 4698,
+                "line": 4701,
                 "value": "a"
               },
               {
-                "line": 4698,
+                "line": 4701,
                 "value": "storage"
               },
               {
-                "line": 4698,
+                "line": 4701,
                 "value": "c"
               },
               {
-                "line": 4698,
+                "line": 4701,
                 "value": "presentation"
               },
               {
-                "line": 4699,
+                "line": 4702,
                 "value": "a.rs"
               },
               {
-                "line": 4699,
+                "line": 4702,
                 "value": "c.rs"
               },
               {
-                "line": 4699,
+                "line": 4702,
                 "value": "c.rs"
               },
               {
-                "line": 4700,
+                "line": 4703,
                 "value": "a"
               },
               {
-                "line": 4700,
+                "line": 4703,
                 "value": "a.rs"
               },
               {
-                "line": 4700,
+                "line": 4703,
                 "value": "c"
               },
               {
-                "line": 4700,
+                "line": 4703,
                 "value": "c.rs"
-              },
-              {
-                "line": 4705,
-                "value": "presentation"
-              },
-              {
-                "line": 4705,
-                "value": "application"
-              },
-              {
-                "line": 4705,
-                "value": "storage"
               },
               {
                 "line": 4708,
+                "value": "presentation"
+              },
+              {
+                "line": 4708,
+                "value": "application"
+              },
+              {
+                "line": 4708,
+                "value": "storage"
+              },
+              {
+                "line": 4711,
                 "value": "layering_violation"
               },
               {
-                "line": 4710,
+                "line": 4713,
                 "value": "direct check fires"
               },
               {
-                "line": 4713,
+                "line": 4716,
                 "value": "transitive_layering_violation"
               },
               {
-                "line": 4714,
+                "line": 4717,
                 "value": "transitive check defers direct pairs to 6b"
               }
             ],
@@ -32544,50 +32583,26 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_disconnected_subgraph_is_an_island",
-            "line_end": 4451,
-            "line_start": 4435,
+            "line_end": 4454,
+            "line_start": 4438,
             "name": "a_disconnected_subgraph_is_an_island",
             "shape_hash": "7cdc8dc7bb2f181d",
             "string_literals": [
               {
-                "line": 4437,
+                "line": 4440,
                 "value": "sys"
               },
               {
-                "line": 4437,
+                "line": 4440,
                 "value": "system"
               },
               {
-                "line": 4437,
+                "line": 4440,
                 "value": "a"
-              },
-              {
-                "line": 4437,
-                "value": "feature"
-              },
-              {
-                "line": 4438,
-                "value": "x"
-              },
-              {
-                "line": 4438,
-                "value": "feature"
-              },
-              {
-                "line": 4439,
-                "value": "y"
-              },
-              {
-                "line": 4439,
-                "value": "feature"
               },
               {
                 "line": 4440,
-                "value": "sys"
-              },
-              {
-                "line": 4440,
-                "value": "a"
+                "value": "feature"
               },
               {
                 "line": 4441,
@@ -32595,22 +32610,46 @@
               },
               {
                 "line": 4441,
+                "value": "feature"
+              },
+              {
+                "line": 4442,
                 "value": "y"
+              },
+              {
+                "line": 4442,
+                "value": "feature"
               },
               {
                 "line": 4443,
+                "value": "sys"
+              },
+              {
+                "line": 4443,
+                "value": "a"
+              },
+              {
+                "line": 4444,
+                "value": "x"
+              },
+              {
+                "line": 4444,
+                "value": "y"
+              },
+              {
+                "line": 4446,
                 "value": "intent_island"
               },
               {
-                "line": 4447,
+                "line": 4450,
                 "value": "the x—y component is one island: {islands:?}"
               },
               {
-                "line": 4449,
+                "line": 4452,
                 "value": "intent x"
               },
               {
-                "line": 4450,
+                "line": 4453,
                 "value": "intent y"
               }
             ],
@@ -32621,93 +32660,93 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_downward_chain_is_clean",
-            "line_end": 4692,
-            "line_start": 4673,
+            "line_end": 4695,
+            "line_start": 4676,
             "name": "a_downward_chain_is_clean",
             "shape_hash": "4d62f3695b7afce6",
             "string_literals": [
               {
-                "line": 4675,
+                "line": 4678,
                 "value": "a"
               },
               {
-                "line": 4675,
+                "line": 4678,
                 "value": "presentation"
               },
               {
-                "line": 4676,
+                "line": 4679,
                 "value": "m"
               },
               {
-                "line": 4676,
+                "line": 4679,
                 "value": ""
               },
               {
-                "line": 4677,
+                "line": 4680,
                 "value": "c"
               },
               {
-                "line": 4677,
+                "line": 4680,
                 "value": "storage"
               },
               {
-                "line": 4680,
+                "line": 4683,
                 "value": "a.rs"
               },
               {
-                "line": 4680,
+                "line": 4683,
                 "value": "m.rs"
-              },
-              {
-                "line": 4681,
-                "value": "m.rs"
-              },
-              {
-                "line": 4681,
-                "value": "c.rs"
-              },
-              {
-                "line": 4682,
-                "value": "c.rs"
               },
               {
                 "line": 4684,
+                "value": "m.rs"
+              },
+              {
+                "line": 4684,
+                "value": "c.rs"
+              },
+              {
+                "line": 4685,
+                "value": "c.rs"
+              },
+              {
+                "line": 4687,
                 "value": "a"
               },
               {
-                "line": 4684,
+                "line": 4687,
                 "value": "a.rs"
               },
               {
-                "line": 4684,
+                "line": 4687,
                 "value": "m"
               },
               {
-                "line": 4684,
+                "line": 4687,
                 "value": "m.rs"
               },
               {
-                "line": 4684,
+                "line": 4687,
                 "value": "c"
               },
               {
-                "line": 4684,
+                "line": 4687,
                 "value": "c.rs"
               },
               {
-                "line": 4689,
+                "line": 4692,
                 "value": "presentation"
               },
               {
-                "line": 4689,
+                "line": 4692,
                 "value": "application"
               },
               {
-                "line": 4689,
+                "line": 4692,
                 "value": "storage"
               },
               {
-                "line": 4691,
+                "line": 4694,
                 "value": "transitive_layering_violation"
               }
             ],
@@ -32718,37 +32757,37 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_fully_connected_graph_has_no_islands",
-            "line_end": 4462,
-            "line_start": 4454,
+            "line_end": 4465,
+            "line_start": 4457,
             "name": "a_fully_connected_graph_has_no_islands",
             "shape_hash": "1ba0a4334f34f3d0",
             "string_literals": [
               {
-                "line": 4455,
+                "line": 4458,
                 "value": "a"
               },
               {
-                "line": 4455,
+                "line": 4458,
                 "value": "b"
               },
               {
-                "line": 4456,
+                "line": 4459,
                 "value": "c"
               },
               {
-                "line": 4456,
+                "line": 4459,
                 "value": "feature"
               },
               {
-                "line": 4459,
+                "line": 4462,
                 "value": "a"
               },
               {
-                "line": 4459,
+                "line": 4462,
                 "value": "c"
               },
               {
-                "line": 4461,
+                "line": 4464,
                 "value": "intent_island"
               }
             ],
@@ -32759,45 +32798,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_half_grounded_reciprocal_pair_does_not_fire",
-            "line_end": 4380,
-            "line_start": 4373,
+            "line_end": 4383,
+            "line_start": 4376,
             "name": "a_half_grounded_reciprocal_pair_does_not_fire",
             "shape_hash": "66d7156816061f04",
             "string_literals": [
               {
-                "line": 4376,
+                "line": 4379,
                 "value": "a"
-              },
-              {
-                "line": 4376,
-                "value": "b"
-              },
-              {
-                "line": 4377,
-                "value": "a"
-              },
-              {
-                "line": 4377,
-                "value": "b"
-              },
-              {
-                "line": 4377,
-                "value": "passing"
-              },
-              {
-                "line": 4377,
-                "value": "b"
-              },
-              {
-                "line": 4377,
-                "value": "a"
-              },
-              {
-                "line": 4377,
-                "value": "uninspected"
               },
               {
                 "line": 4379,
+                "value": "b"
+              },
+              {
+                "line": 4380,
+                "value": "a"
+              },
+              {
+                "line": 4380,
+                "value": "b"
+              },
+              {
+                "line": 4380,
+                "value": "passing"
+              },
+              {
+                "line": 4380,
+                "value": "b"
+              },
+              {
+                "line": 4380,
+                "value": "a"
+              },
+              {
+                "line": 4380,
+                "value": "uninspected"
+              },
+              {
+                "line": 4382,
                 "value": "dependency_cycle"
               }
             ],
@@ -32808,57 +32847,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_loading_only_state_does_not_trigger",
-            "line_end": 4545,
-            "line_start": 4529,
+            "line_end": 4548,
+            "line_start": 4532,
             "name": "a_loading_only_state_does_not_trigger",
             "shape_hash": "bd9baa1ba3b2da88",
             "string_literals": [
               {
-                "line": 4532,
+                "line": 4535,
                 "value": "sys"
               },
               {
-                "line": 4532,
+                "line": 4535,
                 "value": "system"
               },
               {
-                "line": 4533,
+                "line": 4536,
                 "value": "screen"
               },
               {
-                "line": 4533,
+                "line": 4536,
                 "value": "component"
               },
               {
-                "line": 4534,
+                "line": 4537,
                 "value": "spinner"
               },
               {
-                "line": 4534,
+                "line": 4537,
                 "value": "loading"
               },
               {
-                "line": 4537,
+                "line": 4540,
                 "value": "sys"
               },
               {
-                "line": 4537,
+                "line": 4540,
                 "value": "screen"
               },
               {
-                "line": 4538,
+                "line": 4541,
                 "value": "screen"
               },
               {
-                "line": 4538,
+                "line": 4541,
                 "value": "spinner"
               },
               {
-                "line": 4542,
+                "line": 4545,
                 "value": "happy_path_only"
               },
               {
-                "line": 4543,
+                "line": 4546,
                 "value": "loading alone is not a triggering aspect"
               }
             ],
@@ -32869,53 +32908,53 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_long_directed_cycle_is_not_a_dependency_cycle",
-            "line_end": 4330,
-            "line_start": 4319,
+            "line_end": 4333,
+            "line_start": 4322,
             "name": "a_long_directed_cycle_is_not_a_dependency_cycle",
             "shape_hash": "1f02ddbbf27e55d0",
             "string_literals": [
               {
-                "line": 4323,
+                "line": 4326,
                 "value": "a"
               },
               {
-                "line": 4323,
+                "line": 4326,
                 "value": "b"
               },
               {
-                "line": 4323,
+                "line": 4326,
                 "value": "c"
               },
               {
-                "line": 4324,
-                "value": "a"
-              },
-              {
-                "line": 4324,
-                "value": "b"
-              },
-              {
-                "line": 4324,
-                "value": "b"
-              },
-              {
-                "line": 4324,
-                "value": "c"
-              },
-              {
-                "line": 4324,
-                "value": "c"
-              },
-              {
-                "line": 4324,
+                "line": 4327,
                 "value": "a"
               },
               {
                 "line": 4327,
+                "value": "b"
+              },
+              {
+                "line": 4327,
+                "value": "b"
+              },
+              {
+                "line": 4327,
+                "value": "c"
+              },
+              {
+                "line": 4327,
+                "value": "c"
+              },
+              {
+                "line": 4327,
+                "value": "a"
+              },
+              {
+                "line": 4330,
                 "value": "dependency_cycle"
               },
               {
-                "line": 4328,
+                "line": 4331,
                 "value": "a single-direction long cycle is noise, not a finding"
               }
             ],
@@ -32926,65 +32965,65 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_module_path_selector_resolves_to_its_directory",
-            "line_end": 3590,
-            "line_start": 3563,
+            "line_end": 3593,
+            "line_start": 3566,
             "name": "a_module_path_selector_resolves_to_its_directory",
             "shape_hash": "97da49502168c779",
             "string_literals": [
               {
-                "line": 3565,
+                "line": 3568,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3566,
+                "line": 3569,
                 "value": "resolve_intent_roundtrips"
               },
               {
-                "line": 3567,
+                "line": 3570,
                 "value": "resolve_intent"
               },
               {
-                "line": 3569,
+                "line": 3572,
                 "value": "i1"
-              },
-              {
-                "line": 3569,
-                "value": "intent resolution"
-              },
-              {
-                "line": 3570,
-                "value": "i1"
-              },
-              {
-                "line": 3570,
-                "value": "src/db/queries/intent.rs"
               },
               {
                 "line": 3572,
-                "value": "v1"
+                "value": "intent resolution"
               },
               {
                 "line": 3573,
-                "value": "test"
-              },
-              {
-                "line": 3574,
-                "value": "cargo test db::queries 2>/dev/null"
-              },
-              {
-                "line": 3575,
-                "value": "passed"
-              },
-              {
-                "line": 3577,
-                "value": "v1"
-              },
-              {
-                "line": 3577,
                 "value": "i1"
               },
               {
-                "line": 3588,
+                "line": 3573,
+                "value": "src/db/queries/intent.rs"
+              },
+              {
+                "line": 3575,
+                "value": "v1"
+              },
+              {
+                "line": 3576,
+                "value": "test"
+              },
+              {
+                "line": 3577,
+                "value": "cargo test db::queries 2>/dev/null"
+              },
+              {
+                "line": 3578,
+                "value": "passed"
+              },
+              {
+                "line": 3580,
+                "value": "v1"
+              },
+              {
+                "line": 3580,
+                "value": "i1"
+              },
+              {
+                "line": 3591,
                 "value": "a module-path selector resolves to its directory → local: {out:?}"
               }
             ],
@@ -32995,49 +33034,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_reciprocal_grounded_pair_is_a_dependency_cycle",
-            "line_end": 4345,
-            "line_start": 4333,
+            "line_end": 4348,
+            "line_start": 4336,
             "name": "a_reciprocal_grounded_pair_is_a_dependency_cycle",
             "shape_hash": "37ab973951a3f9c9",
             "string_literals": [
               {
-                "line": 4334,
+                "line": 4337,
                 "value": "a"
               },
               {
-                "line": 4334,
+                "line": 4337,
                 "value": "b"
               },
               {
-                "line": 4336,
+                "line": 4339,
                 "value": "a"
               },
               {
-                "line": 4336,
+                "line": 4339,
                 "value": "b"
               },
               {
-                "line": 4336,
+                "line": 4339,
                 "value": "b"
               },
               {
-                "line": 4336,
+                "line": 4339,
                 "value": "a"
               },
               {
-                "line": 4338,
+                "line": 4341,
                 "value": "dependency_cycle"
               },
               {
-                "line": 4342,
+                "line": 4345,
                 "value": "one finding for the reciprocal pair: {found:?}"
               },
               {
-                "line": 4344,
+                "line": 4347,
                 "value": "intent a"
               },
               {
-                "line": 4344,
+                "line": 4347,
                 "value": "intent b"
               }
             ],
@@ -33048,69 +33087,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_sibling_test_in_the_same_module_is_local",
-            "line_end": 3560,
-            "line_start": 3531,
+            "line_end": 3563,
+            "line_start": 3534,
             "name": "a_sibling_test_in_the_same_module_is_local",
             "shape_hash": "730a5120176ed42e",
             "string_literals": [
               {
-                "line": 3536,
+                "line": 3539,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3536,
+                "line": 3539,
                 "value": "resolve_intent"
               },
               {
-                "line": 3537,
+                "line": 3540,
                 "value": "src/db/queries/mod.rs"
               },
               {
-                "line": 3537,
+                "line": 3540,
                 "value": "resolve_intent_roundtrips"
               },
               {
-                "line": 3539,
+                "line": 3542,
                 "value": "i1"
-              },
-              {
-                "line": 3539,
-                "value": "intent resolution"
-              },
-              {
-                "line": 3540,
-                "value": "i1"
-              },
-              {
-                "line": 3540,
-                "value": "src/db/queries/intent.rs"
               },
               {
                 "line": 3542,
-                "value": "v1"
+                "value": "intent resolution"
               },
               {
                 "line": 3543,
-                "value": "test"
-              },
-              {
-                "line": 3544,
-                "value": "cargo test resolve_intent_roundtrips"
-              },
-              {
-                "line": 3545,
-                "value": "passed"
-              },
-              {
-                "line": 3547,
-                "value": "v1"
-              },
-              {
-                "line": 3547,
                 "value": "i1"
               },
               {
-                "line": 3558,
+                "line": 3543,
+                "value": "src/db/queries/intent.rs"
+              },
+              {
+                "line": 3545,
+                "value": "v1"
+              },
+              {
+                "line": 3546,
+                "value": "test"
+              },
+              {
+                "line": 3547,
+                "value": "cargo test resolve_intent_roundtrips"
+              },
+              {
+                "line": 3548,
+                "value": "passed"
+              },
+              {
+                "line": 3550,
+                "value": "v1"
+              },
+              {
+                "line": 3550,
+                "value": "i1"
+              },
+              {
+                "line": 3561,
                 "value": "a test in a sibling file of the same module is local: {out:?}"
               }
             ],
@@ -33121,65 +33160,65 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn a_test_in_the_grounded_file_is_local_and_silent",
-            "line_end": 3471,
-            "line_start": 3444,
+            "line_end": 3474,
+            "line_start": 3447,
             "name": "a_test_in_the_grounded_file_is_local_and_silent",
             "shape_hash": "97da49502168c779",
             "string_literals": [
               {
-                "line": 3446,
+                "line": 3449,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3447,
+                "line": 3450,
                 "value": "retire_is_invisible"
               },
               {
-                "line": 3448,
+                "line": 3451,
                 "value": "resolve_intent"
               },
               {
-                "line": 3450,
+                "line": 3453,
                 "value": "i1"
-              },
-              {
-                "line": 3450,
-                "value": "intent resolution"
-              },
-              {
-                "line": 3451,
-                "value": "i1"
-              },
-              {
-                "line": 3451,
-                "value": "src/db/queries/intent.rs"
               },
               {
                 "line": 3453,
-                "value": "v1"
+                "value": "intent resolution"
               },
               {
                 "line": 3454,
-                "value": "test"
-              },
-              {
-                "line": 3455,
-                "value": "cargo test retire_is_invisible"
-              },
-              {
-                "line": 3456,
-                "value": "passed"
-              },
-              {
-                "line": 3458,
-                "value": "v1"
-              },
-              {
-                "line": 3458,
                 "value": "i1"
               },
               {
-                "line": 3469,
+                "line": 3454,
+                "value": "src/db/queries/intent.rs"
+              },
+              {
+                "line": 3456,
+                "value": "v1"
+              },
+              {
+                "line": 3457,
+                "value": "test"
+              },
+              {
+                "line": 3458,
+                "value": "cargo test retire_is_invisible"
+              },
+              {
+                "line": 3459,
+                "value": "passed"
+              },
+              {
+                "line": 3461,
+                "value": "v1"
+              },
+              {
+                "line": 3461,
+                "value": "i1"
+              },
+              {
+                "line": 3472,
                 "value": "a test in the grounded file is local: {out:?}"
               }
             ],
@@ -33190,41 +33229,41 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_acyclic_chain_reports_no_cycle",
-            "line_end": 4353,
-            "line_start": 4348,
+            "line_end": 4356,
+            "line_start": 4351,
             "name": "an_acyclic_chain_reports_no_cycle",
             "shape_hash": "cd662def1d5989b9",
             "string_literals": [
               {
-                "line": 4349,
+                "line": 4352,
                 "value": "a"
-              },
-              {
-                "line": 4349,
-                "value": "b"
-              },
-              {
-                "line": 4349,
-                "value": "c"
-              },
-              {
-                "line": 4350,
-                "value": "a"
-              },
-              {
-                "line": 4350,
-                "value": "b"
-              },
-              {
-                "line": 4350,
-                "value": "b"
-              },
-              {
-                "line": 4350,
-                "value": "c"
               },
               {
                 "line": 4352,
+                "value": "b"
+              },
+              {
+                "line": 4352,
+                "value": "c"
+              },
+              {
+                "line": 4353,
+                "value": "a"
+              },
+              {
+                "line": 4353,
+                "value": "b"
+              },
+              {
+                "line": 4353,
+                "value": "b"
+              },
+              {
+                "line": 4353,
+                "value": "c"
+              },
+              {
+                "line": 4355,
                 "value": "dependency_cycle"
               }
             ],
@@ -33235,77 +33274,77 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_adjudicated_reciprocal_pair_is_suppressed",
-            "line_end": 4432,
-            "line_start": 4408,
+            "line_end": 4435,
+            "line_start": 4411,
             "name": "an_adjudicated_reciprocal_pair_is_suppressed",
             "shape_hash": "1f9fb7933dc85421",
             "string_literals": [
               {
-                "line": 4411,
-                "value": "a"
-              },
-              {
-                "line": 4411,
-                "value": "b"
-              },
-              {
-                "line": 4412,
-                "value": "a"
-              },
-              {
-                "line": 4412,
-                "value": "b"
-              },
-              {
-                "line": 4412,
-                "value": "b"
-              },
-              {
-                "line": 4412,
+                "line": 4414,
                 "value": "a"
               },
               {
                 "line": 4414,
-                "value": "n1"
+                "value": "b"
               },
               {
                 "line": 4415,
-                "value": "decision"
-              },
-              {
-                "line": 4416,
-                "value": "a and b are deliberate mutual peers"
-              },
-              {
-                "line": 4417,
-                "value": "llm"
-              },
-              {
-                "line": 4418,
-                "value": "intent"
-              },
-              {
-                "line": 4419,
                 "value": "a"
               },
               {
+                "line": 4415,
+                "value": "b"
+              },
+              {
+                "line": 4415,
+                "value": "b"
+              },
+              {
+                "line": 4415,
+                "value": "a"
+              },
+              {
+                "line": 4417,
+                "value": "n1"
+              },
+              {
+                "line": 4418,
+                "value": "decision"
+              },
+              {
+                "line": 4419,
+                "value": "a and b are deliberate mutual peers"
+              },
+              {
+                "line": 4420,
+                "value": "llm"
+              },
+              {
                 "line": 4421,
+                "value": "intent"
+              },
+              {
+                "line": 4422,
+                "value": "a"
+              },
+              {
+                "line": 4424,
                 "value": "2026-06-16T00:00:00+00:00"
               },
               {
-                "line": 4425,
+                "line": 4428,
                 "value": "dependency_cycle"
-              },
-              {
-                "line": 4426,
-                "value": "a current decision on the anchor suppresses the open finding"
               },
               {
                 "line": 4429,
+                "value": "a current decision on the anchor suppresses the open finding"
+              },
+              {
+                "line": 4432,
                 "value": "dependency_cycle"
               },
               {
-                "line": 4430,
+                "line": 4433,
                 "value": "it surfaces as adjudicated, not silently gone"
               }
             ],
@@ -33316,93 +33355,93 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_e2e_assertion_proof_exempts_the_leaf",
-            "line_end": 3498,
-            "line_start": 3474,
+            "line_end": 3501,
+            "line_start": 3477,
             "name": "an_e2e_assertion_proof_exempts_the_leaf",
             "shape_hash": "f3bbcfac8826856a",
             "string_literals": [
               {
-                "line": 3476,
+                "line": 3479,
                 "value": "src/commands/intent.rs"
               },
               {
-                "line": 3476,
+                "line": 3479,
                 "value": "delete_intent"
               },
               {
-                "line": 3477,
+                "line": 3480,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3477,
+                "line": 3480,
                 "value": "retire_is_invisible"
               },
               {
-                "line": 3479,
+                "line": 3482,
                 "value": "i1"
               },
               {
-                "line": 3479,
+                "line": 3482,
                 "value": "intent retirement contract"
               },
               {
-                "line": 3480,
+                "line": 3483,
                 "value": "i1"
               },
               {
-                "line": 3480,
+                "line": 3483,
                 "value": "src/commands/intent.rs"
               },
               {
-                "line": 3482,
+                "line": 3485,
                 "value": "v1"
               },
               {
-                "line": 3482,
+                "line": 3485,
                 "value": "test"
               },
               {
-                "line": 3482,
+                "line": 3485,
                 "value": "cargo test retire_is_invisible"
               },
               {
-                "line": 3482,
+                "line": 3485,
                 "value": "passed"
               },
               {
-                "line": 3483,
+                "line": 3486,
                 "value": "v2"
               },
               {
-                "line": 3483,
+                "line": 3486,
                 "value": "assertion"
               },
               {
-                "line": 3483,
+                "line": 3486,
                 "value": ".claude/skills/e2e_retire.sh"
               },
               {
-                "line": 3483,
+                "line": 3486,
                 "value": "passed"
               },
               {
-                "line": 3485,
+                "line": 3488,
                 "value": "v1"
               },
               {
-                "line": 3485,
+                "line": 3488,
                 "value": "i1"
               },
               {
-                "line": 3485,
+                "line": 3488,
                 "value": "v2"
               },
               {
-                "line": 3485,
+                "line": 3488,
                 "value": "i1"
               },
               {
-                "line": 3496,
+                "line": 3499,
                 "value": "an e2e/assertion proof exercises code the static check can't see — exempt: {out:?}"
               }
             ],
@@ -33413,8 +33452,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_ignored_file_drops_the_pair_below_cross_file",
-            "line_end": 3773,
-            "line_start": 3760,
+            "line_end": 3776,
+            "line_start": 3763,
             "name": "an_ignored_file_drops_the_pair_below_cross_file",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -33423,43 +33462,43 @@
             "shape_hash": "05083ea5c805c6c9",
             "string_literals": [
               {
-                "line": 3761,
+                "line": 3764,
                 "value": "src/generated/**"
               },
               {
-                "line": 3764,
+                "line": 3767,
                 "value": "src/generated/a.rs"
               },
               {
-                "line": 3765,
+                "line": 3768,
                 "value": "alpha"
               },
               {
-                "line": 3765,
+                "line": 3768,
                 "value": "HASH"
               },
               {
-                "line": 3765,
+                "line": 3768,
                 "value": ""
               },
               {
-                "line": 3767,
+                "line": 3770,
                 "value": "src/b.rs"
               },
               {
-                "line": 3767,
+                "line": 3770,
                 "value": "beta"
               },
               {
-                "line": 3767,
+                "line": 3770,
                 "value": "HASH"
               },
               {
-                "line": 3767,
+                "line": 3770,
                 "value": ""
               },
               {
-                "line": 3771,
+                "line": 3774,
                 "value": "ignoring one copy leaves a single-file group → no cross-file clone"
               }
             ],
@@ -33470,45 +33509,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_independent_reverse_does_not_make_a_reciprocal_pair",
-            "line_end": 4390,
-            "line_start": 4383,
+            "line_end": 4393,
+            "line_start": 4386,
             "name": "an_independent_reverse_does_not_make_a_reciprocal_pair",
             "shape_hash": "66d7156816061f04",
             "string_literals": [
               {
-                "line": 4386,
+                "line": 4389,
                 "value": "a"
-              },
-              {
-                "line": 4386,
-                "value": "b"
-              },
-              {
-                "line": 4387,
-                "value": "a"
-              },
-              {
-                "line": 4387,
-                "value": "b"
-              },
-              {
-                "line": 4387,
-                "value": "passing"
-              },
-              {
-                "line": 4387,
-                "value": "b"
-              },
-              {
-                "line": 4387,
-                "value": "a"
-              },
-              {
-                "line": 4387,
-                "value": "independent"
               },
               {
                 "line": 4389,
+                "value": "b"
+              },
+              {
+                "line": 4390,
+                "value": "a"
+              },
+              {
+                "line": 4390,
+                "value": "b"
+              },
+              {
+                "line": 4390,
+                "value": "passing"
+              },
+              {
+                "line": 4390,
+                "value": "b"
+              },
+              {
+                "line": 4390,
+                "value": "a"
+              },
+              {
+                "line": 4390,
+                "value": "independent"
+              },
+              {
+                "line": 4392,
                 "value": "dependency_cycle"
               }
             ],
@@ -33519,49 +33558,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_uninspected_reciprocal_pair_does_not_fire",
-            "line_end": 4370,
-            "line_start": 4356,
+            "line_end": 4373,
+            "line_start": 4359,
             "name": "an_uninspected_reciprocal_pair_does_not_fire",
             "shape_hash": "a0bfc85b8a3cfa2d",
             "string_literals": [
               {
-                "line": 4360,
+                "line": 4363,
                 "value": "a"
               },
               {
-                "line": 4360,
+                "line": 4363,
                 "value": "b"
               },
               {
-                "line": 4362,
+                "line": 4365,
                 "value": "a"
               },
               {
-                "line": 4362,
+                "line": 4365,
                 "value": "b"
               },
               {
-                "line": 4362,
+                "line": 4365,
                 "value": "uninspected"
               },
               {
-                "line": 4363,
+                "line": 4366,
                 "value": "b"
               },
               {
-                "line": 4363,
+                "line": 4366,
                 "value": "a"
               },
               {
-                "line": 4363,
+                "line": 4366,
                 "value": "uninspected"
               },
               {
-                "line": 4367,
+                "line": 4370,
                 "value": "dependency_cycle"
               },
               {
-                "line": 4368,
+                "line": 4371,
                 "value": "mechanically-created uninspected round-trip is not graph-hygiene debt"
               }
             ],
@@ -33572,69 +33611,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn an_unresolvable_command_is_unknown_never_nonlocal",
-            "line_end": 3528,
-            "line_start": 3501,
+            "line_end": 3531,
+            "line_start": 3504,
             "name": "an_unresolvable_command_is_unknown_never_nonlocal",
             "shape_hash": "730a5120176ed42e",
             "string_literals": [
               {
-                "line": 3503,
+                "line": 3506,
                 "value": "src/commands/intent.rs"
               },
               {
-                "line": 3503,
+                "line": 3506,
                 "value": "delete_intent"
               },
               {
-                "line": 3504,
+                "line": 3507,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3504,
+                "line": 3507,
                 "value": "retire_is_invisible"
               },
               {
-                "line": 3506,
+                "line": 3509,
                 "value": "i1"
               },
               {
-                "line": 3506,
+                "line": 3509,
                 "value": "intent retirement contract"
               },
               {
-                "line": 3507,
+                "line": 3510,
                 "value": "i1"
-              },
-              {
-                "line": 3507,
-                "value": "src/commands/intent.rs"
               },
               {
                 "line": 3510,
-                "value": "v1"
-              },
-              {
-                "line": 3511,
-                "value": "test"
-              },
-              {
-                "line": 3512,
-                "value": "cargo test no_such_test_name_xyz"
+                "value": "src/commands/intent.rs"
               },
               {
                 "line": 3513,
-                "value": "passed"
-              },
-              {
-                "line": 3515,
                 "value": "v1"
               },
               {
+                "line": 3514,
+                "value": "test"
+              },
+              {
                 "line": 3515,
+                "value": "cargo test no_such_test_name_xyz"
+              },
+              {
+                "line": 3516,
+                "value": "passed"
+              },
+              {
+                "line": 3518,
+                "value": "v1"
+              },
+              {
+                "line": 3518,
                 "value": "i1"
               },
               {
-                "line": 3526,
+                "line": 3529,
                 "value": "an unresolvable selector is UNKNOWN, not non-local: {out:?}"
               }
             ],
@@ -33645,61 +33684,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn behavioral_happy_without_sad_or_fallback_still_fires",
-            "line_end": 4526,
-            "line_start": 4510,
+            "line_end": 4529,
+            "line_start": 4513,
             "name": "behavioral_happy_without_sad_or_fallback_still_fires",
             "shape_hash": "42d502522751966b",
             "string_literals": [
               {
-                "line": 4514,
+                "line": 4517,
                 "value": "sys"
               },
               {
-                "line": 4514,
+                "line": 4517,
                 "value": "system"
               },
               {
-                "line": 4515,
+                "line": 4518,
                 "value": "feat"
               },
               {
-                "line": 4515,
+                "line": 4518,
                 "value": "component"
               },
               {
-                "line": 4516,
+                "line": 4519,
                 "value": "sunny"
               },
               {
-                "line": 4516,
+                "line": 4519,
                 "value": "happy"
               },
               {
-                "line": 4519,
+                "line": 4522,
                 "value": "sys"
               },
               {
-                "line": 4519,
+                "line": 4522,
                 "value": "feat"
-              },
-              {
-                "line": 4520,
-                "value": "feat"
-              },
-              {
-                "line": 4520,
-                "value": "sunny"
               },
               {
                 "line": 4523,
+                "value": "feat"
+              },
+              {
+                "line": 4523,
+                "value": "sunny"
+              },
+              {
+                "line": 4526,
                 "value": "happy_path_only"
               },
               {
-                "line": 4525,
+                "line": 4528,
                 "value": "happy"
               },
               {
-                "line": 4525,
+                "line": 4528,
                 "value": "sad/fallback"
               }
             ],
@@ -33709,29 +33748,29 @@
             "body_hash": "440e80fc829f3c86",
             "kind": "fn",
             "label": "fn behavioral_symbol_kind",
-            "line_end": 3232,
-            "line_start": 3230,
+            "line_end": 3235,
+            "line_start": 3233,
             "name": "behavioral_symbol_kind",
             "shape_hash": "42f8e79f6131e3dc",
             "string_literals": [
               {
-                "line": 3231,
+                "line": 3234,
                 "value": "def"
               },
               {
-                "line": 3231,
+                "line": 3234,
                 "value": "fn"
               },
               {
-                "line": 3231,
+                "line": 3234,
                 "value": "function"
               },
               {
-                "line": 3231,
+                "line": 3234,
                 "value": "impl"
               },
               {
-                "line": 3231,
+                "line": 3234,
                 "value": "method"
               }
             ],
@@ -33742,45 +33781,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn bodies_below_the_size_floor_are_skipped",
-            "line_end": 3757,
-            "line_start": 3747,
+            "line_end": 3760,
+            "line_start": 3750,
             "name": "bodies_below_the_size_floor_are_skipped",
             "shape_hash": "b77a2ae5a7b5f37d",
             "string_literals": [
               {
-                "line": 3750,
+                "line": 3753,
                 "value": "src/a.rs"
               },
               {
-                "line": 3750,
+                "line": 3753,
                 "value": "alpha"
               },
               {
-                "line": 3750,
+                "line": 3753,
                 "value": "HASH"
               },
               {
-                "line": 3750,
+                "line": 3753,
                 "value": ""
               },
               {
-                "line": 3751,
+                "line": 3754,
                 "value": "src/b.rs"
               },
               {
-                "line": 3751,
+                "line": 3754,
                 "value": "beta"
               },
               {
-                "line": 3751,
+                "line": 3754,
                 "value": "HASH"
               },
               {
-                "line": 3751,
+                "line": 3754,
                 "value": ""
               },
               {
-                "line": 3755,
+                "line": 3758,
                 "value": "below the size floor is boilerplate"
               }
             ],
@@ -33791,13 +33830,13 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 2727,
-            "line_start": 2716,
+            "line_end": 2730,
+            "line_start": 2719,
             "name": "cf",
             "shape_hash": "f2e5c0247d4fdd0a",
             "string_literals": [
               {
-                "line": 2720,
+                "line": 2723,
                 "value": "rust"
               }
             ],
@@ -33807,29 +33846,29 @@
             "body_hash": "8c5c4fe0fb5678f0",
             "kind": "fn",
             "label": "fn command_or_public_surface",
-            "line_end": 3240,
-            "line_start": 3234,
+            "line_end": 3243,
+            "line_start": 3237,
             "name": "command_or_public_surface",
             "shape_hash": "5e7b5ace4c87b3d0",
             "string_literals": [
               {
-                "line": 3235,
+                "line": 3238,
                 "value": "src/commands/"
               },
               {
-                "line": 3236,
+                "line": 3239,
                 "value": "src/main."
               },
               {
-                "line": 3237,
+                "line": 3240,
                 "value": "public"
               },
               {
-                "line": 3238,
+                "line": 3241,
                 "value": "pub "
               },
               {
-                "line": 3239,
+                "line": 3242,
                 "value": "export "
               }
             ],
@@ -33840,73 +33879,73 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn current_file_decision_adjudicates_large_symbol",
-            "line_end": 3978,
-            "line_start": 3942,
+            "line_end": 3981,
+            "line_start": 3945,
             "name": "current_file_decision_adjudicates_large_symbol",
             "shape_hash": "205fabe4b80130dc",
             "string_literals": [
               {
-                "line": 3944,
+                "line": 3947,
                 "value": "n1"
               },
               {
-                "line": 3945,
+                "line": 3948,
                 "value": "decision"
               },
               {
-                "line": 3946,
+                "line": 3949,
                 "value": "large parser stays linear for now"
               },
               {
-                "line": 3947,
+                "line": 3950,
                 "value": "llm"
               },
               {
-                "line": 3948,
+                "line": 3951,
                 "value": "file"
               },
               {
-                "line": 3949,
+                "line": 3952,
                 "value": "src/big.rs"
               },
               {
-                "line": 3951,
+                "line": 3954,
                 "value": "2026-06-16T00:00:00+00:00"
               },
               {
-                "line": 3955,
+                "line": 3958,
                 "value": "src/big.rs"
               },
               {
-                "line": 3956,
+                "line": 3959,
                 "value": "2026-06-15T00:00:00+00:00"
               },
               {
-                "line": 3958,
+                "line": 3961,
                 "value": "method"
               },
               {
-                "line": 3959,
+                "line": 3962,
                 "value": "method parse_everything"
               },
               {
-                "line": 3968,
+                "line": 3971,
                 "value": "large_behavioral_symbol"
               },
               {
-                "line": 3969,
+                "line": 3972,
                 "value": "a current file decision suppresses the open finding"
               },
               {
-                "line": 3974,
+                "line": 3977,
                 "value": "large_behavioral_symbol"
               },
               {
-                "line": 3975,
+                "line": 3978,
                 "value": "parse_everything"
               },
               {
-                "line": 3976,
+                "line": 3979,
                 "value": "suppressed finding should be visible as adjudicated"
               }
             ],
@@ -33917,38 +33956,18 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn data_declarations_do_not_group_by_shape_hash",
-            "line_end": 3732,
-            "line_start": 3717,
+            "line_end": 3735,
+            "line_start": 3720,
             "name": "data_declarations_do_not_group_by_shape_hash",
             "shape_hash": "6563a86f0eb6dd4b",
             "string_literals": [
               {
-                "line": 3718,
+                "line": 3721,
                 "value": "Alpha"
               },
               {
-                "line": 3718,
+                "line": 3721,
                 "value": "BODY_A"
-              },
-              {
-                "line": 3718,
-                "value": "SHAPE"
-              },
-              {
-                "line": 3719,
-                "value": "struct"
-              },
-              {
-                "line": 3720,
-                "value": "struct Alpha"
-              },
-              {
-                "line": 3721,
-                "value": "Beta"
-              },
-              {
-                "line": 3721,
-                "value": "BODY_B"
               },
               {
                 "line": 3721,
@@ -33960,18 +33979,38 @@
               },
               {
                 "line": 3723,
-                "value": "struct Beta"
+                "value": "struct Alpha"
+              },
+              {
+                "line": 3724,
+                "value": "Beta"
+              },
+              {
+                "line": 3724,
+                "value": "BODY_B"
+              },
+              {
+                "line": 3724,
+                "value": "SHAPE"
               },
               {
                 "line": 3725,
-                "value": "src/a.rs"
+                "value": "struct"
               },
               {
                 "line": 3726,
+                "value": "struct Beta"
+              },
+              {
+                "line": 3728,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 3729,
                 "value": "src/b.rs"
               },
               {
-                "line": 3730,
+                "line": 3733,
                 "value": "passive data declarations stay exact-text only"
               }
             ],
@@ -33982,45 +34021,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn empty_body_hash_is_unarmed_and_silent",
-            "line_end": 3800,
-            "line_start": 3791,
+            "line_end": 3803,
+            "line_start": 3794,
             "name": "empty_body_hash_is_unarmed_and_silent",
             "shape_hash": "b77a2ae5a7b5f37d",
             "string_literals": [
               {
-                "line": 3793,
+                "line": 3796,
                 "value": "src/a.rs"
               },
               {
-                "line": 3793,
+                "line": 3796,
                 "value": "alpha"
               },
               {
-                "line": 3793,
+                "line": 3796,
                 "value": ""
               },
               {
-                "line": 3793,
+                "line": 3796,
                 "value": ""
               },
               {
-                "line": 3794,
+                "line": 3797,
                 "value": "src/b.rs"
               },
               {
-                "line": 3794,
+                "line": 3797,
                 "value": "beta"
               },
               {
-                "line": 3794,
+                "line": 3797,
                 "value": ""
               },
               {
-                "line": 3794,
+                "line": 3797,
                 "value": ""
               },
               {
-                "line": 3798,
+                "line": 3801,
                 "value": "pre-v8 / feature-light facts carry no hash → instrument unarmed"
               }
             ],
@@ -34031,81 +34070,81 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_a_leaf_proven_only_by_a_test_in_other_files",
-            "line_end": 3441,
-            "line_start": 3412,
+            "line_end": 3444,
+            "line_start": 3415,
             "name": "flags_a_leaf_proven_only_by_a_test_in_other_files",
             "shape_hash": "a3712b9fff572d69",
             "string_literals": [
               {
-                "line": 3414,
+                "line": 3417,
                 "value": "src/commands/intent.rs"
               },
               {
-                "line": 3414,
+                "line": 3417,
                 "value": "delete_intent"
               },
               {
-                "line": 3415,
+                "line": 3418,
                 "value": "src/db/queries/intent.rs"
               },
               {
-                "line": 3415,
+                "line": 3418,
                 "value": "retire_is_invisible"
               },
               {
-                "line": 3417,
+                "line": 3420,
                 "value": "i1"
-              },
-              {
-                "line": 3417,
-                "value": "intent retirement contract"
-              },
-              {
-                "line": 3418,
-                "value": "i1"
-              },
-              {
-                "line": 3418,
-                "value": "src/commands/intent.rs"
               },
               {
                 "line": 3420,
-                "value": "v1"
-              },
-              {
-                "line": 3421,
-                "value": "test"
-              },
-              {
-                "line": 3422,
-                "value": "cargo test retire_is_invisible"
-              },
-              {
-                "line": 3423,
-                "value": "passed"
-              },
-              {
-                "line": 3425,
-                "value": "v1"
-              },
-              {
-                "line": 3425,
-                "value": "i1"
-              },
-              {
-                "line": 3434,
-                "value": "a non-local test proof should flag: {out:?}"
-              },
-              {
-                "line": 3435,
-                "value": "nonlocal_proof"
-              },
-              {
-                "line": 3437,
                 "value": "intent retirement contract"
               },
               {
+                "line": 3421,
+                "value": "i1"
+              },
+              {
+                "line": 3421,
+                "value": "src/commands/intent.rs"
+              },
+              {
+                "line": 3423,
+                "value": "v1"
+              },
+              {
+                "line": 3424,
+                "value": "test"
+              },
+              {
+                "line": 3425,
+                "value": "cargo test retire_is_invisible"
+              },
+              {
+                "line": 3426,
+                "value": "passed"
+              },
+              {
+                "line": 3428,
+                "value": "v1"
+              },
+              {
+                "line": 3428,
+                "value": "i1"
+              },
+              {
+                "line": 3437,
+                "value": "a non-local test proof should flag: {out:?}"
+              },
+              {
                 "line": 3438,
+                "value": "nonlocal_proof"
+              },
+              {
+                "line": 3440,
+                "value": "intent retirement contract"
+              },
+              {
+                "line": 3441,
                 "value": "{}"
               }
             ],
@@ -34116,33 +34155,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn history",
-            "line_end": 2812,
-            "line_start": 2803,
+            "line_end": 2815,
+            "line_start": 2806,
             "name": "history",
             "shape_hash": "5b5e05b800e1c9c5",
             "string_literals": [
               {
-                "line": 2806,
+                "line": 2809,
                 "value": "src/hub.rs"
               },
               {
-                "line": 2807,
+                "line": 2810,
                 "value": "src/p1.rs"
               },
               {
-                "line": 2807,
+                "line": 2810,
                 "value": "src/p2.rs"
               },
               {
-                "line": 2807,
+                "line": 2810,
                 "value": "src/p3.rs"
               },
               {
-                "line": 2807,
+                "line": 2810,
                 "value": "src/p4.rs"
               },
               {
-                "line": 2809,
+                "line": 2812,
                 "value": "src/hub.rs"
               }
             ],
@@ -34153,21 +34192,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn hub_changing_with_many_unrelated_intents_flags",
-            "line_end": 2823,
-            "line_start": 2815,
+            "line_end": 2826,
+            "line_start": 2818,
             "name": "hub_changing_with_many_unrelated_intents_flags",
             "shape_hash": "53bb5bcedd8a3063",
             "string_literals": [
               {
-                "line": 2820,
+                "line": 2823,
                 "value": "shotgun_surgery"
               },
               {
-                "line": 2820,
+                "line": 2823,
                 "value": "hub behavior"
               },
               {
-                "line": 2821,
+                "line": 2824,
                 "value": "{out:?}"
               }
             ],
@@ -34178,25 +34217,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 2746,
-            "line_start": 2729,
+            "line_end": 2749,
+            "line_start": 2732,
             "name": "imp",
             "shape_hash": "477d226abc24b7d2",
             "string_literals": [
               {
-                "line": 2731,
+                "line": 2734,
                 "value": "{intent_id}:{path}"
               },
               {
-                "line": 2737,
+                "line": 2740,
                 "value": "t"
               },
               {
-                "line": 2738,
+                "line": 2741,
                 "value": "passing"
               },
               {
-                "line": 2739,
+                "line": 2742,
                 "value": "t"
               }
             ],
@@ -34207,33 +34246,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent",
-            "line_end": 2714,
-            "line_start": 2696,
+            "line_end": 2717,
+            "line_start": 2699,
             "name": "intent",
             "shape_hash": "8be1dc5ebff084df",
             "string_literals": [
               {
-                "line": 2701,
+                "line": 2704,
                 "value": "feature"
               },
               {
-                "line": 2705,
+                "line": 2708,
                 "value": "confirmed"
               },
               {
-                "line": 2708,
+                "line": 2711,
                 "value": "internal"
               },
               {
-                "line": 2710,
+                "line": 2713,
                 "value": "implemented"
               },
               {
-                "line": 2711,
+                "line": 2714,
                 "value": "t"
               },
               {
-                "line": 2712,
+                "line": 2715,
                 "value": "t"
               }
             ],
@@ -34244,41 +34283,41 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intra_file_repetition_is_not_a_cross_file_clone",
-            "line_end": 3788,
-            "line_start": 3776,
+            "line_end": 3791,
+            "line_start": 3779,
             "name": "intra_file_repetition_is_not_a_cross_file_clone",
             "shape_hash": "2d86acec568364d4",
             "string_literals": [
               {
-                "line": 3778,
+                "line": 3781,
                 "value": "src/a.rs"
               },
               {
-                "line": 3780,
+                "line": 3783,
                 "value": "alpha"
               },
               {
-                "line": 3780,
+                "line": 3783,
                 "value": "HASH"
               },
               {
-                "line": 3780,
+                "line": 3783,
                 "value": ""
               },
               {
-                "line": 3781,
+                "line": 3784,
                 "value": "beta"
               },
               {
-                "line": 3781,
+                "line": 3784,
                 "value": "HASH"
               },
               {
-                "line": 3781,
+                "line": 3784,
                 "value": ""
               },
               {
-                "line": 3786,
+                "line": 3789,
                 "value": "intra-file repetition is tangled_file's concern, not a cross-file clone"
               }
             ],
@@ -34289,41 +34328,41 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn island_detector_is_unarmed_without_a_system_root",
-            "line_end": 4474,
-            "line_start": 4465,
+            "line_end": 4477,
+            "line_start": 4468,
             "name": "island_detector_is_unarmed_without_a_system_root",
             "shape_hash": "4d06070e7bdcf492",
             "string_literals": [
               {
-                "line": 4467,
+                "line": 4470,
                 "value": "a"
               },
               {
-                "line": 4467,
+                "line": 4470,
                 "value": "feature"
               },
               {
-                "line": 4467,
+                "line": 4470,
                 "value": "b"
               },
               {
-                "line": 4467,
+                "line": 4470,
                 "value": "feature"
-              },
-              {
-                "line": 4468,
-                "value": "a"
-              },
-              {
-                "line": 4468,
-                "value": "b"
               },
               {
                 "line": 4471,
+                "value": "a"
+              },
+              {
+                "line": 4471,
+                "value": "b"
+              },
+              {
+                "line": 4474,
                 "value": "intent_island"
               },
               {
-                "line": 4472,
+                "line": 4475,
                 "value": "silent without a system root (missing-root is a different problem)"
               }
             ],
@@ -34334,33 +34373,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn leaf",
-            "line_end": 3319,
-            "line_start": 3301,
+            "line_end": 3322,
+            "line_start": 3304,
             "name": "leaf",
             "shape_hash": "8be1dc5ebff084df",
             "string_literals": [
               {
-                "line": 3306,
+                "line": 3309,
                 "value": "feature"
               },
               {
-                "line": 3310,
+                "line": 3313,
                 "value": "confirmed"
               },
               {
-                "line": 3313,
+                "line": 3316,
                 "value": "internal"
               },
               {
-                "line": 3315,
+                "line": 3318,
                 "value": "implemented"
               },
               {
-                "line": 3316,
+                "line": 3319,
                 "value": "t"
               },
               {
-                "line": 3317,
+                "line": 3320,
                 "value": "t"
               }
             ],
@@ -34381,13 +34420,13 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn linked_partner_reduces_pressure_below_threshold",
-            "line_end": 2832,
-            "line_start": 2826,
+            "line_end": 2835,
+            "line_start": 2829,
             "name": "linked_partner_reduces_pressure_below_threshold",
             "shape_hash": "e96a0f097243ae65",
             "string_literals": [
               {
-                "line": 2830,
+                "line": 2833,
                 "value": "one linked partner leaves only three unrelated partners"
               }
             ],
@@ -34397,25 +34436,25 @@
             "body_hash": "b3500edb49b3029a",
             "kind": "fn",
             "label": "fn locate_test_proof",
-            "line_end": 3028,
-            "line_start": 3002,
+            "line_end": 3031,
+            "line_start": 3005,
             "name": "locate_test_proof",
             "shape_hash": "c4b82036937c2016",
             "string_literals": [
               {
-                "line": 3009,
+                "line": 3012,
                 "value": "::"
               },
               {
-                "line": 3011,
+                "line": 3014,
                 "value": "::tests"
               },
               {
-                "line": 3012,
+                "line": 3015,
                 "value": "::"
               },
               {
-                "line": 3012,
+                "line": 3015,
                 "value": "/"
               }
             ],
@@ -34426,61 +34465,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn no_symbol_facts_means_the_instrument_is_unarmed",
-            "line_end": 3617,
-            "line_start": 3593,
+            "line_end": 3620,
+            "line_start": 3596,
             "name": "no_symbol_facts_means_the_instrument_is_unarmed",
             "shape_hash": "92be16ddcb1229c0",
             "string_literals": [
               {
-                "line": 3595,
+                "line": 3598,
                 "value": "src/commands/intent.rs"
               },
               {
-                "line": 3595,
+                "line": 3598,
                 "value": "delete_intent"
               },
               {
-                "line": 3596,
+                "line": 3599,
                 "value": "i1"
-              },
-              {
-                "line": 3596,
-                "value": "intent retirement contract"
-              },
-              {
-                "line": 3597,
-                "value": "i1"
-              },
-              {
-                "line": 3597,
-                "value": "src/commands/intent.rs"
               },
               {
                 "line": 3599,
-                "value": "v1"
+                "value": "intent retirement contract"
               },
               {
                 "line": 3600,
-                "value": "test"
-              },
-              {
-                "line": 3601,
-                "value": "cargo test retire_is_invisible"
-              },
-              {
-                "line": 3602,
-                "value": "passed"
-              },
-              {
-                "line": 3604,
-                "value": "v1"
-              },
-              {
-                "line": 3604,
                 "value": "i1"
               },
               {
-                "line": 3615,
+                "line": 3600,
+                "value": "src/commands/intent.rs"
+              },
+              {
+                "line": 3602,
+                "value": "v1"
+              },
+              {
+                "line": 3603,
+                "value": "test"
+              },
+              {
+                "line": 3604,
+                "value": "cargo test retire_is_invisible"
+              },
+              {
+                "line": 3605,
+                "value": "passed"
+              },
+              {
+                "line": 3607,
+                "value": "v1"
+              },
+              {
+                "line": 3607,
+                "value": "i1"
+              },
+              {
+                "line": 3618,
                 "value": "no symbol facts → unarmed → silent: {out:?}"
               }
             ],
@@ -34491,45 +34530,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn non_test_behavioral_symbol_at_threshold_is_open",
-            "line_end": 3901,
-            "line_start": 3875,
+            "line_end": 3904,
+            "line_start": 3878,
             "name": "non_test_behavioral_symbol_at_threshold_is_open",
             "shape_hash": "e3b9a8ba3e223aff",
             "string_literals": [
               {
-                "line": 3878,
+                "line": 3881,
                 "value": "src/big.rs"
               },
               {
-                "line": 3879,
+                "line": 3882,
                 "value": "2026-06-15T00:00:00+00:00"
               },
               {
-                "line": 3881,
+                "line": 3884,
                 "value": "fn"
               },
               {
-                "line": 3882,
+                "line": 3885,
                 "value": "fn huge_behavior"
               },
               {
-                "line": 3890,
+                "line": 3893,
                 "value": "large_behavioral_symbol"
               },
               {
-                "line": 3891,
+                "line": 3894,
                 "value": "large behavior should flag once: {found:?}"
               },
               {
-                "line": 3892,
+                "line": 3895,
                 "value": "huge_behavior"
               },
               {
-                "line": 3894,
+                "line": 3897,
                 "value": "above the {}-line threshold"
               },
               {
-                "line": 3899,
+                "line": 3902,
                 "value": "large_behavioral_symbol"
               }
             ],
@@ -34539,13 +34578,13 @@
             "body_hash": "107576570f6ef039",
             "kind": "fn",
             "label": "fn normalized_contract_string",
-            "line_end": 3266,
-            "line_start": 3252,
+            "line_end": 3269,
+            "line_start": 3255,
             "name": "normalized_contract_string",
             "shape_hash": "9f7687a590ee7003",
             "string_literals": [
               {
-                "line": 3253,
+                "line": 3256,
                 "value": " "
               }
             ],
@@ -34556,8 +34595,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn of_kind",
-            "line_end": 3872,
-            "line_start": 3870,
+            "line_end": 3875,
+            "line_start": 3873,
             "name": "of_kind",
             "shape_hash": "19dbbfac27c4ec5b",
             "visibility": "private"
@@ -34567,57 +34606,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn panic_marker_file_decision_adjudicates",
-            "line_end": 4204,
-            "line_start": 4184,
+            "line_end": 4207,
+            "line_start": 4187,
             "name": "panic_marker_file_decision_adjudicates",
             "shape_hash": "71f027018399a105",
             "string_literals": [
               {
-                "line": 4186,
+                "line": 4189,
                 "value": "n1"
               },
               {
-                "line": 4187,
+                "line": 4190,
                 "value": "decision"
               },
               {
-                "line": 4188,
+                "line": 4191,
                 "value": "unwraps are construction-time invariants here"
               },
               {
-                "line": 4189,
+                "line": 4192,
                 "value": "llm"
               },
               {
-                "line": 4190,
+                "line": 4193,
                 "value": "file"
               },
               {
-                "line": 4191,
+                "line": 4194,
                 "value": "src/a.rs"
               },
               {
-                "line": 4193,
+                "line": 4196,
                 "value": "2026-06-16T00:00:00+00:00"
               },
               {
-                "line": 4197,
+                "line": 4200,
                 "value": "src/a.rs"
               },
               {
-                "line": 4198,
+                "line": 4201,
                 "value": "fn alpha"
               },
               {
-                "line": 4198,
+                "line": 4201,
                 "value": "unwrap"
               },
               {
-                "line": 4202,
+                "line": 4205,
                 "value": "panic_marker_risk"
               },
               {
-                "line": 4203,
+                "line": 4206,
                 "value": "panic_marker_risk"
               }
             ],
@@ -34628,41 +34667,41 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn panic_marker_in_behavior_flags",
-            "line_end": 4181,
-            "line_start": 4169,
+            "line_end": 4184,
+            "line_start": 4172,
             "name": "panic_marker_in_behavior_flags",
             "shape_hash": "a2ee05748304da62",
             "string_literals": [
               {
-                "line": 4172,
+                "line": 4175,
                 "value": "src/commands/run.rs"
               },
               {
-                "line": 4173,
+                "line": 4176,
                 "value": "fn run"
               },
               {
-                "line": 4173,
+                "line": 4176,
                 "value": "unwrap"
               },
               {
-                "line": 4173,
+                "line": 4176,
                 "value": "expect"
               },
               {
-                "line": 4177,
+                "line": 4180,
                 "value": "panic_marker_risk"
               },
               {
-                "line": 4178,
+                "line": 4181,
                 "value": "panic marker should flag: {found:?}"
               },
               {
-                "line": 4179,
+                "line": 4182,
                 "value": "markers=[unwrap, expect]"
               },
               {
-                "line": 4180,
+                "line": 4183,
                 "value": "command/public surface"
               }
             ],
@@ -34672,13 +34711,13 @@
             "body_hash": "3d5fba833195903c",
             "kind": "fn",
             "label": "fn parent_dir",
-            "line_end": 3099,
-            "line_start": 3097,
+            "line_end": 3102,
+            "line_start": 3100,
             "name": "parent_dir",
             "shape_hash": "769c74eb2d2c2be4",
             "string_literals": [
               {
-                "line": 3098,
+                "line": 3101,
                 "value": ""
               }
             ],
@@ -34688,73 +34727,73 @@
             "body_hash": "7e8d21c631604527",
             "kind": "fn",
             "label": "fn parse_cargo_test_selectors",
-            "line_end": 3083,
-            "line_start": 3033,
+            "line_end": 3086,
+            "line_start": 3036,
             "name": "parse_cargo_test_selectors",
             "shape_hash": "e994e35886ecfee5",
             "string_literals": [
               {
-                "line": 3034,
+                "line": 3037,
                 "value": "cargo test"
               },
               {
-                "line": 3042,
+                "line": 3045,
                 "value": "test"
               },
               {
-                "line": 3049,
+                "line": 3052,
                 "value": "2>"
               },
               {
-                "line": 3050,
+                "line": 3053,
                 "value": "1>"
               },
               {
-                "line": 3051,
+                "line": 3054,
                 "value": "|"
               },
               {
-                "line": 3052,
+                "line": 3055,
                 "value": "&&"
               },
               {
-                "line": 3053,
+                "line": 3056,
                 "value": ";"
               },
               {
-                "line": 3061,
+                "line": 3064,
                 "value": "--"
               },
               {
-                "line": 3067,
+                "line": 3070,
                 "value": "--bin"
               },
               {
-                "line": 3068,
+                "line": 3071,
                 "value": "-p"
               },
               {
-                "line": 3069,
+                "line": 3072,
                 "value": "--package"
               },
               {
-                "line": 3070,
+                "line": 3073,
                 "value": "--example"
               },
               {
-                "line": 3071,
+                "line": 3074,
                 "value": "--test"
               },
               {
-                "line": 3072,
+                "line": 3075,
                 "value": "--features"
               },
               {
-                "line": 3073,
+                "line": 3076,
                 "value": "--manifest-path"
               },
               {
-                "line": 3074,
+                "line": 3077,
                 "value": "--target"
               }
             ],
@@ -34764,25 +34803,25 @@
             "body_hash": "d3f67f8e0d692538",
             "kind": "fn",
             "label": "fn path_matches_module",
-            "line_end": 3093,
-            "line_start": 3088,
+            "line_end": 3096,
+            "line_start": 3091,
             "name": "path_matches_module",
             "shape_hash": "426e7a46ddf2a788",
             "string_literals": [
               {
-                "line": 3089,
+                "line": 3092,
                 "value": "/{frag}/"
               },
               {
-                "line": 3090,
+                "line": 3093,
                 "value": "/{frag}.rs"
               },
               {
-                "line": 3091,
+                "line": 3094,
                 "value": "{frag}.rs"
               },
               {
-                "line": 3092,
+                "line": 3095,
                 "value": "/{frag}/mod.rs"
               }
             ],
@@ -34793,61 +34832,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn proof_locality_from_parts",
-            "line_end": 2997,
-            "line_start": 2871,
+            "line_end": 3000,
+            "line_start": 2874,
             "name": "proof_locality_from_parts",
             "shape_hash": "8504a94e8c44f399",
             "string_literals": [
               {
-                "line": 2915,
+                "line": 2918,
                 "value": "passed"
               },
               {
-                "line": 2923,
+                "line": 2926,
                 "value": "deprecated"
               },
               {
-                "line": 2927,
+                "line": 2930,
                 "value": "implemented"
               },
               {
-                "line": 2931,
+                "line": 2934,
                 "value": "implemented"
               },
               {
-                "line": 2941,
+                "line": 2944,
                 "value": "test"
               },
               {
-                "line": 2968,
+                "line": 2971,
                 "value": "nonlocal_proof"
               },
               {
-                "line": 2971,
+                "line": 2974,
                 "value": "'{}' reads as proven, but its only test proof lives outside its grounded module"
               },
               {
-                "line": 2975,
+                "line": 2978,
                 "value": "grounded in [{}] · proven only by test(s) [{}] that resolve to OTHER modules — the grounded code may have no test in its own module (partial-coverage overstatement of the `proven` axis)"
               },
               {
-                "line": 2976,
+                "line": 2979,
                 "value": ", "
               },
               {
-                "line": 2977,
+                "line": 2980,
                 "value": "; "
               },
               {
-                "line": 2980,
+                "line": 2983,
                 "value": "add a test that exercises {} and link it (`loom validation add … --type test` + `loom edge validates <validation> {}`), fix the IMPLEMENTS locator if the grounding is wrong, or accept it (`loom note add --intent {} --kind decision --text \\\"<why the existing proof covers this code>\\\"`)"
               },
               {
-                "line": 2981,
+                "line": 2984,
                 "value": "the grounded file"
               },
               {
-                "line": 2985,
+                "line": 2988,
                 "value": "nonlocal_proof"
               }
             ],
@@ -34858,57 +34897,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
-            "line_end": 4405,
-            "line_start": 4393,
+            "line_end": 4408,
+            "line_start": 4396,
             "name": "reciprocal_pair_evidence_surfaces_disagreeing_verdicts",
             "shape_hash": "343f2477265e97a6",
             "string_literals": [
               {
-                "line": 4395,
+                "line": 4398,
                 "value": "a"
-              },
-              {
-                "line": 4395,
-                "value": "b"
-              },
-              {
-                "line": 4396,
-                "value": "a"
-              },
-              {
-                "line": 4396,
-                "value": "b"
-              },
-              {
-                "line": 4396,
-                "value": "passing"
-              },
-              {
-                "line": 4396,
-                "value": "b"
-              },
-              {
-                "line": 4396,
-                "value": "a"
-              },
-              {
-                "line": 4396,
-                "value": "failing"
               },
               {
                 "line": 4398,
-                "value": "dependency_cycle"
+                "value": "b"
               },
               {
-                "line": 4401,
+                "line": 4399,
+                "value": "a"
+              },
+              {
+                "line": 4399,
+                "value": "b"
+              },
+              {
+                "line": 4399,
                 "value": "passing"
               },
               {
-                "line": 4401,
+                "line": 4399,
+                "value": "b"
+              },
+              {
+                "line": 4399,
+                "value": "a"
+              },
+              {
+                "line": 4399,
                 "value": "failing"
               },
               {
-                "line": 4402,
+                "line": 4401,
+                "value": "dependency_cycle"
+              },
+              {
+                "line": 4404,
+                "value": "passing"
+              },
+              {
+                "line": 4404,
+                "value": "failing"
+              },
+              {
+                "line": 4405,
                 "value": "evidence surfaces the disagreement: {}"
               }
             ],
@@ -34967,21 +35006,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rel",
-            "line_end": 2764,
-            "line_start": 2748,
+            "line_end": 2767,
+            "line_start": 2751,
             "name": "rel",
             "shape_hash": "8c4f68aa83200909",
             "string_literals": [
               {
-                "line": 2750,
+                "line": 2753,
                 "value": "{a}:{b}"
               },
               {
-                "line": 2755,
+                "line": 2758,
                 "value": "passing"
               },
               {
-                "line": 2756,
+                "line": 2759,
                 "value": "t"
               }
             ],
@@ -34992,33 +35031,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rel_st",
-            "line_end": 4261,
-            "line_start": 4239,
+            "line_end": 4264,
+            "line_start": 4242,
             "name": "rel_st",
             "shape_hash": "95720997d540fcde",
             "string_literals": [
               {
-                "line": 4243,
+                "line": 4246,
                 "value": "passing"
               },
               {
-                "line": 4243,
+                "line": 4246,
                 "value": "failing"
               },
               {
-                "line": 4243,
+                "line": 4246,
                 "value": "needs_reverification"
               },
               {
-                "line": 4243,
+                "line": 4246,
                 "value": "2026-06-15T00:00:00+00:00"
               },
               {
-                "line": 4244,
+                "line": 4247,
                 "value": ""
               },
               {
-                "line": 4247,
+                "line": 4250,
                 "value": "rt:{from}:{to}"
               }
             ],
@@ -35029,49 +35068,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn repeated_long_string_contract_flags_once",
-            "line_end": 4139,
-            "line_start": 4125,
+            "line_end": 4142,
+            "line_start": 4128,
             "name": "repeated_long_string_contract_flags_once",
             "shape_hash": "13980b4222fd828f",
             "string_literals": [
               {
-                "line": 4126,
+                "line": 4129,
                 "value": "Run loom sync before reading the status output again"
               },
               {
-                "line": 4129,
+                "line": 4132,
                 "value": "src/a.rs"
               },
               {
-                "line": 4129,
+                "line": 4132,
                 "value": "fn alpha"
               },
               {
-                "line": 4130,
+                "line": 4133,
                 "value": "src/b.rs"
               },
               {
-                "line": 4130,
+                "line": 4133,
                 "value": "fn beta"
               },
               {
-                "line": 4134,
+                "line": 4137,
                 "value": "string_contract_duplicate"
               },
               {
-                "line": 4135,
+                "line": 4138,
                 "value": "repeated contract should flag: {found:?}"
               },
               {
-                "line": 4136,
+                "line": 4139,
                 "value": "string contract repeated"
               },
               {
-                "line": 4137,
+                "line": 4140,
                 "value": "src/a.rs:4"
               },
               {
-                "line": 4138,
+                "line": 4141,
                 "value": "src/b.rs:9"
               }
             ],
@@ -35082,8 +35121,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn report",
-            "line_end": 3868,
-            "line_start": 3844,
+            "line_end": 3871,
+            "line_start": 3847,
             "name": "report",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -35097,8 +35136,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn report_with_notes",
-            "line_end": 4300,
-            "line_start": 4271,
+            "line_end": 4303,
+            "line_start": 4274,
             "name": "report_with_notes",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -35112,25 +35151,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rooted",
-            "line_end": 4316,
-            "line_start": 4308,
+            "line_end": 4319,
+            "line_start": 4311,
             "name": "rooted",
             "shape_hash": "c616c6271a8aa0c2",
             "string_literals": [
               {
-                "line": 4309,
+                "line": 4312,
                 "value": "sys"
               },
               {
-                "line": 4309,
+                "line": 4312,
                 "value": "system"
               },
               {
-                "line": 4312,
+                "line": 4315,
                 "value": "feature"
               },
               {
-                "line": 4313,
+                "line": 4316,
                 "value": "sys"
               }
             ],
@@ -35140,8 +35179,8 @@
             "body_hash": "e5279229b45e61ec",
             "kind": "fn",
             "label": "fn shape_hash_eligible",
-            "line_end": 3228,
-            "line_start": 3226,
+            "line_end": 3231,
+            "line_start": 3229,
             "name": "shape_hash_eligible",
             "shape_hash": "c4a526a90acc3762",
             "visibility": "private"
@@ -35151,49 +35190,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn shared_shape_hash_flags_renamed_clone",
-            "line_end": 3714,
-            "line_start": 3696,
+            "line_end": 3717,
+            "line_start": 3699,
             "name": "shared_shape_hash_flags_renamed_clone",
             "shape_hash": "52685397f3d6f441",
             "string_literals": [
               {
-                "line": 3699,
+                "line": 3702,
                 "value": "src/a.rs"
               },
               {
-                "line": 3700,
+                "line": 3703,
                 "value": "alpha"
               },
               {
-                "line": 3700,
+                "line": 3703,
                 "value": "BODY_A"
               },
               {
-                "line": 3700,
+                "line": 3703,
                 "value": "SHAPE"
               },
               {
-                "line": 3703,
+                "line": 3706,
                 "value": "src/b.rs"
               },
               {
-                "line": 3704,
+                "line": 3707,
                 "value": "beta"
               },
               {
-                "line": 3704,
+                "line": 3707,
                 "value": "BODY_B"
               },
               {
-                "line": 3704,
+                "line": 3707,
                 "value": "SHAPE"
               },
               {
-                "line": 3711,
+                "line": 3714,
                 "value": "a normalized cross-file clone should flag once: {out:?}"
               },
               {
-                "line": 3713,
+                "line": 3716,
                 "value": "shape_hash"
               }
             ],
@@ -35203,13 +35242,13 @@
             "body_hash": "fc2ad799c4312454",
             "kind": "fn",
             "label": "fn short_contract_excerpt",
-            "line_end": 3294,
-            "line_start": 3286,
+            "line_end": 3297,
+            "line_start": 3289,
             "name": "short_contract_excerpt",
             "shape_hash": "fb0a0a9b238adb67",
             "string_literals": [
               {
-                "line": 3287,
+                "line": 3290,
                 "value": " "
               }
             ],
@@ -35220,57 +35259,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn short_or_path_like_strings_do_not_flag",
-            "line_end": 4166,
-            "line_start": 4142,
+            "line_end": 4169,
+            "line_start": 4145,
             "name": "short_or_path_like_strings_do_not_flag",
             "shape_hash": "689164b22a6081dc",
             "string_literals": [
               {
-                "line": 4146,
+                "line": 4149,
                 "value": "src/a.rs"
               },
               {
-                "line": 4148,
+                "line": 4151,
                 "value": "fn alpha"
               },
               {
-                "line": 4148,
+                "line": 4151,
                 "value": "tiny label"
               },
               {
-                "line": 4149,
+                "line": 4152,
                 "value": "fn beta"
               },
               {
-                "line": 4149,
+                "line": 4152,
                 "value": "src/db/queries/smells.rs"
               },
               {
-                "line": 4153,
+                "line": 4156,
                 "value": "src/b.rs"
               },
               {
-                "line": 4155,
+                "line": 4158,
                 "value": "fn gamma"
               },
               {
-                "line": 4155,
+                "line": 4158,
                 "value": "tiny label"
               },
               {
-                "line": 4156,
+                "line": 4159,
                 "value": "fn delta"
               },
               {
-                "line": 4156,
+                "line": 4159,
                 "value": "src/db/queries/smells.rs"
               },
               {
-                "line": 4163,
+                "line": 4166,
                 "value": "string_contract_duplicate"
               },
               {
-                "line": 4164,
+                "line": 4167,
                 "value": "trivial strings should stay quiet"
               }
             ],
@@ -35281,117 +35320,117 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn snap",
-            "line_end": 2801,
-            "line_start": 2766,
+            "line_end": 2804,
+            "line_start": 2769,
             "name": "snap",
             "shape_hash": "4693079319eb9acf",
             "string_literals": [
               {
-                "line": 2769,
+                "line": 2772,
                 "value": "hub"
               },
               {
-                "line": 2769,
+                "line": 2772,
                 "value": "p4"
               },
               {
-                "line": 2773,
+                "line": 2776,
                 "value": "hub"
               },
               {
-                "line": 2773,
+                "line": 2776,
                 "value": "hub behavior"
               },
               {
-                "line": 2774,
+                "line": 2777,
                 "value": "p1"
               },
               {
-                "line": 2774,
+                "line": 2777,
                 "value": "partner one"
               },
               {
-                "line": 2775,
+                "line": 2778,
                 "value": "p2"
               },
               {
-                "line": 2775,
+                "line": 2778,
                 "value": "partner two"
               },
               {
-                "line": 2776,
+                "line": 2779,
                 "value": "p3"
               },
               {
-                "line": 2776,
+                "line": 2779,
                 "value": "partner three"
               },
               {
-                "line": 2777,
+                "line": 2780,
                 "value": "p4"
               },
               {
-                "line": 2777,
+                "line": 2780,
                 "value": "partner four"
               },
               {
-                "line": 2786,
+                "line": 2789,
                 "value": "hub"
               },
               {
-                "line": 2786,
+                "line": 2789,
                 "value": "src/hub.rs"
               },
               {
-                "line": 2787,
+                "line": 2790,
                 "value": "p1"
               },
               {
-                "line": 2787,
+                "line": 2790,
                 "value": "src/p1.rs"
               },
               {
-                "line": 2788,
+                "line": 2791,
                 "value": "p2"
               },
               {
-                "line": 2788,
+                "line": 2791,
                 "value": "src/p2.rs"
               },
               {
-                "line": 2789,
+                "line": 2792,
                 "value": "p3"
               },
               {
-                "line": 2789,
+                "line": 2792,
                 "value": "src/p3.rs"
-              },
-              {
-                "line": 2790,
-                "value": "p4"
-              },
-              {
-                "line": 2790,
-                "value": "src/p4.rs"
               },
               {
                 "line": 2793,
-                "value": "src/hub.rs"
+                "value": "p4"
               },
               {
-                "line": 2794,
-                "value": "src/p1.rs"
-              },
-              {
-                "line": 2795,
-                "value": "src/p2.rs"
+                "line": 2793,
+                "value": "src/p4.rs"
               },
               {
                 "line": 2796,
-                "value": "src/p3.rs"
+                "value": "src/hub.rs"
               },
               {
                 "line": 2797,
+                "value": "src/p1.rs"
+              },
+              {
+                "line": 2798,
+                "value": "src/p2.rs"
+              },
+              {
+                "line": 2799,
+                "value": "src/p3.rs"
+              },
+              {
+                "line": 2800,
                 "value": "src/p4.rs"
               }
             ],
@@ -35401,65 +35440,65 @@
             "body_hash": "fe873ae6c241527a",
             "kind": "fn",
             "label": "fn string_contract_is_noise",
-            "line_end": 3284,
-            "line_start": 3268,
+            "line_end": 3287,
+            "line_start": 3271,
             "name": "string_contract_is_noise",
             "shape_hash": "1894a5a724f73884",
             "string_literals": [
               {
-                "line": 3270,
+                "line": 3273,
                 "value": "http://"
               },
               {
-                "line": 3271,
+                "line": 3274,
                 "value": "https://"
               },
               {
-                "line": 3272,
+                "line": 3275,
                 "value": "file://"
               },
               {
-                "line": 3273,
+                "line": 3276,
                 "value": "src/"
               },
               {
-                "line": 3274,
+                "line": 3277,
                 "value": ".rs"
               },
               {
-                "line": 3275,
+                "line": 3278,
                 "value": ".ts"
               },
               {
-                "line": 3276,
+                "line": 3279,
                 "value": ".tsx"
               },
               {
-                "line": 3277,
+                "line": 3280,
                 "value": ".js"
               },
               {
-                "line": 3278,
+                "line": 3281,
                 "value": ".py"
               },
               {
-                "line": 3279,
+                "line": 3282,
                 "value": ".json"
               },
               {
-                "line": 3280,
+                "line": 3283,
                 "value": ".yaml"
               },
               {
-                "line": 3281,
+                "line": 3284,
                 "value": ".yml"
               },
               {
-                "line": 3282,
+                "line": 3285,
                 "value": "::{"
               },
               {
-                "line": 3283,
+                "line": 3286,
                 "value": "use "
               }
             ],
@@ -35470,21 +35509,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn sym",
-            "line_end": 3647,
-            "line_start": 3625,
+            "line_end": 3650,
+            "line_start": 3628,
             "name": "sym",
             "shape_hash": "e19c18ececc624f4",
             "string_literals": [
               {
-                "line": 3634,
+                "line": 3637,
                 "value": "fn {name}"
               },
               {
-                "line": 3636,
+                "line": 3639,
                 "value": "fn"
               },
               {
-                "line": 3637,
+                "line": 3640,
                 "value": "private"
               }
             ],
@@ -36275,45 +36314,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn test_symbols_are_skipped",
-            "line_end": 3744,
-            "line_start": 3735,
+            "line_end": 3747,
+            "line_start": 3738,
             "name": "test_symbols_are_skipped",
             "shape_hash": "b77a2ae5a7b5f37d",
             "string_literals": [
               {
-                "line": 3737,
+                "line": 3740,
                 "value": "src/a.rs"
               },
               {
-                "line": 3737,
+                "line": 3740,
                 "value": "alpha"
               },
               {
-                "line": 3737,
+                "line": 3740,
                 "value": "HASH"
               },
               {
-                "line": 3737,
+                "line": 3740,
                 "value": ""
               },
               {
-                "line": 3738,
+                "line": 3741,
                 "value": "src/b.rs"
               },
               {
-                "line": 3738,
+                "line": 3741,
                 "value": "beta"
               },
               {
-                "line": 3738,
+                "line": 3741,
                 "value": "HASH"
               },
               {
-                "line": 3738,
+                "line": 3741,
                 "value": ""
               },
               {
-                "line": 3742,
+                "line": 3745,
                 "value": "test fixtures legitimately repeat"
               }
             ],
@@ -36324,49 +36363,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tests_data_declarations_and_small_functions_are_skipped",
-            "line_end": 3939,
-            "line_start": 3904,
+            "line_end": 3942,
+            "line_start": 3907,
             "name": "tests_data_declarations_and_small_functions_are_skipped",
             "shape_hash": "42d85e2744d8dfe1",
             "string_literals": [
               {
-                "line": 3907,
+                "line": 3910,
                 "value": "src/mixed.rs"
               },
               {
-                "line": 3908,
+                "line": 3911,
                 "value": "2026-06-15T00:00:00+00:00"
               },
               {
-                "line": 3911,
+                "line": 3914,
                 "value": "fn"
               },
               {
-                "line": 3912,
+                "line": 3915,
                 "value": "fn huge_test"
               },
               {
-                "line": 3918,
+                "line": 3921,
                 "value": "struct"
               },
               {
-                "line": 3919,
+                "line": 3922,
                 "value": "struct HugeData"
               },
               {
-                "line": 3925,
+                "line": 3928,
                 "value": "fn"
               },
               {
-                "line": 3926,
+                "line": 3929,
                 "value": "fn small_behavior"
               },
               {
-                "line": 3936,
+                "line": 3939,
                 "value": "large_behavioral_symbol"
               },
               {
-                "line": 3937,
+                "line": 3940,
                 "value": "only non-test behavioral symbols over the threshold flag"
               }
             ],
@@ -36377,61 +36416,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn two_files_with_one_shared_body_hash_flag_once",
-            "line_end": 3693,
-            "line_start": 3678,
+            "line_end": 3696,
+            "line_start": 3681,
             "name": "two_files_with_one_shared_body_hash_flag_once",
             "shape_hash": "2ecd56a553f78805",
             "string_literals": [
               {
-                "line": 3680,
+                "line": 3683,
                 "value": "src/a.rs"
               },
               {
-                "line": 3680,
+                "line": 3683,
                 "value": "alpha"
               },
               {
-                "line": 3680,
+                "line": 3683,
                 "value": "HASH"
               },
               {
-                "line": 3680,
+                "line": 3683,
                 "value": ""
               },
               {
-                "line": 3681,
+                "line": 3684,
                 "value": "src/b.rs"
               },
               {
-                "line": 3681,
+                "line": 3684,
                 "value": "beta"
               },
               {
-                "line": 3681,
+                "line": 3684,
                 "value": "HASH"
               },
               {
-                "line": 3681,
+                "line": 3684,
                 "value": ""
               },
               {
-                "line": 3687,
+                "line": 3690,
                 "value": "an exact cross-file clone should flag once: {out:?}"
               },
               {
-                "line": 3689,
+                "line": 3692,
                 "value": "code_clone"
               },
               {
-                "line": 3690,
+                "line": 3693,
                 "value": "body_hash"
               },
               {
-                "line": 3691,
+                "line": 3694,
                 "value": "src/a.rs"
               },
               {
-                "line": 3692,
+                "line": 3695,
                 "value": "src/b.rs"
               }
             ],
@@ -36442,8 +36481,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ubiquitous_tokens_do_not_create_pairwise_twin_floods",
-            "line_end": 4042,
-            "line_start": 4009,
+            "line_end": 4045,
+            "line_start": 4012,
             "name": "ubiquitous_tokens_do_not_create_pairwise_twin_floods",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -36452,15 +36491,15 @@
             "shape_hash": "8b95af0bc0b39c74",
             "string_literals": [
               {
-                "line": 4034,
+                "line": 4037,
                 "value": "twin_intents"
               },
               {
-                "line": 4035,
+                "line": 4038,
                 "value": "{:?}"
               },
               {
-                "line": 4039,
+                "line": 4042,
                 "value": "twin_intents"
               }
             ],
@@ -36471,69 +36510,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ui_state_populated_without_empty_or_error_is_happy_path_only",
-            "line_end": 4507,
-            "line_start": 4483,
+            "line_end": 4510,
+            "line_start": 4486,
             "name": "ui_state_populated_without_empty_or_error_is_happy_path_only",
             "shape_hash": "9d28cacf2f9207f2",
             "string_literals": [
               {
-                "line": 4487,
+                "line": 4490,
                 "value": "sys"
               },
               {
-                "line": 4487,
+                "line": 4490,
                 "value": "system"
               },
               {
-                "line": 4488,
+                "line": 4491,
                 "value": "screen"
               },
               {
-                "line": 4488,
+                "line": 4491,
                 "value": "component"
               },
               {
-                "line": 4489,
+                "line": 4492,
                 "value": "populated_state"
               },
               {
-                "line": 4489,
+                "line": 4492,
                 "value": "populated"
               },
               {
-                "line": 4492,
+                "line": 4495,
                 "value": "sys"
               },
               {
-                "line": 4492,
+                "line": 4495,
                 "value": "screen"
-              },
-              {
-                "line": 4493,
-                "value": "screen"
-              },
-              {
-                "line": 4493,
-                "value": "populated_state"
               },
               {
                 "line": 4496,
+                "value": "screen"
+              },
+              {
+                "line": 4496,
+                "value": "populated_state"
+              },
+              {
+                "line": 4499,
                 "value": "happy_path_only"
               },
               {
-                "line": 4500,
+                "line": 4503,
                 "value": "populated with no empty/error sibling fires: {hp:?}"
               },
               {
-                "line": 4503,
+                "line": 4506,
                 "value": "populated"
               },
               {
-                "line": 4503,
+                "line": 4506,
                 "value": "empty/error"
               },
               {
-                "line": 4504,
+                "line": 4507,
                 "value": "names the UI-state family: {}"
               }
             ],
@@ -36544,8 +36583,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn val",
-            "line_end": 3396,
-            "line_start": 3386,
+            "line_end": 3399,
+            "line_start": 3389,
             "name": "val",
             "shape_hash": "7e540fd6aadc26b0",
             "visibility": "private"
@@ -36555,21 +36594,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn vedge",
-            "line_end": 3409,
-            "line_start": 3398,
+            "line_end": 3412,
+            "line_start": 3401,
             "name": "vedge",
             "shape_hash": "e43a1af38dee5046",
             "string_literals": [
               {
-                "line": 3400,
+                "line": 3403,
                 "value": "val:{vid}:{iid}"
               },
               {
-                "line": 3405,
+                "line": 3408,
                 "value": "t"
               },
               {
-                "line": 3406,
+                "line": 3409,
                 "value": "passing"
               }
             ],
@@ -36580,13 +36619,13 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn with_aspect",
-            "line_end": 4480,
-            "line_start": 4476,
+            "line_end": 4483,
+            "line_start": 4479,
             "name": "with_aspect",
             "shape_hash": "697bdcc24b753ae4",
             "string_literals": [
               {
-                "line": 4477,
+                "line": 4480,
                 "value": "feature"
               }
             ],
@@ -36597,8 +36636,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn with_panic",
-            "line_end": 4079,
-            "line_start": 4075,
+            "line_end": 4082,
+            "line_start": 4078,
             "name": "with_panic",
             "shape_hash": "ec519e5a5bececb5",
             "visibility": "private"
@@ -36608,8 +36647,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn with_string",
-            "line_end": 4073,
-            "line_start": 4067,
+            "line_end": 4076,
+            "line_start": 4070,
             "name": "with_string",
             "shape_hash": "dd3d267a2630b210",
             "visibility": "private"
@@ -36774,86 +36813,86 @@
             "body_hash": "a60813519f73c3f8",
             "kind": "fn",
             "label": "pub fn clone_suggestions",
-            "line_end": 3224,
-            "line_start": 3125,
+            "line_end": 3227,
+            "line_start": 3128,
             "name": "clone_suggestions",
             "shape_hash": "c51b59dc45ab2ada",
             "string_literals": [
               {
-                "line": 3145,
+                "line": 3148,
                 "value": "shape_hash"
               },
               {
-                "line": 3147,
+                "line": 3150,
                 "value": "body_hash"
               },
               {
-                "line": 3180,
+                "line": 3183,
                 "value": "shape_hash"
               },
               {
-                "line": 3181,
+                "line": 3184,
                 "value": "matching code shape"
               },
               {
-                "line": 3183,
+                "line": 3186,
                 "value": "identical code"
               },
               {
-                "line": 3187,
+                "line": 3190,
                 "value": "{clone_phrase} in {count} locations: '{first_label}' (and {} others)"
               },
               {
-                "line": 3191,
+                "line": 3194,
                 "value": "{clone_phrase} in 2 locations: '{first_label}'"
               },
               {
-                "line": 3193,
+                "line": 3196,
                 "value": "shape_hash"
               },
               {
-                "line": 3194,
+                "line": 3197,
                 "value": "normalized shape_hash"
               },
               {
-                "line": 3196,
+                "line": 3199,
                 "value": "exact body_hash"
               },
               {
-                "line": 3199,
+                "line": 3202,
                 "value": "all share one {hash_label} ({} lines): {}"
               },
               {
-                "line": 3202,
+                "line": 3205,
                 "value": "{}:{}-{} '{}'"
               },
               {
-                "line": 3204,
+                "line": 3207,
                 "value": " · "
               },
               {
-                "line": 3207,
+                "line": 3210,
                 "value": "code_clone"
               },
               {
-                "line": 3212,
+                "line": 3215,
                 "value": "read each copy and decide which of three it is: (1) coincidental shape (e.g. dispatch shims that match by accident) — leave it; (2) one responsibility copied — dedupe now, or if both copies are owned `loom edge explore <a> <b>` to ground or refute the relationship (a structural clone is evidence for a `duplicated_responsibility` merge); (3) a real dup you are DEFERRING — file it as tracked work, not a dead note: `loom hypothesis add` with the clone as the claim and the shape group collapsing to one definition as the predicted outcome, so `loom hypothesis adopt --spawned` turns it into a planned refactor the build/validate machinery owns. If the copies must stay deliberately independent, record that ruling with `loom note add --file <participating-path> --kind decision --text \\\"<why these copies must stay independent>\\\"`; the advisory moves to adjudicated until a participating file changes"
               },
               {
-                "line": 3213,
+                "line": 3216,
                 "value": "code_clone"
               }
             ],
             "visibility": "public"
           },
           {
-            "body_hash": "3933d7307773495e",
+            "body_hash": "579b818cdaeaccbb",
             "kind": "fn",
             "label": "pub fn cochange_suggestions",
-            "line_end": 2548,
+            "line_end": 2551,
             "line_start": 2433,
             "name": "cochange_suggestions",
-            "shape_hash": "4cd2728ff795e3d4",
+            "shape_hash": "d5245888fc0c2f28",
             "string_literals": [
               {
                 "line": 2511,
@@ -38008,8 +38047,8 @@
             "body_hash": "4c03c20305903f6f",
             "kind": "fn",
             "label": "pub fn proof_locality_suggestions",
-            "line_end": 2869,
-            "line_start": 2860,
+            "line_end": 2872,
+            "line_start": 2863,
             "name": "proof_locality_suggestions",
             "shape_hash": "72f0abaf71dc1313",
             "visibility": "public"
@@ -38042,45 +38081,45 @@
             "body_hash": "fb06869a96ddf65b",
             "kind": "fn",
             "label": "pub fn shotgun_surgery_suggestions",
-            "line_end": 2689,
-            "line_start": 2554,
+            "line_end": 2692,
+            "line_start": 2557,
             "name": "shotgun_surgery_suggestions",
             "shape_hash": "ba23f83f44da64d2",
             "string_literals": [
               {
-                "line": 2634,
+                "line": 2637,
                 "value": "{owner_file} ↔ {partner_file} ({count}×)"
               },
               {
-                "line": 2661,
+                "line": 2664,
                 "value": "shotgun_surgery"
               },
               {
-                "line": 2664,
+                "line": 2667,
                 "value": "'{name}' changes with {} unrelated intent(s) in git history"
               },
               {
-                "line": 2668,
+                "line": 2671,
                 "value": "owned file(s): {} · partner intents: {} · examples: {} · best confidence {:.0}%"
               },
               {
-                "line": 2669,
+                "line": 2672,
                 "value": ", "
               },
               {
-                "line": 2670,
+                "line": 2673,
                 "value": " · "
               },
               {
-                "line": 2671,
+                "line": 2674,
                 "value": ", "
               },
               {
-                "line": 2675,
+                "line": 2678,
                 "value": "inspect '{name}' and its co-changing files; ground real hidden contracts with `loom edge explore`, split/reown broad behavior through a proven hypothesis, or record incidental history with `loom note add --intent {intent_id} --kind decision --text \\\"<why this recurring wide co-change is incidental>\\\"`"
               },
               {
-                "line": 2677,
+                "line": 2680,
                 "value": "shotgun_surgery"
               }
             ],
@@ -38140,8 +38179,8 @@
             "body_hash": "2e2bc73cfa0818c2",
             "kind": "struct",
             "label": "struct StringContractLoc",
-            "line_end": 3250,
-            "line_start": 3243,
+            "line_end": 3253,
+            "line_start": 3246,
             "name": "StringContractLoc",
             "shape_hash": "31c0f40789df4a25",
             "visibility": "private"
@@ -102345,6 +102384,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T11:28:44.604045+00:00",
+        "id": "63bbf38f-9de1-4da5-a24f-89446ed22c91",
+        "kind": "transition",
+        "target_id": "rt:8f96ca18-2ad0-48f3-985e-e4025141093d:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T10:29:24.525757+00:00",
         "id": "63c8d825-c200-400d-85cc-2729be8e9740",
         "kind": "transition",
@@ -109069,6 +109118,16 @@
         "id": "7e7350f5-c72f-427b-892c-603a0c434e5f",
         "kind": "transition",
         "target_id": "rt:205377c4-ef33-4636-866d-f344e7dc1410:29799603-3704-4dfa-9ba4-387a7c1942f8",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:28:44.750452+00:00",
+        "id": "7e7d01a1-d80e-4f20-bc27-43ffe3760f5d",
+        "kind": "transition",
+        "target_id": "rt:9baf3a4e-51af-40c1-8c80-a5f745588092:f2995090-ba95-48d3-bb6d-21b4044c32dc",
         "target_kind": "edge",
         "text": "uninspected → passing"
       },
@@ -116051,6 +116110,16 @@
         "target_id": "rt:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/status.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:28:44.694403+00:00",
+        "id": "98e6c754-990b-4fad-8b72-c394787d9211",
+        "kind": "transition",
+        "target_id": "rt:9baf3a4e-51af-40c1-8c80-a5f745588092:e287ac20-f7af-44bf-ba45-078a282b8535",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
@@ -133001,6 +133070,16 @@
         "target_id": "rt:47c9182c-f7a8-4a50-9281-6d05507e646c:5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T11:29:09.288985+00:00",
+        "id": "dd5de210-b0a4-46ba-9aac-567e5b6e195d",
+        "kind": "decision",
+        "target_id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
+        "target_kind": "codefile",
+        "text": "Audit reopen after deterministic co-change ordering edit: compute_smells_from_parts and teaching_for remain deliberately centralized detector/teaching tables for now because splitting them would be a separate behavior-preserving refactor, not required for the audit drain. The repeated symbol-accountability teaching strings are intentionally mirrored between smells.rs and symbol_accountability.rs so both audit surfaces teach the same anti-overmapping rule at the point of failure."
       },
       {
         "audience": "",
