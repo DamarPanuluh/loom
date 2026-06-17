@@ -1428,6 +1428,7 @@ pub enum SagaCmd {
           - name: capture payment\n      \
             intent: payment-capture\n      \
             request: { method: POST, url: \"/carts/{{ cart_id }}/payment\" }\n      \
+            auth:     { requires_scopes: [payments.write] }  # optional diagnosis hint\n      \
             expect:  { status: 200, body: { \"$.state\": paid } }\n\n  \
         JOURNEY-FIRST (story → intents):\n  \
         loom saga add journeys/checkout.yaml --spawn-missing --under \"checkout component\"")]
@@ -1469,7 +1470,9 @@ pub enum SagaCmd {
     /// boundary as a structured, repo-agnostic diagnosis. This is for triage:
     /// missing env/template problems, auth-like status failures, 404/resource
     /// misses, body/status mismatches, request failures, and skipped dependent
-    /// steps. Repo-specific scope/state probes can layer on top later.
+    /// steps. When a step declares `auth.requires_scopes`, diagnosis decodes
+    /// bearer JWT `scope`/`scp`/`scopes` claims and names missing scopes.
+    /// Repo-specific state probes can layer on top later.
     Diagnose {
         /// Saga name (the registered validation) or a spec file path.
         saga: String,

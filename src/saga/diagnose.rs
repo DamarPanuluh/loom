@@ -4,10 +4,13 @@
 //! does not know Grid, app/person tables, or product-specific fix commands.
 //! Repo-specific auth/state probes can sit above these generic diagnoses later.
 
+use std::collections::{BTreeMap, BTreeSet};
+
+use base64::Engine as _;
 use serde::Serialize;
 
 use super::runner::{SagaRunReport, StepOutcome};
-use super::spec::{BodyExpectation, SagaSpec, Step};
+use super::spec::{interpolate, BodyExpectation, SagaSpec, Step};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct SagaDiagnosis {
@@ -65,9 +68,13 @@ pub struct DiagnosisCount {
 
 pub fn diagnose_report(spec: &SagaSpec, report: &SagaRunReport) -> SagaDiagnosis {
     let mut steps = Vec::new();
+    let mut vars = spec.vars.clone();
     for outcome in &report.outcomes {
         let spec_step = spec.steps.get(outcome.step.saturating_sub(1));
-        steps.push(diagnose_outcome(outcome, spec_step));
+        steps.push(diagnose_outcome(outcome, spec_step, &vars));
+        if outcome.passed {
+            vars.extend(outcome.captured.clone());
+        }
     }
 
     let failed_step = report.failure().map(|outcome| outcome.step);
@@ -162,11 +169,15 @@ pub fn diagnose_missing_env(
     }
 }
 
-fn diagnose_outcome(outcome: &StepOutcome, spec_step: Option<&Step>) -> StepDiagnosis {
+fn diagnose_outcome(
+    outcome: &StepOutcome,
+    spec_step: Option<&Step>,
+    vars: &BTreeMap<String, String>,
+) -> StepDiagnosis {
     let root_cause = if outcome.passed {
         None
     } else {
-        Some(classify_failure(outcome, spec_step))
+        Some(classify_failure(outcome, spec_step, vars))
     };
     StepDiagnosis {
         step: outcome.step,
@@ -181,7 +192,11 @@ fn diagnose_outcome(outcome: &StepOutcome, spec_step: Option<&Step>) -> StepDiag
     }
 }
 
-fn classify_failure(outcome: &StepOutcome, spec_step: Option<&Step>) -> RootCause {
+fn classify_failure(
+    outcome: &StepOutcome,
+    spec_step: Option<&Step>,
+    vars: &BTreeMap<String, String>,
+) -> RootCause {
     if let Some(root) = template_not_expanded(outcome, spec_step) {
         return root;
     }
@@ -218,6 +233,9 @@ fn classify_failure(outcome: &StepOutcome, spec_step: Option<&Step>) -> RootCaus
     if let Some(status) = outcome.status {
         match status {
             401 => {
+                if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
+                    return root;
+                }
                 return RootCause {
                     kind: "auth_unauthorized".to_string(),
                     title: "Unauthorized request".to_string(),
@@ -227,6 +245,9 @@ fn classify_failure(outcome: &StepOutcome, spec_step: Option<&Step>) -> RootCaus
                 };
             }
             403 => {
+                if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
+                    return root;
+                }
                 return RootCause {
                     kind: "auth_forbidden".to_string(),
                     title: "Forbidden request".to_string(),
@@ -306,6 +327,173 @@ fn classify_failure(outcome: &StepOutcome, spec_step: Option<&Step>) -> RootCaus
         fields: vec![field("detail", detail)],
         fix: "Inspect the failing request/response and add a more specific diagnosis rule if this recurs.".to_string(),
         confidence: "low".to_string(),
+    }
+}
+
+fn jwt_scope_mismatch(
+    outcome: &StepOutcome,
+    spec_step: Option<&Step>,
+    vars: &BTreeMap<String, String>,
+) -> Option<RootCause> {
+    let step = spec_step?;
+    if step.auth.requires_scopes.is_empty() {
+        return None;
+    }
+    let auth = authorization_header(step)?;
+    let rendered = interpolate(auth.value, vars).ok()?;
+    let token = rendered.trim().strip_prefix("Bearer ")?;
+    let claims = decode_jwt_payload(token)?;
+    let token_scopes = jwt_scopes(&claims);
+    let required: BTreeSet<String> = step
+        .auth
+        .requires_scopes
+        .iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if required.is_empty() {
+        return None;
+    }
+    let missing: Vec<String> = required
+        .difference(&token_scopes)
+        .map(ToString::to_string)
+        .collect();
+    if missing.is_empty() {
+        return None;
+    }
+
+    let mut fields = vec![
+        field(
+            "status",
+            outcome
+                .status
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "unknown".to_string()),
+        ),
+        field("token", auth.source.clone()),
+        field("required_scopes", join_set(&required)),
+        field("token_has", join_set(&token_scopes)),
+        field("token_missing", missing.join(", ")),
+    ];
+    if let Some(subject) = claims.get("sub").and_then(|v| v.as_str()) {
+        fields.push(field("subject", subject));
+    }
+    if let Some(audience) = string_or_list_claim(&claims, "aud") {
+        fields.push(field("audience", audience));
+    }
+
+    Some(RootCause {
+        kind: "token_scope_missing".to_string(),
+        title: "Token scope missing".to_string(),
+        fields,
+        fix: format!(
+            "Mint or configure {} with missing scope(s): {}.",
+            auth.source,
+            missing.join(", ")
+        ),
+        confidence: "high".to_string(),
+    })
+}
+
+#[derive(Debug)]
+struct AuthorizationHeader<'a> {
+    value: &'a str,
+    source: String,
+}
+
+fn authorization_header(step: &Step) -> Option<AuthorizationHeader<'_>> {
+    let (name, value) = step
+        .request
+        .headers
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case("authorization"))?;
+    Some(AuthorizationHeader {
+        value,
+        source: header_token_source(name, value),
+    })
+}
+
+fn header_token_source(name: &str, value: &str) -> String {
+    extract_env_refs(value)
+        .first()
+        .map(|env| format!("env.{env}"))
+        .unwrap_or_else(|| format!("{name} header"))
+}
+
+fn extract_env_refs(template: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = template;
+    while let Some(start) = rest.find("{{") {
+        let after = &rest[start + 2..];
+        let Some(end) = after.find("}}") else { break };
+        if let Some(name) = after[..end].trim().strip_prefix("env.") {
+            out.push(name.to_string());
+        }
+        rest = &after[end + 2..];
+    }
+    out
+}
+
+fn decode_jwt_payload(token: &str) -> Option<serde_json::Value> {
+    let payload = token.split('.').nth(1)?;
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload)
+        .ok()
+        .or_else(|| {
+            base64::engine::general_purpose::URL_SAFE
+                .decode(payload)
+                .ok()
+        })?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn jwt_scopes(claims: &serde_json::Value) -> BTreeSet<String> {
+    let mut scopes = BTreeSet::new();
+    for claim in ["scope", "scp", "scopes"] {
+        collect_scope_claim(claims.get(claim), &mut scopes);
+    }
+    scopes
+}
+
+fn collect_scope_claim(value: Option<&serde_json::Value>, out: &mut BTreeSet<String>) {
+    match value {
+        Some(serde_json::Value::String(s)) => {
+            for scope in s.split_whitespace() {
+                if !scope.trim().is_empty() {
+                    out.insert(scope.trim().to_string());
+                }
+            }
+        }
+        Some(serde_json::Value::Array(items)) => {
+            for item in items {
+                if let Some(scope) = item.as_str().map(str::trim).filter(|s| !s.is_empty()) {
+                    out.insert(scope.to_string());
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+fn string_or_list_claim(claims: &serde_json::Value, name: &str) -> Option<String> {
+    match claims.get(name)? {
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(items) => {
+            let values: Vec<String> = items
+                .iter()
+                .filter_map(|v| v.as_str().map(ToString::to_string))
+                .collect();
+            (!values.is_empty()).then(|| values.join(", "))
+        }
+        _ => None,
+    }
+}
+
+fn join_set(values: &BTreeSet<String>) -> String {
+    if values.is_empty() {
+        "(none)".to_string()
+    } else {
+        values.iter().cloned().collect::<Vec<_>>().join(", ")
     }
 }
 
@@ -411,6 +599,14 @@ mod tests {
         crate::saga::spec::load_spec(yaml, "test").unwrap()
     }
 
+    fn unsigned_jwt(claims: serde_json::Value) -> String {
+        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(r#"{"alg":"none","typ":"JWT"}"#);
+        let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .encode(serde_json::to_string(&claims).unwrap());
+        format!("{header}.{payload}.")
+    }
+
     #[test]
     fn status_failure_is_classified_before_skipped_steps() {
         let spec = spec(
@@ -453,6 +649,61 @@ steps:
             diagnosis.steps[1].root_cause.as_ref().unwrap().kind,
             "state_dependency"
         );
+    }
+
+    #[test]
+    fn forbidden_with_declared_scope_requirement_names_missing_jwt_scope() {
+        let token = unsigned_jwt(serde_json::json!({
+            "sub": "app_admin",
+            "aud": "loom-test",
+            "scope": "signals.emit standing.read"
+        }));
+        std::env::set_var("LOOM_DIAGNOSE_SCOPE_TOKEN", token);
+        let spec = spec(
+            r#"
+saga: auth-flow
+steps:
+  - name: write app
+    intent: app-write
+    request:
+      method: POST
+      url: https://example.test/apps
+      headers:
+        Authorization: "Bearer {{ env.LOOM_DIAGNOSE_SCOPE_TOKEN }}"
+    auth:
+      requires_scopes: [developer.apps.write, standing.read]
+    expect: { status: 201 }
+"#,
+        );
+        let report = SagaRunReport {
+            saga: "auth-flow".into(),
+            passed: false,
+            total_steps: 1,
+            executed: 1,
+            outcomes: vec![StepOutcome {
+                step: 1,
+                name: "write app".into(),
+                intent: "app-write".into(),
+                method: "POST".into(),
+                url: "https://example.test/apps".into(),
+                status: Some(403),
+                passed: false,
+                detail: "expected status 201, got 403".into(),
+                captured: Default::default(),
+            }],
+        };
+        let diagnosis = diagnose_report(&spec, &report);
+        let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
+        assert_eq!(root.kind, "token_scope_missing");
+        assert!(root
+            .fields
+            .iter()
+            .any(|f| f.name == "token_missing" && f.value == "developer.apps.write"));
+        assert!(root
+            .fields
+            .iter()
+            .any(|f| f.name == "token_has" && f.value.contains("standing.read")));
+        assert!(root.fix.contains("developer.apps.write"));
     }
 
     #[test]

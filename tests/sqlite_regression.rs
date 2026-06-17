@@ -1,9 +1,12 @@
 use serde_json::Value;
 use std::env;
 use std::fs;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Mutex, MutexGuard};
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static SQLITE_TEST_LOCK: Mutex<()> = Mutex::new(());
@@ -141,6 +144,40 @@ fn write_scratch_file(root: &Path, path: &str, contents: &str) {
         fs::create_dir_all(parent).expect("create scratch file parent");
     }
     fs::write(file, contents).expect("write scratch file");
+}
+
+fn unsigned_jwt(claims: serde_json::Value) -> String {
+    use base64::Engine as _;
+    let header =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(r#"{"alg":"none","typ":"JWT"}"#);
+    let payload = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .encode(serde_json::to_string(&claims).expect("serialize jwt claims"));
+    format!("{header}.{payload}.")
+}
+
+fn one_shot_status_server(status: u16) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let addr = listener.local_addr().expect("test server addr");
+    thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept test request");
+        let mut buf = [0_u8; 1024];
+        let _ = stream.read(&mut buf);
+        let body = "{}";
+        let reason = match status {
+            401 => "Unauthorized",
+            403 => "Forbidden",
+            404 => "Not Found",
+            _ => "OK",
+        };
+        let response = format!(
+            "HTTP/1.1 {status} {reason}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("write test response");
+    });
+    format!("http://{addr}")
 }
 
 fn assert_status_ok(value: &Value) {
@@ -743,6 +780,59 @@ steps:
         .as_str()
         .unwrap()
         .contains("LOOM_DIAGNOSE_MISSING_BASE=<value> loom saga run diagnose-env"));
+}
+
+#[test]
+fn sqlite_saga_diagnose_reports_missing_jwt_scope() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-saga-diagnose-scope");
+    let base_url = one_shot_status_server(403);
+    env::set_var("LOOM_DIAGNOSE_SCOPE_BASE", base_url);
+    env::set_var(
+        "LOOM_DIAGNOSE_APP_TOKEN",
+        unsigned_jwt(serde_json::json!({
+            "sub": "app_admin",
+            "scope": "signals.emit standing.read"
+        })),
+    );
+    write_scratch_file(
+        &graph.root,
+        "journeys/diagnose-scope.yaml",
+        r#"
+saga: diagnose-scope
+base: "{{ env.LOOM_DIAGNOSE_SCOPE_BASE }}"
+steps:
+  - name: write app
+    intent: saga runner halt-on-failure semantics
+    request:
+      method: POST
+      url: /apps
+      headers:
+        Authorization: "Bearer {{ env.LOOM_DIAGNOSE_APP_TOKEN }}"
+    auth:
+      requires_scopes: [developer.apps.write, standing.read]
+    expect: { status: 201 }
+"#,
+    );
+
+    let diagnosed = run_json_failure_as(
+        &graph.root,
+        &["saga", "diagnose", "journeys/diagnose-scope.yaml", "--json"],
+        "llm:validator",
+    );
+    assert_eq!(diagnosed["status"], "failed");
+    let root = &diagnosed["diagnosis"]["steps"][0]["root_cause"];
+    assert_eq!(root["kind"], "token_scope_missing");
+    assert_eq!(root["title"], "Token scope missing");
+    assert!(root["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["name"] == "token_missing" && f["value"] == "developer.apps.write"));
+    assert!(root["fix"]
+        .as_str()
+        .unwrap()
+        .contains("developer.apps.write"));
 }
 
 #[test]

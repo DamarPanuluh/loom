@@ -272,9 +272,12 @@ loom saga list
       - name: capture payment
         intent: payment-capture
         request: { method: POST, url: "/carts/{{ cart_id }}/payment" }
+        auth:     { requires_scopes: [payments.write] }  # optional diagnosis hint
         expect:  { status: 200, body: { "$.state": paid } }
   expect.body values: bare value = equals · {exists: bool} · {contains: "…"};
   expect.status omitted = any 2xx; expect.headers = substring match.
+  `auth.requires_scopes` is an optional endpoint requirement hint used by
+  `diagnose`; the runner still lets the live service enforce authorization.
   `add` declares the proof: Validation node (type=saga, command =
   `loom saga run <spec>`) + VALIDATES edges to every step intent + the
   RELATES_TO path edges between consecutive step intents (uninspected — green
@@ -283,9 +286,11 @@ loom saga list
   `diagnose` executes the same saga without stamping graph verdicts and
   returns a structured root-cause readout for common triage failures: missing
   env, unexpanded templates, auth-like 401/403, 404/resource misses,
-  body/status mismatches, request failures, and skipped dependent steps. Use it
-  before `run` when you are bringing up a live target or investigating a
-  failure; use `run` when you are ready to stamp proof evidence into the graph.
+  body/status mismatches, request failures, and skipped dependent steps. When
+  `auth.requires_scopes` is present, it decodes bearer JWT `scope`/`scp`/`scopes`
+  claims and reports the exact missing scope. Use it before `run` when you are
+  bringing up a live target or investigating a failure; use `run` when you are
+  ready to stamp proof evidence into the graph.
   `run` executes (DB closed while HTTP runs, same lock discipline as
   `loom validate`) and translates outcomes into graph verdicts — the failure
   semantics: consecutive steps that BOTH passed → their RELATES_TO edge goes

@@ -60,6 +60,11 @@ pub struct Step {
 
     pub request: Request,
 
+    /// Optional endpoint authorization contract used by `loom saga diagnose`.
+    /// The runner does not enforce it; the live service remains the authority.
+    #[serde(default)]
+    pub auth: AuthExpectation,
+
     #[serde(default)]
     pub expect: Expect,
 
@@ -88,6 +93,16 @@ pub struct Request {
     /// Raw string body. Mutually exclusive with `json`.
     #[serde(default)]
     pub body: Option<String>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AuthExpectation {
+    /// OAuth/JWT scopes the endpoint is expected to require for this step.
+    /// `loom saga diagnose` compares these against bearer JWT claims when a
+    /// request fails with 401/403.
+    #[serde(default)]
+    pub requires_scopes: Vec<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -357,6 +372,19 @@ steps:
             spec.steps[1].expect.body["$.state"],
             BodyExpectation::Equals(_)
         ));
+    }
+
+    #[test]
+    fn optional_step_auth_requirements_parse() {
+        let yaml = GOOD.replace(
+            "    request: { method: POST, url: /carts, json: { owner: \"{{ user }}\" } }",
+            "    request: { method: POST, url: /carts, headers: { Authorization: \"Bearer {{ env.APP_TOKEN }}\" }, json: { owner: \"{{ user }}\" } }\n    auth: { requires_scopes: [developer.apps.write, passport.read] }",
+        );
+        let spec = load_spec(&yaml, "test").unwrap();
+        assert_eq!(
+            spec.steps[0].auth.requires_scopes,
+            vec!["developer.apps.write", "passport.read"]
+        );
     }
 
     #[test]
