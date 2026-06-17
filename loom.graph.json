@@ -559,11 +559,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:21.972612+00:00",
         "criterion": "Repo introspection code embeds only file/stack/pack heuristics — no credential, key, token, password, bearer, private-key, or connection-string literal.",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "Re-inspected src/repo.rs after the pending cochange change. Added literals are git subcommands/options and test identity strings only; no credential, token, key, password, bearer, private-key, or connection-string literal is embedded.",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.283929+00:00",
+        "last_inspected": "2026-06-17T12:51:42.190989+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -799,11 +799,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:16.564708+00:00",
         "criterion": "FS walkers and file handles are RAII-scoped; no manual close/lock survives an error or early return.",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "git_known_pending_paths uses std::process::Command::output and local Vec/String values; filesystem walking remains WalkBuilder iterator based. No manual file descriptor, lock, or handle lifecycle was introduced.",
         "from": "40432472-8004-405c-95b9-428c5087179f",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.238576+00:00",
+        "last_inspected": "2026-06-17T12:51:42.293132+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -1267,11 +1267,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:04.348693+00:00",
         "criterion": "Repo introspection iteration must be bounded by local repo file count, fixed manifest/extension vocabularies, and finite file contents - not external services or unbounded retries",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "git_cochange remains bounded by the caller's last_n log limit; when pending paths exist it scans last_n-1 committed entries plus one synthetic pending event. Pending path collection uses two bounded git queries filtered to registered CodeFiles.",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.192040+00:00",
+        "last_inspected": "2026-06-17T12:51:42.350332+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -1519,11 +1519,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:09.170735+00:00",
         "criterion": "Filesystem-derived inputs (walk entries, import specs, manifest probes) are validated with bounded path handling and typed error paths before use.",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "Pending git paths are read with NUL delimiters, UTF-8 checked, slash-normalized, sorted/deduped, and filtered against the graph's registered CodeFile set before contributing to cochange evidence.",
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.141693+00:00",
+        "last_inspected": "2026-06-17T12:51:42.407956+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -1795,11 +1795,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:00.374613+00:00",
         "criterion": "repo.rs must not contain unused public functions or duplicated filesystem traversal logic",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "The added helpers each serve the git_cochange path: record_cochange_event centralizes pair/individual counting, nul_paths parses NUL output, and git_known_pending_paths collects pending CodeFiles. No duplicate traversal or unused public API was added.",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.096914+00:00",
+        "last_inspected": "2026-06-17T12:51:42.465729+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -2023,11 +2023,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:02.297509+00:00",
         "criterion": "Repo introspection should keep one coherent responsibility: derive repo/source/stack evidence from filesystem state",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "src/repo.rs still owns filesystem/git repository introspection: walk_files, detect, import/symbol extraction, and git cochange evidence. The new pending commit accounting stays within that same responsibility.",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.052699+00:00",
+        "last_inspected": "2026-06-17T12:51:42.527254+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -2251,11 +2251,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:14.032968+00:00",
         "criterion": "FS walk failures surface through typed Result instead of silently undercounting source/coverage evidence.",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "Walk failures still return Result with context; git cochange remains best-effort advisory evidence and explicitly degrades to empty/partial evidence on git command failure rather than panicking or pretending the evidence is complete.",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:12.006949+00:00",
+        "last_inspected": "2026-06-17T12:51:42.585459+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -2491,11 +2491,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:25:06.483731+00:00",
         "criterion": "Repo introspection should avoid repeated filesystem walks or duplicate expensive source enumeration within one detect/coverage pass",
-        "evidence": "Re-checked command dispatch and repo introspection after the vector helper refactor: src/vec_utils.rs only provides push_unique_nonempty, repo.rs and ts_imports.rs call it for import specifier collection, local duplicate helper bodies were removed, no secrets or unchecked mutation paths were introduced, rg shows no old push_unique definitions, cargo check passed, and cargo test passed.",
+        "evidence": "git_cochange performs one git log scan plus at most two pending-path git queries, then records the pending event once. The change avoids post-commit rework loops without adding repeated filesystem walks inside detect/coverage.",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:48:11.958686+00:00",
+        "last_inspected": "2026-06-17T12:51:42.643367+00:00",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
@@ -7337,6 +7337,19 @@
         "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
       },
       {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T12:46:00.994436+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:46:00.994436+00:00",
+        "notes": "Inspected hypothesis triage queue and prove confidence: triage queues proposed/adoption decisions, while prove confidence stamps TARGETS verdict evidence; shared next/hypothesis history is incidental.",
+        "priority_score": 0.0,
+        "to": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-11T09:05:18.972631+00:00",
         "criterion": "Related by code-level dependency: code of 'saga run stamps the graph' imports code of 'graph targeting pin' but no relationship is recorded. imports: src/commands/saga.rs → src/db/mod.rs",
@@ -7548,11 +7561,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:12.221084+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
-        "evidence": "shared: src/repo.rs",
+        "evidence": "Re-inspected src/repo.rs language heuristics. Svelte/Bun support still shares repo introspection stack and symbol/import detection; pending cochange accounting is separate and does not alter Svelte handling.",
         "from": "1f24ba40-84eb-4c5b-a833-5b41cfab7d03",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:30:12.221084+00:00",
+        "last_inspected": "2026-06-17T12:51:18.697028+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
@@ -11125,10 +11138,10 @@
         "criterion": "The intents remain coupled through src/gate.rs; the changed code still preserves the recorded contract between repo introspection and role lanes and evidence gates.",
         "evidence": "Re-inspected repo introspection command surfaces and gate code. Graph mutations around codefile registration/grounding remain lane-gated; introspection itself stays read-only. cargo check passed.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
-        "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:22:21.208547+00:00",
-        "notes": "re-verified after the resolve_root sweep: repo.rs stays pure filesystem introspection (walk/detect/hash) and detect.rs is read-only — neither imports gate.rs nor calls acting_in_lane; the only gate.rs mention in repo.rs remains a test fixture path. No relationship.",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:50:51.415792+00:00",
+        "notes": "Correcting stale contradictory edge: repo.rs remains read-only filesystem/git introspection and does not import gate.rs or call lane/evidence gates. The new pending cochange accounting shells out to git and degrades silently; role enforcement lives in command mutation paths.",
         "priority_score": 0.0,
         "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
       },
@@ -11136,11 +11149,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:27:41.003319+00:00",
         "criterion": "commands/mod.rs routes Detect to detect::run and Coverage to coverage::run; repo introspection (gitignore-aware walk, stack detection) is exposed via these dispatch paths",
-        "evidence": "Re-inspected after adding read-only operator surfaces: align --take agenda, blocked-validation closeout command, and validation list --result filter. Changed files only add CLI/list/closeout rendering paths; cargo test passed (162 unit + 9 sqlite regression). Existing relationship still holds.",
+        "evidence": "commands/mod.rs still routes detect/coverage/status/smells surfaces to code that consumes repo introspection; repo.rs only changed internal cochange accounting and the dispatch contract still holds.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T11:43:00.195248+00:00",
+        "last_inspected": "2026-06-17T12:51:18.345309+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
@@ -11149,11 +11162,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-11T16:01:58.351870+00:00",
         "criterion": "The intents remain coupled through src/db/mod.rs; the changed code still preserves the recorded contract between repo introspection and schema vocabulary and session.",
-        "evidence": "Re-read src/types.rs, src/db/sqlite.rs, and src/commands/populate.rs after the interface_surface_name helper move and IMPLEMENTS upsert fix; the recorded relationship still holds against the current code.",
+        "evidence": "Re-inspected src/repo.rs after adding pending cochange accounting. Repo introspection remains filesystem/git evidence gathering; schema/session boundaries are still only involved through command/root resolution and graph codefile context, not changed by git_cochange.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T12:35:25.450687+00:00",
+        "last_inspected": "2026-06-17T12:51:18.011636+00:00",
         "notes": "repo.rs is pure filesystem introspection with no DB/schema/session imports; detect.rs only calls db::resolve_root to choose a directory before init, then repo::detect. No LoomDb session, schema vocabulary, or shared graph types participate in repo detection.",
         "priority_score": 0.0,
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
@@ -11162,50 +11175,50 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:29:28.658161+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "Re-inspected after adding read-only operator surfaces: align --take agenda, blocked-validation closeout command, and validation list --result filter. Changed files only add CLI/list/closeout rendering paths; cargo test passed (162 unit + 9 sqlite regression). Existing relationship still holds.",
+        "evidence": "Re-inspected after the repo.rs change. Repo introspection still degrades git/history probes to empty evidence and leaves storage/session behavior behind command boundaries; backend-neutral storage coupling remains unchanged.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T11:42:52.891222+00:00",
+        "last_inspected": "2026-06-17T12:51:18.229686+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "6a41dcbc-4035-4d08-8315-0d77803ca862"
       },
       {
-        "confidence": 0.92,
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:28.710018+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "imports: src/ts_imports.rs → src/types.rs",
+        "evidence": "Re-inspected src/repo.rs and src/ts_imports.rs ownership. The change is confined to repo::git_cochange pending-path accounting; existing ts_imports/type coupling for physical facts and graph types is unchanged.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:29:28.710018+00:00",
+        "last_inspected": "2026-06-17T12:51:18.105638+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd"
       },
       {
-        "confidence": 0.92,
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:28.606605+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "imports: src/commands/mod.rs → src/commands/detect.rs",
+        "evidence": "Re-inspected command routing and repo.rs. The changed git_cochange code shells out through git and returns value data only; SQLite concurrency policy remains coupled through command/store usage outside repo.rs and is not weakened.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:29:28.606605+00:00",
+        "last_inspected": "2026-06-17T12:51:18.287920+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "6cc267b6-6052-48bd-b914-674fabe48eee"
       },
       {
-        "confidence": 0.92,
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:18.277525+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "imports: src/repo.rs → src/vec_utils.rs, src/ts_imports.rs → src/vec_utils.rs",
+        "evidence": "src/repo.rs still imports and uses push_unique_nonempty in import/spec collection helpers. The new cochange helper code does not remove or duplicate that shared nonempty string behavior.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:29:18.277525+00:00",
+        "last_inspected": "2026-06-17T12:51:18.811968+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "82336903-25ba-4f43-95b6-88fb70cfc3c1"
@@ -11214,37 +11227,37 @@
         "confidence": 0.9,
         "created_at": "2026-06-09T20:27:42.219065+00:00",
         "criterion": "detect.rs and coverage.rs accept a Printer and output results via printer.print_json or plain text; repo introspection results are rendered through the dual-mode output surface",
-        "evidence": "",
+        "evidence": "detect.rs and coverage.rs still render repo introspection results through Printer JSON/plain output. The git_cochange change feeds smells/status counts and does not bypass dual-mode output.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T01:47:50.676056+00:00",
+        "last_inspected": "2026-06-17T12:51:18.403385+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
       },
       {
-        "confidence": 0.92,
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:28.813596+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "imports: src/ts_imports.rs → src/types.rs",
+        "evidence": "Re-inspected src/repo.rs and repo introspection ownership. Interface schema vocabulary remains coupled via the existing physical-fact/type surfaces; the git_cochange change does not alter that contract.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:29:28.813596+00:00",
+        "last_inspected": "2026-06-17T12:51:18.165591+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "bf39f175-67f8-4800-844a-68d7b7b34bdc"
       },
       {
-        "confidence": 0.92,
+        "confidence": 0.9,
         "created_at": "2026-06-17T10:29:28.762216+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
-        "evidence": "imports: src/commands/mod.rs → src/commands/detect.rs",
+        "evidence": "Re-inspected repo introspection ownership after the pending cochange change. Interface inspection command coupling through existing command/detect surfaces is unchanged; git_cochange remains an advisory input only.",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:29:28.762216+00:00",
+        "last_inspected": "2026-06-17T12:51:18.461164+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
@@ -11521,6 +11534,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T12:46:36.170948+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "3fe71c5a-d357-4c51-9363-e9874a755f83",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:46:36.170948+00:00",
+        "notes": "Inspected intent-island reachability and hypothesis prove confidence: island detection checks graph connectivity to system roots, while prove confidence stamps TARGETS verdict metadata; shared smells/sqlite/hypothesis history is incidental.",
+        "priority_score": 0.0,
+        "to": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54"
       },
       {
         "confidence": 0.9,
@@ -11874,6 +11900,19 @@
         "to": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd"
       },
       {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T12:46:00.908454+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:46:00.908454+00:00",
+        "notes": "Inspected UI state coverage and interface gap detection: UI state coverage checks aspect siblings such as empty/error, while interface gaps check CALLS/surface inventory; both are audit concepts but independent.",
+        "priority_score": 0.0,
+        "to": "6cde48c7-e04f-4eae-a5c4-9b9cd519c975"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:12.811237+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
@@ -11963,6 +12002,19 @@
         "notes": "",
         "priority_score": 0.0,
         "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T12:46:01.080014+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:46:01.080014+00:00",
+        "notes": "Inspected UI state aspect coverage and hypothesis TARGETS confidence: UI state sibling coverage is a smell over aspect-tagged intents, while hypothesis prove confidence is pre-decision evidence metadata; no direct dependency.",
+        "priority_score": 0.0,
+        "to": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54"
       },
       {
         "confidence": 0.9,
@@ -13138,11 +13190,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:10.538628+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
-        "evidence": "shared: src/repo.rs",
+        "evidence": "Re-inspected src/repo.rs language heuristics. Dart/Flutter static analysis still shares repo introspection physical-fact extraction; pending cochange accounting is separate and does not alter Dart handling.",
         "from": "5de66572-bd2a-4fd6-972c-52fde80577a3",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:30:10.538628+00:00",
+        "last_inspected": "2026-06-17T12:51:18.522890+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
@@ -16398,6 +16450,19 @@
         "to": "578fa082-38fd-4021-ae5f-62cc5016ebf8"
       },
       {
+        "confidence": 0.0,
+        "created_at": "2026-06-17T12:46:00.776875+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "6cde48c7-e04f-4eae-a5c4-9b9cd519c975",
+        "inspected_by": "llm",
+        "inspection_status": "independent",
+        "last_inspected": "2026-06-17T12:46:00.776875+00:00",
+        "notes": "Inspected interface gap detection and sync indexed invalidation: interface gaps audit CALLS/surfaces/boundary intents, while sync stales graph evidence after file changes; shared sqlite/regression history is incidental.",
+        "priority_score": 0.0,
+        "to": "87d4fe6a-2331-4376-bb9f-172b24eefda7"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-17T11:14:36.944038+00:00",
         "criterion": "Git co-change shows these responsibilities move together often enough to declare the relationship for audit visibility; future edits should preserve or explicitly refute this coupling.",
@@ -16505,11 +16570,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:10.641781+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
-        "evidence": "shared: src/repo.rs",
+        "evidence": "Re-inspected src/repo.rs language heuristics. Go static analysis still shares repo introspection physical-fact extraction; pending cochange accounting is separate and does not alter Go import/package handling.",
         "from": "76ea7701-3949-4924-843c-9f2c75bea383",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:30:10.641781+00:00",
+        "last_inspected": "2026-06-17T12:51:18.581384+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
@@ -17298,11 +17363,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:12.328269+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
-        "evidence": "shared: src/repo.rs",
+        "evidence": "Re-inspected src/repo.rs language heuristics. Swift static analysis still shares repo introspection physical-fact extraction; pending cochange accounting is separate and does not alter Swift handling.",
         "from": "8b828b84-7a89-40b5-bc35-c885fb2c71a0",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:30:12.328269+00:00",
+        "last_inspected": "2026-06-17T12:51:18.754590+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
@@ -18715,11 +18780,11 @@
         "confidence": 0.9,
         "created_at": "2026-06-17T10:30:10.745057+00:00",
         "criterion": "These intents deliberately share at least one owned file under the current coordinator/query module boundary; the overlap is declared so future ownership splits can be judged explicitly.",
-        "evidence": "shared: src/repo.rs",
+        "evidence": "Re-inspected src/repo.rs language heuristics. Kotlin static analysis still shares repo introspection physical-fact extraction; pending cochange accounting is separate and does not alter Kotlin import handling.",
         "from": "b3e21549-8c6b-4e52-a3a3-7935e92cdd11",
         "inspected_by": "llm",
         "inspection_status": "passing",
-        "last_inspected": "2026-06-17T10:30:10.745057+00:00",
+        "last_inspected": "2026-06-17T12:51:18.639085+00:00",
         "notes": "",
         "priority_score": 0.0,
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
@@ -71236,13 +71301,13 @@
         ]
       },
       {
-        "content_hash": "c21575fc939b7ee5",
+        "content_hash": "f86585feb8769793",
         "id": "f4679c54-0f38-46c3-8b8a-a194497c42df",
         "imports": [
           "src/vec_utils.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-17T01:47:02.361777699+00:00",
+        "last_modified": "2026-06-17T12:49:15.648069450+00:00",
         "path": "src/repo.rs",
         "symbol_facts": [
           {
@@ -71297,25 +71362,25 @@
             "body_hash": "3a0fa374af9cb33b",
             "kind": "fn",
             "label": "fn collect_go_symbols",
-            "line_end": 885,
-            "line_start": 873,
+            "line_end": 929,
+            "line_start": 917,
             "name": "collect_go_symbols",
             "shape_hash": "3bf0e0c45e596af3",
             "string_literals": [
               {
-                "line": 876,
+                "line": 920,
                 "value": "func "
               },
               {
-                "line": 877,
+                "line": 921,
                 "value": "func"
               },
               {
-                "line": 879,
+                "line": 923,
                 "value": "type "
               },
               {
-                "line": 881,
+                "line": 925,
                 "value": "type"
               }
             ],
@@ -71325,13 +71390,13 @@
             "body_hash": "fc44c47e17dbf77f",
             "kind": "fn",
             "label": "fn collect_simple_symbols",
-            "line_end": 871,
-            "line_start": 851,
+            "line_end": 915,
+            "line_start": 895,
             "name": "collect_simple_symbols",
             "shape_hash": "a68faa4424465d46",
             "string_literals": [
               {
-                "line": 867,
+                "line": 911,
                 "value": "fn"
               }
             ],
@@ -71341,37 +71406,37 @@
             "body_hash": "55ff19676f529395",
             "kind": "fn",
             "label": "fn collect_svelte_symbols",
-            "line_end": 900,
-            "line_start": 887,
+            "line_end": 944,
+            "line_start": 931,
             "name": "collect_svelte_symbols",
             "shape_hash": "0b8bc3d1d84a944c",
             "string_literals": [
               {
-                "line": 890,
+                "line": 934,
                 "value": "<script"
               },
               {
-                "line": 891,
+                "line": 935,
                 "value": "component"
               },
               {
-                "line": 891,
+                "line": 935,
                 "value": "script"
               },
               {
-                "line": 893,
+                "line": 937,
                 "value": "export let "
               },
               {
-                "line": 894,
+                "line": 938,
                 "value": "prop"
               },
               {
-                "line": 896,
+                "line": 940,
                 "value": "function "
               },
               {
-                "line": 897,
+                "line": 941,
                 "value": "function"
               }
             ],
@@ -71382,81 +71447,81 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn confine_keeps_root_relative_and_rejects_escapes",
-            "line_end": 1075,
-            "line_start": 1040,
+            "line_end": 1176,
+            "line_start": 1141,
             "name": "confine_keeps_root_relative_and_rejects_escapes",
             "shape_hash": "dbe74e5f1de2bb58",
             "string_literals": [
               {
-                "line": 1041,
+                "line": 1142,
                 "value": "/repo"
               },
               {
-                "line": 1044,
+                "line": 1145,
                 "value": "src/main.rs"
               },
               {
-                "line": 1045,
+                "line": 1146,
                 "value": "src/main.rs"
               },
               {
-                "line": 1048,
+                "line": 1149,
                 "value": "./src/./main.rs"
               },
               {
-                "line": 1049,
+                "line": 1150,
                 "value": "src/main.rs"
               },
               {
-                "line": 1052,
+                "line": 1153,
                 "value": "src/db/../gate.rs"
               },
               {
-                "line": 1053,
+                "line": 1154,
                 "value": "src/gate.rs"
               },
               {
-                "line": 1057,
+                "line": 1158,
                 "value": "/repo/sub/file.rs"
               },
               {
-                "line": 1058,
+                "line": 1159,
                 "value": "sub/file.rs"
               },
               {
-                "line": 1061,
+                "line": 1162,
                 "value": "/repo/a/../b.rs"
               },
               {
-                "line": 1062,
+                "line": 1163,
                 "value": "b.rs"
               },
               {
-                "line": 1066,
+                "line": 1167,
                 "value": "../repo/src/x.rs"
               },
               {
-                "line": 1067,
+                "line": 1168,
                 "value": "src/x.rs"
               },
               {
-                "line": 1070,
+                "line": 1171,
                 "value": "../outside.rs"
               },
               {
-                "line": 1071,
+                "line": 1172,
                 "value": "src/../../etc/passwd"
               },
               {
-                "line": 1072,
+                "line": 1173,
                 "value": "/etc/passwd"
               },
               {
-                "line": 1073,
+                "line": 1174,
                 "value": "../../../../.."
               },
               {
-                "line": 1074,
+                "line": 1175,
                 "value": "/repo"
               }
             ],
@@ -71466,109 +71531,109 @@
             "body_hash": "8e226fc2ee47edd7",
             "kind": "fn",
             "label": "fn extract_symbol_facts_heuristic",
-            "line_end": 849,
-            "line_start": 816,
+            "line_end": 893,
+            "line_start": 860,
             "name": "extract_symbol_facts_heuristic",
             "shape_hash": "d7c95bad1a711d1f",
             "string_literals": [
               {
-                "line": 820,
+                "line": 864,
                 "value": ""
               },
               {
-                "line": 823,
+                "line": 867,
                 "value": "dart"
               },
               {
-                "line": 827,
+                "line": 871,
                 "value": "class "
               },
               {
-                "line": 827,
+                "line": 871,
                 "value": "enum "
               },
               {
-                "line": 827,
+                "line": 871,
                 "value": "mixin "
               },
               {
-                "line": 827,
+                "line": 871,
                 "value": "extension "
               },
               {
-                "line": 828,
+                "line": 872,
                 "value": "void "
               },
               {
-                "line": 828,
+                "line": 872,
                 "value": "Future<"
               },
               {
-                "line": 828,
+                "line": 872,
                 "value": "Stream<"
               },
               {
-                "line": 830,
+                "line": 874,
                 "value": "go"
               },
               {
-                "line": 831,
+                "line": 875,
                 "value": "kt"
               },
               {
-                "line": 831,
+                "line": 875,
                 "value": "kts"
               },
               {
-                "line": 835,
+                "line": 879,
                 "value": "class "
               },
               {
-                "line": 835,
+                "line": 879,
                 "value": "object "
               },
               {
-                "line": 835,
+                "line": 879,
                 "value": "interface "
               },
               {
-                "line": 835,
+                "line": 879,
                 "value": "enum class "
               },
               {
-                "line": 836,
+                "line": 880,
                 "value": "fun "
               },
               {
-                "line": 838,
+                "line": 882,
                 "value": "swift"
               },
               {
-                "line": 842,
+                "line": 886,
                 "value": "class "
               },
               {
-                "line": 842,
+                "line": 886,
                 "value": "struct "
               },
               {
-                "line": 842,
+                "line": 886,
                 "value": "enum "
               },
               {
-                "line": 842,
+                "line": 886,
                 "value": "protocol "
               },
               {
-                "line": 842,
+                "line": 886,
                 "value": "extension "
               },
               {
-                "line": 843,
+                "line": 887,
                 "value": "func "
               },
               {
-                "line": 845,
+                "line": 889,
                 "value": "svelte"
               }
             ],
@@ -71578,10 +71643,171 @@
             "body_hash": "bab649b373c55cad",
             "kind": "fn",
             "label": "fn first_quoted",
-            "line_end": 814,
-            "line_start": 808,
+            "line_end": 858,
+            "line_start": 852,
             "name": "first_quoted",
             "shape_hash": "075ca1294246c31d",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "26320c7556f67a1f",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn git_cochange_counts_pending_paths_as_the_next_commit",
+            "line_end": 1138,
+            "line_start": 1095,
+            "name": "git_cochange_counts_pending_paths_as_the_next_commit",
+            "panic_marker_count": 5,
+            "panic_markers": [
+              "unwrap"
+            ],
+            "shape_hash": "4f753cb9109e21bd",
+            "string_literals": [
+              {
+                "line": 1096,
+                "value": "loom-git-{}"
+              },
+              {
+                "line": 1098,
+                "value": "src"
+              },
+              {
+                "line": 1099,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 1099,
+                "value": "fn a() {}\\n"
+              },
+              {
+                "line": 1100,
+                "value": "src/b.rs"
+              },
+              {
+                "line": 1100,
+                "value": "fn b() {}\\n"
+              },
+              {
+                "line": 1101,
+                "value": "init"
+              },
+              {
+                "line": 1104,
+                "value": "config"
+              },
+              {
+                "line": 1104,
+                "value": "user.email"
+              },
+              {
+                "line": 1104,
+                "value": "loom@example.invalid"
+              },
+              {
+                "line": 1106,
+                "value": "config"
+              },
+              {
+                "line": 1106,
+                "value": "user.name"
+              },
+              {
+                "line": 1106,
+                "value": "Loom Test"
+              },
+              {
+                "line": 1107,
+                "value": "add"
+              },
+              {
+                "line": 1107,
+                "value": "."
+              },
+              {
+                "line": 1108,
+                "value": "commit"
+              },
+              {
+                "line": 1108,
+                "value": "-m"
+              },
+              {
+                "line": 1108,
+                "value": "initial"
+              },
+              {
+                "line": 1110,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 1110,
+                "value": "fn a() { let _x = 1; }\\n"
+              },
+              {
+                "line": 1111,
+                "value": "src/b.rs"
+              },
+              {
+                "line": 1111,
+                "value": "fn b() { let _x = 1; }\\n"
+              },
+              {
+                "line": 1113,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 1113,
+                "value": "src/b.rs"
+              },
+              {
+                "line": 1118,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 1118,
+                "value": "src/b.rs"
+              },
+              {
+                "line": 1121,
+                "value": "pending changes should be counted as the newest cochange event"
+              },
+              {
+                "line": 1123,
+                "value": "src/a.rs"
+              },
+              {
+                "line": 1124,
+                "value": "src/b.rs"
+              },
+              {
+                "line": 1126,
+                "value": "add"
+              },
+              {
+                "line": 1126,
+                "value": "."
+              },
+              {
+                "line": 1127,
+                "value": "commit"
+              },
+              {
+                "line": 1127,
+                "value": "-m"
+              },
+              {
+                "line": 1127,
+                "value": "second"
+              },
+              {
+                "line": 1131,
+                "value": "cochange evidence should be stable across the commit boundary"
+              },
+              {
+                "line": 1135,
+                "value": "individual churn evidence should be stable across the commit boundary"
+              }
+            ],
             "visibility": "private"
           },
           {
@@ -71589,8 +71815,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn git_cochange_degrades_without_a_repo",
-            "line_end": 1037,
-            "line_start": 1021,
+            "line_end": 1092,
+            "line_start": 1076,
             "name": "git_cochange_degrades_without_a_repo",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -71599,16 +71825,72 @@
             "shape_hash": "d273c476f11fe48a",
             "string_literals": [
               {
-                "line": 1023,
+                "line": 1078,
                 "value": "loom-nogit-{}"
               },
               {
-                "line": 1026,
+                "line": 1081,
                 "value": "src/a.rs"
               },
               {
-                "line": 1030,
+                "line": 1085,
                 "value": "no git repo must degrade to empty"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "951c5130d6c14b10",
+            "kind": "fn",
+            "label": "fn git_known_pending_paths",
+            "line_end": 143,
+            "line_start": 121,
+            "name": "git_known_pending_paths",
+            "shape_hash": "5f84f7aecca6289c",
+            "string_literals": [
+              {
+                "line": 124,
+                "value": "diff"
+              },
+              {
+                "line": 124,
+                "value": "--name-only"
+              },
+              {
+                "line": 124,
+                "value": "-z"
+              },
+              {
+                "line": 124,
+                "value": "HEAD"
+              },
+              {
+                "line": 124,
+                "value": "--"
+              },
+              {
+                "line": 125,
+                "value": "ls-files"
+              },
+              {
+                "line": 125,
+                "value": "--others"
+              },
+              {
+                "line": 125,
+                "value": "--exclude-standard"
+              },
+              {
+                "line": 125,
+                "value": "-z"
+              },
+              {
+                "line": 127,
+                "value": "git"
+              },
+              {
+                "line": 128,
+                "value": "-C"
               }
             ],
             "visibility": "private"
@@ -71617,17 +71899,17 @@
             "body_hash": "0e2b186efcb1ab2a",
             "kind": "fn",
             "label": "fn go_module_path",
-            "line_end": 759,
-            "line_start": 752,
+            "line_end": 803,
+            "line_start": 796,
             "name": "go_module_path",
             "shape_hash": "a39a7576579cc9d4",
             "string_literals": [
               {
-                "line": 753,
+                "line": 797,
                 "value": "go.mod"
               },
               {
-                "line": 755,
+                "line": 799,
                 "value": "module "
               }
             ],
@@ -71638,8 +71920,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn heuristic_imports_dart_go_kotlin_swift_and_svelte",
-            "line_end": 1325,
-            "line_start": 1194,
+            "line_end": 1426,
+            "line_start": 1295,
             "name": "heuristic_imports_dart_go_kotlin_swift_and_svelte",
             "panic_marker_count": 26,
             "panic_markers": [
@@ -71648,255 +71930,255 @@
             "shape_hash": "9452caafa0dbcb36",
             "string_literals": [
               {
-                "line": 1195,
+                "line": 1296,
                 "value": "loom-imp-mobile-{}"
               },
               {
-                "line": 1197,
+                "line": 1298,
                 "value": "lib/src"
               },
               {
-                "line": 1198,
+                "line": 1299,
                 "value": "pkg/util"
               },
               {
-                "line": 1199,
+                "line": 1300,
                 "value": "src/main/kotlin/com/example"
               },
               {
-                "line": 1200,
+                "line": 1301,
                 "value": "Sources/App"
               },
               {
-                "line": 1201,
+                "line": 1302,
                 "value": "web/lib"
               },
               {
-                "line": 1202,
+                "line": 1303,
                 "value": "go.mod"
               },
               {
-                "line": 1202,
+                "line": 1303,
                 "value": "module example.com/app\\n"
               },
               {
-                "line": 1203,
+                "line": 1304,
                 "value": "lib/src/helper.dart"
-              },
-              {
-                "line": 1203,
-                "value": "class Helper {}\\n"
-              },
-              {
-                "line": 1205,
-                "value": "lib/main.dart"
-              },
-              {
-                "line": 1206,
-                "value": "import 'package:demo/src/helper.dart';\\nclass App {}\\n"
-              },
-              {
-                "line": 1210,
-                "value": "pkg/util/util.go"
-              },
-              {
-                "line": 1211,
-                "value": "package util\\nfunc Use() {}\\n"
-              },
-              {
-                "line": 1215,
-                "value": "main.go"
-              },
-              {
-                "line": 1216,
-                "value": "package main\\nimport \\\"example.com/app/pkg/util\\\"\\nfunc main() {}\\n"
-              },
-              {
-                "line": 1220,
-                "value": "src/main/kotlin/com/example/Thing.kt"
-              },
-              {
-                "line": 1221,
-                "value": "class Thing\\n"
-              },
-              {
-                "line": 1225,
-                "value": "src/main/kotlin/App.kt"
-              },
-              {
-                "line": 1226,
-                "value": "import com.example.Thing\\nfun run() {}\\n"
-              },
-              {
-                "line": 1229,
-                "value": "Sources/App/Widget.swift"
-              },
-              {
-                "line": 1229,
-                "value": "struct Widget {}\\n"
-              },
-              {
-                "line": 1231,
-                "value": "Sources/App/App.swift"
-              },
-              {
-                "line": 1232,
-                "value": "import Widget\\nfunc boot() {}\\n"
-              },
-              {
-                "line": 1236,
-                "value": "web/lib/Widget.svelte"
-              },
-              {
-                "line": 1237,
-                "value": "<script>export let name;</script>\\n"
-              },
-              {
-                "line": 1241,
-                "value": "web/App.svelte"
-              },
-              {
-                "line": 1242,
-                "value": "<script>import Widget from './lib/Widget'; function boot() {}</script>\\n"
-              },
-              {
-                "line": 1249,
-                "value": "lib/main.dart"
-              },
-              {
-                "line": 1250,
-                "value": "lib/main.dart"
-              },
-              {
-                "line": 1252,
-                "value": "lib/src/helper.dart"
-              },
-              {
-                "line": 1257,
-                "value": "main.go"
-              },
-              {
-                "line": 1258,
-                "value": "main.go"
-              },
-              {
-                "line": 1260,
-                "value": "pkg/util/util.go"
-              },
-              {
-                "line": 1265,
-                "value": "src/main/kotlin/App.kt"
-              },
-              {
-                "line": 1266,
-                "value": "src/main/kotlin/App.kt"
-              },
-              {
-                "line": 1268,
-                "value": "src/main/kotlin/com/example/Thing.kt"
-              },
-              {
-                "line": 1272,
-                "value": "Sources/App/App.swift"
-              },
-              {
-                "line": 1273,
-                "value": "Sources/App/App.swift"
-              },
-              {
-                "line": 1275,
-                "value": "Sources/App/Widget.swift"
-              },
-              {
-                "line": 1279,
-                "value": "web/App.svelte"
-              },
-              {
-                "line": 1280,
-                "value": "web/App.svelte"
-              },
-              {
-                "line": 1282,
-                "value": "web/lib/Widget.svelte"
-              },
-              {
-                "line": 1286,
-                "value": "lib/main.dart"
-              },
-              {
-                "line": 1287,
-                "value": "lib/main.dart"
-              },
-              {
-                "line": 1290,
-                "value": "class App"
-              },
-              {
-                "line": 1291,
-                "value": "{dart_symbols:?}"
-              },
-              {
-                "line": 1294,
-                "value": "main.go"
-              },
-              {
-                "line": 1294,
-                "value": "main.go"
-              },
-              {
-                "line": 1296,
-                "value": "func main"
-              },
-              {
-                "line": 1297,
-                "value": "{go_symbols:?}"
-              },
-              {
-                "line": 1300,
-                "value": "src/main/kotlin/App.kt"
-              },
-              {
-                "line": 1301,
-                "value": "src/main/kotlin/App.kt"
               },
               {
                 "line": 1304,
-                "value": "fn run"
+                "value": "class Helper {}\\n"
               },
               {
-                "line": 1305,
-                "value": "{kotlin_symbols:?}"
+                "line": 1306,
+                "value": "lib/main.dart"
               },
               {
-                "line": 1308,
-                "value": "Sources/App/App.swift"
+                "line": 1307,
+                "value": "import 'package:demo/src/helper.dart';\\nclass App {}\\n"
               },
               {
-                "line": 1309,
-                "value": "Sources/App/App.swift"
+                "line": 1311,
+                "value": "pkg/util/util.go"
               },
               {
                 "line": 1312,
-                "value": "fn boot"
-              },
-              {
-                "line": 1313,
-                "value": "{swift_symbols:?}"
+                "value": "package util\\nfunc Use() {}\\n"
               },
               {
                 "line": 1316,
-                "value": "web/App.svelte"
+                "value": "main.go"
               },
               {
                 "line": 1317,
-                "value": "web/App.svelte"
-              },
-              {
-                "line": 1320,
-                "value": "component script"
+                "value": "package main\\nimport \\\"example.com/app/pkg/util\\\"\\nfunc main() {}\\n"
               },
               {
                 "line": 1321,
+                "value": "src/main/kotlin/com/example/Thing.kt"
+              },
+              {
+                "line": 1322,
+                "value": "class Thing\\n"
+              },
+              {
+                "line": 1326,
+                "value": "src/main/kotlin/App.kt"
+              },
+              {
+                "line": 1327,
+                "value": "import com.example.Thing\\nfun run() {}\\n"
+              },
+              {
+                "line": 1330,
+                "value": "Sources/App/Widget.swift"
+              },
+              {
+                "line": 1330,
+                "value": "struct Widget {}\\n"
+              },
+              {
+                "line": 1332,
+                "value": "Sources/App/App.swift"
+              },
+              {
+                "line": 1333,
+                "value": "import Widget\\nfunc boot() {}\\n"
+              },
+              {
+                "line": 1337,
+                "value": "web/lib/Widget.svelte"
+              },
+              {
+                "line": 1338,
+                "value": "<script>export let name;</script>\\n"
+              },
+              {
+                "line": 1342,
+                "value": "web/App.svelte"
+              },
+              {
+                "line": 1343,
+                "value": "<script>import Widget from './lib/Widget'; function boot() {}</script>\\n"
+              },
+              {
+                "line": 1350,
+                "value": "lib/main.dart"
+              },
+              {
+                "line": 1351,
+                "value": "lib/main.dart"
+              },
+              {
+                "line": 1353,
+                "value": "lib/src/helper.dart"
+              },
+              {
+                "line": 1358,
+                "value": "main.go"
+              },
+              {
+                "line": 1359,
+                "value": "main.go"
+              },
+              {
+                "line": 1361,
+                "value": "pkg/util/util.go"
+              },
+              {
+                "line": 1366,
+                "value": "src/main/kotlin/App.kt"
+              },
+              {
+                "line": 1367,
+                "value": "src/main/kotlin/App.kt"
+              },
+              {
+                "line": 1369,
+                "value": "src/main/kotlin/com/example/Thing.kt"
+              },
+              {
+                "line": 1373,
+                "value": "Sources/App/App.swift"
+              },
+              {
+                "line": 1374,
+                "value": "Sources/App/App.swift"
+              },
+              {
+                "line": 1376,
+                "value": "Sources/App/Widget.swift"
+              },
+              {
+                "line": 1380,
+                "value": "web/App.svelte"
+              },
+              {
+                "line": 1381,
+                "value": "web/App.svelte"
+              },
+              {
+                "line": 1383,
+                "value": "web/lib/Widget.svelte"
+              },
+              {
+                "line": 1387,
+                "value": "lib/main.dart"
+              },
+              {
+                "line": 1388,
+                "value": "lib/main.dart"
+              },
+              {
+                "line": 1391,
+                "value": "class App"
+              },
+              {
+                "line": 1392,
+                "value": "{dart_symbols:?}"
+              },
+              {
+                "line": 1395,
+                "value": "main.go"
+              },
+              {
+                "line": 1395,
+                "value": "main.go"
+              },
+              {
+                "line": 1397,
+                "value": "func main"
+              },
+              {
+                "line": 1398,
+                "value": "{go_symbols:?}"
+              },
+              {
+                "line": 1401,
+                "value": "src/main/kotlin/App.kt"
+              },
+              {
+                "line": 1402,
+                "value": "src/main/kotlin/App.kt"
+              },
+              {
+                "line": 1405,
+                "value": "fn run"
+              },
+              {
+                "line": 1406,
+                "value": "{kotlin_symbols:?}"
+              },
+              {
+                "line": 1409,
+                "value": "Sources/App/App.swift"
+              },
+              {
+                "line": 1410,
+                "value": "Sources/App/App.swift"
+              },
+              {
+                "line": 1413,
+                "value": "fn boot"
+              },
+              {
+                "line": 1414,
+                "value": "{swift_symbols:?}"
+              },
+              {
+                "line": 1417,
+                "value": "web/App.svelte"
+              },
+              {
+                "line": 1418,
+                "value": "web/App.svelte"
+              },
+              {
+                "line": 1421,
+                "value": "component script"
+              },
+              {
+                "line": 1422,
                 "value": "{svelte_symbols:?}"
               }
             ],
@@ -71907,8 +72189,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn heuristic_imports_rust_js_python",
-            "line_end": 1191,
-            "line_start": 1140,
+            "line_end": 1292,
+            "line_start": 1241,
             "name": "heuristic_imports_rust_js_python",
             "panic_marker_count": 14,
             "panic_markers": [
@@ -71917,139 +72199,139 @@
             "shape_hash": "15293231206c925b",
             "string_literals": [
               {
-                "line": 1141,
+                "line": 1242,
                 "value": "loom-imp-heur-{}"
               },
               {
-                "line": 1143,
+                "line": 1244,
                 "value": "src/db"
               },
               {
-                "line": 1144,
+                "line": 1245,
                 "value": "web"
               },
               {
-                "line": 1145,
+                "line": 1246,
                 "value": "pkg"
               },
               {
-                "line": 1146,
+                "line": 1247,
                 "value": "src/db/mod.rs"
               },
               {
-                "line": 1146,
+                "line": 1247,
                 "value": ""
               },
               {
-                "line": 1147,
+                "line": 1248,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1147,
+                "line": 1248,
                 "value": ""
               },
               {
-                "line": 1148,
+                "line": 1249,
                 "value": "src/gate.rs"
               },
               {
-                "line": 1148,
+                "line": 1249,
                 "value": ""
               },
               {
-                "line": 1150,
+                "line": 1251,
                 "value": "src/main.rs"
               },
               {
-                "line": 1151,
+                "line": 1252,
                 "value": "mod gate;\\nuse crate::db::schema::esc;\\n"
               },
               {
-                "line": 1154,
+                "line": 1255,
                 "value": "web/util.ts"
               },
               {
-                "line": 1154,
+                "line": 1255,
                 "value": ""
               },
               {
-                "line": 1156,
+                "line": 1257,
                 "value": "web/app.ts"
               },
               {
-                "line": 1157,
+                "line": 1258,
                 "value": "import {x} from './util';\\nimport pkg from 'react';\\n"
               },
               {
-                "line": 1160,
+                "line": 1261,
                 "value": "pkg/helper.py"
               },
               {
-                "line": 1160,
+                "line": 1261,
                 "value": ""
               },
               {
-                "line": 1162,
+                "line": 1263,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1163,
+                "line": 1264,
                 "value": "from .helper import thing\\nimport os\\n"
               },
               {
-                "line": 1169,
+                "line": 1270,
                 "value": "src/main.rs"
               },
               {
-                "line": 1170,
+                "line": 1271,
                 "value": "src/main.rs"
               },
               {
-                "line": 1172,
+                "line": 1273,
                 "value": "src/gate.rs"
               },
               {
-                "line": 1172,
+                "line": 1273,
                 "value": "{rs:?}"
               },
               {
-                "line": 1173,
+                "line": 1274,
                 "value": "src/db/mod.rs"
               },
               {
-                "line": 1173,
+                "line": 1274,
                 "value": "{rs:?}"
               },
               {
-                "line": 1174,
+                "line": 1275,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1174,
+                "line": 1275,
                 "value": "{rs:?}"
               },
               {
-                "line": 1178,
+                "line": 1279,
                 "value": "web/app.ts"
               },
               {
-                "line": 1179,
+                "line": 1280,
                 "value": "web/app.ts"
               },
               {
-                "line": 1181,
+                "line": 1282,
                 "value": "web/util.ts"
               },
               {
-                "line": 1185,
+                "line": 1286,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1186,
+                "line": 1287,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1188,
+                "line": 1289,
                 "value": "pkg/helper.py"
               }
             ],
@@ -72060,8 +72342,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn imports_rust_js_python",
-            "line_end": 1137,
-            "line_start": 1078,
+            "line_end": 1238,
+            "line_start": 1179,
             "name": "imports_rust_js_python",
             "panic_marker_count": 14,
             "panic_markers": [
@@ -72070,147 +72352,147 @@
             "shape_hash": "5f2d6aeb89982f75",
             "string_literals": [
               {
-                "line": 1079,
+                "line": 1180,
                 "value": "loom-imp-{}"
               },
               {
-                "line": 1081,
+                "line": 1182,
                 "value": "src/db"
               },
               {
-                "line": 1082,
+                "line": 1183,
                 "value": "web"
               },
               {
-                "line": 1083,
+                "line": 1184,
                 "value": "pkg"
               },
               {
-                "line": 1084,
+                "line": 1185,
                 "value": "src/db/mod.rs"
               },
               {
-                "line": 1084,
+                "line": 1185,
                 "value": ""
               },
               {
-                "line": 1085,
+                "line": 1186,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1085,
+                "line": 1186,
                 "value": ""
               },
               {
-                "line": 1086,
+                "line": 1187,
                 "value": "src/gate.rs"
               },
               {
-                "line": 1086,
+                "line": 1187,
                 "value": ""
               },
               {
-                "line": 1088,
+                "line": 1189,
                 "value": "src/main.rs"
               },
               {
-                "line": 1089,
+                "line": 1190,
                 "value": "mod gate;\\nuse crate::db::schema::esc;\\n"
               },
               {
-                "line": 1092,
+                "line": 1193,
                 "value": "web/util.ts"
               },
               {
-                "line": 1092,
+                "line": 1193,
                 "value": ""
               },
               {
-                "line": 1094,
+                "line": 1195,
                 "value": "web/app.ts"
               },
               {
-                "line": 1095,
+                "line": 1196,
                 "value": "import {x} from './util';\\nimport pkg from 'react';\\n"
               },
               {
-                "line": 1098,
+                "line": 1199,
                 "value": "pkg/helper.py"
               },
               {
-                "line": 1098,
+                "line": 1199,
                 "value": ""
               },
               {
-                "line": 1100,
+                "line": 1201,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1101,
+                "line": 1202,
                 "value": "from .helper import thing\\nimport os\\n"
               },
               {
-                "line": 1107,
+                "line": 1208,
                 "value": "src/main.rs"
               },
               {
-                "line": 1108,
+                "line": 1209,
                 "value": "src/main.rs"
               },
               {
-                "line": 1110,
+                "line": 1211,
                 "value": "src/gate.rs"
               },
               {
-                "line": 1110,
+                "line": 1211,
                 "value": "{rs:?}"
               },
               {
-                "line": 1111,
+                "line": 1212,
                 "value": "src/db/mod.rs"
               },
               {
-                "line": 1111,
+                "line": 1212,
                 "value": "{rs:?}"
               },
               {
-                "line": 1112,
+                "line": 1213,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1112,
+                "line": 1213,
                 "value": "{rs:?}"
               },
               {
-                "line": 1116,
+                "line": 1217,
                 "value": "web/app.ts"
               },
               {
-                "line": 1117,
+                "line": 1218,
                 "value": "web/app.ts"
               },
               {
-                "line": 1121,
+                "line": 1222,
                 "value": "web/util.ts"
               },
               {
-                "line": 1122,
+                "line": 1223,
                 "value": "package imports excluded"
               },
               {
-                "line": 1127,
+                "line": 1228,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1128,
+                "line": 1229,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1132,
+                "line": 1233,
                 "value": "pkg/helper.py"
               },
               {
-                "line": 1133,
+                "line": 1234,
                 "value": "stdlib imports excluded: {py:?}"
               }
             ],
@@ -72220,189 +72502,189 @@
             "body_hash": "a470a65d69e2341a",
             "kind": "fn",
             "label": "fn lang_of",
-            "line_end": 1006,
-            "line_start": 981,
+            "line_end": 1050,
+            "line_start": 1025,
             "name": "lang_of",
             "shape_hash": "720a8910b66ece4e",
             "string_literals": [
               {
-                "line": 985,
+                "line": 1029,
                 "value": ""
               },
               {
-                "line": 987,
+                "line": 1031,
                 "value": "rs"
               },
               {
-                "line": 987,
+                "line": 1031,
                 "value": "rust"
               },
               {
-                "line": 988,
+                "line": 1032,
                 "value": "ts"
               },
               {
-                "line": 988,
+                "line": 1032,
                 "value": "tsx"
               },
               {
-                "line": 988,
+                "line": 1032,
                 "value": "typescript"
               },
               {
-                "line": 989,
+                "line": 1033,
                 "value": "js"
               },
               {
-                "line": 989,
+                "line": 1033,
                 "value": "jsx"
               },
               {
-                "line": 989,
+                "line": 1033,
                 "value": "mjs"
               },
               {
-                "line": 989,
+                "line": 1033,
                 "value": "javascript"
               },
               {
-                "line": 990,
+                "line": 1034,
                 "value": "py"
               },
               {
-                "line": 990,
+                "line": 1034,
                 "value": "python"
               },
               {
-                "line": 991,
+                "line": 1035,
                 "value": "dart"
               },
               {
-                "line": 991,
+                "line": 1035,
                 "value": "dart"
               },
               {
-                "line": 992,
+                "line": 1036,
                 "value": "go"
               },
               {
-                "line": 992,
+                "line": 1036,
                 "value": "go"
               },
               {
-                "line": 993,
+                "line": 1037,
                 "value": "java"
               },
               {
-                "line": 993,
+                "line": 1037,
                 "value": "java"
               },
               {
-                "line": 994,
+                "line": 1038,
                 "value": "kt"
               },
               {
-                "line": 994,
+                "line": 1038,
                 "value": "kts"
               },
               {
-                "line": 994,
+                "line": 1038,
                 "value": "kotlin"
               },
               {
-                "line": 995,
+                "line": 1039,
                 "value": "swift"
               },
               {
-                "line": 995,
+                "line": 1039,
                 "value": "swift"
               },
               {
-                "line": 996,
+                "line": 1040,
                 "value": "c"
               },
               {
-                "line": 996,
+                "line": 1040,
                 "value": "h"
               },
               {
-                "line": 996,
+                "line": 1040,
                 "value": "c"
               },
               {
-                "line": 997,
+                "line": 1041,
                 "value": "cpp"
               },
               {
-                "line": 997,
+                "line": 1041,
                 "value": "cc"
               },
               {
-                "line": 997,
+                "line": 1041,
                 "value": "cxx"
               },
               {
-                "line": 997,
+                "line": 1041,
                 "value": "hpp"
               },
               {
-                "line": 997,
+                "line": 1041,
                 "value": "cpp"
               },
               {
-                "line": 998,
+                "line": 1042,
                 "value": "cs"
               },
               {
-                "line": 998,
+                "line": 1042,
                 "value": "csharp"
               },
               {
-                "line": 999,
+                "line": 1043,
                 "value": "rb"
               },
               {
-                "line": 999,
+                "line": 1043,
                 "value": "ruby"
               },
               {
-                "line": 1000,
+                "line": 1044,
                 "value": "php"
               },
               {
-                "line": 1000,
+                "line": 1044,
                 "value": "php"
               },
               {
-                "line": 1001,
+                "line": 1045,
                 "value": "sh"
               },
               {
-                "line": 1001,
+                "line": 1045,
                 "value": "bash"
               },
               {
-                "line": 1001,
+                "line": 1045,
                 "value": "shell"
               },
               {
-                "line": 1002,
+                "line": 1046,
                 "value": "sql"
               },
               {
-                "line": 1002,
+                "line": 1046,
                 "value": "sql"
               },
               {
-                "line": 1003,
+                "line": 1047,
                 "value": "svelte"
               },
               {
-                "line": 1003,
+                "line": 1047,
                 "value": "svelte"
               },
               {
-                "line": 1004,
+                "line": 1048,
                 "value": "other"
               }
             ],
@@ -72413,33 +72695,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn locator_presence",
-            "line_end": 1018,
-            "line_start": 1014,
+            "line_end": 1073,
+            "line_start": 1069,
             "name": "locator_presence",
             "shape_hash": "4a65884be8c660a8",
             "string_literals": [
               {
-                "line": 1015,
+                "line": 1070,
                 "value": "fn run() {}"
               },
               {
-                "line": 1015,
+                "line": 1070,
                 "value": "fn run"
               },
               {
-                "line": 1016,
+                "line": 1071,
                 "value": "anything"
               },
               {
-                "line": 1016,
+                "line": 1071,
                 "value": ""
               },
               {
-                "line": 1017,
+                "line": 1072,
                 "value": "fn walk() {}"
               },
               {
-                "line": 1017,
+                "line": 1072,
                 "value": "fn run"
               }
             ],
@@ -72449,25 +72731,41 @@
             "body_hash": "c836d9c10365159d",
             "kind": "fn",
             "label": "fn normalize",
-            "line_end": 979,
-            "line_start": 965,
+            "line_end": 1023,
+            "line_start": 1009,
             "name": "normalize",
             "shape_hash": "1eb905a93b3f4089",
             "string_literals": [
               {
-                "line": 969,
+                "line": 1013,
                 "value": ""
               },
               {
-                "line": 969,
+                "line": 1013,
                 "value": "."
               },
               {
-                "line": 970,
+                "line": 1014,
                 "value": ".."
               },
               {
-                "line": 978,
+                "line": 1022,
+                "value": "/"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "6d37d9831dc0ae6f",
+            "kind": "fn",
+            "label": "fn nul_paths",
+            "line_end": 119,
+            "line_start": 113,
+            "name": "nul_paths",
+            "shape_hash": "d4e82f7043ab1745",
+            "string_literals": [
+              {
+                "line": 118,
                 "value": "/"
               }
             ],
@@ -72477,57 +72775,57 @@
             "body_hash": "7b06dc55751c5cb2",
             "kind": "fn",
             "label": "fn path_is_test_like",
-            "line_end": 954,
-            "line_start": 941,
+            "line_end": 998,
+            "line_start": 985,
             "name": "path_is_test_like",
             "shape_hash": "a1a576ee28ea26b0",
             "string_literals": [
               {
-                "line": 942,
+                "line": 986,
                 "value": "/"
               },
               {
-                "line": 943,
+                "line": 987,
                 "value": "/test/"
               },
               {
-                "line": 944,
+                "line": 988,
                 "value": "/tests/"
               },
               {
-                "line": 945,
+                "line": 989,
                 "value": "/integration_test/"
               },
               {
-                "line": 946,
+                "line": 990,
                 "value": "test/"
               },
               {
-                "line": 947,
+                "line": 991,
                 "value": "tests/"
               },
               {
-                "line": 948,
+                "line": 992,
                 "value": "integration_test/"
               },
               {
-                "line": 949,
+                "line": 993,
                 "value": ".test."
               },
               {
-                "line": 950,
+                "line": 994,
                 "value": ".spec."
               },
               {
-                "line": 951,
+                "line": 995,
                 "value": "_test.dart"
               },
               {
-                "line": 952,
+                "line": 996,
                 "value": "_test.go"
               },
               {
-                "line": 953,
+                "line": 997,
                 "value": "Tests.swift"
               }
             ],
@@ -72537,21 +72835,21 @@
             "body_hash": "f9bcc5223e3ea4db",
             "kind": "fn",
             "label": "fn push_heuristic_symbol",
-            "line_end": 939,
-            "line_start": 912,
+            "line_end": 983,
+            "line_start": 956,
             "name": "push_heuristic_symbol",
             "shape_hash": "0cae1c42649f3420",
             "string_literals": [
               {
-                "line": 920,
+                "line": 964,
                 "value": "{kind} {name}"
               },
               {
-                "line": 929,
+                "line": 973,
                 "value": "public"
               },
               {
-                "line": 937,
+                "line": 981,
                 "value": "{kind} _"
               }
             ],
@@ -72561,8 +72859,8 @@
             "body_hash": "103bd5e7d67381c7",
             "kind": "fn",
             "label": "fn push_if_file",
-            "line_end": 962,
-            "line_start": 956,
+            "line_end": 1006,
+            "line_start": 1000,
             "name": "push_if_file",
             "shape_hash": "7b4f274e10d33516",
             "visibility": "private"
@@ -72571,13 +72869,13 @@
             "body_hash": "546e9dbbed8cb06a",
             "kind": "fn",
             "label": "fn push_package_files",
-            "line_end": 806,
-            "line_start": 788,
+            "line_end": 850,
+            "line_start": 832,
             "name": "push_package_files",
             "shape_hash": "8ddf50a48e84f62e",
             "string_literals": [
               {
-                "line": 801,
+                "line": 845,
                 "value": "/"
               }
             ],
@@ -72587,213 +72885,223 @@
             "body_hash": "b51bd0ec9d249fce",
             "kind": "fn",
             "label": "fn recommend_packs",
-            "line_end": 377,
-            "line_start": 303,
+            "line_end": 421,
+            "line_start": 347,
             "name": "recommend_packs",
             "shape_hash": "36141786338cec12",
             "string_literals": [
               {
-                "line": 305,
+                "line": 349,
                 "value": "iso5055"
               },
               {
-                "line": 306,
+                "line": 350,
                 "value": "baseline — reliability/security/performance/maintainability apply to any code"
               },
               {
-                "line": 314,
+                "line": 358,
                 "value": ""
               },
               {
-                "line": 329,
+                "line": 373,
                 "value": "swift"
-              },
-              {
-                "line": 329,
-                "value": "java/kotlin"
-              },
-              {
-                "line": 329,
-                "value": "dart/flutter"
-              },
-              {
-                "line": 330,
-                "value": "swift"
-              },
-              {
-                "line": 330,
-                "value": "kt"
-              },
-              {
-                "line": 330,
-                "value": "kts"
-              },
-              {
-                "line": 330,
-                "value": "dart"
-              },
-              {
-                "line": 331,
-                "value": "ios"
-              },
-              {
-                "line": 331,
-                "value": "android"
-              },
-              {
-                "line": 334,
-                "value": "pubspec.yaml"
-              },
-              {
-                "line": 334,
-                "value": "/pubspec.yaml"
-              },
-              {
-                "line": 337,
-                "value": "mobile"
-              },
-              {
-                "line": 338,
-                "value": "mobile platform code detected (swift/kotlin/flutter or ios|android dirs) — lifecycle, offline, permissions, main thread"
-              },
-              {
-                "line": 341,
-                "value": "svelte"
-              },
-              {
-                "line": 342,
-                "value": "tsx"
-              },
-              {
-                "line": 342,
-                "value": "jsx"
-              },
-              {
-                "line": 342,
-                "value": "vue"
-              },
-              {
-                "line": 342,
-                "value": "svelte"
-              },
-              {
-                "line": 342,
-                "value": "html"
-              },
-              {
-                "line": 342,
-                "value": "css"
-              },
-              {
-                "line": 345,
-                "value": "web-ui"
-              },
-              {
-                "line": 346,
-                "value": "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust"
-              },
-              {
-                "line": 352,
-                "value": "rust"
-              },
-              {
-                "line": 352,
-                "value": "go"
-              },
-              {
-                "line": 352,
-                "value": "node"
-              },
-              {
-                "line": 352,
-                "value": "bun"
-              },
-              {
-                "line": 352,
-                "value": "python"
-              },
-              {
-                "line": 352,
-                "value": "java"
-              },
-              {
-                "line": 352,
-                "value": "java/kotlin"
-              },
-              {
-                "line": 352,
-                "value": "ruby"
-              },
-              {
-                "line": 352,
-                "value": "php"
-              },
-              {
-                "line": 354,
-                "value": "Dockerfile"
-              },
-              {
-                "line": 355,
-                "value": "docker-compose.yml"
-              },
-              {
-                "line": 358,
-                "value": "service"
-              },
-              {
-                "line": 359,
-                "value": "backend-capable stack detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)"
-              },
-              {
-                "line": 362,
-                "value": "concurrency"
-              },
-              {
-                "line": 363,
-                "value": "backend-capable stack detected — applies where this code shares state across threads/tasks or has hot paths worth a proven budget (sync discipline, lock hygiene, benchmarks)"
-              },
-              {
-                "line": 366,
-                "value": "sql"
-              },
-              {
-                "line": 369,
-                "value": "migrations"
-              },
-              {
-                "line": 372,
-                "value": "data"
               },
               {
                 "line": 373,
+                "value": "java/kotlin"
+              },
+              {
+                "line": 373,
+                "value": "dart/flutter"
+              },
+              {
+                "line": 374,
+                "value": "swift"
+              },
+              {
+                "line": 374,
+                "value": "kt"
+              },
+              {
+                "line": 374,
+                "value": "kts"
+              },
+              {
+                "line": 374,
+                "value": "dart"
+              },
+              {
+                "line": 375,
+                "value": "ios"
+              },
+              {
+                "line": 375,
+                "value": "android"
+              },
+              {
+                "line": 378,
+                "value": "pubspec.yaml"
+              },
+              {
+                "line": 378,
+                "value": "/pubspec.yaml"
+              },
+              {
+                "line": 381,
+                "value": "mobile"
+              },
+              {
+                "line": 382,
+                "value": "mobile platform code detected (swift/kotlin/flutter or ios|android dirs) — lifecycle, offline, permissions, main thread"
+              },
+              {
+                "line": 385,
+                "value": "svelte"
+              },
+              {
+                "line": 386,
+                "value": "tsx"
+              },
+              {
+                "line": 386,
+                "value": "jsx"
+              },
+              {
+                "line": 386,
+                "value": "vue"
+              },
+              {
+                "line": 386,
+                "value": "svelte"
+              },
+              {
+                "line": 386,
+                "value": "html"
+              },
+              {
+                "line": 386,
+                "value": "css"
+              },
+              {
+                "line": 389,
+                "value": "web-ui"
+              },
+              {
+                "line": 390,
+                "value": "frontend files detected (tsx/jsx/vue/svelte/html/css) — view states, accessibility, XSS, client-side trust"
+              },
+              {
+                "line": 396,
+                "value": "rust"
+              },
+              {
+                "line": 396,
+                "value": "go"
+              },
+              {
+                "line": 396,
+                "value": "node"
+              },
+              {
+                "line": 396,
+                "value": "bun"
+              },
+              {
+                "line": 396,
+                "value": "python"
+              },
+              {
+                "line": 396,
+                "value": "java"
+              },
+              {
+                "line": 396,
+                "value": "java/kotlin"
+              },
+              {
+                "line": 396,
+                "value": "ruby"
+              },
+              {
+                "line": 396,
+                "value": "php"
+              },
+              {
+                "line": 398,
+                "value": "Dockerfile"
+              },
+              {
+                "line": 399,
+                "value": "docker-compose.yml"
+              },
+              {
+                "line": 402,
+                "value": "service"
+              },
+              {
+                "line": 403,
+                "value": "backend-capable stack detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)"
+              },
+              {
+                "line": 406,
+                "value": "concurrency"
+              },
+              {
+                "line": 407,
+                "value": "backend-capable stack detected — applies where this code shares state across threads/tasks or has hot paths worth a proven budget (sync discipline, lock hygiene, benchmarks)"
+              },
+              {
+                "line": 410,
+                "value": "sql"
+              },
+              {
+                "line": 413,
+                "value": "migrations"
+              },
+              {
+                "line": 416,
+                "value": "data"
+              },
+              {
+                "line": 417,
                 "value": "SQL/migrations detected — migration safety, ingest validation, loss accounting, PII"
               }
             ],
             "visibility": "private"
           },
           {
+            "body_hash": "ba6b853cdd4f4782",
+            "kind": "fn",
+            "label": "fn record_cochange_event",
+            "line_end": 111,
+            "line_start": 99,
+            "name": "record_cochange_event",
+            "shape_hash": "e62aa6bd4ae1c6f5",
+            "visibility": "private"
+          },
+          {
             "body_hash": "07063ae63e79b010",
             "kind": "fn",
             "label": "fn resolve_dart_spec",
-            "line_end": 738,
-            "line_start": 727,
+            "line_end": 782,
+            "line_start": 771,
             "name": "resolve_dart_spec",
             "shape_hash": "e0ce0116f8a20205",
             "string_literals": [
               {
-                "line": 729,
+                "line": 773,
                 "value": "package:"
               },
               {
-                "line": 732,
+                "line": 776,
                 "value": "lib/{path}"
               },
               {
-                "line": 735,
+                "line": 779,
                 "value": "{dir}/{spec}"
               },
               {
-                "line": 737,
+                "line": 781,
                 "value": "{base}.dart"
               }
             ],
@@ -72803,25 +73111,25 @@
             "body_hash": "87ecdfa9352136df",
             "kind": "fn",
             "label": "fn resolve_go_spec",
-            "line_end": 750,
-            "line_start": 740,
+            "line_end": 794,
+            "line_start": 784,
             "name": "resolve_go_spec",
             "shape_hash": "0d23927e583ecf23",
             "string_literals": [
               {
-                "line": 744,
+                "line": 788,
                 "value": "{module_path}/"
               },
               {
-                "line": 747,
+                "line": 791,
                 "value": "{rest}.go"
               },
               {
-                "line": 748,
+                "line": 792,
                 "value": "{rest}/mod.go"
               },
               {
-                "line": 749,
+                "line": 793,
                 "value": "go"
               }
             ],
@@ -72831,69 +73139,69 @@
             "body_hash": "4a8df5713dd0df08",
             "kind": "fn",
             "label": "fn resolve_import_specifiers",
-            "line_end": 642,
-            "line_start": 615,
+            "line_end": 686,
+            "line_start": 659,
             "name": "resolve_import_specifiers",
             "shape_hash": "5f7019cce8244729",
             "string_literals": [
               {
-                "line": 620,
+                "line": 664,
                 "value": ""
               },
               {
-                "line": 623,
+                "line": 667,
                 "value": "/"
               },
               {
-                "line": 628,
+                "line": 672,
                 "value": "rs"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "ts"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "tsx"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "js"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "jsx"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "mjs"
               },
               {
-                "line": 629,
+                "line": 673,
                 "value": "svelte"
               },
               {
-                "line": 632,
+                "line": 676,
                 "value": "py"
               },
               {
-                "line": 633,
+                "line": 677,
                 "value": "dart"
               },
               {
-                "line": 634,
+                "line": 678,
                 "value": "go"
               },
               {
-                "line": 635,
+                "line": 679,
                 "value": "kt"
               },
               {
-                "line": 635,
+                "line": 679,
                 "value": "kts"
               },
               {
-                "line": 636,
+                "line": 680,
                 "value": "swift"
               }
             ],
@@ -72903,65 +73211,65 @@
             "body_hash": "73bec8f67f96ab03",
             "kind": "fn",
             "label": "fn resolve_js_spec",
-            "line_end": 686,
-            "line_start": 668,
+            "line_end": 730,
+            "line_start": 712,
             "name": "resolve_js_spec",
             "shape_hash": "4504e439ff5735c1",
             "string_literals": [
               {
-                "line": 672,
+                "line": 716,
                 "value": "{dir}/{spec}"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".ts"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".tsx"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".js"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".jsx"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".mjs"
               },
               {
-                "line": 674,
+                "line": 718,
                 "value": ".svelte"
               },
               {
-                "line": 675,
+                "line": 719,
                 "value": "{base}{e}"
               },
               {
-                "line": 678,
+                "line": 722,
                 "value": "/index.ts"
               },
               {
-                "line": 679,
+                "line": 723,
                 "value": "/index.tsx"
               },
               {
-                "line": 680,
+                "line": 724,
                 "value": "/index.js"
               },
               {
-                "line": 681,
+                "line": 725,
                 "value": "/index.jsx"
               },
               {
-                "line": 682,
+                "line": 726,
                 "value": "/index.svelte"
               },
               {
-                "line": 684,
+                "line": 728,
                 "value": "{base}{e}"
               }
             ],
@@ -72971,41 +73279,41 @@
             "body_hash": "0a57f840a94eda55",
             "kind": "fn",
             "label": "fn resolve_kotlin_spec",
-            "line_end": 773,
-            "line_start": 761,
+            "line_end": 817,
+            "line_start": 805,
             "name": "resolve_kotlin_spec",
             "shape_hash": "e1cd13db26bbc528",
             "string_literals": [
               {
-                "line": 762,
+                "line": 806,
                 "value": "/"
               },
               {
-                "line": 764,
+                "line": 808,
                 "value": "src/main/kotlin"
               },
               {
-                "line": 765,
+                "line": 809,
                 "value": "src/test/kotlin"
               },
               {
-                "line": 766,
+                "line": 810,
                 "value": "app/src/main/java"
               },
               {
-                "line": 767,
+                "line": 811,
                 "value": "app/src/main/kotlin"
               },
               {
-                "line": 768,
+                "line": 812,
                 "value": ""
               },
               {
-                "line": 770,
+                "line": 814,
                 "value": "{base}/{path}.kt"
               },
               {
-                "line": 771,
+                "line": 815,
                 "value": "{base}/{path}.kts"
               }
             ],
@@ -73015,25 +73323,25 @@
             "body_hash": "be45f0a02fca839a",
             "kind": "fn",
             "label": "fn resolve_python_spec",
-            "line_end": 725,
-            "line_start": 688,
+            "line_end": 769,
+            "line_start": 732,
             "name": "resolve_python_spec",
             "shape_hash": "722c65e3a3176c2c",
             "string_literals": [
               {
-                "line": 712,
+                "line": 756,
                 "value": "."
               },
               {
-                "line": 717,
+                "line": 761,
                 "value": "/"
               },
               {
-                "line": 718,
+                "line": 762,
                 "value": "{base}/{as_path}.py"
               },
               {
-                "line": 723,
+                "line": 767,
                 "value": "{base}/{as_path}/__init__.py"
               }
             ],
@@ -73043,45 +73351,45 @@
             "body_hash": "894b1a6d0d9683eb",
             "kind": "fn",
             "label": "fn resolve_rust_spec",
-            "line_end": 666,
-            "line_start": 644,
+            "line_end": 710,
+            "line_start": 688,
             "name": "resolve_rust_spec",
             "shape_hash": "476cb1be7003f8dc",
             "string_literals": [
               {
-                "line": 645,
+                "line": 689,
                 "value": "mod:"
               },
               {
-                "line": 647,
+                "line": 691,
                 "value": "{dir}/{name}.rs"
               },
               {
-                "line": 648,
+                "line": 692,
                 "value": "{dir}/{name}/mod.rs"
               },
               {
-                "line": 653,
+                "line": 697,
                 "value": "crate::"
               },
               {
-                "line": 656,
+                "line": 700,
                 "value": "::"
               },
               {
-                "line": 657,
+                "line": 701,
                 "value": "src"
               },
               {
-                "line": 662,
+                "line": 706,
                 "value": "{acc}/{seg}"
               },
               {
-                "line": 663,
+                "line": 707,
                 "value": "{acc}.rs"
               },
               {
-                "line": 664,
+                "line": 708,
                 "value": "{acc}/mod.rs"
               }
             ],
@@ -73091,38 +73399,59 @@
             "body_hash": "2fbee03b093528ff",
             "kind": "fn",
             "label": "fn resolve_swift_spec",
-            "line_end": 786,
-            "line_start": 775,
+            "line_end": 830,
+            "line_start": 819,
             "name": "resolve_swift_spec",
             "shape_hash": "8cc951e4a326d399",
             "string_literals": [
               {
-                "line": 779,
+                "line": 823,
                 "value": "/"
               },
               {
-                "line": 781,
+                "line": 825,
                 "value": "{dir}/{name}.swift"
               },
               {
-                "line": 782,
+                "line": 826,
                 "value": "Sources"
               },
               {
-                "line": 782,
+                "line": 826,
                 "value": "Tests"
               },
               {
-                "line": 782,
+                "line": 826,
                 "value": ""
               },
               {
-                "line": 783,
+                "line": 827,
                 "value": "{base}/{name}.swift"
               },
               {
-                "line": 784,
+                "line": 828,
                 "value": "swift"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "1a4221ffcbe5302d",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn run_git",
+            "line_end": 1066,
+            "line_start": 1058,
+            "name": "run_git",
+            "shape_hash": "57b9ccc07836ca21",
+            "string_literals": [
+              {
+                "line": 1059,
+                "value": "git"
+              },
+              {
+                "line": 1060,
+                "value": "-C"
               }
             ],
             "visibility": "private"
@@ -73131,8 +73460,8 @@
             "body_hash": "98c1caa3c5aa06da",
             "kind": "fn",
             "label": "fn symbol_name_after",
-            "line_end": 910,
-            "line_start": 902,
+            "line_end": 954,
+            "line_start": 946,
             "name": "symbol_name_after",
             "shape_hash": "d81c30b00b8c0f4f",
             "visibility": "private"
@@ -73142,8 +73471,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imports",
-            "line_end": 1425,
-            "line_start": 1387,
+            "line_end": 1526,
+            "line_start": 1488,
             "name": "tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imports",
             "panic_marker_count": 7,
             "panic_markers": [
@@ -73152,75 +73481,75 @@
             "shape_hash": "ab5e6ab2413d3535",
             "string_literals": [
               {
-                "line": 1388,
+                "line": 1489,
                 "value": "loom-imp-js-ts-{}"
               },
               {
-                "line": 1390,
+                "line": 1491,
                 "value": "web/lib"
               },
               {
-                "line": 1391,
+                "line": 1492,
                 "value": "web/lib/util.ts"
               },
               {
-                "line": 1391,
+                "line": 1492,
                 "value": ""
               },
               {
-                "line": 1392,
+                "line": 1493,
                 "value": "web/lib/barrel.ts"
               },
               {
-                "line": 1392,
+                "line": 1493,
                 "value": ""
               },
               {
-                "line": 1393,
+                "line": 1494,
                 "value": "web/lib/lazy.ts"
               },
               {
-                "line": 1393,
+                "line": 1494,
                 "value": ""
               },
               {
-                "line": 1394,
+                "line": 1495,
                 "value": "web/lib/legacy.js"
               },
               {
-                "line": 1394,
+                "line": 1495,
                 "value": ""
               },
               {
-                "line": 1396,
+                "line": 1497,
                 "value": "web/app.ts"
               },
               {
-                "line": 1397,
+                "line": 1498,
                 "value": "\n                import {\n                    helper,\n                } from \"./lib/util\";\n                export { helper as again } from \"./lib/barrel\";\n                const legacy = require(\"./lib/legacy\");\n                const lazy = import(\"./lib/lazy\");\n                import react from \"react\";\n            "
               },
               {
-                "line": 1411,
+                "line": 1512,
                 "value": "web/app.ts"
               },
               {
-                "line": 1412,
+                "line": 1513,
                 "value": "web/app.ts"
               },
               {
-                "line": 1417,
+                "line": 1518,
                 "value": "web/lib/barrel.ts"
               },
               {
-                "line": 1418,
+                "line": 1519,
                 "value": "web/lib/lazy.ts"
               },
               {
-                "line": 1419,
+                "line": 1520,
                 "value": "web/lib/legacy.js"
               },
               {
-                "line": 1420,
+                "line": 1521,
                 "value": "web/lib/util.ts"
               }
             ],
@@ -73231,49 +73560,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_js_ts_extracts_top_level_symbols",
-            "line_end": 1601,
-            "line_start": 1572,
+            "line_end": 1702,
+            "line_start": 1673,
             "name": "tree_sitter_js_ts_extracts_top_level_symbols",
             "shape_hash": "0e832a6b3ae6485c",
             "string_literals": [
               {
-                "line": 1574,
+                "line": 1675,
                 "value": "web/app.ts"
               },
               {
-                "line": 1575,
+                "line": 1676,
                 "value": "\n                export interface User { id: string }\n                export type Id = string;\n                export enum Mode { On }\n                export class Widget { render() {} }\n                export function makeWidget() {}\n                export const alpha = 1, beta = 2;\n                let notConst = 3;\n                function outer() {\n                    const local = 1;\n                }\n            "
               },
               {
-                "line": 1591,
+                "line": 1692,
                 "value": "export class Widget"
               },
               {
-                "line": 1592,
+                "line": 1693,
                 "value": "export const alpha"
               },
               {
-                "line": 1593,
+                "line": 1694,
                 "value": "export const beta"
               },
               {
-                "line": 1594,
+                "line": 1695,
                 "value": "export enum Mode"
               },
               {
-                "line": 1595,
+                "line": 1696,
                 "value": "export function makeWidget"
               },
               {
-                "line": 1596,
+                "line": 1697,
                 "value": "export interface User"
               },
               {
-                "line": 1597,
+                "line": 1698,
                 "value": "export type Id"
               },
               {
-                "line": 1598,
+                "line": 1699,
                 "value": "function outer"
               }
             ],
@@ -73284,8 +73613,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_python_extracts_parenthesized_and_relative_imports",
-            "line_end": 1465,
-            "line_start": 1429,
+            "line_end": 1566,
+            "line_start": 1530,
             "name": "tree_sitter_python_extracts_parenthesized_and_relative_imports",
             "panic_marker_count": 6,
             "panic_markers": [
@@ -73294,63 +73623,63 @@
             "shape_hash": "6995c0330fd9e0ca",
             "string_literals": [
               {
-                "line": 1430,
+                "line": 1531,
                 "value": "loom-imp-py-ts-{}"
               },
               {
-                "line": 1432,
+                "line": 1533,
                 "value": "pkg"
               },
               {
-                "line": 1433,
+                "line": 1534,
                 "value": "pkg/helpers.py"
               },
               {
-                "line": 1433,
+                "line": 1534,
                 "value": ""
               },
               {
-                "line": 1434,
+                "line": 1535,
                 "value": "pkg/sibling.py"
               },
               {
-                "line": 1434,
+                "line": 1535,
                 "value": ""
               },
               {
-                "line": 1435,
+                "line": 1536,
                 "value": "pkg/core.py"
               },
               {
-                "line": 1435,
+                "line": 1536,
                 "value": ""
               },
               {
-                "line": 1437,
+                "line": 1538,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1438,
+                "line": 1539,
                 "value": "\n                from .helpers import (\n                    one,\n                    two,\n                )\n                from . import sibling\n                import pkg.core as core\n                from __future__ import annotations\n            "
               },
               {
-                "line": 1452,
+                "line": 1553,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1453,
+                "line": 1554,
                 "value": "pkg/main.py"
               },
               {
-                "line": 1458,
+                "line": 1559,
                 "value": "pkg/core.py"
               },
               {
-                "line": 1459,
+                "line": 1560,
                 "value": "pkg/helpers.py"
               },
               {
-                "line": 1460,
+                "line": 1561,
                 "value": "pkg/sibling.py"
               }
             ],
@@ -73361,25 +73690,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_python_extracts_top_level_symbols",
-            "line_end": 1623,
-            "line_start": 1605,
+            "line_end": 1724,
+            "line_start": 1706,
             "name": "tree_sitter_python_extracts_top_level_symbols",
             "shape_hash": "ce2dc86dc2cc77ce",
             "string_literals": [
               {
-                "line": 1607,
+                "line": 1708,
                 "value": "pkg/app.py"
               },
               {
-                "line": 1608,
+                "line": 1709,
                 "value": "\n                class User:\n                    def method(self):\n                        pass\n\n                def build():\n                    def local():\n                        pass\n                    return User()\n            "
               },
               {
-                "line": 1621,
+                "line": 1722,
                 "value": "class User"
               },
               {
-                "line": 1621,
+                "line": 1722,
                 "value": "def build"
               }
             ],
@@ -73390,8 +73719,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_rust_extracts_grouped_and_reexport_imports",
-            "line_end": 1383,
-            "line_start": 1329,
+            "line_end": 1484,
+            "line_start": 1430,
             "name": "tree_sitter_rust_extracts_grouped_and_reexport_imports",
             "panic_marker_count": 12,
             "panic_markers": [
@@ -73400,131 +73729,131 @@
             "shape_hash": "617fd95b9bf46689",
             "string_literals": [
               {
-                "line": 1330,
+                "line": 1431,
                 "value": "loom-imp-rs-ts-{}"
               },
               {
-                "line": 1332,
+                "line": 1433,
                 "value": "src/db"
               },
               {
-                "line": 1333,
+                "line": 1434,
                 "value": "src/foo/bar"
               },
               {
-                "line": 1334,
+                "line": 1435,
                 "value": "src/a.rs"
               },
               {
-                "line": 1334,
+                "line": 1435,
                 "value": ""
               },
               {
-                "line": 1335,
+                "line": 1436,
                 "value": "src/b.rs"
               },
               {
-                "line": 1335,
+                "line": 1436,
                 "value": ""
               },
               {
-                "line": 1336,
+                "line": 1437,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1336,
+                "line": 1437,
                 "value": ""
               },
               {
-                "line": 1337,
+                "line": 1438,
                 "value": "src/db/queries.rs"
               },
               {
-                "line": 1337,
+                "line": 1438,
                 "value": ""
               },
               {
-                "line": 1338,
+                "line": 1439,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1338,
+                "line": 1439,
                 "value": ""
               },
               {
-                "line": 1339,
+                "line": 1440,
                 "value": "src/foo/bar.rs"
               },
               {
-                "line": 1339,
+                "line": 1440,
                 "value": ""
               },
               {
-                "line": 1340,
+                "line": 1441,
                 "value": "src/reexport.rs"
               },
               {
-                "line": 1340,
+                "line": 1441,
                 "value": ""
               },
               {
-                "line": 1342,
+                "line": 1443,
                 "value": "src/main.rs"
               },
               {
-                "line": 1343,
+                "line": 1444,
                 "value": "\n                use crate::db::{schema::esc, queries};\n                pub use crate::{\n                    a,\n                    b as bee,\n                    foo::{self, bar::Baz},\n                };\n                pub use crate::reexport::Thing as Alias;\n            "
               },
               {
-                "line": 1357,
+                "line": 1458,
                 "value": "src/main.rs"
               },
               {
-                "line": 1358,
+                "line": 1459,
                 "value": "src/main.rs"
               },
               {
-                "line": 1361,
+                "line": 1462,
                 "value": "src/a.rs"
               },
               {
-                "line": 1362,
+                "line": 1463,
                 "value": "src/b.rs"
               },
               {
-                "line": 1363,
+                "line": 1464,
                 "value": "src/db/queries.rs"
               },
               {
-                "line": 1364,
+                "line": 1465,
                 "value": "src/db/schema.rs"
               },
               {
-                "line": 1365,
+                "line": 1466,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1366,
+                "line": 1467,
                 "value": "src/foo/bar.rs"
               },
               {
-                "line": 1367,
+                "line": 1468,
                 "value": "src/reexport.rs"
               },
               {
-                "line": 1369,
+                "line": 1470,
                 "value": "{imports:?}"
               },
               {
-                "line": 1374,
+                "line": 1475,
                 "value": "src/main.rs"
               },
               {
-                "line": 1375,
+                "line": 1476,
                 "value": "src/main.rs"
               },
               {
-                "line": 1379,
+                "line": 1480,
                 "value": "tree-sitter should cover grouped imports missed by the line scanner: ts={imports:?} heuristic={heuristic:?}"
               }
             ],
@@ -73535,8 +73864,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_rust_extracts_top_level_symbols",
-            "line_end": 1535,
-            "line_start": 1469,
+            "line_end": 1636,
+            "line_start": 1570,
             "name": "tree_sitter_rust_extracts_top_level_symbols",
             "panic_marker_count": 3,
             "panic_markers": [
@@ -73545,103 +73874,103 @@
             "shape_hash": "83ddf2bd4125870f",
             "string_literals": [
               {
-                "line": 1470,
+                "line": 1571,
                 "value": "\n                pub struct User { id: String }\n                enum State { Ready }\n                trait Render { fn render(&self); }\n                type Id = String;\n                const LIMIT: usize = 10;\n                static NAME: &str = \"loom\";\n                macro_rules! route { () => {} }\n                impl Render for User {\n                    fn render(&self) {}\n                }\n                fn build() {\n                    fn local() {}\n                }\n                mod nested {\n                    pub fn inside() {}\n                }\n                #[test]\n                fn tests_it() {}\n                #[cfg(test)]\n                mod tests {\n                    fn helper_uses_unwrap() {}\n                }\n            "
               },
               {
-                "line": 1494,
+                "line": 1595,
                 "value": "src/lib.rs"
               },
               {
-                "line": 1496,
+                "line": 1597,
                 "value": "const LIMIT"
               },
               {
-                "line": 1497,
+                "line": 1598,
                 "value": "enum State"
               },
               {
-                "line": 1498,
+                "line": 1599,
                 "value": "fn build"
               },
               {
-                "line": 1499,
+                "line": 1600,
                 "value": "impl Render for User"
               },
               {
-                "line": 1500,
+                "line": 1601,
                 "value": "macro route"
               },
               {
-                "line": 1501,
+                "line": 1602,
                 "value": "pub fn inside"
               },
               {
-                "line": 1502,
+                "line": 1603,
                 "value": "pub struct User"
               },
               {
-                "line": 1503,
+                "line": 1604,
                 "value": "static NAME"
               },
               {
-                "line": 1504,
+                "line": 1605,
                 "value": "trait Render"
               },
               {
-                "line": 1505,
+                "line": 1606,
                 "value": "type Id"
               },
               {
-                "line": 1507,
+                "line": 1608,
                 "value": "{symbols:?}"
               },
               {
-                "line": 1509,
+                "line": 1610,
                 "value": "fn render"
               },
               {
-                "line": 1509,
+                "line": 1610,
                 "value": "{symbols:?}"
               },
               {
-                "line": 1510,
+                "line": 1611,
                 "value": "fn local"
               },
               {
-                "line": 1510,
+                "line": 1611,
                 "value": "{symbols:?}"
               },
               {
-                "line": 1512,
+                "line": 1613,
                 "value": "."
               },
               {
-                "line": 1512,
+                "line": 1613,
                 "value": "src/lib.rs"
               },
               {
-                "line": 1516,
+                "line": 1617,
                 "value": "User"
               },
               {
-                "line": 1518,
+                "line": 1619,
                 "value": "public"
               },
               {
-                "line": 1523,
+                "line": 1624,
                 "value": "tests_it"
               },
               {
-                "line": 1525,
+                "line": 1626,
                 "value": "{test:?}"
               },
               {
-                "line": 1529,
+                "line": 1630,
                 "value": "helper_uses_unwrap"
               },
               {
-                "line": 1533,
+                "line": 1634,
                 "value": "symbols inside #[cfg(test)] modules should be test-only: {helper:?}"
               }
             ],
@@ -73652,8 +73981,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn tree_sitter_shape_hash_survives_renames_and_comments",
-            "line_end": 1568,
-            "line_start": 1539,
+            "line_end": 1669,
+            "line_start": 1640,
             "name": "tree_sitter_shape_hash_survives_renames_and_comments",
             "panic_marker_count": 2,
             "panic_markers": [
@@ -73662,43 +73991,43 @@
             "shape_hash": "63187ce99e5a5a0b",
             "string_literals": [
               {
-                "line": 1541,
+                "line": 1642,
                 "value": "."
               },
               {
-                "line": 1542,
+                "line": 1643,
                 "value": "src/a.rs"
               },
               {
-                "line": 1543,
+                "line": 1644,
                 "value": "fn alpha(input: usize) -> usize {\\n    // comment\\n    input + 1\\n}\\n"
               },
               {
-                "line": 1546,
+                "line": 1647,
                 "value": "."
               },
               {
-                "line": 1547,
+                "line": 1648,
                 "value": "src/b.rs"
               },
               {
-                "line": 1548,
+                "line": 1649,
                 "value": "fn beta(value: usize) -> usize {\\n    value + 2\\n}\\n"
               },
               {
-                "line": 1553,
+                "line": 1654,
                 "value": "alpha"
               },
               {
-                "line": 1558,
+                "line": 1659,
                 "value": "beta"
               },
               {
-                "line": 1562,
+                "line": 1663,
                 "value": "raw body hashes stay exact for sync invalidation"
               },
               {
-                "line": 1566,
+                "line": 1667,
                 "value": "normalized shape groups renamed/formatted clones"
               }
             ],
@@ -73708,13 +74037,13 @@
             "body_hash": "4835242d102df7e3",
             "kind": "fn",
             "label": "pub fn confine",
-            "line_end": 201,
-            "line_start": 167,
+            "line_end": 245,
+            "line_start": 211,
             "name": "confine",
             "shape_hash": "44d159edfc526bb9",
             "string_literals": [
               {
-                "line": 173,
+                "line": 217,
                 "value": "/"
               }
             ],
@@ -73740,161 +74069,161 @@
             "body_hash": "4af4844bbf083a38",
             "kind": "fn",
             "label": "pub fn detect",
-            "line_end": 299,
-            "line_start": 235,
+            "line_end": 343,
+            "line_start": 279,
             "name": "detect",
             "shape_hash": "62e390d06700999b",
             "string_literals": [
               {
-                "line": 239,
+                "line": 283,
                 "value": "Cargo.toml"
               },
               {
-                "line": 239,
+                "line": 283,
                 "value": "rust"
               },
               {
-                "line": 240,
+                "line": 284,
                 "value": "package.json"
               },
               {
-                "line": 240,
+                "line": 284,
                 "value": "node"
               },
               {
-                "line": 241,
+                "line": 285,
                 "value": "go.mod"
               },
               {
-                "line": 241,
+                "line": 285,
                 "value": "go"
               },
               {
-                "line": 242,
+                "line": 286,
                 "value": "pyproject.toml"
               },
               {
-                "line": 242,
+                "line": 286,
                 "value": "python"
               },
               {
-                "line": 243,
+                "line": 287,
                 "value": "requirements.txt"
               },
               {
-                "line": 243,
+                "line": 287,
                 "value": "python"
               },
               {
-                "line": 244,
+                "line": 288,
                 "value": "setup.py"
               },
               {
-                "line": 244,
+                "line": 288,
                 "value": "python"
               },
               {
-                "line": 245,
+                "line": 289,
                 "value": "pom.xml"
               },
               {
-                "line": 245,
+                "line": 289,
                 "value": "java"
               },
               {
-                "line": 246,
+                "line": 290,
                 "value": "build.gradle"
               },
               {
-                "line": 246,
+                "line": 290,
                 "value": "java/kotlin"
               },
               {
-                "line": 247,
+                "line": 291,
                 "value": "Gemfile"
               },
               {
-                "line": 247,
+                "line": 291,
                 "value": "ruby"
               },
               {
-                "line": 248,
+                "line": 292,
                 "value": "composer.json"
               },
               {
-                "line": 248,
+                "line": 292,
                 "value": "php"
               },
               {
-                "line": 249,
+                "line": 293,
                 "value": "CMakeLists.txt"
               },
               {
-                "line": 249,
+                "line": 293,
                 "value": "c/cpp"
               },
               {
-                "line": 250,
+                "line": 294,
                 "value": "Package.swift"
               },
               {
-                "line": 250,
+                "line": 294,
                 "value": "swift"
               },
               {
-                "line": 251,
+                "line": 295,
                 "value": "pubspec.yaml"
               },
               {
-                "line": 251,
+                "line": 295,
                 "value": "dart/flutter"
               },
               {
-                "line": 252,
+                "line": 296,
                 "value": "bun.lock"
               },
               {
-                "line": 252,
+                "line": 296,
                 "value": "bun"
               },
               {
-                "line": 253,
+                "line": 297,
                 "value": "bun.lockb"
               },
               {
-                "line": 253,
+                "line": 297,
                 "value": "bun"
               },
               {
-                "line": 261,
+                "line": 305,
                 "value": "svelte.config.js"
               },
               {
-                "line": 261,
+                "line": 305,
                 "value": "svelte.config.ts"
               },
               {
-                "line": 261,
+                "line": 305,
                 "value": "svelte.config.mjs"
               },
               {
-                "line": 264,
+                "line": 308,
                 "value": "svelte"
               },
               {
-                "line": 266,
+                "line": 310,
                 "value": "svelte"
               },
               {
-                "line": 273,
+                "line": 317,
                 "value": "other"
               },
               {
-                "line": 293,
+                "line": 337,
                 "value": "brownfield"
               },
               {
-                "line": 295,
+                "line": 339,
                 "value": "greenfield"
               }
             ],
@@ -73904,8 +74233,8 @@
             "body_hash": "71d30d80cc8ce0e2",
             "kind": "fn",
             "label": "pub fn extract_imports",
-            "line_end": 399,
-            "line_start": 397,
+            "line_end": 443,
+            "line_start": 441,
             "name": "extract_imports",
             "shape_hash": "83da8db3216e1a6f",
             "visibility": "public"
@@ -73914,53 +74243,53 @@
             "body_hash": "979cb6592142b93b",
             "kind": "fn",
             "label": "pub fn extract_symbols",
-            "line_end": 416,
-            "line_start": 404,
+            "line_end": 460,
+            "line_start": 448,
             "name": "extract_symbols",
             "shape_hash": "0f02fa90b0fefafb",
             "string_literals": [
               {
-                "line": 405,
+                "line": 449,
                 "value": "treesitter"
               }
             ],
             "visibility": "public"
           },
           {
-            "body_hash": "a4de223e3b879fcb",
+            "body_hash": "341f952c305ce6b0",
             "kind": "fn",
             "label": "pub fn git_cochange",
-            "line_end": 150,
-            "line_start": 102,
+            "line_end": 194,
+            "line_start": 150,
             "name": "git_cochange",
-            "shape_hash": "25dd0bb75d2f28d3",
+            "shape_hash": "ae533502efa23570",
             "string_literals": [
               {
-                "line": 113,
+                "line": 163,
                 "value": "git"
               },
               {
-                "line": 114,
+                "line": 164,
                 "value": "-C"
               },
               {
-                "line": 116,
+                "line": 166,
                 "value": "log"
               },
               {
-                "line": 117,
+                "line": 167,
                 "value": "--no-merges"
               },
               {
-                "line": 118,
-                "value": "-n{last_n}"
+                "line": 168,
+                "value": "-n{log_limit}"
               },
               {
-                "line": 119,
+                "line": 169,
                 "value": "--name-only"
               },
               {
-                "line": 120,
+                "line": 170,
                 "value": "--format=%x00"
               }
             ],
@@ -73970,8 +74299,8 @@
             "body_hash": "ab975fb4266d6329",
             "kind": "fn",
             "label": "pub fn locator_present",
-            "line_end": 388,
-            "line_start": 385,
+            "line_end": 432,
+            "line_start": 429,
             "name": "locator_present",
             "shape_hash": "d527822a0da7576d",
             "visibility": "public"
@@ -74020,8 +74349,8 @@
             "body_hash": "0a5f5f2dbe13a563",
             "kind": "struct",
             "label": "pub struct Detection",
-            "line_end": 232,
-            "line_start": 218,
+            "line_end": 276,
+            "line_start": 262,
             "name": "Detection",
             "shape_hash": "2ac3f285df827bb9",
             "visibility": "public"
@@ -74030,8 +74359,8 @@
             "body_hash": "44c5aabf1c346ce6",
             "kind": "struct",
             "label": "pub struct LangCount",
-            "line_end": 207,
-            "line_start": 204,
+            "line_end": 251,
+            "line_start": 248,
             "name": "LangCount",
             "shape_hash": "c93c8a31688ab26b",
             "visibility": "public"
@@ -74040,8 +74369,8 @@
             "body_hash": "0f1c4d5b9039d000",
             "kind": "struct",
             "label": "pub struct PackHint",
-            "line_end": 215,
-            "line_start": 212,
+            "line_end": 259,
+            "line_start": 256,
             "name": "PackHint",
             "shape_hash": "9fd8477246b7204c",
             "visibility": "public"
@@ -74050,161 +74379,161 @@
             "body_hash": "7e59807d6cd652f9",
             "kind": "fn",
             "label": "pub(crate) fn extract_imports_heuristic",
-            "line_end": 613,
-            "line_start": 454,
+            "line_end": 657,
+            "line_start": 498,
             "name": "extract_imports_heuristic",
             "shape_hash": "53728e248b12d050",
             "string_literals": [
               {
-                "line": 460,
+                "line": 504,
                 "value": ""
               },
               {
-                "line": 463,
+                "line": 507,
                 "value": "/"
               },
               {
-                "line": 467,
+                "line": 511,
                 "value": "rs"
               },
               {
-                "line": 469,
+                "line": 513,
                 "value": "pub "
               },
               {
-                "line": 471,
+                "line": 515,
                 "value": "mod "
               },
               {
-                "line": 475,
+                "line": 519,
                 "value": "mod:{name}"
               },
               {
-                "line": 480,
+                "line": 524,
                 "value": "use crate::"
               },
               {
-                "line": 486,
+                "line": 530,
                 "value": "crate::{path_part}"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "ts"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "tsx"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "js"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "jsx"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "mjs"
               },
               {
-                "line": 491,
+                "line": 535,
                 "value": "svelte"
               },
               {
-                "line": 494,
+                "line": 538,
                 "value": "from '"
               },
               {
-                "line": 495,
+                "line": 539,
                 "value": "from \\\""
               },
               {
-                "line": 496,
+                "line": 540,
                 "value": "require('"
               },
               {
-                "line": 497,
+                "line": 541,
                 "value": "require(\\\""
               },
               {
-                "line": 498,
+                "line": 542,
                 "value": "import('"
               },
               {
-                "line": 499,
+                "line": 543,
                 "value": "import(\\\""
               },
               {
-                "line": 515,
+                "line": 559,
                 "value": "dart"
               },
               {
-                "line": 518,
+                "line": 562,
                 "value": "import "
               },
               {
-                "line": 518,
+                "line": 562,
                 "value": "export "
               },
               {
-                "line": 518,
+                "line": 562,
                 "value": "part "
               },
               {
-                "line": 521,
+                "line": 565,
                 "value": "package:"
               },
               {
-                "line": 529,
+                "line": 573,
                 "value": "go"
               },
               {
-                "line": 533,
+                "line": 577,
                 "value": "import ("
               },
               {
-                "line": 545,
+                "line": 589,
                 "value": "import "
               },
               {
-                "line": 552,
+                "line": 596,
                 "value": "kt"
               },
               {
-                "line": 552,
+                "line": 596,
                 "value": "kts"
               },
               {
-                "line": 552,
+                "line": 596,
                 "value": "swift"
               },
               {
-                "line": 555,
+                "line": 599,
                 "value": "import "
-              },
-              {
-                "line": 560,
-                "value": ""
-              },
-              {
-                "line": 567,
-                "value": "py"
-              },
-              {
-                "line": 570,
-                "value": "from "
-              },
-              {
-                "line": 575,
-                "value": "import "
-              },
-              {
-                "line": 601,
-                "value": "."
               },
               {
                 "line": 604,
+                "value": ""
+              },
+              {
+                "line": 611,
+                "value": "py"
+              },
+              {
+                "line": 614,
+                "value": "from "
+              },
+              {
+                "line": 619,
+                "value": "import "
+              },
+              {
+                "line": 645,
+                "value": "."
+              },
+              {
+                "line": 648,
                 "value": "{base}.{name}"
               }
             ],
@@ -74214,13 +74543,13 @@
             "body_hash": "afa37e2b21d28890",
             "kind": "fn",
             "label": "pub(crate) fn extract_physical_facts",
-            "line_end": 450,
-            "line_start": 425,
+            "line_end": 494,
+            "line_start": 469,
             "name": "extract_physical_facts",
             "shape_hash": "0cd2a937d465261e",
             "string_literals": [
               {
-                "line": 426,
+                "line": 470,
                 "value": "treesitter"
               }
             ],
@@ -74230,8 +74559,8 @@
             "body_hash": "c6eada1fd46f49d9",
             "kind": "struct",
             "label": "pub(crate) struct PhysicalFacts",
-            "line_end": 423,
-            "line_start": 419,
+            "line_end": 467,
+            "line_start": 463,
             "name": "PhysicalFacts",
             "shape_hash": "ea1147f29b256410",
             "visibility": "public"
@@ -74245,7 +74574,9 @@
           "fn confine_keeps_root_relative_and_rejects_escapes",
           "fn extract_symbol_facts_heuristic",
           "fn first_quoted",
+          "fn git_cochange_counts_pending_paths_as_the_next_commit",
           "fn git_cochange_degrades_without_a_repo",
+          "fn git_known_pending_paths",
           "fn go_module_path",
           "fn heuristic_imports_dart_go_kotlin_swift_and_svelte",
           "fn heuristic_imports_rust_js_python",
@@ -74253,11 +74584,13 @@
           "fn lang_of",
           "fn locator_presence",
           "fn normalize",
+          "fn nul_paths",
           "fn path_is_test_like",
           "fn push_heuristic_symbol",
           "fn push_if_file",
           "fn push_package_files",
           "fn recommend_packs",
+          "fn record_cochange_event",
           "fn resolve_dart_spec",
           "fn resolve_go_spec",
           "fn resolve_import_specifiers",
@@ -74266,6 +74599,7 @@
           "fn resolve_python_spec",
           "fn resolve_rust_spec",
           "fn resolve_swift_spec",
+          "fn run_git",
           "fn symbol_name_after",
           "fn tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imports",
           "fn tree_sitter_js_ts_extracts_top_level_symbols",
@@ -79624,6 +79958,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:18.345309+00:00",
+        "id": "01045edf-8a90-4a53-9186-6c4694857aee",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:5f876b50-7945-4df0-8aab-da0017ed580a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-16T04:34:45.801978+00:00",
         "id": "010ded16-0314-4ef6-a5a3-b600072e8dc9",
         "kind": "decision",
@@ -80350,6 +80694,16 @@
         "target_id": "rt:5f876b50-7945-4df0-8aab-da0017ed580a:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/cli.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "03e77b2e-4a52-4f6e-9219-4f39f9846b7c",
+        "kind": "transition",
+        "target_id": "gov:a3acb075-bf35-4985-8c48-d519f39c0c31:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -82774,6 +83128,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:46:01.166537+00:00",
+        "id": "0c9d1a4b-abd1-4f3f-9713-e1f60ba9154f",
+        "kind": "decision",
+        "target_id": "246d039f-08d0-4b01-b194-5917bb3a3a25",
+        "target_kind": "intent",
+        "text": "Shotgun advisory inspected after post-commit cochange shifted. smells propose hypotheses lives in the central smells detector because redesign-shaped findings must emit proof-first remedies with the detector evidence. Broad co-change reflects detector expansion history; split only through a proven smells-module hypothesis with remedy parity tests."
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T11:42:40.780042+00:00",
         "id": "0cb08bf2-435a-46ed-b705-c8f9b0bbdcca",
         "kind": "transition",
@@ -84773,6 +85137,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "139c0b5d-8a05-4ca5-b430-1e001035aa27",
+        "kind": "transition",
+        "target_id": "gov:a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-15T10:22:44.276008+00:00",
         "id": "139c1a73-6a92-4682-90d6-b630845c15a8",
@@ -85500,6 +85874,16 @@
         "target_id": "rt:d7d485d7-c342-4c44-a57f-d08f7cf31941:e287ac20-f7af-44bf-ba45-078a282b8535",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.011636+00:00",
+        "id": "1666e7d4-63fb-44c6-a36e-44c42bf8ae52",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -89453,6 +89837,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "23b10a2b-60cd-4df1-8e19-a3801576f842",
+        "kind": "transition",
+        "target_id": "rt:5de66572-bd2a-4fd6-972c-52fde80577a3:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-16T13:32:54.434491+00:00",
         "id": "23b356c2-b983-4675-899b-b52faf9ef3b2",
@@ -89810,6 +90204,16 @@
         "target_id": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "target_kind": "intent",
         "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "24e66e97-8440-4557-bc63-a4c767f41004",
+        "kind": "transition",
+        "target_id": "gov:8f79a769-f6e4-4fc8-87b1-326bb8472451:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -91833,6 +92237,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.522890+00:00",
+        "id": "2c93b6d8-3195-4e72-9503-100099a6bdbb",
+        "kind": "transition",
+        "target_id": "rt:5de66572-bd2a-4fd6-972c-52fde80577a3:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-17T10:36:07.840321+00:00",
         "id": "2c998d1b-46cc-44b9-9f47-d7d18594cc22",
@@ -92320,6 +92734,16 @@
         "target_id": "gov:288b1e0a-3875-46e3-b12c-217ed570f0a7:988027a3-d33a-40c8-8f32-c5140b0d1937",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/intent.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "2e7ee7fc-2038-4c0c-b9be-801bb8434dd4",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -93273,6 +93697,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:00.908454+00:00",
+        "id": "31d75218-256d-4b49-b643-1d4d752e2299",
+        "kind": "transition",
+        "target_id": "rt:45b8b4eb-048e-4beb-b8e0-e54566bc7dda:6cde48c7-e04f-4eae-a5c4-9b9cd519c975",
+        "target_kind": "edge",
+        "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-13T05:22:32.198719+00:00",
         "id": "31ec9fef-1c79-4742-9680-cc19504b7ea6",
@@ -93874,6 +94308,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "343c5925-b8d2-47ba-843b-b1f309c2eed5",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:82336903-25ba-4f43-95b6-88fb70cfc3c1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-13T05:22:32.198719+00:00",
         "id": "3440b5cd-6c83-4fb5-b444-3a286d45ef89",
         "kind": "transition",
@@ -94343,6 +94787,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:42.293132+00:00",
+        "id": "35d50d55-0bad-414d-bb73-9febfdbf1747",
+        "kind": "transition",
+        "target_id": "gov:40432472-8004-405c-95b9-428c5087179f:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T10:31:45.521070+00:00",
         "id": "35daad32-1b05-435b-9ff8-a02c832ed473",
@@ -94370,6 +94824,16 @@
         "target_id": "rt:578fa082-38fd-4021-ae5f-62cc5016ebf8:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
         "target_kind": "edge",
         "text": "uninspected → independent"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "35ea7f04-7b00-4017-ba67-85b6d637f59b",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6a41dcbc-4035-4d08-8315-0d77803ca862",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -94430,6 +94894,16 @@
         "target_id": "rt:e5bba339-3f44-47be-8065-9630cc482e9b:5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/db/mod.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:00.776875+00:00",
+        "id": "363646cf-04dd-4a7c-a3a2-8b600e04665c",
+        "kind": "transition",
+        "target_id": "rt:6cde48c7-e04f-4eae-a5c4-9b9cd519c975:87d4fe6a-2331-4376-bb9f-172b24eefda7",
+        "target_kind": "edge",
+        "text": "uninspected → independent"
       },
       {
         "audience": "",
@@ -96174,12 +96648,32 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:42.643367+00:00",
+        "id": "3bfc5272-2632-4857-afa3-a1f2e1dae565",
+        "kind": "transition",
+        "target_id": "gov:a3acb075-bf35-4985-8c48-d519f39c0c31:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:53:24.343567+00:00",
         "id": "3bfdbb57-2381-43b2-9e2f-7359668b8c2a",
         "kind": "transition",
         "target_id": "gov:8f79a769-f6e4-4fc8-87b1-326bb8472451:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:01.080014+00:00",
+        "id": "3c04cfc4-a7c4-4359-95ad-e41f3bdac6db",
+        "kind": "transition",
+        "target_id": "rt:45b8b4eb-048e-4beb-b8e0-e54566bc7dda:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "target_kind": "edge",
+        "text": "uninspected → independent"
       },
       {
         "audience": "",
@@ -96960,6 +97454,16 @@
         "target_id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
         "target_kind": "codefile",
         "text": "Audit decision: current file-level smell findings are accepted for this audit. This file deliberately acts as a command/query/schema/documentation coordinator or carries local user-facing contract text; extracting helpers or splitting ownership would be redesign work, not required to finish the audit lane. Re-open on the next edit to this file."
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:42.350332+00:00",
+        "id": "3eb83c94-44f1-4e85-a202-dd02f01c391f",
+        "kind": "transition",
+        "target_id": "gov:59d5a9d7-0007-4e73-a429-2082a2ec6eb2:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -100353,6 +100857,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.287920+00:00",
+        "id": "4ad4675c-13fa-4f34-a29f-0f64c61205d9",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6cc267b6-6052-48bd-b914-674fabe48eee",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-14T20:12:32.114432+00:00",
         "id": "4ad46ede-6823-42c5-98e1-2fbb08f82faf",
@@ -101898,6 +102412,16 @@
         "id": "50cf5564-39b6-485c-a4b9-b8395cf4d8ac",
         "kind": "transition",
         "target_id": "rt:e1506d82-8210-4ce8-bee5-322025d7c906:e2d64ed4-b10f-48fd-995b-f533a6250a18",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.105638+00:00",
+        "id": "50d25bd1-648c-4579-854a-8a06b5750e04",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -105944,6 +106468,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:42.465729+00:00",
+        "id": "605fcec1-dc15-497e-9c40-46e3f1f20b89",
+        "kind": "transition",
+        "target_id": "gov:8f79a769-f6e4-4fc8-87b1-326bb8472451:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T10:29:24.221911+00:00",
         "id": "608983ad-3e5a-4b4b-af41-05ada75d38b0",
         "kind": "transition",
@@ -106313,6 +106847,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.581384+00:00",
+        "id": "619f7f14-1349-4f66-b290-f05c58c91294",
+        "kind": "transition",
+        "target_id": "rt:76ea7701-3949-4924-843c-9f2c75bea383:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-15T04:53:46.908726+00:00",
         "id": "61aa880b-f4d6-43da-92b7-98b81f5588fc",
@@ -106650,6 +107194,16 @@
         "target_id": "rt:5f876b50-7945-4df0-8aab-da0017ed580a:8f96ca18-2ad0-48f3-985e-e4025141093d",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "635424df-7034-4c48-8df6-4bf856b192c7",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -110053,6 +110607,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:01.175540+00:00",
+        "id": "7008aed7-ee0a-4d73-8a10-e1b127f29572",
+        "kind": "decision",
+        "target_id": "6cde48c7-e04f-4eae-a5c4-9b9cd519c975",
+        "target_kind": "intent",
+        "text": "Shotgun advisory inspected: interface plane gap detection legitimately touches next-mode routing and sqlite regression tests because the gap lane is both status-visible work and a persisted interface/CALLS audit. Remaining broad co-change is coordinator/test history, not a refactor target after the shared output helper was extracted."
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-15T05:15:53.921865+00:00",
         "id": "700c5d16-d101-40cb-8eaa-9543696fe472",
@@ -110290,6 +110854,16 @@
         "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:8b828b84-7a89-40b5-bc35-c885fb2c71a0",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "711bcb75-c3f1-4be7-ad51-7285884017aa",
+        "kind": "transition",
+        "target_id": "rt:76ea7701-3949-4924-843c-9f2c75bea383:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -112664,6 +113238,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:42.407956+00:00",
+        "id": "79923356-d666-46a4-ab77-950d52d9a9c6",
+        "kind": "transition",
+        "target_id": "gov:71da2fcd-16f9-4325-bf00-3be8a2d10cda:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:14:17.196948+00:00",
         "id": "79a602be-0351-4182-9911-9b199985da12",
         "kind": "transition",
@@ -113370,6 +113954,16 @@
         "target_id": "rt:6cde48c7-e04f-4eae-a5c4-9b9cd519c975:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "7bff11cd-f087-415f-a839-c392fc13debd",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6cc267b6-6052-48bd-b914-674fabe48eee",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -115178,6 +115772,16 @@
         "id": "8290a799-fd51-4388-af6e-7aeacbda6031",
         "kind": "transition",
         "target_id": "rt:447710bb-927c-4b1d-86ee-f21aa6e09136:cdbc43f7-0d6b-4040-95b9-2a07e9111a16",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.811968+00:00",
+        "id": "829ddaef-6a8d-4c70-85a9-b736f088129d",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:82336903-25ba-4f43-95b6-88fb70cfc3c1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -120563,6 +121167,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.403385+00:00",
+        "id": "948ed5c9-3a82-4c56-9e18-8e79018d5498",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T10:31:45.521070+00:00",
         "id": "94935884-49fd-4741-a615-812af8c88a0e",
@@ -121713,6 +122327,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "986585db-f40e-456a-9321-da860d42332e",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:5f876b50-7945-4df0-8aab-da0017ed580a",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-16T17:50:29.650894+00:00",
         "id": "98678922-0b73-4e42-a7fd-e02102fa7fa6",
@@ -122130,6 +122754,16 @@
         "target_id": "gov:8f79a769-f6e4-4fc8-87b1-326bb8472451:382c288a-4846-46f6-93be-eb9e1f40faf3",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/ts_imports.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:42.527254+00:00",
+        "id": "99adc281-7190-4d6d-ade3-1f02d3ee2a07",
+        "kind": "transition",
+        "target_id": "gov:9e3a1396-d05f-4c34-9d61-8d977a37e6fc:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -123153,11 +123787,31 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.461164+00:00",
+        "id": "9d88ab42-159b-4e53-9758-4786e5f6c860",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-16T13:33:29.601400+00:00",
         "id": "9d8d9363-a696-4b6a-a0bb-ca01695d9183",
         "kind": "transition",
         "target_id": "rt:3080764f-7486-409e-87f7-75d5b6c08f31:cdbc43f7-0d6b-4040-95b9-2a07e9111a16",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.697028+00:00",
+        "id": "9d9773fc-9f23-440e-8cb7-4153b92dd913",
+        "kind": "transition",
+        "target_id": "rt:1f24ba40-84eb-4c5b-a833-5b41cfab7d03:382c288a-4846-46f6-93be-eb9e1f40faf3",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -124490,6 +125144,16 @@
         "target_id": "rt:bb8ee237-2d84-46ee-b254-c8bc39c16fc1:d7d485d7-c342-4c44-a57f-d08f7cf31941",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:00.994436+00:00",
+        "id": "a249e0af-4417-4c87-b9a7-609571e6bcad",
+        "kind": "transition",
+        "target_id": "rt:151f0f87-49df-4b2a-b63d-edc6cde649e3:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "target_kind": "edge",
+        "text": "uninspected → independent"
       },
       {
         "audience": "",
@@ -128553,6 +129217,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "afc175f5-2d1b-4963-9ee0-d888b24e60a6",
+        "kind": "transition",
+        "target_id": "gov:9e3a1396-d05f-4c34-9d61-8d977a37e6fc:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T10:34:12.016065+00:00",
         "id": "afddf999-b235-4292-b1a1-b207029dced8",
@@ -131423,6 +132097,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "ba30fad3-748a-41db-86ef-012bb78a7c3a",
+        "kind": "transition",
+        "target_id": "rt:b3e21549-8c6b-4e52-a3a3-7935e92cdd11:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T12:35:17.857037+00:00",
         "id": "ba3a3706-c5bb-49a4-b82e-ca6b9113787a",
@@ -132264,6 +132948,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "bd0b619e-6d48-4c90-946a-47cf83866bd6",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:bf39f175-67f8-4800-844a-68d7b7b34bdc",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-13T05:22:32.198719+00:00",
         "id": "bd26bf6d-0ac8-44cd-90bf-3020d26e5bb6",
         "kind": "transition",
@@ -132560,6 +133254,16 @@
         "target_id": "rt:988027a3-d33a-40c8-8f32-c5140b0d1937:bb8ee237-2d84-46ee-b254-c8bc39c16fc1",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "be3a4719-b81e-4ed2-aeea-bc3dbb6b4d76",
+        "kind": "transition",
+        "target_id": "gov:40432472-8004-405c-95b9-428c5087179f:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -133270,6 +133974,16 @@
         "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "c11bca7c-a4eb-4cd0-adcb-5a09bfbef4f8",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:5f884be7-3515-4499-a6bb-857ae7eb1db7",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -134114,6 +134828,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "c3d79257-eb61-4630-a106-da89de2717d4",
+        "kind": "transition",
+        "target_id": "gov:288b1e0a-3875-46e3-b12c-217ed570f0a7:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-16T11:46:28.421731+00:00",
         "id": "c3db57c4-be88-4ad1-beba-e32a3f4a889e",
         "kind": "transition",
@@ -134660,6 +135384,16 @@
         "target_id": "gov:9e3a1396-d05f-4c34-9d61-8d977a37e6fc:ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "target_kind": "edge",
         "text": "passing → needs_reverification (sync: src/commands/coverage.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:46:36.170948+00:00",
+        "id": "c576a9a8-c3b0-4000-a7a5-39b5f7d1dc44",
+        "kind": "transition",
+        "target_id": "rt:3fe71c5a-d357-4c51-9363-e9874a755f83:f3a922b5-11ba-4bd8-80c9-9f1762e96b54",
+        "target_kind": "edge",
+        "text": "uninspected → independent"
       },
       {
         "audience": "",
@@ -135230,6 +135964,16 @@
         "target_id": "e2d64ed4-b10f-48fd-995b-f533a6250a18",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: Quality verdict iso5055-rel-no-unchecked-failure: source_refs JSON parse errors are swallowed with unwrap_or_default in add/remove source ref paths."
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "c75e0e92-62e8-45d5-8a16-c867209a2bd1",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:20bf582e-df31-4f96-8b37-6171c38e3478",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -136794,6 +137538,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:18.165591+00:00",
+        "id": "cd272943-87f5-447e-924d-93181c86480e",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:bf39f175-67f8-4800-844a-68d7b7b34bdc",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T10:30:18.140120+00:00",
         "id": "cd317986-ef70-4d74-bb54-e81e7a67079b",
         "kind": "transition",
@@ -137814,6 +138568,16 @@
       {
         "audience": "",
         "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "d0ddb1ad-6c38-471b-bf95-049b01fb1fea",
+        "kind": "transition",
+        "target_id": "rt:1f24ba40-84eb-4c5b-a833-5b41cfab7d03:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
+        "author": "loom",
         "created_at": "2026-06-17T01:39:24.493314+00:00",
         "id": "d0de45da-3248-42f4-a5a1-f16c7c5e0b91",
         "kind": "transition",
@@ -137950,6 +138714,16 @@
         "target_id": "6faa01a5-920a-4231-b840-f4c2057d149b",
         "target_kind": "intent",
         "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "d15d1411-0f9f-4573-a10c-ccd0908fdd2d",
+        "kind": "transition",
+        "target_id": "gov:71da2fcd-16f9-4325-bf00-3be8a2d10cda:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -139504,6 +140278,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:18.754590+00:00",
+        "id": "d7a669be-e93f-4c37-983a-6f4abe89ca87",
+        "kind": "transition",
+        "target_id": "rt:8b828b84-7a89-40b5-bc35-c885fb2c71a0:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:53:29.680938+00:00",
         "id": "d7aa1a89-28e8-4216-8232-4fffd95aa18d",
         "kind": "transition",
@@ -140190,6 +140974,16 @@
         "target_id": "rt:616970c1-9a3a-4a92-bbf2-50b3bae2d9fd:cdbc43f7-0d6b-4040-95b9-2a07e9111a16",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:18.229686+00:00",
+        "id": "da20c65a-a3dc-4f43-b6ad-1e68c94d9fb1",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6a41dcbc-4035-4d08-8315-0d77803ca862",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
       },
       {
         "audience": "",
@@ -142033,6 +142827,16 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:42.190989+00:00",
+        "id": "e08912c2-4bb0-49b7-96a3-027f708c92dd",
+        "kind": "transition",
+        "target_id": "gov:288b1e0a-3875-46e3-b12c-217ed570f0a7:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-17T00:42:20.900119+00:00",
         "id": "e089ca18-59bf-40ef-9ffc-32d76f2fd8b8",
@@ -143403,6 +144207,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "e4b52d3c-3d52-4df8-996f-96624421d757",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T10:29:11.417201+00:00",
         "id": "e4b7ff10-4c37-4390-bd05-94f109acd791",
@@ -144694,6 +145508,16 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-17T12:51:18.639085+00:00",
+        "id": "e979f0c8-8b8b-4770-8a33-e3460fc746b8",
+        "kind": "transition",
+        "target_id": "rt:b3e21549-8c6b-4e52-a3a3-7935e92cdd11:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-17T11:13:12.745529+00:00",
         "id": "e97db00b-5568-42b5-a8c6-aa0e2489c703",
         "kind": "transition",
@@ -144898,6 +145722,16 @@
         "id": "ea459d46-a198-48a4-a573-dbab31171b93",
         "kind": "transition",
         "target_id": "rt:4cbd6b69-9bdf-4edb-8567-9e3a6c561363:5f876b50-7945-4df0-8aab-da0017ed580a",
+        "target_kind": "edge",
+        "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:51:42.585459+00:00",
+        "id": "ea5bdf23-d059-43e3-9259-9526bec85c65",
+        "kind": "transition",
+        "target_id": "gov:a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1:382c288a-4846-46f6-93be-eb9e1f40faf3",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
       },
@@ -145130,6 +145964,16 @@
         "target_id": "rt:21f9f668-c79d-49e6-9702-9da8f9229b36:246d039f-08d0-4b01-b194-5917bb3a3a25",
         "target_kind": "edge",
         "text": "uninspected → passing"
+      },
+      {
+        "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "eb231d29-779c-41e4-a20c-348d1bed675d",
+        "kind": "transition",
+        "target_id": "gov:59d5a9d7-0007-4e73-a429-2082a2ec6eb2:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
       },
       {
         "audience": "",
@@ -147703,6 +148547,16 @@
       },
       {
         "audience": "",
+        "author": "loom",
+        "created_at": "2026-06-17T12:49:46.237312+00:00",
+        "id": "f529e35c-4e70-4885-8543-488968f8e18f",
+        "kind": "transition",
+        "target_id": "rt:8b828b84-7a89-40b5-bc35-c885fb2c71a0:382c288a-4846-46f6-93be-eb9e1f40faf3",
+        "target_kind": "edge",
+        "text": "passing → needs_reverification (sync: src/repo.rs changed)"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T12:00:48.843027+00:00",
         "id": "f52aee2f-4039-4bfb-b7df-e26c52fb16ac",
@@ -148750,6 +149604,16 @@
         "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:5f876b50-7945-4df0-8aab-da0017ed580a",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-17T12:50:51.415792+00:00",
+        "id": "f8dc66d1-cbc8-42f1-aad7-6d7bac108d21",
+        "kind": "transition",
+        "target_id": "rt:382c288a-4846-46f6-93be-eb9e1f40faf3:20bf582e-df31-4f96-8b37-6171c38e3478",
+        "target_kind": "edge",
+        "text": "needs_reverification → independent"
       },
       {
         "audience": "",
@@ -151724,7 +152588,7 @@
         "description": "",
         "id": "9c81436c-9bbc-42fb-bf3a-e9e3f2e35553",
         "last_result": "passed",
-        "last_run": "2026-06-17T01:47:57.088894+00:00",
+        "last_run": "2026-06-17T12:51:26.087296+00:00",
         "name": "detect runs pre-init and reports the stack",
         "validation_type": "assertion"
       },

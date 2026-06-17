@@ -6,7 +6,7 @@
 use anyhow::{Context, Result};
 use ignore::WalkBuilder;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::vec_utils::push_unique_nonempty;
@@ -96,18 +96,68 @@ pub struct CoChange {
     pub individual: std::collections::HashMap<String, usize>,
 }
 
+fn record_cochange_event(cc: &mut CoChange, files: &[String]) {
+    for f in files {
+        *cc.individual.entry(f.clone()).or_insert(0) += 1;
+    }
+    for i in 0..files.len() {
+        for j in (i + 1)..files.len() {
+            // files is sorted, so (i, j) is already the canonical order.
+            *cc.pairs
+                .entry((files[i].clone(), files[j].clone()))
+                .or_insert(0) += 1;
+        }
+    }
+}
+
+fn nul_paths(output: &[u8]) -> impl Iterator<Item = String> + '_ {
+    output
+        .split(|b| *b == 0)
+        .filter(|raw| !raw.is_empty())
+        .filter_map(|raw| std::str::from_utf8(raw).ok())
+        .map(|s| s.replace('\\', "/"))
+}
+
+fn git_known_pending_paths(root: &Path, paths: &HashSet<String>) -> Vec<String> {
+    let mut changed: Vec<String> = Vec::new();
+    for args in [
+        &["diff", "--name-only", "-z", "HEAD", "--"][..],
+        &["ls-files", "--others", "--exclude-standard", "-z"][..],
+    ] {
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output();
+        let Ok(output) = output else {
+            continue;
+        };
+        if !output.status.success() {
+            continue;
+        }
+        changed.extend(nul_paths(&output.stdout).filter(|p| paths.contains(p)));
+    }
+    changed.sort_unstable();
+    changed.dedup();
+    changed
+}
+
 /// Mine `git log` for evolutionary coupling among `paths`, over the last
 /// `last_n` non-merge commits. Only files in `paths` (the graph's CodeFiles)
-/// count, so the cost is bounded by history depth, not repo size.
-pub fn git_cochange(
-    root: &Path,
-    paths: &std::collections::HashSet<String>,
-    last_n: usize,
-) -> CoChange {
+/// count, so the cost is bounded by history depth, not repo size. Pending
+/// staged/worktree changes are counted as one synthetic newest commit, so a
+/// clean smell report stays stable across the commit that records those paths.
+pub fn git_cochange(root: &Path, paths: &HashSet<String>, last_n: usize) -> CoChange {
     let mut cc = CoChange::default();
     if paths.is_empty() {
         return cc;
     }
+    let pending = git_known_pending_paths(root, paths);
+    let log_limit = if pending.is_empty() {
+        last_n
+    } else {
+        last_n.saturating_sub(1)
+    };
     // `--format=%x00` prints only a NUL per commit, then --name-only lists its
     // files. Splitting stdout on NUL yields one chunk of file paths per commit.
     let output = std::process::Command::new("git")
@@ -115,7 +165,7 @@ pub fn git_cochange(
         .arg(root)
         .arg("log")
         .arg("--no-merges")
-        .arg(format!("-n{last_n}"))
+        .arg(format!("-n{log_limit}"))
         .arg("--name-only")
         .arg("--format=%x00")
         .output();
@@ -127,24 +177,18 @@ pub fn git_cochange(
     }
     let text = String::from_utf8_lossy(&output.stdout);
     for commit in text.split('\u{0}') {
-        let mut files: Vec<&str> = commit
+        let mut files: Vec<String> = commit
             .lines()
             .map(str::trim)
             .filter(|l| !l.is_empty() && paths.contains(*l))
+            .map(ToString::to_string)
             .collect();
         files.sort_unstable();
         files.dedup();
-        for f in &files {
-            *cc.individual.entry((*f).to_string()).or_insert(0) += 1;
-        }
-        for i in 0..files.len() {
-            for j in (i + 1)..files.len() {
-                // files is sorted, so (i, j) is already the canonical order.
-                *cc.pairs
-                    .entry((files[i].to_string(), files[j].to_string()))
-                    .or_insert(0) += 1;
-            }
-        }
+        record_cochange_event(&mut cc, &files);
+    }
+    if !pending.is_empty() {
+        record_cochange_event(&mut cc, &pending);
     }
     cc
 }
@@ -1009,6 +1053,17 @@ fn lang_of(path: &str) -> &'static str {
 mod tests {
     use super::*;
     use std::fs;
+    use std::process::Command;
+
+    fn run_git(root: &Path, args: &[&str]) -> bool {
+        Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
 
     #[test]
     fn locator_presence() {
@@ -1033,6 +1088,52 @@ mod tests {
         assert!(git_cochange(&dir, &std::collections::HashSet::new(), 100)
             .pairs
             .is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn git_cochange_counts_pending_paths_as_the_next_commit() {
+        let dir = std::env::temp_dir().join(format!("loom-git-{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        fs::write(dir.join("src/a.rs"), "fn a() {}\n").unwrap();
+        fs::write(dir.join("src/b.rs"), "fn b() {}\n").unwrap();
+        assert!(run_git(&dir, &["init"]));
+        assert!(run_git(
+            &dir,
+            &["config", "user.email", "loom@example.invalid"]
+        ));
+        assert!(run_git(&dir, &["config", "user.name", "Loom Test"]));
+        assert!(run_git(&dir, &["add", "."]));
+        assert!(run_git(&dir, &["commit", "-m", "initial"]));
+
+        fs::write(dir.join("src/a.rs"), "fn a() { let _x = 1; }\n").unwrap();
+        fs::write(dir.join("src/b.rs"), "fn b() { let _x = 1; }\n").unwrap();
+
+        let paths = HashSet::from(["src/a.rs".to_string(), "src/b.rs".to_string()]);
+        let before_commit = git_cochange(&dir, &paths, 10);
+        assert_eq!(
+            before_commit
+                .pairs
+                .get(&("src/a.rs".to_string(), "src/b.rs".to_string()))
+                .copied(),
+            Some(2),
+            "pending changes should be counted as the newest cochange event"
+        );
+        assert_eq!(before_commit.individual.get("src/a.rs").copied(), Some(2));
+        assert_eq!(before_commit.individual.get("src/b.rs").copied(), Some(2));
+
+        assert!(run_git(&dir, &["add", "."]));
+        assert!(run_git(&dir, &["commit", "-m", "second"]));
+        let after_commit = git_cochange(&dir, &paths, 10);
+        assert_eq!(
+            before_commit.pairs, after_commit.pairs,
+            "cochange evidence should be stable across the commit boundary"
+        );
+        assert_eq!(
+            before_commit.individual, after_commit.individual,
+            "individual churn evidence should be stable across the commit boundary"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
