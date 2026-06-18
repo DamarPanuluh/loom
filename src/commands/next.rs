@@ -23,6 +23,14 @@ const ALIGN_EMPTY_MESSAGE: &str =
 const BATCH_TEMPLATE_TITLE: &str =
     "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──";
 
+struct NextOpts<'a> {
+    mode: &'a str,
+    all: bool,
+    take: usize,
+    discovery_class: Option<&'a str>,
+    compact: bool,
+}
+
 pub fn run(
     mode: &str,
     all: bool,
@@ -36,11 +44,13 @@ pub fn run(
     run_with_repo(
         &store,
         &cwd,
-        mode,
-        all,
-        take,
-        discovery_class,
-        compact,
+        &NextOpts {
+            mode,
+            all,
+            take,
+            discovery_class,
+            compact,
+        },
         printer,
     )
 }
@@ -48,13 +58,16 @@ pub fn run(
 fn run_with_repo(
     db: &dyn GraphReadRepository,
     root: &std::path::Path,
-    mode: &str,
-    all: bool,
-    take: usize,
-    discovery_class: Option<&str>,
-    compact: bool,
+    opts: &NextOpts<'_>,
     printer: &Printer,
 ) -> Result<()> {
+    let NextOpts {
+        mode,
+        all,
+        take,
+        discovery_class,
+        compact,
+    } = *opts;
     if all {
         return run_all(db, root, printer);
     }
@@ -1122,7 +1135,7 @@ fn render_all(
             .iter()
             .filter(|q| {
                 q["gate"].as_str() == Some("autonomous")
-                    && q.get("optional").and_then(|v| v.as_bool()).unwrap_or(false) == false
+                    && !q.get("optional").and_then(|v| v.as_bool()).unwrap_or(false)
             })
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();

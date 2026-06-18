@@ -451,9 +451,7 @@ struct AdvisoryAnchor {
     reopens_when: String,
 }
 
-fn latest_decision_by_target<'a>(
-    notes: &'a [crate::types::Note],
-) -> HashMap<&'a str, &'a crate::types::Note> {
+fn latest_decision_by_target(notes: &[crate::types::Note]) -> HashMap<&str, &crate::types::Note> {
     let mut latest: HashMap<&str, &crate::types::Note> = HashMap::new();
     for note in notes {
         if note.kind != "decision" || note.target_id.is_empty() {
