@@ -293,7 +293,10 @@ pub fn fact_is_grounded(fact: &SymbolFact, locators: &[String]) -> bool {
             return false;
         }
         l == fact.label
-            || l.contains(&fact.label)
+            // Word-boundary, not raw substring: a label `get` must not count as
+            // grounded by a locator `widget`, nor `Note` by `Notebook`. Siblings
+            // below are already boundary-aware; this branch was the over-matcher.
+            || contains_identifier_word(l, &fact.label)
             || contains_identifier_word(l, &fact.name)
             || contains_identifier_word(l, symbol_identifier(&fact.label))
     })
@@ -425,6 +428,20 @@ mod tests {
             body_hash: String::new(),
             shape_hash: String::new(),
         }
+    }
+
+    #[test]
+    fn fact_is_grounded_matches_on_word_boundaries() {
+        let f = fact("get", "private", false); // label "get", name "get"
+                                               // Exact and word-bounded locators ground it.
+        assert!(fact_is_grounded(&f, &["get".into()]));
+        assert!(fact_is_grounded(&f, &["fn get()".into()]));
+        // A longer identifier that merely CONTAINS the label as a substring must
+        // NOT count as grounded (the bug: `get` matching `widget_handler`).
+        assert!(!fact_is_grounded(&f, &["widget_handler".into()]));
+        assert!(!fact_is_grounded(&f, &["target".into()]));
+        // Empty locator never grounds.
+        assert!(!fact_is_grounded(&f, &[String::new()]));
     }
 
     fn implements(intent_id: &str, path: &str, locator: &str) -> Implements {
