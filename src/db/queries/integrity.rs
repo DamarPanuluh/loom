@@ -170,6 +170,7 @@ pub fn check_graph_from_parts(
     }
     // Taxonomy: every relationship kind on a RELATES_TO edge must be in the
     // closed RelationKind vocab.
+    let mut weak_only: Vec<String> = Vec::new();
     for e in &query_snapshot.relates {
         for k in &e.kinds {
             if k.parse::<RelationKind>().is_err() {
@@ -186,6 +187,38 @@ pub fn check_graph_from_parts(
                 ));
             }
         }
+        // Epistemic: a passing/failing verdict whose every relationship kind is
+        // weak (concept similarity, not proven coupling) is a weak claim.
+        if matches!(e.inspection_status.as_str(), "passing" | "failing")
+            && !e.kinds.is_empty()
+            && e.kinds.iter().all(|k| {
+                k.parse::<RelationKind>()
+                    .map(|rk| rk.trust_weight() == "weak")
+                    .unwrap_or(false)
+            })
+        {
+            weak_only.push(format!(
+                "{} → {} [{}]",
+                e.from_name,
+                e.to_name,
+                e.kinds.join(", ")
+            ));
+        }
+    }
+    if !weak_only.is_empty() {
+        let shown: Vec<&String> = weak_only.iter().take(5).collect();
+        hints.push(format!(
+            "epistemic: {} passing/failing relationship(s) are grounded ONLY by weak kinds \
+             (shares_vocab/same_domain/doc_reference — concept similarity, not proven coupling); \
+             sample with `loom next --mode review`{}{}",
+            weak_only.len(),
+            if shown.is_empty() { "" } else { ": " },
+            shown
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join("; ")
+        ));
     }
     for v in &query_snapshot.validations {
         if !v.last_result.is_empty() && v.last_result.parse::<ValidationResult>().is_err() {

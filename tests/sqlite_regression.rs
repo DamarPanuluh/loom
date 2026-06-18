@@ -727,6 +727,29 @@ fn intent_id_by_name(root: &Path, name: &str) -> String {
 }
 
 #[test]
+fn sqlite_doctor_flags_weak_only_grounding() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-weak-grounding");
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET inspection_status='passing', kinds='[\"same_domain\"]' \
+             WHERE rowid=(SELECT rowid FROM relates_to LIMIT 1)",
+            [],
+        )
+        .expect("set weak-only passing edge");
+    }
+    // hints never fail the exit code, so doctor stays healthy → plain run_json.
+    let doctor = run_json(&graph.root, &["doctor", "--json"]);
+    let hints = doctor["hints"].to_string();
+    assert!(
+        hints.contains("only by weak") || hints.contains("weak kinds"),
+        "doctor must flag a passing edge grounded only by weak kinds: {hints}"
+    );
+}
+
+#[test]
 fn sqlite_judgment_kind_assignment() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-judgment-kind");

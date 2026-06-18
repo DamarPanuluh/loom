@@ -648,10 +648,20 @@ impl RelationKind {
         }
     }
 
+    /// How much a passing edge grounded ONLY by this kind should be trusted —
+    /// the epistemic doctor flags a verdict whose every kind is weak (concept
+    /// similarity, not proven coupling). (stales_on_code_change lands in C5.)
+    pub fn trust_weight(self) -> &'static str {
+        match self {
+            Self::Imports | Self::Calls | Self::Inheritance => "strong",
+            Self::SharesFile | Self::SharesState => "medium",
+            Self::SharesVocab | Self::SameDomain | Self::DocReference | Self::Manual => "weak",
+        }
+    }
+
     /// Mechanical kinds are derivable from extraction with no judgment — the
     /// `populate` lane backfills them from discovery signals. The rest are
-    /// analyzer judgments asserted with a locator. (trust_weight and
-    /// stales_on_code_change land with their consumers in later commits.)
+    /// analyzer judgments asserted with a locator.
     pub fn is_mechanical(self) -> bool {
         matches!(
             self,
