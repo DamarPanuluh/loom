@@ -75,6 +75,7 @@ fn run_with_sqlite(
     let mut results: Vec<serde_json::Value> = Vec::new();
     let mut ok = 0usize;
     let mut failed = 0usize;
+    let mut evidences: Vec<String> = Vec::new();
 
     for (lineno, line) in input.lines().enumerate() {
         let line = line.trim();
@@ -83,8 +84,11 @@ fn run_with_sqlite(
         }
         let n = lineno + 1;
         match apply_line_sqlite(store, root, line) {
-            Ok(desc) => {
+            Ok((desc, evidence)) => {
                 ok += 1;
+                if let Some(e) = evidence {
+                    evidences.push(e);
+                }
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
             }
             Err(e) => {
@@ -95,6 +99,35 @@ fn run_with_sqlite(
             }
         }
     }
+
+    // Statistical honesty (FLAG, never reject — the policy is reject the
+    // unambiguous, flag the rest). The corrupt-batch signature is ONE evidence
+    // body pasted across many distinct edges. Re-affirming a stored claim
+    // supplies no evidence (it reuses the recorded one), so this only fires on
+    // SUPPLIED, byte-identical evidence reused across ≥ REUSE_FLAG edges —
+    // copied prose laundering a guess into green. Surfaced so the orchestrator
+    // can route the cluster to review; `loom doctor` carries the durable,
+    // graph-wide version.
+    const REUSE_FLAG: usize = 3;
+    let mut counts: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for e in &evidences {
+        *counts.entry(e.as_str()).or_default() += 1;
+    }
+    let mut reused: Vec<(&str, usize)> = counts
+        .into_iter()
+        .filter(|(_, c)| *c >= REUSE_FLAG)
+        .collect();
+    reused.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+    let warnings: Vec<String> = reused
+        .iter()
+        .map(|(evidence, c)| {
+            let preview: String = evidence.chars().take(60).collect();
+            format!(
+                "copied evidence: one evidence body recorded on {c} distinct edges in this batch — \
+                 confirm it is edge-specific, not pasted, then send the cluster to `loom next --mode review` (\"{preview}…\")"
+            )
+        })
+        .collect();
 
     let snapshot = store.query_snapshot()?;
     let gs = store.graph_state(&snapshot)?;
@@ -107,6 +140,7 @@ fn run_with_sqlite(
         printer.print_json(&serde_json::json!({
             "status": if failed == 0 { "ok" } else { "partial" },
             "ok": ok, "failed": failed, "results": results,
+            "warnings": warnings, "warnings_total": warnings.len(),
             "next_step": next_step,
             "graph_state": crate::output::pulse_json(&gs),
         }));
@@ -128,6 +162,15 @@ fn run_with_sqlite(
         }
         println!();
         println!("  {ok} applied, {failed} failed.");
+        if !warnings.is_empty() {
+            println!(
+                "  ⚠ {} epistemic warning(s) (advisory — not rejected):",
+                warnings.len()
+            );
+            for w in &warnings {
+                println!("    · {w}");
+            }
+        }
         println!("  → Next: {next_step}");
         println!("  {}", crate::output::fmt_pulse(&gs));
     }
@@ -140,11 +183,23 @@ fn run_with_sqlite(
     Ok(())
 }
 
+/// `Some(evidence)` when the op recorded a non-empty evidence body (ground may
+/// omit it on re-affirm; independent carries none) — collected across the batch
+/// so `run_with_sqlite` can flag copied evidence reused across distinct edges.
+fn evidence_opt(evidence: &str) -> Option<String> {
+    let e = evidence.trim();
+    if e.is_empty() {
+        None
+    } else {
+        Some(e.to_string())
+    }
+}
+
 fn apply_line_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     root: &std::path::Path,
     line: &str,
-) -> Result<String> {
+) -> Result<(String, Option<String>)> {
     let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
         anyhow::anyhow!(
             "not valid JSON: {e} — each line must be ONE JSON object: {{\"op\": \"<name>\", …}}"
@@ -194,7 +249,10 @@ fn apply_line_sqlite(
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             let edge = store
                 .upsert_relates_to_ground(&a, &b, criterion, &evidence, confidence, &by, &now)?;
-            Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
+            Ok((
+                format!("ground {} × {}", edge.from_name, edge.to_name),
+                evidence_opt(&evidence),
+            ))
         }
         "issue" => {
             let by = gate::acting_in_lane(&gate::lane::ISSUE_RELATES_TO, None)?;
@@ -225,7 +283,10 @@ fn apply_line_sqlite(
             )?;
             let edge = store
                 .upsert_relates_to_issue(&a, &b, criterion, &evidence, confidence, &by, &now)?;
-            Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
+            Ok((
+                format!("issue {} × {}", edge.from_name, edge.to_name),
+                evidence_opt(&evidence),
+            ))
         }
         "independent" => {
             let by = gate::acting_in_lane(&gate::lane::INDEPENDENT_RELATES_TO, None)?;
@@ -245,7 +306,10 @@ fn apply_line_sqlite(
                 "why these two intents have no meaningful relationship",
             )?;
             let edge = store.upsert_relates_to_independent(&a, &b, notes, &by, &now)?;
-            Ok(format!("independent {} × {}", edge.from_name, edge.to_name))
+            Ok((
+                format!("independent {} × {}", edge.from_name, edge.to_name),
+                None,
+            ))
         }
         "rule_verdict" => {
             let by = gate::acting_in_lane(&gate::lane::GOVERNS_VERDICT, None)?;
@@ -288,7 +352,10 @@ fn apply_line_sqlite(
             store.upsert_governs_verdict(
                 &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
             )?;
-            Ok(format!("rule_verdict {status}: {rule} → {intent}"))
+            Ok((
+                format!("rule_verdict {status}: {rule} → {intent}"),
+                evidence_opt(&evidence),
+            ))
         }
         other => {
             anyhow::bail!("unknown op '{other}' (ground | issue | independent | rule_verdict)")

@@ -256,6 +256,19 @@ fn seed_transition_notes(root: &Path, target_id: &str, n: usize, cap: usize) {
     .expect("set scratch transition cap");
 }
 
+/// The first `n` active intent ids from the imported graph, for building edges.
+fn first_n_intent_ids(root: &Path, n: usize) -> Vec<String> {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let mut stmt = conn
+        .prepare("SELECT id FROM intent WHERE status != 'deprecated' LIMIT ?1")
+        .expect("prepare intent query");
+    stmt.query_map([n as i64], |r| r.get(0))
+        .expect("query intents")
+        .map(|r| r.expect("intent id"))
+        .collect()
+}
+
 /// Two distinct active intent ids from the imported graph, for building edges.
 fn first_two_intent_ids(root: &Path) -> (String, String) {
     let db = root.join(".loom").join("graph.sqlite");
@@ -403,6 +416,67 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
             .as_str()
             .is_some_and(|message| message.contains("created on open")),
         "migrate should teach the current SQLite schema contract: {migrated}"
+    );
+}
+
+#[test]
+fn sqlite_batch_flags_copied_evidence() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-batch-copied");
+    let ids = first_n_intent_ids(&graph.root, 4);
+    assert!(
+        ids.len() >= 4,
+        "need 4 intents for the copied-evidence fixture"
+    );
+
+    // Three distinct edges, ONE pasted evidence body → flagged (not rejected).
+    let copied = "these modules both reference the shared Foo type per the audit fixture";
+    let lines: Vec<String> = (1..4)
+        .map(|i| {
+            format!(
+                "{{\"op\":\"ground\",\"a\":\"{}\",\"b\":\"{}\",\
+                 \"criterion\":\"these coexist cleanly without coupling\",\
+                 \"evidence\":\"{copied}\",\"confidence\":0.6}}",
+                ids[0], ids[i]
+            )
+        })
+        .collect();
+    write_scratch_file(&graph.root, "scratch/copied.jsonl", &lines.join("\n"));
+    let flagged = run_json_as(
+        &graph.root,
+        &["batch", "scratch/copied.jsonl", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        flagged["failed"], 0,
+        "copied evidence is FLAGGED, not rejected: {flagged}"
+    );
+    assert!(
+        flagged["warnings_total"].as_i64().unwrap_or(0) >= 1,
+        "one evidence body across 3 edges must raise an epistemic warning: {flagged}"
+    );
+
+    // Edge-specific evidence on the same edges → no warning (honest batch passes clean).
+    let honest: Vec<String> = (1..4)
+        .map(|i| {
+            format!(
+                "{{\"op\":\"ground\",\"a\":\"{}\",\"b\":\"{}\",\
+                 \"criterion\":\"these coexist cleanly without coupling\",\
+                 \"evidence\":\"edge {i}: a distinct, specific observation about this exact pair\",\"confidence\":0.6}}",
+                ids[0], ids[i]
+            )
+        })
+        .collect();
+    write_scratch_file(&graph.root, "scratch/honest.jsonl", &honest.join("\n"));
+    let clean = run_json_as(
+        &graph.root,
+        &["batch", "scratch/honest.jsonl", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        clean["warnings_total"].as_i64().unwrap_or(-1),
+        0,
+        "edge-specific evidence must NOT be flagged: {clean}"
     );
 }
 
