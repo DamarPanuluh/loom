@@ -532,26 +532,51 @@ fn run_take(
     }
     let mut groups: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
     let mut batch_lines: Vec<String> = Vec::new();
+    let mut has_fixer = false;
+    let mut has_analyzer = false;
+    let mut max_effort = "low";
     for (edge, score) in candidates.iter().take(n) {
-        let staled_by = latest_cause.get(&edge.id).cloned().unwrap_or_default();
-        // Re-inspection usually re-affirms the existing criterion — the line
-        // OMITS it (`loom batch` reuses the stored text); only a bare edge
-        // gets a placeholder, which the gates reject unedited.
-        let mut line = serde_json::json!({
-            "op": "ground",
-            "a": edge.from_id,
-            "b": edge.to_id,
-            "confidence": 0.9,
-        });
-        if edge.criterion.is_empty() {
-            line["criterion"] = "<criterion>".into();
+        // Per-item, authoritative dispatch — the fix queue mixes lanes
+        // (failing → fixer code repair, needs_reverification → analyzer
+        // re-inspection), so the role/effort belongs on each item, not flat
+        // over the batch.
+        let (role, effort) = relates_dispatch(mode, edge, *score);
+        if role == "fixer" {
+            has_fixer = true;
+        } else {
+            has_analyzer = true;
         }
-        batch_lines.push(line.to_string());
+        if effort_rank(effort) > effort_rank(max_effort) {
+            max_effort = effort;
+        }
+        let staled_by = latest_cause.get(&edge.id).cloned().unwrap_or_default();
+        // A `failing` edge is fixer work — it needs a code repair at root cause,
+        // not a verdict flip. Offering an `op: ground` line for it would invite
+        // marking a known-failing edge passing with no fix (laundering green).
+        // So only re-inspection items (analyzer) get a ground template; failing
+        // items are listed for repair and re-grounded by hand after the code is
+        // fixed. Re-inspection usually re-affirms the recorded criterion, so the
+        // line OMITS it (`loom batch` reuses the stored text); a bare edge gets a
+        // placeholder the gates reject unedited.
+        if role != "fixer" {
+            let mut line = serde_json::json!({
+                "op": "ground",
+                "a": edge.from_id,
+                "b": edge.to_id,
+                "confidence": 0.9,
+            });
+            if edge.criterion.is_empty() {
+                line["criterion"] = "<criterion>".into();
+            }
+            batch_lines.push(line.to_string());
+        }
         let item = serde_json::json!({
             "edge_id": edge.id,
             "a": { "id": edge.from_id, "name": edge.from_name },
             "b": { "id": edge.to_id, "name": edge.to_name },
             "inspection_status": edge.inspection_status,
+            "owner_role": role,
+            "effort": effort,
             "criterion": edge.criterion,
             "notes": edge.notes,
             "discovery_class": edge.discovery_class,
@@ -564,6 +589,12 @@ fn run_take(
             None => groups.push((staled_by, vec![item])),
         }
     }
+    // Batch-level dispatch reflects the actual mix, never a single false label.
+    let batch_role = match (has_analyzer, has_fixer) {
+        (true, true) => "mixed",
+        (false, true) => "fixer",
+        _ => "analyzer",
+    };
     // Biggest file-group first (one read pays for the most verdicts);
     // ungrouped ("") last.
     groups.sort_by(|a, b| {
@@ -574,7 +605,7 @@ fn run_take(
         ))
     });
 
-    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Re-inspection is analyzer work at mid effort; recorded failures route to the fixer.";
+    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix).";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -588,7 +619,7 @@ fn run_take(
                 .collect::<Vec<_>>(),
             "batch_template": batch_lines,
             "guidance": guidance,
-            "dispatch": { "role": "analyzer", "effort": "mid" },
+            "dispatch": { "role": batch_role, "effort": max_effort },
             "graph_state": pulse_json(gs),
         }));
         return Ok(());
@@ -616,8 +647,9 @@ fn run_take(
                 suffix.push_str(&format!(" — {notes}"));
             }
             println!(
-                "    [{:<21} {:>5.2}]  {} × {}  ({}){}",
+                "    [{:<21} {:>8} {:>5.2}]  {} × {}  ({}){}",
                 it["inspection_status"].as_str().unwrap_or(""),
+                it["owner_role"].as_str().unwrap_or(""),
                 it["priority_score"].as_f64().unwrap_or(0.0),
                 it["a"]["name"].as_str().unwrap_or(""),
                 it["b"]["name"].as_str().unwrap_or(""),
@@ -638,7 +670,7 @@ fn run_take(
     println!();
     println!("  {guidance}");
     println!();
-    println!("  Dispatch — analyzer  [effort: mid]");
+    println!("  Dispatch — {batch_role}  [effort: {max_effort}]   (per-item owner_role above is authoritative)");
     println!("  {}", fmt_pulse(gs));
     Ok(())
 }
@@ -854,6 +886,15 @@ fn relates_dispatch(
     (role, relates_effort(edge, score))
 }
 
+/// Order the effort tiers so a bulk take can report the highest it contains.
+fn effort_rank(effort: &str) -> u8 {
+    match effort {
+        "high" => 2,
+        "mid" => 1,
+        _ => 0,
+    }
+}
+
 fn relates_effort(edge: &crate::types::RelatesTo, score: f64) -> &'static str {
     let centrality =
         edge.discovery_centrality.a_degree.max(0) + edge.discovery_centrality.b_degree.max(0);
@@ -1026,9 +1067,23 @@ fn render_all(
     }
     if !fix.is_empty() {
         let (e, _) = &fix[0];
+        // The fix queue mixes lanes: failing → fixer (code repair),
+        // needs_reverification → analyzer (re-inspection). Report the split and
+        // an honest role instead of a flat "fixer" over the mix.
+        let failing = fix
+            .iter()
+            .filter(|(e, _)| e.inspection_status == "failing")
+            .count();
+        let needs_rev = fix.len() - failing;
+        let role = match (failing > 0, needs_rev > 0) {
+            (true, true) => "mixed",
+            (true, false) => "fixer",
+            _ => "analyzer",
+        };
         queues.push(serde_json::json!({
-            "queue": "fix", "role": "fixer", "gate": "autonomous",
-            "count": fix.len(), "command": "loom next --mode fix",
+            "queue": "fix", "role": role, "gate": "autonomous",
+            "count": fix.len(), "failing": failing, "needs_reverification": needs_rev,
+            "command": "loom next --mode fix",
             "top": format!("'{}' × '{}' [{}]", e.from_name, e.to_name, e.inspection_status),
         }));
     }

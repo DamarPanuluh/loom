@@ -256,6 +256,21 @@ fn seed_transition_notes(root: &Path, target_id: &str, n: usize, cap: usize) {
     .expect("set scratch transition cap");
 }
 
+/// Two distinct active intent ids from the imported graph, for building edges.
+fn first_two_intent_ids(root: &Path) -> (String, String) {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let mut stmt = conn
+        .prepare("SELECT id FROM intent WHERE status != 'deprecated' LIMIT 2")
+        .expect("prepare intent query");
+    let ids: Vec<String> = stmt
+        .query_map([], |r| r.get(0))
+        .expect("query intents")
+        .map(|r| r.expect("intent id"))
+        .collect();
+    (ids[0].clone(), ids[1].clone())
+}
+
 /// Insert a SERVES verdict that is `passing` with an empty (vacuous) criterion,
 /// so `loom doctor` has a SERVES edge to catch — exercising that the audit
 /// covers SERVES like every other inspectable edge type.
@@ -389,6 +404,65 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
             .is_some_and(|message| message.contains("created on open")),
         "migrate should teach the current SQLite schema contract: {migrated}"
     );
+}
+
+#[test]
+fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-fix-take");
+    let (a, b) = first_two_intent_ids(&graph.root);
+    // Record a FAILING RELATES_TO edge between two intents (analyzer/fixer lane).
+    let line = format!(
+        "{{\"op\":\"issue\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these intents must remain decoupled\",\
+         \"evidence\":\"a now references b directly per the audit fixture\",\"confidence\":0.9}}"
+    );
+    write_scratch_file(&graph.root, "scratch/fail.jsonl", &line);
+    run_json_as(
+        &graph.root,
+        &["batch", "scratch/fail.jsonl", "--json"],
+        "llm:fixer",
+    );
+
+    let take = run_json_as(
+        &graph.root,
+        &["next", "--mode", "fix", "--take", "50", "--json"],
+        "llm:fixer",
+    );
+    let template: Vec<&str> = take["batch_template"]
+        .as_array()
+        .expect("batch_template array")
+        .iter()
+        .filter_map(|l| l.as_str())
+        .collect();
+    let items: Vec<&Value> = take["groups"]
+        .as_array()
+        .expect("groups array")
+        .iter()
+        .flat_map(|g| g["items"].as_array().expect("items array").iter())
+        .collect();
+    let failing: Vec<&Value> = items
+        .iter()
+        .copied()
+        .filter(|it| it["inspection_status"] == "failing")
+        .collect();
+    assert!(
+        !failing.is_empty(),
+        "the failing edge should appear in the fix take: {take}"
+    );
+    for it in failing {
+        assert_eq!(
+            it["owner_role"], "fixer",
+            "a failing edge is fixer work: {it}"
+        );
+        let ia = it["a"]["id"].as_str().unwrap_or_default();
+        let ib = it["b"]["id"].as_str().unwrap_or_default();
+        assert!(
+            !template.iter().any(|l| l.contains(ia) && l.contains(ib)),
+            "a failing edge must NOT get an op:ground template line (it would invite \
+             marking a known-failing edge passing with no code fix): {ia} x {ib}"
+        );
+    }
 }
 
 #[test]
