@@ -823,6 +823,52 @@ fn sqlite_sync_skips_meaning_only_edges_on_code_change() {
 }
 
 #[test]
+fn sqlite_explain_synthesizes_by_intent_and_file() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-explain");
+
+    // By intent id: a synthesized answer — identity + groundings + typed
+    // couplings + governance + impact, plus the contract next_step.
+    let (a, _b) = first_two_intent_ids(&graph.root);
+    let by_intent = run_json(&graph.root, &["explain", &a, "--json"]);
+    let i = &by_intent["intents"][0];
+    assert_eq!(
+        i["id"],
+        serde_json::json!(a),
+        "explains the requested intent: {by_intent}"
+    );
+    for key in ["grounded_in", "coupled_to", "governed_by", "impact"] {
+        assert!(i.get(key).is_some(), "explain must synthesize '{key}': {i}");
+    }
+    assert!(
+        i["impact"].get("ripples_to").is_some(),
+        "impact must report what ripples on a code change: {i}"
+    );
+    assert!(
+        by_intent["next_step"]
+            .as_str()
+            .unwrap_or("")
+            .contains("loom"),
+        "explain carries a runnable next_step: {by_intent}"
+    );
+
+    // By file path: resolves to the intents grounded on that file.
+    let path: String = {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        rusqlite::Connection::open(&db)
+            .expect("open scratch sqlite graph")
+            .query_row("SELECT path FROM codefile LIMIT 1", [], |r| r.get(0))
+            .expect("a registered codefile exists")
+    };
+    let by_file = run_json(&graph.root, &["explain", &path, "--json"]);
+    assert_eq!(
+        by_file["target_file"],
+        serde_json::json!(path),
+        "a file path resolves as a file target: {by_file}"
+    );
+}
+
+#[test]
 fn sqlite_next_carries_next_step_and_bulk_context() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-next-context");

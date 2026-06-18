@@ -343,6 +343,18 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Intelligence on one node: what it IS, what it's FOR (groundings), what
+    /// it's coupled to and BY WHAT KIND, what governs it, and what ripples if you
+    /// change it. Accepts an intent (id / name / fragment) OR a file path.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom explain \"session auth\"        # by intent name/fragment\n  \
+        loom explain src/db/sqlite.rs       # by file → the intents grounded on it\n  \
+        loom explain <intent-id> --json     # structured answer for an agent")]
+    Explain {
+        /// An intent (id, exact name, or unique name fragment) or a file path.
+        target: String,
+    },
+
     /// The entrance: capture a user utterance in Inbox, then return routing
     /// context and the landing menu. Door captures first; the LLM normalizes
     /// and routes the inbox card before mutating graph truth.

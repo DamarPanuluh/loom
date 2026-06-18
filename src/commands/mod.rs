@@ -12,6 +12,7 @@ pub mod doctor;
 pub mod domain;
 pub mod door;
 pub mod edge;
+pub mod explain;
 pub mod export;
 pub mod find;
 pub mod guide;
@@ -92,6 +93,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
+        Command::Explain     { target }       => explain::run(&target, &printer),
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
