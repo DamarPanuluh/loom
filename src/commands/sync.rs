@@ -123,12 +123,15 @@ fn run_with_sqlite(
 
         let hash_updated = new_hash != cf.content_hash;
         if hash_updated && !changed {
+            // Legacy graph (no stored content_hash): adopt the content hash so
+            // future syncs are content-addressed. Deliberately does NOT touch
+            // last_modified — mtime is not a content signal, and a no-op sync
+            // must never drift the committed graph (so `loom export --check`
+            // stays a reliable gate and smell adjudication only re-opens on
+            // real content change). last_modified now moves ONLY with content.
             store.update_codefile_hash(&cf.id, &new_hash)?;
         }
         if !changed {
-            if mtime_str != cf.last_modified {
-                store.update_codefile_mtime(&cf.id, &mtime_str)?;
-            }
             continue;
         }
 
@@ -244,7 +247,103 @@ fn run_with_sqlite(
         }
     }
 
+    // Unverifiable files: a registered file that is gone (missing), outside the
+    // graph root (escaped), or unreadable as text (non-UTF8) cannot prove the
+    // claims grounded in it, so those claims must not stay green. There is no
+    // symbol narrowing possible (the content is unavailable), so EVERY intent
+    // grounding such a file is affected: flag its IMPLEMENTS grounding and
+    // ripple one hop (relates/governs/targets/serves), and invalidate linked
+    // validations — mirroring the changed-file path above. Without this, an
+    // intent reads fully realized/proven while its code is missing.
+    let unverifiable: HashSet<&str> = missing_files
+        .iter()
+        .chain(escaped_files.iter())
+        .chain(non_utf8_files.iter())
+        .map(String::as_str)
+        .collect();
+    for cf in &codefiles {
+        if !unverifiable.contains(cf.path.as_str()) {
+            continue;
+        }
+        let cause = format!("{} unverifiable (missing/escaped/unreadable)", cf.path);
+        let intent_ids = intents_by_codefile
+            .get(cf.id.as_str())
+            .cloned()
+            .unwrap_or_default();
+        for iid in intent_ids
+            .iter()
+            .filter(|intent_id| active.contains(*intent_id))
+        {
+            store.flag_implements_needs_reverification(iid, &cf.id)?;
+            for edge in all_relates
+                .iter()
+                .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
+            {
+                if related_edges_flagged.insert(edge.id.clone())
+                    && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
+                {
+                    relates_to_flagged += 1;
+                }
+            }
+            for edge in all_governs.iter().filter(|edge| edge.intent_id == *iid) {
+                if governs_edges_flagged_ids.insert(edge.id.clone())
+                    && store.flag_governs_needs_reverification(edge, &cause, &now)?
+                {
+                    governs_flagged += 1;
+                }
+            }
+            for edge in all_targets.iter().filter(|edge| edge.intent_id == *iid) {
+                if targets_edges_flagged_ids.insert(edge.id.clone())
+                    && store.flag_targets_needs_reverification(edge, &cause, &now)?
+                {
+                    targets_flagged += 1;
+                }
+            }
+            for edge in all_serves.iter().filter(|edge| edge.intent_id == *iid) {
+                if serves_edges_flagged_ids.insert(edge.id.clone())
+                    && store.flag_serves_needs_reverification(edge, &cause, &now)?
+                {
+                    serves_flagged += 1;
+                }
+            }
+        }
+        for edge in all_validates
+            .iter()
+            .filter(|edge| intent_ids.iter().any(|iid| iid == &edge.intent_id))
+        {
+            if !invalidated_validation_ids.insert(edge.validation_id.clone()) {
+                continue;
+            }
+            if all_validations.iter().any(|validation| {
+                validation.id == edge.validation_id
+                    && validation.last_result != "not_run"
+                    && validation.last_result != "blocked"
+                    && !validation.last_result.is_empty()
+            }) && store.invalidate_validation(&edge.validation_id)?
+            {
+                validations_invalidated += 1;
+            }
+        }
+    }
+
     store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
+
+    // Enforce the transition-note cap that the status nudge and `loom guide`
+    // promise: drop routine transition churn beyond `cap` newest per target
+    // (regression markers `-> failing`/`-> needs_change` are always preserved by
+    // prunable_transition_notes). cap == 0 is the explicit uncapped opt-out.
+    // Behavior now matches the words — long runs no longer leave five-digit
+    // routine note counts dragging the read path.
+    let transition_cap = store.transition_cap()?;
+    let transitions_compacted = if transition_cap > 0 {
+        let prunable = store.prunable_transition_notes(transition_cap)?;
+        for note in &prunable {
+            store.delete_note_by_id(&note.id)?;
+        }
+        prunable.len()
+    } else {
+        0
+    };
 
     // Graded ripple: the one-hop flips above produced the stale frontier; count
     // the intents two/three hops out that now carry a decaying priority bump
@@ -265,7 +364,7 @@ fn run_with_sqlite(
         escaped_files,
         locators_stale,
         changes,
-        transitions_compacted: 0,
+        transitions_compacted,
     };
 
     const REPORT_CAP: usize = 20;
@@ -341,6 +440,12 @@ fn run_with_sqlite(
             "  Validations invalidated:       {}",
             report.validations_invalidated
         );
+        if report.transitions_compacted > 0 {
+            println!(
+                "  Transition notes compacted:    {} (routine churn beyond the cap; regressions kept)",
+                report.transitions_compacted
+            );
+        }
         if !report.changes.is_empty() {
             println!();
             println!("  Changed files ({}):", report.changes.len());

@@ -228,6 +228,34 @@ fn clear_inbox(root: &Path) {
         .expect("clear scratch inbox");
 }
 
+/// Delete every note and seed `n` routine transition notes on one target, with
+/// a low cap — a self-contained fixture for sync's transition-note compaction
+/// that does not depend on how many notes the committed graph carries.
+fn seed_transition_notes(root: &Path, target_id: &str, n: usize, cap: usize) {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.execute("DELETE FROM note", [])
+        .expect("clear scratch notes");
+    for i in 0..n {
+        conn.execute(
+            "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience)
+             VALUES(?1, 'transition', ?2, 'llm', 'edge', ?3, ?4, '')",
+            rusqlite::params![
+                format!("note-{i}"),
+                format!("routine churn {i}: uninspected -> passing"),
+                target_id,
+                format!("2026-01-01T00:00:{:02}Z", i % 60),
+            ],
+        )
+        .expect("insert scratch transition note");
+    }
+    conn.execute(
+        "UPDATE meta SET transition_cap = ?1 WHERE id = 1",
+        rusqlite::params![cap.to_string()],
+    )
+    .expect("set scratch transition cap");
+}
+
 fn force_legacy_inbox_kind_constraint(root: &Path) {
     let db = root.join(".loom").join("graph.sqlite");
     let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -335,6 +363,79 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
             .as_str()
             .is_some_and(|message| message.contains("created on open")),
         "migrate should teach the current SQLite schema contract: {migrated}"
+    );
+}
+
+#[test]
+fn sqlite_sync_ignores_mtime_only_change() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-sync-mtime");
+    // A registered file that actually exists in the scratch root.
+    write_scratch_file(
+        &graph.root,
+        "scratch/widget.rs",
+        "fn widget() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/widget.rs", "--json"],
+        "llm:builder",
+    );
+    // First sync stamps content_hash + last_modified for the new file.
+    run_json(&graph.root, &["sync", "--json"]);
+    // Rewrite byte-identical content — bumps filesystem mtime, content unchanged.
+    write_scratch_file(
+        &graph.root,
+        "scratch/widget.rs",
+        "fn widget() -> u8 { 1 }\n",
+    );
+    let resync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        resync["files_changed"], 0,
+        "content_hash is the authority — an mtime-only change must not count as changed: {resync}"
+    );
+    assert!(
+        resync["changes"]
+            .as_array()
+            .is_none_or(|a| a.iter().all(|c| c != "scratch/widget.rs")),
+        "a byte-identical file must not drift the graph: {resync}"
+    );
+}
+
+#[test]
+fn sqlite_sync_flags_edges_of_missing_files() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-sync-missing");
+    // The scratch root holds only loom.graph.json, so every registered source
+    // file is missing on disk: sync must flag their grounded edges, not leave
+    // an intent reading green while its code is gone.
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        sync["missing_files_total"].as_i64().unwrap_or(0) > 0,
+        "expected registered files missing on disk: {sync}"
+    );
+    assert!(
+        sync["relates_to_edges_flagged"].as_i64().unwrap_or(0) > 0,
+        "a missing grounded file must flag its RELATES_TO edges to needs_reverification: {sync}"
+    );
+}
+
+#[test]
+fn sqlite_sync_compacts_transition_notes() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-sync-compact");
+    // 30 routine transition notes on one target, cap 5 → sync must drop 25.
+    seed_transition_notes(&graph.root, "rt:compact-test:compact-test", 30, 5);
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        sync["transitions_compacted"].as_i64().unwrap_or(0) >= 25,
+        "sync must enforce the transition cap it advertises (drop routine churn beyond cap): {sync}"
+    );
+    // The cap holds: a second sync has nothing left to compact on that target.
+    let again = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        again["transitions_compacted"].as_i64().unwrap_or(99) < 25,
+        "the cap holds — a second sync should not re-compact the same target: {again}"
     );
 }
 

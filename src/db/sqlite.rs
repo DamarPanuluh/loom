@@ -1975,14 +1975,6 @@ impl SqliteGraphStore {
         Ok(())
     }
 
-    pub fn update_codefile_mtime(&self, id: &str, mtime: &str) -> Result<()> {
-        self.conn.execute(
-            "UPDATE codefile SET last_modified = ?1 WHERE id = ?2",
-            params![mtime, id],
-        )?;
-        Ok(())
-    }
-
     pub fn update_codefile_hash_and_mtime(&self, id: &str, hash: &str, mtime: &str) -> Result<()> {
         self.conn.execute(
             "UPDATE codefile SET content_hash = ?1, last_modified = ?2 WHERE id = ?3",
