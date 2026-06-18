@@ -42,7 +42,7 @@ use crate::db::ensure_initialized;
 use crate::gate;
 use crate::output::Printer;
 
-pub fn run(file: &str, printer: &Printer) -> Result<()> {
+pub fn run(file: &str, dry_run: bool, printer: &Printer) -> Result<()> {
     // Read ALL input BEFORE opening the database: the session lock is
     // exclusive, and `producer | loom batch -` starts both ends of the pipe
     // concurrently — taking the lock first would deadlock any producer that
@@ -63,13 +63,14 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
-    run_with_sqlite(&mut store, &cwd, &input, printer)
+    run_with_sqlite(&mut store, &cwd, &input, dry_run, printer)
 }
 
 fn run_with_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     root: &std::path::Path,
     input: &str,
+    dry_run: bool,
     printer: &Printer,
 ) -> Result<()> {
     let mut results: Vec<serde_json::Value> = Vec::new();
@@ -83,7 +84,7 @@ fn run_with_sqlite(
             continue;
         }
         let n = lineno + 1;
-        match apply_line_sqlite(store, root, line) {
+        match apply_line_sqlite(store, root, dry_run, line) {
             Ok((desc, evidence)) => {
                 ok += 1;
                 if let Some(e) = evidence {
@@ -131,14 +132,17 @@ fn run_with_sqlite(
 
     let snapshot = store.query_snapshot()?;
     let gs = store.graph_state(&snapshot)?;
-    let next_step = if failed == 0 {
-        gs.next_action.clone()
-    } else {
+    let next_step = if failed > 0 {
         format!("fix the {failed} rejected line(s) above and re-run `loom batch`")
+    } else if dry_run {
+        format!("dry run — nothing written; re-run without --dry-run to apply the {ok} verdict(s)")
+    } else {
+        gs.next_action.clone()
     };
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": if failed == 0 { "ok" } else { "partial" },
+            "dry_run": dry_run,
             "ok": ok, "failed": failed, "results": results,
             "warnings": warnings, "warnings_total": warnings.len(),
             "next_step": next_step,
@@ -161,7 +165,11 @@ fn run_with_sqlite(
             }
         }
         println!();
-        println!("  {ok} applied, {failed} failed.");
+        if dry_run {
+            println!("  [dry run] {ok} would apply, {failed} would fail (nothing written).");
+        } else {
+            println!("  {ok} applied, {failed} failed.");
+        }
         if !warnings.is_empty() {
             println!(
                 "  ⚠ {} epistemic warning(s) (advisory — not rejected):",
@@ -198,6 +206,7 @@ fn evidence_opt(evidence: &str) -> Option<String> {
 fn apply_line_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     root: &std::path::Path,
+    dry_run: bool,
     line: &str,
 ) -> Result<(String, Option<String>)> {
     let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
@@ -247,6 +256,12 @@ fn apply_line_sqlite(
             }
             gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
+            if dry_run {
+                return Ok((
+                    format!("[dry-run] would ground {a} × {b}"),
+                    evidence_opt(&evidence),
+                ));
+            }
             let edge = store
                 .upsert_relates_to_ground(&a, &b, criterion, &evidence, confidence, &by, &now)?;
             Ok((
@@ -281,6 +296,12 @@ fn apply_line_sqlite(
                 criterion,
                 "the criterion the code was checked against",
             )?;
+            if dry_run {
+                return Ok((
+                    format!("[dry-run] would issue {a} × {b}"),
+                    evidence_opt(&evidence),
+                ));
+            }
             let edge = store
                 .upsert_relates_to_issue(&a, &b, criterion, &evidence, confidence, &by, &now)?;
             Ok((
@@ -305,6 +326,9 @@ fn apply_line_sqlite(
                 notes,
                 "why these two intents have no meaningful relationship",
             )?;
+            if dry_run {
+                return Ok((format!("[dry-run] would mark independent {a} × {b}"), None));
+            }
             let edge = store.upsert_relates_to_independent(&a, &b, notes, &by, &now)?;
             Ok((
                 format!("independent {} × {}", edge.from_name, edge.to_name),
@@ -349,6 +373,12 @@ fn apply_line_sqlite(
             gate::require_confidence(confidence)?;
             gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
+            if dry_run {
+                return Ok((
+                    format!("[dry-run] would rule_verdict {status}: {rule} → {intent}"),
+                    evidence_opt(&evidence),
+                ));
+            }
             store.upsert_governs_verdict(
                 &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
             )?;

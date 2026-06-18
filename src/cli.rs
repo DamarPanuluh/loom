@@ -294,6 +294,12 @@ pub enum Command {
         /// JSONL file path, or "-" to read stdin.
         #[arg(default_value = "-")]
         file: String,
+
+        /// Validate every line through all gates (resolution, substance,
+        /// confidence, locator resolution) and report what WOULD apply, without
+        /// writing anything. Lets a large batch be checked before it commits.
+        #[arg(long)]
+        dry_run: bool,
     },
 
     /// Verify graph integrity against the declared schema: version, required

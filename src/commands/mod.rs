@@ -86,7 +86,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
             (None,    false) => anyhow::bail!("Pass the intent whose proofs should run, or --all for every pending (not_run) validation."),
         },
         Command::Report                     => report::run(&printer),
-        Command::Batch       { file }       => batch::run(&file, &printer),
+        Command::Batch       { file, dry_run } => batch::run(&file, dry_run, &printer),
         Command::Doctor                     => doctor::run(&printer),
         Command::Migrate                    => migrate::run(&printer),
         Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),

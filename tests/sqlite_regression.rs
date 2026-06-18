@@ -420,6 +420,66 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
 }
 
 #[test]
+fn sqlite_batch_dry_run_validates_without_writing() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-batch-dryrun");
+    let (a, b) = first_two_intent_ids(&graph.root);
+    // Start the pair from a clean slate so "no row after" proves no write.
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "DELETE FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+        )
+        .expect("clear pair");
+    }
+    // One valid line + one with a fabricated locator: dry-run still runs every gate.
+    let valid = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these coexist cleanly without coupling\",\
+         \"evidence\":\"checked the boundary by hand\",\"confidence\":0.6}}"
+    );
+    let fabricated = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these coexist cleanly without coupling\",\
+         \"evidence\":\"checked\",\"evidence_locator\":\"src/made_up.rs:1-9\",\"confidence\":0.6}}"
+    );
+    write_scratch_file(
+        &graph.root,
+        "scratch/dry.jsonl",
+        &format!("{valid}\n{fabricated}"),
+    );
+    let res = run_json_failure_as(
+        &graph.root,
+        &["batch", "scratch/dry.jsonl", "--dry-run", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(res["dry_run"], true, "dry_run flag must be set: {res}");
+    assert_eq!(res["ok"], 1, "the valid line would apply: {res}");
+    assert_eq!(
+        res["failed"], 1,
+        "dry-run still rejects the fabricated locator: {res}"
+    );
+    assert!(
+        res["results"][0]["applied"]
+            .as_str()
+            .is_some_and(|s| s.contains("[dry-run] would ground")),
+        "dry-run reports a would-apply, not an apply: {res}"
+    );
+    // Nothing was written.
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let n: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+            |r| r.get(0),
+        )
+        .expect("count pair edges");
+    assert_eq!(n, 0, "dry-run must not write any edge");
+}
+
+#[test]
 fn sqlite_batch_flags_copied_evidence() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-batch-copied");
