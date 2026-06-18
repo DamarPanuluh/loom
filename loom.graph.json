@@ -17380,6 +17380,22 @@
         "to": "bf39f175-67f8-4800-844a-68d7b7b34bdc"
       },
       {
+        "confidence": 0.85,
+        "created_at": "2026-06-18T18:38:02.956855+00:00",
+        "criterion": "saga-diagnosis touches the backend-neutral storage boundary only at the command shell: commands/saga.rs::diagnose_sqlite opens SqliteGraphStore to resolve the saga-spec arg and emit the output read-anchor, while the core diagnosis logic (saga/diagnose.rs over SagaSpec/SagaRunReport) stays pure and backend-agnostic.",
+        "evidence": "@src/commands/saga.rs:377-401 @src/saga/diagnose.rs:69-172 — diagnose_sqlite opens SqliteGraphStore (saga.rs:381,395), calls resolve_saga_spec_arg(&store,...) (:383) and print_diagnosis_sqlite(&diagnosis,&store,...) for the read-anchor; diagnose_report/diagnose_missing_env in diagnose.rs take only &SagaSpec/&SagaRunReport with no Repository/Connection. (Replaces a leaked smoke-test placeholder 'test criterion testing' from 2026-06-18.)",
+        "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "kinds": [
+          "calls"
+        ],
+        "last_inspected": "2026-06-18T19:37:25.953279+00:00",
+        "notes": "",
+        "priority_score": 0.0,
+        "to": "c0ab7d05-3a8a-4e8b-a86a-f1506e826f73"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-17T10:29:15.601009+00:00",
         "criterion": "Existing source-level imports couple these owned behaviors; the graph declares the dependency so future sync/audit can track drift instead of treating it as hidden.",
@@ -122005,6 +122021,16 @@
         "target_id": "rt:5f884be7-3515-4499-a6bb-857ae7eb1db7:936cf0e6-342e-4599-8d6c-92fb4e3901c8",
         "target_kind": "edge",
         "text": "needs_reverification → passing"
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-18T18:38:02.956855+00:00",
+        "id": "3597e084-0d08-41e3-8b49-82d096be9daf",
+        "kind": "transition",
+        "target_id": "rt:6a41dcbc-4035-4d08-8315-0d77803ca862:c0ab7d05-3a8a-4e8b-a86a-f1506e826f73",
+        "target_kind": "edge",
+        "text": "uninspected → passing"
       },
       {
         "audience": "",
