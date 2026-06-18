@@ -51,6 +51,7 @@ struct EdgeSpec {
     to_col: &'static str,
     props: &'static [&'static str],
     numeric_props: &'static [&'static str],
+    list_props: &'static [&'static str],
 }
 
 fn checked_sql_ident(ident: &str) -> Result<&str> {
@@ -123,6 +124,7 @@ const QUALITY_RULE_PROPS: &[&str] = &[
     prop::NAME,
     prop::DESCRIPTION,
     prop::DETECTION_LOGIC,
+    prop::KIND,
     prop::SEVERITY,
     prop::INSPECTION_EFFORT,
 ];
@@ -231,9 +233,13 @@ const INSPECTABLE_PROPS_WITH_PRIORITY: &[&str] = &[
     prop::LAST_INSPECTED,
     prop::INSPECTED_BY,
     prop::PRIORITY_SCORE,
+    prop::KINDS,
     prop::NOTES,
     prop::CREATED_AT,
 ];
+
+/// RELATES_TO is the only edge with a list-valued prop (the kind multiset).
+const RELATES_TO_LIST_PROPS: &[&str] = &[prop::KINDS];
 
 const INSPECTABLE_PROPS: &[&str] = &[
     prop::INSPECTION_STATUS,
@@ -357,6 +363,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "to_id",
         props: INSPECTABLE_PROPS_WITH_PRIORITY,
         numeric_props: CONFIDENCE_AND_PRIORITY,
+        list_props: RELATES_TO_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::HIERARCHY,
@@ -365,6 +372,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "child_id",
         props: STRUCTURAL_PROPS,
         numeric_props: EMPTY_LIST_PROPS,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::IMPLEMENTS,
@@ -373,6 +381,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "codefile_id",
         props: IMPLEMENTS_PROPS,
         numeric_props: CONFIDENCE_ONLY,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::GOVERNS,
@@ -381,6 +390,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "intent_id",
         props: INSPECTABLE_PROPS,
         numeric_props: CONFIDENCE_ONLY,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::VALIDATES,
@@ -389,6 +399,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "intent_id",
         props: VALIDATES_PROPS,
         numeric_props: EMPTY_LIST_PROPS,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::TARGETS,
@@ -397,6 +408,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "intent_id",
         props: INSPECTABLE_PROPS,
         numeric_props: CONFIDENCE_ONLY,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::SERVES,
@@ -405,6 +417,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "intent_id",
         props: INSPECTABLE_PROPS,
         numeric_props: CONFIDENCE_ONLY,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::JOURNEYS,
@@ -413,6 +426,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "validation_id",
         props: STRUCTURAL_PROPS,
         numeric_props: EMPTY_LIST_PROPS,
+        list_props: EMPTY_LIST_PROPS,
     },
     EdgeSpec {
         edge_type: edge::CALLS,
@@ -421,6 +435,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         to_col: "interface_id",
         props: CALLS_PROPS,
         numeric_props: EMPTY_LIST_PROPS,
+        list_props: EMPTY_LIST_PROPS,
     },
 ];
 
@@ -4817,6 +4832,8 @@ fn insert_edge(
     for p in spec.props {
         if spec.numeric_props.contains(p) {
             values.push(SqlValue::Real(number_value(obj.get(*p))));
+        } else if spec.list_props.contains(p) {
+            values.push(text_value(obj.get(*p), true)?);
         } else {
             values.push(SqlValue::Text(string_value(obj.get(*p))));
         }
@@ -5283,6 +5300,8 @@ fn export_edges(conn: &Connection, spec: EdgeSpec) -> Result<Vec<JsonValue>> {
             let col = idx + 2;
             let value = if spec.numeric_props.contains(prop_name) {
                 JsonValue::from(row.get::<_, f64>(col)?)
+            } else if spec.list_props.contains(prop_name) {
+                parse_json_array_sql(&row.get::<_, String>(col)?)?
             } else {
                 JsonValue::String(row.get::<_, String>(col)?)
             };

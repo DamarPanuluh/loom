@@ -358,6 +358,10 @@ pub mod prop {
     /// about the work; the harness maps it to models. NOT in the
     /// required-property table (additive; absent on rules from older packs).
     pub const INSPECTION_EFFORT: &str = "inspection_effort";
+    /// RELATES_TO: relationship-kind multiset (JSON list) — how two intents are
+    /// coupled. Owner: analyzer (judgment tier) + populate (mechanical tier).
+    /// (The QualityRule norm category reuses [`KIND`], same column name.)
+    pub const KINDS: &str = "kinds";
     // Validation node
     pub const VALIDATION_TYPE: &str = "validation_type";
     pub const COMMAND: &str = "command";

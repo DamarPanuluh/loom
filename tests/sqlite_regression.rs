@@ -823,6 +823,45 @@ fn sqlite_sync_skips_meaning_only_edges_on_code_change() {
 }
 
 #[test]
+fn sqlite_export_import_round_trips_relationship_kinds() {
+    let _guard = sqlite_test_lock();
+    let edges_with_kinds = |root: &Path| -> i64 {
+        let db = root.join(".loom").join("graph.sqlite");
+        rusqlite::Connection::open(&db)
+            .expect("open scratch sqlite graph")
+            .query_row(
+                "SELECT count(*) FROM relates_to WHERE kinds != '[]'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count kinded edges")
+    };
+    // The committed fixture carries the taxonomy; import must READ the kinds.
+    let g1 = setup_imported_graph("sqlite-kinds-rt-1");
+    let imported = edges_with_kinds(&g1.root);
+    assert!(
+        imported > 0,
+        "committed loom.graph.json carries relationship kinds; import must materialize them"
+    );
+    // Export g1's DB, then import that export into a fresh graph — the kinds
+    // must survive the full DB → JSON → DB round-trip (the portability contract).
+    run_text_as(&g1.root, &["export"], "llm:validator");
+    let g2 = ScratchGraph::new("sqlite-kinds-rt-2");
+    fs::copy(
+        g1.root.join("loom.graph.json"),
+        g2.root.join("loom.graph.json"),
+    )
+    .expect("carry g1's export to g2");
+    run_json(&g2.root, &["init", ".", "--json"]);
+    run_json(&g2.root, &["import", "loom.graph.json", "--json"]);
+    assert_eq!(
+        edges_with_kinds(&g2.root),
+        imported,
+        "export → import must preserve every relationship kind (taxonomy travels with the repo)"
+    );
+}
+
+#[test]
 fn sqlite_doctor_flags_weak_only_grounding() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-weak-grounding");
