@@ -8,8 +8,8 @@ use anyhow::Result;
 
 use crate::db::schema;
 use crate::types::{
-    AbstractionLevel, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note, NoteKind, Severity,
-    TargetsEdge, ValidationResult, VocabTerm,
+    AbstractionLevel, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note, NoteKind,
+    ServesEdge, Severity, TargetsEdge, ValidationResult, ValidationType, VocabTerm,
 };
 
 use super::snapshot::QuerySnapshot;
@@ -49,6 +49,7 @@ pub struct DoctorInputs<'a> {
     pub hypotheses: Vec<Hypothesis>,
     pub vocab_terms: Vec<VocabTerm>,
     pub target_edges: Vec<TargetsEdge>,
+    pub serves_edges: Vec<ServesEdge>,
     pub edge_ids: std::collections::HashSet<String>,
     pub notes: &'a [Note],
 }
@@ -159,6 +160,12 @@ pub fn check_graph_from_parts(
                 v.id, v.last_result
             ));
         }
+        if v.validation_type.parse::<ValidationType>().is_err() {
+            issues.push(format!(
+                "Validation {} has invalid validation_type '{}' (valid: test, assertion, benchmark, manual_check, saga)",
+                v.id, v.validation_type
+            ));
+        }
     }
     // Hypothesis plane: status vocabulary + the evidence audit behind every
     // proof verdict, and the proposer≠prover contract (when roles are declared).
@@ -234,6 +241,7 @@ pub fn check_graph_from_parts(
     audit_inspectable_edges(
         query_snapshot,
         &inputs.target_edges,
+        &inputs.serves_edges,
         &mut issues,
         &mut hints,
     )?;
@@ -292,6 +300,7 @@ struct EdgeClaim {
 fn audit_inspectable_edges(
     snapshot: &QuerySnapshot,
     targets: &[TargetsEdge],
+    serves: &[ServesEdge],
     issues: &mut Vec<String>,
     hints: &mut Vec<String>,
 ) -> Result<()> {
@@ -350,6 +359,19 @@ fn audit_inspectable_edges(
             inspected_by: e.inspected_by.clone(),
         });
     }
+    for e in serves {
+        claims.push(EdgeClaim {
+            etype: schema::edge::SERVES,
+            label: format!("{} → {}", e.persona_name, e.intent_name),
+            status: e.inspection_status.clone(),
+            criterion: e.criterion.clone(),
+            confidence: e.confidence,
+            evidence: e.evidence.clone(),
+            last_inspected: e.last_inspected.clone(),
+            notes: e.notes.clone(),
+            inspected_by: e.inspected_by.clone(),
+        });
+    }
     // VALIDATES carries only a status — audit its vocabulary too.
     for e in &snapshot.validates {
         if !matches!(
@@ -389,6 +411,7 @@ fn audit_inspectable_edges(
             x if x == schema::edge::RELATES_TO
                 || x == schema::edge::GOVERNS
                 || x == schema::edge::TARGETS
+                || x == schema::edge::SERVES
         );
         let valid_status = matches!(
             c.status.as_str(),
@@ -445,11 +468,15 @@ fn audit_inspectable_edges(
             }
         }
         if c.status == "independent" {
-            // The why lives in `notes` for RELATES_TO (unrelated) and in
-            // `evidence` for GOVERNS (rule doesn't apply — recorded by verdict).
-            if c.etype == schema::edge::RELATES_TO && crate::gate::is_vacuous(&c.notes) {
+            // The why lives in `notes` for RELATES_TO (unrelated) and SERVES
+            // (intent doesn't serve this persona — `persona serve … independent
+            // --notes`), and in `evidence` for GOVERNS (rule doesn't apply).
+            if (c.etype == schema::edge::RELATES_TO || c.etype == schema::edge::SERVES)
+                && crate::gate::is_vacuous(&c.notes)
+            {
                 issues.push(format!(
-                    "RELATES_TO edge {} is 'independent' but records no why (notes: '{}')",
+                    "{} edge {} is 'independent' but records no why (notes: '{}')",
+                    c.etype,
                     c.label,
                     c.notes.trim()
                 ));

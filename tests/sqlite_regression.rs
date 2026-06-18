@@ -256,6 +256,31 @@ fn seed_transition_notes(root: &Path, target_id: &str, n: usize, cap: usize) {
     .expect("set scratch transition cap");
 }
 
+/// Insert a SERVES verdict that is `passing` with an empty (vacuous) criterion,
+/// so `loom doctor` has a SERVES edge to catch — exercising that the audit
+/// covers SERVES like every other inspectable edge type.
+fn insert_passing_serves_with_vacuous_criterion(root: &Path) {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let intent_id: String = conn
+        .query_row("SELECT id FROM intent LIMIT 1", [], |r| r.get(0))
+        .expect("at least one intent exists in the imported graph");
+    conn.execute(
+        "INSERT INTO persona(id, name, description, author, created_at, updated_at)
+         VALUES('persona-test', 'Test Persona', 'scratch persona', 'llm', 'now', 'now')",
+        [],
+    )
+    .expect("insert scratch persona");
+    conn.execute(
+        "INSERT INTO serves(persona_id, intent_id, inspection_status, criterion, confidence,
+                            evidence, last_inspected, inspected_by, notes, created_at)
+         VALUES('persona-test', ?1, 'passing', '', 0.9, 'present', '2026-01-01T00:00:00Z',
+                'llm:analyzer', '', 'now')",
+        rusqlite::params![intent_id],
+    )
+    .expect("insert scratch serves edge");
+}
+
 fn force_legacy_inbox_kind_constraint(root: &Path) {
     let db = root.join(".loom").join("graph.sqlite");
     let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -363,6 +388,29 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
             .as_str()
             .is_some_and(|message| message.contains("created on open")),
         "migrate should teach the current SQLite schema contract: {migrated}"
+    );
+}
+
+#[test]
+fn sqlite_doctor_audits_serves_edges() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-doctor-serves");
+    insert_passing_serves_with_vacuous_criterion(&graph.root);
+    // doctor exits non-zero when unhealthy but still prints its JSON report.
+    let doctor = run_json_failure_as(&graph.root, &["doctor", "--json"], "llm:validator");
+    assert_eq!(
+        doctor["healthy"], false,
+        "a vacuous SERVES verdict is an issue: {doctor}"
+    );
+    assert!(
+        doctor["issues"]
+            .as_array()
+            .is_some_and(|issues| issues.iter().any(|i| {
+                let s = i.as_str().unwrap_or("");
+                s.contains("SERVES") && s.contains("criterion")
+            })),
+        "doctor must audit SERVES verdicts like every inspectable edge: {}",
+        doctor["issues"]
     );
 }
 

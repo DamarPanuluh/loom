@@ -709,6 +709,7 @@ impl SqliteGraphStore {
                 hypotheses: self.list_hypotheses(None)?,
                 vocab_terms: self.list_vocab_terms()?,
                 target_edges: self.list_all_targets()?,
+                serves_edges: self.list_all_serves()?,
                 edge_ids: self.collect_edge_ids()?,
                 notes,
             },
@@ -4825,7 +4826,7 @@ CREATE TABLE IF NOT EXISTS quality_rule(
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
   detection_logic TEXT NOT NULL,
-  severity TEXT NOT NULL CHECK(severity IN ('info','warning','error','')),
+  severity TEXT NOT NULL CHECK(severity IN ('warning','error')),
   inspection_effort TEXT NOT NULL DEFAULT '' CHECK(inspection_effort IN ('low','mid','high',''))
 );
 
@@ -4833,7 +4834,7 @@ CREATE TABLE IF NOT EXISTS validation(
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
-  validation_type TEXT NOT NULL,
+  validation_type TEXT NOT NULL CHECK(validation_type IN ('test','assertion','benchmark','manual_check','saga')),
   command TEXT NOT NULL DEFAULT '',
   last_run TEXT NOT NULL DEFAULT '',
   last_result TEXT NOT NULL CHECK(last_result IN ('passed','failed','not_run','blocked',''))
