@@ -591,6 +591,18 @@ fn sqlite_batch_resolves_evidence_locators() {
 fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-fix-take");
+    // Clear pre-existing stale edges so the fix queue contains only the failing
+    // edge we create — keeps the test deterministic regardless of how many
+    // needs_reverification edges the committed fixture carries.
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET inspection_status='passing' WHERE inspection_status='needs_reverification'",
+            [],
+        )
+        .expect("reset stale relates_to");
+    }
     let (a, b) = first_two_intent_ids(&graph.root);
     // Record a FAILING RELATES_TO edge between two intents (analyzer/fixer lane).
     let line = format!(
