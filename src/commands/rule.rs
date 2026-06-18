@@ -273,6 +273,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 name: name.clone(),
                 description,
                 detection_logic: String::new(),
+                kind: String::new(),
                 inspection_effort: effort.unwrap_or_default(),
                 severity,
             };
@@ -308,6 +309,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     name: (*name).to_string(),
                     description: (*description).to_string(),
                     detection_logic: (*detection).to_string(),
+                    kind: String::new(),
                     inspection_effort: pack_rule_effort(name).to_string(),
                     severity: (*severity).to_string(),
                 };

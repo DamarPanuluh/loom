@@ -589,12 +589,143 @@ pub struct QualityRule {
     pub description: String,
     pub detection_logic: String,
     pub severity: String,
+    /// Norm category (the GOVERNS taxonomy): security | correctness |
+    /// performance | architecture | resource_safety. Set at `rule add`/seed;
+    /// "" reads as uncategorized. Each kind carries a default inspection_effort
+    /// (see `GovernsKind::default_effort`) so effort derives from kind+override
+    /// instead of a hardcoded rule-name match.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub kind: String,
     /// How much capability inspecting this rule needs: "low" (near-mechanical,
     /// e.g. a secrets scan) | "mid" (read-and-judge) | "high" (deep semantic
     /// reading, e.g. atomicity). Optional — "" reads as mid. Loom names the
     /// WORK; which model answers is the harness's business.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspection_effort: String,
+}
+
+/// The RELATES_TO relationship taxonomy. The single home for each kind's
+/// strategy: whether it's mechanically derivable, how much it should be trusted,
+/// and whether a code change stales it. Stored as validated strings in the edge
+/// `kinds` multiset; this enum is the closed vocabulary + behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RelationKind {
+    Imports,
+    SharesFile,
+    SharesVocab,
+    SameDomain,
+    Calls,
+    Inheritance,
+    SharesState,
+    DocReference,
+    Manual,
+}
+
+impl RelationKind {
+    pub const ALL: &'static [RelationKind] = &[
+        Self::Imports,
+        Self::SharesFile,
+        Self::SharesVocab,
+        Self::SameDomain,
+        Self::Calls,
+        Self::Inheritance,
+        Self::SharesState,
+        Self::DocReference,
+        Self::Manual,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Imports => "imports",
+            Self::SharesFile => "shares_file",
+            Self::SharesVocab => "shares_vocab",
+            Self::SameDomain => "same_domain",
+            Self::Calls => "calls",
+            Self::Inheritance => "inheritance",
+            Self::SharesState => "shares_state",
+            Self::DocReference => "doc_reference",
+            Self::Manual => "manual",
+        }
+    }
+
+    // Per-kind strategy methods (is_mechanical / trust_weight /
+    // stales_on_code_change) land with their consumers in the later taxonomy
+    // commits (mechanical assignment, trust-weighted doctor, kind-aware sync) so
+    // each method ships where it is first used.
+}
+
+impl std::str::FromStr for RelationKind {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|k| k.as_str() == s)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Unknown relation kind '{s}'. Valid: {}",
+                    Self::ALL
+                        .iter()
+                        .map(|k| k.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })
+    }
+}
+
+/// The GOVERNS norm taxonomy — the closed category vocabulary for QualityRule,
+/// with each kind's default inspection effort (overridable per rule).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GovernsKind {
+    Security,
+    Correctness,
+    Performance,
+    Architecture,
+    ResourceSafety,
+}
+
+impl GovernsKind {
+    pub const ALL: &'static [GovernsKind] = &[
+        Self::Security,
+        Self::Correctness,
+        Self::Performance,
+        Self::Architecture,
+        Self::ResourceSafety,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Security => "security",
+            Self::Correctness => "correctness",
+            Self::Performance => "performance",
+            Self::Architecture => "architecture",
+            Self::ResourceSafety => "resource_safety",
+        }
+    }
+
+    // default_effort (the kind→effort table) lands in the judgment-assignment
+    // commit where `rule add`/seed consume it.
+}
+
+impl std::str::FromStr for GovernsKind {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        Self::ALL
+            .iter()
+            .copied()
+            .find(|k| k.as_str() == s)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Unknown governs kind '{s}'. Valid: {}",
+                    Self::ALL
+                        .iter()
+                        .map(|k| k.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            })
+    }
 }
 
 /// Explicit proof object that an intent is fulfilled.
@@ -867,6 +998,14 @@ pub struct RelatesTo {
     pub priority_score: f64,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    /// The relationship taxonomy (a MULTISET — a pair is often coupled several
+    /// ways at once, mirroring `discovery_signals`). Mechanical kinds
+    /// (imports/shares_file/shares_vocab/same_domain) are carried from the
+    /// discovery signals by `populate`; judgment kinds (calls/inheritance/
+    /// shares_state/doc_reference/manual) are asserted by an analyzer with a
+    /// locator. Validated against `RelationKind`; empty = un-kinded (legacy).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub kinds: Vec<String>,
     /// Synthetic discovery queue metadata. Empty for stored RELATES_TO edges.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub discovery_class: String,

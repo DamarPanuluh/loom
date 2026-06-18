@@ -969,6 +969,7 @@ pub fn unexplored_pairs_scored_from_snapshot(
                     inspected_by: String::new(),
                     priority_score: score,
                     notes: format!("discovery signal: {}", why.join("; ")),
+                    kinds: Vec::new(),
                     discovery_class: discovery_class.to_string(),
                     discovery_signals: signals,
                     discovery_centrality: DiscoveryCentrality {
@@ -1037,6 +1038,7 @@ mod tests {
             name: id.to_string(),
             description: String::new(),
             detection_logic: String::new(),
+            kind: String::new(),
             severity: "medium".to_string(),
             inspection_effort: "mid".to_string(),
         }
@@ -1057,6 +1059,7 @@ mod tests {
             inspected_by: "llm:analyzer".to_string(),
             priority_score: 0.0,
             notes: String::new(),
+            kinds: Vec::new(),
             discovery_class: String::new(),
             discovery_signals: Vec::new(),
             discovery_centrality: DiscoveryCentrality::default(),

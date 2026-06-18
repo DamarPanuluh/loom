@@ -716,6 +716,56 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
 }
 
 #[test]
+fn sqlite_taxonomy_kinds_persist_and_doctor_validates() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-taxonomy");
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        // A valid relationship kind round-trips (JSON list column).
+        conn.execute(
+            "UPDATE relates_to SET kinds='[\"imports\",\"shares_file\"]' \
+             WHERE rowid=(SELECT rowid FROM relates_to LIMIT 1)",
+            [],
+        )
+        .expect("set valid kinds");
+        // An invalid relationship kind must be caught by doctor.
+        conn.execute(
+            "UPDATE relates_to SET kinds='[\"bogus_kind\"]' \
+             WHERE rowid=(SELECT rowid FROM relates_to LIMIT 1 OFFSET 1)",
+            [],
+        )
+        .expect("set bogus kind");
+        // An invalid governs category too.
+        conn.execute(
+            "UPDATE quality_rule SET kind='not_a_category' \
+             WHERE rowid=(SELECT rowid FROM quality_rule LIMIT 1)",
+            [],
+        )
+        .expect("set bogus rule kind");
+    }
+    let doctor = run_json_failure_as(&graph.root, &["doctor", "--json"], "llm:validator");
+    assert_eq!(
+        doctor["healthy"], false,
+        "bogus kinds make the graph unhealthy: {doctor}"
+    );
+    let issues = doctor["issues"].to_string();
+    assert!(
+        issues.contains("unknown kind 'bogus_kind'"),
+        "doctor must flag an unknown relation kind: {issues}"
+    );
+    assert!(
+        issues.contains("unknown kind 'not_a_category'"),
+        "doctor must flag an unknown governs kind: {issues}"
+    );
+    // The valid kinds did NOT produce an issue.
+    assert!(
+        !issues.contains("'imports'") && !issues.contains("'shares_file'"),
+        "valid kinds must not be flagged: {issues}"
+    );
+}
+
+#[test]
 fn sqlite_doctor_audits_serves_edges() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-doctor-serves");

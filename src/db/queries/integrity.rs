@@ -8,8 +8,9 @@ use anyhow::Result;
 
 use crate::db::schema;
 use crate::types::{
-    AbstractionLevel, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note, NoteKind,
-    ServesEdge, Severity, TargetsEdge, ValidationResult, ValidationType, VocabTerm,
+    AbstractionLevel, GovernsKind, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note,
+    NoteKind, RelationKind, ServesEdge, Severity, TargetsEdge, ValidationResult, ValidationType,
+    VocabTerm,
 };
 
 use super::snapshot::QuerySnapshot;
@@ -151,6 +152,39 @@ pub fn check_graph_from_parts(
                 "QualityRule {} has invalid severity '{}'",
                 r.id, r.severity
             ));
+        }
+        // Taxonomy: the norm category (the GOVERNS kind) must be in the closed
+        // vocab; "" is allowed (uncategorized).
+        if !r.kind.is_empty() && r.kind.parse::<GovernsKind>().is_err() {
+            issues.push(format!(
+                "QualityRule '{}' has unknown kind '{}' (valid: {}, or empty)",
+                r.name,
+                r.kind,
+                GovernsKind::ALL
+                    .iter()
+                    .map(|k| k.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+    }
+    // Taxonomy: every relationship kind on a RELATES_TO edge must be in the
+    // closed RelationKind vocab.
+    for e in &query_snapshot.relates {
+        for k in &e.kinds {
+            if k.parse::<RelationKind>().is_err() {
+                issues.push(format!(
+                    "RELATES_TO edge {} → {} has unknown kind '{}' (valid: {})",
+                    e.from_name,
+                    e.to_name,
+                    k,
+                    RelationKind::ALL
+                        .iter()
+                        .map(|k| k.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
         }
     }
     for v in &query_snapshot.validations {

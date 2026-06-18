@@ -1856,7 +1856,7 @@ impl SqliteGraphStore {
             (
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status,
                         e.criterion, e.confidence, e.evidence, e.last_inspected,
-                        e.inspected_by, e.priority_score, e.notes
+                        e.inspected_by, e.priority_score, e.notes, e.kinds
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -1866,7 +1866,7 @@ impl SqliteGraphStore {
             (
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status,
                         e.criterion, e.confidence, e.evidence, e.last_inspected,
-                        e.inspected_by, e.priority_score, e.notes
+                        e.inspected_by, e.priority_score, e.notes, e.kinds
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -1892,6 +1892,7 @@ impl SqliteGraphStore {
                     inspected_by: row.get(9)?,
                     priority_score: row.get(10)?,
                     notes: row.get(11)?,
+                    kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
                     discovery_class: String::new(),
                     discovery_signals: Vec::new(),
                     discovery_centrality: Default::default(),
@@ -2087,7 +2088,7 @@ impl SqliteGraphStore {
         let mut stmt = self.conn.prepare(
             "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                     e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.priority_score,
-                    e.notes
+                    e.notes, e.kinds
              FROM relates_to e
              JOIN intent src ON src.id = e.from_id
              JOIN intent dst ON dst.id = e.to_id
@@ -2110,6 +2111,7 @@ impl SqliteGraphStore {
                 inspected_by: row.get(9)?,
                 priority_score: row.get(10)?,
                 notes: row.get(11)?,
+                kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
                 discovery_class: String::new(),
                 discovery_signals: Vec::new(),
                 discovery_centrality: Default::default(),
@@ -2124,7 +2126,7 @@ impl SqliteGraphStore {
             .query_row(
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                         e.confidence, e.evidence, e.last_inspected, e.inspected_by,
-                        e.priority_score, e.notes
+                        e.priority_score, e.notes, e.kinds
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -2147,6 +2149,7 @@ impl SqliteGraphStore {
                         inspected_by: row.get(9)?,
                         priority_score: row.get(10)?,
                         notes: row.get(11)?,
+                        kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
                         discovery_class: String::new(),
                         discovery_signals: Vec::new(),
                         discovery_centrality: Default::default(),
@@ -2195,7 +2198,7 @@ impl SqliteGraphStore {
         tx.query_row(
             "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                     e.confidence, e.evidence, e.last_inspected, e.inspected_by,
-                    e.priority_score, e.notes
+                    e.priority_score, e.notes, e.kinds
              FROM relates_to e
              JOIN intent src ON src.id = e.from_id
              JOIN intent dst ON dst.id = e.to_id
@@ -2218,6 +2221,7 @@ impl SqliteGraphStore {
                     inspected_by: row.get(9)?,
                     priority_score: row.get(10)?,
                     notes: row.get(11)?,
+                    kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
                     discovery_class: String::new(),
                     discovery_signals: Vec::new(),
                     discovery_centrality: Default::default(),
@@ -4082,7 +4086,7 @@ impl SqliteGraphStore {
 
     pub fn list_rules(&self) -> Result<Vec<QualityRule>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, detection_logic, severity, inspection_effort
+            "SELECT id, name, description, detection_logic, severity, inspection_effort, kind
              FROM quality_rule
              ORDER BY name",
         )?;
@@ -4094,6 +4098,7 @@ impl SqliteGraphStore {
                 detection_logic: row.get(3)?,
                 severity: row.get(4)?,
                 inspection_effort: row.get(5)?,
+                kind: row.get(6)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -4102,15 +4107,16 @@ impl SqliteGraphStore {
 
     pub fn insert_rule(&self, rule: &QualityRule) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 rule.id,
                 rule.name,
                 rule.description,
                 rule.detection_logic,
                 rule.severity,
-                rule.inspection_effort
+                rule.inspection_effort,
+                rule.kind
             ],
         )?;
         Ok(())
@@ -4852,6 +4858,7 @@ CREATE TABLE IF NOT EXISTS quality_rule(
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL,
   detection_logic TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT '',
   severity TEXT NOT NULL CHECK(severity IN ('warning','error')),
   inspection_effort TEXT NOT NULL DEFAULT '' CHECK(inspection_effort IN ('low','mid','high',''))
 );
@@ -4969,6 +4976,7 @@ CREATE TABLE IF NOT EXISTS relates_to(
   inspected_by TEXT NOT NULL DEFAULT '',
   priority_score REAL NOT NULL DEFAULT 0,
   notes TEXT NOT NULL DEFAULT '',
+  kinds TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(kinds)),
   created_at TEXT NOT NULL DEFAULT '',
   PRIMARY KEY(from_id, to_id),
   CHECK(from_id <> to_id)
@@ -5105,7 +5113,29 @@ impl SqliteGraphStore {
             &create_table_batch().replace("__INBOX_KIND_SQL_VALUES__", &inbox_kind_values),
         )?;
         self.ensure_meta_columns()?;
+        self.ensure_taxonomy_columns()?;
         self.ensure_inbox_kind_vocabulary()?;
+        Ok(())
+    }
+
+    /// Additive taxonomy columns (the edge-kind program): RELATES_TO.kinds (the
+    /// relationship multiset, JSON list) and QualityRule.kind (the norm
+    /// category). Additive — existing graphs gain them on open with their
+    /// defaults, no version bump (loom's convention for additive changes).
+    fn ensure_taxonomy_columns(&self) -> Result<()> {
+        for (table, column, definition) in [
+            ("relates_to", "kinds", "TEXT NOT NULL DEFAULT '[]'"),
+            ("quality_rule", "kind", "TEXT NOT NULL DEFAULT ''"),
+        ] {
+            if !table_has_column(&self.conn, table, column)? {
+                let table = checked_sql_ident(table)?;
+                let column = checked_sql_ident(column)?;
+                self.conn.execute(
+                    &format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"),
+                    [],
+                )?;
+            }
+        }
         Ok(())
     }
 

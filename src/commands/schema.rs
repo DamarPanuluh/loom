@@ -130,6 +130,8 @@ pub fn run(printer: &Printer) -> Result<()> {
         "inbox_kind": crate::commands::inbox::INBOX_KINDS,
         "severity": ["warning", "error"],
         "validation_type": ["test", "assertion", "benchmark", "manual_check", "saga"],
+        "relation_kind": crate::types::RelationKind::ALL.iter().map(|k| k.as_str()).collect::<Vec<_>>(),
+        "governs_kind": crate::types::GovernsKind::ALL.iter().map(|k| k.as_str()).collect::<Vec<_>>(),
         "validation_result": ["passed", "failed", "not_run", "blocked"],
         "hypothesis_status": ["proposed", "supported", "refuted", "adopted", "confirmed", "rejected"],
         "aspect": {"open": true, "suggested": ["happy", "sad", "fallback", "edge_case", "lifecycle", "security", "performance"]},
@@ -211,6 +213,22 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  severity:          warning | error");
     println!("  validation_type:   test | assertion | benchmark | manual_check | saga (consumer-plane chain, `loom saga`)");
     println!("  validation_result: passed | failed | not_run | blocked (recorded \"can't run yet\" + reason)");
+    println!(
+        "  relation_kind:     {} (RELATES_TO multiset — how two intents are coupled)",
+        crate::types::RelationKind::ALL
+            .iter()
+            .map(|k| k.as_str())
+            .collect::<Vec<_>>()
+            .join(" | ")
+    );
+    println!(
+        "  governs_kind:      {} (QualityRule norm category)",
+        crate::types::GovernsKind::ALL
+            .iter()
+            .map(|k| k.as_str())
+            .collect::<Vec<_>>()
+            .join(" | ")
+    );
     println!("  aspect (open):     happy | sad | fallback | edge_case | lifecycle | security | performance | …");
     println!("  tags (bounded):    ≤3 registered VocabTerm names per intent — `loom vocab list` is the menu; unknown terms error with it inlined");
     Ok(())
