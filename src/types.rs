@@ -668,6 +668,29 @@ impl RelationKind {
             Self::Imports | Self::SharesFile | Self::SharesVocab | Self::SameDomain
         )
     }
+
+    /// Whether a code-content change should stale an edge of this kind. Meaning
+    /// kinds (shares_vocab/same_domain) track concept overlap and doc_reference
+    /// tracks docs — a code edit must NOT re-open those (kind-aware sync). An
+    /// edge with NO kinds is conservatively staled (unknown coupling).
+    pub fn stales_on_code_change(self) -> bool {
+        !matches!(
+            self,
+            Self::SharesVocab | Self::SameDomain | Self::DocReference
+        )
+    }
+}
+
+/// True when a code-content change should stale this RELATES_TO edge: it has no
+/// kinds (unknown — conservatively stale) OR at least one kind that tracks code.
+/// Meaning-only edges (every kind is concept/docs) are left alone on code change.
+pub fn relates_stales_on_code_change(kinds: &[String]) -> bool {
+    kinds.is_empty()
+        || kinds.iter().any(|k| {
+            k.parse::<RelationKind>()
+                .map(|rk| rk.stales_on_code_change())
+                .unwrap_or(true)
+        })
 }
 
 impl std::str::FromStr for RelationKind {

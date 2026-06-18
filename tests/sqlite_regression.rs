@@ -727,6 +727,102 @@ fn intent_id_by_name(root: &Path, name: &str) -> String {
 }
 
 #[test]
+fn sqlite_sync_skips_meaning_only_edges_on_code_change() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-kind-sync");
+    write_scratch_file(
+        &graph.root,
+        "scratch/shared.rs",
+        "pub fn shared() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/shared.rs", "--json"],
+        "llm:builder",
+    );
+    for nm in ["alpha kind owner", "beta kind owner"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns the shared helper for the kind-aware sync test",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &[
+                "edge",
+                "implement",
+                nm,
+                "scratch/shared.rs",
+                "--locator",
+                "fn shared",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    let a = intent_id_by_name(&graph.root, "alpha kind owner");
+    let b = intent_id_by_name(&graph.root, "beta kind owner");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "they sit in the same area of the system",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    {
+        // Mark the edge as a MEANING-ONLY coupling (concept, not code).
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET kinds='[\"same_domain\"]' WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+        )
+        .expect("set meaning-only kind");
+    }
+    // Change the grounded file's code, then sync.
+    write_scratch_file(
+        &graph.root,
+        "scratch/shared.rs",
+        "pub fn shared() -> u8 { 2 }\n",
+    );
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+    // The meaning-only edge must NOT be staled by a code change.
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let status: String = conn
+        .query_row(
+            "SELECT inspection_status FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+            |r| r.get(0),
+        )
+        .expect("the edge exists");
+    assert_eq!(
+        status, "passing",
+        "a same_domain (meaning-only) edge must survive a code change, got {status}"
+    );
+}
+
+#[test]
 fn sqlite_doctor_flags_weak_only_grounding() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-weak-grounding");
