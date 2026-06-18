@@ -11,113 +11,151 @@ use anyhow::Result;
 use crate::db::queries::QuerySnapshot;
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
-use crate::types::{relates_stales_on_code_change, Intent, QualityRule, RelationKind, Validation};
+use crate::types::{relates_stales_on_code_change, CodeFile, Intent, QualityRule, RelationKind};
 
-pub fn run(target: &str, printer: &Printer) -> Result<()> {
+pub fn run(target: &str, impact: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
-    run_with_db(&store, target, printer)
+    run_with_db(&store, target, impact, printer)
 }
 
-pub fn run_with_db(db: &dyn GraphReadRepository, target: &str, printer: &Printer) -> Result<()> {
+pub fn run_with_db(
+    db: &dyn GraphReadRepository,
+    target: &str,
+    impact: bool,
+    printer: &Printer,
+) -> Result<()> {
     let snap = db.query_snapshot()?;
-    let resolved = resolve_target(&snap, target);
+    // Resolve + name against the UNFILTERED intent set (query_snapshot drops
+    // deprecated intents; `intent show`/`list` keep them, so explain must too —
+    // otherwise a deprecated target is wrongly "not found").
+    let all_intents = db.list_intents(None, None)?;
 
-    let ids: Vec<String> = match &resolved {
-        Resolved::Intent(id) => vec![id.clone()],
-        Resolved::File { intents, .. } => intents.clone(),
+    let resolved = resolve_target(&all_intents, &snap.codefiles, target);
+    let (ids, file_ctx): (Vec<String>, Option<String>) = match resolved {
+        Resolved::Intent(id) => (vec![id], None),
+        Resolved::File(path) => {
+            let mut intents: Vec<String> = Vec::new();
+            for im in &snap.implements {
+                if im.codefile_path == path && !intents.contains(&im.intent_id) {
+                    intents.push(im.intent_id.clone());
+                }
+            }
+            if intents.is_empty() {
+                return render_uncovered_file(&path, printer);
+            }
+            (intents, Some(path))
+        }
+        Resolved::Ambiguous(names) => {
+            let shown = names.iter().take(6).cloned().collect::<Vec<_>>().join(", ");
+            let more = names.len().saturating_sub(6);
+            anyhow::bail!(
+                "'{target}' matches {} intents: {shown}{} — refine the fragment or pass an id \
+                 (`loom intent list`).",
+                names.len(),
+                if more > 0 {
+                    format!(", …+{more}")
+                } else {
+                    String::new()
+                }
+            );
+        }
         Resolved::None => anyhow::bail!(
             "Nothing matches '{target}' as an intent (id / exact name / unique fragment) or a \
              registered file path. Try `loom find \"{target}\"` or `loom intent list`."
         ),
     };
 
-    // A registered file with no grounding intents is itself a useful answer.
-    if let Resolved::File { path, intents } = &resolved {
-        if intents.is_empty() {
-            return render_uncovered_file(path, printer);
-        }
-    }
-
-    let by_id: HashMap<&str, &Intent> = snap.intents.iter().map(|i| (i.id.as_str(), i)).collect();
+    let by_id: HashMap<&str, &Intent> = all_intents.iter().map(|i| (i.id.as_str(), i)).collect();
     let explanations: Vec<Explanation> = ids
         .iter()
-        .filter_map(|id| by_id.get(id.as_str()).map(|i| build_explanation(&snap, i)))
+        .filter_map(|id| {
+            by_id
+                .get(id.as_str())
+                .map(|i| build_explanation(&snap, &by_id, i))
+        })
         .collect();
 
-    let file_ctx = match &resolved {
-        Resolved::File { path, .. } => Some(path.as_str()),
-        _ => None,
-    };
+    let label = file_ctx.clone().unwrap_or_else(|| {
+        explanations
+            .first()
+            .map(|e| e.name.clone())
+            .unwrap_or_default()
+    });
 
-    if printer.json {
-        render_json(&explanations, file_ctx, printer);
+    if impact {
+        render_impact(&explanations, &label, printer);
+    } else if printer.json {
+        render_json(&explanations, file_ctx.as_deref(), printer);
     } else {
-        render_human(&explanations, file_ctx);
+        render_human(&explanations, file_ctx.as_deref());
     }
     Ok(())
 }
 
 // ---------------------------------------------------------------------------
-// Target resolution: intent first (loom's primary node), then file.
+// Target resolution: intent first (loom's primary node), then file. Distinguishes
+// not-found from ambiguous, and never silently picks a first match.
 // ---------------------------------------------------------------------------
 
 enum Resolved {
     Intent(String),
-    File { path: String, intents: Vec<String> },
+    File(String),
+    Ambiguous(Vec<String>),
     None,
 }
 
-fn resolve_target(snap: &QuerySnapshot, target: &str) -> Resolved {
-    if snap.intents.iter().any(|i| i.id == target) {
-        return Resolved::Intent(target.to_string());
+fn resolve_target(intents: &[Intent], codefiles: &[CodeFile], target: &str) -> Resolved {
+    if target.trim().is_empty() {
+        return Resolved::None;
+    }
+    if let Some(i) = intents.iter().find(|i| i.id == target) {
+        return Resolved::Intent(i.id.clone());
     }
     let lower = target.to_lowercase();
-    let exact: Vec<&Intent> = snap
-        .intents
+
+    let exact: Vec<&Intent> = intents
         .iter()
         .filter(|i| i.name.to_lowercase() == lower)
         .collect();
     if exact.len() == 1 {
         return Resolved::Intent(exact[0].id.clone());
     }
-    let frag: Vec<&Intent> = snap
-        .intents
+    if exact.len() > 1 {
+        return Resolved::Ambiguous(exact.iter().map(|i| i.name.clone()).collect());
+    }
+
+    // An exact file path is unambiguous — let it win before fuzzy intent matching.
+    if let Some(cf) = codefiles.iter().find(|c| c.path == target) {
+        return Resolved::File(cf.path.clone());
+    }
+
+    let frag: Vec<&Intent> = intents
         .iter()
         .filter(|i| i.name.to_lowercase().contains(&lower))
         .collect();
     if frag.len() == 1 {
         return Resolved::Intent(frag[0].id.clone());
     }
-    // Fall through to file: exact path, then path suffix, then substring.
-    let file = snap
-        .codefiles
+    if frag.len() > 1 {
+        return Resolved::Ambiguous(frag.iter().map(|i| i.name.clone()).collect());
+    }
+
+    // File by suffix, then substring — UNIQUE matches only (no order-dependent
+    // first-match: an empty/loose needle must not silently grab a file).
+    let suffix: Vec<&CodeFile> = codefiles
         .iter()
-        .find(|c| c.path == target)
-        .or_else(|| snap.codefiles.iter().find(|c| c.path.ends_with(target)))
-        .or_else(|| {
-            let hits: Vec<_> = snap
-                .codefiles
-                .iter()
-                .filter(|c| c.path.contains(target))
-                .collect();
-            if hits.len() == 1 {
-                Some(hits[0])
-            } else {
-                None
-            }
-        });
-    if let Some(cf) = file {
-        let mut intents: Vec<String> = Vec::new();
-        for im in &snap.implements {
-            if im.codefile_path == cf.path && !intents.contains(&im.intent_id) {
-                intents.push(im.intent_id.clone());
-            }
-        }
-        return Resolved::File {
-            path: cf.path.clone(),
-            intents,
-        };
+        .filter(|c| c.path.ends_with(target))
+        .collect();
+    if suffix.len() == 1 {
+        return Resolved::File(suffix[0].path.clone());
+    }
+    let sub: Vec<&CodeFile> = codefiles
+        .iter()
+        .filter(|c| c.path.contains(target))
+        .collect();
+    if sub.len() == 1 {
+        return Resolved::File(sub[0].path.clone());
     }
     Resolved::None
 }
@@ -146,6 +184,7 @@ struct Explanation {
     domain: String,
     layer: String,
     visibility: String,
+    deprecated: bool,
     groundings: Vec<(String, String, String)>, // path, locator, status
     couplings: Vec<Coupling>,
     governs: Vec<(String, String, String)>, // rule name, kind, status
@@ -167,7 +206,11 @@ fn trust_rank(kinds: &[String]) -> u8 {
         .unwrap_or(0)
 }
 
-fn build_explanation(snap: &QuerySnapshot, intent: &Intent) -> Explanation {
+fn build_explanation(
+    snap: &QuerySnapshot,
+    by_id: &HashMap<&str, &Intent>,
+    intent: &Intent,
+) -> Explanation {
     let id = intent.id.as_str();
 
     let groundings: Vec<(String, String, String)> = snap
@@ -231,7 +274,6 @@ fn build_explanation(snap: &QuerySnapshot, intent: &Intent) -> Explanation {
         })
         .collect();
 
-    let by_id: HashMap<&str, &Intent> = snap.intents.iter().map(|i| (i.id.as_str(), i)).collect();
     let parent = snap
         .hierarchy
         .iter()
@@ -245,7 +287,7 @@ fn build_explanation(snap: &QuerySnapshot, intent: &Intent) -> Explanation {
         .filter_map(|(_, c)| by_id.get(c.as_str()).map(|i| i.name.clone()))
         .collect();
 
-    let validation_by_id: HashMap<&str, &Validation> = snap
+    let validation_by_id: HashMap<&str, &crate::types::Validation> = snap
         .validations
         .iter()
         .map(|v| (v.id.as_str(), v))
@@ -273,6 +315,7 @@ fn build_explanation(snap: &QuerySnapshot, intent: &Intent) -> Explanation {
         domain: intent.domain.clone(),
         layer: intent.layer.clone(),
         visibility: intent.visibility.clone(),
+        deprecated: intent.status == "deprecated",
         groundings,
         couplings,
         governs,
@@ -285,6 +328,19 @@ fn build_explanation(snap: &QuerySnapshot, intent: &Intent) -> Explanation {
 // ---------------------------------------------------------------------------
 // Rendering
 // ---------------------------------------------------------------------------
+
+fn coupling_tag(c: &Coupling) -> &'static str {
+    // The ripple tag is only meaningful for ASSERTED relationships; an
+    // `independent`/`unexplored` edge must not claim to "ripple" (it contradicts
+    // the impact summary, which counts only active edges).
+    if !c.active {
+        "not an asserted relationship — won't re-open"
+    } else if c.ripples {
+        "ripples on code change"
+    } else {
+        "meaning-only — won't ripple"
+    }
+}
 
 fn render_json(explanations: &[Explanation], file_ctx: Option<&str>, printer: &Printer) {
     let intents: Vec<serde_json::Value> = explanations
@@ -302,6 +358,7 @@ fn render_json(explanations: &[Explanation], file_ctx: Option<&str>, printer: &P
                 "description": e.description,
                 "level": e.level,
                 "lifecycle": e.lifecycle,
+                "deprecated": e.deprecated,
                 "domain": e.domain,
                 "layer": e.layer,
                 "visibility": e.visibility,
@@ -310,7 +367,8 @@ fn render_json(explanations: &[Explanation], file_ctx: Option<&str>, printer: &P
                 })).collect::<Vec<_>>(),
                 "coupled_to": e.couplings.iter().map(|c| serde_json::json!({
                     "intent": c.other_name, "kinds": c.kinds, "status": c.status,
-                    "ripples_on_code_change": c.ripples,
+                    "asserted": c.active,
+                    "ripples_on_code_change": c.ripples && c.active,
                 })).collect::<Vec<_>>(),
                 "governed_by": e.governs.iter().map(|(n, k, s)| serde_json::json!({
                     "rule": n, "kind": k, "status": s
@@ -322,7 +380,7 @@ fn render_json(explanations: &[Explanation], file_ctx: Option<&str>, printer: &P
                 })).collect::<Vec<_>>(),
                 "impact": {
                     "ripples_to": rippled,
-                    "meaning_only_links": e.couplings.len() - rippled.len(),
+                    "meaning_only_links": e.couplings.iter().filter(|c| c.active && !c.ripples).count(),
                 },
             })
         })
@@ -341,9 +399,12 @@ fn render_human(explanations: &[Explanation], file_ctx: Option<&str>) {
             explanations.len()
         );
     }
+    let mut last_id = String::new();
     for e in explanations {
+        last_id = e.id.clone();
+        let dep = if e.deprecated { "  [DEPRECATED]" } else { "" };
         println!();
-        println!("══ {}  [{} · {}] ══", e.name, e.level, e.lifecycle);
+        println!("══ {}  [{} · {}]{dep} ══", e.name, e.level, e.lifecycle);
         if !e.description.is_empty() {
             println!("  {}", e.description);
         }
@@ -388,14 +449,12 @@ fn render_human(explanations: &[Explanation], file_ctx: Option<&str>) {
                 } else {
                     format!("[{}]", c.kinds.join(", "))
                 };
-                let ripple = if c.ripples {
-                    "ripples on code change"
-                } else {
-                    "meaning-only — won't ripple"
-                };
                 println!(
-                    "    {:<40} {:<22} {}  · {ripple}",
-                    c.other_name, kinds, c.status
+                    "    {:<40} {:<22} {}  · {}",
+                    c.other_name,
+                    kinds,
+                    c.status,
+                    coupling_tag(c)
                 );
             }
             if e.couplings.len() > SHOW {
@@ -438,8 +497,6 @@ fn render_human(explanations: &[Explanation], file_ctx: Option<&str>) {
             }
         }
 
-        // Impact = asserted relationships that stale on code change. Independent
-        // edges (confirmed unrelated) and meaning-only kinds don't count.
         let rippled: Vec<&str> = e
             .couplings
             .iter()
@@ -479,6 +536,103 @@ fn render_human(explanations: &[Explanation], file_ctx: Option<&str>) {
             );
         }
     }
+    // Anchor (human parity with the json next_step).
+    if !last_id.is_empty() {
+        println!();
+        println!(
+            "  → Next: `loom intent show {last_id}` (raw node) · `loom explain <coupled intent>` to follow a link · `loom explain <file> --impact` before editing."
+        );
+    }
+}
+
+fn render_impact(explanations: &[Explanation], label: &str, printer: &Printer) {
+    let affected: Vec<&str> = explanations.iter().map(|e| e.name.as_str()).collect();
+    let mut reopens: Vec<(String, Vec<String>)> = Vec::new();
+    let mut seen_r = std::collections::HashSet::new();
+    let mut rerun: Vec<(String, String)> = Vec::new();
+    let mut seen_v = std::collections::HashSet::new();
+    for e in explanations {
+        for c in &e.couplings {
+            // Co-intents of the same file are "directly affected", not ripple.
+            if c.active
+                && c.ripples
+                && !affected.contains(&c.other_name.as_str())
+                && seen_r.insert(c.other_name.clone())
+            {
+                reopens.push((c.other_name.clone(), c.kinds.clone()));
+            }
+        }
+        for (n, r) in &e.validations {
+            if seen_v.insert(n.clone()) {
+                rerun.push((n.clone(), r.clone()));
+            }
+        }
+    }
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "target": label,
+            "directly_affected": affected,
+            "reopens_relationships": reopens.iter().map(|(n, k)| serde_json::json!({
+                "intent": n, "kinds": k
+            })).collect::<Vec<_>>(),
+            "rerun_validations": rerun.iter().map(|(n, r)| serde_json::json!({
+                "validation": n, "last_result": r
+            })).collect::<Vec<_>>(),
+            "summary": {
+                "directly_affected": affected.len(),
+                "relationships_reopened": reopens.len(),
+                "validations_to_rerun": rerun.len(),
+            },
+            "next_step": "after the change: `loom sync`, then `loom next --mode fix` / `--mode validate`",
+        }));
+        return;
+    }
+
+    println!("══ Blast radius: {label} ══");
+    println!(
+        "  Directly affected ({} intent(s)): {}",
+        affected.len(),
+        if affected.is_empty() {
+            "(none)".to_string()
+        } else {
+            affected.join(", ")
+        }
+    );
+    println!();
+    if reopens.is_empty() {
+        println!("  Re-opens 0 relationships — no asserted code-coupling ripples from here.");
+    } else {
+        println!(
+            "  Re-opens {} relationship(s) (re-verify after the change):",
+            reopens.len()
+        );
+        for (n, k) in reopens.iter().take(20) {
+            let kinds = if k.is_empty() {
+                "(un-kinded)".to_string()
+            } else {
+                format!("[{}]", k.join(", "))
+            };
+            println!("    {n:<44} {kinds}");
+        }
+        if reopens.len() > 20 {
+            println!("    … +{} more (use --json for all)", reopens.len() - 20);
+        }
+    }
+    if !rerun.is_empty() {
+        println!();
+        println!("  Re-run {} validation(s):", rerun.len());
+        for (n, r) in rerun.iter().take(20) {
+            println!("    {n}  (last: {r})");
+        }
+        if rerun.len() > 20 {
+            println!("    … +{} more (use --json for all)", rerun.len() - 20);
+        }
+    }
+    println!();
+    println!(
+        "  → After changing this: `loom sync`, then `loom next --mode fix` / `--mode validate`."
+    );
 }
 
 fn render_uncovered_file(path: &str, printer: &Printer) -> Result<()> {

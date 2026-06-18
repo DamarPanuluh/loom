@@ -353,6 +353,11 @@ pub enum Command {
     Explain {
         /// An intent (id, exact name, or unique name fragment) or a file path.
         target: String,
+        /// Focus on the blast radius: what relationships re-open and which
+        /// validations must re-run if you change this (the pre-change preview of
+        /// `loom sync`'s ripple). Kind-aware — meaning-only links are excluded.
+        #[arg(long)]
+        impact: bool,
     },
 
     /// The entrance: capture a user utterance in Inbox, then return routing

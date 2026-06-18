@@ -829,7 +829,7 @@ fn sqlite_explain_synthesizes_by_intent_and_file() {
 
     // By intent id: a synthesized answer — identity + groundings + typed
     // couplings + governance + impact, plus the contract next_step.
-    let (a, _b) = first_two_intent_ids(&graph.root);
+    let (a, b) = first_two_intent_ids(&graph.root);
     let by_intent = run_json(&graph.root, &["explain", &a, "--json"]);
     let i = &by_intent["intents"][0];
     assert_eq!(
@@ -865,6 +865,48 @@ fn sqlite_explain_synthesizes_by_intent_and_file() {
         by_file["target_file"],
         serde_json::json!(path),
         "a file path resolves as a file target: {by_file}"
+    );
+
+    // --impact: the blast-radius mode (pre-change preview of sync's ripple).
+    let impact = run_json(&graph.root, &["explain", &path, "--impact", "--json"]);
+    assert_eq!(impact["target"], serde_json::json!(path));
+    for key in [
+        "directly_affected",
+        "reopens_relationships",
+        "rerun_validations",
+        "summary",
+    ] {
+        assert!(
+            impact.get(key).is_some(),
+            "--impact must report '{key}': {impact}"
+        );
+    }
+    assert!(
+        impact["next_step"]
+            .as_str()
+            .unwrap_or("")
+            .contains("loom sync"),
+        "--impact points at the post-change reconcile: {impact}"
+    );
+
+    // Regression (stress-test high-sev): query_snapshot filters deprecated
+    // intents, but `intent show`/`list` keep them — explain must resolve them too
+    // (it reads the unfiltered set) and flag them, not report "Nothing matches".
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        rusqlite::Connection::open(&db)
+            .expect("open scratch sqlite graph")
+            .execute(
+                "UPDATE intent SET status='deprecated' WHERE id=?1",
+                rusqlite::params![b],
+            )
+            .expect("deprecate an intent");
+    }
+    let dep = run_json(&graph.root, &["explain", &b, "--json"]);
+    assert_eq!(
+        dep["intents"][0]["deprecated"],
+        serde_json::json!(true),
+        "a deprecated intent must still resolve in explain and be flagged: {dep}"
     );
 }
 
