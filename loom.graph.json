@@ -84826,6 +84826,24 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-18T13:10:44.941443+00:00",
+        "id": "14541cf3-110a-4ee7-a6b6-e38c4d52cf04",
+        "kind": "observation",
+        "links": [],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/correctness] retire_intent sets status=deprecated but never drops the intent IMPLEMENTS edges, and list_all_implements JOINs with no status filter, so retired code keeps producing undeclared_coupling and tangled_file findings keyed by dead UUIDs. loc: src/db/sqlite.rs:1271-1295,2653-2685; src/db/queries/smells.rs:1283-1336,972-1010. impact: open smells from retired intents gate green (phase=audit) and waste adjudication. suggestion: build an active-intent set from the snapshot once and skip non-active owners in the file-ownership and layering detectors, or drop IMPLEMENTS edges on retire.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.941443+00:00"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-18T04:42:17.582693+00:00",
         "id": "1e418969-00c9-4384-b7e2-b0275a046546",
         "kind": "observation",
@@ -85006,6 +85024,26 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-18T13:10:44.931782+00:00",
+        "id": "430eb05a-745b-4513-a140-a12b5a010a15",
+        "kind": "observation",
+        "links": [
+          "inbox:fb0fd19d-1411-4a24-8f96-a554002e423b"
+        ],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/correctness] a registered file deleted from disk (metadata fails, missing_files.push plus continue) or unreadable as UTF-8 (only a text warning) flags ZERO edges; its IMPLEMENTS/GOVERNS/validation claims stay green. loc: src/commands/sync.rs:77-82,223-232. impact: an intent reads fully proven while its grounding code is gone or unverifiable. suggestion: on a missing or unreadable registered file, flag its IMPLEMENTS edges to needs_reverification and ripple one hop, mirroring the changed-file path.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.931782+00:00"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-18T04:41:36.005214+00:00",
         "id": "467f640d-7716-4566-94e9-5b8f0a05612a",
         "kind": "observation",
@@ -85060,6 +85098,44 @@
       },
       {
         "author": "llm",
+        "created_at": "2026-06-18T13:10:44.920884+00:00",
+        "id": "5f912e5d-0bd3-4545-8e6d-e6b58161913e",
+        "kind": "observation",
+        "links": [
+          "inbox:fb0fd19d-1411-4a24-8f96-a554002e423b"
+        ],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/correctness] sync rewrites codefile mtime into the DB on byte-identical files (changed=false but mtime differs) and last_modified is an exported prop, so a no-op sync after git checkout churns loom.graph.json. loc: src/commands/sync.rs:128-131. impact: defeats loom export --check as a CI/pre-commit drift gate and trains agents to dread harmless syncs. suggestion: stop persisting mtime once content_hash is the authority - drop the mtime-only write, or exclude last_modified from the CODEFILE export props.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.920884+00:00"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-18T13:10:44.906856+00:00",
+        "id": "722231eb-101f-4ee2-8f14-0d211899a24d",
+        "kind": "observation",
+        "links": [],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/correctness] loom migrate is a verify-only no-op (prints migrated:false, never bumps schema_version or converts data) while doctor and COMMANDS promise an in-place upgrade. loc: src/commands/migrate.rs:13-35; src/commands/doctor.rs:46,64-68. impact: a stale-version graph loops forever on the doctor advice (run migrate, no change, doctor still flags mismatch). suggestion: PM call - drop the in-place-migration fiction; make migrate honestly verify-only or remove it, and point doctor at re-init plus import (schema is created on open, import normalizes). No live old graphs need preserving.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.906856+00:00"
+      },
+      {
+        "author": "llm",
         "created_at": "2026-06-17T19:08:13.874766+00:00",
         "id": "73697cc1-e63b-4fac-b71f-35632bf1ea9c",
         "kind": "feature_proposal",
@@ -85075,6 +85151,26 @@
         "status": "routed",
         "tags": [],
         "updated_at": "2026-06-17T19:18:28.728916+00:00"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-18T13:10:44.962552+00:00",
+        "id": "76223551-2c88-4377-b35d-695ff89a1710",
+        "kind": "observation",
+        "links": [
+          "inbox:5118f2b1-f980-450c-bf2e-f8c2ae4f942a"
+        ],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/epistemic] agent acting falls back to bare llm when neither --inspected-by nor LOOM_AGENT is set; role_of(llm) is None and enforce_lane treats None as solo mode that passes EVERY lane. A scout that forgets LOOM_AGENT=llm:<role> silently green-lights its own work across all gates including batch. loc: src/agent.rs:20-32; src/gate.rs:32-37,365-375; src/commands/batch.rs:162. impact: separation of duties is opt-in by environment variable; one missing export collapses the lane system to solo with no warning. suggestion: when a multi-lane bulk path (batch) or a declared multi-agent run is detected, require an explicit role (reject bare llm), or at minimum stamp and surface that the verdict was recorded in unguarded solo mode.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.962552+00:00"
       },
       {
         "author": "llm",
@@ -85309,6 +85405,26 @@
         "status": "routed",
         "tags": [],
         "updated_at": "2026-06-18T05:01:50.484347+00:00"
+      },
+      {
+        "author": "llm",
+        "created_at": "2026-06-18T13:10:44.951661+00:00",
+        "id": "bbf08254-022e-43d2-a2a9-d02ffaff68f5",
+        "kind": "observation",
+        "links": [
+          "inbox:40a61321-082d-4656-9660-7ba202a8b2ba"
+        ],
+        "normalized_claim": "",
+        "raw_text": "AUDIT [high/epistemic] SERVES (Persona to Intent) is declared inspectable with full verdict fields (schema.rs:629-638, owner analyzer) and writable via loom persona serve, but the doctor value-validity audit never includes it - no QuerySnapshot.serves and it is not pushed into audit_inspectable_edges. loc: src/db/queries/integrity.rs:292-352,234-239; src/db/queries/snapshot.rs:9-19. impact: invalid status/confidence/lane on SERVES verdicts is invisible to doctor; the epistemic floor is unenforced for a whole edge type. suggestion: add serves to QuerySnapshot and push SERVES claims into audit_inspectable_edges (independent_ok=true, analyzer/fixer lane), mirroring TARGETS.",
+        "resolution": "",
+        "route_command": "",
+        "route_kind": "",
+        "route_target_id": "",
+        "route_target_kind": "",
+        "source": "code_audit",
+        "status": "new",
+        "tags": [],
+        "updated_at": "2026-06-18T13:10:44.951661+00:00"
       },
       {
         "author": "llm",
