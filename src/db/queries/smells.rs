@@ -544,13 +544,34 @@ pub fn compute_smells_from_parts(
         .iter()
         .map(|(a, b)| (a.as_str(), b.as_str()))
         .collect();
+    // File ownership must exclude deprecated intents: `retire_intent` leaves
+    // their IMPLEMENTS edges in place, so without this filter retired code keeps
+    // generating undeclared_coupling / tangled_file / layering findings keyed by
+    // dead intents — green-gating noise. Every other detector below already
+    // filters `status != "deprecated"`; the ownership maps must match.
+    let active_ids: HashSet<&str> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated")
+        .map(|i| i.id.as_str())
+        .collect();
     let mut files_of: HashMap<&str, HashSet<&str>> = HashMap::new();
     let intents_on_file: HashMap<&str, Vec<&str>> = discovery
         .intents_on_file
         .iter()
-        .map(|(path, ids)| (path.as_str(), ids.iter().map(|id| id.as_str()).collect()))
+        .map(|(path, ids)| {
+            (
+                path.as_str(),
+                ids.iter()
+                    .map(|id| id.as_str())
+                    .filter(|id| active_ids.contains(id))
+                    .collect::<Vec<&str>>(),
+            )
+        })
         .collect();
     for im in implements {
+        if !active_ids.contains(im.intent_id.as_str()) {
+            continue;
+        }
         files_of
             .entry(im.intent_id.as_str())
             .or_default()
@@ -2786,6 +2807,67 @@ mod shotgun_surgery_tests {
             discovery_signals: Vec::new(),
             discovery_centrality: Default::default(),
         }
+    }
+
+    fn co_own_snapshot(second_status: &str) -> QuerySnapshot {
+        let active = intent("act", "alpha config owner");
+        let mut other = intent("dep", "delta config owner");
+        other.status = second_status.into();
+        QuerySnapshot::from_parts(
+            vec![active, other],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![imp("act", "src/shared.rs"), imp("dep", "src/shared.rs")],
+            vec![cf("src/shared.rs")],
+            Some(Vec::new()),
+        )
+    }
+
+    fn co_own_report(second_status: &str) -> SmellReport {
+        compute_smells_from_parts(
+            &co_own_snapshot(second_status),
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &[],
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn deprecated_intents_are_not_file_owners() {
+        // Positive control: two ACTIVE intents co-owning one file overlap.
+        let active = co_own_report("confirmed");
+        let overlap_active = active
+            .open
+            .iter()
+            .filter(|s| s.kind == "overlapping_ownership")
+            .count();
+        assert!(
+            overlap_active >= 1,
+            "two active co-owners should raise overlapping_ownership: {:?}",
+            active.open
+        );
+        // `retire_intent` leaves the IMPLEMENTS edge behind; the deprecated
+        // intent must no longer count as an owner, so the finding disappears.
+        let deprecated = co_own_report("deprecated");
+        let overlap_deprecated = deprecated
+            .open
+            .iter()
+            .filter(|s| s.kind == "overlapping_ownership")
+            .count();
+        assert_eq!(
+            overlap_deprecated, 0,
+            "a deprecated co-owner must not own the file for smells: {:?}",
+            deprecated.open
+        );
     }
 
     fn snap(with_link: bool) -> QuerySnapshot {
