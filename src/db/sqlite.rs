@@ -1993,6 +1993,21 @@ impl SqliteGraphStore {
         Ok(())
     }
 
+    /// Set the relationship-kind multiset on a RELATES_TO edge (the taxonomy
+    /// program's `populate kinds` backfill + judgment assignment write here).
+    pub fn update_relates_to_kinds(
+        &self,
+        from_id: &str,
+        to_id: &str,
+        kinds: &[String],
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE relates_to SET kinds = ?1 WHERE from_id = ?2 AND to_id = ?3",
+            params![serde_json::to_string(kinds)?, from_id, to_id],
+        )?;
+        Ok(())
+    }
+
     pub fn update_codefile_symbols(&self, id: &str, symbols: &[String]) -> Result<()> {
         self.conn.execute(
             "UPDATE codefile SET symbols = ?1 WHERE id = ?2",

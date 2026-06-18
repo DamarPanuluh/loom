@@ -25,7 +25,98 @@ pub fn run(cmd: PopulateCmd, printer: &Printer) -> Result<()> {
             from_sagas,
             dry_run,
         } => populate_interfaces(from_sagas, dry_run, printer),
+        PopulateCmd::Kinds { dry_run } => populate_kinds(dry_run, printer),
     }
+}
+
+/// Backfill the mechanical relationship-kind tier onto grounded RELATES_TO
+/// edges from existing evidence (imports/shares_file/shares_vocab/same_domain).
+/// Judgment kinds already on an edge are preserved; only the mechanical tier is
+/// recomputed — deriving the same signals the discovery queue uses, carried into
+/// durable truth so the epistemic layer can weight grounding strength by kind.
+fn populate_kinds(dry_run: bool, printer: &Printer) -> Result<()> {
+    crate::gate::acting_in_lane(&crate::gate::lane::POPULATE_GRAPH, None)?;
+    let cwd = crate::db::resolve_root()?;
+    ensure_initialized(&cwd)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    store.ensure_owned("populate relationship kinds")?;
+
+    let snapshot = store.query_snapshot()?;
+    let discovery = crate::db::queries::DiscoverySnapshot::from_query(&snapshot)?;
+    let by_id: HashMap<&str, &Intent> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i))
+        .collect();
+
+    let mut changes: Vec<String> = Vec::new();
+    for e in &snapshot.relates {
+        let (Some(a), Some(b)) = (by_id.get(e.from_id.as_str()), by_id.get(e.to_id.as_str()))
+        else {
+            continue;
+        };
+        let mechanical: Vec<String> =
+            crate::db::queries::mechanical_kinds_for_pair(&discovery, a, b)
+                .into_iter()
+                .map(|k| k.as_str().to_string())
+                .collect();
+        // Preserve judgment kinds (analyzer-asserted); replace the mechanical tier.
+        let mut new_kinds: Vec<String> = e
+            .kinds
+            .iter()
+            .filter(|k| {
+                k.parse::<crate::types::RelationKind>()
+                    .map(|rk| !rk.is_mechanical())
+                    .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        for m in mechanical {
+            if !new_kinds.contains(&m) {
+                new_kinds.push(m);
+            }
+        }
+        new_kinds.sort();
+        let mut current = e.kinds.clone();
+        current.sort();
+        if new_kinds != current {
+            changes.push(format!(
+                "{} × {}: [{}]",
+                e.from_name,
+                e.to_name,
+                new_kinds.join(", ")
+            ));
+            if !dry_run {
+                store.update_relates_to_kinds(&e.from_id, &e.to_id, &new_kinds)?;
+            }
+        }
+    }
+
+    let updated = changes.len();
+    let gs = store.graph_state(&store.query_snapshot()?)?;
+    if printer.json {
+        const CAP: usize = 30;
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "dry_run": dry_run,
+            "edges_updated": updated,
+            "changes": changes.iter().take(CAP).collect::<Vec<_>>(),
+            "changes_total": updated,
+            "graph_state": pulse_json(&gs),
+        }));
+    } else {
+        println!("── loom populate kinds ───────────────────────────────────────────────");
+        if dry_run {
+            println!("  [dry run] {updated} RELATES_TO edge(s) would get mechanical kinds.");
+        } else {
+            println!("  {updated} RELATES_TO edge(s) got mechanical kinds.");
+        }
+        for c in changes.iter().take(30) {
+            println!("    {c}");
+        }
+        println!("  {}", crate::output::fmt_pulse(&gs));
+    }
+    Ok(())
 }
 
 pub(crate) fn plan_with_repo(db: &dyn GraphReadRepository, root: &Path) -> Result<PopulatePlan> {

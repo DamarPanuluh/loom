@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 
 use crate::types::{
     DiscoveryCentrality, DiscoverySignal, Governs, Hypothesis, InspectionStatus, Intent, Note,
-    QualityRule, RelatesTo, TargetsEdge, ValidatesEdge, Validation,
+    QualityRule, RelatesTo, RelationKind, TargetsEdge, ValidatesEdge, Validation,
 };
 
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
@@ -824,6 +824,45 @@ pub fn count_unexplored_pairs_from(
 /// fall-through holds one, and a snapshot is a point-in-time read view, so
 /// reusing it is identical to loading a fresh graph here (one read-only command
 /// never loads the same graph twice).
+/// The mechanical relationship kinds (the `populate` tier) present between two
+/// intents — derived from extraction with no judgment. Reused by the synthetic
+/// discovery pair and the `loom populate kinds` backfill so both agree on what
+/// the graph mechanically knows about a coupling.
+pub fn mechanical_kinds_for_pair(
+    discovery: &DiscoverySnapshot,
+    a: &Intent,
+    b: &Intent,
+) -> Vec<RelationKind> {
+    let empty_files = std::collections::HashSet::new();
+    let empty_tags = Vec::new();
+    let fa = discovery.files_of.get(&a.id).unwrap_or(&empty_files);
+    let fb = discovery.files_of.get(&b.id).unwrap_or(&empty_files);
+    let mut kinds = Vec::new();
+    let imports = fa
+        .iter()
+        .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+        .chain(fb.iter().flat_map(|x| fa.iter().map(move |y| (*x, *y))))
+        .any(|p| discovery.import_links.contains(&p));
+    if imports {
+        kinds.push(RelationKind::Imports);
+    }
+    if fa.intersection(fb).next().is_some() {
+        kinds.push(RelationKind::SharesFile);
+    }
+    let (tag_weight, _) = super::vocab::shared_tag_weight(
+        discovery.tags_by_intent.get(&a.id).unwrap_or(&empty_tags),
+        discovery.tags_by_intent.get(&b.id).unwrap_or(&empty_tags),
+        &discovery.tag_counts,
+    );
+    if tag_weight > 0.0 {
+        kinds.push(RelationKind::SharesVocab);
+    }
+    if !a.domain.is_empty() && a.domain == b.domain && a.domain != "unknown" {
+        kinds.push(RelationKind::SameDomain);
+    }
+    kinds
+}
+
 pub fn unexplored_pairs_scored_from_snapshot(
     snapshot: &QuerySnapshot,
     class_filter: DiscoveryClassFilter,
@@ -969,7 +1008,10 @@ pub fn unexplored_pairs_scored_from_snapshot(
                     inspected_by: String::new(),
                     priority_score: score,
                     notes: format!("discovery signal: {}", why.join("; ")),
-                    kinds: Vec::new(),
+                    kinds: mechanical_kinds_for_pair(&discovery, a, b)
+                        .into_iter()
+                        .map(|k| k.as_str().to_string())
+                        .collect(),
                     discovery_class: discovery_class.to_string(),
                     discovery_signals: signals,
                     discovery_centrality: DiscoveryCentrality {

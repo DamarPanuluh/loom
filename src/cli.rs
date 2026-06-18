@@ -1527,6 +1527,16 @@ pub enum PopulateCmd {
         #[arg(long)]
         dry_run: bool,
     },
+
+    /// Backfill mechanical relationship kinds (imports | shares_file |
+    /// shares_vocab | same_domain) onto grounded RELATES_TO edges from existing
+    /// evidence. Judgment kinds (calls/inheritance/…) are preserved; only the
+    /// mechanical tier is recomputed.
+    Kinds {
+        /// Report what would change without writing to the graph.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 // ---------------------------------------------------------------------------

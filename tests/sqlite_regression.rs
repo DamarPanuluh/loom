@@ -715,6 +715,99 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
     assert_eq!(take["dispatch"]["effort"], "high");
 }
 
+fn intent_id_by_name(root: &Path, name: &str) -> String {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.query_row(
+        "SELECT id FROM intent WHERE name = ?1",
+        rusqlite::params![name],
+        |r| r.get(0),
+    )
+    .expect("intent by name")
+}
+
+#[test]
+fn sqlite_populate_kinds_backfills_mechanical_tier() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-populate-kinds");
+    write_scratch_file(&graph.root, "scratch/shared.rs", "pub fn shared() {}\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/shared.rs", "--json"],
+        "llm:builder",
+    );
+    for nm in ["alpha shared owner", "beta shared owner"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns the shared scratch helper for the taxonomy test",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &[
+                "edge",
+                "implement",
+                nm,
+                "scratch/shared.rs",
+                "--locator",
+                "fn shared",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    let a = intent_id_by_name(&graph.root, "alpha shared owner");
+    let b = intent_id_by_name(&graph.root, "beta shared owner");
+    // Ground a relationship between the two co-owners.
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "they coexist around the shared helper",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    // Backfill mechanical kinds — both own scratch/shared.rs → shares_file.
+    let pop = run_json_as(&graph.root, &["populate", "kinds", "--json"], "llm:builder");
+    assert!(
+        pop["edges_updated"].as_i64().unwrap_or(0) >= 1,
+        "populate kinds should backfill the co-ownership edge: {pop}"
+    );
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let kinds: String = conn
+        .query_row(
+            "SELECT kinds FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+            |r| r.get(0),
+        )
+        .expect("the grounded edge exists");
+    assert!(
+        kinds.contains("shares_file"),
+        "co-owners of one file must get the shares_file kind: {kinds}"
+    );
+}
+
 #[test]
 fn sqlite_taxonomy_kinds_persist_and_doctor_validates() {
     let _guard = sqlite_test_lock();

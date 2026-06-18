@@ -648,10 +648,16 @@ impl RelationKind {
         }
     }
 
-    // Per-kind strategy methods (is_mechanical / trust_weight /
-    // stales_on_code_change) land with their consumers in the later taxonomy
-    // commits (mechanical assignment, trust-weighted doctor, kind-aware sync) so
-    // each method ships where it is first used.
+    /// Mechanical kinds are derivable from extraction with no judgment — the
+    /// `populate` lane backfills them from discovery signals. The rest are
+    /// analyzer judgments asserted with a locator. (trust_weight and
+    /// stales_on_code_change land with their consumers in later commits.)
+    pub fn is_mechanical(self) -> bool {
+        matches!(
+            self,
+            Self::Imports | Self::SharesFile | Self::SharesVocab | Self::SameDomain
+        )
+    }
 }
 
 impl std::str::FromStr for RelationKind {
