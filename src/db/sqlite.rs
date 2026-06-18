@@ -4407,14 +4407,40 @@ impl SqliteGraphStore {
     }
 
     pub fn list_notes(&self, target_id: Option<&str>, kind: Option<&str>) -> Result<Vec<Note>> {
-        let mut notes = self.list_all_notes()?;
-        if let Some(target_id) = target_id {
-            notes.retain(|note| note.target_id == target_id);
+        // Push the filters into SQL so SQLite serves them from idx_note_target_only
+        // / idx_note_kind instead of materializing every note body and discarding
+        // most (the read path carries thousands of transition notes).
+        let mut sql = String::from(
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at FROM note",
+        );
+        let mut clauses: Vec<&str> = Vec::new();
+        if target_id.is_some() {
+            clauses.push("target_id = ?");
         }
-        if let Some(kind) = kind {
-            notes.retain(|note| note.kind == kind);
+        if kind.is_some() {
+            clauses.push("kind = ?");
         }
-        Ok(notes)
+        if !clauses.is_empty() {
+            sql.push_str(" WHERE ");
+            sql.push_str(&clauses.join(" AND "));
+        }
+        sql.push_str(" ORDER BY created_at");
+        let bound: Vec<&str> = [target_id, kind].into_iter().flatten().collect();
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map(rusqlite::params_from_iter(bound), |row| {
+            Ok(Note {
+                id: row.get(0)?,
+                kind: row.get(1)?,
+                text: row.get(2)?,
+                author: row.get(3)?,
+                target_kind: row.get(4)?,
+                target_id: row.get(5)?,
+                audience: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn insert_note(&self, note: &Note) -> Result<()> {
