@@ -218,6 +218,16 @@ fn delete_validates_for_validation(root: &Path, validation_id: &str) {
     .expect("delete scratch validates");
 }
 
+/// Empty the inbox so a test that asserts absolute intake/triage counts is
+/// independent of how many cards the committed loom.graph.json fixture carries
+/// (audit cards live in the graph and travel with it).
+fn clear_inbox(root: &Path) {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.execute("DELETE FROM inbox_item", [])
+        .expect("clear scratch inbox");
+}
+
 fn force_legacy_inbox_kind_constraint(root: &Path) {
     let db = root.join(".loom").join("graph.sqlite");
     let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -314,6 +324,12 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
     assert_eq!(migrated["version"], "9");
+    assert_eq!(migrated["current"], true);
+    assert_eq!(migrated["expected"], "9");
+    assert!(
+        migrated["next_step"].is_null(),
+        "current graph needs no rebuild: {migrated}"
+    );
     assert!(
         migrated["message"]
             .as_str()
@@ -897,6 +913,9 @@ steps:
 fn sqlite_inbox_add_normalize_mark_and_export() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-inbox-flow");
+    // The committed fixture now carries triaged audit cards; this test asserts
+    // absolute intake counts, so start from a known-empty inbox.
+    clear_inbox(&graph.root);
     let initial_status = run_json(&graph.root, &["status", "--json"]);
     let initial_required_debt = initial_status["completion"]["required_autonomous_debt"]["total"]
         .as_i64()

@@ -300,11 +300,11 @@ pub enum Command {
     /// properties, valid field values, and dangling references.
     Doctor,
 
-    /// Upgrade a live graph to the current schema version IN PLACE
-    /// (v3→v4: note targets remapped to derived edge keys; v3/v4→v5:
-    /// source_refs/tags/imports converted to native lists; v5→v6:
-    /// product domain split from architecture layer). Idempotent and crash-safe
-    /// (version stamped last). Re-export after migrating.
+    /// Verify the live graph's schema version against this binary. The SQLite
+    /// schema is created on open and JSON imports are normalized into the active
+    /// schema, so there is no in-place upgrade step: a graph stamped by an older
+    /// loom is rebuilt by re-exporting from that loom, then `loom init . &&
+    /// loom import loom.graph.json` here. This command only reports the version.
     Migrate,
 
     /// Print the driving protocol for an LLM new to loom: the mental model, the
@@ -1820,7 +1820,8 @@ pub enum ValidationCmd {
         #[arg(long)]
         description: Option<String>,
 
-        /// Type: test | assertion | benchmark | manual_check
+        /// Type: test | assertion | benchmark | manual_check | saga
+        /// (saga is normally created via `loom saga add`, not here).
         #[arg(long = "type")]
         validation_type: String,
 

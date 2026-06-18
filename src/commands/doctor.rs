@@ -44,7 +44,7 @@ fn render(report: DoctorReport, export_stale: Option<bool>, printer: &Printer) -
                 "ok":       report.version_ok,
             },
             "next_step": if report.version_ok { serde_json::Value::Null } else {
-                serde_json::json!("loom migrate")
+                serde_json::json!("re-export from the loom that wrote this graph, then `loom init . && loom import loom.graph.json` here")
             },
             "node_counts": report.node_counts,
             "edge_counts": report.edge_counts,
@@ -63,7 +63,8 @@ fn render(report: DoctorReport, export_stale: Option<bool>, printer: &Printer) -
         );
         if !report.version_ok {
             println!(
-                "    → `loom migrate` upgrades a v3 graph in place (one transaction, idempotent)."
+                "    → no in-place upgrade exists: re-export from the loom that wrote this graph, \
+                 then rebuild here with `loom init . && loom import loom.graph.json`."
             );
         }
         println!();

@@ -66,7 +66,7 @@ pub fn check_graph_from_parts(
     if !version_ok {
         issues.push(format!(
             "schema version mismatch: graph is '{}', this loom expects '{}' \
-             (re-init or migrate)",
+             (no in-place upgrade — re-export from the older loom, then `loom init . && loom import`)",
             inputs.found_version, expected_version
         ));
     }

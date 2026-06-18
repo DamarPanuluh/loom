@@ -485,19 +485,16 @@ loom doctor
   HINTS (never fail the exit code): all-solo provenance (declare roles for real
   separation of duties), and a stale committed loom.graph.json.
   Exits non-zero if any issue is found. Run after upgrades or if results look wrong.
-  A version mismatch points at `loom migrate`.
+  A version mismatch points at a rebuild (`loom init . && loom import`), not an
+  in-place upgrade.
 
 loom migrate
-  Upgrade a LIVE graph to the current schema version IN PLACE. SQLite graphs
-  are created/backfilled on open; legacy export imports still upgrade in flight.
-  v3 → v4: edge identity became DERIVED (`<prefix>:<from>:<to>`, e.g.
-  `rt:<intent-a>:<intent-b>`) instead of a stored uuid — every note that
-  referenced a stored edge uuid is remapped (legacy id props on old edges are
-  inert and left alone). v3/v4 → v5: source_refs/tags/imports convert from
-  JSON-encoded strings to NATIVE LISTS. Also backfills the property indexes.
-  Idempotent: a current graph reports "nothing to do". Re-export after
-  migrating. Repos with only a committed loom.graph.json don't need this —
-  `loom import` upgrades v3/v4 exports in flight.
+  Verify-only: reports whether the live graph's schema version matches this
+  binary. There is NO in-place upgrade — the SQLite schema is created on open and
+  `loom import` normalizes export JSON into the active schema. A graph stamped by
+  an OLDER loom is rebuilt by re-exporting from that loom, then `loom init . &&
+  loom import loom.graph.json` here. Emits `{current, expected, version,
+  next_step}` in --json; a current graph reports "no migration needed".
 
 loom guide [--mode greenfield|brownfield|refactor|port|seed]
   Self-contained driving protocol for an LLM new to loom: mental model, lifecycle

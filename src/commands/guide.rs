@@ -444,7 +444,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
             },
             "roles": {
                 "how": "Many limited agents lift together: each agent declares its role once via \
-                    LOOM_AGENT=llm:<role> (or --by/--inspected-by/--author). Declared roles are ENFORCED — \
+                    LOOM_AGENT=llm:<role> (or per-command --inspected-by/--author). Declared roles are ENFORCED — \
                     acting outside your lane is an error pointing you back to your own queue. \
                     Bare 'llm'/'human' = solo mode (one agent drives every lane). \
                     Separation of duties: the builder cannot green-light its own work; verdicts \
@@ -495,7 +495,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
                 "vertical": "BINDING spine, mechanically verifiable: HIERARCHY is a well-formed tree (one parent per non-root intent, no cycles); every implemented leaf intent has ≥1 IMPLEMENTS (realized); every CodeFile is reached by ≥1 IMPLEMENTS. Surfaced as `vertically_complete` in `loom status`; details in `loom report` + `loom doctor` + `loom coverage`.",
                 "horizontal": "OPTIONAL closure: every intent pair has an inspected RELATES_TO edge (passing/failing/independent). Surfaced as `horizontally_explored`. Good for deep understanding/cleanup, but never required for 'done'.",
             },
-            "done_condition": "VERTICAL done = `vertically_complete: true` in `loom status` + `loom coverage` shows nothing unaccounted. HORIZONTAL (phase=complete) is optional polish.",
+            "done_condition": "Two milestones, don't conflate them. VERTICAL (the binding minimum) = `vertically_complete: true` in `loom status` + `loom coverage` shows nothing unaccounted. FULL GREEN (`phase=complete`) additionally requires: validations passing, the measured/quality axis earned (GOVERNS verdicts green), the horizontal grid explored, and ZERO open `loom smells` findings (the audit gate). Quality and audit are GATES, not optional polish; horizontal exploration is discretionary improvement but `phase=complete` reflects it too.",
             "output_hygiene": {
                 "rule": "High-volume audit commands have summary mode. Start with `loom smells --summary --json` and `loom coverage --summary --json`; only request full JSON when a specific finding/gap needs evidence.",
                 "why": "`loom smells --json` includes per-finding evidence, teaching, adjudicated rulings, and advisory bodies; `loom coverage --json` includes full file/symbol/raw-gap/adjudication archives. Summary mode preserves routing facts without blowing the driver context."
