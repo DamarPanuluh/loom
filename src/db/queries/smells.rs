@@ -351,6 +351,15 @@ fn teaching_for(kind: &str) -> SmellTeaching {
             avoid: vec!["do not silence an up-dependency by adding RELATES_TO; direction is a separate norm".into()],
             done_when: "the dependency points down, the layer order is corrected, or a current decision on the importing intent justifies the exception".into(),
         },
+        "architecture_verdict_contradicts_layering" => SmellTeaching {
+            principle: "A passing architecture-category rule and an open layering violation on the same intent contradict each other — one is wrong. Governance and the mechanical layer check must agree.".into(),
+            inspect: vec![
+                "read the layering_violation: does the dependency really point up the declared order?".into(),
+                "read the architecture rule's recorded evidence: did it actually check dependency direction?".into(),
+            ],
+            avoid: vec!["do not leave a green architecture verdict standing over a known layering violation".into()],
+            done_when: "the architecture verdict is re-recorded to match reality, the layer order is corrected, or a decision note justifies the exception".into(),
+        },
         "recurrent_trouble" => recurrent_teaching("edge", "<id>"),
         "happy_path_only" => SmellTeaching {
             principle: "The non-sunny states of a behavior are real only when realized, grounded, and proven; naming the trigger (a 'happy' behavior or a 'populated' UI state) without its required siblings is not enough. Two families: behavioral happy → sad/fallback, and UI-state populated → empty/error (loading is recognized but not required).".into(),
@@ -537,6 +546,12 @@ pub fn compute_smells_from_parts(
     let relates = &snapshot.relates;
     let rules = &snapshot.rules;
     let governs = &snapshot.governs;
+    // Rule id → norm category (the GOVERNS taxonomy), for the kind-aware
+    // architecture↔layering cross-check below.
+    let rule_kind: HashMap<&str, &str> = rules
+        .iter()
+        .map(|r| (r.id.as_str(), r.kind.as_str()))
+        .collect();
 
     // Lookup structures.
     let linked: HashSet<(&str, &str)> = discovery
@@ -1455,6 +1470,32 @@ pub fn compute_smells_from_parts(
                     ),
                     teaching: teaching_for("layering_violation"),
                 });
+                // Kind-aware cross-check: an `architecture`-category rule that
+                // PASSES on an intent loom's own layering detector just flagged
+                // is a contradiction — the rule says direction is fine; the
+                // mechanical check disagrees. One of them is wrong.
+                let arch_passes = governs.iter().any(|g| {
+                    g.intent_id == a
+                        && g.inspection_status == "passing"
+                        && rule_kind.get(g.rule_id.as_str()).copied() == Some("architecture")
+                });
+                if arch_passes {
+                    smells.push(Smell {
+                        kind: "architecture_verdict_contradicts_layering".into(),
+                        score: 9.0,
+                        summary: format!(
+                            "'{na}' carries a PASSING architecture rule but its dependencies violate the declared layer order"
+                        ),
+                        evidence: format!(
+                            "an architecture-category GOVERNS verdict passes on '{na}', yet the layering detector flags it: {}",
+                            examples.join(", ")
+                        ),
+                        remedy: format!(
+                            "reconcile the two: re-inspect the architecture rule on '{na}' (`loom rule verdict` — the verdict may be wrong), or fix the layer order (`loom layer order …`); a passing architecture verdict must not coexist with an open layering violation"
+                        ),
+                        teaching: teaching_for("architecture_verdict_contradicts_layering"),
+                    });
+                }
             }
         }
     }
@@ -4855,6 +4896,73 @@ mod transitive_layering_tests {
         assert!(
             of_kind(&r, "transitive_layering_violation").is_empty(),
             "transitive check defers direct pairs to 6b"
+        );
+    }
+
+    #[test]
+    fn passing_architecture_verdict_over_a_layering_violation_is_flagged() {
+        let intents = vec![intent("a", "storage"), intent("c", "presentation")];
+        let codefiles = vec![cf("a.rs", &["c.rs"]), cf("c.rs", &[])];
+        let implements = vec![imp("a", "a.rs"), imp("c", "c.rs")];
+        let rule = crate::types::QualityRule {
+            id: "r1".into(),
+            name: "layered-architecture".into(),
+            description: String::new(),
+            detection_logic: String::new(),
+            kind: "architecture".into(),
+            severity: "error".into(),
+            inspection_effort: "mid".into(),
+        };
+        let governs = vec![crate::types::Governs {
+            id: "gov:r1:a".into(),
+            rule_id: "r1".into(),
+            intent_id: "a".into(),
+            rule_name: "layered-architecture".into(),
+            intent_name: "intent a".into(),
+            inspection_status: "passing".into(),
+            criterion: "dependencies point down the layer order".into(),
+            confidence: 0.9,
+            evidence: "reviewed the imports".into(),
+            last_inspected: "t".into(),
+            inspected_by: "llm:quality".into(),
+            notes: String::new(),
+        }];
+        let order: Vec<String> = ["presentation", "application", "storage"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let snapshot = QuerySnapshot::from_parts(
+            intents,
+            vec![],
+            vec![],
+            governs,
+            vec![rule],
+            vec![],
+            vec![],
+            implements,
+            codefiles,
+            None,
+        );
+        let r = compute_smells_from_parts(
+            &snapshot,
+            SmellInputs {
+                notes: &[],
+                vocab_terms: &[],
+                layer_order: &order,
+                proposed_hypotheses: &[],
+                targets: &[],
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            of_kind(&r, "layering_violation").len(),
+            1,
+            "the violation fires"
+        );
+        assert_eq!(
+            of_kind(&r, "architecture_verdict_contradicts_layering").len(),
+            1,
+            "a passing architecture verdict over a layering violation is the contradiction"
         );
     }
 }
