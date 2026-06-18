@@ -402,6 +402,9 @@ fn audit_inspectable_edges(
         ));
     }
 
+    // Epistemic-health accumulation: per-author confidence on real verdicts.
+    let mut conf_by_author: std::collections::HashMap<String, Vec<f64>> =
+        std::collections::HashMap::new();
     for c in claims {
         // `independent` is valid on RELATES_TO (confirmed unrelated), on
         // GOVERNS (measured — the rule does not apply to this intent), and on
@@ -513,6 +516,94 @@ fn audit_inspectable_edges(
                 ));
             }
         }
+        if c.etype != schema::edge::IMPLEMENTS
+            && matches!(c.status.as_str(), "passing" | "failing")
+            && !c.inspected_by.trim().is_empty()
+        {
+            conf_by_author
+                .entry(c.inspected_by.clone())
+                .or_default()
+                .push(c.confidence);
+        }
     }
+    hints.extend(confidence_concentration_hints(&conf_by_author));
     Ok(())
+}
+
+/// Epistemic-health detector: a single author whose passing/failing verdicts
+/// cluster at one confidence value is the corrupt-batch signature (uniform 0.9
+/// with no per-edge judgement). Returns advisory hints, NEVER issues — doctor
+/// can be structurally healthy yet warn a lane deserves a review sample.
+/// Calibrated to stay silent on legitimate spread: loom's own analyzer/quality
+/// lanes span 9–13 distinct confidence values, so the `distinct <= 2` guard
+/// keeps them quiet while a uniform-0.9 scout (1 distinct value) trips it.
+fn confidence_concentration_hints(
+    conf_by_author: &std::collections::HashMap<String, Vec<f64>>,
+) -> Vec<String> {
+    /// Below this, a distribution is too small to judge.
+    const MIN_VERDICTS: usize = 20;
+    let mut concentrated: Vec<(String, usize, f64, usize)> = Vec::new();
+    for (author, confs) in conf_by_author {
+        if confs.len() < MIN_VERDICTS {
+            continue;
+        }
+        let mut buckets: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
+        for cf in confs {
+            *buckets.entry((cf * 100.0).round() as u64).or_default() += 1;
+        }
+        let distinct = buckets.len();
+        let mode_count = buckets.values().copied().max().unwrap_or(0);
+        let mode_key = buckets
+            .iter()
+            .max_by_key(|(_, n)| **n)
+            .map(|(k, _)| *k)
+            .unwrap_or(0);
+        // distinct <= 2 AND the mode covers >= 90% of the verdicts.
+        if distinct <= 2 && mode_count * 10 >= confs.len() * 9 {
+            concentrated.push((
+                author.clone(),
+                confs.len(),
+                mode_key as f64 / 100.0,
+                distinct,
+            ));
+        }
+    }
+    concentrated.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    concentrated
+        .into_iter()
+        .map(|(author, n, conf, distinct)| {
+            format!(
+                "epistemic: '{author}' recorded {n} passing/failing verdict(s) at near-uniform \
+                 confidence (~{conf:.2}, {distinct} distinct value(s)) — a lane that rates everything \
+                 the same is the uniform-confidence smell; sample it with `loom next --mode review`"
+            )
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod epistemic_tests {
+    use super::confidence_concentration_hints;
+    use std::collections::HashMap;
+
+    #[test]
+    fn flags_uniform_confidence_lane_but_spares_spread() {
+        let mut m: HashMap<String, Vec<f64>> = HashMap::new();
+        // A uniform-0.9 scout across 25 verdicts → the corrupt-batch smell.
+        m.insert("llm:scout".into(), vec![0.9; 25]);
+        // A well-spread analyzer (5 distinct values over 40 verdicts) → quiet.
+        let spread: Vec<f64> = (0..40).map(|i| 0.5 + (i % 5) as f64 * 0.1).collect();
+        m.insert("llm:analyzer".into(), spread);
+        // Uniform but too few verdicts to judge → quiet.
+        m.insert("llm:fixer".into(), vec![0.9; 10]);
+
+        let hints = confidence_concentration_hints(&m);
+        assert_eq!(
+            hints.len(),
+            1,
+            "only the uniform lane should flag: {hints:?}"
+        );
+        assert!(hints[0].contains("llm:scout"), "got: {hints:?}");
+        assert!(hints[0].contains("near-uniform"), "got: {hints:?}");
+    }
 }
