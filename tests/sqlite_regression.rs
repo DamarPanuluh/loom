@@ -407,6 +407,53 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
 }
 
 #[test]
+fn sqlite_batch_resolves_evidence_locators() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-batch-locator");
+    let (a, b) = first_two_intent_ids(&graph.root);
+    write_scratch_file(
+        &graph.root,
+        "scratch/proof.rs",
+        "fn one() {}\nfn two() {}\nfn three() {}\n",
+    );
+    // A locator pointing at a real file:line is accepted.
+    let good = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these intents coexist cleanly without coupling\",\
+         \"evidence\":\"verified the boundary holds\",\
+         \"evidence_locator\":\"scratch/proof.rs:1-3\",\"confidence\":0.6}}"
+    );
+    write_scratch_file(&graph.root, "scratch/good.jsonl", &good);
+    let ok = run_json_as(
+        &graph.root,
+        &["batch", "scratch/good.jsonl", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        ok["failed"], 0,
+        "a real evidence_locator must be accepted: {ok}"
+    );
+
+    // A fabricated anchor is rejected — it cannot be laundered into a verdict.
+    let bad = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these intents coexist cleanly without coupling\",\
+         \"evidence\":\"verified the boundary holds\",\
+         \"evidence_locator\":\"src/totally_made_up.rs:1-9\",\"confidence\":0.6}}"
+    );
+    write_scratch_file(&graph.root, "scratch/bad.jsonl", &bad);
+    let res = run_json_failure_as(
+        &graph.root,
+        &["batch", "scratch/bad.jsonl", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        res["failed"], 1,
+        "a fabricated evidence_locator must be rejected: {res}"
+    );
+}
+
+#[test]
 fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-fix-take");

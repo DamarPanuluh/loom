@@ -140,6 +140,7 @@ fn run_explore_with_sqlite(
                     "what the inspection actually found (file/symbol + the observation)",
                 )?;
             }
+            gate::require_locators_resolve(root, &evidence_locator)?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
             let by = by.as_str();
@@ -193,6 +194,7 @@ fn run_explore_with_sqlite(
                 &evidence,
                 "what was actually found in the code (file/symbol + the problem)",
             )?;
+            gate::require_locators_resolve(root, &evidence_locator)?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
             let by = by.as_str();

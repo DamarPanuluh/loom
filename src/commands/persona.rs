@@ -333,6 +333,7 @@ fn run_serve_with_sqlite(
             if !evidence.trim().is_empty() {
                 gate::require_substantive("evidence", &evidence, "what was found")?;
             }
+            gate::require_locators_resolve(root, &evidence_locator)?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
 
@@ -382,6 +383,7 @@ fn run_serve_with_sqlite(
             let by = gate::acting_in_lane(&gate::lane::ISSUE_SERVES, inspected_by.as_deref())?;
             gate::require_substantive("criterion", &criterion, "the failing serving criterion")?;
             gate::require_substantive("evidence", &evidence, "what was found to be wrong")?;
+            gate::require_locators_resolve(root, &evidence_locator)?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
 

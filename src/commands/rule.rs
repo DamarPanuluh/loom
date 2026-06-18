@@ -406,6 +406,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     "what was actually found in the code during inspection"
                 },
             )?;
+            gate::require_locators_resolve(root, &evidence_locator)?;
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             gate::require_confidence(confidence)?;
 

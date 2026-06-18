@@ -19,6 +19,8 @@
 //! progress: empty or placeholder criteria/evidence, independence claims with
 //! no recorded why, confidence outside [0, 1].
 
+use std::path::Path;
+
 use anyhow::Result;
 
 use crate::db::schema::{role, ROLES};
@@ -473,6 +475,61 @@ pub fn require_confidence(confidence: f64) -> Result<()> {
     Ok(())
 }
 
+/// Parse a locator line suffix: "299" → (299, 299), "299-340" → (299, 340).
+/// `None` for a non-numeric suffix (a symbol locator like `fn foo`), which the
+/// resolution gate treats as "existence-only" — symbol verification is the
+/// code-aware layer's job, not this one.
+fn parse_line_range(s: &str) -> Option<(usize, usize)> {
+    let s = s.trim();
+    match s.split_once('-') {
+        Some((a, b)) => Some((a.trim().parse().ok()?, b.trim().parse().ok()?)),
+        None => {
+            let n = s.parse().ok()?;
+            Some((n, n))
+        }
+    }
+}
+
+/// Reject an `--evidence-locator` that does not RESOLVE against the repo root:
+/// the file must exist within the root, and a numeric `:line` / `:start-end`
+/// range must fall within it. Syntax is already checked in `compose_evidence`;
+/// this is the resolution gate, kept fs-side so the pure string composer stays
+/// unit-testable. A fabricated or stale anchor (`@src/nope.rs:1-9`) must not be
+/// laundered into a verdict as precise evidence — that is exactly how a
+/// low-tier lane fakes "I looked at the code".
+pub fn require_locators_resolve(root: &Path, locators: &[String]) -> Result<()> {
+    for raw in locators {
+        let l = raw.trim();
+        let (path, range) = match l.split_once(':') {
+            Some((p, rest)) => (p, Some(rest)),
+            None => (l, None),
+        };
+        let Some(rel) = crate::repo::confine(root, Path::new(path)) else {
+            anyhow::bail!(
+                "--evidence-locator '{l}' escapes the repo root — anchor real code inside this repo."
+            );
+        };
+        let content = std::fs::read_to_string(root.join(&rel)).map_err(|_| {
+            anyhow::anyhow!(
+                "--evidence-locator '{l}' points at '{path}', which is not a readable file in the repo. \
+                 A fabricated or stale anchor cannot ground a verdict — cite a real file:line."
+            )
+        })?;
+        if let Some(range) = range {
+            if let Some((start, end)) = parse_line_range(range) {
+                let total = content.lines().count().max(1);
+                if start == 0 || end < start || start > total {
+                    anyhow::bail!(
+                        "--evidence-locator '{l}': line range '{range}' is outside '{path}' (1..={total}) — \
+                         the anchor does not point at real lines."
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Fold `--evidence-locator` values (file/line anchors like
 /// `src/db/queries/stats.rs:299-340`) into the stored evidence string with a
 /// canonical, parseable `@<locator>` prefix — so a later reviewer lands on
@@ -663,5 +720,35 @@ mod tests {
                 .to_string();
             assert!(err.contains("file anchor"), "got: {err}");
         }
+    }
+
+    #[test]
+    fn locator_resolution_rejects_fabricated_anchors() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("loom-gate-loc-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut f = std::fs::File::create(dir.join("real.rs")).unwrap();
+        writeln!(f, "fn a() {{}}\nfn b() {{}}\nfn c() {{}}").unwrap(); // 3 lines
+
+        // A real file resolves — bare, in-range, and (existence-only) symbol suffix.
+        assert!(require_locators_resolve(&dir, &["real.rs".into()]).is_ok());
+        assert!(require_locators_resolve(&dir, &["real.rs:1-3".into()]).is_ok());
+        assert!(require_locators_resolve(&dir, &["real.rs:2".into()]).is_ok());
+        assert!(require_locators_resolve(&dir, &["real.rs:funcname".into()]).is_ok());
+        // No locators → passthrough.
+        assert!(require_locators_resolve(&dir, &[]).is_ok());
+
+        // A fabricated file is rejected (the core laundering vector).
+        let err = require_locators_resolve(&dir, &["nope.rs:1-9".into()])
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not a readable file"), "got: {err}");
+        // A line range past EOF is rejected.
+        assert!(require_locators_resolve(&dir, &["real.rs:9999".into()]).is_err());
+        // An inverted range is rejected.
+        assert!(require_locators_resolve(&dir, &["real.rs:3-1".into()]).is_err());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

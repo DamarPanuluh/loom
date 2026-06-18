@@ -68,7 +68,7 @@ pub fn run(file: &str, printer: &Printer) -> Result<()> {
 
 fn run_with_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
-    _root: &std::path::Path,
+    root: &std::path::Path,
     input: &str,
     printer: &Printer,
 ) -> Result<()> {
@@ -82,7 +82,7 @@ fn run_with_sqlite(
             continue;
         }
         let n = lineno + 1;
-        match apply_line_sqlite(store, line) {
+        match apply_line_sqlite(store, root, line) {
             Ok(desc) => {
                 ok += 1;
                 results.push(serde_json::json!({"line": n, "status": "ok", "applied": desc}));
@@ -142,6 +142,7 @@ fn run_with_sqlite(
 
 fn apply_line_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
+    root: &std::path::Path,
     line: &str,
 ) -> Result<String> {
     let v: serde_json::Value = serde_json::from_str(line).map_err(|e| {
@@ -189,6 +190,7 @@ fn apply_line_sqlite(
                     "what the inspection actually found (file/symbol + the observation)",
                 )?;
             }
+            gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             let edge = store
                 .upsert_relates_to_ground(&a, &b, criterion, &evidence, confidence, &by, &now)?;
@@ -209,6 +211,7 @@ fn apply_line_sqlite(
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
+            gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             let stored_criterion = store
                 .get_relates_to_between(&a, &b)?
@@ -280,6 +283,7 @@ fn apply_line_sqlite(
                 },
             )?;
             gate::require_confidence(confidence)?;
+            gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             store.upsert_governs_verdict(
                 &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
