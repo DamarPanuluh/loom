@@ -221,11 +221,12 @@ pub fn symbol_accountability_from_parts_with_notes(
     summary.adjudicated = adjudicated_gaps.len();
     summary.actionable_gaps = open_gaps.len();
     let resolved = summary.grounded + summary.accepted + summary.adjudicated;
-    summary.resolved_pct = if summary.required == 0 {
+    let pct = if summary.required == 0 {
         100.0
     } else {
         (resolved as f64 / summary.required as f64 * 1000.0).round() / 10.0
     };
+    summary.resolved_pct = pct.clamp(0.0, 100.0);
     SymbolAccountabilityReport {
         summary,
         raw_actionable_symbol_gaps: raw_gaps,

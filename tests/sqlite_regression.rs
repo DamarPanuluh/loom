@@ -218,6 +218,64 @@ fn delete_validates_for_validation(root: &Path, validation_id: &str) {
     .expect("delete scratch validates");
 }
 
+fn force_legacy_inbox_kind_constraint(root: &Path) {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.execute_batch(
+        r#"
+ALTER TABLE inbox_item RENAME TO inbox_item_old;
+CREATE TABLE inbox_item(
+  id TEXT PRIMARY KEY,
+  raw_text TEXT NOT NULL,
+  normalized_claim TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL CHECK(kind IN (
+    'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
+    'missing_intent','missing_validation','missing_story','terminology',
+    'rough_edge','external_blocker','question'
+  )),
+  status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),
+  source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),
+  author TEXT NOT NULL,
+  tags TEXT NOT NULL CHECK(json_valid(tags)),
+  links TEXT NOT NULL CHECK(json_valid(links)),
+  route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (
+    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','answer','none',''
+  )),
+  route_command TEXT NOT NULL DEFAULT '',
+  route_target_kind TEXT NOT NULL DEFAULT '',
+  route_target_id TEXT NOT NULL DEFAULT '',
+  resolution TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+INSERT INTO inbox_item(
+  id, raw_text, normalized_claim, kind, status, source, author, tags, links,
+  route_kind, route_command, route_target_kind, route_target_id, resolution,
+  created_at, updated_at
+)
+SELECT
+  id, raw_text, normalized_claim, kind, status, source, author, tags, links,
+  route_kind, route_command, route_target_kind, route_target_id, resolution,
+  created_at, updated_at
+FROM inbox_item_old;
+DROP TABLE inbox_item_old;
+CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
+"#,
+    )
+    .expect("rewrite scratch inbox table with legacy kind constraint");
+}
+
+fn inbox_table_sql(root: &Path) -> String {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.query_row(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'inbox_item'",
+        [],
+        |row| row.get(0),
+    )
+    .expect("read inbox table sql")
+}
+
 #[test]
 fn sqlite_imported_export_read_surface() {
     let _guard = sqlite_test_lock();
@@ -839,6 +897,10 @@ steps:
 fn sqlite_inbox_add_normalize_mark_and_export() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-inbox-flow");
+    let initial_status = run_json(&graph.root, &["status", "--json"]);
+    let initial_required_debt = initial_status["completion"]["required_autonomous_debt"]["total"]
+        .as_i64()
+        .expect("required autonomous debt total");
 
     let added = run_json(
         &graph.root,
@@ -856,7 +918,12 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
 
     let status = run_json(&graph.root, &["status", "--json"]);
     assert_eq!(status["intake"]["untriaged"], 1);
-    assert_eq!(status["completion"]["required_autonomous_debt"]["total"], 0);
+    assert_eq!(
+        status["completion"]["required_autonomous_debt"]["total"]
+            .as_i64()
+            .expect("required autonomous debt total"),
+        initial_required_debt
+    );
 
     let triage = run_json(&graph.root, &["inbox", "triage", "--take", "5", "--json"]);
     assert_eq!(triage["count"], 1);
@@ -929,6 +996,91 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     assert_eq!(proposal["item"]["kind"], "feature_proposal");
     assert_eq!(proposal["item"]["route_kind"], "intent");
 
+    for (kind, route, command) in [
+        (
+            "decision_capture",
+            "note",
+            "loom note add --kind decision --text \"use inbox as the single input boundary\"",
+        ),
+        (
+            "constraint",
+            "quality_rule",
+            "loom rule add --name inbox-boundary --description \"free text enters through inbox\"",
+        ),
+        (
+            "acceptance_criterion",
+            "validation",
+            "loom validation add --name inbox-vocab-proof --type assertion --command \"cargo test sqlite_inbox\"",
+        ),
+        (
+            "interface_gap",
+            "validation",
+            "loom saga add journeys/interface-gap.yaml --spawn-missing",
+        ),
+        (
+            "evidence",
+            "note",
+            "loom note add --kind justification --text \"triage output showed the route menu\"",
+        ),
+        (
+            "risk",
+            "hypothesis",
+            "loom hypothesis add --name inbox-risk --claim \"intake terms are ambiguous\" --proposal \"expand inbox kind vocabulary\" --predicted-outcome \"routing is clearer\"",
+        ),
+        (
+            "follow_up",
+            "intent",
+            "loom intent add --name inbox follow-up --description \"handle later inbox work\" --level feature --lifecycle planned",
+        ),
+        (
+            "duplicate_candidate",
+            "note",
+            "loom note add --kind decision --text \"these inbox cards are duplicates\"",
+        ),
+        (
+            "docs_gap",
+            "intent",
+            "loom intent mark self-teaching --lifecycle needs_change --reason \"document inbox vocabulary\"",
+        ),
+        (
+            "migration_need",
+            "validation",
+            "loom validation add --name inbox-check-widening --type assertion --command \"cargo test sqlite_inbox_kind_constraint\"",
+        ),
+    ] {
+        let added = run_json(
+            &graph.root,
+            &[
+                "inbox",
+                "add",
+                &format!("inbox vocabulary fixture for {kind}"),
+                "--source",
+                "llm",
+                "--json",
+            ],
+        );
+        let id = added["item"]["id"].as_str().expect("new inbox id");
+        let normalized = run_json(
+            &graph.root,
+            &[
+                "inbox",
+                "normalize",
+                id,
+                "--kind",
+                kind,
+                "--claim",
+                &format!("{kind} should be accepted as inbox semantic vocabulary"),
+                "--route",
+                route,
+                "--command",
+                command,
+                "--json",
+            ],
+        );
+        assert_eq!(normalized["item"]["kind"], kind);
+        assert_eq!(normalized["item"]["route_kind"], route);
+    }
+
     let marked = run_json(
         &graph.root,
         &[
@@ -947,6 +1099,50 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     let exported = run_json(&graph.root, &["export", "-", "--json"]);
     let inbox = exported["nodes"]["InboxItem"].as_array().unwrap();
     assert!(inbox.iter().any(|item| item["id"] == id));
+    assert!(inbox.iter().any(|item| item["kind"] == "migration_need"));
+}
+
+#[test]
+fn sqlite_inbox_kind_constraint_is_widened_on_open() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-inbox-kind-upgrade");
+    force_legacy_inbox_kind_constraint(&graph.root);
+    assert!(!inbox_table_sql(&graph.root).contains("decision_capture"));
+
+    let added = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "add",
+            "we decided to track constraints through inbox",
+            "--source",
+            "chat",
+            "--json",
+        ],
+    );
+    let id = added["item"]["id"].as_str().expect("inbox id");
+    let normalized = run_json(
+        &graph.root,
+        &[
+            "inbox",
+            "normalize",
+            id,
+            "--kind",
+            "decision_capture",
+            "--claim",
+            "inbox check constraint should accept expanded semantic vocabulary",
+            "--route",
+            "note",
+            "--command",
+            "loom note add --kind decision --text \"expanded inbox vocabulary is accepted\"",
+            "--json",
+        ],
+    );
+    assert_eq!(normalized["item"]["kind"], "decision_capture");
+
+    let table_sql = inbox_table_sql(&graph.root);
+    assert!(table_sql.contains("decision_capture"));
+    assert!(table_sql.contains("migration_need"));
 }
 
 #[test]

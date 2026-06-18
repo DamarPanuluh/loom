@@ -197,7 +197,6 @@ fn classify_failure(
     spec_step: Option<&Step>,
     vars: &BTreeMap<String, String>,
 ) -> RootCause {
-
     let detail = outcome.detail.as_str();
     if let Some(name) = extract_between(detail, "Template references '{{ env.", " }}'") {
         return RootCause {
@@ -339,7 +338,31 @@ fn jwt_scope_mismatch(
     let auth = authorization_header(step)?;
     let rendered = interpolate(auth.value, vars).ok()?;
     let token = rendered.trim().strip_prefix("Bearer ")?;
-    let claims = decode_jwt_payload(token)?;
+    let claims = match decode_jwt_payload(token) {
+        Ok(claims) => claims,
+        Err(reason) => {
+            return Some(RootCause {
+                kind: "token_not_a_valid_jwt".to_string(),
+                title: "Bearer token is not a valid JWT".to_string(),
+                fields: vec![
+                    field(
+                        "status",
+                        outcome
+                            .status
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| "unknown".to_string()),
+                    ),
+                    field("token", auth.source.clone()),
+                    field("reason", reason),
+                ],
+                fix: format!(
+                    "Mint or configure {} as a bearer JWT with a decodable JSON payload.",
+                    auth.source
+                ),
+                confidence: "high".to_string(),
+            });
+        }
+    };
     let token_scopes = jwt_scopes(&claims);
     let required: BTreeSet<String> = step
         .auth
@@ -356,6 +379,20 @@ fn jwt_scope_mismatch(
         .map(ToString::to_string)
         .collect();
     if missing.is_empty() {
+        if outcome.status == Some(403) {
+            return Some(RootCause {
+                kind: "scopes_sufficient_endpoint_forbids".to_string(),
+                title: "Endpoint forbids token despite sufficient scopes".to_string(),
+                fields: vec![
+                    field("status", "403 Forbidden"),
+                    field("token", auth.source.clone()),
+                    field("required_scopes", join_set(&required)),
+                    field("token_has", join_set(&token_scopes)),
+                ],
+                fix: "The bearer token has the declared scopes; check resource ownership, role bindings, tenant/audience constraints, or endpoint-specific authorization policy.".to_string(),
+                confidence: "medium".to_string(),
+            });
+        }
         return None;
     }
 
@@ -431,17 +468,20 @@ fn extract_env_refs(template: &str) -> Vec<String> {
     out
 }
 
-fn decode_jwt_payload(token: &str) -> Option<serde_json::Value> {
-    let payload = token.split('.').nth(1)?;
+fn decode_jwt_payload(token: &str) -> Result<serde_json::Value, &'static str> {
+    let mut parts = token.split('.');
+    let _header = parts.next();
+    let Some(payload) = parts.next() else {
+        return Err("missing JWT payload segment");
+    };
+    if parts.next().is_none() {
+        return Err("missing JWT signature segment");
+    }
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(payload)
-        .ok()
-        .or_else(|| {
-            base64::engine::general_purpose::URL_SAFE
-                .decode(payload)
-                .ok()
-        })?;
-    serde_json::from_slice(&bytes).ok()
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(payload))
+        .map_err(|_| "JWT payload is not valid base64url")?;
+    serde_json::from_slice(&bytes).map_err(|_| "JWT payload is not valid JSON")
 }
 
 fn jwt_scopes(claims: &serde_json::Value) -> BTreeSet<String> {
@@ -493,7 +533,6 @@ fn join_set(values: &BTreeSet<String>) -> String {
         values.iter().cloned().collect::<Vec<_>>().join(", ")
     }
 }
-
 
 fn summarize(steps: &[StepDiagnosis], passed: bool) -> DiagnosisSummary {
     let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();

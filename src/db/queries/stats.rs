@@ -327,9 +327,10 @@ pub fn graph_state_from_snapshot_parts(
             }
         }
     }
+    let candidate_pair_total = intents * (intents - 1) / 2 - hier_pairs.len() as i64;
     let explored_pairs = CoverageAxis {
         covered: inspected_pairs.len() as i64,
-        total: (intents * (intents - 1) / 2 - hier_pairs.len() as i64).max(0),
+        total: candidate_pair_total,
     };
 
     // Proven = implemented leaves whose proof actually PASSED (blocked/not_run

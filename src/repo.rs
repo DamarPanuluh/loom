@@ -193,22 +193,21 @@ pub fn git_cochange(root: &Path, paths: &HashSet<String>, last_n: usize) -> CoCh
     cc
 }
 
-/// Confine a registered path to the graph root: `.`/`..` fold lexically (the
-/// file may not exist yet, and a hostile path must never be probed), the
+/// Confine a registered path to the graph root: `.`/`..` fold lexically first,
+/// symlinked components are resolved through the nearest existing ancestor, the
 /// result must stay under `root`, and the returned form is root-relative with
 /// `/` separators. `None` = the path escapes the root.
 ///
 /// The graph is untrusted input (imports and hand edits travel in
-/// loom.graph.json): a CodeFile path like `/etc/passwd` or `../../secret`
-/// must never reach `fs::read` — sync hashes file bytes and probes locator
-/// substrings, which would otherwise answer "is this string in that file?"
-/// for any readable file on the machine. Absolute paths are accepted iff
-/// they resolve under `root` (and come back relative, the stored convention).
-/// When the lexical check fails for an absolute path, both sides resolve
-/// through `canonicalize` once — an absolute path may spell the root through
-/// a symlinked prefix (e.g. `/var` vs `/private/var` on macOS); resolving a
-/// path reveals nothing, contents are never read.
+/// loom.graph.json): a CodeFile path like `/etc/passwd`, `../../secret`, or a
+/// root-local symlink to a file outside the repo must never reach `fs::read` —
+/// sync hashes file bytes and probes locator substrings, which would otherwise
+/// answer "is this string in that file?" for any readable file on the machine.
+/// Absolute paths are accepted iff they resolve under `root` (and come back
+/// relative, the stored convention). Resolving filesystem metadata reveals no
+/// contents; bytes are never read here.
 pub fn confine(root: &Path, path: &Path) -> Option<String> {
+    use std::ffi::OsString;
     use std::path::{Component, Path, PathBuf};
     fn finish(rel: &Path) -> Option<String> {
         if rel.as_os_str().is_empty() {
@@ -216,32 +215,53 @@ pub fn confine(root: &Path, path: &Path) -> Option<String> {
         }
         Some(rel.to_str()?.replace('\\', "/"))
     }
+    fn canonicalize_with_missing_tail(path: &Path) -> Option<PathBuf> {
+        let mut cursor = path;
+        let mut tail: Vec<OsString> = Vec::new();
+        loop {
+            if let Ok(mut base) = cursor.canonicalize() {
+                for component in tail.iter().rev() {
+                    base.push(component);
+                }
+                return Some(base);
+            }
+            tail.push(cursor.file_name()?.to_os_string());
+            cursor = cursor.parent()?;
+        }
+    }
+    fn normalize_lexically(path: &Path) -> Option<PathBuf> {
+        let mut resolved = PathBuf::new();
+        for c in path.components() {
+            match c {
+                Component::Prefix(_) | Component::RootDir | Component::Normal(_) => {
+                    resolved.push(c)
+                }
+                Component::CurDir => {}
+                Component::ParentDir => {
+                    if !resolved.pop() {
+                        return None; // walked above the filesystem root
+                    }
+                }
+            }
+        }
+        Some(resolved)
+    }
     let joined = if path.is_absolute() {
         path.to_path_buf()
     } else {
         root.join(path)
     };
-    let mut resolved = PathBuf::new();
-    for c in joined.components() {
-        match c {
-            Component::Prefix(_) | Component::RootDir | Component::Normal(_) => resolved.push(c),
-            Component::CurDir => {}
-            Component::ParentDir => {
-                if !resolved.pop() {
-                    return None; // walked above the filesystem root
-                }
-            }
+    let resolved = normalize_lexically(&joined)?;
+    match (
+        root.canonicalize().ok(),
+        canonicalize_with_missing_tail(&resolved),
+    ) {
+        (Some(croot), Some(cpath)) => finish(cpath.strip_prefix(&croot).ok()?),
+        _ => {
+            let lroot = normalize_lexically(root)?;
+            finish(resolved.strip_prefix(&lroot).ok()?)
         }
     }
-    if let Ok(rel) = resolved.strip_prefix(root) {
-        return finish(rel);
-    }
-    if path.is_absolute() {
-        let croot = root.canonicalize().ok()?;
-        let cpath = resolved.canonicalize().ok()?;
-        return finish(cpath.strip_prefix(&croot).ok()?);
-    }
-    None
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -437,14 +457,14 @@ pub fn locator_present(content: &str, locator: &str) -> bool {
 /// This is the physical-plane evidence smells reconciles against the semantic
 /// graph (undeclared coupling), so false negatives are fine; false positives
 /// are not.
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn extract_imports(root: &Path, rel_path: &str, content: &str) -> Vec<String> {
     extract_physical_facts(root, rel_path, content).imports
 }
 
 /// Top-level canonical syntax symbols in `rel_path`. Empty in feature-light
 /// builds or unsupported languages; this is diagnostic physical evidence only.
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn extract_symbols(rel_path: &str, content: &str) -> Vec<String> {
     #[cfg(feature = "treesitter")]
     if let Some(facts) = crate::ts_imports::extract_physical_facts(rel_path, content) {

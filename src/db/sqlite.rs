@@ -23,7 +23,7 @@ use crate::db::queries::{
     DoctorReport, GraphMeta, GraphState, GraphStateContext, QuerySnapshot, RedefinitionRipple,
     RetireFallout, SmellInputs, DEFAULT_TRANSITION_CAP,
 };
-use crate::db::schema::{edge, label, prop};
+use crate::db::schema::{self, edge, label, prop};
 use crate::types::{
     interface_surface_name, CallsEdge, CodeFile, Delegation, Governs, Hierarchy, Hypothesis,
     Ignore, Implements, InboxItem, Intent, InterfaceSurface, JourneysEdge, Note, Persona,
@@ -51,6 +51,42 @@ struct EdgeSpec {
     to_col: &'static str,
     props: &'static [&'static str],
     numeric_props: &'static [&'static str],
+}
+
+fn checked_sql_ident(ident: &str) -> Result<&str> {
+    let mut bytes = ident.bytes();
+    let Some(first) = bytes.next() else {
+        anyhow::bail!("empty SQL identifier");
+    };
+    if !(first == b'_' || first.is_ascii_alphabetic()) {
+        anyhow::bail!("unsafe SQL identifier: {ident:?}");
+    }
+    if bytes.any(|byte| !(byte == b'_' || byte.is_ascii_alphanumeric())) {
+        anyhow::bail!("unsafe SQL identifier: {ident:?}");
+    }
+    Ok(ident)
+}
+
+fn checked_sql_ident_list(idents: &[&str]) -> Result<String> {
+    let mut checked = Vec::with_capacity(idents.len());
+    for ident in idents {
+        checked.push(checked_sql_ident(ident)?);
+    }
+    Ok(checked.join(", "))
+}
+
+fn sql_string_literal(value: &str) -> String {
+    let mut literal = String::with_capacity(value.len() + 2);
+    literal.push('\'');
+    for ch in value.chars() {
+        if ch == '\'' {
+            literal.push_str("''");
+        } else {
+            literal.push(ch);
+        }
+    }
+    literal.push('\'');
+    literal
 }
 
 const INTENT_PROPS: &[&str] = &[
@@ -710,7 +746,7 @@ impl SqliteGraphStore {
     }
 
     fn list_active_intents(&self) -> Result<Vec<Intent>> {
-        self.list_intents_matching("WHERE status <> 'deprecated'")
+        self.list_intents_matching(true)
     }
 
     pub fn list_intents(
@@ -729,7 +765,7 @@ impl SqliteGraphStore {
     }
 
     fn list_all_intents(&self) -> Result<Vec<Intent>> {
-        self.list_intents_matching("")
+        self.list_intents_matching(false)
     }
 
     pub fn get_intent(&self, id: &str) -> Result<Option<Intent>> {
@@ -1288,35 +1324,53 @@ impl SqliteGraphStore {
         Ok(true)
     }
 
-    fn list_intents_matching(&self, where_clause: &str) -> Result<Vec<Intent>> {
-        let mut stmt = self.conn.prepare(&format!(
+    fn list_intents_matching(&self, active_only: bool) -> Result<Vec<Intent>> {
+        let sql = if active_only {
             "SELECT id, name, description, abstraction_level, domain, layer, source_refs, status,
                     aspect, tags, visibility, boundary, lifecycle, created_at, updated_at
              FROM intent
-             {where_clause}
+             WHERE status <> 'deprecated'
              ORDER BY name"
-        ))?;
-        let rows = stmt.query_map([], |row| {
-            Ok(Intent {
-                id: row.get(0)?,
+        } else {
+            "SELECT id, name, description, abstraction_level, domain, layer, source_refs, status,
+                    aspect, tags, visibility, boundary, lifecycle, created_at, updated_at
+             FROM intent
+             ORDER BY name"
+        };
+        let mut stmt = self.conn.prepare(sql)?;
+        let mut rows = stmt.query([])?;
+        let mut intents = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id: String = row.get(0).context("load intent id")?;
+            let source_refs_raw: String = row
+                .get(6)
+                .with_context(|| format!("load source_refs for intent {id}"))?;
+            let tags_raw: String = row
+                .get(9)
+                .with_context(|| format!("load tags for intent {id}"))?;
+            let source_refs = string_list_sql(source_refs_raw.as_str())
+                .with_context(|| format!("parse source_refs for intent {id}"))?;
+            let tags = string_list_sql(tags_raw.as_str())
+                .with_context(|| format!("parse tags for intent {id}"))?;
+            intents.push(Intent {
+                id,
                 name: row.get(1)?,
                 description: row.get(2)?,
                 abstraction_level: row.get(3)?,
                 domain: row.get(4)?,
                 layer: row.get(5)?,
-                source_refs: string_list_sql(row.get::<_, String>(6)?.as_str())?,
+                source_refs,
                 status: row.get(7)?,
                 aspect: row.get(8)?,
-                tags: string_list_sql(row.get::<_, String>(9)?.as_str())?,
+                tags,
                 visibility: row.get(10)?,
                 boundary: row.get(11)?,
                 lifecycle: row.get(12)?,
                 created_at: row.get(13)?,
                 updated_at: row.get(14)?,
-            })
-        })?;
-        rows.collect::<rusqlite::Result<Vec<_>>>()
-            .map_err(Into::into)
+            });
+        }
+        Ok(intents)
     }
 
     fn doctor_node_counts(&self, snapshot: &QuerySnapshot) -> Result<Vec<(String, i64)>> {
@@ -1385,6 +1439,8 @@ impl SqliteGraphStore {
     }
 
     fn count_null_column(&self, table: &str, column: &str) -> Result<i64> {
+        let table = checked_sql_ident(table)?;
+        let column = checked_sql_ident(column)?;
         if !table_has_column(&self.conn, table, column)? {
             return Ok(count_table(&self.conn, table)? as i64);
         }
@@ -1403,10 +1459,10 @@ impl SqliteGraphStore {
                 }
                 continue;
             }
-            let sql = format!(
-                "SELECT {}, {} FROM {}",
-                spec.from_col, spec.to_col, spec.table
-            );
+            let table = checked_sql_ident(spec.table)?;
+            let from_col = checked_sql_ident(spec.from_col)?;
+            let to_col = checked_sql_ident(spec.to_col)?;
+            let sql = format!("SELECT {from_col}, {to_col} FROM {table}");
             let mut stmt = self.conn.prepare(&sql)?;
             let rows = stmt.query_map([], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -1544,15 +1600,49 @@ impl SqliteGraphStore {
     }
 
     pub fn notes_for_target(&self, target_id: &str) -> Result<Vec<Note>> {
-        let mut notes = self.list_all_notes()?;
-        notes.retain(|note| note.target_id == target_id);
-        Ok(notes)
+        let mut stmt = self.conn.prepare(
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
+             FROM note
+             WHERE target_id = ?1
+             ORDER BY created_at",
+        )?;
+        let rows = stmt.query_map(params![target_id], |row| {
+            Ok(Note {
+                id: row.get(0)?,
+                kind: row.get(1)?,
+                text: row.get(2)?,
+                author: row.get(3)?,
+                target_kind: row.get(4)?,
+                target_id: row.get(5)?,
+                audience: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn notes_by_kind(&self, kind: &str) -> Result<Vec<Note>> {
-        let mut notes = self.list_all_notes()?;
-        notes.retain(|note| note.kind == kind);
-        Ok(notes)
+        let mut stmt = self.conn.prepare(
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
+             FROM note
+             WHERE kind = ?1
+             ORDER BY created_at",
+        )?;
+        let rows = stmt.query_map(params![kind], |row| {
+            Ok(Note {
+                id: row.get(0)?,
+                kind: row.get(1)?,
+                text: row.get(2)?,
+                author: row.get(3)?,
+                target_kind: row.get(4)?,
+                target_id: row.get(5)?,
+                audience: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn list_ignores(&self) -> Result<Vec<Ignore>> {
@@ -2104,6 +2194,199 @@ impl SqliteGraphStore {
         }
     }
 
+    fn get_relates_to_between_tx(
+        tx: &rusqlite::Transaction<'_>,
+        from_id: &str,
+        to_id: &str,
+    ) -> Result<Option<RelatesTo>> {
+        tx.query_row(
+            "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
+                    e.confidence, e.evidence, e.last_inspected, e.inspected_by,
+                    e.priority_score, e.notes
+             FROM relates_to e
+             JOIN intent src ON src.id = e.from_id
+             JOIN intent dst ON dst.id = e.to_id
+             WHERE e.from_id = ?1 AND e.to_id = ?2",
+            params![from_id, to_id],
+            |row| {
+                let from_id: String = row.get(0)?;
+                let to_id: String = row.get(1)?;
+                Ok(RelatesTo {
+                    id: crate::db::schema::edge_key(edge::RELATES_TO, &from_id, &to_id),
+                    from_id,
+                    to_id,
+                    from_name: row.get(2)?,
+                    to_name: row.get(3)?,
+                    inspection_status: row.get(4)?,
+                    criterion: row.get(5)?,
+                    confidence: row.get(6)?,
+                    evidence: row.get(7)?,
+                    last_inspected: row.get(8)?,
+                    inspected_by: row.get(9)?,
+                    priority_score: row.get(10)?,
+                    notes: row.get(11)?,
+                    discovery_class: String::new(),
+                    discovery_signals: Vec::new(),
+                    discovery_centrality: Default::default(),
+                })
+            },
+        )
+        .optional()
+        .map_err(Into::into)
+    }
+
+    fn get_or_create_relates_to_tx(
+        tx: &rusqlite::Transaction<'_>,
+        from_id: &str,
+        to_id: &str,
+        now: &str,
+    ) -> Result<RelatesTo> {
+        tx.execute(
+            "INSERT OR IGNORE INTO relates_to(
+                from_id, to_id, inspection_status, criterion, confidence, evidence,
+                last_inspected, inspected_by, priority_score, notes, created_at
+             )
+             SELECT ?1, ?2, 'uninspected', '', 0, '', '', '', 0, '', ?3
+             WHERE ?1 <> ?2
+               AND EXISTS(SELECT 1 FROM intent WHERE id = ?1)
+               AND EXISTS(SELECT 1 FROM intent WHERE id = ?2)",
+            params![from_id, to_id, now],
+        )?;
+        match Self::get_relates_to_between_tx(tx, from_id, to_id)? {
+            Some(edge) => Ok(edge),
+            None => anyhow::bail!(
+                "Cannot create edge: one or both intents not found.\n\
+                 intent-a id: {}\n\
+                 intent-b id: {}\n\
+                 Run `loom intent list` to see available intents.",
+                from_id,
+                to_id
+            ),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert_relates_to_ground(
+        &mut self,
+        from_id: &str,
+        to_id: &str,
+        criterion: &str,
+        evidence: &str,
+        confidence: f64,
+        inspected_by: &str,
+        now: &str,
+    ) -> Result<RelatesTo> {
+        let tx = self.conn.transaction()?;
+        let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
+        tx.execute(
+            "UPDATE relates_to
+             SET inspection_status = 'passing',
+                 criterion = ?1,
+                 evidence = ?2,
+                 confidence = ?3,
+                 inspected_by = ?4,
+                 last_inspected = ?5
+             WHERE from_id = ?6 AND to_id = ?7",
+            params![
+                criterion,
+                evidence,
+                confidence,
+                inspected_by,
+                now,
+                from_id,
+                to_id
+            ],
+        )?;
+        insert_transition_note_tx(
+            &tx,
+            "edge",
+            &edge.id,
+            &edge.inspection_status,
+            "passing",
+            inspected_by,
+            now,
+        )?;
+        tx.commit()?;
+        Ok(edge)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert_relates_to_issue(
+        &mut self,
+        from_id: &str,
+        to_id: &str,
+        criterion: &str,
+        evidence: &str,
+        confidence: f64,
+        inspected_by: &str,
+        now: &str,
+    ) -> Result<RelatesTo> {
+        let tx = self.conn.transaction()?;
+        let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
+        tx.execute(
+            "UPDATE relates_to
+             SET inspection_status = 'failing',
+                 criterion = ?1,
+                 evidence = ?2,
+                 confidence = ?3,
+                 inspected_by = ?4,
+                 last_inspected = ?5
+             WHERE from_id = ?6 AND to_id = ?7",
+            params![
+                criterion,
+                evidence,
+                confidence,
+                inspected_by,
+                now,
+                from_id,
+                to_id
+            ],
+        )?;
+        insert_transition_note_tx(
+            &tx,
+            "edge",
+            &edge.id,
+            &edge.inspection_status,
+            "failing",
+            inspected_by,
+            now,
+        )?;
+        tx.commit()?;
+        Ok(edge)
+    }
+
+    pub fn upsert_relates_to_independent(
+        &mut self,
+        from_id: &str,
+        to_id: &str,
+        notes: &str,
+        inspected_by: &str,
+        now: &str,
+    ) -> Result<RelatesTo> {
+        let tx = self.conn.transaction()?;
+        let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
+        tx.execute(
+            "UPDATE relates_to
+             SET inspection_status = 'independent',
+                 notes = ?1,
+                 inspected_by = ?2,
+                 last_inspected = ?3
+             WHERE from_id = ?4 AND to_id = ?5",
+            params![notes, inspected_by, now, from_id, to_id],
+        )?;
+        insert_transition_note_tx(
+            &tx,
+            "edge",
+            &edge.id,
+            &edge.inspection_status,
+            "independent",
+            inspected_by,
+            now,
+        )?;
+        tx.commit()?;
+        Ok(edge)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn update_relates_to_ground(
         &mut self,
@@ -2630,51 +2913,43 @@ impl SqliteGraphStore {
                     tags, links, route_kind, route_command, route_target_kind,
                     route_target_id, resolution, created_at, updated_at
              FROM inbox_item
+             WHERE (?1 IS NULL OR status = ?1)
+               AND (?2 IS NULL OR kind = ?2)
              ORDER BY created_at",
         )?;
-        let rows = stmt.query_map([], |row| {
-            Ok(InboxItem {
-                id: row.get(0)?,
-                raw_text: row.get(1)?,
-                normalized_claim: row.get(2)?,
-                kind: row.get(3)?,
-                status: row.get(4)?,
-                source: row.get(5)?,
-                author: row.get(6)?,
-                tags: string_list_sql(row.get::<_, String>(7)?.as_str())?,
-                links: string_list_sql(row.get::<_, String>(8)?.as_str())?,
-                route_kind: row.get(9)?,
-                route_command: row.get(10)?,
-                route_target_kind: row.get(11)?,
-                route_target_id: row.get(12)?,
-                resolution: row.get(13)?,
-                created_at: row.get(14)?,
-                updated_at: row.get(15)?,
-            })
-        })?;
-        let mut items = rows
-            .collect::<rusqlite::Result<Vec<_>>>()
-            .map_err(anyhow::Error::from)?;
-        if let Some(status) = status {
-            items.retain(|item| item.status == status);
-        }
-        if let Some(kind) = kind {
-            items.retain(|item| item.kind == kind);
-        }
-        Ok(items)
+        let rows = stmt.query_map(params![status, kind], inbox_item_from_row)?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn resolve_inbox_item(&self, key: &str) -> Result<InboxItem> {
-        let items = self.list_inbox_items(None, None)?;
-        if let Some(item) = items.iter().find(|item| item.id == key) {
-            return Ok(item.clone());
+        let mut exact = self.conn.prepare(
+            "SELECT id, raw_text, normalized_claim, kind, status, source, author,
+                    tags, links, route_kind, route_command, route_target_kind,
+                    route_target_id, resolution, created_at, updated_at
+             FROM inbox_item
+             WHERE id = ?1",
+        )?;
+        if let Some(item) = exact
+            .query_row(params![key], inbox_item_from_row)
+            .optional()?
+        {
+            return Ok(item);
         }
-        let matches: Vec<_> = items
-            .iter()
-            .filter(|item| item.id.starts_with(key))
-            .collect();
+
+        let mut prefix = self.conn.prepare(
+            "SELECT id, raw_text, normalized_claim, kind, status, source, author,
+                    tags, links, route_kind, route_command, route_target_kind,
+                    route_target_id, resolution, created_at, updated_at
+             FROM inbox_item
+             WHERE substr(id, 1, length(?1)) = ?1
+             ORDER BY created_at",
+        )?;
+        let matches = prefix
+            .query_map(params![key], inbox_item_from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
         match matches.len() {
-            1 => Ok(matches[0].clone()),
+            1 => Ok(matches.into_iter().next().expect("one match")),
             0 => anyhow::bail!("No inbox item matches '{}'. Run `loom inbox list`.", key),
             _ => anyhow::bail!(
                 "'{}' is ambiguous — matches {} inbox items. Use the full id (`loom inbox list`).",
@@ -4013,6 +4288,102 @@ impl SqliteGraphStore {
         Ok(true)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert_governs_verdict(
+        &mut self,
+        rule_id: &str,
+        intent_id: &str,
+        status: &str,
+        criterion: &str,
+        evidence: &str,
+        confidence: f64,
+        inspected_by: &str,
+        now: &str,
+    ) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        let previous_status = tx
+            .query_row(
+                "SELECT inspection_status FROM governs WHERE rule_id = ?1 AND intent_id = ?2",
+                params![rule_id, intent_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+        let previous_status = if let Some(previous_status) = previous_status {
+            previous_status
+        } else {
+            let changed = tx.execute(
+                "INSERT OR IGNORE INTO governs(
+                    rule_id, intent_id, inspection_status, criterion, confidence, evidence,
+                    last_inspected, inspected_by, notes, created_at
+                 )
+                 SELECT ?1, ?2, 'uninspected', ?3, 0, '', '', '', '', ?4
+                 WHERE EXISTS(SELECT 1 FROM quality_rule WHERE id = ?1)
+                   AND EXISTS(SELECT 1 FROM intent WHERE id = ?2)",
+                params![rule_id, intent_id, criterion, now],
+            )?;
+            if changed == 0 {
+                let rule_exists = tx
+                    .query_row(
+                        "SELECT 1 FROM quality_rule WHERE id = ?1",
+                        params![rule_id],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some();
+                if !rule_exists {
+                    anyhow::bail!(
+                        "QualityRule '{}' not found — `loom rule list` shows registered rules.",
+                        rule_id
+                    );
+                }
+                let intent_exists = tx
+                    .query_row(
+                        "SELECT 1 FROM intent WHERE id = ?1",
+                        params![intent_id],
+                        |_| Ok(()),
+                    )
+                    .optional()?
+                    .is_some();
+                if !intent_exists {
+                    anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+                }
+            }
+            "uninspected".to_string()
+        };
+        tx.execute(
+            "UPDATE governs
+             SET inspection_status = ?1,
+                 criterion = ?2,
+                 evidence = ?3,
+                 confidence = ?4,
+                 inspected_by = ?5,
+                 last_inspected = ?6
+             WHERE rule_id = ?7 AND intent_id = ?8",
+            params![
+                status,
+                criterion,
+                evidence,
+                confidence,
+                inspected_by,
+                now,
+                rule_id,
+                intent_id
+            ],
+        )?;
+        let edge_id = crate::db::schema::edge_key(edge::GOVERNS, rule_id, intent_id);
+        insert_transition_note_tx(
+            &tx,
+            "edge",
+            &edge_id,
+            &previous_status,
+            status,
+            inspected_by,
+            now,
+        )?;
+        tx.commit()?;
+        Ok(())
+    }
+
     pub fn flag_governs_needs_reverification(
         &mut self,
         edge: &Governs,
@@ -4131,10 +4502,10 @@ impl SqliteGraphStore {
 
     pub fn edge_id_exists(&self, edge_id: &str) -> Result<bool> {
         for spec in EDGE_SPECS {
-            let sql = format!(
-                "SELECT {}, {} FROM {}",
-                spec.from_col, spec.to_col, spec.table
-            );
+            let table = checked_sql_ident(spec.table)?;
+            let from_col = checked_sql_ident(spec.from_col)?;
+            let to_col = checked_sql_ident(spec.to_col)?;
+            let sql = format!("SELECT {from_col}, {to_col} FROM {table}");
             let mut stmt = self.conn.prepare(&sql)?;
             let rows = stmt.query_map([], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
@@ -4236,6 +4607,26 @@ fn insert_sync_flip_note_tx(
     Ok(())
 }
 
+fn inbox_item_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<InboxItem> {
+    Ok(InboxItem {
+        id: row.get(0)?,
+        raw_text: row.get(1)?,
+        normalized_claim: row.get(2)?,
+        kind: row.get(3)?,
+        status: row.get(4)?,
+        source: row.get(5)?,
+        author: row.get(6)?,
+        tags: string_list_sql(row.get::<_, String>(7)?.as_str())?,
+        links: string_list_sql(row.get::<_, String>(8)?.as_str())?,
+        route_kind: row.get(9)?,
+        route_command: row.get(10)?,
+        route_target_kind: row.get(11)?,
+        route_target_id: row.get(12)?,
+        resolution: row.get(13)?,
+        created_at: row.get(14)?,
+        updated_at: row.get(15)?,
+    })
+}
 fn hierarchy_reaches(edges: &[(String, String)], start: &str, target: &str) -> bool {
     if start == target {
         return true;
@@ -4293,11 +4684,14 @@ fn configure_connection(conn: &Connection, persistent: bool) -> Result<()> {
 }
 
 fn count_table(conn: &Connection, table: &str) -> Result<usize> {
+    let table = checked_sql_ident(table)?;
     let sql = format!("SELECT count(*) FROM {table}");
     Ok(conn.query_row(&sql, [], |row| row.get::<_, i64>(0))? as usize)
 }
 
 fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let table = checked_sql_ident(table)?;
+    let column = checked_sql_ident(column)?;
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
     let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
     for name in rows {
@@ -4528,11 +4922,7 @@ CREATE TABLE IF NOT EXISTS inbox_item(
   id TEXT PRIMARY KEY,
   raw_text TEXT NOT NULL,
   normalized_claim TEXT NOT NULL DEFAULT '',
-  kind TEXT NOT NULL CHECK(kind IN (
-    'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
-    'missing_intent','missing_validation','missing_story','terminology',
-    'rough_edge','external_blocker','question'
-  )),
+  kind TEXT NOT NULL CHECK(kind IN (__INBOX_KIND_SQL_VALUES__)),
   status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),
   source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),
   author TEXT NOT NULL,
@@ -4674,6 +5064,8 @@ CREATE INDEX IF NOT EXISTS idx_interface_surface_identity ON interface_surface(s
 CREATE INDEX IF NOT EXISTS idx_calls_interface ON calls(interface_id);
 CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
 CREATE INDEX IF NOT EXISTS idx_note_target ON note(target_kind, target_id, kind, created_at);
+CREATE INDEX IF NOT EXISTS idx_note_target_only ON note(target_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_note_kind ON note(kind, created_at);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
   intent_id UNINDEXED,
@@ -4689,9 +5081,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS intent_fts USING fts5(
 
 impl SqliteGraphStore {
     fn create_schema(&self) -> Result<()> {
-        self.conn.execute_batch(create_table_batch())?;
+        let inbox_kind_values = inbox_kind_sql_values();
+        self.conn.execute_batch(
+            &create_table_batch().replace("__INBOX_KIND_SQL_VALUES__", &inbox_kind_values),
+        )?;
         self.ensure_meta_columns()?;
-        self.ensure_inbox_feature_proposal_kind()?;
+        self.ensure_inbox_kind_vocabulary()?;
         Ok(())
     }
 
@@ -4702,6 +5097,7 @@ impl SqliteGraphStore {
             ("transition_cap", "TEXT NOT NULL DEFAULT ''"),
         ] {
             if !table_has_column(&self.conn, "meta", column)? {
+                let column = checked_sql_ident(column)?;
                 self.conn.execute(
                     &format!("ALTER TABLE meta ADD COLUMN {column} {definition}"),
                     [],
@@ -4711,7 +5107,7 @@ impl SqliteGraphStore {
         Ok(())
     }
 
-    fn ensure_inbox_feature_proposal_kind(&self) -> Result<()> {
+    fn ensure_inbox_kind_vocabulary(&self) -> Result<()> {
         let create_sql: Option<String> = self
             .conn
             .query_row(
@@ -4722,23 +5118,21 @@ impl SqliteGraphStore {
             .optional()?;
         if match create_sql.as_deref() {
             None => true,
-            Some(sql) => sql.contains("'feature_proposal'"),
+            Some(sql) => schema::INBOX_KINDS
+                .iter()
+                .all(|kind| sql.contains(&sql_string_literal(kind))),
         } {
             return Ok(());
         }
 
-        self.conn.execute_batch(
+        let rebuild_sql = format!(
             r#"
 ALTER TABLE inbox_item RENAME TO inbox_item_old;
 CREATE TABLE inbox_item(
   id TEXT PRIMARY KEY,
   raw_text TEXT NOT NULL,
   normalized_claim TEXT NOT NULL DEFAULT '',
-  kind TEXT NOT NULL CHECK(kind IN (
-    'observation','user_request','feature_proposal','bug_suspicion','refactor_suspicion',
-    'missing_intent','missing_validation','missing_story','terminology',
-    'rough_edge','external_blocker','question'
-  )),
+  kind TEXT NOT NULL CHECK(kind IN ({inbox_kind_values})),
   status TEXT NOT NULL CHECK(status IN ('new','triaged','routed','rejected','deferred','duplicate')),
   source TEXT NOT NULL CHECK(source IN ('chat','user','llm','code_audit','validation','import','unknown')),
   author TEXT NOT NULL,
@@ -4767,17 +5161,25 @@ FROM inbox_item_old;
 DROP TABLE inbox_item_old;
 CREATE INDEX IF NOT EXISTS idx_inbox_status_kind ON inbox_item(status, kind, created_at);
 "#,
-        )?;
+            inbox_kind_values = inbox_kind_sql_values()
+        );
+        self.conn.execute_batch(&rebuild_sql)?;
         Ok(())
     }
 }
 
+fn inbox_kind_sql_values() -> String {
+    schema::INBOX_KINDS
+        .iter()
+        .map(|kind| sql_string_literal(kind))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 fn export_nodes(conn: &Connection, spec: NodeSpec) -> Result<Vec<JsonValue>> {
-    let sql = format!(
-        "SELECT {} FROM {} ORDER BY id",
-        spec.props.join(", "),
-        spec.table
-    );
+    let table = checked_sql_ident(spec.table)?;
+    let columns = checked_sql_ident_list(spec.props)?;
+    let sql = format!("SELECT {columns} FROM {table} ORDER BY id");
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], |row| {
         let mut obj = Map::new();
@@ -4797,15 +5199,15 @@ fn export_nodes(conn: &Connection, spec: NodeSpec) -> Result<Vec<JsonValue>> {
 }
 
 fn export_edges(conn: &Connection, spec: EdgeSpec) -> Result<Vec<JsonValue>> {
-    let mut select = vec![spec.from_col.to_string(), spec.to_col.to_string()];
-    select.extend(spec.props.iter().map(|p| (*p).to_string()));
-    let sql = format!(
-        "SELECT {} FROM {} ORDER BY {}, {}",
-        select.join(", "),
-        spec.table,
-        spec.from_col,
-        spec.to_col
-    );
+    let table = checked_sql_ident(spec.table)?;
+    let from_col = checked_sql_ident(spec.from_col)?;
+    let to_col = checked_sql_ident(spec.to_col)?;
+    let mut select = vec![from_col, to_col];
+    for prop in spec.props {
+        select.push(checked_sql_ident(prop)?);
+    }
+    let columns = select.join(", ");
+    let sql = format!("SELECT {columns} FROM {table} ORDER BY {from_col}, {to_col}");
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], |row| {
         let mut obj = Map::new();
@@ -5274,10 +5676,15 @@ mod tests {
             )
             .unwrap();
 
-        let err = store.list_intents(None, None).unwrap_err().to_string();
+        let err = store.list_intents(None, None).unwrap_err();
+        let chain = format!("{:#}", err);
         assert!(
-            err.contains("stored JSON list item is not a string"),
-            "unexpected error: {err}"
+            chain.contains("stored JSON list item is not a string"),
+            "unexpected error: {chain}"
+        );
+        assert!(
+            chain.contains("parse source_refs for intent"),
+            "unexpected error: {chain}"
         );
     }
 

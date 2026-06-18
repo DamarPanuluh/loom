@@ -171,8 +171,11 @@ fn apply_line_sqlite(
             )?;
             let confidence = f64_field(&v, op, "confidence")?;
             gate::require_confidence(confidence)?;
-            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
-            let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
+            let stored_criterion = store
+                .get_relates_to_between(&a, &b)?
+                .map(|edge| edge.criterion)
+                .unwrap_or_default();
+            let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
             gate::require_substantive(
                 "criterion",
                 criterion,
@@ -187,15 +190,8 @@ fn apply_line_sqlite(
                 )?;
             }
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            store.update_relates_to_ground(
-                &edge.from_id,
-                &edge.to_id,
-                criterion,
-                &evidence,
-                confidence,
-                &by,
-                &now,
-            )?;
+            let edge = store
+                .upsert_relates_to_ground(&a, &b, criterion, &evidence, confidence, &by, &now)?;
             Ok(format!("ground {} × {}", edge.from_name, edge.to_name))
         }
         "issue" => {
@@ -214,22 +210,18 @@ fn apply_line_sqlite(
             gate::require_substantive("evidence", evidence, "what was actually found to be wrong")?;
             gate::require_confidence(confidence)?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
-            let criterion = criterion_or_stored(&v, op, &edge.criterion)?;
+            let stored_criterion = store
+                .get_relates_to_between(&a, &b)?
+                .map(|edge| edge.criterion)
+                .unwrap_or_default();
+            let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
             gate::require_substantive(
                 "criterion",
                 criterion,
                 "the criterion the code was checked against",
             )?;
-            store.update_relates_to_issue(
-                &edge.from_id,
-                &edge.to_id,
-                criterion,
-                &evidence,
-                confidence,
-                &by,
-                &now,
-            )?;
+            let edge = store
+                .upsert_relates_to_issue(&a, &b, criterion, &evidence, confidence, &by, &now)?;
             Ok(format!("issue {} × {}", edge.from_name, edge.to_name))
         }
         "independent" => {
@@ -249,8 +241,7 @@ fn apply_line_sqlite(
                 notes,
                 "why these two intents have no meaningful relationship",
             )?;
-            let edge = store.get_or_create_relates_to(&a, &b, &now)?;
-            store.update_relates_to_independent(&edge.from_id, &edge.to_id, notes, &by, &now)?;
+            let edge = store.upsert_relates_to_independent(&a, &b, notes, &by, &now)?;
             Ok(format!("independent {} × {}", edge.from_name, edge.to_name))
         }
         "rule_verdict" => {
@@ -290,15 +281,9 @@ fn apply_line_sqlite(
             )?;
             gate::require_confidence(confidence)?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
-            let found = store.update_governs_verdict(
+            store.upsert_governs_verdict(
                 &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
             )?;
-            if !found {
-                store.insert_governs(&rule, &intent, criterion, &now)?;
-                store.update_governs_verdict(
-                    &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
-                )?;
-            }
             Ok(format!("rule_verdict {status}: {rule} → {intent}"))
         }
         other => {

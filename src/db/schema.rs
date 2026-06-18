@@ -79,6 +79,31 @@
 /// graphs simply open with an empty inbox table.
 pub const SCHEMA_VERSION: &str = "9";
 
+pub const INBOX_KINDS: &[&str] = &[
+    "observation",
+    "user_request",
+    "feature_proposal",
+    "bug_suspicion",
+    "refactor_suspicion",
+    "missing_intent",
+    "missing_validation",
+    "missing_story",
+    "terminology",
+    "rough_edge",
+    "external_blocker",
+    "question",
+    "decision_capture",
+    "constraint",
+    "acceptance_criterion",
+    "interface_gap",
+    "evidence",
+    "risk",
+    "follow_up",
+    "duplicate_candidate",
+    "docs_gap",
+    "migration_need",
+];
+
 /// The storage type of a property — surfaced by `loom schema` so a driving
 /// LLM knows which fields are lists (native since v5) or numbers without
 /// guessing from examples.

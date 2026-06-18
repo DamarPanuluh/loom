@@ -749,7 +749,10 @@ pub struct InboxItem {
     pub normalized_claim: String,
     /// observation | user_request | feature_proposal | bug_suspicion |
     /// refactor_suspicion | missing_intent | missing_validation |
-    /// missing_story | terminology | rough_edge | external_blocker | question
+    /// missing_story | terminology | rough_edge | external_blocker | question |
+    /// decision_capture | constraint | acceptance_criterion | interface_gap |
+    /// evidence | risk | follow_up | duplicate_candidate | docs_gap |
+    /// migration_need
     pub kind: String,
     /// new | triaged | routed | rejected | deferred | duplicate
     pub status: String,

@@ -218,11 +218,7 @@ fn run_relates_with_repo(
     let mut validations = store.validations_for_intent(&top_edge.from_id)?;
     let validations_total = cap_section(&mut validations);
 
-    let (role, effort) = match (mode, top_edge.inspection_status.as_str()) {
-        ("fix", "failing") => ("fixer", "high"),
-        ("fix", _) => ("analyzer", "mid"),
-        _ => ("analyzer", "mid"),
-    };
+    let (role, effort) = relates_dispatch(mode, top_edge, *score);
 
     let mut notes = Vec::new();
     if !top_edge.id.is_empty() {
@@ -682,11 +678,7 @@ fn run_compact(
     let implements_total = grounded.len();
     grounded.truncate(COMPACT_PATHS);
 
-    let (role, effort) = match (mode, edge.inspection_status.as_str()) {
-        ("fix", "failing") => ("fixer", "high"),
-        ("fix", _) => ("analyzer", "mid"),
-        _ => ("analyzer", "mid"),
-    };
+    let (role, effort) = relates_dispatch(mode, edge, score);
     let suggested_action = build_suggested_action_compact(edge);
     let dig = if edge.id.is_empty() {
         format!(
@@ -848,6 +840,37 @@ fn dispatch_line(role: &str) -> String {
          that's you now, a later pass, or a parallel agent.",
         fills = role_fills(role),
     )
+}
+
+fn relates_dispatch(
+    mode: &str,
+    edge: &crate::types::RelatesTo,
+    score: f64,
+) -> (&'static str, &'static str) {
+    let role = match (mode, edge.inspection_status.as_str()) {
+        ("fix", "failing") => "fixer",
+        _ => "analyzer",
+    };
+    (role, relates_effort(edge, score))
+}
+
+fn relates_effort(edge: &crate::types::RelatesTo, score: f64) -> &'static str {
+    let centrality =
+        edge.discovery_centrality.a_degree.max(0) + edge.discovery_centrality.b_degree.max(0);
+    let signal_count = edge.discovery_signals.len();
+    let structural_weight = if centrality > 0 {
+        centrality as f64 + (signal_count as f64 * 3.0)
+    } else {
+        score
+    };
+
+    if structural_weight >= 20.0 || signal_count >= 3 {
+        "high"
+    } else if structural_weight >= 8.0 || signal_count > 0 {
+        "mid"
+    } else {
+        "low"
+    }
 }
 
 /// Inject `owner_role` + `effort` + `dispatch` into a work-item JSON object.

@@ -41,7 +41,9 @@ fn run_graph(
         if out == "-" {
             anyhow::bail!("--check needs a file to compare against (not '-') — use `loom export --check loom.graph.json` or drop --check.");
         }
-        let on_disk = fs::read_to_string(root.join(out)).ok();
+        let confined_out = crate::repo::confine(root, std::path::Path::new(out))
+            .ok_or_else(|| anyhow::anyhow!("export path escapes graph root: {out}"))?;
+        let on_disk = fs::read_to_string(root.join(confined_out)).ok();
         let fresh = on_disk.as_deref() == Some(pretty.as_str());
         if printer.json {
             printer.print_json(&serde_json::json!({
@@ -73,7 +75,9 @@ fn run_graph(
         println!("{pretty}");
         return Ok(());
     }
-    let target = root.join(out);
+    let confined_out = crate::repo::confine(root, std::path::Path::new(out))
+        .ok_or_else(|| anyhow::anyhow!("export path escapes graph root: {out}"))?;
+    let target = root.join(confined_out);
     let mut tmp = target.as_os_str().to_os_string();
     tmp.push(".tmp");
     let tmp = std::path::PathBuf::from(tmp);

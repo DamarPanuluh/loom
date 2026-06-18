@@ -307,18 +307,21 @@ pub struct NormativeCoverage {
     pub queue: Vec<(QualityRule, Intent)>,
 }
 
-/// Verdicts recorded with confidence below this surface in the review queue —
-/// the strategic double-check loop for tiered agents: a low-capability scout
-/// records HONEST confidence, and the graph itself routes the uncertain claims
-/// to a stronger reviewer. Re-recording with confidence at/above the threshold
-/// (or overturning the verdict) resolves the item.
+/// Passing/failing verdicts recorded with confidence below this surface in the
+/// review queue — the strategic double-check loop for tiered agents: a
+/// low-capability scout records HONEST confidence, and the graph itself routes
+/// the uncertain claims to a stronger reviewer. Re-recording with confidence
+/// at/above the threshold resolves the item; overturning to `independent`
+/// resolves it immediately because independent claims carry their rationale in
+/// notes/evidence, not in confidence.
 pub const REVIEW_CONFIDENCE: f64 = 0.7;
 
-/// One uncertain claim for the reviewer: a recorded verdict (RELATES_TO or
-/// GOVERNS) whose confidence is below `REVIEW_CONFIDENCE`, scored by
-/// (1 − confidence) × combined centrality — an uncertain claim about a hub
-/// outranks an uncertain claim about a leaf pair. Cheap certainty on leaves is
-/// deliberately left alone: double-check strategically, not exhaustively.
+/// One uncertain passing/failing claim for the reviewer: a recorded verdict
+/// (RELATES_TO or GOVERNS) whose confidence is below `REVIEW_CONFIDENCE`,
+/// scored by (1 − confidence) × combined centrality — an uncertain claim about
+/// a hub outranks an uncertain claim about a leaf pair. Cheap certainty on
+/// leaves is deliberately left alone: double-check strategically, not
+/// exhaustively.
 #[derive(Debug, Clone)]
 pub enum ReviewCandidate {
     RelatesTo(RelatesTo),
@@ -329,7 +332,7 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
     let active: std::collections::HashSet<&str> =
         snapshot.intents.iter().map(|i| i.id.as_str()).collect();
     let needs_review = |status: &str, confidence: f64| {
-        matches!(status, "passing" | "failing" | "independent")
+        matches!(status, "passing" | "failing")
             && confidence > 0.0
             && confidence < REVIEW_CONFIDENCE
     };
@@ -1001,5 +1004,121 @@ pub fn lane_depths_from_snapshot(snapshot: &QuerySnapshot) -> LaneDepths {
         fix: scored_candidates_from_snapshot(snapshot, "fix").len() as i64,
         validate: validate_candidates_from_snapshot(snapshot).len() as i64,
         quality: quality_candidates_from_snapshot(snapshot).len() as i64,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn intent(id: &str) -> Intent {
+        Intent {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: String::new(),
+            abstraction_level: "feature".to_string(),
+            domain: "test".to_string(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "implemented".to_string(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: String::new(),
+            boundary: String::new(),
+            lifecycle: "implemented".to_string(),
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
+
+    fn rule(id: &str) -> QualityRule {
+        QualityRule {
+            id: id.to_string(),
+            name: id.to_string(),
+            description: String::new(),
+            detection_logic: String::new(),
+            severity: "medium".to_string(),
+            inspection_effort: "mid".to_string(),
+        }
+    }
+
+    fn relates(id: &str, status: &str, confidence: f64) -> RelatesTo {
+        RelatesTo {
+            id: id.to_string(),
+            from_id: "a".to_string(),
+            to_id: "b".to_string(),
+            from_name: "a".to_string(),
+            to_name: "b".to_string(),
+            inspection_status: status.to_string(),
+            criterion: String::new(),
+            confidence,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: "llm:analyzer".to_string(),
+            priority_score: 0.0,
+            notes: String::new(),
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: DiscoveryCentrality::default(),
+        }
+    }
+
+    fn governs(id: &str, status: &str, confidence: f64) -> Governs {
+        Governs {
+            id: id.to_string(),
+            rule_id: "rule".to_string(),
+            intent_id: "a".to_string(),
+            rule_name: "rule".to_string(),
+            intent_name: "a".to_string(),
+            inspection_status: status.to_string(),
+            criterion: String::new(),
+            confidence,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: "llm:quality".to_string(),
+            notes: String::new(),
+        }
+    }
+
+    #[test]
+    fn review_queue_ignores_independent_verdict_confidence() {
+        let snapshot = QuerySnapshot::from_parts(
+            vec![intent("a"), intent("b")],
+            Vec::new(),
+            vec![
+                relates("rel-passing-low", "passing", 0.6),
+                relates("rel-failing-low", "failing", 0.6),
+                relates("rel-independent-low", "independent", 0.6),
+                relates("rel-passing-high", "passing", 0.8),
+                relates("rel-passing-zero", "passing", 0.0),
+            ],
+            vec![
+                governs("gov-passing-low", "passing", 0.6),
+                governs("gov-failing-low", "failing", 0.6),
+                governs("gov-independent-low", "independent", 0.6),
+                governs("gov-passing-high", "passing", 0.8),
+                governs("gov-passing-zero", "passing", 0.0),
+            ],
+            vec![rule("rule")],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+
+        let mut relates_ids = Vec::new();
+        let mut governs_ids = Vec::new();
+        for (candidate, _) in review_candidates_from_snapshot(&snapshot) {
+            match candidate {
+                ReviewCandidate::RelatesTo(edge) => relates_ids.push(edge.id),
+                ReviewCandidate::Governs(edge) => governs_ids.push(edge.id),
+            }
+        }
+        relates_ids.sort();
+        governs_ids.sort();
+
+        assert_eq!(relates_ids, ["rel-failing-low", "rel-passing-low"]);
+        assert_eq!(governs_ids, ["gov-failing-low", "gov-passing-low"]);
     }
 }

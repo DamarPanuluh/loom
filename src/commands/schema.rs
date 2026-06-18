@@ -127,6 +127,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         "boundary": {"values": ["inbound", "outbound"], "meaning": "inbound: exposes a surface the outside world calls (a provider contract) · outbound: calls an external system (a consumer dependency) · unset: internal, no boundary crossing. Surfaced in work items so traversal knows a change here is contract-affecting."},
         "inspection_status": STATES.iter().map(|(s, _)| *s).collect::<Vec<_>>(),
         "note_kind": ["justification", "commentary", "idea", "question", "decision", "todo", "transition", "confirm"],
+        "inbox_kind": crate::commands::inbox::INBOX_KINDS,
         "severity": ["warning", "error"],
         "validation_type": ["test", "assertion", "benchmark", "manual_check", "saga"],
         "validation_result": ["passed", "failed", "not_run", "blocked"],

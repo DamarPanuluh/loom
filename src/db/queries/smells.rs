@@ -45,6 +45,19 @@ pub const HYPOTHESIS_BACKLOG_LIMIT: usize = 10;
 /// A proposed hypothesis older than this is stale enough to surface even when
 /// the queue is small. Non-RFC3339 timestamps (old tests/imports) are ignored.
 pub const HYPOTHESIS_STALE_DAYS: i64 = 14;
+
+fn rfc3339_after(candidate: &str, anchor: &str) -> bool {
+    let Ok(candidate) = chrono::DateTime::parse_from_rfc3339(candidate) else {
+        return false;
+    };
+    if anchor.is_empty() {
+        return true;
+    }
+    let Ok(anchor) = chrono::DateTime::parse_from_rfc3339(anchor) else {
+        return true;
+    };
+    candidate > anchor
+}
 /// Scatter thresholds are level-aware: a feature should be cohesive (few
 /// files); a component legitimately spans a directory; a system intent
 /// grounds to manifests and is never "scattered".
@@ -601,45 +614,54 @@ pub fn compute_smells_from_parts(
     let adjudicated = |target: &str, anchor: &str| -> Option<&crate::types::Note> {
         last_decision
             .get(target)
-            .filter(|n| n.created_at.as_str() > anchor)
+            .filter(|n| rfc3339_after(n.created_at.as_str(), anchor))
             .copied()
     };
 
     let mut smells: Vec<Smell> = Vec::new();
     let mut adjudicated_out: Vec<AdjudicatedSmell> = Vec::new();
 
+    let mut intents_by_level: HashMap<&str, Vec<&crate::types::Intent>> = HashMap::new();
+    for intent in intents
+        .iter()
+        .filter(|intent| intent.status != "deprecated")
+    {
+        intents_by_level
+            .entry(intent.abstraction_level.as_str())
+            .or_default()
+            .push(intent);
+    }
+
     // 1. Twin intents — split-brain in the semantic plane: two intents at the
     //    same abstraction level that read like the same responsibility, with
     //    no recorded relationship between them.
-    for i in 0..intents.len() {
-        for j in (i + 1)..intents.len() {
-            let (a, b) = (&intents[i], &intents[j]);
-            if a.abstraction_level != b.abstraction_level
-                || a.status == "deprecated"
-                || b.status == "deprecated"
-                || linked.contains(&(a.id.as_str(), b.id.as_str()))
-            {
-                continue;
-            }
-            let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-            if sim >= TWIN_SIMILARITY {
-                smells.push(Smell {
-                    kind: "twin_intents".into(),
-                    score: sim * 10.0,
-                    summary: format!(
-                        "'{}' and '{}' read like the same responsibility twice",
-                        a.name, b.name
-                    ),
-                    evidence: format!(
-                        "name+description similarity {:.2} at the same level ({}), no edge between them",
-                        sim, a.abstraction_level
-                    ),
-                    remedy: format!(
-                        "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
-                        a = a.id, b = b.id
-                    ),
-                    teaching: teaching_for("twin_intents"),
-                });
+    for same_level in intents_by_level.values() {
+        for i in 0..same_level.len() {
+            for j in (i + 1)..same_level.len() {
+                let (a, b) = (same_level[i], same_level[j]);
+                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                    continue;
+                }
+                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+                if sim >= TWIN_SIMILARITY {
+                    smells.push(Smell {
+                        kind: "twin_intents".into(),
+                        score: sim * 10.0,
+                        summary: format!(
+                            "'{}' and '{}' read like the same responsibility twice",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "name+description similarity {:.2} at the same level ({}), no edge between them",
+                            sim, a.abstraction_level
+                        ),
+                        remedy: format!(
+                            "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("twin_intents"),
+                    });
+                }
             }
         }
     }
@@ -654,107 +676,108 @@ pub fn compute_smells_from_parts(
     //     has none of those. Tags remain the strongest signal, but an untagged
     //     coded pair gets a stricter lexical fallback so missing tags do not
     //     make the detector entirely blind.
-    for i in 0..intents.len() {
-        for j in (i + 1)..intents.len() {
-            let (a, b) = (&intents[i], &intents[j]);
-            if a.abstraction_level != b.abstraction_level
-                || linked.contains(&(a.id.as_str(), b.id.as_str()))
-            {
-                continue;
-            }
-            // Physical separation: no shared file, no import between their code.
-            let (Some(fa), Some(fb)) = (
-                discovery.files_of.get(a.id.as_str()),
-                discovery.files_of.get(b.id.as_str()),
-            ) else {
-                continue; // duplicate implementation requires real code on both sides
-            };
-            if fa.intersection(fb).next().is_some() {
-                continue; // overlapping_ownership owns this case
-            }
-            let imports = fa
-                .iter()
-                .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
-                .any(|p| discovery.import_links.contains(&p));
-            if imports {
-                continue; // undeclared_coupling owns this case
-            }
-            let empty_tags: &[String] = &[];
-            let ta = discovery
-                .tags_by_intent
-                .get(a.id.as_str())
-                .map(Vec::as_slice)
-                .unwrap_or(empty_tags);
-            let tb = discovery
-                .tags_by_intent
-                .get(b.id.as_str())
-                .map(Vec::as_slice)
-                .unwrap_or(empty_tags);
-            let (weight, shared_terms) =
-                super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
-            if weight >= DUP_TAG_WEIGHT {
-                let term_detail = shared_terms
-                    .iter()
-                    .map(|t| {
-                        format!(
-                            "'{}' ({} intents carry it)",
-                            t,
-                            discovery.tag_counts.get(t).copied().unwrap_or(1)
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                smells.push(Smell {
-                    kind: "duplicated_responsibility".into(),
-                    score: weight * 8.0,
-                    summary: format!(
-                        "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
-                        a.name, b.name
-                    ),
-                    evidence: format!(
-                        "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
-                        term_detail, weight
-                    ),
-                    remedy: format!(
-                        "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
-                        a = a.id, b = b.id
-                    ),
-                    teaching: teaching_for("duplicated_responsibility"),
-                });
-                continue;
-            }
-            if ta.is_empty() || tb.is_empty() {
-                let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
-                    .intersection(&signal_toks[b.id.as_str()])
-                    .cloned()
-                    .collect();
-                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-                if sim < DUP_UNTAGGED_SIMILARITY || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
-                {
+    for same_level in intents_by_level.values() {
+        for i in 0..same_level.len() {
+            for j in (i + 1)..same_level.len() {
+                let (a, b) = (same_level[i], same_level[j]);
+                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
                     continue;
                 }
-                let mut shared_tokens = shared_tokens;
-                shared_tokens.sort();
-                smells.push(Smell {
-                    kind: "duplicated_responsibility".into(),
-                    score: 2.0 + sim * 8.0,
-                    summary: format!(
-                        "'{}' and '{}' read alike, are under-tagged, and live in unrelated code — same responsibility twice?",
-                        a.name, b.name
-                    ),
-                    evidence: format!(
-                        "untagged lexical fallback: name+description similarity {:.2} with shared token(s) {}; tag coverage is {} vs {}; groundings are disjoint with no import between them",
-                        sim,
-                        shared_tokens.join(", "),
-                        if ta.is_empty() { "none" } else { "present" },
-                        if tb.is_empty() { "none" } else { "present" },
-                    ),
-                    remedy: format!(
-                        "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
-                        a = a.id, b = b.id
-                    ),
-                    teaching: teaching_for("duplicated_responsibility"),
-                });
+                // Physical separation: no shared file, no import between their code.
+                let (Some(fa), Some(fb)) = (
+                    discovery.files_of.get(a.id.as_str()),
+                    discovery.files_of.get(b.id.as_str()),
+                ) else {
+                    continue; // duplicate implementation requires real code on both sides
+                };
+                if fa.intersection(fb).next().is_some() {
+                    continue; // overlapping_ownership owns this case
+                }
+                let imports = fa
+                    .iter()
+                    .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+                    .any(|p| discovery.import_links.contains(&p));
+                if imports {
+                    continue; // undeclared_coupling owns this case
+                }
+                let empty_tags: &[String] = &[];
+                let ta = discovery
+                    .tags_by_intent
+                    .get(a.id.as_str())
+                    .map(Vec::as_slice)
+                    .unwrap_or(empty_tags);
+                let tb = discovery
+                    .tags_by_intent
+                    .get(b.id.as_str())
+                    .map(Vec::as_slice)
+                    .unwrap_or(empty_tags);
+                let (weight, shared_terms) =
+                    super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
+                if weight >= DUP_TAG_WEIGHT {
+                    let term_detail = shared_terms
+                        .iter()
+                        .map(|t| {
+                            format!(
+                                "'{}' ({} intents carry it)",
+                                t,
+                                discovery.tag_counts.get(t).copied().unwrap_or(1)
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    smells.push(Smell {
+                        kind: "duplicated_responsibility".into(),
+                        score: weight * 8.0,
+                        summary: format!(
+                            "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
+                            term_detail, weight
+                        ),
+                        remedy: format!(
+                            "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("duplicated_responsibility"),
+                    });
+                    continue;
+                }
+                if ta.is_empty() || tb.is_empty() {
+                    let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
+                        .intersection(&signal_toks[b.id.as_str()])
+                        .cloned()
+                        .collect();
+                    let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+                    if sim < DUP_UNTAGGED_SIMILARITY
+                        || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
+                    {
+                        continue;
+                    }
+                    let mut shared_tokens = shared_tokens;
+                    shared_tokens.sort();
+                    smells.push(Smell {
+                        kind: "duplicated_responsibility".into(),
+                        score: 2.0 + sim * 8.0,
+                        summary: format!(
+                            "'{}' and '{}' read alike, are under-tagged, and live in unrelated code — same responsibility twice?",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "untagged lexical fallback: name+description similarity {:.2} with shared token(s) {}; tag coverage is {} vs {}; groundings are disjoint with no import between them",
+                            sim,
+                            shared_tokens.join(", "),
+                            if ta.is_empty() { "none" } else { "present" },
+                            if tb.is_empty() { "none" } else { "present" },
+                        ),
+                        remedy: format!(
+                            "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("duplicated_responsibility"),
+                    });
+                }
             }
         }
     }
@@ -1271,6 +1294,8 @@ pub fn compute_smells_from_parts(
                 let Some(owners_b) = intents_on_file.get(target.as_str()) else {
                     continue;
                 };
+                let example = format!("{} → {}", cf.path, target);
+                let mut seen_pairs: HashSet<(String, String)> = HashSet::new();
                 for a in owners_a {
                     for b in owners_b {
                         if a == b || linked.contains(&(*a, *b)) {
@@ -1281,10 +1306,8 @@ pub fn compute_smells_from_parts(
                         } else {
                             (b.to_string(), a.to_string())
                         };
-                        let example = format!("{} → {}", cf.path, target);
-                        let entry = pair_files.entry(key).or_default();
-                        if !entry.contains(&example) {
-                            entry.push(example);
+                        if seen_pairs.insert(key.clone()) {
+                            pair_files.entry(key).or_default().push(example.clone());
                         }
                     }
                 }
@@ -1811,7 +1834,7 @@ pub fn compute_smells_from_parts(
                     .insert(child.aspect.as_str());
             }
             let e = newest_aspect_child.entry(p.as_str()).or_default();
-            if child.created_at.as_str() > *e {
+            if rfc3339_after(child.created_at.as_str(), e) {
                 *e = &child.created_at;
             }
         }
@@ -2441,7 +2464,6 @@ pub fn cochange_suggestions(
     /// Filters two churny files that merely overlap from a real "they move
     /// together" contract.
     const MIN_CONFIDENCE: f64 = 0.5;
-    const MAX_SUGGESTIONS: usize = 15;
     if pairs.is_empty() {
         return Vec::new();
     }
@@ -2546,7 +2568,6 @@ pub fn cochange_suggestions(
             .then_with(|| x.remedy.cmp(&y.remedy))
             .then_with(|| x.evidence.cmp(&y.evidence))
     });
-    out.truncate(MAX_SUGGESTIONS);
     out
 }
 
@@ -2562,7 +2583,6 @@ pub fn shotgun_surgery_suggestions(
     const MIN_COCHANGE: usize = 3;
     const MIN_CONFIDENCE: f64 = 0.45;
     const MIN_PARTNER_INTENTS: usize = 4;
-    const MAX_SUGGESTIONS: usize = 10;
     if pairs.is_empty() {
         return Vec::new();
     }
@@ -2687,7 +2707,6 @@ pub fn shotgun_surgery_suggestions(
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| x.summary.cmp(&y.summary))
     });
-    out.truncate(MAX_SUGGESTIONS);
     out
 }
 

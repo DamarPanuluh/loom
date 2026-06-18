@@ -13,20 +13,7 @@ use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::{pulse_json, Printer};
 use crate::types::InboxItem;
 
-pub const INBOX_KINDS: &[&str] = &[
-    "observation",
-    "user_request",
-    "feature_proposal",
-    "bug_suspicion",
-    "refactor_suspicion",
-    "missing_intent",
-    "missing_validation",
-    "missing_story",
-    "terminology",
-    "rough_edge",
-    "external_blocker",
-    "question",
-];
+pub use crate::db::schema::INBOX_KINDS;
 
 pub const INBOX_STATUSES: &[&str] = &[
     "new",
@@ -92,8 +79,53 @@ const ROUTE_MENU: &[(&str, &str, &str)] = &[
     ),
     (
         "decision / scope tradeoff",
-        "note",
+        "decision_capture → note",
         "loom note add --kind decision --intent <id> --text \"…\"",
+    ),
+    (
+        "constraint / invariant",
+        "constraint → quality_rule",
+        "loom rule add --name … --description … --severity warning|error",
+    ),
+    (
+        "acceptance criterion / done means",
+        "acceptance_criterion → validation",
+        "loom validation add --name … --type test|manual_check --command \"…\" --intent <intent>",
+    ),
+    (
+        "endpoint/interface/call coverage gap",
+        "interface_gap → validation/saga",
+        "loom populate interfaces --from-sagas  OR  write saga YAML → loom saga add <spec.yaml>",
+    ),
+    (
+        "evidence found while working",
+        "evidence → note",
+        "loom note add --kind justification --intent <id> --text \"…\"",
+    ),
+    (
+        "risk not yet proven as a bug",
+        "risk → hypothesis",
+        "loom hypothesis add --name … --claim … --proposal … --predicted-outcome … --target <intent>",
+    ),
+    (
+        "later work discovered during another task",
+        "follow_up → intent/hypothesis/note",
+        "loom intent add …  OR  loom hypothesis add …  OR  loom note add --kind todo …",
+    ),
+    (
+        "possible duplicate/superseded item",
+        "duplicate_candidate → note/hypothesis",
+        "loom note add --kind decision --text \"why these are/are not duplicates\"",
+    ),
+    (
+        "missing or misleading documentation",
+        "docs_gap → intent",
+        "loom intent mark <id> --lifecycle needs_change --reason \"docs/self-teaching gap\"",
+    ),
+    (
+        "schema/backfill/upgrade concern",
+        "migration_need → validation/populate",
+        "loom populate plan  OR  loom validation add --name … --type assertion --command \"…\"",
     ),
     ("question about the system", "answer", "answer from matches; no graph mutation"),
 ];

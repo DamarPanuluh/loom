@@ -13,7 +13,7 @@ mod ts_imports;
 mod types;
 mod vec_utils;
 
-fn main() -> Result<()> {
+pub fn run() -> Result<()> {
     // parse_or_teach: any syntax failure appends the failing command's
     // EXAMPLE block — errors teach instead of stalling the loop.
     let cli = cli::parse_or_teach();
@@ -26,4 +26,9 @@ fn main() -> Result<()> {
     }
 
     commands::dispatch(cli)
+}
+
+#[allow(dead_code)]
+fn main() -> Result<()> {
+    run()
 }

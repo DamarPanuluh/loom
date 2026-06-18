@@ -78,9 +78,7 @@ impl EnvRedactor {
             let value = std::env::var(&key).with_context(|| {
                 format!("Template references '{{{{ env.{key} }}}}' but ${key} is not set.")
             })?;
-            if value.len() >= 4 {
-                pairs.push((key, value));
-            }
+            pairs.push((key, value));
         }
         Ok(Self { pairs })
     }
@@ -401,9 +399,7 @@ fn interpolate_expectation(
         BodyExpectation::Contains { contains } => BodyExpectation::Contains {
             contains: interpolate(contains, vars)?,
         },
-        BodyExpectation::Equals(value) => {
-            BodyExpectation::Equals(interpolate_json(value, vars)?)
-        }
+        BodyExpectation::Equals(value) => BodyExpectation::Equals(interpolate_json(value, vars)?),
     })
 }
 
