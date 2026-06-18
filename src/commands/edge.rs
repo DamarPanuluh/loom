@@ -10,6 +10,45 @@ use crate::output::{
 };
 use crate::types::{CodeFile, EdgeType, Intent, RelatesTo};
 
+/// Validate analyzer-asserted relationship kinds and merge them onto an edge:
+/// the provided JUDGMENT kinds replace the edge's judgment tier; MECHANICAL
+/// kinds (populate-derived) are preserved. Rejects a mechanical kind here —
+/// those are derived, not asserted. Returns the new full kind set.
+pub(crate) fn apply_judgment_kinds(
+    store: &crate::db::sqlite::SqliteGraphStore,
+    edge_kinds: &[String],
+    from: &str,
+    to: &str,
+    provided: &[String],
+) -> Result<Vec<String>> {
+    for k in provided {
+        let rk = k.parse::<crate::types::RelationKind>()?;
+        if rk.is_mechanical() {
+            anyhow::bail!(
+                "--kind '{k}' is a MECHANICAL kind (derived by `loom populate kinds`, not asserted). \
+                 Assert a judgment kind: calls | inheritance | shares_state | doc_reference | manual."
+            );
+        }
+    }
+    let mut new_kinds: Vec<String> = edge_kinds
+        .iter()
+        .filter(|k| {
+            k.parse::<crate::types::RelationKind>()
+                .map(|rk| rk.is_mechanical())
+                .unwrap_or(false)
+        })
+        .cloned()
+        .collect();
+    for p in provided {
+        if !new_kinds.contains(p) {
+            new_kinds.push(p.clone());
+        }
+    }
+    new_kinds.sort();
+    store.update_relates_to_kinds(from, to, &new_kinds)?;
+    Ok(new_kinds)
+}
+
 pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
@@ -124,6 +163,7 @@ fn run_explore_with_sqlite(
             evidence,
             evidence_locator,
             confidence,
+            kinds,
             inspected_by,
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
@@ -154,6 +194,11 @@ fn run_explore_with_sqlite(
                 by,
                 &now,
             )?;
+            let final_kinds = if kinds.is_empty() {
+                edge.kinds.clone()
+            } else {
+                apply_judgment_kinds(&store, &edge.kinds, &edge.from_id, &edge.to_id, &kinds)?
+            };
             let updated = RelatesTo {
                 inspection_status: "passing".to_string(),
                 criterion,
@@ -161,6 +206,7 @@ fn run_explore_with_sqlite(
                 confidence,
                 inspected_by: by.to_string(),
                 last_inspected: now,
+                kinds: final_kinds,
                 ..edge
             };
             let next_step = "`loom next` for the next item.";
@@ -180,6 +226,7 @@ fn run_explore_with_sqlite(
             evidence,
             evidence_locator,
             confidence,
+            kinds,
             inspected_by,
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
@@ -208,6 +255,11 @@ fn run_explore_with_sqlite(
                 by,
                 &now,
             )?;
+            let final_kinds = if kinds.is_empty() {
+                edge.kinds.clone()
+            } else {
+                apply_judgment_kinds(&store, &edge.kinds, &edge.from_id, &edge.to_id, &kinds)?
+            };
             let updated = RelatesTo {
                 inspection_status: "failing".to_string(),
                 criterion,
@@ -215,6 +267,7 @@ fn run_explore_with_sqlite(
                 confidence,
                 inspected_by: by.to_string(),
                 last_inspected: now,
+                kinds: final_kinds,
                 ..edge
             };
             let next_step = format!(

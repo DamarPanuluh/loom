@@ -727,6 +727,77 @@ fn intent_id_by_name(root: &Path, name: &str) -> String {
 }
 
 #[test]
+fn sqlite_judgment_kind_assignment() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-judgment-kind");
+    let db = graph.root.join(".loom").join("graph.sqlite");
+
+    // rule add --kind sets the category AND derives the default effort.
+    run_json_as(
+        &graph.root,
+        &[
+            "rule",
+            "add",
+            "--name",
+            "no-secrets-in-source",
+            "--description",
+            "secrets never enter source code; use a secret store",
+            "--severity",
+            "error",
+            "--kind",
+            "security",
+            "--json",
+        ],
+        "llm:quality",
+    );
+    {
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        let (kind, effort): (String, String) = conn
+            .query_row(
+                "SELECT kind, inspection_effort FROM quality_rule WHERE name='no-secrets-in-source'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("rule exists");
+        assert_eq!(kind, "security", "rule kind stored");
+        assert_eq!(effort, "high", "security defaults to high effort");
+    }
+
+    // edge ground --kind asserts a judgment relationship kind.
+    let (a, b) = first_two_intent_ids(&graph.root);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "a invokes a function grounded by b",
+            "--kind",
+            "calls",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let kinds: String = conn
+        .query_row(
+            "SELECT kinds FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+            rusqlite::params![a, b],
+            |r| r.get(0),
+        )
+        .expect("the grounded edge exists");
+    assert!(
+        kinds.contains("calls"),
+        "judgment kind asserted on the edge: {kinds}"
+    );
+}
+
+#[test]
 fn sqlite_populate_kinds_backfills_mechanical_tier() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-populate-kinds");

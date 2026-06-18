@@ -10,6 +10,19 @@ use crate::gate;
 use crate::output::{apply_limit, fmt_pulse, with_read_anchor, Printer};
 use crate::types::Persona;
 
+/// `ExploreSubCmd` is shared with `loom edge`, which carries relationship
+/// `--kind`s. SERVES (Persona→Intent) has no relationship-kind taxonomy, so
+/// reject the flag here rather than silently ignore it.
+fn reject_relationship_kinds(kinds: &[String]) -> Result<()> {
+    if !kinds.is_empty() {
+        anyhow::bail!(
+            "--kind is a RELATES_TO relationship kind (use `loom edge explore … ground --kind`); \
+             SERVES edges carry no relationship kind."
+        );
+    }
+    Ok(())
+}
+
 pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
@@ -322,8 +335,10 @@ fn run_serve_with_sqlite(
             evidence,
             evidence_locator,
             confidence,
+            kinds,
             inspected_by,
         }) => {
+            reject_relationship_kinds(&kinds)?;
             let by = gate::acting_in_lane(&gate::lane::GROUND_SERVES, inspected_by.as_deref())?;
             gate::require_substantive(
                 "criterion",
@@ -378,8 +393,10 @@ fn run_serve_with_sqlite(
             evidence,
             evidence_locator,
             confidence,
+            kinds,
             inspected_by,
         }) => {
+            reject_relationship_kinds(&kinds)?;
             let by = gate::acting_in_lane(&gate::lane::ISSUE_SERVES, inspected_by.as_deref())?;
             gate::require_substantive("criterion", &criterion, "the failing serving criterion")?;
             gate::require_substantive("evidence", &evidence, "what was found to be wrong")?;

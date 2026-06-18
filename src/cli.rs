@@ -1117,6 +1117,13 @@ pub enum ExploreSubCmd {
         #[arg(long, default_value_t = 0.9)]
         confidence: f64,
 
+        /// Relationship kind(s) this grounding asserts (repeatable): calls |
+        /// inheritance | shares_state | doc_reference | manual (the judgment
+        /// tier — mechanical kinds like imports/shares_file are derived by
+        /// `loom populate kinds`). Replaces the judgment kinds on the edge.
+        #[arg(long = "kind")]
+        kinds: Vec<String>,
+
         /// Who performed the inspection: "human" or "llm".
         #[arg(long)]
         inspected_by: Option<String>,
@@ -1143,6 +1150,11 @@ pub enum ExploreSubCmd {
         /// Confidence the problem is real (0.0–1.0). Same slot as `ground`.
         #[arg(long, default_value_t = 0.9)]
         confidence: f64,
+
+        /// Relationship kind(s) this verdict asserts (repeatable; same vocab as
+        /// `ground --kind`).
+        #[arg(long = "kind")]
+        kinds: Vec<String>,
 
         #[arg(long)]
         inspected_by: Option<String>,
@@ -1180,10 +1192,18 @@ pub enum RuleCmd {
         #[arg(long)]
         severity: String,
 
+        /// Norm category: security | correctness | performance | architecture |
+        /// resource_safety. Optional. When set and --effort is omitted, the
+        /// kind's default effort applies (security/correctness/resource_safety →
+        /// high; architecture/performance → mid).
+        #[arg(long)]
+        kind: Option<String>,
+
         /// How much capability INSPECTING this rule needs: low (near-mechanical
         /// scan) | mid (read-and-judge, the default) | high (deep semantic
         /// reading). Travels into quality work items as `effort` so tiered
         /// agents route correctly — a statement about the work, never a model.
+        /// Overrides the kind's default effort when both are given.
         #[arg(long)]
         effort: Option<String>,
     },

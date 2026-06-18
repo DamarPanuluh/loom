@@ -710,8 +710,14 @@ impl GovernsKind {
         }
     }
 
-    // default_effort (the kind→effort table) lands in the judgment-assignment
-    // commit where `rule add`/seed consume it.
+    /// Default inspection effort for a rule of this kind (a rule may override
+    /// with --effort). Replaces hardcoded rule-name → effort guessing.
+    pub fn default_effort(self) -> &'static str {
+        match self {
+            Self::Security | Self::Correctness | Self::ResourceSafety => "high",
+            Self::Architecture | Self::Performance => "mid",
+        }
+    }
 }
 
 impl std::str::FromStr for GovernsKind {

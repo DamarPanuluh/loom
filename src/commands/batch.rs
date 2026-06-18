@@ -264,6 +264,16 @@ fn apply_line_sqlite(
             }
             let edge = store
                 .upsert_relates_to_ground(&a, &b, criterion, &evidence, confidence, &by, &now)?;
+            let kinds = kinds_field(&v);
+            if !kinds.is_empty() {
+                crate::commands::edge::apply_judgment_kinds(
+                    store,
+                    &edge.kinds,
+                    &edge.from_id,
+                    &edge.to_id,
+                    &kinds,
+                )?;
+            }
             Ok((
                 format!("ground {} × {}", edge.from_name, edge.to_name),
                 evidence_opt(&evidence),
@@ -304,6 +314,16 @@ fn apply_line_sqlite(
             }
             let edge = store
                 .upsert_relates_to_issue(&a, &b, criterion, &evidence, confidence, &by, &now)?;
+            let kinds = kinds_field(&v);
+            if !kinds.is_empty() {
+                crate::commands::edge::apply_judgment_kinds(
+                    store,
+                    &edge.kinds,
+                    &edge.from_id,
+                    &edge.to_id,
+                    &kinds,
+                )?;
+            }
             Ok((
                 format!("issue {} × {}", edge.from_name, edge.to_name),
                 evidence_opt(&evidence),
@@ -419,6 +439,20 @@ fn str_field<'a>(v: &'a serde_json::Value, op: &str, key: &str) -> Result<&'a st
 /// `gate::compose_evidence`). Absent → no anchors.
 fn locators_field(v: &serde_json::Value) -> Vec<String> {
     match v.get("evidence_locator") {
+        Some(serde_json::Value::String(s)) => vec![s.clone()],
+        Some(serde_json::Value::Array(a)) => a
+            .iter()
+            .filter_map(|x| x.as_str().map(str::to_string))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Optional judgment relationship `kind` (string) or `kinds` (array) on a
+/// ground/issue line — applied via the same validate-and-merge path as
+/// `loom edge explore … --kind`.
+fn kinds_field(v: &serde_json::Value) -> Vec<String> {
+    match v.get("kinds").or_else(|| v.get("kind")) {
         Some(serde_json::Value::String(s)) => vec![s.clone()],
         Some(serde_json::Value::Array(a)) => a
             .iter()

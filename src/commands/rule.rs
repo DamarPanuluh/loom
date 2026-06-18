@@ -256,6 +256,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             name,
             description,
             severity,
+            kind,
             effort,
         } => {
             gate::acting_in_lane(&gate::lane::ADD_RULE, None)?;
@@ -267,14 +268,26 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     anyhow::bail!("--effort must be low, mid, or high (a statement about the inspection WORK, not about models).");
                 }
             }
+            // Validate the norm category; its default effort applies when
+            // --effort is omitted, so effort derives from kind+override.
+            let governs_kind = match &kind {
+                Some(k) => Some(
+                    k.parse::<crate::types::GovernsKind>()
+                        .map_err(|e| anyhow::anyhow!("{}", e))?,
+                ),
+                None => None,
+            };
+            let inspection_effort = effort
+                .or_else(|| governs_kind.map(|gk| gk.default_effort().to_string()))
+                .unwrap_or_default();
             let id = Uuid::new_v4().to_string();
             let rule = QualityRule {
                 id: id.clone(),
                 name: name.clone(),
                 description,
                 detection_logic: String::new(),
-                kind: String::new(),
-                inspection_effort: effort.unwrap_or_default(),
+                kind: kind.unwrap_or_default(),
+                inspection_effort,
                 severity,
             };
             store.insert_rule(&rule)?;
