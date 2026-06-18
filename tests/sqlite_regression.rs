@@ -659,6 +659,63 @@ fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
 }
 
 #[test]
+fn sqlite_review_take_drains_low_confidence_in_bulk() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-review-take");
+    // Clear the existing review queue so the item we seed is deterministic.
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET confidence=0.9 WHERE confidence < 0.7",
+            [],
+        )
+        .expect("bump relates confidence");
+        conn.execute(
+            "UPDATE governs SET confidence=0.9 WHERE confidence < 0.7",
+            [],
+        )
+        .expect("bump governs confidence");
+    }
+    let (a, b) = first_two_intent_ids(&graph.root);
+    // A low-confidence passing verdict → exactly one review candidate.
+    let line = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these coexist cleanly without coupling\",\"confidence\":0.5}}"
+    );
+    write_scratch_file(&graph.root, "scratch/lowconf.jsonl", &line);
+    run_json_as(
+        &graph.root,
+        &["batch", "scratch/lowconf.jsonl", "--json"],
+        "llm:analyzer",
+    );
+
+    let take = run_json(
+        &graph.root,
+        &["next", "--mode", "review", "--take", "50", "--json"],
+    );
+    assert_eq!(
+        take["status"], "ok",
+        "review --take should serve a bulk read: {take}"
+    );
+    let items = take["items"].as_array().expect("items array");
+    assert_eq!(
+        items.len(),
+        1,
+        "exactly the one seeded low-confidence verdict: {take}"
+    );
+    assert_eq!(items[0]["a"]["id"], serde_json::json!(a));
+    assert_eq!(items[0]["owner_role"], "analyzer");
+    assert_eq!(items[0]["effort"], "high");
+    assert_eq!(
+        take["batch_template"].as_array().map(|a| a.len()),
+        Some(1),
+        "a re-record template line per item: {take}"
+    );
+    assert_eq!(take["dispatch"]["effort"], "high");
+}
+
+#[test]
 fn sqlite_doctor_audits_serves_edges() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-doctor-serves");

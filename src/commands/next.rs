@@ -105,11 +105,11 @@ fn run_with_repo(
         );
     }
 
-    if take > 0 && !matches!(mode, "discovery" | "fix" | "quality" | "align") {
+    if take > 0 && !matches!(mode, "discovery" | "fix" | "quality" | "align" | "review") {
         anyhow::bail!(
-            "--take is a bulk read of the discovery/fix/quality queues (post-sync/post-rule batch reads) \
-             and the align queue (a human-interview agenda). \
-             The other modes resolve one command per item — use `loom next --mode {mode}`."
+            "--take is a bulk read of the discovery/fix/quality/review queues (post-sync/post-rule \
+             batch reads, and the low-confidence double-check) and the align queue (a human-interview \
+             agenda). The other modes resolve one command per item — use `loom next --mode {mode}`."
         );
     }
 
@@ -147,7 +147,13 @@ fn run_with_repo(
                 run_quality(db, printer)
             }
         }
-        "review" => return run_review(db, printer),
+        "review" => {
+            return if take > 0 {
+                run_take_review(db, take, printer)
+            } else {
+                run_review(db, printer)
+            }
+        }
         "prove" => return run_prove(db, printer),
         _ => {}
     }
@@ -2381,6 +2387,128 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             println!("  {}", fmt_pulse(&gs));
         }
     }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Review mode, BULK: the same low-confidence queue as run_review, served as a
+// compact batch with a re-record template — so a flood of flagged verdicts (the
+// honesty pass routes copied-evidence / uniform-confidence clusters here) drains
+// in chunks instead of one CLI call each (the offline-mega-batch anti-pattern).
+// ---------------------------------------------------------------------------
+
+fn run_take_review(store: &dyn GraphReadRepository, take: usize, printer: &Printer) -> Result<()> {
+    use crate::db::queries::{ReviewCandidate, REVIEW_CONFIDENCE};
+    // BOUNDED like the other --take queues — a high-tier review chunk stays
+    // reviewable in one sitting.
+    const TAKE_CAP: usize = 50;
+
+    let snapshot = store.query_snapshot()?;
+    let candidates = review_candidates_from_snapshot(&snapshot);
+    let gs = store.graph_state(&snapshot)?;
+    let queue_total = candidates.len();
+
+    if candidates.is_empty() {
+        if printer.json {
+            printer.print_json(&serde_json::json!({
+                "status": "empty", "mode": "review", "taken": 0, "queue_total": 0,
+                "message": format!("No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."),
+                "next_step": gs.next_action,
+                "graph_state": pulse_json(&gs),
+            }));
+        } else {
+            println!(
+                "✓ No verdicts below confidence {REVIEW_CONFIDENCE} — nothing needs a second look."
+            );
+            println!("  {}", fmt_pulse(&gs));
+        }
+        return Ok(());
+    }
+
+    let n = take.min(TAKE_CAP).min(candidates.len());
+    let mut items: Vec<serde_json::Value> = Vec::new();
+    let mut batch_lines: Vec<String> = Vec::new();
+    let mut human_lines: Vec<String> = Vec::new();
+    let mut has_analyzer = false;
+    let mut has_quality = false;
+    for (cand, score) in candidates.iter().take(n) {
+        match cand {
+            ReviewCandidate::RelatesTo(e) => {
+                has_analyzer = true;
+                // Re-affirm reuses the stored criterion (it passed the gate); the
+                // reviewer edits to issue/independent to overturn.
+                batch_lines.push(
+                    serde_json::json!({"op": "ground", "a": e.from_id, "b": e.to_id, "confidence": 0.9})
+                        .to_string(),
+                );
+                human_lines.push(format!(
+                    "    [relates_to conf={:>4.2} analyzer]  {} × {}  ({})",
+                    e.confidence, e.from_name, e.to_name, e.id
+                ));
+                items.push(serde_json::json!({
+                    "kind": "relates_to", "edge_id": e.id,
+                    "a": {"id": e.from_id, "name": e.from_name},
+                    "b": {"id": e.to_id, "name": e.to_name},
+                    "recorded_status": e.inspection_status, "recorded_confidence": e.confidence,
+                    "inspected_by": e.inspected_by, "criterion": e.criterion,
+                    "priority_score": score, "owner_role": "analyzer", "effort": "high",
+                }));
+            }
+            ReviewCandidate::Governs(g) => {
+                has_quality = true;
+                // rule_verdict needs evidence — the placeholder is rejected
+                // unedited, forcing the reviewer to record what they found.
+                batch_lines.push(
+                    serde_json::json!({"op": "rule_verdict", "rule": g.rule_id, "intent": g.intent_id,
+                        "status": g.inspection_status, "evidence": "<what the re-inspection found>", "confidence": 0.9})
+                        .to_string(),
+                );
+                human_lines.push(format!(
+                    "    [governs    conf={:>4.2} quality ]  {} → {}  ({})",
+                    g.confidence, g.rule_name, g.intent_name, g.id
+                ));
+                items.push(serde_json::json!({
+                    "kind": "governs", "edge_id": g.id,
+                    "rule": {"id": g.rule_id, "name": g.rule_name},
+                    "intent": {"id": g.intent_id, "name": g.intent_name},
+                    "recorded_status": g.inspection_status, "recorded_confidence": g.confidence,
+                    "inspected_by": g.inspected_by, "criterion": g.criterion,
+                    "priority_score": score, "owner_role": "quality", "effort": "high",
+                }));
+            }
+        }
+    }
+    let role = match (has_analyzer, has_quality) {
+        (true, true) => "mixed",
+        (false, true) => "quality",
+        _ => "analyzer",
+    };
+    let guidance = "INDEPENDENT RE-INSPECTION, per item: form your OWN hypothesis from the intents and code BEFORE reading the recorded evidence (anchoring on a low-confidence claim defeats the review). Then re-record via the template line — confirm with YOUR confidence (≥ 0.7 resolves it) or overturn (rewrite relates_to to `issue`/`independent`, governs to `failing`/`independent`). relates_to lines reuse the stored criterion; governs lines need real evidence (the placeholder is rejected unedited). Apply the edited lines in ONE call: `loom batch - <<'EOF' … EOF`.";
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok", "mode": "review", "taken": n, "queue_total": queue_total,
+            "items": items, "batch_template": batch_lines, "guidance": guidance,
+            "dispatch": {"role": role, "effort": "high"},
+            "graph_state": pulse_json(&gs),
+        }));
+        return Ok(());
+    }
+
+    println!("── Review: {n} of {queue_total} low-confidence verdict(s) — bulk re-inspection ──");
+    println!();
+    for line in &human_lines {
+        println!("{line}");
+    }
+    println!();
+    println!("{BATCH_TEMPLATE_TITLE}");
+    for l in &batch_lines {
+        println!("  {l}");
+    }
+    println!();
+    println!("  {guidance}");
+    println!("  Dispatch — {role}  [effort: high]   (per-item owner_role above is authoritative)");
+    println!("  {}", fmt_pulse(&gs));
     Ok(())
 }
 
