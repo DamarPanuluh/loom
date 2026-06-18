@@ -823,6 +823,57 @@ fn sqlite_sync_skips_meaning_only_edges_on_code_change() {
 }
 
 #[test]
+fn sqlite_next_carries_next_step_and_bulk_context() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-next-context");
+
+    // The output contract: a single work item carries a runnable next_step
+    // (field-driven driving, not parsing the suggested_action prose).
+    let single = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
+    let next_step = single
+        .get("next_step")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    assert!(
+        next_step.contains("loom edge explore"),
+        "single `next` must carry a runnable next_step: {single}"
+    );
+
+    // Bulk read parity: --take items carry the SAME inspection context the single
+    // item does (descriptions + groundings), so the agent fills the batch
+    // template's criteria without scripting a per-pair `loom intent show` loop.
+    let take = run_json(
+        &graph.root,
+        &["next", "--take", "3", "--mode", "discovery", "--json"],
+    );
+    let item = take["groups"][0]["items"][0].clone();
+    assert!(
+        item["a"]["description"].is_string(),
+        "bulk discovery item must carry intent A's description: {item}"
+    );
+    assert!(
+        item["a"]["groundings"].is_array(),
+        "bulk discovery item must carry intent A's code groundings: {item}"
+    );
+    assert!(
+        item["b"]["description"].is_string(),
+        "bulk discovery item must carry intent B's description: {item}"
+    );
+
+    // The bulk guidance must match what discovery actually hands back — NOT the
+    // re-verification ("staling file") text that misled the LLM into scripting.
+    let guidance = take["guidance"].as_str().unwrap_or("");
+    assert!(
+        guidance.contains("UNEXPLORED"),
+        "discovery --take guidance must be discovery-specific: {guidance}"
+    );
+    assert!(
+        !guidance.contains("staling file"),
+        "discovery --take must NOT emit the re-verification guidance: {guidance}"
+    );
+}
+
+#[test]
 fn sqlite_export_import_round_trips_relationship_kinds() {
     let _guard = sqlite_test_lock();
     let edges_with_kinds = |root: &Path| -> i64 {

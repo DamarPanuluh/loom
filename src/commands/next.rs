@@ -202,7 +202,7 @@ fn run_relates_with_repo(
 
     if take > 0 {
         let gs = store.graph_state(&snapshot)?;
-        return run_take(store, mode, &candidates, take, &gs, printer);
+        return run_take(store, mode, &snapshot, &candidates, take, &gs, printer);
     }
 
     let (top_edge, score) = &candidates[0];
@@ -258,6 +258,13 @@ fn run_relates_with_repo(
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
+            // Output contract (output.rs): every output carries a runnable
+            // `next_step`. The full menu lives in `suggested_action`; this is the
+            // single canonical command so driving is field-driven, not parsed.
+            obj.insert(
+                "next_step".to_string(),
+                build_suggested_action_compact(top_edge).into(),
+            );
             obj.insert("graph_state".to_string(), pulse_json(&gs));
             obj.insert("notes_total".to_string(), notes_total.into());
             obj.insert("implements_total".to_string(), implements_total.into());
@@ -509,6 +516,7 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
 fn run_take(
     db: &dyn GraphReadRepository,
     mode: &str,
+    snapshot: &QuerySnapshot,
     candidates: &[(crate::types::RelatesTo, f64)],
     take: usize,
     gs: &crate::db::queries::GraphState,
@@ -536,6 +544,52 @@ fn run_take(
             latest_cause.insert(nt.target_id, cause.to_string());
         }
     }
+
+    // Close the read/write asymmetry: the bulk WRITE template needs a criterion
+    // per pair, so each item must carry the SAME inspection context the single
+    // item does (descriptions + sources + groundings) — otherwise the agent
+    // scripts a per-pair `loom intent show` loop to fill the blanks. Indexed
+    // once from the snapshot the caller already loaded (no per-item DB calls,
+    // same O(N) discipline as the note scan above).
+    const GROUNDING_CAP: usize = 4;
+    let intent_by_id: std::collections::HashMap<&str, &crate::types::Intent> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i))
+        .collect();
+    let mut groundings_by_intent: std::collections::HashMap<&str, Vec<&crate::types::Implements>> =
+        std::collections::HashMap::new();
+    for im in &snapshot.implements {
+        groundings_by_intent
+            .entry(im.intent_id.as_str())
+            .or_default()
+            .push(im);
+    }
+    let endpoint = |id: &str, name: &str| -> serde_json::Value {
+        let intent = intent_by_id.get(id);
+        let groundings: Vec<serde_json::Value> = groundings_by_intent
+            .get(id)
+            .map(|v| {
+                v.iter()
+                    .take(GROUNDING_CAP)
+                    .map(|im| {
+                        serde_json::json!({
+                            "path": im.codefile_path,
+                            "locator": im.locator,
+                            "status": im.inspection_status,
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        serde_json::json!({
+            "id": id,
+            "name": name,
+            "description": intent.map(|i| i.description.as_str()).unwrap_or(""),
+            "sources": intent.map(|i| i.source_refs.clone()).unwrap_or_default(),
+            "groundings": groundings,
+        })
+    };
     let mut groups: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
     let mut batch_lines: Vec<String> = Vec::new();
     let mut has_fixer = false;
@@ -578,8 +632,8 @@ fn run_take(
         }
         let item = serde_json::json!({
             "edge_id": edge.id,
-            "a": { "id": edge.from_id, "name": edge.from_name },
-            "b": { "id": edge.to_id, "name": edge.to_name },
+            "a": endpoint(&edge.from_id, &edge.from_name),
+            "b": endpoint(&edge.to_id, &edge.to_name),
             "inspection_status": edge.inspection_status,
             "owner_role": role,
             "effort": effort,
@@ -611,7 +665,15 @@ fn run_take(
         ))
     });
 
-    let guidance = "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix).";
+    // Mode-aware: discovery pairs are UNEXPLORED (no recorded criterion — every
+    // template line needs a fresh one the gate will accept), and they carry their
+    // own context inline, so the re-verification "read the staling file once /
+    // batch reuses the recorded criterion" text is actively wrong for them.
+    let guidance = if mode == "discovery" {
+        "Per item: these are UNEXPLORED pairs (no relationship recorded yet). Each carries both intents' `description`, `sources`, and code `groundings` (path + locator + status) inline above — read those (open the grounded code at the locators if you need more) and judge whether the two actually interact. Then fill EACH `<criterion>` slot with a falsifiable coexistence criterion you wrote from the code — these are NOT re-verifications, so every line needs a real criterion (the gate rejects the `<criterion>` placeholder) — or change `op` to `issue` (+`evidence`) / `independent` (+`notes`). Apply all lines in ONE call: paste them into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up). You have everything here; you should not need a per-pair `loom intent show`."
+    } else {
+        "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix)."
+    };
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -1431,6 +1493,8 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     if printer.json {
         let mut v = serde_json::to_value(&item)?;
         if let Some(obj) = v.as_object_mut() {
+            // Output contract: every output carries a runnable `next_step`.
+            obj.insert("next_step".to_string(), action.clone().into());
             obj.insert("graph_state".to_string(), pulse_json(&gs));
             obj.insert("notes_total".to_string(), notes_total.into());
             obj.insert("implements_total".to_string(), implements_total.into());
