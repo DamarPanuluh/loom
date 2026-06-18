@@ -823,6 +823,56 @@ fn sqlite_sync_skips_meaning_only_edges_on_code_change() {
 }
 
 #[test]
+fn sqlite_wiki_generates_and_checks_freshness() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-wiki");
+
+    // Generate the document projection.
+    let gen = run_json(&graph.root, &["wiki", "--json"]);
+    assert_eq!(
+        gen["status"],
+        serde_json::json!("ok"),
+        "wiki generates: {gen}"
+    );
+    let md = std::fs::read_to_string(graph.root.join("loom.wiki.md")).expect("wiki written");
+    assert!(
+        md.contains("# ") && md.contains("## Architecture") && md.contains("## Overview"),
+        "wiki carries the expected sections"
+    );
+
+    // Freshly generated → --check is clean (the export-shaped freshness contract).
+    let fresh = run_json(&graph.root, &["wiki", "--check", "--json"]);
+    assert_eq!(
+        fresh["status"],
+        serde_json::json!("ok"),
+        "fresh wiki passes --check: {fresh}"
+    );
+
+    // A graph change makes it stale, and --check fails (non-zero) so CI can catch drift.
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "wiki drift probe",
+            "--description",
+            "a new intent that drifts the wiki projection for this test",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let stale = run_json_failure_as(&graph.root, &["wiki", "--check", "--json"], "llm:validator");
+    assert_eq!(
+        stale["status"],
+        serde_json::json!("stale"),
+        "a graph change staled the wiki: {stale}"
+    );
+}
+
+#[test]
 fn sqlite_explain_synthesizes_by_intent_and_file() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-explain");

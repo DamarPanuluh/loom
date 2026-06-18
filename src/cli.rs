@@ -460,6 +460,27 @@ pub enum Command {
         check: bool,
     },
 
+    /// Generate a human-readable Markdown wiki from the graph (overview +
+    /// architecture tree + components-by-domain + quality bars). A deterministic
+    /// PROJECTION like `loom export` — same graph, identical bytes; regenerate
+    /// after changes and `loom wiki --check` guards freshness. For humans to
+    /// read; the graph stays the source of truth.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom wiki                       # write loom.wiki.md\n  \
+        loom wiki --out docs/ARCH.md    # choose the path\n  \
+        loom wiki -- -                  # to stdout\n  \
+        loom wiki --check               # CI/pre-commit: fail if stale")]
+    Wiki {
+        /// Output file ("-" for stdout). Defaults to loom.wiki.md.
+        #[arg(long, default_value = "loom.wiki.md")]
+        out: String,
+
+        /// Don't write — verify the existing wiki matches the live graph
+        /// byte-for-byte (exits non-zero on drift / missing).
+        #[arg(long)]
+        check: bool,
+    },
+
     /// Rebuild a graph from a `loom export` file (into a fresh `loom init`).
     Import {
         /// The export file to restore from.

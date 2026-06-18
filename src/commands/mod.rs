@@ -42,6 +42,7 @@ pub mod sync;
 pub mod validate;
 pub mod validation;
 pub mod vocab;
+pub mod wiki;
 
 pub(crate) const POPULATE_NEXT_COMMAND: &str = "loom next --mode populate";
 pub(crate) const EXPORT_STALE_WARNING: &str =
@@ -94,6 +95,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Schema                     => schema::run(&printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
+        Command::Wiki        { out, check }    => wiki::run(&out, check, &printer),
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
