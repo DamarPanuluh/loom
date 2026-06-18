@@ -10,7 +10,7 @@ use base64::Engine as _;
 use serde::Serialize;
 
 use super::runner::{SagaRunReport, StepOutcome};
-use super::spec::{interpolate, BodyExpectation, SagaSpec, Step};
+use super::spec::{interpolate, SagaSpec, Step};
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct SagaDiagnosis {
@@ -197,9 +197,6 @@ fn classify_failure(
     spec_step: Option<&Step>,
     vars: &BTreeMap<String, String>,
 ) -> RootCause {
-    if let Some(root) = template_not_expanded(outcome, spec_step) {
-        return root;
-    }
 
     let detail = outcome.detail.as_str();
     if let Some(name) = extract_between(detail, "Template references '{{ env.", " }}'") {
@@ -497,57 +494,6 @@ fn join_set(values: &BTreeSet<String>) -> String {
     }
 }
 
-fn template_not_expanded(outcome: &StepOutcome, spec_step: Option<&Step>) -> Option<RootCause> {
-    let step = spec_step?;
-    let mut fields = Vec::new();
-    for (path, expectation) in &step.expect.body {
-        for template in expectation_templates(expectation) {
-            if !template.contains("{{") {
-                continue;
-            }
-            fields.push(field("template", template.clone()));
-            fields.push(field("in_field", format!("expect.body.{path}")));
-            if let Some(env_name) = template
-                .split("{{")
-                .nth(1)
-                .and_then(|rest| rest.split("}}").next())
-                .map(str::trim)
-                .and_then(|name| name.strip_prefix("env."))
-            {
-                if let Ok(value) = std::env::var(env_name) {
-                    fields.push(field("env_value", value));
-                }
-            }
-        }
-    }
-    if fields.is_empty() || !outcome.detail.contains("{{") {
-        return None;
-    }
-    Some(RootCause {
-        kind: "template_not_expanded".to_string(),
-        title: "Template not expanded in expectation".to_string(),
-        fields,
-        fix: "Bug or unsupported feature: expectation templates are still literal. Report to loom dev or avoid templates in `expect.body`.".to_string(),
-        confidence: "high".to_string(),
-    })
-}
-
-fn expectation_templates(expectation: &BodyExpectation) -> Vec<String> {
-    match expectation {
-        BodyExpectation::Exists { .. } => Vec::new(),
-        BodyExpectation::Contains { contains } => vec![contains.clone()],
-        BodyExpectation::Equals(value) => string_leaves(value),
-    }
-}
-
-fn string_leaves(value: &serde_json::Value) -> Vec<String> {
-    match value {
-        serde_json::Value::String(s) => vec![s.clone()],
-        serde_json::Value::Array(items) => items.iter().flat_map(string_leaves).collect(),
-        serde_json::Value::Object(map) => map.values().flat_map(string_leaves).collect(),
-        _ => Vec::new(),
-    }
-}
 
 fn summarize(steps: &[StepDiagnosis], passed: bool) -> DiagnosisSummary {
     let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
@@ -707,8 +653,14 @@ steps:
     }
 
     #[test]
-    fn expect_body_template_mismatch_is_engine_bug() {
-        std::env::set_var("LOOM_DIAGNOSE_EXPECT_TEMPLATE", "app_marketplace");
+    fn expect_body_env_template_mismatch_is_body_mismatch_not_engine_bug() {
+        // After the expect.body interpolation fix, `{{ env.X }}` in an
+        // expectation is expanded before comparison. The EnvRedactor then
+        // masks the env-derived expected value back to `{{ env.X }}` in the
+        // detail, so the detail still contains `{{` — but that is redaction,
+        // NOT an unexpanded template. The root cause must be the real value
+        // mismatch (`body_mismatch`), never the obsolete `template_not_expanded`.
+        std::env::set_var("LOOM_DIAGNOSE_EXPECT_BODY", "expected_value");
         let spec = spec(
             r#"
 saga: template-flow
@@ -717,9 +669,9 @@ steps:
     intent: create
     request: { method: POST, url: https://example.test/create }
     expect:
-      status: 201
+      status: 200
       body:
-        "$.issuer_app_id": "{{ env.LOOM_DIAGNOSE_EXPECT_TEMPLATE }}"
+        "$.issuer_app_id": "{{ env.LOOM_DIAGNOSE_EXPECT_BODY }}"
 "#,
         );
         let report = SagaRunReport {
@@ -733,15 +685,14 @@ steps:
                 intent: "create".into(),
                 method: "POST".into(),
                 url: "https://example.test/create".into(),
-                status: Some(201),
+                status: Some(200),
                 passed: false,
-                detail: r#"body $.issuer_app_id: expected "{{ env.LOOM_DIAGNOSE_EXPECT_TEMPLATE }}", got "app_marketplace""#.into(),
+                detail: r#"body $.issuer_app_id: expected "{{ env.LOOM_DIAGNOSE_EXPECT_BODY }}", got "different_value""#.into(),
                 captured: Default::default(),
             }],
         };
         let diagnosis = diagnose_report(&spec, &report);
         let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
-        assert_eq!(root.kind, "template_not_expanded");
-        assert!(root.fields.iter().any(|f| f.name == "env_value"));
+        assert_eq!(root.kind, "body_mismatch");
     }
 }

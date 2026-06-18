@@ -275,7 +275,10 @@ loom saga list
         auth:     { requires_scopes: [payments.write] }  # optional diagnosis hint
         expect:  { status: 200, body: { "$.state": paid } }
   expect.body values: bare value = equals · {exists: bool} · {contains: "…"};
-  expect.status omitted = any 2xx; expect.headers = substring match.
+  like url/headers/bodies, expect.body values take `{{ var }}` / `{{ env.X }}`
+  interpolation (resolved before comparison; env-derived values are redacted
+  from outcomes). expect.status omitted = any 2xx; expect.headers = substring
+  match.
   `auth.requires_scopes` is an optional endpoint requirement hint used by
   `diagnose`; the runner still lets the live service enforce authorization.
   `add` declares the proof: Validation node (type=saga, command =
@@ -285,8 +288,8 @@ loom saga list
   export, counts in coverage). Idempotent; re-add after editing reconciles.
   `diagnose` executes the same saga without stamping graph verdicts and
   returns a structured root-cause readout for common triage failures: missing
-  env, unexpanded templates, auth-like 401/403, 404/resource misses,
-  body/status mismatches, request failures, and skipped dependent steps. When
+  env, auth-like 401/403, 404/resource misses, body/status mismatches, request
+  failures, and skipped dependent steps. When
   `auth.requires_scopes` is present, it decodes bearer JWT `scope`/`scp`/`scopes`
   claims and reports the exact missing scope. Use it before `run` when you are
   bringing up a live target or investigating a failure; use `run` when you are
@@ -539,6 +542,12 @@ loom inbox mark <id> --status routed|rejected|duplicate|deferred --reason "<why>
   knowledge-card backlinks (`intent:`, `file:`, `validation:`, `hypothesis:`,
   `rule:`, `vocab:`, `inbox:`), making future wiki/OKF projection possible
   without turning loom into a note app.
+  Inbox kind is the semantic shape of the raw card, not the destination. Current
+  kinds: observation, user_request, feature_proposal, bug_suspicion,
+  refactor_suspicion, missing_intent, missing_validation, missing_story,
+  terminology, rough_edge, external_blocker, question, decision_capture,
+  constraint, acceptance_criterion, interface_gap, evidence, risk, follow_up,
+  duplicate_candidate, docs_gap, migration_need.
 
 loom door "<utterance>" [--limit N]
   THE ENTRANCE — capture first, then route. Door creates an InboxItem from the

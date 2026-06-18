@@ -279,9 +279,19 @@ fn run_step(
                 }
             };
             let nodes = jp.query(body).all();
+            // Expectation values are templates too — `{{ env.X }}` / `{{ var }}`
+            // in `expect.body` must be resolved against the process env and
+            // earlier captures before comparison, mirroring request.* expansion.
+            let expectation = match interpolate_expectation(expectation, vars) {
+                Ok(e) => e,
+                Err(e) => {
+                    problems.push(format!("body {path}: spec error: {e}"));
+                    continue;
+                }
+            };
             match expectation {
                 BodyExpectation::Exists { exists } => {
-                    if nodes.is_empty() == *exists {
+                    if nodes.is_empty() == exists {
                         problems.push(format!(
                             "body {path}: expected exists={exists}, found {} node(s)",
                             nodes.len()
@@ -302,7 +312,7 @@ fn run_step(
                 BodyExpectation::Equals(want) => match nodes.first() {
                     None => problems.push(format!("body {path}: matched nothing")),
                     Some(node) => {
-                        if *node != want {
+                        if *node != &want {
                             problems.push(format!(
                                 "body {path}: expected {want}, got {got}",
                                 got = node
@@ -377,6 +387,24 @@ fn node_as_string(node: &serde_json::Value) -> String {
         serde_json::Value::String(s) => s.clone(),
         other => other.to_string(),
     }
+}
+/// Resolve `{{ env.NAME }}` / `{{ var }}` inside an `expect.body` value before
+/// it is compared against the response. `Equals` holds a JSON value (string
+/// leaves interpolated via `interpolate_json`); `Contains` holds a single
+/// template string; `Exists` carries no template.
+fn interpolate_expectation(
+    expectation: &BodyExpectation,
+    vars: &BTreeMap<String, String>,
+) -> Result<BodyExpectation> {
+    Ok(match expectation {
+        BodyExpectation::Exists { exists } => BodyExpectation::Exists { exists: *exists },
+        BodyExpectation::Contains { contains } => BodyExpectation::Contains {
+            contains: interpolate(contains, vars)?,
+        },
+        BodyExpectation::Equals(value) => {
+            BodyExpectation::Equals(interpolate_json(value, vars)?)
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -590,5 +618,73 @@ steps:
             "got: {}",
             failure.detail
         );
+    }
+
+    // Unique env var names per test: `std::env::set_var` is process-global,
+    // so shared names race when tests run in parallel.
+    const ENV_EXPECT_SPEC: &str = r#"
+saga: env-expect-ok
+base: "__BASE__"
+steps:
+  - name: check policy
+    intent: policy-read
+    request: { method: GET, url: /policy }
+    expect:
+      status: 200
+      body:
+        "$.policy_version_id": "{{ env.LOOM_SAGA_EXPECT_ENV_OK_POLICY }}"
+        "$.actor_person_id": { contains: "{{ env.LOOM_SAGA_EXPECT_ENV_OK_ACTOR }}" }
+"#;
+
+    // `{{ var }}` (from `vars:`) in expect.body is expanded like `{{ env.X }}`,
+    // but — unlike env values — vars are NOT redacted from outcomes, so a
+    // mismatch surfaces the *expanded* expectation in the detail. This proves
+    // the value was actually substituted (pre-fix the detail held the literal
+    // `{{ expected_state }}` template).
+    const VAR_EXPECT_MISMATCH_SPEC: &str = r#"
+saga: var-expect-mismatch
+base: "__BASE__"
+vars:
+  expected_state: locked
+steps:
+  - name: check state
+    intent: state-read
+    request: { method: GET, url: /state }
+    expect:
+      status: 200
+      body:
+        "$.state": "{{ expected_state }}"
+"#;
+
+    #[test]
+    fn env_in_expect_body_is_expanded_before_comparison() {
+        let (base, _seen) = serve_script(vec![http(
+            "200 OK",
+            r#"{"policy_version_id":"grid-v1.0.0","actor_person_id":"grd_p_actor"}"#,
+        )]);
+        std::env::set_var("LOOM_SAGA_EXPECT_ENV_OK_POLICY", "grid-v1.0.0");
+        std::env::set_var("LOOM_SAGA_EXPECT_ENV_OK_ACTOR", "grd_p_actor");
+        let spec =
+            crate::saga::spec::load_spec(&ENV_EXPECT_SPEC.replace("__BASE__", &base), "test")
+                .unwrap();
+        let report = run_saga(&spec).unwrap();
+        assert!(report.passed, "outcomes: {:?}", report.outcomes);
+    }
+
+    #[test]
+    fn var_in_expect_body_mismatch_surfaces_expanded_value() {
+        let (base, _seen) = serve_script(vec![http("200 OK", r#"{"state":"open"}"#)]);
+        let spec = crate::saga::spec::load_spec(
+            &VAR_EXPECT_MISMATCH_SPEC.replace("__BASE__", &base),
+            "test",
+        )
+        .unwrap();
+        let report = run_saga(&spec).unwrap();
+        assert!(!report.passed);
+        let d = &report.failure().unwrap().detail;
+        // The expanded expectation ("locked"), not the literal template, is
+        // what the response was compared against — and no `{{` leaks through.
+        assert!(d.contains("locked"), "got: {d}");
+        assert!(!d.contains("{{"), "got: {d}");
     }
 }

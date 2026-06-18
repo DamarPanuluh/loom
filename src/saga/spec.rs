@@ -276,6 +276,14 @@ fn env_refs_in_json(value: &serde_json::Value, out: &mut Vec<String>) {
     }
 }
 
+fn env_refs_in_expectation(expectation: &BodyExpectation, out: &mut Vec<String>) {
+    match expectation {
+        BodyExpectation::Exists { .. } => {}
+        BodyExpectation::Contains { contains } => env_refs_in(contains, out),
+        BodyExpectation::Equals(value) => env_refs_in_json(value, out),
+    }
+}
+
 /// Every environment variable a spec references (`{{ env.NAME }}` anywhere a
 /// template is interpolated: base, urls, headers, bodies). This is the saga's
 /// declared dependency on the OUTSIDE world — values are passed at invocation
@@ -293,6 +301,9 @@ pub fn required_env(spec: &SagaSpec) -> Vec<String> {
         }
         if let Some(body) = &step.request.body {
             env_refs_in(body, &mut out);
+        }
+        for expectation in step.expect.body.values() {
+            env_refs_in_expectation(expectation, &mut out);
         }
     }
     out
@@ -474,6 +485,21 @@ steps:
             );
         let spec = load_spec(&multi, "test").unwrap();
         assert_eq!(required_env(&spec), vec!["BASE_URL", "API_TOKEN", "OWNER"]);
+    }
+
+    #[test]
+    fn required_env_scans_expect_body() {
+        // `{{ env.X }}` under expect.body is a real runtime dependency — it
+        // must surface in required_env so missing values bail pre-run, just
+        // like request.* templates.
+        let with_expect_env = GOOD.replace(
+            "        \"$.state\": paid",
+            "        \"$.state\": \"{{ env.EXPECTED_STATE }}\"\n        \"$.id\": { contains: \"{{ env.ID_PREFIX }}\" }",
+        );
+        let spec = load_spec(&with_expect_env, "test").unwrap();
+        let mut required = required_env(&spec);
+        required.sort();
+        assert_eq!(required, vec!["BASE_URL", "EXPECTED_STATE", "ID_PREFIX"]);
     }
 
     #[test]
