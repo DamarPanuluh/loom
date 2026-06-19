@@ -90634,15 +90634,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [qa-strategy/medium/qa] No test pins the complete top-level key set of any --json command (the agent-facing 'driving mode'): tests assert only individual fields (.get(k)/assert_eq! on one key) or value.is_object(). impact: a refactor that drops or renames a key on a path with no spot-check — e.g. any of status --json's 24 non-total_intents keys, or any report/coverage/smells field — ships undetected, silently breaking the JSON contract CLAUDE.md calls the driving interface. loc: tests/sqlite_regression.rs:394 (sqlite_imported_export_read_surface asserts only value.is_object() for report/next/find/door/coverage/smells/export --json); helper assert_status_ok:183-188 (is_object only); sqlite_next_carries_next_step_and_bulk_context:964-977 (single .get('next_step')+substring); whole-repo grep: zero .keys()/contains_key/insta/snapshot/golden matches; Cargo.toml has no [dev-dependencies]; status --json emits 25 top-level keys vs the read-surface test's single total_intents>0 assertion (next_step is spot-checked on ~4 paths but never as a frozen key set). Distinct from baseline #43 (quantitative thin coverage) and #47 (doctor feature). suggestion: add a frozen key-set assertion (or insta snapshot / as_object keys diff) per --json command — a test artifact in tests/, not a loom quality-rule feature.",
-        "resolution": "",
+        "resolution": "routed: fixed in 6cb020f — added the frozen status --json top-level keyset test",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.391793+00:00"
+        "updated_at": "2026-06-19T05:25:44.192627+00:00"
       },
       {
         "author": "llm",
@@ -90760,15 +90760,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [product-owner/high/architecture] An entire advertised plane is unimplemented: guide.rs:24 promises delegation \"grounds seam intents in the children's committed exports — `loom sync` then ripples cross-service for free\", but no code grounds an intent in a child graph's export and sync never reads delegations or opens any child export. impact: the monorepo cross-service-ripple story (loom's whole multi-repo value prop) silently does nothing — no cross-service staleness can ever propagate, and loom's single-repo dogfood (zero delegations) can never regression-test it. loc: src/commands/guide.rs:24 (the \"ripples cross-service for free\" promise); src/commands/sync.rs:20,29,71-83 (opens only local sqlite, iterates only store.list_codefiles(), stats local disk — no delegation/child-export read); src/commands/edge.rs:333 run_implement_with_sqlite grounds only to a LOCAL codefile+symbol; src/commands/coverage.rs:65 + src/commands/delegate.rs:59,142,155 (delegation target verified solely by .exists(), content never read); src/commands/import.rs:69 (DELEGATION label skipped on import); `loom delegate list` => \"(no delegations — this graph covers its whole tree itself)\". suggestion: either implement it (register child exports as watched artifacts so sync re-flags seam intents when a child export changes + add a real ground-to-child-export edge type) or — cheaper and honest — downgrade the guide text to describe what delegation actually does (coverage attribution against a verifiable boundary), removing the cross-service overpromise.",
-        "resolution": "",
+        "resolution": "routed: fixed in c43cfa8 — implemented the cross-service ripple (delegate seam + sync watches child export)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.208446+00:00"
+        "updated_at": "2026-06-19T05:25:44.382491+00:00"
       },
       {
         "author": "llm",
@@ -90796,15 +90796,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [data-model/medium/data-model] loom advertises 'understand, build, and clean up' but cleanup has no first-class, tracked-to-done representation: removal/deletion ('this code is supposed to go away') cannot be declared as falsifiable work. Cleanup exists only in the AUDIT plane as derived suspicions (advisory smells, the dead_code review RULE resolved by a decision note) or optional horizontal RELATES_TO closure — none of which completes when the code is verified gone. impact: a driver cannot declare 'delete symbol X' and have loom track/verify it to ABSENCE the way it tracks an implemented intent to grounded — the third advertised verb has no falsifiable home; Intent.lifecycle has no 'to-be-removed' state (needs_change describes a desired WORKING end state; retire keeps the code and even tells coverage the orphaned file reads UNREACHED and should be re-grounded — the opposite of removal). loc: Lifecycle enum src/types.rs:351-367 (planned|implemented|needs_change|deferred); IntentStatus 45-51; retire_intent keeps history sqlite.rs:1275-1322; retire fallout msg intent.rs:700-701; dead_code review rule rule.rs:47-49; mission text guide.rs:420,514; grep 'to be removed/deleted/removal intent' in src/ => nothing. Distinct from baseline #3 (mechanical retire->stale-IMPLEMENTS bug). suggestion: add a removal lifecycle state (or aspect/outcome) whose criterion is falsifiable absence and which gates green only when the code is verified gone — OR explicitly scope cleanup-as-deletion to the audit plane and stop advertising it as a tracked verb.",
-        "resolution": "",
+        "resolution": "routed: fixed in 65e4fe8 — added the to_be_removed lifecycle (cleanup gated on absence)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.460685+00:00"
+        "updated_at": "2026-06-19T05:25:44.120679+00:00"
       },
       {
         "author": "llm",
@@ -90814,15 +90814,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [qa-strategy/medium/qa] `loom wiki` advertises byte-deterministic output and `wiki --check` treats freshness as a byte comparison, but its intent sorts are name-only with no unique tie-break, and intent.name has no UNIQUE constraint — so two same-name intents have undefined relative order (they keep SQLite's unspecified `ORDER BY name` tie order), and because each renders distinguishing description/files, a re-import can swap them and produce different bytes => spurious `wiki --check` failures on consuming repos. impact: PR noise / false staleness alarms in any repo whose graph has same-name sibling intents; no test guards it (the existing test re-checks the same DB rather than byte-comparing two independent import->render passes). loc: src/commands/wiki.rs:86 (deterministic comment), :165/:208/:252 (name-only sorts in roots/kids/domain members), :263 (renders description+files per intent); src/db/sqlite.rs:1349,1354 (ORDER BY name, no id tie-break), 4859-4875 (intent table: id PRIMARY KEY, name not UNIQUE); test tests/sqlite_regression.rs:826,831,844 (same-DB re-check, no re-import byte compare). (Export itself is fine — sorts nodes by unique id, sqlite.rs:5263.) suggestion: add `.then_with(|| a.id.cmp(&b.id))` to the three wiki intent sorts and a test that seeds a same-name intent pair then byte-compares two independent import->render passes.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — wiki + intent sorts get an id tie-break",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.435039+00:00"
+        "updated_at": "2026-06-19T05:25:44.144596+00:00"
       },
       {
         "author": "llm",
@@ -90850,15 +90850,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [reliability/medium/data-model] export -> import is lossy for three real LoomMeta fields: created_at (graph birth), last_synced, and transition_cap (a user's --set-cap N). export_json SELECTs/emits only schema_version/graph_id/graph_name/custody/layer_order, so import's str_top reads of the three missing keys return \"\" — every round-trip resets birth date + sync freshness to empty and silently reverts a customized transition_cap to DEFAULT_TRANSITION_CAP. impact: because the meta row has no NodeSpec, `export --check` cannot detect the omission; the loom repo's OWN live store already has created_at='' (lost in a past import) while last_synced holds a real value — direct proof of the loss. loc: src/db/sqlite.rs:512-520 export_json SELECT (5 keys only) + 538-547 json! block; 470-489 import inserts via str_top(...created_at/last_synced/transition_cap); str_top 5349 returns \"\" on missing key; committed loom.graph.json top-level keys carry none of the three; origins init.rs:82-85, sync.rs:337 (set_last_synced sqlite.rs:3801), set_transition_cap sqlite.rs:2088. suggestion: add the three columns to export_json's SELECT + json! block (export transition_cap as a string to match its TEXT storage / str_top import).",
-        "resolution": "",
+        "resolution": "routed: fixed in b162f5e — export now carries created_at/last_synced/transition_cap",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.334509+00:00"
+        "updated_at": "2026-06-19T05:25:44.256591+00:00"
       },
       {
         "author": "llm",
@@ -90994,15 +90994,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [architect/medium/architecture] Read commands open the DB writable and run schema setup on every invocation — there is no read-only path. SqliteGraphStore::open is the single open path: Connection::open (read-write), PRAGMA journal_mode=WAL (takes a write lock, touches -wal/-shm), then unconditionally create_schema() (CREATE-TABLE-IF-NOT-EXISTS batch + PRAGMA table_info/sqlite_master probes; on schema drift escalates to ALTER/RENAME-recreate-INSERT-SELECT-DROP rebuild). GraphReadHandle::open routes through this same open, so `loom find/status/explain` take a write lock, can mutate the file, and pay fixed per-invocation setup — contradicting the read/write split the GraphReadRepository trait + GraphReadHandle wrapper imply. impact: read-only consumers (CI inspectors, concurrent readers, snapshot tooling) cannot open the graph without write access, and every compass read pays schema-setup cost. loc: src/db/sqlite.rs:443-450 (open: Connection::open + configure_connection(&conn,true) + create_schema, no OpenFlags), 4729-4739 (WAL pragma), 5142-5151 (create_schema unconditional), 5157-5249 (ensure_*_columns ALTER/rebuild on drift); src/db/mod.rs:247-250 (GraphReadHandle::open delegates here); src/commands/find.rs:12, status.rs:80, explain.rs:18; grep: no OpenFlags/SQLITE_OPEN_READ_ONLY anywhere. (Migration/rebuild is CONDITIONAL on drift; the writable open + WAL write-lock + CREATE-IF-NOT-EXISTS batch are unconditional on every read.) Inverse of baseline #6 (a MISSING explicit migrate). suggestion: give GraphReadHandle a read-only connection (OpenFlags::SQLITE_OPEN_READ_ONLY, skip the WAL pragma and create_schema), or gate schema setup behind a current-schema-version check.",
-        "resolution": "",
+        "resolution": "routed: fixed in b88bf51 — GraphReadHandle opens SQLITE_OPEN_READ_ONLY with version-check fallback",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.320963+00:00"
+        "updated_at": "2026-06-19T05:25:44.269299+00:00"
       },
       {
         "author": "llm",
@@ -91012,15 +91012,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [architect+reliability/high/reliability] loom advertises an exclusive single-writer session as its multi-agent safety mechanism, but no cross-process lock exists, the named collision error is fictional, AND write transactions use BEGIN DEFERRED which can hit non-retryable BUSY_SNAPSHOT. (a) SKILL.md:90-91,187 + batch.rs:46-50 promise an \"exclusive DB session\"/\"GRAFEO-X001 on collision\" — but loom does not even depend on grafeo (Cargo.toml:31 rusqlite bundled; grafeo absent from Cargo.lock), and the only concurrency control is PRAGMA busy_timeout=5000 + WAL (sqlite.rs:4729-4738) with no locking_mode=EXCLUSIVE, no fs lock, and zero SQLITE_BUSY/'database is locked' handling. (b) rusqlite's default conn.transaction() is BEGIN DEFERRED (rusqlite-0.40.1 transaction.rs:122/402); read-first write hot paths upsert_governs_verdict (sqlite.rs:4332-4339, the quality-verdict lane path) and merge_vocab_terms (sqlite.rs:3880-3925) take a read snapshot then upgrade — if a competing writer commits first the upgrade fails with BUSY_SNAPSHOT, which busy_timeout does NOT retry. impact: loom guide:127 explicitly invites \"many agents in parallel — each role works its own lane at once\", so two lane agents on one .loom/graph.sqlite get rusqlite's raw locked/BUSY_SNAPSHOT error — never a named loom error — and callers assume a serialization guarantee loom does not provide. loc: src/commands/batch.rs:46-50; ~/.claude/skills/loom-orchestrator/SKILL.md:90-91,187; src/db/sqlite.rs:4729-4738,4332-4339,3880-3925; rusqlite-0.40.1/src/transaction.rs:122,402; no transaction_with_behavior in production (BEGIN IMMEDIATE only in test sqlite.rs:6003). suggestion: switch write transactions to transaction_with_behavior(Immediate); implement a real cross-process lock (locking_mode=EXCLUSIVE or an OS advisory lock on .loom/) emitting a named error on collision; and purge/correct the fictional GRAFEO-X001 session-lock contract in batch.rs + SKILL.md to the real busy_timeout-retry semantics.",
-        "resolution": "",
+        "resolution": "routed: fixed in b88bf51 — real fs2 cross-process write lock + BEGIN IMMEDIATE; GRAFEO-X001 fiction removed",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.241320+00:00"
+        "updated_at": "2026-06-19T05:25:44.351136+00:00"
       },
       {
         "author": "llm",
@@ -91030,15 +91030,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [data-model/medium/architecture] The consumer plane (Persona/InterfaceSurface/saga) is structurally incoherent in three ways. (1) Intent.boundary=inbound declares 'this intent EXPOSES a surface' but NO edge type connects an Intent to the InterfaceSurface it provides — the sole surface-touching edge is CALLS (Validation->InterfaceSurface), so a provider contract intent and its surface are never linked. (2) The interface-gap detector treats inbound and outbound identically (boundary_intent() matches both, emits BOUNDARY_INTENT_WITHOUT_CALLS for either, suggesting 'add/repair a saga step') — but a saga CALLS proves surfaces the system SERVES (inbound), while outbound is a consumer dependency on a third party's contract with no system-served surface to drive, making the CALLS requirement a category error for outbound. (3) JOURNEYS binds a persona to a whole saga Validation (persona_id+validation_id only) while CALLS carries step_index+intent_id, so persona-scoped coverage cannot be attributed to the per-step intents that actually serve that persona. impact: provider intents are unlinkable to their surfaces, outbound boundary intents get false 'missing saga step' smells, and persona coverage cannot be traced to the intents serving the persona. loc: EDGE_TYPES src/db/schema.rs:230-240 (no Intent<->InterfaceSurface); CALLS schema.rs:224-227 + CallsEdge src/types.rs:1227-1245; Intent.boundary src/types.rs:489-499; boundary_intent() src/commands/populate.rs:539-548; detector populate.rs:475-503; JourneysEdge src/types.rs:1214-1225 + get_or_create_journeys sqlite.rs:3437-3461. Distinct from baseline #2 (single SERVES doctor check). suggestion: add an Intent->InterfaceSurface edge, split inbound/outbound in the gap detector, and add per-step granularity to JOURNEYS (or derive it via JOURNEYS->Validation->CALLS).",
-        "resolution": "",
+        "resolution": "routed: fixed in 78fb184 — interface-gap detector splits inbound/outbound; EXPOSES edge + per-step JOURNEYS slated as a follow-on sliver",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.471551+00:00"
+        "updated_at": "2026-06-19T05:25:44.108048+00:00"
       },
       {
         "author": "llm",
@@ -91084,15 +91084,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [product-owner/medium/product] loom markets the RELATES_TO grid as 'optional understanding/cleanup' and the IMPLEMENTS spine as the binding cost, but in the live dogfood graph the optional grid carries the overwhelming majority of ongoing re-verification debt: 409/1129 RELATES_TO are needs_reverification (36%) vs 6/221 IMPLEMENTS (2.7%); RELATES_TO is 83% of ALL stale edges (409 of 493 across all types). Of the 692 agent-grounded RELATES_TO (passing+stale), 59% are currently stale. impact: 'horizontal is optional' is true at SEED time but false at MAINTAIN time — a RELATES_TO edge re-opens whenever EITHER endpoint's code changes (vs IMPLEMENTS on its single owning intent), so one file edit (`loom explain src/db/sqlite.rs --impact` => 'Re-opens 61 relationship(s)' + 'Re-run 36 validation(s)'), and the product positions the permanently-churning axis as the cheap optional one with no lever to retire that debt. loc: counts from committed loom.graph.json; unconditional flip src/db/sqlite.rs:1086-1104 + flag_relates_to_needs_reverification 2545 (guard only status==passing||independent, no churn/confidence/stability gate); RELATES_TO props carry no stable/low-churn field; guide framing 'VERTICAL is the binding spine ... HORIZONTAL (RELATES_TO) is optional understanding/cleanup' / 'Horizontal closure is optional polish'. Distinct from baseline #18 (shape_hash sensitivity). suggestion: add a stable/low-churn prop on grounded RELATES_TO that exempts it from sync reverification (or churn-aware reverification), OR reframe the guide so it doesn't sell the dominant-cost axis as optional polish.",
-        "resolution": "",
+        "resolution": "routed: fixed in d8ac236 — RELATES_TO stable flag exempts settled edges from sync churn",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.424594+00:00"
+        "updated_at": "2026-06-19T05:25:44.156451+00:00"
       },
       {
         "author": "llm",
@@ -91102,15 +91102,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [data-model/medium/data-model] Intent retirement only ripples and reports RELATES_TO fallout: retire_intent flips just relates_to rows (edges_for_intent is RELATES_TO-only), so SERVES (Persona->Intent), TARGETS (Hypothesis->Intent), and GOVERNS (Rule->Intent) edges pointing at the retired intent are left passing, and retire_fallout omits them entirely. sync's flag_*_needs_reverification helpers for these three fire only for ACTIVE intents (loops filtered by active.contains), so they never compensate for the deprecation. impact: silent stale truth on the consumer and pre-decision planes — a persona keeps a green SERVES claim about a dead intent (rendered ✓ by `loom persona show`, which has no deprecated filter), a hypothesis keeps green TARGETS support against retired code, and a rule keeps a green GOVERNS verdict on it. loc: retire_intent sqlite.rs:1285-1311 (flips only relates_to); edges_for_intent sqlite.rs:1868-1891 (relates_to only); retire_fallout sqlite.rs:1196-1273 + RetireFallout struct (no serves/targets/governs); reusable helpers already exist flag_serves_needs_reverification 3736 / flag_targets 3673 / flag_governs 4416 (each only flips a passing edge); sync.rs:175-195,296-316 gated by active set (159,279); list_serves_for_persona sqlite.rs:3402-3435 (no status filter); persona.rs:119-127. Distinct from baseline #2 (general doctor-lacks-serves-audit) and #3 (IMPLEMENTS+smells). suggestion: call the three existing flag_*_needs_reverification helpers inside retire_intent's transaction and add serves/targets/governs counts to RetireFallout + retire_fallout mirroring the RELATES_TO reporting.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — retire_intent ripples SERVES/TARGETS/GOVERNS",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.368665+00:00"
+        "updated_at": "2026-06-19T05:25:44.218706+00:00"
       },
       {
         "author": "llm",
@@ -91156,15 +91156,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [architect/high/dx] The error path of EVERY command bypasses the Printer's --json contract: main() returns anyhow::Result, so on any failure anyhow's default Termination prints plain-text `Error: <msg>` to stderr with exit 1 regardless of --json — no {\"error\":...} envelope. impact: an orchestrated --json agent that hits ANY failing command (intent show on a missing id, import of a bad file, explain of an unknown target) gets empty stdout + unparseable prose, not the structured object the success path guarantees — silently breaking automated drivers on every error. loc: verified at runtime `loom intent show nonexistent --json` / `loom explain nonexistent --json` / `loom import /tmp/nofile.json --json` => empty stdout, plain `Error:` on stderr, exit 1; main returns Result (src/main.rs:16-34); commands::dispatch constructs the Printer but never consults it on the Err path (src/commands/mod.rs:52-117); the only JSON-aware error rendering is the serde serializer-fallback in print_json (src/output.rs:72-74), success-path only; ~180 bail!/Err sites in src/commands all flow here. Distinct from baseline #24 (which is a content gap in sync's JSON SUCCESS object) — this is the universal FAILURE path. suggestion: catch the Result at the dispatch/main boundary and, when cli.json is set, emit {\"error\":...,\"exit_code\":...} via the Printer before the non-zero exit.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — dispatch emits a JSON error envelope on the failure path",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.226503+00:00"
+        "updated_at": "2026-06-19T05:25:44.367985+00:00"
       },
       {
         "author": "llm",
@@ -91228,15 +91228,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [reliability/medium/reliability] `loom sync` runs its entire ripple as independent autocommits / per-edge transactions with no enclosing transaction, and a kill mid-run leaves a durably TORN graph that does NOT self-heal. Each changed file's content_hash is committed (update_codefile_hash_and_mtime, autocommit) BEFORE its edges are flipped; a kill between the hash commit and the edge flips advances the file's hash while leaving sibling edges green-but-stale; on re-run, content-hash change detection sees no change and SKIPS the file, so the unflipped edges are never re-verified. impact: WAL+synchronous=NORMAL makes every committed flip durable, so a concurrent reader (status/next/doctor) sees the partial ripple as authoritative and the tear is permanent until an unrelated content change or manual hash reset. loc: no enclosing tx src/commands/sync.rs:24-511; hash committed at sync.rs:140 (autocommit sqlite.rs:1995-2001) BEFORE edge flips sync.rs:157-214; change detection new_hash!=cf.content_hash at sync.rs:110 => changed=false skip 134-136; per-edge/autocommit flips flag_relates_to_needs_reverification (own tx sqlite.rs:2554-2570), flag_implements_needs_reverification (autocommit 3770), invalidate_validation (3794); WAL+synchronous=NORMAL sqlite.rs:4735-4736. Distinct from baseline #22 (batch per-line tx). suggestion: wrap each file's hash/mtime update together with its dependent edge flips (ideally the whole ripple + set_last_synced + compaction) in a single transaction so either all of a file's effects land or none — preserving re-detectability on re-run.",
-        "resolution": "",
+        "resolution": "routed: fixed in b88bf51 — codefile hashes flushed last; sync is crash-safe re-detectable",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.345900+00:00"
+        "updated_at": "2026-06-19T05:25:44.244333+00:00"
       },
       {
         "author": "llm",
@@ -91354,15 +91354,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [data-model/medium/data-model] loom's core demand — 'every intent needs ONE falsifiable criterion' (stated in `loom guide`/`loom schema`) — has no home in the data model: Intent has no criterion field; the criterion is overloaded onto free-text description (criterion is first-class only on EDGES). impact three ways: (a) meaning edits overwrite description in place via a plain UPDATE with no structured before/after and no version chain (only a free-text note 'was: <old>'), so the graph cannot answer 'what was this intent's prior criterion'; (b) the audit is asymmetric — doctor calls gate::is_vacuous on edge criteria/GOVERNS/hypothesis evidence but NEVER on a description; (c) intent `add` applies only a bare description.trim().is_empty() check — NOT even require_substantive — so an intent's criterion-as-description bypasses the placeholder/min-length gate every edge criterion must pass. loc: Intent struct (no criterion) src/types.rs:457-504; criterion on edges 1033/1109/1144/1170/1196; update_intent_meaning plain UPDATE sqlite.rs:1031-1068; 'was:' note src/commands/intent.rs:455,466; doctor edge/GOVERNS/hypothesis is_vacuous src/db/queries/integrity.rs:248,506,554 vs intent loop 108-148 (never inspects description); edges call gate::require_substantive (edge.rs:171,234,295; rule.rs:365,410) but intent add only checks empty (intent.rs:200), update applies require_substantive to --reason not the new description (intent.rs:350). Distinct from baselines #14/#15/#16/#47 (edge-side evidence/locator/confidence). suggestion: give Intent a first-class criterion field with a structured version chain on edit, run require_substantive/is_vacuous on it at write and in doctor, symmetric with edges.",
-        "resolution": "",
+        "resolution": "routed: fixed in b0326c6 — first-class Intent.criterion + gating + version chain",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.483067+00:00"
+        "updated_at": "2026-06-19T05:25:44.096309+00:00"
       },
       {
         "author": "llm",
@@ -91372,15 +91372,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [data-model/medium/data-model] InterfaceSurface and Persona are write-once nodes with no removal path and (for Persona) no staleness detection. No delete/retire command exists for either (PersonaCmd=Add/List/Show/Serve/Journey; InterfaceCmd=List/Gaps/Show) and sqlite.rs has no delete_interface_surface/delete_persona, though intent/codefile/validation/delegation/source/tag all do. `populate interfaces --from-sagas` uses get_or_create_interface_surface (INSERT OR IGNORE) and never prunes a surface a renamed/removed endpoint left behind. impact: `loom interface gaps` DOES detect orphans (surface_without_calls) and tells the user to 'remove/repair the stale interface surface' — but NO command can perform that removal, so the suggested action is unreachable through loom; Persona is worse (a stale persona is neither detectable — no orphan-persona check — nor removable). SyncReport flags the SERVES edge but never reconciles the nodes. loc: PersonaCmd src/cli.rs:1986-2052; InterfaceCmd src/cli.rs:1553-1566; node fields lack lifecycle src/types.rs:872-880,889-903; insert_persona write-only sqlite.rs:2895; no prune in populate_interfaces src/commands/populate.rs:264-308; surface_without_calls gap populate.rs:453-472; SyncReport src/types.rs:1517-1519; doctor.rs has zero persona/interface refs. Distinct from baselines #2/#3/#4 (edge/CodeFile concerns). suggestion: add delete_interface_surface + `loom interface remove` (wire the existing surface_without_calls gap to a real prune), a populate-interfaces --prune mode, plus persona retire + an orphan-persona (no SERVES/JOURNEYS) detector.",
-        "resolution": "",
+        "resolution": "routed: fixed in 419fe3c — added loom interface/persona remove (reachable gap remedy); orphan-detector+lifecycle slated as a follow-on sliver",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.445797+00:00"
+        "updated_at": "2026-06-19T05:25:44.132893+00:00"
       },
       {
         "author": "llm",
@@ -91462,15 +91462,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [product-owner+reliability/medium/data-model] export_json ships the ENTIRE Note table verbatim into the single committed loom.graph.json, and notes dominate that artifact — 13,758 of 14,171 nodes (97% by count, ~46-63% by serialized bytes), 96% of which are auto-generated transition flip-flop history. impact: every verdict/sync re-serializes the whole note population into one file, so commits churn ~21,800 diff lines (commit 579be13) and any two branches that touched the graph conflict on one 9.5MB file; the portable export carries routine churn that belongs in the local .loom cache, defeating clean graph diffs and `export --check` stability. Growth is NOT unbounded (transition notes are per-target capped at 20 via DEFAULT_TRANSITION_CAP, sync-flip notes are kind='transition' so they compact too — the only monotonic tail is ~490 decision/confirm notes); the driver is the number of note-target buckets growing with graph size, and the structural issue is the single-shard commit model, not accretion. loc: export_json src/db/sqlite.rs:511-528 (serializes all note rows unfiltered); prunable_transition_notes sqlite.rs:4527 (per-target keep=20, never prunes regression markers); DEFAULT_TRANSITION_CAP=20 src/db/queries/meta.rs:32; insert_sync_flip_note_tx sqlite.rs:4642-4644 (kind='transition'); NOTE_HEAVY=5000 warning only stats.rs:473; measured 9,499,715 B file, 1511 targets (max 21, median 7), `git log -- loom.graph.json`=77. Distinct from baseline #10 (read-path/transitions_compacted counter, now fixed). suggestion: add an export-time note-retention policy (tighter cap or transition-note exclusion in the exported artifact than in the live store) OR shard notes into a separate committed file so note churn doesn't perturb the structural graph diff and merges localize — keep full audit history only in .loom/graph.sqlite.",
-        "resolution": "",
+        "resolution": "routed: fixed in b162f5e — export excludes routine transition notes (13758->492)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.414095+00:00"
+        "updated_at": "2026-06-19T05:25:44.168126+00:00"
       },
       {
         "author": "llm",
@@ -91480,15 +91480,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [dx-ergonomics/medium/dx] Two --help arg-doc strings under-enumerate fully-implemented modes, making --help the LEAST complete discovery surface (error strings + footers list more) — a teaching/behavior parity inversion. (a) `loom next --take`: gate at next.rs:108 accepts {discovery,fix,quality,align,review} (review fully wired: run_take_review next.rs:2464), but the --help doc (cli.rs:121) lists only \"discovery, fix, quality, and align\" (omits review) while the rejection error (next.rs:110) lists \"discovery/fix/quality/review\"+align — neither matches the gate. (b) `loom guide --mode`: port is fully implemented (port() playbook guide.rs:286-295, dispatched 412, footer 587, error 322 lists it) but the --mode doc (cli.rs:319-320) lists only \"greenfield | brownfield | refactor | seed\". impact: an agent reading --help to discover bulk-drain or mode affordances never learns review --take or port exist, so it drains a ~200-item review queue one item per call and never finds port (the language/repo re-realization mode); verified live both modes run when invoked but are absent from --help. loc: src/cli.rs:121, src/cli.rs:319-320; src/commands/next.rs:108,110,150-156,2464; src/commands/guide.rs:286-295,322,412,587. suggestion: align cli.rs:121 to the full 5-mode set {discovery,fix,quality,align,review} and cli.rs:319-320 to include port; optionally a quality rule asserting every gated/dispatched mode appears in its --help arg doc.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — --help docs list review --take and guide --mode port",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.306471+00:00"
+        "updated_at": "2026-06-19T05:25:44.282893+00:00"
       },
       {
         "author": "llm",
@@ -91606,15 +91606,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [architect/medium/architecture] The GraphReadRepository read boundary is hand-mirrored as TWO pure-delegation impls (SqliteGraphStore forwarding to its own same-named inherent methods, GraphReadHandle newtype forwarding to self.0), so every new read method must be edited in three places: inherent method in sqlite.rs + trait decl + both impls in mod.rs. impact: a 38-method, ~120-fn surface where ~170 lines are entirely mechanical self-delegation = triple-maintenance friction and drift risk on the most-touched read API; the read/write capability split (GraphReadHandle hiding SqliteGraphStore's ~80 write methods) is legitimate, but the boilerplate is collapsible. Separately the abstraction is only half-applied — 24/42 command files still reach the concrete SqliteGraphStore for writes, 13 mix both, with no typed write boundary. loc: src/db/mod.rs:13-70 (trait, 38 methods); mod.rs:72-242 (SqliteGraphStore impl, every body self.method()); mod.rs:253-423 (GraphReadHandle impl, every body self.0.method()); inherent methods in sqlite.rs:585+ (query_snapshot/graph_state/doctor_report/list_intents...); `grep -c 'fn ' src/db/mod.rs`=121. suggestion: collapse via a delegation macro, a Deref-based read handle, or eliminating the redundant SqliteGraphStore self-forwarding impl; optionally introduce a typed write boundary so command files don't reach the concrete store directly.",
-        "resolution": "",
+        "resolution": "routed: fixed in b88bf51 — GraphReadRepository generated from one list via a delegation macro",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.403739+00:00"
+        "updated_at": "2026-06-19T05:25:44.180451+00:00"
       },
       {
         "author": "llm",
@@ -91678,15 +91678,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [architect/medium/perf] query_snapshot() (called by 27 command files) eagerly loads every note (13,758 rows, 96% transition, ~716KB) via `Some(self.list_all_notes()?)`, short-circuiting the lazy OnceCell the snapshot type documents and whose consumers already support via a cached_notes() fallback. impact: the snapshot doc explicitly promises report/coverage/hotspots \"never pay for [notes]\", yet all three call query_snapshot and pay the full full-table note scan on a hot read path; worse, 5 sites build the whole snapshot only to take one Vec and drop everything else incl all notes. loc: sqlite.rs:608-621 (query_snapshot passes Some(list_all_notes()) at 619); snapshot.rs:9-38 (OnceCell + doc) + 90-92 (cached_notes); sqlite.rs:625-630,663-669,690-698,701-708 (cached_notes-or-lazy fallback in every note consumer); sqlite.rs:4578-4598 (list_all_notes full scan, no WHERE); report.rs:71, coverage.rs:29, hotspots.rs:25; extract-one-Vec sites edge.rs:564/719, codefile.rs:218, validation.rs:290/343. Distinct from baseline #39/#40 (different functions). suggestion: build query_snapshot with notes=None (lean on the existing OnceCell + cached_notes fallback) or add a notes-free variant; convert the 5 extract-one-Vec sites to targeted list_* accessors.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — query_snapshot loads notes lazily (notes_or_load)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.356919+00:00"
+        "updated_at": "2026-06-19T05:25:44.231180+00:00"
       },
       {
         "author": "llm",
@@ -91696,15 +91696,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [qa-strategy/medium/correctness] `loom report` reports a blocked-validation count that contradicts both `loom status` AND itself: report.rs counts every Validation with last_result=='blocked' (9), while the shared stats path current_blocked_validation_ids excludes blocked validations whose VALIDATES edge targets a deferred intent (8). impact: the same field name carries two values across (and within) primary health surfaces — a single `loom report` human run prints \"(8 blocked ...)\" on the pass-rate line (stats path) but \"Blocked Validations (9)\" as the section header; an orchestrator can't trust the count. loc: src/commands/report.rs:45-50 (filter last_result=='blocked', no deferred exclusion => 9); src/db/queries/stats.rs:1022-1058 current_blocked_validation_ids (1046-1048 excludes deferred-target) feeding stats.rs:610 blocked_validation_summary_from_snapshot => 8; verified live: report --json len=9, status --json=8; divergent record blocked validation 242860fb VALIDATES intent 5b05669e (lifecycle=deferred). suggestion: route report through current_blocked_validation_ids/blocked_validation_summary_from_snapshot, or rename one field and document the parked-intent exclusion.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — report routes through the shared current_blocked classifier",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.282519+00:00"
+        "updated_at": "2026-06-19T05:25:44.307494+00:00"
       },
       {
         "author": "llm",
@@ -91714,15 +91714,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [qa-strategy/high/process] The entire 'trustworthy self-model' guarantee (zero-warning, rustfmt-clean, tests green, `export --check`/`wiki --check` freshness) exists ONLY as documented manual discipline — the repo has NO CI config and NO installed git hook, so nothing automatically prevents a commit that drifts the graph, stales the wiki, regresses tests, or reintroduces clippy warnings. impact: the bar loom sells as its core promise is unenforced; baseline #44 (fmt/clippy currently dirty) is the predictable symptom of exactly this gap. loc: verified absence — no .github/, .gitlab-ci.yml, .circleci/, .travis.yml, Makefile, or justfile; .git/hooks/ holds only *.sample; core.hooksPath unset; zero .yml/.yaml in repo; CONTRIBUTING.md:188 states \"No CI is wired yet; these are the pre-commit gate by hand\"; COMMANDS.md:687 + `loom wiki --help` describe an export-check/wiki-check pre-commit/CI integration that does not exist. suggestion: ship a hook installer (e.g. `loom init` writing a pre-commit hook, or a `loom doctor --pre-commit` aggregate running fmt/clippy/build/test + `export --check` + `wiki --check`) and/or a committed CI workflow — note loom's GOVERNS rules are LLM-asserted not executable, so this is a tooling/hook feature, not a rule.",
-        "resolution": "",
+        "resolution": "routed: fixed in 6cb020f — loom init installs a green-bar git pre-commit hook",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.253066+00:00"
+        "updated_at": "2026-06-19T05:25:44.337615+00:00"
       },
       {
         "author": "llm",
@@ -91732,15 +91732,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [qa-strategy/high/qa] export/import projects every node/edge through hand-maintained *_PROPS arrays, but no test or runtime check asserts each CREATE TABLE column is covered by its PROPS array — a column added to the schema (and written by direct mutation SQL) but forgotten in PROPS is silently dropped on export and ignored on import, symmetrically, so `export --check` stays green and doctor (which only audits columns already in PROPS) cannot flag it. impact: this is exactly the *_PROPS trap recorded in MEMORY (edge-kind taxonomy lesson) as having already bitten — a new field can vanish from the portable loom.graph.json with zero signal; whole-node round-trip tests can't catch it because they seed from JSON already projected through PROPS. loc: src/db/sqlite.rs:511-548 (export_json) + 461-509 (import_export_json) iterate NODE_SPECS/EDGE_SPECS using only *_PROPS; PROPS arrays 93-281; CREATE TABLE 4859-5100; doctor missing_*_props 1431-1455 iterate `for &prop in spec.props` (non-PROPS columns unauditable); table_has_column 4750 is the only PRAGMA table_info use and is runtime-only; grep of tests/ finds no PROPS-vs-schema column-set assertion; `export --check` exits 0 on the live graph (latent gap, all current columns presently covered). suggestion: add a unit test over NODE_SPECS/EDGE_SPECS asserting PRAGMA table_info(table) columns (minus from/to FK cols) are a subset of props ∪ list_props for every spec.",
-        "resolution": "",
+        "resolution": "routed: fixed in 6cb020f — added the PROPS-vs-schema column-coverage test",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.263580+00:00"
+        "updated_at": "2026-06-19T05:25:44.321359+00:00"
       },
       {
         "author": "llm",
@@ -91858,15 +91858,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [dx-ergonomics/medium/dx] `loom explain` emits DIFFERENT next-step guidance in JSON vs human, and the JSON guidance suggests a WRITE verb (`loom edge explore … ground`) from a read-only intelligence command. impact: parity is a stated hard contract (output.rs:252 \"whatever guidance human mode prints, json mode carries\") yet an orchestrated --json agent is steered toward a mutation that doesn't fit explain's read-only workflow while a human gets correct read-shaped follow-ups; the two strings overlap on only `intent show` despite an in-code comment claiming parity. loc: src/commands/explain.rs:391 sets json next_step = 'loom edge explore <a> <b> ground … · loom intent show <id>'; explain.rs:542-544 prints human '→ Next: loom intent show <id> · loom explain <coupled intent> · loom explain <file> --impact'; comment explain.rs:539 falsely claims '(human parity with the json next_step)'; `loom edge explore --help` confirms `ground` is a graph mutation; reproduced live on intent 'saga failure diagnosis'. suggestion: make the JSON next_step at explain.rs:391 mirror the read-shaped human footer (intent show · explain <coupled intent> · explain <file> --impact), dropping `edge explore … ground`.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — explain --json next_step is read-shaped, matching human",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.293735+00:00"
+        "updated_at": "2026-06-19T05:25:44.295568+00:00"
       },
       {
         "author": "llm",
@@ -91876,15 +91876,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "SWEEP [reliability/medium/data-model] `loom import` never compares the export's schema_version against the binary's SCHEMA_VERSION before clearing and re-inserting, so importing a NEWER export into an OLDER binary corrupts predictably: (a) hard-abort — a value outside an older CHECK constraint (e.g. a new lifecycle/inbox_item.kind/validation_type/route_kind) fails insert mid-transaction AFTER clear_all already ran, rolling back with a cryptic raw rusqlite error; (b) silent drop — additive columns are discarded because insert_node reads only its own shorter spec.props, then the graph is stamped with the binary's own SCHEMA_VERSION so even doctor's post-import version check can't flag it. impact: a portable loom.graph.json from a newer loom silently mangles or hard-fails in an older binary — exactly the cross-version travel the export artifact is for. loc: src/commands/import.rs:11-30 (no version check), read_export 166-193 (validates only JSON+confinement); src/db/sqlite.rs:461-464 (only loom_export marker checked), 466-467 (clear_all before insert), 480 (stamps active SCHEMA_VERSION not export's), 492-507 (insert+commit); schema.rs:80 (SCHEMA_VERSION='9'); CHECK constraints sqlite.rs:4869/4902/4983/4989-4991; insert_node 4789-4808 (additive columns dropped); export emits schema_version at 540 but import ignores it; soft post-import check integrity.rs:65-74. (Older-export->newer-binary is intentionally handled by stamping active version; the gap is only newer->older.) suggestion: in import, read data['schema_version'] and refuse with a named error when it exceeds the binary's SCHEMA_VERSION, before clear_all.",
-        "resolution": "",
+        "resolution": "routed: fixed in 861675c — import refuses a newer-than-binary export at the boundary",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T02:07:10.380245+00:00"
+        "updated_at": "2026-06-19T05:25:44.205640+00:00"
       }
     ],
     "Intent": [
