@@ -90742,15 +90742,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [rule-show-subcommand-missing] [rule/low] 'loom rule show <id>' does not exist (unrecognized subcommand); only 'loom rule list'. Every other node type has a show verb (loom intent show, etc.), so a quality-lane agent pulling one rule's detection_logic must list all 22 rules and grep. loc: src/commands/rule.rs (subcommand surface). impact: minor verb-pattern inconsistency; forces a list-and-filter where a single-rule read would do. suggestion: add 'loom rule show <id>' matching the established verb pattern, returning one rule's detection_logic + scope without listing all.",
-        "resolution": "",
+        "resolution": "rule-show + orphaned-backend cleanup. D8: loom rule show <identifier> returns one rules full record (detection_logic et al.); matches by NAME first then id; a miss exits non-zero AND names known rules. D5: loom doctor --clean-orphans reaps dead backend relics (graph.grafeo, db.sqlite, graph.db + wal/shm) from .loom via an explicit dead-allowlist (never the live graph.sqlite, never a generic sweep); dry-run by default, --yes removes; removal failures reported not swallowed. Tests: sqlite_rule_show_by_name_and_id_and_unknown + sqlite_doctor_clean_orphans_dry_run_then_yes_removes_relics. No graph mutation. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:20.393857+00:00"
+        "updated_at": "2026-06-19T19:15:30.690016+00:00"
       },
       {
         "author": "llm",
@@ -91714,15 +91714,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [orphaned-backend-files-survive-upgrade] [doctor/medium] after the 0.3.3->0.4.0 (pre-SQLite->SQLite) upgrade, .loom/ still held dead relics: graph.grafeo (24KB), db.sqlite (0B), graph.db (0B). No loom doctor / loom init / migration step removed them; the driver deleted them by hand. loc: the init/migrate/doctor path (src/commands/{init,migrate,doctor}.rs + src/db). impact: breaking upgrades leave orphaned backend files that confuse later diagnosis (which db is real?). suggestion: a loom init re-run, a migrate step, or 'loom doctor --clean-orphans' that removes recognized dead backend relics on upgrade — smooths breaking backend swaps.",
-        "resolution": "",
+        "resolution": "rule-show + orphaned-backend cleanup. D8: loom rule show <identifier> returns one rules full record (detection_logic et al.); matches by NAME first then id; a miss exits non-zero AND names known rules. D5: loom doctor --clean-orphans reaps dead backend relics (graph.grafeo, db.sqlite, graph.db + wal/shm) from .loom via an explicit dead-allowlist (never the live graph.sqlite, never a generic sweep); dry-run by default, --yes removes; removal failures reported not swallowed. Tests: sqlite_rule_show_by_name_and_id_and_unknown + sqlite_doctor_clean_orphans_dry_run_then_yes_removes_relics. No graph mutation. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:20.039586+00:00"
+        "updated_at": "2026-06-19T19:15:30.700519+00:00"
       },
       {
         "author": "llm",
