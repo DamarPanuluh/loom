@@ -91210,15 +91210,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [map-vs-territory-reconcile-on-read] [integrity/medium] Green surfaces trust declared edges, never the disk: doctor verifies only graph-internal well-formedness and never re-hashes a CodeFile or re-resolves a locator; the grounded/realized axes count IMPLEMENTS by existence (no inspection_status filter) so 6 needs_reverification groundings still read `realized 77/77 ✓`; grounded shows 84/84 while 4 real source files (incl. loom's own src/commands/explain.rs, src/commands/wiki.rs) are unmapped. loc: src/db/queries/integrity.rs:36-39; src/db/queries/snapshot.rs:54 (with_code); src/db/queries/stats.rs:271-290; coverage walk at src/commands/coverage.rs. impact: vertical ✓ and doctor healthy while real code is unmapped and groundings have drifted. suggestion: fold coverage's on-disk walk into doctor (re-hash + locator resolve as ISSUES) and into the grounded axis/spine so unmapped real files and stale groundings block green.",
-        "resolution": "",
+        "resolution": "Root-cause fix, two strategic commits. #1/2 c6f498b: stale/broken IMPLEMENTS groundings (needs_reverification/failing) no longer read as realized/grounded — added QuerySnapshot::with_current_code, the realized+grounded axes + vertical spine use CURRENT groundings (with_code preserved for scoring/cleanup spine). Live graph honestly drops grounded 84/84->80/84, realized 77/77->76/77, vertical ✓->✗. #2/2 a7a2b4b: compass phase gate now gates green on map=territory — disk_reconciliation_from_parts (unmapped/drifted/missing; empty/grandfathered hash not over-fired; ignored+delegated excluded) wired as a lazy 5th gate in the audit-gate else branch via resolve_root. 'complete' no longer trusts the declared graph; disk issues -> audit/directive. Scoped to compass (not doctor — graph-internal scope). Regression tests in stats + integrity. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.297066+00:00"
+        "updated_at": "2026-06-19T17:13:43.967069+00:00"
       },
       {
         "author": "llm",
