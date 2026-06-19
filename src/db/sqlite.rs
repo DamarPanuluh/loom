@@ -4271,6 +4271,24 @@ impl SqliteGraphStore {
         Ok((validation.id, command_changed, reset_edges))
     }
 
+    /// Delete an InterfaceSurface (CALLS edges cascade via FK). The escape hatch
+    /// the `surface_without_calls` gap remedy points at — previously the remedy
+    /// ("remove the stale interface surface") was unreachable through loom.
+    pub fn delete_interface_surface(&mut self, id: &str) -> Result<bool> {
+        let tx = self.write_tx()?;
+        let changed = tx.execute("DELETE FROM interface_surface WHERE id = ?1", params![id])?;
+        tx.commit()?;
+        Ok(changed > 0)
+    }
+
+    /// Delete a Persona (SERVES + JOURNEYS edges cascade via FK).
+    pub fn delete_persona(&mut self, id: &str) -> Result<bool> {
+        let tx = self.write_tx()?;
+        let changed = tx.execute("DELETE FROM persona WHERE id = ?1", params![id])?;
+        tx.commit()?;
+        Ok(changed > 0)
+    }
+
     pub fn delete_validation(&mut self, key: &str) -> Result<String> {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;

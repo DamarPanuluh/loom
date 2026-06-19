@@ -49,7 +49,31 @@ pub fn run(cmd: PersonaCmd, printer: &Printer) -> Result<()> {
             persona_id,
             saga_id,
         } => run_journey_with_sqlite(&cwd, persona_id, saga_id, printer),
+        PersonaCmd::Remove { id } => run_remove_with_sqlite(&cwd, id, printer),
     }
+}
+
+fn run_remove_with_sqlite(cwd: &std::path::Path, key: String, printer: &Printer) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(cwd))?;
+    store.ensure_owned("remove a persona")?;
+    let persona = resolve_persona_with_db(&store, &key)?;
+    let removed = store.delete_persona(&persona.id)?;
+    if !removed {
+        anyhow::bail!("Persona '{key}' could not be removed (already gone?).");
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "removed": { "id": persona.id, "name": persona.name },
+            "next_step": "loom persona list",
+        }));
+        return Ok(());
+    }
+    println!(
+        "✓ Removed persona '{}' (its SERVES + JOURNEYS edges went with it).",
+        persona.name
+    );
+    Ok(())
 }
 
 fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer) -> Result<()> {

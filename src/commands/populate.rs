@@ -465,7 +465,7 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
                     validation_id: String::new(),
                     validation: String::new(),
                     suggested_action:
-                        "bind this surface through a saga step, or remove/repair the stale interface surface"
+                        "bind this surface through a saga step, or `loom interface remove <surface>` if it's stale"
                             .to_string(),
                 },
             );

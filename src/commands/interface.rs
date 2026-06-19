@@ -11,7 +11,31 @@ pub fn run(cmd: InterfaceCmd, printer: &Printer) -> Result<()> {
         InterfaceCmd::List => list(printer),
         InterfaceCmd::Gaps => gaps(printer),
         InterfaceCmd::Show { surface } => show(&surface, printer),
+        InterfaceCmd::Remove { surface } => remove(&surface, printer),
     }
+}
+
+fn remove(key: &str, printer: &Printer) -> Result<()> {
+    let mut store = open_store()?;
+    store.ensure_owned("remove an interface surface")?;
+    let surface = store.resolve_interface_surface(key)?;
+    let removed = store.delete_interface_surface(&surface.id)?;
+    if !removed {
+        anyhow::bail!("Interface surface '{key}' could not be removed (already gone?).");
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "removed": { "id": surface.id, "name": surface.name },
+            "next_step": "loom interface gaps  (re-check the surface plane)",
+        }));
+        return Ok(());
+    }
+    println!(
+        "✓ Removed interface surface '{}' (its CALLS edges went with it).",
+        surface.name
+    );
+    Ok(())
 }
 
 fn open_store() -> Result<crate::db::sqlite::SqliteGraphStore> {

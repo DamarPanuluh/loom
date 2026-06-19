@@ -1596,6 +1596,14 @@ pub enum InterfaceCmd {
         /// Surface id, exact name, or unique name/target fragment.
         surface: String,
     },
+
+    /// Remove an interface surface (its CALLS edges go with it) — the reachable
+    /// remedy for a `surface_without_calls` gap (a stale surface a renamed/
+    /// removed endpoint left behind).
+    Remove {
+        /// Surface id, exact name, or unique name/target fragment.
+        surface: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -2081,6 +2089,13 @@ pub enum PersonaCmd {
 
         /// Saga validation id, name, or unique name fragment.
         saga_id: String,
+    },
+
+    /// Remove a persona (its SERVES + JOURNEYS edges go with it) — for a stale
+    /// audience segment that no longer exists.
+    Remove {
+        /// Persona id, exact name, or unique name fragment.
+        id: String,
     },
 }
 
