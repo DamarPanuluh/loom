@@ -579,22 +579,63 @@ impl SqliteGraphStore {
     }
 
     pub fn export_json(&self) -> Result<JsonValue> {
-        let (schema_version, graph_id, graph_name, custody, layer_order): (String, String, String, String, String) =
-            self.conn
-                .query_row(
-                    "SELECT schema_version, graph_id, graph_name, custody, layer_order FROM meta WHERE id = 1",
-                    [],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-                )
-                .optional()?
-                .unwrap_or_default();
+        // All meta fields travel: created_at (graph birth), last_synced and
+        // transition_cap were previously dropped on export, so a round-trip reset
+        // birth/sync stamps to "" and silently reverted a customized --set-cap to
+        // the default (import reads all three via str_top).
+        #[allow(clippy::type_complexity)]
+        let (
+            schema_version,
+            graph_id,
+            graph_name,
+            custody,
+            created_at,
+            last_synced,
+            transition_cap,
+            layer_order,
+        ): (
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+            String,
+        ) = self
+            .conn
+            .query_row(
+                "SELECT schema_version, graph_id, graph_name, custody, created_at, \
+                 last_synced, transition_cap, layer_order FROM meta WHERE id = 1",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                        row.get(7)?,
+                    ))
+                },
+            )
+            .optional()?
+            .unwrap_or_default();
 
         let mut nodes = Map::new();
         for spec in NODE_SPECS {
-            nodes.insert(
-                spec.label.to_string(),
-                JsonValue::Array(export_nodes(&self.conn, *spec)?),
-            );
+            let mut arr = export_nodes(&self.conn, *spec)?;
+            if spec.label == label::NOTE {
+                // Export-time note retention: routine `transition` breadcrumbs are
+                // local audit churn that dominates the artifact (97% of nodes) and
+                // makes every commit churn ~20k diff lines. Full history stays in
+                // .loom/graph.sqlite; the portable, diffable artifact carries only
+                // the durable notes (decision/justification/confirm/todo/idea/…).
+                arr.retain(|n| n.get("kind").and_then(JsonValue::as_str) != Some("transition"));
+            }
+            nodes.insert(spec.label.to_string(), JsonValue::Array(arr));
         }
 
         let mut edges = Map::new();
@@ -611,6 +652,9 @@ impl SqliteGraphStore {
             "graph_id": graph_id,
             "graph_name": graph_name,
             "custody": custody,
+            "created_at": created_at,
+            "last_synced": last_synced,
+            "transition_cap": transition_cap,
             "layer_order": parse_json_array(&layer_order)?,
             "nodes": nodes,
             "edges": edges,
