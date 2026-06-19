@@ -23,7 +23,12 @@ struct AdvisoryCounts {
 #[derive(Debug, Clone, serde::Serialize)]
 struct AuditPulse {
     computed: bool,
-    open_findings: usize,
+    /// `None` when the audit scan was deferred (`computed: false`) — serialized
+    /// as JSON `null` so a programmatic consumer keying on this field cannot
+    /// mistake "no scan ran" for "scan ran and found zero" (the false-green
+    /// remnant: a literal `0` next to `computed:false` read as "audit clean").
+    /// `Some(n)` only when the scan actually ran.
+    open_findings: Option<usize>,
     top_kinds: Vec<KindCount>,
     top_findings: Vec<FindingPulse>,
     recommended_command: String,
@@ -156,7 +161,7 @@ fn should_compute_audit_pulse(gs: &GraphState) -> bool {
 fn deferred_audit_pulse() -> AuditPulse {
     AuditPulse {
         computed: false,
-        open_findings: 0,
+        open_findings: None,
         top_kinds: Vec::new(),
         top_findings: Vec::new(),
         recommended_command: "loom smells --summary".to_string(),
@@ -186,7 +191,7 @@ fn audit_pulse(open: Vec<Smell>) -> AuditPulse {
         .collect();
     AuditPulse {
         computed: true,
-        open_findings: open.len(),
+        open_findings: Some(open.len()),
         top_kinds,
         top_findings,
         recommended_command: "loom smells --summary".to_string(),
@@ -578,7 +583,7 @@ fn render_plain_status(
             advisories.proof_locality_suggestions
         );
     }
-    if audit.computed && audit.open_findings > 0 {
+    if audit.computed && audit.open_findings.unwrap_or(0) > 0 {
         let kinds = audit
             .top_kinds
             .iter()
@@ -592,7 +597,10 @@ fn render_plain_status(
             .unwrap_or_default();
         println!(
             "  audit: {} open finding(s) — {}{} (`{}`).",
-            audit.open_findings, kinds, top, audit.recommended_command
+            audit.open_findings.unwrap_or(0),
+            kinds,
+            top,
+            audit.recommended_command
         );
     } else if !audit.computed {
         println!(

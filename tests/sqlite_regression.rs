@@ -2856,3 +2856,41 @@ fn sqlite_federation_ripple_edge_cases() {
         "a missing child export must not ripple (skipped, no crash): {sa2}"
     );
 }
+
+// FALSE-GREEN [status-audit-open-findings-null-not-zero]: when the audit scan
+// is deferred (any phase other than audit|complete), `loom status --json` must
+// emit `audit.open_findings: null` — never a literal `0` — so a programmatic
+// consumer keying on that field cannot mistake "no scan ran" for "scan ran and
+// found zero" (the false-green remnant). `computed:false` already says so, but
+// a consumer reading only `open_findings` saw a clean 0.
+#[test]
+fn sqlite_status_audit_open_findings_null_when_deferred() {
+    let _g = sqlite_test_lock();
+    let graph = setup_imported_graph("audit-null");
+    // The committed graph sits at phase=fix (stale edges > 0), so the audit
+    // scan is deferred — `should_compute_audit_pulse` is only true for
+    // audit|complete. Assert the deferred contract, not a phase-dependent one.
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let audit = status
+        .get("audit")
+        .expect("status --json carries an audit pulse");
+    assert_eq!(
+        audit.get("computed").and_then(|v| v.as_bool()),
+        Some(false),
+        "audit must be deferred on this graph; got: {audit}"
+    );
+    assert!(
+        audit.get("open_findings").is_none() || audit["open_findings"].is_null(),
+        "audit.open_findings must be null (not 0) when computed:false — a programmatic \
+         consumer keying on this field must not read 'audit clean' when no scan ran. Got: {audit}"
+    );
+    // `top_kinds` / `top_findings` are empty arrays (not omitted) so the shape
+    // stays stable for consumers that read them unconditionally.
+    assert!(
+        audit
+            .get("top_kinds")
+            .map(|v| v.is_array())
+            .unwrap_or(false),
+        "audit.top_kinds must be an array even when deferred: {audit}"
+    );
+}
