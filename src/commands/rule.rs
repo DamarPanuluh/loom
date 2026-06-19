@@ -238,6 +238,10 @@ pub fn run(cmd: RuleCmd, printer: &Printer) -> Result<()> {
             let db = GraphReadHandle::open(&cwd)?;
             run_list_with_db(&db, limit, printer)
         }
+        RuleCmd::Show { identifier } => {
+            let db = GraphReadHandle::open(&cwd)?;
+            run_show_with_db(&db, &identifier, printer)
+        }
         RuleCmd::Check { intent_id } => {
             let db = GraphReadHandle::open(&cwd)?;
             run_check_with_db(&db, intent_id, printer)
@@ -495,6 +499,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
         }
 
         RuleCmd::List { limit } => run_list_with_db(&store, limit, printer)?,
+        RuleCmd::Show { identifier } => run_show_with_db(&store, &identifier, printer)?,
         RuleCmd::Check { intent_id } => run_check_with_db(&store, intent_id, printer)?,
     }
     Ok(())
@@ -520,6 +525,55 @@ fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printe
         {
             println!("  {m}");
         }
+    }
+    Ok(())
+}
+
+/// `loom rule show <identifier>` — one rule's full record. Matches by NAME
+/// first (the handle `loom rule list` prints), then by id, so a driver with
+/// either works. The detail a quality-lane agent needs to hold the rule against
+/// an intent without listing all rules and grepping.
+fn run_show_with_db(
+    db: &dyn GraphReadRepository,
+    identifier: &str,
+    printer: &Printer,
+) -> Result<()> {
+    let rules = db.list_rules()?;
+    // Name is the human handle; id (a UUID) is the stable key. Try name first
+    // — that's what a driver pastes from `loom rule list`'s left column.
+    let rule = rules
+        .iter()
+        .find(|r| r.name == identifier)
+        .or_else(|| rules.iter().find(|r| r.id == identifier))
+        .ok_or_else(|| {
+            let mut known: Vec<&str> = rules.iter().map(|r| r.name.as_str()).collect();
+            known.sort();
+            let sample = known.iter().take(8).copied().collect::<Vec<_>>().join(", ");
+            anyhow::anyhow!(
+                "no rule matches '{identifier}'. Known rule names: {sample}{}",
+                if known.len() > 8 { " …" } else { "" }
+            )
+        })?;
+    if printer.json {
+        printer.print_json(rule);
+    } else {
+        println!("  {}  ({})", rule.name, rule.id);
+        println!("  severity:           {}", rule.severity);
+        if rule.kind.is_empty() {
+            println!("  kind:               (uncategorized)");
+        } else {
+            println!("  kind:               {}", rule.kind);
+        }
+        println!(
+            "  inspection_effort:  {}",
+            if rule.inspection_effort.is_empty() {
+                "mid (default)"
+            } else {
+                rule.inspection_effort.as_str()
+            }
+        );
+        println!("  description:        {}", rule.description);
+        println!("  detection_logic:    {}", rule.detection_logic);
     }
     Ok(())
 }

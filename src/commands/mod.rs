@@ -94,7 +94,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         },
         Command::Report                     => report::run(&printer),
         Command::Batch       { file, dry_run } => batch::run(&file, dry_run, &printer),
-        Command::Doctor                     => doctor::run(&printer),
+        Command::Doctor { clean_orphans, yes } => doctor::run(clean_orphans, yes, &printer),
         Command::Migrate                    => migrate::run(&printer),
         Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),

@@ -1,13 +1,104 @@
 use anyhow::Result;
 
 use crate::db::queries::DoctorReport;
-use crate::db::{GraphReadHandle, GraphReadRepository};
+use crate::db::{loom_dir, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
-pub fn run(printer: &Printer) -> Result<()> {
+/// Dead backend relics — files loom once wrote to `.loom/` but no longer reads
+/// after the storage generations landed on `graph.sqlite`. An explicit
+/// allowlist (NOT a generic "anything unrecognized" sweep): a future artifact
+/// loom doesn't know about yet, or a user file, is never touched. The live
+/// `graph.sqlite` (+ its WAL/SHM) is never on this list.
+const DEAD_BACKEND_RELICS: &[&str] = &[
+    "graph.grafeo",
+    "db.sqlite",
+    "db.sqlite-wal",
+    "db.sqlite-shm",
+    "graph.db",
+    "graph.db-wal",
+    "graph.db-shm",
+    "graph.db-journal",
+];
+
+pub fn run(clean_orphans: bool, yes: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
+    if clean_orphans {
+        return clean_orphaned_backends(&cwd, yes, printer);
+    }
     let store = GraphReadHandle::open(&cwd)?;
     run_with_db(&store, &cwd, printer)
+}
+
+/// `loom doctor --clean-orphans` — reap dead backend relics from `.loom/`.
+/// Dry-run by default (lists what would go + the --yes reminder); `--yes`
+/// actually removes. Targets only [`DEAD_BACKEND_RELICS`] — never the live
+/// `graph.sqlite`. The honesty fix for the 0.3.3→0.4.0 upgrade leaving
+/// graph.grafeo / db.sqlite / graph.db behind for the driver to delete by hand.
+fn clean_orphaned_backends(root: &std::path::Path, yes: bool, printer: &Printer) -> Result<()> {
+    let loom = loom_dir(root);
+    let mut found: Vec<String> = Vec::new();
+    for name in DEAD_BACKEND_RELICS {
+        if loom.join(name).is_file() {
+            found.push((*name).to_string());
+        }
+    }
+    let removed: Vec<String> = if yes {
+        let mut removed = Vec::new();
+        for name in &found {
+            match std::fs::remove_file(loom.join(name)) {
+                Ok(()) => removed.push(name.clone()),
+                Err(e) => {
+                    // A reap that silently skips a file it claimed to remove
+                    // would be the new honesty hole — report the failure in
+                    // both audiences instead of swallowing it.
+                    if printer.json {
+                        printer.print_json(&serde_json::json!({
+                            "removed": removed,
+                            "failed": { "file": name, "error": e.to_string() },
+                            "dry_run": false,
+                        }));
+                    } else {
+                        println!("  failed to remove {name}: {e}");
+                    }
+                    return Ok(());
+                }
+            }
+        }
+        removed
+    } else {
+        Vec::new()
+    };
+
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "orphaned_relics": found,
+            "removed": removed,
+            "dry_run": !yes,
+        }));
+        return Ok(());
+    }
+
+    if found.is_empty() {
+        println!("(no orphaned backend relics in {})", loom.display());
+        return Ok(());
+    }
+    let verb = if yes { "removed" } else { "would remove" };
+    for name in &found {
+        let mark = if yes && removed.contains(name) {
+            "✓"
+        } else {
+            "·"
+        };
+        println!("  {mark} {verb} {name}");
+    }
+    if !yes {
+        println!(
+            "  dry-run — re-run with --yes to remove these {} relic(s) \
+             (the live graph.sqlite is never touched).",
+            found.len()
+        );
+    }
+    Ok(())
 }
 
 pub fn run_with_db(

@@ -318,8 +318,21 @@ pub enum Command {
     },
 
     /// Verify graph integrity against the declared schema: version, required
-    /// properties, valid field values, and dangling references.
-    Doctor,
+    /// properties, valid field values, and dangling references. With
+    /// --clean-orphans, instead reap dead backend relics left in `.loom/` by
+    /// past storage generations (graph.grafeo, db.sqlite, graph.db + their
+    /// WAL/SHM sidecars) — files loom once wrote but no longer reads. Dry-run
+    /// by default (lists what would go); add --yes to actually remove.
+    Doctor {
+        /// Reap dead backend relics from `.loom/` (dry-run unless --yes).
+        #[arg(long)]
+        clean_orphans: bool,
+
+        /// Confirm a destructive clean: actually remove the relics --clean-orphans
+        /// listed. Without it, --clean-orphans only previews.
+        #[arg(long)]
+        yes: bool,
+    },
 
     /// Verify the live graph's schema version against this binary. The SQLite
     /// schema is created on open and JSON imports are normalized into the active
@@ -1313,6 +1326,15 @@ pub enum RuleCmd {
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
     },
+
+    /// Show one quality rule's full record (description, detection_logic,
+    /// severity, kind, inspection_effort) — the detail a quality-lane agent
+    /// needs to hold the rule against an intent without listing all 22 rules
+    /// and grepping. `<identifier>` matches by NAME first (the handle `loom
+    /// rule list` prints), then by id — either works.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom rule show endpoint-matched-edges")]
+    Show { identifier: String },
 
     /// Show all GOVERNS edges for an intent (violations and passing checks).
     Check { intent_id: String },

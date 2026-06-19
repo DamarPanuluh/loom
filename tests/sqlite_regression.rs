@@ -909,6 +909,125 @@ fn sqlite_status_always_surfaces_map_vs_territory() {
     );
 }
 
+// loom-dx #? (rule-show-subcommand-missing): `loom rule show <identifier>`
+// returns one rule's full record (detection_logic et al.) so a quality-lane
+// agent doesn't list all 22 rules and grep. Matches by NAME first (the handle
+// `loom rule list` prints), then by id — either works.
+#[test]
+fn sqlite_rule_show_by_name_and_id_and_unknown() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("rule-show");
+    // by name — the handle a driver pastes from `loom rule list`.
+    let by_name = run_json(
+        &graph.root,
+        &["rule", "show", "endpoint-matched-edges", "--json"],
+    );
+    assert_eq!(
+        by_name["name"].as_str().expect("name"),
+        "endpoint-matched-edges",
+        "show-by-name returns the named rule: {by_name}"
+    );
+    assert!(
+        by_name["detection_logic"].is_string(),
+        "carries detection_logic (the field the card is about): {by_name}"
+    );
+    let id = by_name["id"].as_str().expect("id").to_string();
+    // by id (UUID) resolves the SAME rule — name-first then id fallback.
+    let by_id = run_json(&graph.root, &["rule", "show", &id, "--json"]);
+    assert_eq!(
+        by_id["name"].as_str().expect("name"),
+        "endpoint-matched-edges",
+        "show-by-id resolves the same rule: {by_id}"
+    );
+    // unknown -> non-zero + names known rules (a dead-end, not a silent empty).
+    // The error bails to stderr with no JSON body, so assert on stderr directly
+    // (run_json_failure_as requires JSON on stdout, which a bail doesn't emit).
+    let out = std::process::Command::new(loom_bin())
+        .args(["rule", "show", "nope-not-a-rule"])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:quality")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom rule show <unknown>");
+    assert!(
+        !out.status.success(),
+        "an unknown rule identifier must exit non-zero: {:?}",
+        out.status
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("no rule matches") && stderr.contains("Known rule names"),
+        "a miss names known rules so the driver can recover: {stderr}"
+    );
+}
+
+// loom-dx #? (orphaned-backend-files-survive-upgrade): `loom doctor
+// --clean-orphans` reaps dead backend relics (graph.grafeo / db.sqlite /
+// graph.db + WAL/SHM) left in .loom/ by past storage generations — the files
+// loom once wrote but no longer reads. Dry-run by default; --yes removes.
+// Never touches the live graph.sqlite.
+#[test]
+fn sqlite_doctor_clean_orphans_dry_run_then_yes_removes_relics() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("doctor-clean-orphans");
+    let loom = graph.root.join(".loom");
+    // plant dead relics from past storage generations
+    for relic in ["graph.grafeo", "db.sqlite", "graph.db"] {
+        std::fs::write(loom.join(relic), b"dead").unwrap();
+    }
+    let live = loom.join("graph.sqlite");
+    assert!(live.is_file(), "fixture has a live graph.sqlite to protect");
+
+    // dry-run: lists the relics, removes NOTHING.
+    let dry = run_json(&graph.root, &["doctor", "--clean-orphans", "--json"]);
+    assert_eq!(dry["dry_run"], true, "default is a dry-run preview: {dry}");
+    let orphans = dry["orphaned_relics"]
+        .as_array()
+        .expect("orphaned_relics array");
+    assert_eq!(orphans.len(), 3, "lists all three planted relics: {dry}");
+    assert_eq!(
+        dry["removed"].as_array().unwrap().len(),
+        0,
+        "dry-run removes nothing: {dry}"
+    );
+    for r in ["graph.grafeo", "db.sqlite", "graph.db"] {
+        assert!(loom.join(r).is_file(), "dry-run did not touch {r}");
+    }
+    // the live graph.sqlite is NEVER on the reap list.
+    assert!(
+        orphans
+            .iter()
+            .all(|v| v.as_str().expect("relic name") != "graph.sqlite"),
+        "the live backend is never targeted: {dry}"
+    );
+
+    // --yes: removes them.
+    let gone = run_json(
+        &graph.root,
+        &["doctor", "--clean-orphans", "--yes", "--json"],
+    );
+    assert_eq!(gone["dry_run"], false, "--yes is not a dry-run: {gone}");
+    let removed = gone["removed"].as_array().expect("removed array");
+    assert_eq!(removed.len(), 3, "removed all three relics: {gone}");
+    for r in ["graph.grafeo", "db.sqlite", "graph.db"] {
+        assert!(!loom.join(r).exists(), "--yes removed {r}");
+    }
+    assert!(live.is_file(), "the live graph.sqlite survives the reap");
+
+    // second pass: nothing left, and the graph still reads (reap didn't corrupt).
+    let again = run_json(&graph.root, &["doctor", "--clean-orphans", "--json"]);
+    assert_eq!(
+        again["orphaned_relics"].as_array().unwrap().len(),
+        0,
+        "idempotent — nothing left to reap: {again}"
+    );
+    let st = run_json(&graph.root, &["status", "--json"]);
+    assert!(
+        st["graph_state"].is_object(),
+        "graph still reads after the reap: {st}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();
