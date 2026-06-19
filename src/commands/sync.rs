@@ -67,6 +67,17 @@ fn run_with_sqlite(
     let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
     let mut serves_edges_flagged_ids: HashSet<String> = HashSet::new();
     let mut invalidated_validation_ids: HashSet<String> = HashSet::new();
+    // Crash-safety (atomic-enough sync): a changed file's content hash is the
+    // signal that suppresses re-processing on the next sync. Writing it BEFORE
+    // the file's ripple (edge flips / validation invalidation / fact updates)
+    // means a kill in between would advance the hash while leaving dependent
+    // edges green-but-stale, and the file would never be re-detected. So we
+    // COLLECT hash updates here and flush them LAST, after every file's ripple
+    // has landed. A kill anywhere before the flush leaves the hash unadvanced;
+    // the next `loom sync` re-detects the file and re-applies the (idempotent)
+    // ripple. (cf_id, new_hash, Some(mtime) for a content change | None to adopt
+    // a legacy hash without touching mtime.)
+    let mut pending_hash_updates: Vec<(String, String, Option<String>)> = Vec::new();
 
     for cf in &codefiles {
         let Some(rel) = crate::repo::confine(base, Path::new(&cf.path)) else {
@@ -129,7 +140,7 @@ fn run_with_sqlite(
             // must never drift the committed graph (so `loom export --check`
             // stays a reliable gate and smell adjudication only re-opens on
             // real content change). last_modified now moves ONLY with content.
-            store.update_codefile_hash(&cf.id, &new_hash)?;
+            pending_hash_updates.push((cf.id.clone(), new_hash.clone(), None));
         }
         if !changed {
             continue;
@@ -137,7 +148,7 @@ fn run_with_sqlite(
 
         files_changed += 1;
         changes.push(cf.path.clone());
-        store.update_codefile_hash_and_mtime(&cf.id, &new_hash, &mtime_str)?;
+        pending_hash_updates.push((cf.id.clone(), new_hash.clone(), Some(mtime_str.clone())));
 
         let cause = format!("{} changed", cf.path);
         let intent_ids = intents_by_codefile
@@ -332,6 +343,17 @@ fn run_with_sqlite(
                 validations_invalidated += 1;
             }
         }
+    }
+
+    // Flush deferred content-hash updates LAST: every file's ripple above has
+    // now landed, so advancing the hashes here can no longer leave a torn graph
+    // (see pending_hash_updates above). A crash mid-flush is still safe — the
+    // unflushed files simply re-process next sync (idempotently).
+    for (cf_id, hash, mtime) in &pending_hash_updates {
+        match mtime {
+            Some(mtime_str) => store.update_codefile_hash_and_mtime(cf_id, hash, mtime_str)?,
+            None => store.update_codefile_hash(cf_id, hash)?,
+        };
     }
 
     store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;

@@ -43,11 +43,12 @@ use crate::gate;
 use crate::output::Printer;
 
 pub fn run(file: &str, dry_run: bool, printer: &Printer) -> Result<()> {
-    // Read ALL input BEFORE opening the database: the session lock is
-    // exclusive, and `producer | loom batch -` starts both ends of the pipe
-    // concurrently — taking the lock first would deadlock any producer that
-    // itself calls loom. (A loom-calling producer must still write to a file
-    // and pass the path; reading first fixes the non-loom-producer case.)
+    // Read ALL input BEFORE opening the database: loom's cross-process write
+    // lock is exclusive (acquired on the first write transaction), and
+    // `producer | loom batch -` starts both ends of the pipe concurrently —
+    // taking the lock first would deadlock any producer that itself calls loom.
+    // (A loom-calling producer must still write to a file and pass the path;
+    // reading first fixes the non-loom-producer case.)
     let input = if file == "-" {
         let mut s = String::new();
         std::io::stdin().read_to_string(&mut s)?;

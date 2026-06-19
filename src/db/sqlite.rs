@@ -7,12 +7,13 @@
 //! shared graph analysis stays in Rust over loaded snapshots.
 
 use anyhow::{Context, Result};
+use fs2::FileExt;
 use rusqlite::types::Value as SqlValue;
-use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
+use rusqlite::{params, params_from_iter, Connection, OptionalExtension, TransactionBehavior};
 use serde_json::{json, Map, Value as JsonValue};
 #[cfg(test)]
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::db::queries::find::{
     door_matches_from_planes, rank_intents_from_parts, DoorMatches, FindHit,
@@ -33,6 +34,14 @@ use crate::types::{
 
 pub struct SqliteGraphStore {
     conn: Connection,
+    /// Sibling lock file (`.loom/graph.lock`) backing the cross-process
+    /// single-writer guarantee. `None` for the in-memory test store.
+    lock_path: Option<PathBuf>,
+    /// The held exclusive write lock, acquired lazily on the FIRST write
+    /// transaction and kept for the store's lifetime. Read-only commands never
+    /// open a write transaction, so they never acquire it — WAL keeps readers
+    /// concurrent with the single writer.
+    write_lock: Option<std::fs::File>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -444,18 +453,79 @@ impl SqliteGraphStore {
         let conn = Connection::open(path)
             .with_context(|| format!("Could not open SQLite graph at {}", path.display()))?;
         configure_connection(&conn, true)?;
-        let store = Self { conn };
+        let store = Self {
+            conn,
+            lock_path: Some(path.with_extension("lock")),
+            write_lock: None,
+        };
         store.create_schema()?;
         Ok(store)
+    }
+
+    /// Read-only open: the graph file is opened `SQLITE_OPEN_READ_ONLY` (no write
+    /// access, no WAL write-lock, no schema setup), for read consumers that must
+    /// not mutate the file or pay per-invocation schema setup. Falls back to the
+    /// read-write `open` (which migrates) when the on-disk schema version differs
+    /// from this binary's — so an older graph still upgrades on first touch.
+    pub fn open_readonly(path: &Path) -> Result<Self> {
+        use rusqlite::OpenFlags;
+        let flags = OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI;
+        // Any obstacle to a clean read-only open (can't open the flag, can't
+        // configure, stale/unreadable schema) falls back to the read-write
+        // `open`, which migrates and always works — so this fast path is a pure
+        // optimization that never changes behaviour.
+        let Ok(conn) = Connection::open_with_flags(path, flags) else {
+            return Self::open(path);
+        };
+        if configure_connection(&conn, false).is_err() {
+            drop(conn);
+            return Self::open(path);
+        }
+        let current: Option<String> = conn
+            .query_row("SELECT schema_version FROM meta WHERE id = 1", [], |row| {
+                row.get(0)
+            })
+            .optional()
+            .unwrap_or(None);
+        if current.as_deref() != Some(schema::SCHEMA_VERSION) {
+            drop(conn);
+            return Self::open(path);
+        }
+        Ok(Self {
+            conn,
+            lock_path: None,
+            write_lock: None,
+        })
     }
 
     #[cfg(test)]
     pub fn in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
         configure_connection(&conn, false)?;
-        let store = Self { conn };
+        let store = Self {
+            conn,
+            lock_path: None,
+            write_lock: None,
+        };
         store.create_schema()?;
         Ok(store)
+    }
+
+    /// Begin a WRITE transaction. Acquires the cross-process exclusive write
+    /// lock (lazily, once per store) so at most one loom process writes at a
+    /// time, then opens a `BEGIN IMMEDIATE` transaction — taking the reserved
+    /// lock up front rather than on first write, which sidesteps the
+    /// `SQLITE_BUSY_SNAPSHOT` that a read-then-upgrade DEFERRED transaction can
+    /// hit (and which `busy_timeout` does NOT retry).
+    fn write_tx(&mut self) -> Result<rusqlite::Transaction<'_>> {
+        if self.write_lock.is_none() {
+            if let Some(lock_path) = self.lock_path.clone() {
+                self.write_lock = Some(acquire_write_lock(&lock_path, 5000)?);
+            }
+        }
+        Ok(self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?)
     }
 
     pub fn import_export_json(&mut self, data: &JsonValue) -> Result<()> {
@@ -463,7 +533,7 @@ impl SqliteGraphStore {
             anyhow::bail!("Not a loom export (missing/unknown `loom_export` marker).");
         }
 
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         clear_all(&tx)?;
 
         let layer_order = compact_json(data.get("layer_order").unwrap_or(&json!([])))?;
@@ -580,6 +650,13 @@ impl SqliteGraphStore {
 
     pub fn count_all_intents(&self) -> Result<usize> {
         count_table(&self.conn, "intent")
+    }
+
+    /// Active + deprecated intent count as `i64` — an inherent alias so the
+    /// GraphReadRepository delegation macro can forward uniformly by trait-method
+    /// name (it would otherwise need a hand-written exception).
+    pub fn count_intents_including_deprecated(&self) -> Result<i64> {
+        Ok(self.count_all_intents()? as i64)
     }
 
     pub fn find_intents(&self, query: &str, limit: usize) -> Result<(Vec<FindHit>, usize)> {
@@ -912,7 +989,7 @@ impl SqliteGraphStore {
         if !exists {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE intent SET status = 'confirmed', updated_at = ?1 WHERE id = ?2",
             params![now, id],
@@ -953,7 +1030,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_intent(id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE intent SET lifecycle = ?1, updated_at = ?2 WHERE id = ?3",
             params![lifecycle, now, id],
@@ -1052,7 +1129,7 @@ impl SqliteGraphStore {
         let implements = self.list_implements_for_intent(intent_id)?;
         let validates = self.list_all_validates()?;
 
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let mut ripple = RedefinitionRipple::default();
 
         for edge in relates {
@@ -1275,7 +1352,7 @@ impl SqliteGraphStore {
             .into_iter()
             .filter(|e| e.intent_id == id && e.inspection_status == "passing")
             .collect();
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE intent SET status = 'deprecated', updated_at = ?1 WHERE id = ?2",
             params![now, id],
@@ -1367,7 +1444,7 @@ impl SqliteGraphStore {
         if !exists {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute("DELETE FROM note WHERE target_id = ?1", params![id])?;
         tx.execute(
             "DELETE FROM note
@@ -2012,7 +2089,7 @@ impl SqliteGraphStore {
         else {
             return Ok(None);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "DELETE FROM note
              WHERE target_kind = 'edge'
@@ -2343,7 +2420,7 @@ impl SqliteGraphStore {
         inspected_by: &str,
         now: &str,
     ) -> Result<RelatesTo> {
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
         tx.execute(
             "UPDATE relates_to
@@ -2388,7 +2465,7 @@ impl SqliteGraphStore {
         inspected_by: &str,
         now: &str,
     ) -> Result<RelatesTo> {
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
         tx.execute(
             "UPDATE relates_to
@@ -2430,7 +2507,7 @@ impl SqliteGraphStore {
         inspected_by: &str,
         now: &str,
     ) -> Result<RelatesTo> {
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let edge = Self::get_or_create_relates_to_tx(&tx, from_id, to_id, now)?;
         tx.execute(
             "UPDATE relates_to
@@ -2468,7 +2545,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_relates_to_between(from_id, to_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE relates_to
              SET inspection_status = 'passing',
@@ -2515,7 +2592,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_relates_to_between(from_id, to_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE relates_to
              SET inspection_status = 'failing',
@@ -2559,7 +2636,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_relates_to_between(from_id, to_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE relates_to
              SET inspection_status = 'independent',
@@ -2591,7 +2668,7 @@ impl SqliteGraphStore {
         if edge.inspection_status != "passing" && edge.inspection_status != "independent" {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE relates_to
              SET inspection_status = 'needs_reverification'
@@ -2855,7 +2932,7 @@ impl SqliteGraphStore {
         let Some(previous) = self.get_hypothesis(hypothesis_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE hypothesis SET status = ?1, updated_at = ?2 WHERE id = ?3",
             params![status, now, hypothesis_id],
@@ -2884,7 +2961,7 @@ impl SqliteGraphStore {
         let Some(previous) = self.get_hypothesis(hypothesis_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE hypothesis
              SET status = ?1,
@@ -3325,7 +3402,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_serves_between(persona_id, intent_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE serves
              SET inspection_status = 'passing',
@@ -3372,7 +3449,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_serves_between(persona_id, intent_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE serves
              SET inspection_status = 'failing',
@@ -3416,7 +3493,7 @@ impl SqliteGraphStore {
         let Some(prev) = self.get_serves_between(persona_id, intent_id)? else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE serves
              SET inspection_status = 'independent',
@@ -3642,7 +3719,7 @@ impl SqliteGraphStore {
         now: &str,
     ) -> Result<usize> {
         let previous = self.list_targets_for_hypothesis(hypothesis_id)?;
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE targets
              SET inspection_status = ?1,
@@ -3719,7 +3796,7 @@ impl SqliteGraphStore {
         if edge.inspection_status != "passing" {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE targets
              SET inspection_status = 'needs_reverification'
@@ -3782,7 +3859,7 @@ impl SqliteGraphStore {
         if edge.inspection_status != "passing" {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE serves
              SET inspection_status = 'needs_reverification'
@@ -3918,7 +3995,7 @@ impl SqliteGraphStore {
     }
 
     pub fn merge_vocab_terms(&mut self, from: &str, to: &str, now: &str) -> Result<usize> {
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let from_exists: bool = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)",
             params![from],
@@ -4015,7 +4092,7 @@ impl SqliteGraphStore {
         now: &str,
     ) -> Result<(String, usize)> {
         let validation = self.resolve_validation(key)?;
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE validation SET last_result = ?1, last_run = ?2 WHERE id = ?3",
             params![last_result, now, validation.id],
@@ -4070,7 +4147,7 @@ impl SqliteGraphStore {
     ) -> Result<(String, bool, usize)> {
         let validation = self.resolve_validation(key)?;
         let command_changed = command.is_some_and(|new_command| new_command != validation.command);
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         if let Some(command) = command {
             tx.execute(
                 "UPDATE validation SET command = ?1 WHERE id = ?2",
@@ -4108,7 +4185,7 @@ impl SqliteGraphStore {
 
     pub fn delete_validation(&mut self, key: &str) -> Result<String> {
         let validation = self.resolve_validation(key)?;
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "DELETE FROM note
              WHERE target_kind = 'edge'
@@ -4323,7 +4400,7 @@ impl SqliteGraphStore {
         let Some(previous) = previous else {
             return Ok(false);
         };
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE governs
              SET inspection_status = ?1,
@@ -4369,7 +4446,7 @@ impl SqliteGraphStore {
         inspected_by: &str,
         now: &str,
     ) -> Result<()> {
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         let previous_status = tx
             .query_row(
                 "SELECT inspection_status FROM governs WHERE rule_id = ?1 AND intent_id = ?2",
@@ -4462,7 +4539,7 @@ impl SqliteGraphStore {
         if edge.inspection_status != "passing" {
             return Ok(false);
         }
-        let tx = self.conn.transaction()?;
+        let tx = self.write_tx()?;
         tx.execute(
             "UPDATE governs
              SET inspection_status = 'needs_reverification'
@@ -4776,6 +4853,44 @@ fn configure_connection(conn: &Connection, persistent: bool) -> Result<()> {
         conn.pragma_update(None, "synchronous", "NORMAL")?;
     }
     Ok(())
+}
+
+/// Acquire the cross-process exclusive WRITE lock on `lock_path`
+/// (`.loom/graph.lock`). loom serializes writers: at most one process holds an
+/// open write transaction against a given graph at a time (WAL still lets
+/// readers run concurrently). Retries for a few seconds — matching the
+/// connection `busy_timeout` — then fails with a NAMED, actionable error
+/// instead of a raw OS/rusqlite "database is locked".
+fn acquire_write_lock(lock_path: &Path, deadline_ms: u64) -> Result<std::fs::File> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(lock_path)
+        .with_context(|| format!("opening graph write-lock file {}", lock_path.display()))?;
+    const STEP_MS: u64 = 50;
+    let mut waited = 0u64;
+    loop {
+        match file.try_lock_exclusive() {
+            Ok(()) => return Ok(file),
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                if waited >= deadline_ms {
+                    anyhow::bail!(
+                        "graph write lock is held by another loom session ({}). loom serializes \
+                         writers — only one write session runs at a time. Wait for the other \
+                         lane/command to finish, then retry; never force it.",
+                        lock_path.display()
+                    );
+                }
+                std::thread::sleep(std::time::Duration::from_millis(STEP_MS));
+                waited += STEP_MS;
+            }
+            Err(e) => {
+                return Err(anyhow::Error::new(e).context("locking graph write-lock file"));
+            }
+        }
+    }
 }
 
 fn count_table(conn: &Connection, table: &str) -> Result<usize> {
@@ -5545,6 +5660,29 @@ fn normalize_lists(value: &mut JsonValue) {
 mod tests {
     use super::*;
     use serde::Serialize;
+
+    #[test]
+    fn write_lock_serializes_writers_with_a_named_error() {
+        let path = std::env::temp_dir().join(format!(
+            "loom-write-lock-{}-{}.lock",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let held = acquire_write_lock(&path, 100).expect("first writer acquires the lock");
+        // A second writer (short deadline) is refused with the NAMED, actionable
+        // error — never a raw OS/rusqlite "database is locked".
+        let err = acquire_write_lock(&path, 100).expect_err("second writer must be blocked");
+        assert!(
+            err.to_string()
+                .contains("write lock is held by another loom session"),
+            "expected the named lock error, got: {err}"
+        );
+        drop(held);
+        // Once released, the next writer acquires it.
+        acquire_write_lock(&path, 100).expect("re-acquire after release");
+        let _ = std::fs::remove_file(&path);
+    }
 
     fn current_export() -> JsonValue {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("loom.graph.json");
