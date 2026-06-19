@@ -250,6 +250,13 @@ pub fn graph_state_from_snapshot_parts(
         .iter()
         .filter(|i| i.lifecycle == "planned")
         .count() as i64;
+    // Cleanup backlog: to_be_removed intents whose code is still present (a
+    // to_be_removed intent with no grounding is already done — absence is its
+    // criterion).
+    let to_be_removed_with_code = all_intents
+        .iter()
+        .filter(|i| i.lifecycle == "to_be_removed" && snapshot.with_code.contains(&i.id))
+        .count() as i64;
 
     // The two completeness axes. Vertical (binding) is the spine; horizontal
     // (optional) is the N×N grid. The compass routes vertical gaps ahead of
@@ -371,6 +378,8 @@ pub fn graph_state_from_snapshot_parts(
         ("seed", "directive", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
     } else if needs_change > 0 {
         ("build", "directive", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
+    } else if to_be_removed_with_code > 0 {
+        ("build", "directive", format!("{to_be_removed_with_code} intent(s) marked for removal still have code — delete it (cleanup is done by absence): `loom next --mode build`."))
     } else if rt_failing > 0 {
         (
             "fix",

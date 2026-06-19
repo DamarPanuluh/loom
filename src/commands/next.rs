@@ -1462,13 +1462,14 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     // Effort names the work: writing NEW code from a criterion (planned leaf)
     // and repairing existing code (needs_change) are high; verifying a
     // roll-up is mid.
-    let (role, effort) = if intent.lifecycle == "needs_change" {
-        ("fixer", "high")
-    } else if c.rollup {
-        ("builder", "mid")
-    } else {
-        ("builder", "high")
-    };
+    let (role, effort) =
+        if intent.lifecycle == "needs_change" || intent.lifecycle == "to_be_removed" {
+            ("fixer", "high")
+        } else if c.rollup {
+            ("builder", "mid")
+        } else {
+            ("builder", "high")
+        };
     let (notes, notes_total) = note_surfaces(db.notes_for_target(&intent.id)?, role);
     let action = build_action(intent, c.rollup);
 
@@ -2320,6 +2321,20 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
              3. Mark done: loom intent mark {id} --lifecycle implemented
   \
              4. Re-verify what sync flagged: loom next --mode fix",
+            id = intent.id,
+        ),
+        "to_be_removed" => format!(
+            "REMOVE the code for this intent — cleanup is done by ABSENCE (its criterion is \"this is gone\").
+\
+             1. Delete the code it grounds (`loom intent show {id}` / `loom explain {id}` list the files/symbols).
+  \
+             2. Unground each file: loom edge unimplement {id} <codefile>
+  \
+             3. Drop now-dead files from the graph: loom codefile remove <path>
+  \
+             4. Flag the ripple: loom sync   (stales claims the deletion touched)
+  \
+             5. When no grounding remains, this intent reads done; retire it: loom intent retire {id} --reason \"removed\"",
             id = intent.id,
         ),
         other => format!("Intent '{}' has lifecycle '{}' — review it.", intent.name, other),

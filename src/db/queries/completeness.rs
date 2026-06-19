@@ -39,6 +39,11 @@ pub struct VerticalCompleteness {
     /// Implemented leaf intents with no IMPLEMENTS edge — unrealized (the join
     /// from semantic → physical is broken). Either ground or decompose them.
     pub unrealized_leaves: Vec<String>,
+    /// `to_be_removed` leaf intents that STILL carry an IMPLEMENTS grounding —
+    /// the cleanup is not done: the code marked for deletion is still present.
+    /// Falsifiable-by-absence: this clears (and the intent reads done) only once
+    /// the grounding is gone.
+    pub unremoved_leaves: Vec<String>,
     /// CodeFile paths reached by no IMPLEMENTS edge — code no intent explains.
     pub unreached_codefiles: Vec<String>,
     /// True when the spine is sound: tree well-formed, every implemented leaf
@@ -99,6 +104,16 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         .collect();
     unrealized_leaves.sort();
 
+    // Cleanup spine: a to_be_removed leaf is "done" by ABSENCE — it gates the
+    // spine while its code is still grounded, and clears once the grounding is
+    // gone (the inverse of unrealized).
+    let mut unremoved_leaves: Vec<String> = leaves
+        .iter()
+        .filter(|i| i.lifecycle == "to_be_removed" && realized.contains(&i.id))
+        .map(|i| i.name.clone())
+        .collect();
+    unremoved_leaves.sort();
+
     let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
     let reached: HashSet<&str> = snapshot
         .implements
@@ -118,6 +133,7 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         && multi_parent.is_empty()
         && !cycle
         && unrealized_leaves.is_empty()
+        && unremoved_leaves.is_empty()
         && unreached_codefiles.is_empty();
 
     VerticalCompleteness {
@@ -128,6 +144,7 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         cycle,
         non_system_roots,
         unrealized_leaves,
+        unremoved_leaves,
         unreached_codefiles,
         complete,
     }

@@ -5110,7 +5110,7 @@ CREATE TABLE IF NOT EXISTS intent(
   source_refs TEXT NOT NULL CHECK(json_valid(source_refs)),
   status TEXT NOT NULL,
   aspect TEXT NOT NULL DEFAULT '',
-  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred')),
+  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred','to_be_removed')),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   tags TEXT NOT NULL CHECK(json_valid(tags)),

@@ -803,16 +803,18 @@ pub enum IntentCmd {
     },
 
     /// Set an intent's lifecycle (planned | implemented | needs_change |
-    /// deferred). Use needs_change to flag a known issue/refactor without faking
-    /// a verdict; use deferred to PARK valid-but-not-now work (out of the build
-    /// queue, never blocks a roll-up) — distinct from retire (superseded).
+    /// deferred | to_be_removed). Use needs_change to flag a known issue/refactor
+    /// without faking a verdict; deferred PARKS valid-but-not-now work (never
+    /// blocks a roll-up); to_be_removed marks code that should GO AWAY (cleanup
+    /// as a tracked verb — done by absence, gates green only once it's gone) —
+    /// all distinct from retire (superseded design).
     #[command(after_help = "EXAMPLE:\n  \
         loom intent mark \"request routing\" --lifecycle needs_change \\\n    \
           --reason \"routing table rebuilt on every call — known hotspot\"")]
     Mark {
         id: String,
 
-        /// New lifecycle: planned | implemented | needs_change | deferred
+        /// New lifecycle: planned | implemented | needs_change | deferred | to_be_removed
         #[arg(long)]
         lifecycle: String,
 

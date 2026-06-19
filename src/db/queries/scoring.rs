@@ -253,6 +253,10 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
         let urgency = match intent.lifecycle.as_str() {
             "needs_change" => 4.0,
             "planned" => 2.0,
+            // Cleanup is tracked work: a to_be_removed intent stays in the build
+            // queue (delete the code) WHILE it is still grounded, and drops out
+            // once its code is gone (done by absence).
+            "to_be_removed" if snapshot.with_code.contains(&intent.id) => 3.0,
             _ => continue,
         };
         let kids = children.get(&intent.id);

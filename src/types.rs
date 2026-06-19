@@ -364,6 +364,13 @@ pub enum LifecycleState {
     /// from retire (status=deprecated), which is for SUPERSEDED/out-of-scope
     /// design — deferred is alive, just not active work.
     Deferred,
+    /// CLEANUP as a tracked verb: this code is SUPPOSED TO GO AWAY. Unlike
+    /// needs_change (a desired WORKING end state) or retire (keeps the code and
+    /// even tells coverage the file is UNREACHED), a `to_be_removed` intent's
+    /// criterion is falsifiable by ABSENCE — it is "done" only when its code is
+    /// verified gone (no passing IMPLEMENTS grounding remains). The third
+    /// advertised verb finally has a home that gates green on deletion.
+    ToBeRemoved,
 }
 
 impl std::fmt::Display for LifecycleState {
@@ -373,6 +380,7 @@ impl std::fmt::Display for LifecycleState {
             Self::Implemented => "implemented",
             Self::NeedsChange => "needs_change",
             Self::Deferred => "deferred",
+            Self::ToBeRemoved => "to_be_removed",
         };
         write!(f, "{s}")
     }
@@ -386,8 +394,9 @@ impl std::str::FromStr for LifecycleState {
             "implemented" => Ok(Self::Implemented),
             "needs_change" => Ok(Self::NeedsChange),
             "deferred" => Ok(Self::Deferred),
+            "to_be_removed" => Ok(Self::ToBeRemoved),
             other => anyhow::bail!(
-                "Unknown lifecycle '{}'. Valid: planned, implemented, needs_change, deferred",
+                "Unknown lifecycle '{}'. Valid: planned, implemented, needs_change, deferred, to_be_removed",
                 other
             ),
         }
