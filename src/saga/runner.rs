@@ -78,7 +78,11 @@ impl EnvRedactor {
             let value = std::env::var(&key).with_context(|| {
                 format!("Template references '{{{{ env.{key} }}}}' but ${key} is not set.")
             })?;
-            pairs.push((key, value));
+            // An empty value would make `redact` call str::replace with an empty
+            // pattern, which matches at every char boundary and corrupts the output.
+            if !value.is_empty() {
+                pairs.push((key, value));
+            }
         }
         Ok(Self { pairs })
     }
@@ -296,28 +300,37 @@ fn run_step(
                         ));
                     }
                 }
-                BodyExpectation::Contains { contains } => match nodes.first() {
-                    None => problems.push(format!("body {path}: matched nothing")),
-                    Some(node) => {
-                        let got = node_as_string(node);
-                        if !got.contains(contains.as_str()) {
-                            problems.push(format!(
-                                "body {path}: expected to contain '{contains}', got '{got}'"
-                            ));
-                        }
+                BodyExpectation::Contains { contains } => {
+                    if nodes.is_empty() {
+                        problems.push(format!("body {path}: matched nothing"));
+                    } else if !nodes
+                        .iter()
+                        .all(|node| node_as_string(node).contains(contains.as_str()))
+                    {
+                        problems.push(format!(
+                            "body {path}: expected every match to contain '{contains}', got {}",
+                            nodes
+                                .iter()
+                                .map(|node| node_as_string(node))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ));
                     }
-                },
-                BodyExpectation::Equals(want) => match nodes.first() {
-                    None => problems.push(format!("body {path}: matched nothing")),
-                    Some(node) => {
-                        if *node != &want {
-                            problems.push(format!(
-                                "body {path}: expected {want}, got {got}",
-                                got = node
-                            ));
-                        }
+                }
+                BodyExpectation::Equals(want) => {
+                    if nodes.is_empty() {
+                        problems.push(format!("body {path}: matched nothing"));
+                    } else if !nodes.iter().all(|node| *node == &want) {
+                        problems.push(format!(
+                            "body {path}: expected every match to equal {want}, got {}",
+                            nodes
+                                .iter()
+                                .map(|n| n.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ));
                     }
-                },
+                }
             }
         }
     }
@@ -554,7 +567,10 @@ steps:
         assert!(!report.passed);
         assert_eq!(report.executed, 1);
         let d = &report.failure().unwrap().detail;
-        assert!(d.contains(r#"expected "open", got "locked""#), "got: {d}");
+        assert!(
+            d.contains(r#"expected every match to equal "open", got "locked""#),
+            "got: {d}"
+        );
     }
 
     #[test]
@@ -613,6 +629,50 @@ steps:
             !failure.detail.contains(&secret_base),
             "got: {}",
             failure.detail
+        );
+    }
+
+    #[test]
+    fn env_redactor_empty_value_does_not_corrupt() {
+        std::env::set_var("LOOM_SAGA_EMPTY_REDACT_VALUE", "");
+        let spec = crate::saga::spec::load_spec(
+            &SPEC.replace("__BASE__", "{{ env.LOOM_SAGA_EMPTY_REDACT_VALUE }}"),
+            "test",
+        )
+        .unwrap();
+        let redactor = EnvRedactor::from_spec(&spec).unwrap();
+
+        assert_eq!(redactor.redact("hello"), "hello");
+    }
+
+    #[test]
+    fn body_assert_checks_all_matches() {
+        let (base, _seen) = serve_script(vec![http(
+            "200 OK",
+            r#"{"items":[{"state":"open"},{"state":"locked"}]}"#,
+        )]);
+        let spec_text = format!(
+            r#"
+saga: all-matches
+base: "{base}"
+steps:
+  - name: list carts
+    intent: cart-list
+    request: {{ method: GET, url: /carts }}
+    expect:
+      status: 200
+      body:
+        "$.items[*].state": open
+"#
+        );
+        let spec = crate::saga::spec::load_spec(&spec_text, "test").unwrap();
+        let report = run_saga(&spec).unwrap();
+
+        assert!(!report.passed, "outcomes: {:?}", report.outcomes);
+        let detail = &report.failure().unwrap().detail;
+        assert!(
+            detail.contains(r#"expected every match to equal "open""#),
+            "got: {detail}"
         );
     }
 

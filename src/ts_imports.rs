@@ -431,6 +431,7 @@ fn js_ts_symbol_fact(
     };
     let name = name()?.to_string();
     let base_label = format!("{kind} {name}");
+    let is_test = path_is_test(rel_path) || in_test_context || js_ts_name_is_test(&name);
     Some(SymbolFact {
         label: if exported {
             format!("export {base_label}")
@@ -446,9 +447,7 @@ fn js_ts_symbol_fact(
         },
         line_start: node.start_position().row + 1,
         line_end: node.end_position().row + 1,
-        is_test: path_is_test(rel_path)
-            || in_test_context
-            || js_ts_name_is_test(text(node, content).unwrap_or("")),
+        is_test,
         string_literals: string_literal_facts(node, content),
         panic_marker_count: panic_marker_count(node, content),
         panic_markers: panic_markers(node, content),
@@ -496,7 +495,8 @@ fn collect_js_ts_const_facts(
                                 line_end: child.end_position().row + 1,
                                 is_test: path_is_test(rel_path)
                                     || in_test_context
-                                    || name.starts_with("test"),
+                                    || name == "test"
+                                    || name.starts_with("test_"),
                                 string_literals: string_literal_facts(child, content),
                                 panic_marker_count: panic_marker_count(child, content),
                                 panic_markers: panic_markers(child, content),
@@ -824,8 +824,16 @@ fn path_is_test(rel_path: &str) -> bool {
         || p.ends_with("_test.py")
 }
 
-fn js_ts_name_is_test(raw: &str) -> bool {
-    raw.contains("describe(") || raw.contains("it(") || raw.contains("test(")
+fn js_ts_name_is_test(name: &str) -> bool {
+    // Test declarations are name-anchored, not body-substring: `it(` inside
+    // a function body (commit(, init(, exit(, …) must not classify the
+    // enclosing function as a test.
+    name == "it"
+        || name == "test"
+        || name == "describe"
+        || name.starts_with("it_")
+        || name.starts_with("test_")
+        || name.starts_with("describe_")
 }
 
 fn visit_children(
@@ -883,6 +891,9 @@ fn string_value(node: Node<'_>, content: &str) -> Option<String> {
     if first == '`' && raw.contains("${") {
         return None;
     }
+    if raw.len() < 2 {
+        return None;
+    }
     Some(raw[1..raw.len() - 1].to_string())
 }
 
@@ -893,5 +904,18 @@ fn normalize_ws(s: &str) -> String {
 fn push_unique_fact(out: &mut Vec<SymbolFact>, item: SymbolFact) {
     if !item.label.is_empty() && !out.iter().any(|existing| existing.label == item.label) {
         out.push(item);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn string_value_single_quote_returns_none() {
+        let content = "\"";
+        let tree = parse(Lang::JavaScript.language(), content).unwrap();
+
+        assert_eq!(string_value(tree.root_node(), content), None);
     }
 }

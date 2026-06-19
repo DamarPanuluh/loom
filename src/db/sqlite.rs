@@ -3861,7 +3861,7 @@ impl SqliteGraphStore {
     ) -> Result<usize> {
         let previous = self.list_targets_for_hypothesis(hypothesis_id)?;
         let tx = self.write_tx()?;
-        tx.execute(
+        let changed = tx.execute(
             "UPDATE targets
              SET inspection_status = ?1,
                  criterion = ?2,
@@ -3891,7 +3891,6 @@ impl SqliteGraphStore {
                 now,
             )?;
         }
-        let changed = tx.changes() as usize;
         tx.commit()?;
         Ok(changed)
     }
@@ -4826,11 +4825,7 @@ impl SqliteGraphStore {
         for notes in by_target.values() {
             let mut kept_routine = 0usize;
             for note in notes.iter().rev() {
-                if note.text.ends_with("-> failing")
-                    || note.text.ends_with("-> needs_change")
-                    || note.text.ends_with("→ failing")
-                    || note.text.ends_with("→ needs_change")
-                {
+                if note.text.ends_with("→ failing") || note.text.ends_with("→ needs_change") {
                     continue;
                 }
                 if kept_routine < keep_per_target {
@@ -5100,6 +5095,7 @@ fn clear_all(tx: &rusqlite::Transaction<'_>) -> Result<()> {
         "hypothesis",
         "delegation",
         "ignore_rule",
+        "inbox_item",
         "note",
         "validation",
         "quality_rule",
@@ -6160,6 +6156,65 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         values
     }
 
+    fn sqlite_test_intent(id: &str, now: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: format!("intent {id}"),
+            description: "Test intent for sqlite regression coverage.".into(),
+            criterion: String::new(),
+            abstraction_level: "feature".into(),
+            domain: "analysis".into(),
+            layer: "".into(),
+            source_refs: Vec::new(),
+            status: "proposed".into(),
+            aspect: "happy".into(),
+            lifecycle: "implemented".into(),
+            created_at: now.into(),
+            updated_at: now.into(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: "inbound".into(),
+        }
+    }
+
+    fn sqlite_test_hypothesis(id: &str, now: &str) -> Hypothesis {
+        Hypothesis {
+            id: id.into(),
+            name: format!("hypothesis {id}"),
+            claim: "The target status update should affect every target edge.".into(),
+            proposal: "Stamp all TARGETS edges for the hypothesis.".into(),
+            predicted_outcome: "The returned row count equals the number of target edges.".into(),
+            status: "proposed".into(),
+            author: "llm:analyzer".into(),
+            evidence: String::new(),
+            inspected_by: String::new(),
+            last_inspected: String::new(),
+            created_at: now.into(),
+            updated_at: now.into(),
+        }
+    }
+
+    fn sqlite_test_inbox_item(id: &str, now: &str) -> InboxItem {
+        InboxItem {
+            id: id.into(),
+            raw_text: "Capture this imported inbox card.".into(),
+            normalized_claim: "Capture this imported inbox card.".into(),
+            kind: "observation".into(),
+            status: "new".into(),
+            source: "user".into(),
+            author: "user".into(),
+            tags: Vec::new(),
+            links: Vec::new(),
+            route_kind: String::new(),
+            route_command: String::new(),
+            route_target_kind: String::new(),
+            route_target_id: String::new(),
+            resolution: String::new(),
+            created_at: now.into(),
+            updated_at: now.into(),
+        }
+    }
+
     fn snapshot_signature(
         snapshot: &crate::db::queries::QuerySnapshot,
         notes: &[Note],
@@ -6282,6 +6337,33 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
             normalized_for_semantic_compare(data),
             normalized_for_semantic_compare(exported)
         );
+    }
+
+    #[test]
+    fn sqlite_import_clears_inbox() {
+        let now = "2026-01-01T00:00:00Z";
+        let mut store = SqliteGraphStore::in_memory().unwrap();
+        store
+            .initialize(
+                crate::db::schema::SCHEMA_VERSION,
+                "graph-clear-inbox",
+                "test",
+                "owned",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_inbox_item(&sqlite_test_inbox_item("inbox-a", now))
+            .unwrap();
+
+        let exported = store.export_json().unwrap();
+        assert_eq!(exported["nodes"]["InboxItem"].as_array().unwrap().len(), 1);
+
+        store.import_export_json(&exported).unwrap();
+
+        let items = store.list_inbox_items(None, None).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, "inbox-a");
     }
 
     #[test]
@@ -6574,6 +6656,35 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].inspection_status, "passing");
         assert_eq!(targets[0].confidence, 0.87);
+    }
+
+    #[test]
+    fn set_targets_status_returns_correct_count() {
+        let now = "2026-01-01T00:00:00Z";
+        let mut store = SqliteGraphStore::in_memory().unwrap();
+        for id in ["intent-a", "intent-b", "intent-c"] {
+            store.insert_intent(&sqlite_test_intent(id, now)).unwrap();
+        }
+        store
+            .insert_hypothesis(&sqlite_test_hypothesis("hypothesis-count", now))
+            .unwrap();
+        for id in ["intent-a", "intent-b", "intent-c"] {
+            store.insert_targets("hypothesis-count", id, now).unwrap();
+        }
+
+        let changed = store
+            .set_targets_status_for_hypothesis(
+                "hypothesis-count",
+                "passing",
+                "proof establishes target impact",
+                "verified every target edge was stamped",
+                0.91,
+                "llm:analyzer",
+                now,
+            )
+            .unwrap();
+
+        assert_eq!(changed, 3);
     }
 
     #[test]

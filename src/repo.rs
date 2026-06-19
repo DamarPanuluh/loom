@@ -163,12 +163,19 @@ pub fn git_cochange(root: &Path, paths: &HashSet<String>, last_n: usize) -> CoCh
     let output = std::process::Command::new("git")
         .arg("-C")
         .arg(root)
+        .arg("-c")
+        .arg("core.quotePath=false")
         .arg("log")
         .arg("--no-merges")
         .arg(format!("-n{log_limit}"))
         .arg("--name-only")
         .arg("--format=%x00")
         .output();
+    // Record the pending co-change event BEFORE the git-log early-return so an
+    // unborn-HEAD repo (git log exits 128) still counts its untracked known files.
+    if !pending.is_empty() {
+        record_cochange_event(&mut cc, &pending);
+    }
     let Ok(output) = output else {
         return cc;
     };
@@ -186,9 +193,6 @@ pub fn git_cochange(root: &Path, paths: &HashSet<String>, last_n: usize) -> CoCh
         files.sort_unstable();
         files.dedup();
         record_cochange_event(&mut cc, &files);
-    }
-    if !pending.is_empty() {
-        record_cochange_event(&mut cc, &pending);
     }
     cc
 }

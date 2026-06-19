@@ -406,6 +406,18 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                     "the ONE falsifiable thing this intent is done/correct by",
                 )?;
             }
+            // Validate the new boundary BEFORE any write — same hazard as criterion:
+            // set_intent_boundary bails on an invalid value, but it runs LAST in the
+            // write sequence. Without this pre-check, an invalid --boundary paired
+            // with a valid --description persists the meaning change and then bails
+            // before the redefinition ripple, leaving edges green-but-stale.
+            if let Some(boundary) = new_boundary {
+                if !matches!(boundary, "inbound" | "outbound" | "") {
+                    anyhow::bail!(
+                        "Invalid --boundary '{boundary}'. Valid: inbound | outbound | \"\"."
+                    );
+                }
+            }
             let now = chrono::Utc::now().to_rfc3339();
             store.update_intent_meaning(&id, new_name, new_desc, &now)?;
             if let Some(criterion) = new_criterion {

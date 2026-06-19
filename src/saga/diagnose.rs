@@ -226,42 +226,51 @@ fn classify_failure(
             confidence: "high".to_string(),
         };
     }
-    if let Some(status) = outcome.status {
-        match status {
-            401 => {
-                if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
-                    return root;
-                }
-                return RootCause {
+    // Only classify by status when the status itself was the unexpected
+    // failure. When the status check passed (status was expected), the real
+    // failure is a body/header assertion — don't short-circuit to auth/not-found.
+    // A negative-auth proof expecting 403 that fails on a body mismatch must
+    // diagnose the mismatch, not "auth_forbidden".
+    let status_was_unexpected =
+        detail.contains("expected status") || detail.contains("expected a 2xx");
+    if status_was_unexpected {
+        if let Some(status) = outcome.status {
+            match status {
+                401 => {
+                    if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
+                        return root;
+                    }
+                    return RootCause {
                     kind: "auth_unauthorized".to_string(),
                     title: "Unauthorized request".to_string(),
                     fields: vec![field("status", "401 Unauthorized")],
                     fix: "Check the auth header, token validity, actor identity, and any repo-specific auth binding.".to_string(),
                     confidence: "medium".to_string(),
                 };
-            }
-            403 => {
-                if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
-                    return root;
                 }
-                return RootCause {
+                403 => {
+                    if let Some(root) = jwt_scope_mismatch(outcome, spec_step, vars) {
+                        return root;
+                    }
+                    return RootCause {
                     kind: "auth_forbidden".to_string(),
                     title: "Forbidden request".to_string(),
                     fields: vec![field("status", "403 Forbidden")],
                     fix: "Check token scopes/roles and the endpoint's declared authorization requirements.".to_string(),
                     confidence: "medium".to_string(),
                 };
-            }
-            404 => {
-                return RootCause {
+                }
+                404 => {
+                    return RootCause {
                     kind: "resource_not_found".to_string(),
                     title: "Resource not found".to_string(),
                     fields: vec![field("status", "404 Not Found"), field("url", &outcome.url)],
                     fix: "Check the identifier in the URL and whether an earlier step was supposed to create it.".to_string(),
                     confidence: "medium".to_string(),
                 };
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
     if detail.contains("expected status") {
@@ -732,6 +741,54 @@ steps:
         };
         let diagnosis = diagnose_report(&spec, &report);
         let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
+        assert_eq!(root.kind, "body_mismatch");
+    }
+
+    #[test]
+    fn classify_failure_expected_status_not_auth() {
+        // A negative-auth proof expecting 403 that fails on a body mismatch:
+        // the status check PASSED (403 was expected), so the real failure is
+        // the body assertion. The diagnosis must be body_mismatch, NOT
+        // auth_forbidden (which would short-circuit on the 403 status code).
+        let spec = spec(
+            r#"
+saga: negative-auth
+steps:
+  - name: forbidden read
+    intent: negative-auth
+    request: { method: GET, url: https://example.test/secret }
+    expect:
+      status: 403
+      body:
+        "$.error": "access_denied"
+"#,
+        );
+        let report = SagaRunReport {
+            saga: "negative-auth".into(),
+            passed: false,
+            total_steps: 1,
+            executed: 1,
+            outcomes: vec![StepOutcome {
+                step: 1,
+                name: "forbidden read".into(),
+                intent: "negative-auth".into(),
+                method: "GET".into(),
+                url: "https://example.test/secret".into(),
+                status: Some(403),
+                passed: false,
+                // Status was expected (403 matched) — no "expected status" or
+                // "expected a 2xx" in the detail. The failure is a body mismatch.
+                detail: r#"body $.error: expected every match to equal "access_denied", got "forbidden""#.into(),
+                captured: Default::default(),
+            }],
+        };
+        let diagnosis = diagnose_report(&spec, &report);
+        let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
+        assert_ne!(
+            root.kind, "auth_forbidden",
+            "expected-403 with body mismatch must not diagnose as auth_forbidden, got: {:?}",
+            root.kind
+        );
         assert_eq!(root.kind, "body_mismatch");
     }
 }

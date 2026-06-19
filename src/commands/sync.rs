@@ -458,8 +458,15 @@ fn run_with_sqlite(
     let next_step = if report.files_changed == 0
         && report.missing_files.is_empty()
         && report.escaped_files.is_empty()
+        && report.locators_stale.is_empty()
     {
         "`loom status` (or `loom next --all` for closeout)".to_string()
+    } else if report.files_changed == 0
+        && report.missing_files.is_empty()
+        && report.escaped_files.is_empty()
+        && !report.locators_stale.is_empty()
+    {
+        "`loom next --mode fix` to re-inspect IMPLEMENTS edges with stale locators.".to_string()
     } else {
         format!(
             "`loom next --mode fix{}` to re-inspect flagged edges{}",
@@ -576,6 +583,7 @@ fn run_with_sqlite(
         if report.files_changed == 0
             && report.missing_files.is_empty()
             && report.escaped_files.is_empty()
+            && report.locators_stale.is_empty()
         {
             println!("  ✓ All files up to date — no edges need reverification.");
         } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {

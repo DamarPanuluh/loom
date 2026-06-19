@@ -518,7 +518,7 @@ pub fn require_locators_resolve(root: &Path, locators: &[String]) -> Result<()> 
         if let Some(range) = range {
             if let Some((start, end)) = parse_line_range(range) {
                 let total = content.lines().count().max(1);
-                if start == 0 || end < start || start > total {
+                if start == 0 || end < start || start > total || end > total {
                     anyhow::bail!(
                         "--evidence-locator '{l}': line range '{range}' is outside '{path}' (1..={total}) — \
                          the anchor does not point at real lines."
@@ -746,6 +746,10 @@ mod tests {
         assert!(err.contains("not a readable file"), "got: {err}");
         // A line range past EOF is rejected.
         assert!(require_locators_resolve(&dir, &["real.rs:9999".into()]).is_err());
+        assert!(
+            require_locators_resolve(&dir, &["real.rs:1-9999".into()]).is_err(),
+            "end line past EOF must be rejected"
+        );
         // An inverted range is rejected.
         assert!(require_locators_resolve(&dir, &["real.rs:3-1".into()]).is_err());
 

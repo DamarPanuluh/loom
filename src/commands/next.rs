@@ -232,6 +232,7 @@ fn run_relates_with_repo(
     }
     notes.extend(store.notes_for_target(&top_edge.from_id)?);
     notes.extend(store.notes_for_target(&top_edge.to_id)?);
+    notes.sort_by(|a, b| a.created_at.cmp(&b.created_at));
     let (notes, notes_total) = note_surfaces(notes, role);
     let suggested_action = build_suggested_action(top_edge, score);
 
@@ -1067,10 +1068,19 @@ fn render_all(
     let mut vc = vertical_completeness_from_snapshot(&snapshot);
     let build = build_candidates_from_snapshot(&snapshot);
     let fix = scored_candidates_from_snapshot(&snapshot, "fix");
+    let active_ids: std::collections::HashSet<&str> = snapshot
+        .intents
+        .iter()
+        .filter(|i| i.status != "deprecated")
+        .map(|i| i.id.as_str())
+        .collect();
     let discovery_uninspected = snapshot
         .relates
         .iter()
         .filter(|e| e.inspection_status == "uninspected")
+        .filter(|e| {
+            active_ids.contains(e.from_id.as_str()) && active_ids.contains(e.to_id.as_str())
+        })
         .count() as i64;
     let validate = validate_candidates_from_snapshot(&snapshot);
     let quality = quality_candidates_from_snapshot(&snapshot);
@@ -1127,7 +1137,7 @@ fn render_all(
     if !build.is_empty() {
         let c = &build[0];
         queues.push(serde_json::json!({
-            "queue": "build", "role": if c.intent.lifecycle == "needs_change" { "fixer" } else { "builder" },
+            "queue": "build", "role": if c.intent.lifecycle == "needs_change" || c.intent.lifecycle == "to_be_removed" { "fixer" } else { "builder" },
             "gate": "autonomous",
             "count": build.len(), "command": "loom next --mode build",
             "top": format!("'{}' ({})", c.intent.name, c.intent.lifecycle),
