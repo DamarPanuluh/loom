@@ -91462,15 +91462,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "HONESTY-NEXT [execute-runnable-validations-close-the-loop] [validate/high] loom's proven axis is a DECLARED-proof signal, not an executed one: 'proven 75/77 (exec 64·assert 11)' counts a validation as 'exec' when its command field is non-empty and type != manual_check — a static SHAPE check, never a run. A command string filled in but never run reads as executed proof. loc: src/db/queries/stats.rs (proven discriminator ~:376); the validator lane (loom next --mode validate) is meant to run them but loom-as-instrument does not close the loop on its own graph. impact: the single biggest remaining honesty gap — 'proven (exec N)' is still buyable by typing a command, the exact shape the false-green cluster hunts. The adversarial validation workflow flagged this verbatim: it cannot detect a validation actually run but recorded as manual_check, nor a command filled in but never run. suggestion: have loom (or the validator lane) actually execute the 64 runnable validation commands, record real last_run + last_result, and redefine 'exec' as 'last_run within N + last_result=passed' so proven becomes observed, not declared. Retires the proven-axis laundering root; ties to the epistemic-laundering hole.",
-        "resolution": "",
+        "resolution": "Shipped in efb40b2. Added last_executed_run column stamped only by the executor; redefined proven EXECUTED to require it. A hand-marked command-bearing proof is now ASSERTED not EXECUTED, closing the declared-not-executed laundering hole. Schema v11, loom.graph.json regenerated, lib+e2e tests green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:46:38.270527+00:00"
+        "updated_at": "2026-06-19T19:38:19.581877+00:00"
       },
       {
         "author": "llm",
