@@ -91696,15 +91696,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [status-audit-open-findings-null-not-zero] [status/low] When the audit scan is deferred, status JSON still ships a literal open_findings:0 alongside computed:false, which a programmatic consumer keying on that field reads as 'audit clean' when no scan ran. loc: src/commands/status.rs (audit block); live `loom status --json` -> audit.{computed:false, open_findings:0, note:'...deferred...'}. impact: low — the human surface is honest and proven is correctly not given a ✓, so this is the MOSTLY-guarded remnant of the overstatement family. suggestion: emit null / 'not_computed' instead of 0 when computed:false. Recorded mainly to scope the generalization: this surface is now bounded, not a fresh hole.",
-        "resolution": "",
+        "resolution": "fix(false-green status-audit-open-findings-null-not-zero): audit.open_findings now Option<usize> (null when deferred, not 0). Regression test sqlite_status_audit_open_findings_null_when_deferred. Committed 3299338.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.361706+00:00"
+        "updated_at": "2026-06-19T10:27:11.048057+00:00"
       },
       {
         "author": "llm",
@@ -91876,15 +91876,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [is-test-subtree-substring-misclassification] [detector/medium] large_behavioral_symbol (loom's only physical size detector) skips f.is_test, and is_test is computed by substring-matching the node's ENTIRE text for '#[cfg(test', so any production impl containing one #[cfg(test)] helper is tagged test and made invisible. loc: src/ts_imports.rs:785-797 (rust_symbol_is_test does text(node,content).is_some_and(rust_attr_text_marks_test)); src/db/queries/smells.rs:1052-1058. impact: the 4137-line `impl SqliteGraphStore` (production) is exempt because it contains `#[cfg(test)] pub fn in_memory()` — the largest behavioral unit in the codebase goes unflagged. suggestion: scope is_test to the node's OWN preceding attributes / direct #[test] child, not a subtree substring match. (A file-LOC detector would also catch the 6734-line file regardless.)",
-        "resolution": "",
+        "resolution": "fix(false-green is-test-subtree-substring-misclassification): rust_symbol_is_test scoped to own preceding attributes (dropped subtree-text substring match); production impl with nested #[cfg(test)] helper no longer tagged test. Regression test rust_symbol_is_test_scoped_to_own_attributes_not_subtree. Committed 93eb9b4. Graph reclassification deferred to cluster-final sync.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.342041+00:00"
+        "updated_at": "2026-06-19T10:11:09.202800+00:00"
       },
       {
         "author": "llm",
