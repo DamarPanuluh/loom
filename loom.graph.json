@@ -91246,15 +91246,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [next-default-should-track-compass-phase] [next/medium] loom status said phase=fix, but bare 'loom next' dropped the driver into mode=discovery (priority 97.20, an unexplored edge) instead of the 370-item fix queue the status itself recommended. The driver had to know to pass --mode fix explicitly. loc: src/commands/next.rs (default mode selection). impact: one extra mental hop, and the default fights the system's own phase recommendation — a driver follows status's 'phase=fix' then loom next sends them discovery. suggestion: if phase=fix, loom next defaults to --mode fix (the phase is already the system's own recommendation); default mode tracks the compass phase.",
-        "resolution": "",
+        "resolution": "loom-next defaults cluster. #6 next-default-tracks-compass-phase: bare loom next now resolves --mode from graph_state.phase (fix->fix, build->build, validate->validate, quality->quality, discovery->discovery; seed/incomplete/ground/audit -> discovery fallback since their actions aren't a next-mode). Explicit --mode still wins. cli.rs --mode is now Option<String> so 'omitted' is distinguishable. Legibility: the RELATES_TO single-item JSON gained a  field (pre-existing parity gap with the human header, now material since bare next follows phase). #4 take-inconsistent: --take on non-bulk modes (build/populate/validate/prove) caps to 1 + ANNOUNCES the cap (no hard error) — human preamble + JSON take_note/take_capped_to via inject_take_note in all 4 non-bulk renderers (JSON is the load-bearing half for LLM agents). Bulk modes keep --take as a real bulk read. Tests: sqlite_next_default_follows_compass_phase + sqlite_next_explicit_mode_overrides_phase_default + sqlite_next_take_caps_to_one_on_non_bulk_mode + unit phase_default_mode. Committed 3ad9d6c. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:20.164865+00:00"
+        "updated_at": "2026-06-19T18:43:17.370878+00:00"
       },
       {
         "author": "llm",
@@ -92092,15 +92092,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [take-inconsistent-across-modes] [next/low] --take works as a bulk read on discovery/fix/quality/review but hard-errors on other modes: 'loom next --mode validate --take 5' -> '--take is a bulk read of the discovery/fix/quality/review queues... The other modes resolve one command per item.' The error is accurate, but the interface is inconsistent — a driver assumes --take is a universal bulk-read flag and learns the boundary by failing. loc: src/commands/next.rs (--take handling per mode). impact: minor DX trap; the error is good but the inconsistency feels like a trap. suggestion: a consistent bulk interface, or --take silently capping to 1 on non-bulk modes with a note, so the flag behaves uniformly.",
-        "resolution": "",
+        "resolution": "loom-next defaults cluster. #6 next-default-tracks-compass-phase: bare loom next now resolves --mode from graph_state.phase (fix->fix, build->build, validate->validate, quality->quality, discovery->discovery; seed/incomplete/ground/audit -> discovery fallback since their actions aren't a next-mode). Explicit --mode still wins. cli.rs --mode is now Option<String> so 'omitted' is distinguishable. Legibility: the RELATES_TO single-item JSON gained a  field (pre-existing parity gap with the human header, now material since bare next follows phase). #4 take-inconsistent: --take on non-bulk modes (build/populate/validate/prove) caps to 1 + ANNOUNCES the cap (no hard error) — human preamble + JSON take_note/take_capped_to via inject_take_note in all 4 non-bulk renderers (JSON is the load-bearing half for LLM agents). Bulk modes keep --take as a real bulk read. Tests: sqlite_next_default_follows_compass_phase + sqlite_next_explicit_mode_overrides_phase_default + sqlite_next_take_caps_to_one_on_non_bulk_mode + unit phase_default_mode. Committed 3ad9d6c. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:19.924538+00:00"
+        "updated_at": "2026-06-19T18:43:17.384756+00:00"
       },
       {
         "author": "llm",
