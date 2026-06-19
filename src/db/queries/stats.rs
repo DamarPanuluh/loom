@@ -45,6 +45,18 @@ pub struct Coverage360 {
     pub measured_pairs: CoverageAxis,
     /// Proof: implemented leaf intents with a passed validation / implemented leaves.
     pub proven_leaves: CoverageAxis,
+    /// Proof quality ceiling — executed proof: implemented leaves proven by a
+    /// passed RUNNABLE validation (validation_type test/assertion/benchmark/saga
+    /// with a non-empty command). `proven_leaves.covered` ==
+    /// `proven_executed_leaves.covered` + `proven_asserted_leaves.covered`.
+    pub proven_executed_leaves: CoverageAxis,
+    /// Proof quality floor — asserted proof: implemented leaves proven ONLY by
+    /// hand-marked acceptance (manual_check, or any validation with an empty
+    /// command). `loom validation mark --result passed` stamps a pass without
+    /// executing, and the graph records it identically to a run-pass (it sets
+    /// last_run too), so the honest discriminator is the validation's SHAPE, not
+    /// last_run. These leaves are PROVEN but not EXECUTED-PROVEN.
+    pub proven_asserted_leaves: CoverageAxis,
 }
 
 /// Compact "pulse" of the graph — cheap situational awareness + a recommended
@@ -334,19 +346,55 @@ pub fn graph_state_from_snapshot_parts(
     };
 
     // Proven = implemented leaves whose proof actually PASSED (blocked/not_run
-    // are visible elsewhere; this axis counts earned proof only).
-    let proven_ids: std::collections::HashSet<&str> = snapshot
-        .validates
+    // are visible elsewhere; this axis counts earned proof only). Split into
+    // EXECUTED vs ASSERTED: the graph records a pass identically whether a
+    // command RAN and passed or a human `loom validation mark --result passed`
+    // stamped it (mark_validation_result sets last_run too), so last_run cannot
+    // tell them apart. The honest discriminator is the validation's SHAPE — a
+    // runnable validation_type (test/assertion/benchmark/saga) WITH a command is
+    // executed proof; a manual_check or an empty command is asserted proof
+    // (hand-marked acceptance that never executed anything). Surfacing both
+    // stops a green "proven N/M" from hiding the leaves proven only by stamped
+    // manual_check passes (the false-green axis).
+    let validation_by_id: std::collections::HashMap<&str, &Validation> = snapshot
+        .validations
         .iter()
-        .filter(|edge| {
-            validation_result.get(edge.validation_id.as_str()).copied() == Some("passed")
-        })
-        .map(|edge| edge.intent_id.as_str())
+        .map(|v| (v.id.as_str(), v))
         .collect();
+    let mut proven_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let mut executed_intent_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for edge in snapshot.validates.iter().filter(|edge| {
+        validation_result.get(edge.validation_id.as_str()).copied() == Some("passed")
+    }) {
+        proven_ids.insert(edge.intent_id.as_str());
+        if let Some(v) = validation_by_id.get(edge.validation_id.as_str()) {
+            if !v.command.is_empty() && v.validation_type != "manual_check" {
+                executed_intent_ids.insert(edge.intent_id.as_str());
+            }
+        }
+    }
     let proven_leaves = CoverageAxis {
         covered: implemented_leaves
             .iter()
             .filter(|i| proven_ids.contains(i.id.as_str()))
+            .count() as i64,
+        total: implemented_leaves.len() as i64,
+    };
+    let proven_executed_leaves = CoverageAxis {
+        covered: implemented_leaves
+            .iter()
+            .filter(|i| executed_intent_ids.contains(i.id.as_str()))
+            .count() as i64,
+        total: implemented_leaves.len() as i64,
+    };
+    // Asserted-only = proven but with NO executed-type pass (proven entirely by
+    // hand-marked acceptance). Invariant: proven == executed + asserted-only.
+    let proven_asserted_leaves = CoverageAxis {
+        covered: implemented_leaves
+            .iter()
+            .filter(|i| {
+                proven_ids.contains(i.id.as_str()) && !executed_intent_ids.contains(i.id.as_str())
+            })
             .count() as i64,
         total: implemented_leaves.len() as i64,
     };
@@ -360,6 +408,8 @@ pub fn graph_state_from_snapshot_parts(
             total: nc.total_pairs,
         },
         proven_leaves,
+        proven_executed_leaves,
+        proven_asserted_leaves,
     };
     let unmeasured_queue = nc.queue.len();
 

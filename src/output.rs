@@ -152,13 +152,29 @@ fn fmt_axis(a: &crate::db::queries::CoverageAxis) -> String {
 /// The five axes joined as one compact line — shared by the human pulse
 /// (with the "360°: " prefix) and the JSON pulse (`coverage` field).
 pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
+    // Proven discloses its quality ceiling inline: how much of the proven count
+    // is EXECUTED proof (a runnable validation that passed) vs ASSERTED (hand-
+    // marked acceptance — manual_check / empty command). Without this split a
+    // green "proven N/M" hides leaves proven only by stamped manual_check passes.
+    // Shown only when there is proven to inspect (covered > 0); a 0 axis stays
+    // a bare "—" so the compass never renders a vacuous "0/0".
+    let proven = if c.proven_leaves.total > 0 && c.proven_leaves.covered > 0 {
+        format!(
+            "{} (exec {}·assert {})",
+            fmt_axis(&c.proven_leaves),
+            c.proven_executed_leaves.covered,
+            c.proven_asserted_leaves.covered,
+        )
+    } else {
+        fmt_axis(&c.proven_leaves)
+    };
     format!(
         "grounded {} · realized {} · explored {} · measured {} · proven {}",
         fmt_axis(&c.grounded_files),
         fmt_axis(&c.realized_leaves),
         fmt_axis(&c.explored_pairs),
         fmt_axis(&c.measured_pairs),
-        fmt_axis(&c.proven_leaves),
+        proven,
     )
 }
 
@@ -604,6 +620,14 @@ mod tests {
                     covered: 0,
                     total: 0,
                 },
+                proven_executed_leaves: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
+                proven_asserted_leaves: CoverageAxis {
+                    covered: 0,
+                    total: 0,
+                },
             },
             note_hygiene: String::new(),
         }
@@ -758,6 +782,14 @@ mod tests {
                 total: 3,
             },
             proven_leaves: CoverageAxis {
+                covered: 0,
+                total: 0,
+            },
+            proven_executed_leaves: CoverageAxis {
+                covered: 0,
+                total: 0,
+            },
+            proven_asserted_leaves: CoverageAxis {
                 covered: 0,
                 total: 0,
             },

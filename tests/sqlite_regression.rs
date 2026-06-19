@@ -3002,3 +3002,242 @@ fn sqlite_oversized_file_survives_per_symbol_adjudication() {
         "the suppressed file finding must surface in adjudicated with its ruling: {s}"
     );
 }
+
+// FALSE-GREEN [proven-axis-proof-quality-ceiling]: `proven` must NOT conflate
+// executed test-proof with hand-marked acceptance. The graph records a pass
+// identically whether a command RAN and passed or `loom validation mark
+// --result passed` stamped it (mark_validation_result sets last_run too), so
+// the discriminator is the validation's SHAPE — a runnable validation_type
+// (test/assertion/benchmark/saga) WITH a command is EXECUTED; a manual_check or
+// an empty command is ASSERTED. The axis splits proven into executed vs
+// asserted-only and the compass discloses both inline.
+fn coverage_proven(status: &Value) -> &Value {
+    status
+        .get("coverage")
+        .or_else(|| status.get("graph_state").and_then(|g| g.get("coverage")))
+        .expect("status json has a coverage object")
+}
+
+#[test]
+fn sqlite_proven_axis_invariant_executed_plus_asserted_equals_proven() {
+    let _g = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-proven-invariant");
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let cov = coverage_proven(&status);
+    let proven = cov["proven_leaves"]["covered"]
+        .as_i64()
+        .expect("proven covered");
+    let exec = cov["proven_executed_leaves"]["covered"]
+        .as_i64()
+        .expect("proven_executed covered");
+    let asserted = cov["proven_asserted_leaves"]["covered"]
+        .as_i64()
+        .expect("proven_asserted covered");
+    assert_eq!(
+        exec + asserted,
+        proven,
+        "proven must partition cleanly into executed + asserted-only: proven={proven} exec={exec} assert={asserted}"
+    );
+    // The committed graph has manual_check/empty-command passes, so the
+    // discriminator must land some leaves in asserted (proves manual_check is
+    // NOT counted as executed). If this breaks, the discriminator regressed.
+    assert!(
+        asserted > 0,
+        "the committed graph has hand-marked proofs — asserted must be > 0, got {asserted} (proven={proven} exec={exec})"
+    );
+    // The compass discloses the split inline whenever there is proven to inspect.
+    let human = run_text_as(&graph.root, &["status"], "llm:validator");
+    assert!(
+        human.contains("exec ") && human.contains("assert "),
+        "the compass must disclose executed-vs-asserted inline: {human}"
+    );
+}
+
+#[test]
+fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("sqlite-proven-discriminator");
+    run_json(&graph.root, &["init", ".", "--json"]);
+
+    // Root with two implemented leaves: A proven ONLY by a manual_check (empty
+    // command → ASSERTED), B proven by a runnable test (non-empty command →
+    // EXECUTED). proven must be 2, executed 1 (B), asserted 1 (A).
+    let root = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "root",
+            "--description",
+            "root",
+            "--level",
+            "system",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let root_id = root["id"].as_str().expect("root id");
+    let leaf_a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "leaf A manual proof",
+            "--description",
+            "leaf proven only by a manual check",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let leaf_a_id = leaf_a["id"].as_str().expect("leaf A id");
+    let leaf_b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "leaf B executed test",
+            "--description",
+            "leaf proven by a runnable test",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let leaf_b_id = leaf_b["id"].as_str().expect("leaf B id");
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", root_id, leaf_a_id, "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", root_id, leaf_b_id, "--json"],
+        "llm:builder",
+    );
+
+    // Codefiles must exist on disk (codefile add checks mtime); register + ground.
+    write_scratch_file(&graph.root, "src/a.rs", "pub fn a() {}\n");
+    write_scratch_file(&graph.root, "src/b.rs", "pub fn b() {}\n");
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/a.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/b.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", leaf_a_id, "src/a.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", leaf_b_id, "src/b.rs", "--json"],
+        "llm:builder",
+    );
+
+    // A: manual_check with an EMPTY command — hand-marked acceptance. Asserted.
+    let vmanual = run_json(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "manual acceptance for A",
+            "--type",
+            "manual_check",
+            "--command",
+            "",
+            "--json",
+        ],
+    );
+    let vmanual_id = vmanual["id"].as_str().expect("manual validation id");
+    run_json(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            vmanual_id,
+            "--result",
+            "passed",
+            "--evidence",
+            "manual sign-off recorded by reviewer",
+            "--json",
+        ],
+    );
+    run_json(
+        &graph.root,
+        &["edge", "validates", vmanual_id, leaf_a_id, "--json"],
+    );
+
+    // B: a runnable test with a non-empty command — executed proof. Executed.
+    let vtest = run_json(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "automated test for B",
+            "--type",
+            "test",
+            "--command",
+            "cargo test --test b",
+            "--json",
+        ],
+    );
+    let vtest_id = vtest["id"].as_str().expect("test validation id");
+    run_json(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            vtest_id,
+            "--result",
+            "passed",
+            "--evidence",
+            "ran the suite green in external ci run",
+            "--json",
+        ],
+    );
+    run_json(
+        &graph.root,
+        &["edge", "validates", vtest_id, leaf_b_id, "--json"],
+    );
+
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let cov = coverage_proven(&status);
+    let proven = cov["proven_leaves"]["covered"].as_i64().expect("proven");
+    let exec = cov["proven_executed_leaves"]["covered"]
+        .as_i64()
+        .expect("executed");
+    let asserted = cov["proven_asserted_leaves"]["covered"]
+        .as_i64()
+        .expect("asserted");
+    assert_eq!(proven, 2, "both leaves are proven: {status}");
+    assert_eq!(
+        exec, 1,
+        "only leaf B (runnable test) is executed-proven: {status}"
+    );
+    assert_eq!(
+        asserted, 1,
+        "only leaf A (manual_check, empty command) is asserted-only: {status}"
+    );
+    assert_eq!(
+        exec + asserted,
+        proven,
+        "invariant: executed + asserted-only == proven"
+    );
+}

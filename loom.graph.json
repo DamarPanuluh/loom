@@ -91966,15 +91966,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [proven-axis-proof-quality-ceiling] [coverage/medium] `proven` conflates executed test-proof with hand-marked acceptance: it counts any VALIDATES link to a last_result='passed' validation regardless of validation_type or whether a command ran; `validation mark --result passed` writes the green without executing, gated only by a 10-char evidence string. loc: src/db/queries/stats.rs:336-352; src/commands/validation.rs:188-234; gate.rs:454 (require_substantive). impact: 18 intents are 'proven' only by empty-command manual_check passed, with reused boilerplate ('Final proof run passed: cargo test (80 tests)' stamps 4 distinct intents); status shows proven 75/77 disclosing none of it. suggestion: give proven a quality ceiling — manual_check (esp. empty-command) is a separate, lower sub-count; display proven as executed-vs-asserted, not one number.",
-        "resolution": "",
+        "resolution": "fix(false-green proven-axis-proof-quality-ceiling): proven split into executed (runnable validation_type with a command) vs asserted-only (manual_check / empty command) — the honest discriminator is the validation's SHAPE not last_run (mark sets last_run too). Coverage360 gains proven_executed_leaves + proven_asserted_leaves; compass discloses 'proven N/M (exec X·assert Y)'. Invariant executed+asserted==proven. Regression tests sqlite_proven_axis_invariant_* + sqlite_proven_axis_discriminates_*.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.331749+00:00"
+        "updated_at": "2026-06-19T13:52:09.326661+00:00"
       },
       {
         "author": "llm",
