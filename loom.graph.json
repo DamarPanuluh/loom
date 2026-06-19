@@ -91372,15 +91372,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "HONESTY-NEXT [adjudication-drill-down-auditable] [coverage/medium] coverage now discloses '570 adjudicated (bought green, not grounded)' (card #4) but a driver cannot see WHICH 570 or challenge them. loc: src/commands/coverage.rs (symbol_accountability summary line) — the adjudicated_symbol_gaps archive exists in --json but no human drill-down. impact: the disclosure is a count, not an audit trail — adjudication stays unauditable per-symbol, so a stale/copied/low-confidence note (the epistemic-laundering shape) cannot be surfaced and challenged individually. suggestion: a 'loom coverage --adjudicated' human view listing each bought symbol + the decision note that bought it + that note's confidence/staleness; extends disclosure into drill-down and ties to the per-author/copied-evidence audit (card #3).",
-        "resolution": "",
+        "resolution": "Shipped in b36d7cb. loom coverage --adjudicated drills into each bought symbol: ruling, who ruled, staleness age, reopens_when. JSON scopes to the full archive with an honest no-confidence note. Count becomes an auditable per-symbol trail.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:46:38.628693+00:00"
+        "updated_at": "2026-06-19T19:47:13.735102+00:00"
       },
       {
         "author": "llm",
