@@ -301,7 +301,20 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
         }
     }
     if vc.complete {
-        println!("  ✓ Every implemented leaf is realized and every CodeFile is reached.");
+        if gaps.is_empty() {
+            println!("  ✓ Every implemented leaf is realized and every CodeFile is reached.");
+        } else {
+            // The leaf SPINE is sound, but the broader completeness gaps below
+            // (confirmed non-leaf intents not grounded, missing proof, path
+            // coverage) bound the headline. A bare ✓ directly above "N
+            // Completeness Gaps" reads as "completeness done" — scope-label it
+            // to LEAF and reconcile with the adjacent gaps so the ✓ can't
+            // out-rank the co-located negatives.
+            println!(
+                "  ✓ Leaf spine sound — every implemented LEAF is realized and every CodeFile is reached ({} broader completeness gap(s) below: confirmed non-leaf intents, missing proof, or path coverage).",
+                gaps.len()
+            );
+        }
     }
     println!();
 

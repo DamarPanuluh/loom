@@ -1657,6 +1657,44 @@ mod tests {
         );
     }
 
+    // FALSE-GREEN [compass-must-not-overstate]: the leaf spine can be sound
+    // (vc.complete — every implemented LEAF realized + every CodeFile reached)
+    // while BROADER completeness gaps remain (a confirmed NON-leaf intent not
+    // grounded, a missing validation, a path-coverage hole). report's headline ✓
+    // is scope-labeled to LEAF and reconciled with these gaps — a bare
+    // "✓ every leaf realized" directly above "N Completeness Gaps" reads as
+    // "completeness done". This locks the invariant the qualified headline
+    // relies on: vc.complete does NOT imply gaps.is_empty().
+    #[test]
+    fn leaf_spine_sound_does_not_imply_no_completeness_gaps() {
+        use crate::db::queries::completeness::vertical_completeness_from_snapshot;
+        let mut sys = intent("sys", "implemented");
+        sys.abstraction_level = "system".to_string();
+        let feat = intent("feat", "implemented");
+        // sys is a confirmed NON-leaf (has a child) and NOT grounded → a broader
+        // gap. feat is a grounded leaf → the leaf spine is sound.
+        let snapshot = QuerySnapshot::from_parts(
+            vec![sys, feat],
+            vec![("sys".to_string(), "feat".to_string())],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![implements("feat", "src/a.rs")],
+            vec![codefile("src/a.rs", vec![])],
+            None,
+        );
+        let vc = vertical_completeness_from_snapshot(&snapshot);
+        assert!(vc.complete, "leaf spine is sound: {vc:?}");
+        let gaps = completeness_gaps_from_snapshot(&snapshot);
+        assert!(
+            gaps.iter()
+                .any(|g| g.contains("'sys'") && g.contains("not grounded")),
+            "a confirmed non-leaf intent not grounded is a broader gap the leaf-spine ✓ must not bury: {gaps:?}"
+        );
+    }
+
     /// Every phase the compass can route to MUST correspond to a non-empty
     /// `loom next --mode <phase>` queue (the coherence-by-construction invariant
     /// CLAUDE.md states but had no test for). Routing to a phase whose queue is

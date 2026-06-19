@@ -1408,6 +1408,30 @@ fn sqlite_audit_summary_surfaces_stay_bounded() {
     );
 }
 
+// FALSE-GREEN [compass-must-not-overstate]: coverage's "✓ No open actionable
+// symbol gaps" must not ride over adjudication-bought green. loom's own graph
+// resolves most symbols by adjudication (a decision note), not by a grounding
+// locator — "no OPEN gaps" is true, but green earned by adjudication rather
+// than grounding is the shape the false-green cluster hunts. The headline ✓
+// must disclose the co-located negative (adjudicated count) next to itself.
+#[test]
+fn sqlite_coverage_qualifies_no_gaps_with_adjudicated_green() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("coverage-qualify");
+    // Human output (not --json): the ✓ headline + its qualifier are a
+    // presentation fix, so assert on the text surface an agent reads.
+    let text = run_text_as(&graph.root, &["coverage"], "llm:validator");
+    // symbol_accountability is graph-derived (symbol_facts + locators), so it
+    // renders even on a tree-less scratch checkout. loom's graph carries
+    // adjudicated symbols, so the bare ✓ must be qualified.
+    assert!(
+        text.contains("No open actionable symbol gaps (but")
+            && text.contains("adjudicated (bought green, not grounded)"),
+        "the ✓ 'no open gaps' headline must be bounded by the adjudicated-bought-green \
+         negative instead of riding over it: {text}"
+    );
+}
+
 #[test]
 fn sqlite_primary_mutation_surface_on_fresh_graph() {
     let _guard = sqlite_test_lock();

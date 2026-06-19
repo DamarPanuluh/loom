@@ -291,7 +291,33 @@ pub fn run_with_db(
             s.debris_candidates
         );
         if symbol_accountability.actionable_symbol_gaps.is_empty() {
-            println!("  ✓ No open actionable symbol gaps.");
+            // Qualify the ✓ by co-located negatives so it doesn't ride over
+            // adjudication-bought green (symbols resolved by a decision note,
+            // not by a grounding locator) or raw gaps the headline ignores.
+            // "No OPEN actionable gaps" is true, but green earned by
+            // adjudication rather than grounding is exactly the shape the
+            // false-green cluster hunts — disclose it next to the ✓.
+            let mut qualifiers: Vec<String> = Vec::new();
+            if s.adjudicated > 0 {
+                qualifiers.push(format!(
+                    "{} adjudicated (bought green, not grounded)",
+                    s.adjudicated
+                ));
+            }
+            if s.raw_actionable_gaps > 0 {
+                qualifiers.push(format!(
+                    "{} raw gap(s) not yet actionable",
+                    s.raw_actionable_gaps
+                ));
+            }
+            if qualifiers.is_empty() {
+                println!("  ✓ No open actionable symbol gaps.");
+            } else {
+                println!(
+                    "  ✓ No open actionable symbol gaps (but {} — `loom coverage --json` for detail).",
+                    qualifiers.join("; ")
+                );
+            }
         } else {
             for gap in symbol_accountability.actionable_symbol_gaps.iter().take(20) {
                 println!(
