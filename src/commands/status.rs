@@ -56,6 +56,66 @@ struct PopulatePulse {
     next_command: String,
 }
 
+/// `honesty-next #2`: map-vs-territory, surfaced ALWAYS — not only at the
+/// audit gate. On a red graph (e.g. phase=fix) the compass used to hide that
+/// real files on disk weren't in the graph; the information existed (loom
+/// coverage) but the one screen every driver reads buried it behind near-green.
+/// This is the always-on disclosure: counts of files the graph doesn't account
+/// for, with the same remedy language the audit gate uses. Computed in
+/// `run()` (NOT in `graph_state`) so the disk-walk + content-hash cost is paid
+/// by `loom status` alone, not every `graph_state` pulse (next/report/…).
+#[derive(Debug, Clone, serde::Serialize)]
+struct DiskPulse {
+    /// files on disk the graph doesn't account for (no codefile, not ignored/delegated)
+    unaccounted: usize,
+    /// registered codefiles whose content drifted since the last sync
+    drifted: usize,
+    /// registered codefiles whose path no longer exists on disk (phantom map)
+    missing: usize,
+    total: usize,
+    /// the one-line human message (mirrors the audit-gate language)
+    message: String,
+}
+
+fn disk_pulse(
+    snapshot: &QuerySnapshot,
+    db: &dyn GraphReadRepository,
+    root: &std::path::Path,
+) -> Result<DiskPulse> {
+    let ignores = db.list_ignores()?;
+    let delegations = db.list_delegations()?;
+    let disk = crate::repo::walk_files(root)?;
+    let recon = crate::db::queries::integrity::disk_reconciliation_from_parts(
+        &disk,
+        &snapshot.codefiles,
+        &ignores,
+        &delegations,
+        &|p| {
+            std::fs::read(root.join(p))
+                .ok()
+                .map(|b| crate::repo::content_hash(&b))
+        },
+    );
+    let unaccounted = recon.unaccounted_files.len();
+    let drifted = recon.drifted_codefiles.len();
+    let missing = recon.missing_codefiles.len();
+    let total = unaccounted + drifted + missing;
+    let message = if total == 0 {
+        "disk reconciled ✓ — nothing on disk unmapped/drifted/missing.".to_string()
+    } else {
+        format!(
+            "{total} file(s) on disk the graph doesn't account for ({unaccounted} unmapped · {drifted} drifted · {missing} missing) — the map must match the territory: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude."
+        )
+    };
+    Ok(DiskPulse {
+        unaccounted,
+        drifted,
+        missing,
+        total,
+        message,
+    })
+}
+
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 struct IntakeCounts {
     untriaged: i64,
@@ -124,6 +184,9 @@ pub fn run_with_db(
         Some(false) => "fresh",
         None => "absent",
     };
+    // honesty-next #2: map-vs-territory is ALWAYS surfaced (not only at the
+    // audit gate), so a red graph can't hide files-on-disk the graph ignores.
+    let disk = disk_pulse(&snapshot, db, root)?;
 
     render_status(
         &report,
@@ -138,6 +201,7 @@ pub fn run_with_db(
         align_count,
         adopt_count,
         export_freshness,
+        &disk,
         printer,
     )
 }
@@ -386,6 +450,7 @@ fn render_status(
     align_count: i64,
     adopt_count: i64,
     export_freshness: &str,
+    disk: &DiskPulse,
     printer: &Printer,
 ) -> Result<()> {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
@@ -418,6 +483,8 @@ fn render_status(
             );
             obj.insert("advisories".to_string(), serde_json::to_value(advisories)?);
             obj.insert("audit".to_string(), serde_json::to_value(&audit)?);
+            // honesty-next #2: always-on map-vs-territory (see DiskPulse).
+            obj.insert("map_vs_territory".to_string(), serde_json::to_value(disk)?);
             obj.insert(
                 "committed_export".to_string(),
                 serde_json::json!(export_freshness),
@@ -456,6 +523,7 @@ fn render_status(
             align_count,
             adopt_count,
             export_freshness,
+            disk,
             totals,
         );
     }
@@ -476,6 +544,7 @@ fn render_plain_status(
     align_count: i64,
     adopt_count: i64,
     export_freshness: &str,
+    disk: &DiskPulse,
     totals: CompletionTotals,
 ) {
     println!("Completion:");
@@ -543,6 +612,9 @@ fn render_plain_status(
     );
     println!();
     println!("  {}", fmt_pulse(gs));
+    // honesty-next #2: always-on map-vs-territory — the compass must not hide
+    // files-on-disk the graph ignores, whatever phase the graph is in.
+    println!("  🗺 {}", disk.message);
     if blocked.validations > 0 {
         println!(
             "  validations: runnable {:.0}% passing; {} blocked validation(s) await prerequisites, affecting {} proof edge(s).",

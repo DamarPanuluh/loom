@@ -860,6 +860,55 @@ fn sqlite_next_take_caps_to_one_on_non_bulk_mode() {
     );
 }
 
+// honesty-next #2: map-vs-territory is surfaced at EVERY phase, not only the
+// audit gate. The fixture sits at phase=fix (a red graph); the old compass hid
+// disk reconciliation behind near-green. Now status carries map_vs_territory
+// regardless of phase. (The scratch fixture's disk isn't loom's real territory,
+// so the COUNTS aren't representative — this test asserts the always-on WIRING:
+// the field is present + structured at a non-audit phase, and the human render
+// prints the 🗺 line. Count correctness is covered by integrity.rs's unit
+// tests of disk_reconciliation_from_parts.)
+#[test]
+fn sqlite_status_always_surfaces_map_vs_territory() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("status-map-territory");
+    let st = run_json(&graph.root, &["status", "--json"]);
+    let phase = st["graph_state"]["phase"]
+        .as_str()
+        .expect("status carries graph_state.phase");
+    // The regression: the fixture is in a RED phase (not audit/complete), yet
+    // map_vs_territory must still be disclosed.
+    assert_ne!(
+        phase, "audit",
+        "fixture must be a red phase for this regression"
+    );
+    assert_ne!(phase, "complete");
+    let m = &st["map_vs_territory"];
+    assert!(
+        m.is_object(),
+        "status JSON carries map_vs_territory always: {st}"
+    );
+    let unaccounted = m["unaccounted"].as_u64().expect("unaccounted count");
+    let drifted = m["drifted"].as_u64().expect("drifted count");
+    let missing = m["missing"].as_u64().expect("missing count");
+    let total = m["total"].as_u64().expect("total count");
+    assert_eq!(
+        total,
+        unaccounted + drifted + missing,
+        "total decomposes into unaccounted + drifted + missing: {m}"
+    );
+    assert!(
+        !m["message"].as_str().expect("message").is_empty(),
+        "the disclosure carries a human message"
+    );
+    // Human parity: the 🗺 line appears in the plain render too.
+    let human = run_text_as(&graph.root, &["status"], "llm:analyzer");
+    assert!(
+        human.contains('🗺'),
+        "human status prints the map-vs-territory line: {human}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();
@@ -2623,6 +2672,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "independent_edges",
         "intake",
         "intents_without_validations",
+        "map_vs_territory",
         "needs_reverification",
         "open_issues",
         "other_lanes",

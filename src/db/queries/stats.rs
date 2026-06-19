@@ -543,13 +543,23 @@ pub fn graph_state_from_snapshot_parts(
     // graphs with the cap OFF or not yet swept — not normal capped operation
     // (the threshold sits well above a healthy capped graph). Cheap: reuses the
     // `notes` count already computed; no per-note materialization.
+    //
+    // loom-dx #3: the cap>0 branch used to point at `loom note prune
+    // --transitions` as the remedy, but that command compacts ONLY low-signal
+    // transition churn — confirm/decision/justification notes are real memory
+    // it leaves alone. A heavy log of legitimate memory returns "Nothing to
+    // prune", so the old advisory implied a remedy that wasn't there and nagged
+    // forever. Now it teaches the distinction: prune helps only if transition
+    // churn is the bulk; otherwise the log is legitimately heavy (not a bug).
     const NOTE_HEAVY: i64 = 5000;
     let note_hygiene = if notes > NOTE_HEAVY {
         let cap = context.transition_cap;
         if cap == 0 {
             format!("{notes} notes — the transition log is UNCAPPED and slows every command. `loom note prune --set-cap 20` bounds it (sync then holds it there).")
         } else {
-            format!("{notes} notes are weighing on the read path. `loom sync` compacts transition churn toward the cap ({cap}/target); `loom note prune --transitions` does it now.")
+            format!(
+                "{notes} notes on the read path. `loom note prune --transitions` compacts ONLY low-signal transition churn — confirm/decision/justification notes are real memory it leaves alone, so \"Nothing to prune\" means the bulk is legitimate (not a bug). The cap ({cap}/target) bounds future churn via sync; run `loom sync` (or `loom note prune --transitions`) only if transition churn is the bulk, else the log is just legitimately heavy."
+            )
         }
     } else {
         String::new()
@@ -1452,6 +1462,66 @@ mod tests {
             |_| Ok(0),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy() {
+        // loom-dx #3: a heavy note log must NOT imply `loom note prune
+        // --transitions` will fix it — that command compacts ONLY transition
+        // churn, so a log of legitimate memory (confirm/decision/justification)
+        // returns "Nothing to prune". The old advisory pointed at a remedy that
+        // wasn't there and nagged forever; the reframe teaches the distinction.
+        let snapshot = snap(vec![], vec![]);
+        let gs = graph_state_from_snapshot_parts(
+            &snapshot,
+            GraphStateContext {
+                meta: None,
+                notes: 6000,
+                transition_cap: 20,
+            },
+            |_| Ok(0),
+            || Ok(0),
+            |_| Ok(0),
+        )
+        .unwrap();
+        let h = &gs.note_hygiene;
+        assert!(h.contains("6000 notes"), "names the count: {h}");
+        assert!(
+            h.contains("ONLY low-signal transition churn"),
+            "prune is qualified to transition churn only (not a blanket remedy): {h}"
+        );
+        assert!(
+            h.contains("Nothing to prune"),
+            "teaches that Nothing-to-prune on legitimate memory is expected, not a bug: {h}"
+        );
+        assert!(
+            h.contains("legitimately heavy"),
+            "names the legitimate-memory case so the driver stops chasing a missing remedy: {h}"
+        );
+    }
+
+    #[test]
+    fn note_hygiene_uncapped_log_keeps_set_cap_remedy() {
+        // cap==0 is always actionable (bound the transition log), so that branch
+        // keeps its direct remedy — the reframe only retrains the cap>0 branch.
+        let snapshot = snap(vec![], vec![]);
+        let gs = graph_state_from_snapshot_parts(
+            &snapshot,
+            GraphStateContext {
+                meta: None,
+                notes: 6000,
+                transition_cap: 0,
+            },
+            |_| Ok(0),
+            || Ok(0),
+            |_| Ok(0),
+        )
+        .unwrap();
+        let h = &gs.note_hygiene;
+        assert!(
+            h.contains("UNCAPPED") && h.contains("--set-cap"),
+            "uncapped keeps the set-cap remedy: {h}"
+        );
     }
 
     #[test]
