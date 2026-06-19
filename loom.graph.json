@@ -91948,15 +91948,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [concurrent-lane-agents-vs-single-writer-flock] [concurrency/medium] the graph has a cross-process single-writer lock, but the loom-orchestrator pattern explicitly spawns parallel lane agents against one graph. No lock error was hit this session, but the design has a latent tension: N parallel writers all serialize on one flock. loc: the graph store flock (src/db, single-writer lock) + orchestrator guidance. impact: undocumented behavior — do parallel agents queue, or does one fail fast? Under load the answer matters. suggestion: document the expected behavior (queue vs fail-fast), or if serialization is intended, the orchestrator guidance should acknowledge that parallel lanes serialize on the write lock.",
-        "resolution": "",
+        "resolution": "concurrent-flock doc. loom guide now teaches the REAL concurrency story in both audiences: loom does NOT cross-process-lock the graph (no flock, no named collision error) -- parallel writers get a raw rusqlite database-is-locked/BUSY_SNAPSHOT, never a loom-named error. Reconciled D9s premise (assumed a flock) against the routed SWEEP/high audit (no lock exists). Both the human ORCHESTRATION block and the json orchestration.concurrency field name the three safe options (serialize in your orchestrator, own graph clone, retry on BUSY). The parallel topology bullet references see-CONCURRENCY in both. Test: orchestration_concurrency_is_honest_about_no_lock (json field + human const parity guard). No graph mutation.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:20.515083+00:00"
+        "updated_at": "2026-06-19T19:03:10.226828+00:00"
       },
       {
         "author": "llm",
