@@ -23,6 +23,27 @@ const ALIGN_EMPTY_MESSAGE: &str =
 const BATCH_TEMPLATE_TITLE: &str =
     "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──";
 
+/// Hints printed above every `--take N` batch template (and emitted in the
+/// JSON `batch_template_hints` field). The template is deliberately NOT
+/// paste-ready. `confidence` is a placeholder the batch gate rejects unedited,
+/// so a verbatim paste stamps zero verdicts, not N false 0.9 grounds (no blind
+/// re-ground). The per-op field legend names each op's REQUIRED fields, so a
+/// driver who switches op (e.g. `ground` to `independent`) sees that
+/// `independent` takes `notes`, not `evidence`, before they fail. The dry-run
+/// guardrail is surfaced inline so a large batch can be checked before commit.
+const BATCH_TEMPLATE_HINTS: [&str; 3] = [
+    "per-op required fields: ground→a,b,confidence(+criterion unless stored; +optional evidence) · issue→a,b,evidence,confidence(+criterion unless stored) · independent→a,b,notes · rule_verdict→rule,intent,status,evidence,confidence(+criterion unless stored)",
+    "confidence is a <placeholder> on every line below — fill a real [0,1] judgment per line; a verbatim paste is rejected (no blind re-ground).",
+    "validate before committing: paste the same lines through `loom batch - --dry-run` (nothing written).",
+];
+
+fn print_batch_template_header() {
+    println!("{BATCH_TEMPLATE_TITLE}");
+    for hint in BATCH_TEMPLATE_HINTS {
+        println!("  # {hint}");
+    }
+}
+
 struct NextOpts<'a> {
     mode: &'a str,
     all: bool,
@@ -463,6 +484,7 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
                 }))
                 .collect::<Vec<_>>(),
             "batch_template": batch_lines,
+            "batch_template_hints": BATCH_TEMPLATE_HINTS.to_vec(),
             "guidance": guidance,
             "dispatch": { "role": "quality", "effort": "per-item (see items[].effort)" },
             "graph_state": pulse_json(&gs),
@@ -490,7 +512,7 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
         }
     }
     println!();
-    println!("{BATCH_TEMPLATE_TITLE}");
+    print_batch_template_header();
     for l in &batch_lines {
         println!("  {l}");
     }
@@ -624,7 +646,7 @@ fn run_take(
                 "op": "ground",
                 "a": edge.from_id,
                 "b": edge.to_id,
-                "confidence": 0.9,
+                "confidence": "<confidence>",
             });
             if edge.criterion.is_empty() {
                 line["criterion"] = "<criterion>".into();
@@ -687,6 +709,7 @@ fn run_take(
                 .map(|(f, items)| serde_json::json!({ "staled_by": f, "items": items }))
                 .collect::<Vec<_>>(),
             "batch_template": batch_lines,
+            "batch_template_hints": BATCH_TEMPLATE_HINTS.to_vec(),
             "guidance": guidance,
             "dispatch": { "role": batch_role, "effort": max_effort },
             "graph_state": pulse_json(gs),
@@ -732,7 +755,7 @@ fn run_take(
         }
     }
     println!();
-    println!("{BATCH_TEMPLATE_TITLE}");
+    print_batch_template_header();
     for l in &batch_lines {
         println!("  {l}");
     }
@@ -2527,7 +2550,7 @@ fn run_take_review(store: &dyn GraphReadRepository, take: usize, printer: &Print
                 // Re-affirm reuses the stored criterion (it passed the gate); the
                 // reviewer edits to issue/independent to overturn.
                 batch_lines.push(
-                    serde_json::json!({"op": "ground", "a": e.from_id, "b": e.to_id, "confidence": 0.9})
+                    serde_json::json!({"op": "ground", "a": e.from_id, "b": e.to_id, "confidence": "<confidence>"})
                         .to_string(),
                 );
                 human_lines.push(format!(
@@ -2549,7 +2572,7 @@ fn run_take_review(store: &dyn GraphReadRepository, take: usize, printer: &Print
                 // unedited, forcing the reviewer to record what they found.
                 batch_lines.push(
                     serde_json::json!({"op": "rule_verdict", "rule": g.rule_id, "intent": g.intent_id,
-                        "status": g.inspection_status, "evidence": "<what the re-inspection found>", "confidence": 0.9})
+                        "status": g.inspection_status, "evidence": "<what the re-inspection found>", "confidence": "<confidence>"})
                         .to_string(),
                 );
                 human_lines.push(format!(
@@ -2590,7 +2613,7 @@ fn run_take_review(store: &dyn GraphReadRepository, take: usize, printer: &Print
         println!("{line}");
     }
     println!();
-    println!("{BATCH_TEMPLATE_TITLE}");
+    print_batch_template_header();
     for l in &batch_lines {
         println!("  {l}");
     }

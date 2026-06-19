@@ -658,6 +658,123 @@ fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
     }
 }
 
+// loom-dx #2: the --take N batch template must NOT pre-fill a numeric
+// confidence default (the blind re-ground anti-pattern). Confidence is a
+// placeholder the batch gate rejects unedited, so a verbatim paste stamps
+// zero verdicts, not N false 0.9 grounds. And loom-dx #1+#7 + #8: the template
+// header carries a per-op required-fields legend (so `independent→notes` is
+// visible before you fail) and surfaces the `--dry-run` guardrail inline.
+#[test]
+fn sqlite_take_template_confidence_placeholder_and_hints_json() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("take-tmpl-hints-json");
+    // discovery --take is a deterministic non-empty template source (the
+    // fixture carries thousands of unexplored pairs), and it routes through the
+    // same run_take emitter as the fix queue.
+    let take = run_json(
+        &graph.root,
+        &["next", "--take", "5", "--mode", "discovery", "--json"],
+    );
+    let tmpl = take["batch_template"]
+        .as_array()
+        .expect("batch_template array");
+    assert!(
+        !tmpl.is_empty(),
+        "discovery --take must emit template lines on this fixture: {take}"
+    );
+    for l in tmpl {
+        let s = l.as_str().expect("template line is a JSON string");
+        assert!(
+            s.contains("\"confidence\":\"<confidence>\""),
+            "every template line must carry a confidence placeholder, not a \
+             numeric default (no blind re-ground): {s}"
+        );
+        assert!(
+            !s.contains("\"confidence\":0.9"),
+            "the 0.9 confidence default must be gone from the template: {s}"
+        );
+    }
+    // #1+#7 + #8: the hints block is emitted in JSON alongside the template.
+    let hints = take["batch_template_hints"]
+        .as_array()
+        .expect("batch_template_hints array");
+    let joined: String = hints
+        .iter()
+        .filter_map(|h| h.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        joined.contains("independent→a,b,notes"),
+        "the field legend must name independent→notes (the field-name trap): {joined}"
+    );
+    assert!(
+        joined.contains("issue→a,b,evidence"),
+        "the field legend must name issue→evidence: {joined}"
+    );
+    assert!(
+        joined.contains("--dry-run"),
+        "the dry-run guardrail must be surfaced next to the template: {joined}"
+    );
+}
+
+#[test]
+fn sqlite_take_template_human_prints_legend_and_dry_run() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("take-tmpl-hints-human");
+    let out = run_text_as(
+        &graph.root,
+        &["next", "--take", "3", "--mode", "discovery"],
+        "llm:analyzer",
+    );
+    assert!(
+        out.contains("per-op required fields"),
+        "the human template prints the per-op field legend: {out}"
+    );
+    assert!(
+        out.contains("independent→a,b,notes"),
+        "the human legend names independent→notes (the field-name trap): {out}"
+    );
+    assert!(
+        out.contains("--dry-run"),
+        "the human template surfaces the dry-run guardrail inline: {out}"
+    );
+    assert!(
+        out.contains("\"confidence\":\"<confidence>\""),
+        "the human template line carries a confidence placeholder: {out}"
+    );
+}
+
+// loom-dx #2 forcing function: a template line pasted VERBATIM (confidence
+// placeholder unedited) must be rejected by `loom batch` — a scout cannot paste
+// the --take template and stamp N false grounds without filling a real
+// confidence on each line.
+#[test]
+fn sqlite_batch_rejects_confidence_placeholder_verbatim_paste() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("batch-rejects-placeholder");
+    let (a, b) = first_two_intent_ids(&graph.root);
+    // A real criterion isolates the failure to the confidence placeholder —
+    // the one field whose default the template used to pre-commit.
+    let verbatim = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"these intents coexist without coupling\",\
+         \"confidence\":\"<confidence>\"}}"
+    );
+    write_scratch_file(&graph.root, "scratch/verbatim.jsonl", &verbatim);
+    let res = run_json_failure_as(
+        &graph.root,
+        &["batch", "scratch/verbatim.jsonl", "--dry-run", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(res["ok"], 0, "a verbatim paste stamps zero verdicts: {res}");
+    assert_eq!(res["failed"], 1, "the placeholder line is rejected: {res}");
+    let err = res["results"][0]["error"].as_str().expect("per-line error");
+    assert!(
+        err.contains("confidence"),
+        "the rejection must name the confidence field: {err}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();
