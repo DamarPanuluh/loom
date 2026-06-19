@@ -103,6 +103,7 @@ const INTENT_PROPS: &[&str] = &[
     prop::ID,
     prop::NAME,
     prop::DESCRIPTION,
+    prop::CRITERION,
     prop::ABSTRACTION_LEVEL,
     prop::DOMAIN,
     prop::LAYER,
@@ -883,7 +884,7 @@ impl SqliteGraphStore {
             .query_row(
                 "SELECT id, name, description, abstraction_level, domain, layer, source_refs,
                         status, aspect, tags, visibility, boundary, lifecycle, created_at,
-                        updated_at
+                        updated_at, criterion
                  FROM intent
                  WHERE id = ?1",
                 params![id],
@@ -904,6 +905,7 @@ impl SqliteGraphStore {
                         lifecycle: row.get(12)?,
                         created_at: row.get(13)?,
                         updated_at: row.get(14)?,
+                        criterion: row.get(15)?,
                     })
                 },
             )
@@ -994,8 +996,9 @@ impl SqliteGraphStore {
         self.conn.execute(
             "INSERT INTO intent(
                 id, name, description, abstraction_level, domain, layer, source_refs,
-                status, aspect, tags, visibility, boundary, lifecycle, created_at, updated_at
-             ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                status, aspect, tags, visibility, boundary, lifecycle, created_at, updated_at,
+                criterion
+             ) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
             params![
                 intent.id,
                 intent.name,
@@ -1011,7 +1014,8 @@ impl SqliteGraphStore {
                 intent.boundary,
                 intent.lifecycle,
                 intent.created_at,
-                intent.updated_at
+                intent.updated_at,
+                intent.criterion
             ],
         )?;
         Ok(())
@@ -1107,6 +1111,21 @@ impl SqliteGraphStore {
         let changed = self.conn.execute(
             "UPDATE intent SET layer = ?1, updated_at = ?2 WHERE id = ?3",
             params![layer, updated_at, id],
+        )?;
+        Ok(changed > 0)
+    }
+
+    /// Set the intent's first-class falsifiable criterion (v10). The caller
+    /// records the prior value in a decision note (the version chain).
+    pub fn set_intent_criterion(
+        &self,
+        id: &str,
+        criterion: &str,
+        updated_at: &str,
+    ) -> Result<bool> {
+        let changed = self.conn.execute(
+            "UPDATE intent SET criterion = ?1, updated_at = ?2 WHERE id = ?3",
+            params![criterion, updated_at, id],
         )?;
         Ok(changed > 0)
     }
@@ -1505,15 +1524,15 @@ impl SqliteGraphStore {
     fn list_intents_matching(&self, active_only: bool) -> Result<Vec<Intent>> {
         let sql = if active_only {
             "SELECT id, name, description, abstraction_level, domain, layer, source_refs, status,
-                    aspect, tags, visibility, boundary, lifecycle, created_at, updated_at
+                    aspect, tags, visibility, boundary, lifecycle, created_at, updated_at, criterion
              FROM intent
              WHERE status <> 'deprecated'
-             ORDER BY name"
+             ORDER BY name, id"
         } else {
             "SELECT id, name, description, abstraction_level, domain, layer, source_refs, status,
-                    aspect, tags, visibility, boundary, lifecycle, created_at, updated_at
+                    aspect, tags, visibility, boundary, lifecycle, created_at, updated_at, criterion
              FROM intent
-             ORDER BY name"
+             ORDER BY name, id"
         };
         let mut stmt = self.conn.prepare(sql)?;
         let mut rows = stmt.query([])?;
@@ -1546,6 +1565,7 @@ impl SqliteGraphStore {
                 lifecycle: row.get(12)?,
                 created_at: row.get(13)?,
                 updated_at: row.get(14)?,
+                criterion: row.get(15)?,
             });
         }
         Ok(intents)
@@ -5083,6 +5103,7 @@ CREATE TABLE IF NOT EXISTS intent(
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
+  criterion TEXT NOT NULL DEFAULT '',
   abstraction_level TEXT NOT NULL,
   domain TEXT NOT NULL DEFAULT '',
   layer TEXT NOT NULL DEFAULT '',
@@ -5392,6 +5413,7 @@ impl SqliteGraphStore {
             ("relates_to", "kinds", "TEXT NOT NULL DEFAULT '[]'"),
             ("relates_to", "stable", "TEXT NOT NULL DEFAULT ''"),
             ("quality_rule", "kind", "TEXT NOT NULL DEFAULT ''"),
+            ("intent", "criterion", "TEXT NOT NULL DEFAULT ''"),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;
@@ -5871,6 +5893,7 @@ mod tests {
                 id: "intent-a".into(),
                 name: "locator update".into(),
                 description: "Grounding can move to a better symbol.".into(),
+                criterion: String::new(),
                 abstraction_level: "feature".into(),
                 domain: "".into(),
                 layer: "".into(),
@@ -6111,6 +6134,7 @@ mod tests {
                 id: "intent-a".into(),
                 name: "create cart".into(),
                 description: "Creates a cart over HTTP.".into(),
+                criterion: String::new(),
                 abstraction_level: "feature".into(),
                 domain: "checkout".into(),
                 layer: "".into(),
@@ -6194,6 +6218,7 @@ mod tests {
                 id: "intent-a".into(),
                 name: "hypothesis lifecycle commands".into(),
                 description: "Commands manage hypothesis proof lifecycle.".into(),
+                criterion: String::new(),
                 abstraction_level: "feature".into(),
                 domain: "analysis".into(),
                 layer: "".into(),

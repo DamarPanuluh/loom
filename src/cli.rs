@@ -665,6 +665,13 @@ pub enum IntentCmd {
         #[arg(long)]
         description: String,
 
+        /// The ONE falsifiable criterion this intent is done/correct by — what
+        /// "passing" means for it, first-class as of v10. Optional but
+        /// recommended; when given it is held to the same substantive-evidence
+        /// gate as edge criteria (no placeholders, ≥10 chars).
+        #[arg(long, default_value = "")]
+        criterion: String,
+
         /// Abstraction level. system = 1–3 per repo (the product's purpose) |
         /// component = 5–15 (cohesive subsystems) | feature = many, ATOMIC —
         /// independently verifiable | cross_cutting = spans everything.
@@ -775,6 +782,12 @@ pub enum IntentCmd {
         /// moved; if behavior changed, that is a redefinition.
         #[arg(long, requires = "description")]
         reword: bool,
+
+        /// New falsifiable criterion ("done means …"). The previous criterion is
+        /// preserved in the decision note (the version chain), gated by the same
+        /// substantive-evidence check as edge criteria.
+        #[arg(long)]
+        criterion: Option<String>,
 
         /// Why the meaning moved (recorded as a decision note, with the
         /// previous wording preserved alongside). Required in effect — the

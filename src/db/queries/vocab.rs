@@ -260,6 +260,7 @@ mod suggest_tests {
             id: name.to_string(),
             name: name.to_string(),
             description: desc.to_string(),
+            criterion: String::new(),
             abstraction_level: "feature".to_string(),
             domain: String::new(),
             layer: String::new(),

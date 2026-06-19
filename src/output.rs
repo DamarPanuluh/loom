@@ -615,6 +615,7 @@ mod tests {
             id: "i".to_string(),
             name: "intent".to_string(),
             description: "description".to_string(),
+            criterion: String::new(),
             abstraction_level: "feature".to_string(),
             domain: "test".to_string(),
             layer: String::new(),

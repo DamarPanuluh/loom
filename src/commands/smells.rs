@@ -605,6 +605,7 @@ mod tests {
             id: id.into(),
             name: id.into(),
             description: "test intent".into(),
+            criterion: String::new(),
             abstraction_level: "feature".into(),
             domain: "test".into(),
             layer: String::new(),

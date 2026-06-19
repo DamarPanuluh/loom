@@ -175,6 +175,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
         IntentCmd::Add {
             name,
             description,
+            criterion,
             level,
             domain,
             layer,
@@ -199,6 +200,15 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             }
             if description.trim().is_empty() {
                 anyhow::bail!("--description must not be empty. State the observable behavior or design responsibility this intent captures.");
+            }
+            if !criterion.trim().is_empty() {
+                // First-class criterion held to the same substantive-evidence gate
+                // as edge criteria (no placeholders, ≥10 chars).
+                gate::require_substantive(
+                    "criterion",
+                    &criterion,
+                    "the ONE falsifiable thing this intent is done/correct by",
+                )?;
             }
             if lifecycle != "implemented" {
                 store.ensure_owned(&format!(
@@ -230,6 +240,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                 id: id.clone(),
                 name: name.clone(),
                 description,
+                criterion,
                 abstraction_level: level.to_string(),
                 domain,
                 layer,
@@ -331,6 +342,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             description,
             reword,
             reason,
+            criterion,
             extra,
         } => {
             if let Some(first) = extra.first() {
@@ -370,18 +382,46 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             let new_desc = description
                 .as_deref()
                 .filter(|candidate| *candidate != intent.description.as_str());
+            let new_criterion = criterion
+                .as_deref()
+                .filter(|candidate| *candidate != intent.criterion.as_str());
             if new_name.is_none()
                 && new_layer.is_none()
                 && new_boundary.is_none()
                 && new_desc.is_none()
+                && new_criterion.is_none()
             {
                 anyhow::bail!(
-                    "Nothing to change: pass --name, --layer, --boundary, and/or --description with a value that differs from the current one (`loom intent show {}` prints them).",
+                    "Nothing to change: pass --name, --layer, --boundary, --description, and/or --criterion with a value that differs from the current one (`loom intent show {}` prints them).",
                     id
                 );
             }
             let now = chrono::Utc::now().to_rfc3339();
             store.update_intent_meaning(&id, new_name, new_desc, &now)?;
+            if let Some(criterion) = new_criterion {
+                gate::require_substantive(
+                    "criterion",
+                    criterion,
+                    "the ONE falsifiable thing this intent is done/correct by",
+                )?;
+                // Version chain: preserve the prior criterion in a decision note.
+                store.set_intent_criterion(&id, criterion, &now)?;
+                let prior = if intent.criterion.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    intent.criterion.clone()
+                };
+                store.insert_note(&crate::types::Note {
+                    id: Uuid::new_v4().to_string(),
+                    kind: "decision".to_string(),
+                    text: format!("criterion updated: {reason} — was: {prior}"),
+                    author: by.clone(),
+                    target_kind: "intent".to_string(),
+                    target_id: id.clone(),
+                    created_at: now.clone(),
+                    audience: String::new(),
+                })?;
+            }
             if let Some(layer) = new_layer {
                 store.set_intent_layer(&id, layer, &now)?;
                 store.insert_note(&crate::types::Note {

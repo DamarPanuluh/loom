@@ -850,6 +850,7 @@ fn default_intent(id: &str) -> Intent {
         id: id.to_string(),
         name: "(unknown)".to_string(),
         description: String::new(),
+        criterion: String::new(),
         abstraction_level: String::new(),
         domain: String::new(),
         layer: String::new(),

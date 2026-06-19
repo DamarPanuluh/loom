@@ -422,6 +422,7 @@ mod tests {
             id: "i0".into(),
             name: "n".into(),
             description: "d".into(),
+            criterion: String::new(),
             abstraction_level: "feature".into(),
             domain: "d".into(),
             source_refs: Vec::new(),

@@ -458,6 +458,13 @@ pub struct Intent {
     pub id: String,
     pub name: String,
     pub description: String,
+    /// The ONE falsifiable criterion this intent is done/correct by — first
+    /// class as of v10 (previously overloaded onto `description`). Set/edited via
+    /// `loom intent add|update --criterion`; gated by `require_substantive` at
+    /// write and `is_vacuous` in `doctor`, symmetric with edge criteria. Empty
+    /// on intents from older graphs (additive; backfill is separate work).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub criterion: String,
     pub abstraction_level: String,
     /// Product/business facet for discovery and scoring (auth, billing,
     /// onboarding, etc.). Not an architecture layer.

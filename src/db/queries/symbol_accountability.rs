@@ -384,6 +384,7 @@ mod tests {
             id: id.into(),
             name: name.into(),
             description: String::new(),
+            criterion: String::new(),
             abstraction_level: "feature".into(),
             domain: String::new(),
             layer: String::new(),

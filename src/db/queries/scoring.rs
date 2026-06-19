@@ -1060,6 +1060,7 @@ mod tests {
             id: id.to_string(),
             name: id.to_string(),
             description: String::new(),
+            criterion: String::new(),
             abstraction_level: "feature".to_string(),
             domain: "test".to_string(),
             layer: String::new(),

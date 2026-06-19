@@ -118,6 +118,17 @@ pub fn check_graph_from_parts(
                 i.id, i.abstraction_level
             ));
         }
+        // A SET criterion is held to the same substantive-evidence floor as edge
+        // criteria (no placeholders, ≥10 chars). An EMPTY criterion is "not yet
+        // stated" — additive field, not a doctor failure — so only flag a present
+        // but vacuous one (a placeholder that launders as a real criterion).
+        if !i.criterion.trim().is_empty() && crate::gate::is_vacuous(&i.criterion) {
+            issues.push(format!(
+                "Intent '{}' has a vacuous criterion '{}' — state the ONE falsifiable thing it is \
+                 done/correct by, or clear it (`loom intent update <id> --criterion \"…\" --reason …`)",
+                i.name, i.criterion
+            ));
+        }
         // Tags: within the cap, every term registered. Native list since v5
         // (malformed-JSON is impossible by construction; absent reads empty).
         match super::vocab::parse_tags(i) {

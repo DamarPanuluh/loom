@@ -736,6 +736,7 @@ fn resolve_step_intents_sqlite(
                         "Journey '{}' step {}: {} — {} {}. Spawned from the narrated journey; sharpen into a falsifiable criterion when realizing.",
                         spec.saga, i + 1, step.name, step.request.method, step.request.url
                     ),
+                    criterion: String::new(),
                     abstraction_level: "feature".to_string(),
                     domain: String::new(),
                     layer: String::new(),
