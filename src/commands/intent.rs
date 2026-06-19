@@ -396,14 +396,19 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                     id
                 );
             }
-            let now = chrono::Utc::now().to_rfc3339();
-            store.update_intent_meaning(&id, new_name, new_desc, &now)?;
+            // Validate the new criterion BEFORE any write — otherwise a vacuous
+            // --criterion paired with a valid --name would persist the rename and
+            // then bail, leaving an asymmetric partial write.
             if let Some(criterion) = new_criterion {
                 gate::require_substantive(
                     "criterion",
                     criterion,
                     "the ONE falsifiable thing this intent is done/correct by",
                 )?;
+            }
+            let now = chrono::Utc::now().to_rfc3339();
+            store.update_intent_meaning(&id, new_name, new_desc, &now)?;
+            if let Some(criterion) = new_criterion {
                 // Version chain: preserve the prior criterion in a decision note.
                 store.set_intent_criterion(&id, criterion, &now)?;
                 let prior = if intent.criterion.is_empty() {

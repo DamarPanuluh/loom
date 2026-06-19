@@ -257,6 +257,20 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
         }
         println!("    → `loom edge implement <intent> <codefile>` or decompose with `loom edge hierarchy`.");
     }
+    if !vc.unremoved_leaves.is_empty() {
+        println!("  ✗ to_be_removed leaf intents whose code is still present (cleanup not done):");
+        for n in vc.unremoved_leaves.iter().take(40) {
+            println!("      - {}", n);
+        }
+        if let Some(m) = crate::output::more_marker(
+            vc.unremoved_leaves.len(),
+            40,
+            "`loom report --json` for the full list",
+        ) {
+            println!("      {m}");
+        }
+        println!("    → delete the code and unground it; cleanup is done by absence (`loom next --mode build`).");
+    }
     if !vc.unreached_codefiles.is_empty() {
         println!("  ✗ CodeFiles reached by no intent (code with no recorded purpose):");
         for p in vc.unreached_codefiles.iter().take(40) {

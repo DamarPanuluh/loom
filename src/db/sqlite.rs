@@ -4329,6 +4329,13 @@ impl SqliteGraphStore {
     /// ("remove the stale interface surface") was unreachable through loom.
     pub fn delete_interface_surface(&mut self, id: &str) -> Result<bool> {
         let tx = self.write_tx()?;
+        // Edge rows cascade via FK, but edge NOTES are not FK-linked — drop them
+        // too (the id is embedded in the edge id, e.g. call:<validation>:<id>),
+        // mirroring delete_validation, so no orphan notes survive in listings.
+        tx.execute(
+            "DELETE FROM note WHERE target_kind = 'edge' AND instr(target_id, ?1) > 0",
+            params![id],
+        )?;
         let changed = tx.execute("DELETE FROM interface_surface WHERE id = ?1", params![id])?;
         tx.commit()?;
         Ok(changed > 0)
@@ -4337,6 +4344,11 @@ impl SqliteGraphStore {
     /// Delete a Persona (SERVES + JOURNEYS edges cascade via FK).
     pub fn delete_persona(&mut self, id: &str) -> Result<bool> {
         let tx = self.write_tx()?;
+        // Drop orphan edge notes (srv:<id>:… / jrn:<id>:…) the FK cascade leaves.
+        tx.execute(
+            "DELETE FROM note WHERE target_kind = 'edge' AND instr(target_id, ?1) > 0",
+            params![id],
+        )?;
         let changed = tx.execute("DELETE FROM persona WHERE id = ?1", params![id])?;
         tx.commit()?;
         Ok(changed > 0)
@@ -5465,11 +5477,13 @@ impl SqliteGraphStore {
         self.ensure_meta_columns()?;
         self.ensure_taxonomy_columns()?;
         self.ensure_inbox_kind_vocabulary()?;
-        // The additive ensure_* migrations above bring an older graph to the
-        // current shape; stamp the version so `doctor`/`export` agree with this
-        // binary. Opening with a newer loom IS the migration — there is no
-        // separate migrate step. No-op when the meta row doesn't exist yet (a
-        // fresh `init` inserts it immediately after).
+        self.ensure_intent_lifecycle_vocabulary()?;
+        // The migrations above bring an older graph fully to the current shape;
+        // stamp the version so `doctor`/`export` agree with this binary. Opening
+        // with a newer loom IS the migration — there is no separate migrate
+        // step. The stamp MUST come after every migration so it never claims a
+        // version the on-disk schema can't honour. No-op when the meta row
+        // doesn't exist yet (a fresh `init` inserts it immediately after).
         self.conn.execute(
             "UPDATE meta SET schema_version = ?1 WHERE id = 1",
             params![schema::SCHEMA_VERSION],
@@ -5516,6 +5530,74 @@ impl SqliteGraphStore {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    /// v10 widened the intent.lifecycle CHECK to admit `to_be_removed`, but a
+    /// CHECK constraint cannot be ALTERed in place. `CREATE TABLE IF NOT EXISTS`
+    /// is a no-op on an existing table, so a pre-v10 graph would keep the old
+    /// 4-value CHECK and reject `to_be_removed` — while the version stamp claimed
+    /// v10. This rebuilds the intent table when the CHECK is stale, using the
+    /// SQLite-recommended procedure for a table with INBOUND foreign keys:
+    /// foreign_keys OFF (so the DROP doesn't cascade-delete every edge), create a
+    /// NEW-named table, copy by explicit column name, DROP the old, RENAME the new
+    /// into place (other tables reference "intent", which the rename restores).
+    fn ensure_intent_lifecycle_vocabulary(&self) -> Result<()> {
+        let create_sql: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intent'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match create_sql.as_deref() {
+            // No intent table yet (fresh init creates it with the v10 CHECK), or
+            // the CHECK already admits to_be_removed → nothing to migrate.
+            None => return Ok(()),
+            Some(sql) if sql.contains("to_be_removed") => return Ok(()),
+            Some(_) => {}
+        }
+        // PRAGMA foreign_keys must be toggled OUTSIDE a transaction; the BEGIN…
+        // COMMIT inside the batch makes the rebuild itself atomic.
+        self.conn.execute_batch(
+            r#"
+PRAGMA foreign_keys=OFF;
+BEGIN;
+CREATE TABLE intent_v10(
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  criterion TEXT NOT NULL DEFAULT '',
+  abstraction_level TEXT NOT NULL,
+  domain TEXT NOT NULL DEFAULT '',
+  layer TEXT NOT NULL DEFAULT '',
+  source_refs TEXT NOT NULL CHECK(json_valid(source_refs)),
+  status TEXT NOT NULL,
+  aspect TEXT NOT NULL DEFAULT '',
+  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred','to_be_removed')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  tags TEXT NOT NULL CHECK(json_valid(tags)),
+  visibility TEXT NOT NULL DEFAULT '' CHECK(visibility IN ('user_visible','internal','')),
+  boundary TEXT NOT NULL DEFAULT '' CHECK(boundary IN ('inbound','outbound',''))
+);
+INSERT INTO intent_v10(
+  id, name, description, criterion, abstraction_level, domain, layer, source_refs,
+  status, aspect, lifecycle, created_at, updated_at, tags, visibility, boundary
+)
+SELECT
+  id, name, description, criterion, abstraction_level, domain, layer, source_refs,
+  status, aspect, lifecycle, created_at, updated_at, tags, visibility, boundary
+FROM intent;
+DROP TABLE intent;
+ALTER TABLE intent_v10 RENAME TO intent;
+CREATE INDEX IF NOT EXISTS idx_intent_lifecycle_status ON intent(lifecycle, status);
+CREATE INDEX IF NOT EXISTS idx_intent_name ON intent(name);
+COMMIT;
+PRAGMA foreign_keys=ON;
+"#,
+        )?;
         Ok(())
     }
 
@@ -5847,6 +5929,107 @@ mod tests {
             .collect::<rusqlite::Result<Vec<_>>>()
             .expect("collect");
         cols
+    }
+
+    /// A pre-v10 graph (old 4-value lifecycle CHECK, schema_version=9) must
+    /// migrate on open: the intent-table rebuild widens the CHECK to admit
+    /// to_be_removed, PRESERVES intent rows AND their inbound-FK edges (the
+    /// foreign_keys=OFF rebuild must not cascade-delete them), and the version is
+    /// stamped 10 only after the migration. This is the in-place v9→v10 upgrade
+    /// real users hit — the fresh-table tests never exercise it.
+    #[test]
+    fn v9_graph_migrates_lifecycle_check_without_losing_edges() {
+        let path = std::env::temp_dir().join(format!(
+            "loom-v9-migrate-{}-{}.sqlite",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_file(&path);
+        // Seed a v9-shaped graph directly: old 4-value lifecycle CHECK, no
+        // criterion column, two intents + a hierarchy edge (FK ON DELETE CASCADE).
+        {
+            let seed = Connection::open(&path).unwrap();
+            seed.execute_batch(
+                r#"
+CREATE TABLE meta(
+  id INTEGER PRIMARY KEY CHECK(id = 1),
+  schema_version TEXT NOT NULL,
+  graph_id TEXT NOT NULL DEFAULT '',
+  graph_name TEXT NOT NULL DEFAULT '',
+  custody TEXT NOT NULL DEFAULT '' CHECK(custody IN ('owned','observed','')),
+  layer_order TEXT NOT NULL DEFAULT '[]'
+);
+INSERT INTO meta(id, schema_version, graph_id, graph_name, custody, layer_order)
+VALUES(1, '9', 'gid', 'g', 'owned', '[]');
+CREATE TABLE intent(
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
+  abstraction_level TEXT NOT NULL, domain TEXT NOT NULL DEFAULT '', layer TEXT NOT NULL DEFAULT '',
+  source_refs TEXT NOT NULL CHECK(json_valid(source_refs)), status TEXT NOT NULL,
+  aspect TEXT NOT NULL DEFAULT '',
+  lifecycle TEXT NOT NULL CHECK(lifecycle IN ('planned','implemented','needs_change','deferred')),
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  tags TEXT NOT NULL CHECK(json_valid(tags)),
+  visibility TEXT NOT NULL DEFAULT '' CHECK(visibility IN ('user_visible','internal','')),
+  boundary TEXT NOT NULL DEFAULT '' CHECK(boundary IN ('inbound','outbound',''))
+);
+CREATE TABLE hierarchy(
+  parent_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
+  child_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
+  notes TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(parent_id, child_id), CHECK(parent_id <> child_id)
+);
+INSERT INTO intent(id,name,description,abstraction_level,source_refs,status,lifecycle,created_at,updated_at,tags)
+  VALUES('p','parent','d','system','[]','confirmed','implemented','t','t','[]');
+INSERT INTO intent(id,name,description,abstraction_level,source_refs,status,lifecycle,created_at,updated_at,tags)
+  VALUES('c','child','d','feature','[]','confirmed','implemented','t','t','[]');
+INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
+"#,
+            )
+            .unwrap();
+        }
+
+        // Opening with this binary runs create_schema → the migration.
+        let store = SqliteGraphStore::open(&path).unwrap();
+
+        // Intent rows preserved.
+        assert_eq!(
+            store.list_all_intents().unwrap().len(),
+            2,
+            "intents survived the rebuild"
+        );
+        // The inbound-FK edge survived (foreign_keys=OFF rebuild did not cascade).
+        assert_eq!(
+            store.list_hierarchy_pairs().unwrap().len(),
+            1,
+            "hierarchy edge must survive the intent-table rebuild (no FK cascade)"
+        );
+        // Version stamped only after the migration.
+        assert_eq!(store.graph_meta().unwrap().unwrap().version, "10");
+        // The widened CHECK now admits to_be_removed.
+        let check: String = store
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='intent'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(
+            check.contains("to_be_removed"),
+            "lifecycle CHECK widened: {check}"
+        );
+        store
+            .conn
+            .execute(
+                "UPDATE intent SET lifecycle = 'to_be_removed' WHERE id = 'c'",
+                [],
+            )
+            .expect("to_be_removed is now a writable lifecycle");
+
+        drop(store);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("sqlite-wal"));
+        let _ = std::fs::remove_file(path.with_extension("sqlite-shm"));
     }
 
     /// Every column of every NODE/EDGE table must be covered by its props spec
