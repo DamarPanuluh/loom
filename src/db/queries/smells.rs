@@ -632,11 +632,6 @@ pub fn compute_smells_from_parts(
             *c = &im.created_at;
         }
     }
-    let cf_id_of: HashMap<&str, &str> = snapshot
-        .codefiles
-        .iter()
-        .map(|cf| (cf.path.as_str(), cf.id.as_str()))
-        .collect();
     let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
     let mut roots: Vec<&crate::types::Intent> = intents
         .iter()
@@ -647,9 +642,16 @@ pub fn compute_smells_from_parts(
     // change at `anchor` ("" = no structural timestamp recorded). Returns the
     // ruling note — suppressed findings surface WITH their ruling, never
     // silently.
-    let adjudicated = |target: &str, anchor: &str| -> Option<&crate::types::Note> {
+    // Adjudication is keyed on the FINDING IDENTITY (`<kind>:<scope>`), not on the
+    // raw target id: a ruling about one finding can no longer launder a different
+    // finding that merely shares a file/intent (e.g. a per-symbol
+    // large_behavioral_symbol note can't clear the file-level tangled_file
+    // finding). The decision note must be recorded with that identity
+    // (`loom note add --smell "<kind>:<scope>"`); legacy file/intent-scoped notes
+    // no longer match and the finding honestly re-opens.
+    let adjudicated = |kind: &str, target: &str, anchor: &str| -> Option<&crate::types::Note> {
         last_decision
-            .get(target)
+            .get(format!("{kind}:{target}").as_str())
             .filter(|n| rfc3339_after(n.created_at.as_str(), anchor))
             .copied()
     };
@@ -861,9 +863,13 @@ pub fn compute_smells_from_parts(
                         coded.len()
                     )
                 };
-                let adjudicated_note = roots
-                    .first()
-                    .and_then(|root| adjudicated(root.id.as_str(), newest_untagged_grounding));
+                let adjudicated_note = roots.first().and_then(|root| {
+                    adjudicated(
+                        "duplicate_detection_unarmed",
+                        root.id.as_str(),
+                        newest_untagged_grounding,
+                    )
+                });
                 if let Some(note) = adjudicated_note {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "duplicate_detection_unarmed".into(),
@@ -888,9 +894,9 @@ pub fn compute_smells_from_parts(
                             sample.join(" · ")
                         ),
                         remedy: if registry == 0 {
-                            "seed the bounded vocabulary (`loom vocab add <term> --why \"covers X, not Y\"`), then tag coded intents with `loom intent tag add <intent> <term>`; if the remaining blind spot is deliberate, record it on the graph root with `loom note add --intent <root> --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+                            "seed the bounded vocabulary (`loom vocab add <term> --why \"covers X, not Y\"`), then tag coded intents with `loom intent tag add <intent> <term>`; if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
                         } else {
-                            "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --intent <root> --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+                            "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
                         },
                         teaching: teaching_for("duplicate_detection_unarmed"),
                     });
@@ -949,6 +955,7 @@ pub fn compute_smells_from_parts(
             // grounding says the spread is deliberate. A grounding added after
             // the decision re-opens the question.
             if let Some(note) = adjudicated(
+                "scattered_intent",
                 i.id.as_str(),
                 newest_grounding.get(i.id.as_str()).copied().unwrap_or(""),
             ) {
@@ -995,7 +1002,7 @@ pub fn compute_smells_from_parts(
                     i.abstraction_level, threshold, clusters
                 ),
                 remedy: format!(
-                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --intent {id} --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
+                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --smell \"scattered_intent:{id}\" --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
                     id = i.id
                 ),
                 teaching: teaching_for("scattered_intent"),
@@ -1012,7 +1019,8 @@ pub fn compute_smells_from_parts(
             // claim ("loom note add --file … --kind decision") says the
             // cohabitation is deliberate. A new claim re-opens it.
             if let Some(note) = adjudicated(
-                cf_id_of.get(path).copied().unwrap_or(""),
+                "tangled_file",
+                path,
                 newest_claim.get(path).copied().unwrap_or(""),
             ) {
                 adjudicated_out.push(AdjudicatedSmell {
@@ -1037,7 +1045,7 @@ pub fn compute_smells_from_parts(
                 summary: format!("{} serves {} distinct intents", path, distinct.len()),
                 evidence: format!("intents: {}", names.join(" · ")),
                 remedy: format!(
-                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; if the cohabitation is DELIBERATE, record it: `loom note add --file {path} --kind decision --text \"<why these intents share a home>\"` resolves this finding (a new claim re-opens it)",
+                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; if the cohabitation is DELIBERATE, record it: `loom note add --smell \"tangled_file:{path}\" --kind decision --text \"<why these intents share a home>\"` resolves this finding (a new claim re-opens it)",
                     n = distinct.len(),
                 ),
                 teaching: teaching_for("tangled_file"),
@@ -1059,7 +1067,12 @@ pub fn compute_smells_from_parts(
                 continue;
             }
             let summary = format!("{} in {} spans {} lines", f.label, cf.path, span);
-            if let Some(note) = adjudicated(cf.id.as_str(), cf.last_modified.as_str()) {
+            let adj_scope = format!("{}:{}", cf.path, f.label);
+            if let Some(note) = adjudicated(
+                "large_behavioral_symbol",
+                &adj_scope,
+                cf.last_modified.as_str(),
+            ) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "large_behavioral_symbol".into(),
                     summary,
@@ -1091,8 +1104,8 @@ pub fn compute_smells_from_parts(
                     LARGE_BEHAVIORAL_SYMBOL_LINES
                 ),
                 remedy: format!(
-                    "inspect {}:{}-{}; split distinct phases/modes into named helpers or smaller owned behavior, or record why the large symbol is deliberate: `loom note add --file {} --kind decision --text \"<why {} stays large>\"` resolves this finding (editing the file re-opens it)",
-                    cf.path, f.line_start, f.line_end, cf.path, f.label
+                    "inspect {}:{}-{}; split distinct phases/modes into named helpers or smaller owned behavior, or record why the large symbol is deliberate: `loom note add --smell \"large_behavioral_symbol:{}:{}\" --kind decision --text \"<why {} stays large>\"` resolves THIS finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label, f.label
                 ),
                 teaching: teaching_for("large_behavioral_symbol"),
             });
@@ -1112,7 +1125,10 @@ pub fn compute_smells_from_parts(
                 "{} in {} has {} panic/unfinished marker(s)",
                 f.label, cf.path, f.panic_marker_count
             );
-            if let Some(note) = adjudicated(cf.id.as_str(), cf.last_modified.as_str()) {
+            let adj_scope = format!("{}:{}", cf.path, f.label);
+            if let Some(note) =
+                adjudicated("panic_marker_risk", &adj_scope, cf.last_modified.as_str())
+            {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "panic_marker_risk".into(),
                     summary,
@@ -1152,8 +1168,8 @@ pub fn compute_smells_from_parts(
                     }
                 ),
                 remedy: format!(
-                    "inspect {}:{}-{}; replace recoverable aborts with handled errors/proofs, move unfinished behavior to planned work, or accept the invariant: `loom note add --file {} --kind decision --text \"<why these markers are deliberate>\"` resolves this finding (editing the file re-opens it)",
-                    cf.path, f.line_start, f.line_end, cf.path
+                    "inspect {}:{}-{}; replace recoverable aborts with handled errors/proofs, move unfinished behavior to planned work, or accept the invariant: `loom note add --smell \"panic_marker_risk:{}:{}\" --kind decision --text \"<why these markers are deliberate>\"` resolves THIS finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label
                 ),
                 teaching: teaching_for("panic_marker_risk"),
             });
@@ -1175,7 +1191,6 @@ pub fn compute_smells_from_parts(
                 };
                 strings.entry(key).or_default().push(StringContractLoc {
                     path: cf.path.as_str(),
-                    file_id: cf.id.as_str(),
                     file_modified: cf.last_modified.as_str(),
                     label: f.label.as_str(),
                     line: literal.line,
@@ -1213,7 +1228,7 @@ pub fn compute_smells_from_parts(
             locs.len(),
             excerpt
         );
-        if let Some(note) = adjudicated(anchor.file_id, newest) {
+        if let Some(note) = adjudicated("string_contract_duplicate", anchor.path, newest) {
             adjudicated_out.push(AdjudicatedSmell {
                 kind: "string_contract_duplicate".into(),
                 summary,
@@ -1439,6 +1454,7 @@ pub fn compute_smells_from_parts(
                 // intent newer than its newest grounding says the
                 // up-dependency is deliberate; a new grounding re-opens it.
                 if let Some(note) = adjudicated(
+                    "layering_violation",
                     a.as_str(),
                     newest_grounding.get(a.as_str()).copied().unwrap_or(""),
                 ) {
@@ -1466,7 +1482,7 @@ pub fn compute_smells_from_parts(
                         examples.join(", ")
                     ),
                     remedy: format!(
-                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
+                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --smell \"layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
                     ),
                     teaching: teaching_for("layering_violation"),
                 });
@@ -1624,9 +1640,11 @@ pub fn compute_smells_from_parts(
                     let summary = format!(
                         "'{na}' ({la}) transitively depends on '{nc}' ({lc}) against the declared layer order — clean at every hop"
                     );
-                    if let Some(note) =
-                        adjudicated(a, newest_grounding.get(a).copied().unwrap_or(""))
-                    {
+                    if let Some(note) = adjudicated(
+                        "transitive_layering_violation",
+                        a,
+                        newest_grounding.get(a).copied().unwrap_or(""),
+                    ) {
                         adjudicated_out.push(AdjudicatedSmell {
                             kind: "transitive_layering_violation".into(),
                             summary,
@@ -1646,7 +1664,7 @@ pub fn compute_smells_from_parts(
                             "every hop is clean (6b sees nothing), but the chain routes a deeper layer up to a shallower one through unlayered intermediate(s): {trail}"
                         ),
                         remedy: format!(
-                            "fix the END-TO-END direction: whatever '{la}' reaches up to use belongs at or below '{la}' (move it down / extract a lower shared module); OR give the unlayered intermediate(s) a `--layer` so the direct check governs each hop; OR if this up-dependency is DELIBERATE, record it: `loom note add --intent {a} --kind decision --text \"<why this layer may reach up>\"` (a new grounding re-opens it)"
+                            "fix the END-TO-END direction: whatever '{la}' reaches up to use belongs at or below '{la}' (move it down / extract a lower shared module); OR give the unlayered intermediate(s) a `--layer` so the direct check governs each hop; OR if this up-dependency is DELIBERATE, record it: `loom note add --smell \"transitive_layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` (a new grounding re-opens it)"
                         ),
                         teaching: teaching_for("transitive_layering_violation"),
                     });
@@ -1926,6 +1944,7 @@ pub fn compute_smells_from_parts(
                     missing.join("/")
                 );
                 if let Some(note) = adjudicated(
+                    "happy_path_only",
                     parent_id,
                     newest_aspect_child.get(parent_id).copied().unwrap_or(""),
                 ) {
@@ -1961,7 +1980,7 @@ pub fn compute_smells_from_parts(
                         missing.join("/")
                     ),
                     remedy: format!(
-                        "realize and prove the missing path(s): loom intent add --aspect {first} --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --intent {parent_id} --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
+                        "realize and prove the missing path(s): loom intent add --aspect {first} --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --smell \"happy_path_only:{parent_id}\" --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
                         first = missing[0],
                         m = missing.join("/")
                     ),
@@ -2136,7 +2155,11 @@ pub fn compute_smells_from_parts(
                         .max()
                         .unwrap_or("");
                     let newest_consumer_surface = std::cmp::max(newest_uv, newest_saga_binding);
-                    if let Some(note) = adjudicated(root.id.as_str(), newest_consumer_surface) {
+                    if let Some(note) = adjudicated(
+                        "unjourneyed_surface",
+                        root.id.as_str(),
+                        newest_consumer_surface,
+                    ) {
                         adjudicated_out.push(AdjudicatedSmell {
                             kind: "unjourneyed_surface".into(),
                             summary: format!(
@@ -2164,7 +2187,7 @@ pub fn compute_smells_from_parts(
                                 sample.join(" · ")
                             ),
                             remedy: format!(
-                                "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --intent {} --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
+                                "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --smell \"unjourneyed_surface:{}\" --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
                                 root.id
                             ),
                             teaching: teaching_for("unjourneyed_surface"),
@@ -2174,7 +2197,9 @@ pub fn compute_smells_from_parts(
             }
         } else {
             for i in candidates {
-                if let Some(note) = adjudicated(i.id.as_str(), i.updated_at.as_str()) {
+                if let Some(note) =
+                    adjudicated("unjourneyed_surface", i.id.as_str(), i.updated_at.as_str())
+                {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "unjourneyed_surface".into(),
                         summary: format!(
@@ -2201,7 +2226,7 @@ pub fn compute_smells_from_parts(
                         i.abstraction_level
                     ),
                     remedy: format!(
-                        "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --intent {id} --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
+                        "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --smell \"unjourneyed_surface:{id}\" --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
                         id = i.id
                     ),
                     teaching: teaching_for("unjourneyed_surface"),
@@ -2327,7 +2352,7 @@ pub fn compute_smells_from_parts(
             let pair_anchor = fwd.last_inspected.as_str().max(rev.last_inspected.as_str());
             let summary =
                 format!("mutual RELATES_TO dependency: '{na}' ↔ '{nb}' (both directions grounded)");
-            if let Some(note) = adjudicated(a, pair_anchor) {
+            if let Some(note) = adjudicated("dependency_cycle", a, pair_anchor) {
                 adjudicated_out.push(AdjudicatedSmell {
                     kind: "dependency_cycle".into(),
                     summary,
@@ -2349,7 +2374,7 @@ pub fn compute_smells_from_parts(
                         fwd.inspection_status, rev.inspection_status
                     ),
                     remedy: format!(
-                        "`loom edge show rt:{a}:{b}` and `loom edge show rt:{b}:{a}`; decide which way the dependency really runs, then `loom edge explore <incidental-from> <incidental-to> independent` to retire the redundant direction (keep the better-grounded verdict). If '{na}' and '{nb}' are one responsibility, merge them. If the mutual relationship is DELIBERATE (true peers / a mutual contract), record it: `loom note add --intent {a} --kind decision --text \"<why both directions hold>\"` (re-inspecting either edge re-opens this)."
+                        "`loom edge show rt:{a}:{b}` and `loom edge show rt:{b}:{a}`; decide which way the dependency really runs, then `loom edge explore <incidental-from> <incidental-to> independent` to retire the redundant direction (keep the better-grounded verdict). If '{na}' and '{nb}' are one responsibility, merge them. If the mutual relationship is DELIBERATE (true peers / a mutual contract), record it: `loom note add --smell \"dependency_cycle:{a}\" --kind decision --text \"<why both directions hold>\"` (re-inspecting either edge re-opens this)."
                     ),
                     teaching: teaching_for("dependency_cycle"),
                 });
@@ -2428,7 +2453,8 @@ pub fn compute_smells_from_parts(
                     members.len(),
                     names.join(", ")
                 );
-                if let Some(note) = adjudicated(anchor.id.as_str(), island_anchor) {
+                if let Some(note) = adjudicated("intent_island", anchor.id.as_str(), island_anchor)
+                {
                     adjudicated_out.push(AdjudicatedSmell {
                         kind: "intent_island".into(),
                         summary,
@@ -2449,7 +2475,7 @@ pub fn compute_smells_from_parts(
                             names.join(", ")
                         ),
                         remedy: format!(
-                            "attach the island: `loom edge hierarchy <parent> <child>` under its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph; if it is a genuinely separate top-level purpose, add a system intent for it; if the separation is DELIBERATE, record it: `loom note add --intent {} --kind decision --text \"<why this subgraph is intentionally disconnected>\"` (re-grounding a member re-opens this)",
+                            "attach the island: `loom edge hierarchy <parent> <child>` under its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph; if it is a genuinely separate top-level purpose, add a system intent for it; if the separation is DELIBERATE, record it: `loom note add --smell \"intent_island:{}\" --kind decision --text \"<why this subgraph is intentionally disconnected>\"` (re-grounding a member re-opens this)",
                             anchor.id
                         ),
                         teaching: teaching_for("intent_island"),
@@ -3394,7 +3420,6 @@ fn command_or_public_surface(path: &str, fact: &crate::types::SymbolFact) -> boo
 #[derive(Clone, Copy)]
 struct StringContractLoc<'a> {
     path: &'a str,
-    file_id: &'a str,
     file_modified: &'a str,
     label: &'a str,
     line: usize,
@@ -4128,8 +4153,8 @@ mod large_behavioral_symbol_tests {
             kind: "decision".into(),
             text: "large parser stays linear for now".into(),
             author: "llm".into(),
-            target_kind: "file".into(),
-            target_id: "src/big.rs".into(),
+            target_kind: "smell".into(),
+            target_id: "large_behavioral_symbol:src/big.rs:method parse_everything".into(),
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(),
         };
@@ -4305,6 +4330,59 @@ mod source_fact_smell_tests {
         r.open.iter().filter(|s| s.kind == kind).collect()
     }
 
+    fn decision_note(target_id: &str, created_at: &str) -> Note {
+        Note {
+            id: "n1".into(),
+            kind: "decision".into(),
+            text: "deliberate".into(),
+            author: "human".into(),
+            target_kind: "smell".into(),
+            target_id: target_id.into(),
+            created_at: created_at.into(),
+            audience: String::new(),
+        }
+    }
+
+    /// Adjudication is keyed on FINDING IDENTITY (`<kind>:<scope>`): a ruling
+    /// scoped to one finding cannot launder a different finding that merely
+    /// shares the file (the god-file root cause).
+    #[test]
+    fn adjudication_is_kind_scoped_no_cross_kind_laundering() {
+        let mut big = sym("fn big_handler");
+        big.line_start = 1;
+        big.line_end = 1 + LARGE_BEHAVIORAL_SYMBOL_LINES + 50; // span well over the threshold
+        let file = cf("src/x.rs", vec![big]);
+
+        // Unadjudicated → the large_behavioral_symbol finding is open.
+        let r = report(vec![file.clone()], &[]);
+        assert_eq!(of_kind(&r, "large_behavioral_symbol").len(), 1);
+
+        // A ruling scoped to a DIFFERENT finding (a tangled_file on the same
+        // file) must NOT clear it — pre-fix, any file-scoped note would have.
+        let wrong = decision_note("tangled_file:src/x.rs", "2026-06-20T00:00:00+00:00");
+        let r = report(vec![file.clone()], std::slice::from_ref(&wrong));
+        assert_eq!(
+            of_kind(&r, "large_behavioral_symbol").len(),
+            1,
+            "a tangled_file ruling must not launder a large_behavioral_symbol finding"
+        );
+
+        // The correctly-scoped ruling adjudicates exactly this finding.
+        let right = decision_note(
+            "large_behavioral_symbol:src/x.rs:fn big_handler",
+            "2026-06-20T00:00:00+00:00",
+        );
+        let r = report(vec![file], std::slice::from_ref(&right));
+        assert!(
+            of_kind(&r, "large_behavioral_symbol").is_empty(),
+            "the correctly-scoped --smell ruling clears the finding"
+        );
+        assert!(r
+            .adjudicated
+            .iter()
+            .any(|a| a.kind == "large_behavioral_symbol"));
+    }
+
     #[test]
     fn repeated_long_string_contract_flags_once() {
         let text = "Run loom sync before reading the status output again";
@@ -4371,8 +4449,8 @@ mod source_fact_smell_tests {
             kind: "decision".into(),
             text: "unwraps are construction-time invariants here".into(),
             author: "llm".into(),
-            target_kind: "file".into(),
-            target_id: "src/a.rs".into(),
+            target_kind: "smell".into(),
+            target_id: "panic_marker_risk:src/a.rs:fn alpha".into(),
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(),
         };
@@ -4605,8 +4683,8 @@ mod cycle_island_tests {
             kind: "decision".into(),
             text: "a and b are deliberate mutual peers".into(),
             author: "llm".into(),
-            target_kind: "intent".into(),
-            target_id: "a".into(), // the smaller-id anchor
+            target_kind: "smell".into(),
+            target_id: "dependency_cycle:a".into(), // <kind>:<smaller-id anchor>
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(), // newer than the edges
         };

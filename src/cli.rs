@@ -1727,10 +1727,18 @@ pub enum NoteCmd {
         #[arg(long)]
         edge: Option<String>,
 
-        /// Attach to this CodeFile (id or registered path) — e.g. the
-        /// `--kind decision` note that adjudicates a tangled_file finding.
+        /// Attach to this CodeFile (id or registered path).
         #[arg(long)]
         file: Option<String>,
+
+        /// Adjudicate a SPECIFIC smell finding by its identity, e.g.
+        /// `--smell "tangled_file:src/db/sqlite.rs"` or
+        /// `--smell "large_behavioral_symbol:src/x.rs:fn foo"` (the exact string
+        /// `loom smells` prints in the remedy). A decision note scoped this way
+        /// clears ONLY that finding — a per-symbol ruling can no longer launder a
+        /// file-level finding, and one ruling can't silence a whole file.
+        #[arg(long)]
+        smell: Option<String>,
 
         /// Who wrote it — role-aware (e.g. llm:analyzer, human:reviewer).
         /// Defaults to $LOOM_AGENT, else "llm".

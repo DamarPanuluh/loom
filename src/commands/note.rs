@@ -27,12 +27,13 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             intent,
             edge,
             file,
+            smell,
             author,
             for_role,
         } => {
             ensure_initialized(&cwd)?;
             run_add_with_sqlite(
-                &cwd, text, kind, intent, edge, file, author, for_role, printer,
+                &cwd, text, kind, intent, edge, file, smell, author, for_role, printer,
             )
         }
         NoteCmd::Prune {
@@ -62,6 +63,7 @@ fn run_add_with_sqlite(
     intent: Option<String>,
     edge: Option<String>,
     file: Option<String>,
+    smell: Option<String>,
     author: Option<String>,
     for_role: Option<String>,
     printer: &Printer,
@@ -74,6 +76,7 @@ fn run_add_with_sqlite(
         intent,
         edge,
         file,
+        smell,
         author,
         for_role,
         |edge_id| store.edge_id_exists(edge_id),
@@ -91,6 +94,7 @@ fn prepare_add_note(
     intent: Option<String>,
     edge: Option<String>,
     file: Option<String>,
+    smell: Option<String>,
     author: Option<String>,
     for_role: Option<String>,
     edge_exists: impl Fn(&str) -> Result<bool>,
@@ -98,20 +102,26 @@ fn prepare_add_note(
     // Validate the kind against the vocabulary.
     kind.parse::<NoteKind>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
-    if [intent.is_some(), edge.is_some(), file.is_some()]
-        .iter()
-        .filter(|b| **b)
-        .count()
+    if [
+        intent.is_some(),
+        edge.is_some(),
+        file.is_some(),
+        smell.is_some(),
+    ]
+    .iter()
+    .filter(|b| **b)
+    .count()
         > 1
     {
         anyhow::bail!(
-            "A note targets an intent OR an edge OR a code file, not several — pass exactly one of \
-             `--intent <id>`, `--edge <id>`, `--file <path>` (or none for a graph-wide note)."
+            "A note targets an intent OR an edge OR a code file OR a smell finding, not several — \
+             pass exactly one of `--intent <id>`, `--edge <id>`, `--file <path>`, \
+             `--smell \"<kind>:<scope>\"` (or none for a graph-wide note)."
         );
     }
-    let (target_kind, target_id) = match (intent, edge, file) {
-        (Some(i), _, _) => ("intent".to_string(), resolve_intent_with_db(db, &i)?),
-        (_, Some(e), _) => {
+    let (target_kind, target_id) = match (intent, edge, file, smell) {
+        (Some(i), _, _, _) => ("intent".to_string(), resolve_intent_with_db(db, &i)?),
+        (_, Some(e), _, _) => {
             if !edge_exists(&e)? {
                 anyhow::bail!(
                     "Edge '{}' not found. Use the derived edge id shown by `loom edge ...` commands, or run `loom doctor` to find dangling edge notes.",
@@ -120,7 +130,16 @@ fn prepare_add_note(
             }
             ("edge".to_string(), e)
         }
-        (_, _, Some(f)) => ("codefile".to_string(), resolve_codefile_id_with_db(db, &f)?),
+        (_, _, Some(f), _) => ("codefile".to_string(), resolve_codefile_id_with_db(db, &f)?),
+        // A smell-finding identity is a synthetic key (`<kind>:<scope>`), not a
+        // stored object, so it is stored verbatim — `loom smells` adjudication
+        // matches it against the finding's own identity.
+        (_, _, _, Some(s)) => {
+            if s.trim().is_empty() {
+                anyhow::bail!("--smell needs the finding identity loom smells prints (e.g. \"tangled_file:src/x.rs\").");
+            }
+            ("smell".to_string(), s)
+        }
         _ => ("none".to_string(), String::new()),
     };
 
