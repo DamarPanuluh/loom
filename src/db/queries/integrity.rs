@@ -5,12 +5,13 @@
 //! in `crate::db::schema`.
 
 use anyhow::Result;
+use std::collections::HashSet;
 
 use crate::db::schema;
 use crate::types::{
-    AbstractionLevel, GovernsKind, Hypothesis, HypothesisStatus, Intent, IntentStatus, Note,
-    NoteKind, RelationKind, ServesEdge, Severity, TargetsEdge, ValidationResult, ValidationType,
-    VocabTerm,
+    AbstractionLevel, CodeFile, Delegation, GovernsKind, Hypothesis, HypothesisStatus, Ignore,
+    Intent, IntentStatus, Note, NoteKind, RelationKind, ServesEdge, Severity, TargetsEdge,
+    ValidationResult, ValidationType, VocabTerm,
 };
 
 use super::snapshot::QuerySnapshot;
@@ -53,6 +54,86 @@ pub struct DoctorInputs<'a> {
     pub serves_edges: Vec<ServesEdge>,
     pub edge_ids: std::collections::HashSet<String>,
     pub notes: &'a [Note],
+}
+
+/// Map-vs-territory reconciliation — what the graph DECLARES vs what's on DISK.
+/// doctor's graph-internal pass can't see this; the read path folds the same
+/// on-disk walk `loom coverage` does into the integrity check so unmapped real
+/// files, drifted content, and phantom registrations block green instead of
+/// laundering a healthy compass. Pure over the inputs the caller gathers (it
+/// has the repo root for the walk + content hashes); no disk access here.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DiskReconciliation {
+    /// Real source files on disk that are not grounded, not registered, not
+    /// ignored, and not delegated — the map is MISSING them.
+    pub unaccounted_files: Vec<String>,
+    /// Registered codefiles whose current disk content hash no longer matches
+    /// the recorded hash — the territory drifted since the last sync.
+    pub drifted_codefiles: Vec<String>,
+    /// Registered codefiles whose path no longer exists on disk — phantom map
+    /// entries (the file was deleted or moved).
+    pub missing_codefiles: Vec<String>,
+}
+
+impl DiskReconciliation {
+    pub fn issue_count(&self) -> usize {
+        self.unaccounted_files.len() + self.drifted_codefiles.len() + self.missing_codefiles.len()
+    }
+}
+
+/// Reconcile the disk file list against the registered codefiles. `disk_hash`
+/// returns the current content hash of a (repo-relative) path, or `None` if the
+/// file can't be read (missing/unreadable) — supplied by the caller, which
+/// holds the repo root. A codefile with an EMPTY recorded hash (grandfathered,
+/// pre-hash) is never flagged as drifted, so this doesn't over-fire on legacy
+/// registrations — only a NON-empty recorded hash that no longer matches is a
+/// drift.
+pub fn disk_reconciliation_from_parts(
+    disk: &[String],
+    codefiles: &[CodeFile],
+    ignores: &[Ignore],
+    delegations: &[Delegation],
+    disk_hash: &dyn Fn(&str) -> Option<String>,
+) -> DiskReconciliation {
+    let registered: HashSet<&str> = codefiles.iter().map(|c| c.path.as_str()).collect();
+    let ignore_pats: Vec<glob::Pattern> = ignores
+        .iter()
+        .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
+        .collect();
+    let deleg_pats: Vec<glob::Pattern> = delegations
+        .iter()
+        .filter_map(|d| glob::Pattern::new(&d.pattern).ok())
+        .collect();
+    let is_ignored = |p: &str| ignore_pats.iter().any(|pat| pat.matches(p));
+    let is_delegated = |p: &str| deleg_pats.iter().any(|pat| pat.matches(p));
+
+    let mut unaccounted = Vec::new();
+    for f in disk {
+        if registered.contains(f.as_str()) || is_ignored(f) || is_delegated(f) {
+            continue;
+        }
+        unaccounted.push(f.clone());
+    }
+    let mut drifted = Vec::new();
+    let mut missing = Vec::new();
+    for cf in codefiles {
+        match disk_hash(&cf.path) {
+            None => missing.push(cf.path.clone()),
+            Some(h) => {
+                if !cf.content_hash.is_empty() && cf.content_hash != h {
+                    drifted.push(cf.path.clone());
+                }
+            }
+        }
+    }
+    unaccounted.sort();
+    drifted.sort();
+    missing.sort();
+    DiskReconciliation {
+        unaccounted_files: unaccounted,
+        drifted_codefiles: drifted,
+        missing_codefiles: missing,
+    }
 }
 
 pub fn check_graph_from_parts(
@@ -746,5 +827,99 @@ mod epistemic_tests {
             "copied evidence should flag even with spread confidence: {hints:?}"
         );
         assert!(hints[0].contains("distinct evidence"), "got: {hints:?}");
+    }
+}
+
+#[cfg(test)]
+mod disk_reconciliation_tests {
+    use super::{disk_reconciliation_from_parts, DiskReconciliation};
+    use crate::types::{CodeFile, Delegation, Ignore};
+
+    fn cf(path: &str, hash: &str) -> CodeFile {
+        CodeFile {
+            id: format!("cf:{path}"),
+            path: path.to_string(),
+            language: "rust".to_string(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: hash.to_string(),
+        }
+    }
+    fn ignore(pattern: &str) -> Ignore {
+        Ignore {
+            id: format!("ig:{pattern}"),
+            pattern: pattern.to_string(),
+            reason: "test".to_string(),
+            author: "test".to_string(),
+            created_at: "t".to_string(),
+        }
+    }
+    fn delegation(pattern: &str) -> Delegation {
+        Delegation {
+            id: format!("dg:{pattern}"),
+            pattern: pattern.to_string(),
+            target: "child/loom.graph.json".to_string(),
+            export_hash: String::new(),
+            seam_intents: Vec::new(),
+            author: "test".to_string(),
+            created_at: "t".to_string(),
+        }
+    }
+
+    // FALSE-GREEN [map-vs-territory-reconcile-on-read]: the disk-vs-graph
+    // reconciliation must surface the three real gaps (unmapped, drifted,
+    // missing) WITHOUT over-firing on legitimate cases (ignored files,
+    // delegated subtrees, and grandfathered registrations with no recorded
+    // hash are all fine — only the laundered SHAPE is a problem).
+    #[test]
+    fn reconciles_unmapped_drifted_missing_without_over_firing() {
+        let disk = vec![
+            "src/mapped.rs".to_string(),   // registered + grounded → fine
+            "src/drifted.rs".to_string(),  // registered, hash mismatch → drifted
+            "src/legacy.rs".to_string(),   // registered, EMPTY hash → grandfathered, NOT drifted
+            "src/ignored.rs".to_string(),  // matches an ignore glob → excluded
+            "sub/child.rs".to_string(),    // matches a delegation → excluded
+            "src/phantom.rs".to_string(),  // NOT on disk (disk_hash None) — registered → missing
+            "src/unmapped.rs".to_string(), // real, not registered/ignored/delegated → unmapped
+        ];
+        let codefiles = vec![
+            cf("src/mapped.rs", "h-mapped"),
+            cf("src/drifted.rs", "h-old"),
+            cf("src/legacy.rs", ""),
+            cf("src/phantom.rs", "h-phantom"),
+        ];
+        let ignores = vec![ignore("src/ignored.rs")];
+        let delegations = vec![delegation("sub/**")];
+        // disk_hash: phantom returns None (file gone); mapped matches its
+        // recorded hash (not drifted); drifted returns a NEW hash (drifted);
+        // legacy's disk content is irrelevant — its recorded hash is EMPTY so
+        // it's grandfathered and never flagged drifted.
+        let disk_hash = |p: &str| match p {
+            "src/phantom.rs" => None,
+            "src/mapped.rs" => Some("h-mapped".to_string()),
+            "src/drifted.rs" => Some("h-new".to_string()),
+            _ => Some("h-disk".to_string()),
+        };
+        let rec =
+            disk_reconciliation_from_parts(&disk, &codefiles, &ignores, &delegations, &disk_hash);
+
+        assert_eq!(rec.unaccounted_files, vec!["src/unmapped.rs"]);
+        assert_eq!(rec.drifted_codefiles, vec!["src/drifted.rs"]);
+        assert!(
+            !rec.drifted_codefiles.contains(&"src/legacy.rs".to_string()),
+            "an EMPTY recorded hash is grandfathered, not drifted: {:?}",
+            rec.drifted_codefiles
+        );
+        assert_eq!(rec.missing_codefiles, vec!["src/phantom.rs"]);
+        assert_eq!(rec.issue_count(), 3);
+    }
+
+    #[test]
+    fn empty_disk_and_empty_codefiles_is_clean() {
+        let rec = disk_reconciliation_from_parts(&[], &[], &[], &[], &|_| None);
+        assert_eq!(rec, DiskReconciliation::default());
+        assert_eq!(rec.issue_count(), 0);
     }
 }

@@ -775,6 +775,34 @@ impl SqliteGraphStore {
                 .map(|report| report.open.len())
             },
             || self.count_hypotheses(Some("proposed")),
+            // Map-vs-territory: files on disk the graph doesn't account for.
+            // Lazy (only the audit-gate else branch calls it, i.e. near-green
+            // graphs), so post-mutation `graph_state` pulses that land on an
+            // earlier phase never pay for the walk + content-hash pass. The
+            // root is the repo root that holds `.loom/` (resolve_root honors
+            // LOOM_GRAPH / --graph), so this reconciles the graph's OWN
+            // territory — delegated subtrees are excluded via delegation
+            // patterns inside disk_reconciliation_from_parts.
+            |snapshot| {
+                let root = crate::db::resolve_root()?;
+                let disk = crate::repo::walk_files(&root)?;
+                let ignores = self.list_ignores()?;
+                let delegations = self.list_delegations()?;
+                Ok(
+                    crate::db::queries::integrity::disk_reconciliation_from_parts(
+                        &disk,
+                        &snapshot.codefiles,
+                        &ignores,
+                        &delegations,
+                        &|p| {
+                            std::fs::read(root.join(p))
+                                .ok()
+                                .map(|b| crate::repo::content_hash(&b))
+                        },
+                    )
+                    .issue_count(),
+                )
+            },
         )
     }
 
@@ -833,6 +861,16 @@ impl SqliteGraphStore {
                 notes,
             },
         )
+        // Map-vs-territory reconciliation (files on disk the graph doesn't
+        // account for) is NOT folded in here: doctor's scope is graph-INTERNAL
+        // structural integrity (schema version, tree shape, prop completeness),
+        // and the disk walk needs the repo root the command layer holds. The
+        // compass phase gate — `graph_state` below — IS the read path that
+        // gates green on map=territory, routing to `loom coverage` for the
+        // per-file detail. Folding disk gaps into doctor ISSUES would re-create
+        // the overstatement in the other direction (doctor "unhealthy" on a
+        // synthetic tree-less checkout) without adding a gate the compass
+        // doesn't already hold.
     }
 
     pub fn align_candidate_count(&self, snapshot: &QuerySnapshot) -> Result<i64> {

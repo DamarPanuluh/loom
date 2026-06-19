@@ -119,6 +119,7 @@ pub fn graph_state_from_snapshot_parts(
     context: GraphStateContext,
     mut open_findings: impl FnMut(&QuerySnapshot) -> Result<usize>,
     mut proposed_hypotheses: impl FnMut() -> Result<usize>,
+    mut disk_integrity_issues: impl FnMut(&QuerySnapshot) -> Result<usize>,
 ) -> Result<GraphState> {
     // Active intents only: retired (deprecated) design is invisible to every
     // computed number here — counts, pair denominators, coverage axes.
@@ -492,32 +493,48 @@ pub fn graph_state_from_snapshot_parts(
             "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
         ))
     } else {
-        // The audit gate — the last gate before green. Open smells are
-        // unadjudicated suspicions; green means every one was ANSWERED
-        // (structurally fixed, or refuted via its remedy — an `independent`
-        // verdict / vocab merge / decision note counts exactly as much as a
-        // fix). Computed lazily: only graphs that cleared every other gate
-        // pay for the O(N²) scan, and at this point every pair is linked, so
-        // the pairwise detectors short-circuit.
-        let open_findings = open_findings(snapshot)?;
-        if open_findings > 0 {
-            ("audit", "recommended", format!(
-                "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
+        // The audit gate — the last gate before green. The FIRST sub-check is
+        // map-vs-territory: files on disk the graph doesn't account for
+        // (unmapped real files, drifted content, phantom registrations). This
+        // is the false-green hole — green used to TRUST the declared graph and
+        // only TELL you to "confirm with `loom coverage`", so a file with no
+        // intent laundered into a clean compass. Now it GATES: the map must
+        // match the territory. Computed lazily (only graphs that cleared every
+        // other gate pay for the on-disk walk + content-hash pass), and the
+        // caller supplies the count so the pure-graph layer stays disk-free.
+        let disk_issues = disk_integrity_issues(snapshot)?;
+        if disk_issues > 0 {
+            ("audit", "directive", format!(
+                "{disk_issues} file(s) on disk the graph doesn't account for (unmapped, drifted, or missing) — the map must match the territory before green: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude."
             ))
         } else {
-            // The pre-decision plane never gates green (a proposal is not
-            // state of the world — see Hypothesis), but it must not rot
-            // invisibly either: pending proofs are disclosed at the one
-            // message every agent reads. Computed lazily with the same
-            // justification as the smells scan above.
-            let proposed = proposed_hypotheses()?;
-            let mut msg = "Vertically complete ✓, horizontally explored ✓, 0 open findings ✓ — confirm with `loom coverage` (nothing on disk unmapped) and `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string();
-            if proposed > 0 {
-                msg.push_str(&format!(
-                    " Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, never gates green: `loom next --mode prove`."
-                ));
+            // Open smells are unadjudicated suspicions; green means every one
+            // was ANSWERED (structurally fixed, or refuted via its remedy — an
+            // `independent` verdict / vocab merge / decision note counts
+            // exactly as much as a fix). Computed lazily: only graphs that
+            // cleared every other gate pay for the O(N²) scan, and at this
+            // point every pair is linked, so the pairwise detectors
+            // short-circuit.
+            let open_findings = open_findings(snapshot)?;
+            if open_findings > 0 {
+                ("audit", "recommended", format!(
+                    "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
+                ))
+            } else {
+                // The pre-decision plane never gates green (a proposal is not
+                // state of the world — see Hypothesis), but it must not rot
+                // invisibly either: pending proofs are disclosed at the one
+                // message every agent reads. Computed lazily with the same
+                // justification as the smells scan above.
+                let proposed = proposed_hypotheses()?;
+                let mut msg = "Vertically complete ✓, horizontally explored ✓, disk reconciled ✓ (nothing on disk unmapped/drifted/missing), 0 open findings ✓ — confirm the roll-up with `loom report`. Then make the green DURABLE: run `loom export` and commit the graph with the code, re-run it after every graph change (`loom export --check` verifies; CI wiring is optional extra hardening), and keep running `loom sync` after code changes (maintenance mode).".to_string();
+                if proposed > 0 {
+                    msg.push_str(&format!(
+                        " Pre-decision plane: {proposed} proposed hypothesis(es) await proof — optional, never gates green: `loom next --mode prove`."
+                    ));
+                }
+                ("complete", "recommended", msg)
             }
-            ("complete", "recommended", msg)
         }
     };
 
@@ -1151,7 +1168,7 @@ pub fn tangled_files_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{CodeFile, Implements, ValidatesEdge, Validation};
+    use crate::types::{CodeFile, Governs, Implements, QualityRule, ValidatesEdge, Validation};
 
     fn val(id: &str, result: &str) -> Validation {
         Validation {
@@ -1432,6 +1449,7 @@ mod tests {
             },
             |_| Ok(0),
             || Ok(0),
+            |_| Ok(0),
         )
         .unwrap()
     }
@@ -1543,6 +1561,100 @@ mod tests {
 
     fn phase_of(snapshot: &QuerySnapshot) -> String {
         gs_of(snapshot).phase
+    }
+
+    /// `gs_of` with a controllable disk-integrity count — the audit-gate else
+    /// branch (the only place the disk check runs) takes a 5th closure.
+    fn gs_of_with_disk(snapshot: &QuerySnapshot, disk_issues: usize) -> GraphState {
+        graph_state_from_snapshot_parts(
+            snapshot,
+            GraphStateContext {
+                meta: None,
+                notes: 0,
+                transition_cap: 0,
+            },
+            |_| Ok(0),
+            || Ok(0),
+            move |_| Ok(disk_issues),
+        )
+        .unwrap()
+    }
+
+    /// A snapshot that clears EVERY gate up to the audit-gate else branch — the
+    /// only place the disk check lives. A system root (not grounded, not a leaf)
+    /// with one grounded implemented leaf, one rule measured at the root (the
+    /// GOVERNS verdict covers the leaf descendant), and a passed validation on
+    /// the leaf (clears the validate backlog). No RELATES_TO, so the grid is
+    /// fully explored. With disk reconciled this reads `complete`.
+    fn complete_reaching_snapshot() -> QuerySnapshot {
+        let mut sys = intent("sys", "implemented");
+        sys.abstraction_level = "system".to_string();
+        let feat = intent("feat", "implemented");
+        QuerySnapshot::from_parts(
+            vec![sys, feat],
+            vec![("sys".to_string(), "feat".to_string())],
+            vec![],
+            vec![Governs {
+                id: "gov:r1:sys".to_string(),
+                rule_id: "r1".to_string(),
+                intent_id: "sys".to_string(),
+                rule_name: "r1".to_string(),
+                intent_name: "sys".to_string(),
+                inspection_status: "passing".to_string(),
+                criterion: String::new(),
+                confidence: 1.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                notes: String::new(),
+            }],
+            vec![QualityRule {
+                id: "r1".to_string(),
+                name: "r1".to_string(),
+                description: String::new(),
+                detection_logic: String::new(),
+                severity: "low".to_string(),
+                kind: String::new(),
+                inspection_effort: String::new(),
+            }],
+            vec![validates("v1", "feat", "passing")],
+            vec![val("v1", "passed")],
+            vec![implements("feat", "src/a.rs")],
+            vec![codefile("src/a.rs", vec![])],
+            None,
+        )
+    }
+
+    // FALSE-GREEN [map-vs-territory-reconcile-on-read]: a graph that clears
+    // every other gate must NOT read `complete` while the disk has files the
+    // graph doesn't account for. Green used to trust the declared graph and
+    // only TELL you to "confirm with `loom coverage`" — an unmapped real file
+    // laundered into a clean compass. Now the disk gate blocks green (audit,
+    // directive) until the map matches the territory.
+    #[test]
+    fn map_vs_territory_blocks_green_when_disk_unaccounted() {
+        let snap = complete_reaching_snapshot();
+        // Sanity: with the map matching the territory, the graph IS complete.
+        let green = gs_of_with_disk(&snap, 0);
+        assert_eq!(
+            green.phase, "complete",
+            "with disk reconciled the phase should be complete: {green:?}"
+        );
+        // The false-green hole: unmapped/drifted/missing files drop it to audit.
+        let red = gs_of_with_disk(&snap, 3);
+        assert_eq!(
+            red.phase, "audit",
+            "disk-unaccounted files must block green (audit, not complete): {red:?}"
+        );
+        assert_eq!(
+            red.next_kind, "directive",
+            "map≠territory is a directive the agent should just act on, not a suggestion: {red:?}"
+        );
+        assert!(
+            red.next_action.contains("map must match the territory"),
+            "the action should name the gate: {}",
+            red.next_action
+        );
     }
 
     /// Every phase the compass can route to MUST correspond to a non-empty
