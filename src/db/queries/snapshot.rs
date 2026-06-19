@@ -87,8 +87,20 @@ impl QuerySnapshot {
         }
     }
 
-    pub(crate) fn cached_notes(&self) -> Option<&[Note]> {
-        self.notes.get().map(Vec::as_slice)
+    /// Notes for this snapshot — loaded once, then shared. `query_snapshot` no
+    /// longer eagerly loads the (often many-thousand-row) Note label, so a
+    /// note-free consumer (`report`, `coverage`, `hotspots`) never pays the
+    /// full-table scan. The first note consumer populates the shared OnceCell,
+    /// so later consumers on the SAME snapshot reuse it rather than re-scanning.
+    pub(crate) fn notes_or_load<F>(&self, load: F) -> Result<&[Note]>
+    where
+        F: FnOnce() -> Result<Vec<Note>>,
+    {
+        if self.notes.get().is_none() {
+            let loaded = load()?;
+            let _ = self.notes.set(loaded);
+        }
+        Ok(self.notes.get().map(Vec::as_slice).unwrap_or(&[]))
     }
 
     /// Betweenness centrality per active intent (computed once, then cached) —

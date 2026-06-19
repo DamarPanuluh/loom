@@ -616,18 +616,14 @@ impl SqliteGraphStore {
             self.list_validations()?,
             self.list_all_implements()?,
             self.list_codefiles()?,
-            Some(self.list_all_notes()?),
+            // Notes are loaded lazily (notes_or_load) — a note-free consumer
+            // (report/coverage/hotspots) must not pay the full Note-table scan.
+            None,
         ))
     }
 
     pub fn graph_state(&self, snapshot: &QuerySnapshot) -> Result<GraphState> {
-        let loaded_notes;
-        let notes = if let Some(notes) = snapshot.cached_notes() {
-            notes
-        } else {
-            loaded_notes = self.list_all_notes()?;
-            loaded_notes.as_slice()
-        };
+        let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let vocab_terms = self.list_vocab_terms()?;
         let layer_order = self.layer_order()?;
         let proposed_hypotheses = self.list_hypotheses(Some("proposed"))?;
@@ -660,13 +656,7 @@ impl SqliteGraphStore {
         &self,
         snapshot: &QuerySnapshot,
     ) -> Result<crate::db::queries::SmellReport> {
-        let loaded_notes;
-        let notes = if let Some(notes) = snapshot.cached_notes() {
-            notes
-        } else {
-            loaded_notes = self.list_all_notes()?;
-            loaded_notes.as_slice()
-        };
+        let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let vocab_terms = self.list_vocab_terms()?;
         let layer_order = self.layer_order()?;
         let proposed_hypotheses = self.list_hypotheses(Some("proposed"))?;
@@ -688,24 +678,12 @@ impl SqliteGraphStore {
     }
 
     pub fn align_candidates(&self, snapshot: &QuerySnapshot) -> Result<Vec<AlignCandidate>> {
-        let loaded_notes;
-        let notes = if let Some(notes) = snapshot.cached_notes() {
-            notes
-        } else {
-            loaded_notes = self.list_all_notes()?;
-            loaded_notes.as_slice()
-        };
+        let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         Ok(align_candidates_from_snapshot_notes(snapshot, notes))
     }
 
     pub fn doctor_report(&self, snapshot: &QuerySnapshot) -> Result<DoctorReport> {
-        let loaded_notes;
-        let notes = if let Some(notes) = snapshot.cached_notes() {
-            notes
-        } else {
-            loaded_notes = self.list_all_notes()?;
-            loaded_notes.as_slice()
-        };
+        let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let meta = self.graph_meta()?;
         let found_version = meta
             .as_ref()
@@ -732,13 +710,7 @@ impl SqliteGraphStore {
     }
 
     pub fn align_candidate_count(&self, snapshot: &QuerySnapshot) -> Result<i64> {
-        let loaded_notes;
-        let notes = if let Some(notes) = snapshot.cached_notes() {
-            notes
-        } else {
-            loaded_notes = self.list_all_notes()?;
-            loaded_notes.as_slice()
-        };
+        let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         Ok(align_candidates_from_snapshot_notes(snapshot, notes).len() as i64)
     }
 
@@ -1283,6 +1255,26 @@ impl SqliteGraphStore {
             return Ok(false);
         };
         let relates = self.edges_for_intent(id)?;
+        // Retirement also stales verdicts on the OTHER inspectable edges that
+        // point AT this intent — SERVES (persona→intent), TARGETS
+        // (hypothesis→intent), GOVERNS (rule→intent) — so a persona/hypothesis/
+        // rule does not keep a green claim about now-dead code. Gather before the
+        // tx, mirroring the RELATES_TO path; only a passing verdict reopens.
+        let serves: Vec<ServesEdge> = self
+            .list_all_serves()?
+            .into_iter()
+            .filter(|e| e.intent_id == id && e.inspection_status == "passing")
+            .collect();
+        let targets: Vec<TargetsEdge> = self
+            .list_all_targets()?
+            .into_iter()
+            .filter(|e| e.intent_id == id && e.inspection_status == "passing")
+            .collect();
+        let governs: Vec<Governs> = self
+            .list_all_governs()?
+            .into_iter()
+            .filter(|e| e.intent_id == id && e.inspection_status == "passing")
+            .collect();
         let tx = self.conn.transaction()?;
         tx.execute(
             "UPDATE intent SET status = 'deprecated', updated_at = ?1 WHERE id = ?2",
@@ -1308,6 +1300,54 @@ impl SqliteGraphStore {
                     now,
                 )?;
             }
+        }
+        for edge in &serves {
+            tx.execute(
+                "UPDATE serves SET inspection_status = 'needs_reverification'
+                 WHERE persona_id = ?1 AND intent_id = ?2",
+                params![edge.persona_id, edge.intent_id],
+            )?;
+            insert_sync_flip_note_tx(
+                &tx,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
+            )?;
+        }
+        for edge in &targets {
+            tx.execute(
+                "UPDATE targets SET inspection_status = 'needs_reverification'
+                 WHERE hypothesis_id = ?1 AND intent_id = ?2",
+                params![edge.hypothesis_id, edge.intent_id],
+            )?;
+            insert_sync_flip_note_tx(
+                &tx,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
+            )?;
+        }
+        for edge in &governs {
+            tx.execute(
+                "UPDATE governs SET inspection_status = 'needs_reverification'
+                 WHERE rule_id = ?1 AND intent_id = ?2",
+                params![edge.rule_id, edge.intent_id],
+            )?;
+            insert_sync_flip_note_tx(
+                &tx,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
+            )?;
         }
         let text = match replaced_by {
             Some(successor) => format!("retired: {reason} - replaced by intent {successor}"),
@@ -5706,9 +5746,10 @@ mod tests {
         sqlite.import_export_json(&data).unwrap();
 
         let sqlite_snapshot = sqlite.query_snapshot().unwrap();
+        // query_snapshot is lazy for notes; load them through the shared accessor.
         let sqlite_notes = sqlite_snapshot
-            .cached_notes()
-            .expect("SQLite snapshots preload notes");
+            .notes_or_load(|| sqlite.list_all_notes())
+            .expect("load notes");
         assert!(
             sqlite_notes
                 .windows(2)

@@ -162,7 +162,7 @@ fn render_architecture(s: &mut String, snap: &QuerySnapshot) {
         .iter()
         .filter(|i| !child_set.contains(i.id.as_str()))
         .collect();
-    roots.sort_by(|a, b| a.name.cmp(&b.name));
+    roots.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.id.cmp(&b.id)));
 
     if roots.is_empty() {
         s.push_str("_(no intents yet)_\n\n");
@@ -205,7 +205,7 @@ fn render_node<'a>(
             .iter()
             .filter_map(|id| by_id.get(id).copied())
             .collect();
-        kids.sort_by(|a, b| a.name.cmp(&b.name));
+        kids.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.id.cmp(&b.id)));
         for k in kids {
             render_node(s, k, by_id, children, depth + 1, visited);
         }
@@ -249,7 +249,7 @@ fn render_components(s: &mut String, snap: &QuerySnapshot) {
                 }
             })
             .collect();
-        members.sort_by(|a, b| a.name.cmp(&b.name));
+        members.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.id.cmp(&b.id)));
         for i in members {
             let files = files_of
                 .get(i.id.as_str())

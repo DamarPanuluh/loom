@@ -2221,7 +2221,9 @@ fn sqlite_door_captures_inbox_item_before_routing() {
     assert!(door["next_step"].as_str().unwrap().contains(&id));
 
     let listed = run_json(&graph.root, &["inbox", "list", "--status", "new", "--json"]);
-    assert_eq!(listed["count"], 1);
+    // The door-captured card must appear as a `new` item. (Assert presence, not
+    // a global count: the imported graph may already carry other intake cards.)
+    assert!(listed["count"].as_i64().unwrap() >= 1);
     assert!(listed["items"]
         .as_array()
         .unwrap()

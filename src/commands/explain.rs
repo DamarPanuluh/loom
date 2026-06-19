@@ -388,7 +388,7 @@ fn render_json(explanations: &[Explanation], file_ctx: Option<&str>, printer: &P
     printer.print_json(&serde_json::json!({
         "target_file": file_ctx,
         "intents": intents,
-        "next_step": "loom edge explore <a> <b> ground …  (inspect a coupling)  ·  loom intent show <id>  (raw node)",
+        "next_step": "loom intent show <id>  (raw node)  ·  loom explain <coupled intent>  (follow a link)  ·  loom explain <file> --impact  (before editing)",
     }));
 }
 

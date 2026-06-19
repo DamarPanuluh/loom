@@ -54,11 +54,16 @@ pub fn dispatch(cli: Cli) -> Result<()> {
     if let Some(g) = &cli.graph {
         crate::db::set_explicit_graph(g);
     }
-    let command = match cli.command {
-        Some(c) => c,
-        None => return orient(&printer),
-    };
-    match command {
+    // Single failure chokepoint: in --json mode, any command error is rendered
+    // as a structured envelope on stdout (the success path's JSON contract,
+    // extended to the failure path) before the non-zero exit. Running dispatch
+    // in a closure funnels every Err — including `orient`'s — through here.
+    let result = (|| -> Result<()> {
+        let command = match cli.command {
+            Some(c) => c,
+            None => return orient(&printer),
+        };
+        match command {
         Command::Init        { path, name, observed } =>
             init::run(&path, name.as_deref(), observed, &printer),
         Command::Status                     => status::run(&printer),
@@ -114,6 +119,11 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         ),
         Command::Unknown(tokens) => teach_unknown(&tokens),
     }
+    })();
+    if let Err(err) = &result {
+        printer.print_error(err);
+    }
+    result
 }
 
 /// Any unrecognized top-level token lands here (clap `external_subcommand`).

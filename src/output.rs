@@ -24,6 +24,13 @@ pub struct Printer {
     /// printed to process stdout. Normal CLI execution leaves this as `None`;
     /// unit tests use capture mode for exact JSON assertions.
     capture: Option<std::cell::RefCell<String>>,
+    /// Whether anything has been written through `emit_line` yet. The failure
+    /// chokepoint (`print_error`) consults this so it only synthesizes an error
+    /// envelope when the command produced NO output — commands like `doctor`,
+    /// `batch` and `validate` print their full structured result and THEN return
+    /// `Err` purely to set a non-zero exit; appending an envelope there would
+    /// emit two JSON objects on stdout and break single-object parsers.
+    emitted: std::cell::Cell<bool>,
 }
 
 impl Printer {
@@ -32,6 +39,7 @@ impl Printer {
         Self {
             json,
             capture: None,
+            emitted: std::cell::Cell::new(false),
         }
     }
 
@@ -42,6 +50,7 @@ impl Printer {
         Self {
             json,
             capture: Some(std::cell::RefCell::new(String::new())),
+            emitted: std::cell::Cell::new(false),
         }
     }
 
@@ -56,6 +65,7 @@ impl Printer {
     /// stdout chokepoint — every other writer (`print_json`, the human anchor
     /// when capturing) routes through here so capture mode stays consistent.
     fn emit_line(&self, line: &str) {
+        self.emitted.set(true);
         match &self.capture {
             Some(buf) => {
                 let mut b = buf.borrow_mut();
@@ -74,6 +84,30 @@ impl Printer {
                 .expect("serializing JSON error object cannot fail")
         });
         self.emit_line(&rendered);
+    }
+
+    /// Render a command failure as a structured envelope in JSON mode. The
+    /// success path of every command emits a JSON object; without this the
+    /// failure path would surface only anyhow's plain-text `Error:` on stderr,
+    /// leaving a `--json` driver with empty stdout and unparseable prose. Human
+    /// mode is a deliberate no-op — `main()`'s anyhow Termination still prints
+    /// the plain message to stderr and the non-zero exit code is preserved
+    /// either way.
+    pub fn print_error(&self, err: &anyhow::Error) {
+        // Only synthesize an envelope when in JSON mode AND the command emitted
+        // nothing — otherwise we would append a second JSON object after a
+        // command that already printed its result (doctor/batch/validate report
+        // then return Err for the exit code).
+        if !self.json || self.emitted.get() {
+            return;
+        }
+        let causes: Vec<String> = err.chain().map(|c| c.to_string()).collect();
+        self.print_json(&serde_json::json!({
+            "status": "error",
+            "error": err.to_string(),
+            "causes": causes,
+            "exit_code": 1,
+        }));
     }
 }
 

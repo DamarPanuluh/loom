@@ -1019,7 +1019,7 @@ pub fn blocked_count_and_runnable_rate_from_snapshot(snapshot: &QuerySnapshot) -
     (blocked as i64, rate)
 }
 
-fn current_blocked_validation_ids(snapshot: &QuerySnapshot) -> std::collections::HashSet<&str> {
+pub fn current_blocked_validation_ids(snapshot: &QuerySnapshot) -> std::collections::HashSet<&str> {
     let blocked_ids: std::collections::HashSet<&str> = snapshot
         .validations
         .iter()

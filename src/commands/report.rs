@@ -1,11 +1,11 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    completeness_gaps_from_snapshot, edge_status_counts_from_snapshot,
-    failing_governs_from_snapshot, intents_without_validations_from_snapshot,
-    recent_passing_from_snapshot, status_report_from_snapshot,
-    top_intents_by_centrality_from_snapshot, vertical_completeness_from_snapshot, QuerySnapshot,
-    VerticalCompleteness,
+    completeness_gaps_from_snapshot, current_blocked_validation_ids,
+    edge_status_counts_from_snapshot, failing_governs_from_snapshot,
+    intents_without_validations_from_snapshot, recent_passing_from_snapshot,
+    status_report_from_snapshot, top_intents_by_centrality_from_snapshot,
+    vertical_completeness_from_snapshot, QuerySnapshot, VerticalCompleteness,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_status, Printer};
@@ -42,10 +42,14 @@ fn report_data_from_snapshot(snapshot: &QuerySnapshot, total_all_intents: i64) -
     let by_status = edge_status_counts_from_snapshot(snapshot);
     let gaps = completeness_gaps_from_snapshot(snapshot);
     let vc = vertical_completeness_from_snapshot(snapshot);
+    // Use the shared current-blocked classifier so `report` agrees with `status`
+    // (a blocked validation whose target intent is deferred is parked, not
+    // current debt; previously report counted raw last_result=="blocked").
+    let current_blocked = current_blocked_validation_ids(snapshot);
     let blocked = snapshot
         .validations
         .iter()
-        .filter(|validation| validation.last_result == "blocked")
+        .filter(|validation| current_blocked.contains(validation.id.as_str()))
         .cloned()
         .collect();
 

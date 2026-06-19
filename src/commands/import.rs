@@ -189,5 +189,34 @@ fn read_export(root: &std::path::Path, file: &str) -> Result<serde_json::Value> 
             }
         }
     }
+
+    // Refuse an export NEWER than this binary understands. An older loom
+    // re-inserting a newer graph either hard-fails mid-transaction on a value
+    // outside an older CHECK constraint (after clear_all has already run) or
+    // silently drops additive columns and then stamps the graph with its OWN
+    // (lower) schema_version — so even doctor's post-import version check can't
+    // see the loss. Reject at the boundary; nothing is imported. (Older→newer is
+    // fine: the schema is created on open and import normalizes to the active
+    // version.)
+    let binary_version: u32 = crate::db::schema::SCHEMA_VERSION.parse().unwrap_or(0);
+    let export_version = data.get("schema_version").and_then(|v| {
+        v.as_str()
+            .and_then(|s| s.parse::<u32>().ok())
+            .or_else(|| v.as_u64().map(|n| n as u32))
+    });
+    if let Some(export_version) = export_version {
+        if export_version > binary_version {
+            anyhow::bail!(
+                "Export '{}' is schema v{} but this loom understands only v{}. Importing a \
+                 newer graph into an older binary corrupts it (values outside this binary's \
+                 constraints, or silently dropped fields). Upgrade loom, or re-export from a \
+                 v{}-compatible loom. Nothing was imported.",
+                file,
+                export_version,
+                binary_version,
+                binary_version
+            );
+        }
+    }
     Ok(data)
 }

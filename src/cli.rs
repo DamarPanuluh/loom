@@ -118,7 +118,7 @@ pub enum Command {
         /// call. For discovery/fix this groups by the file that staled them
         /// with a prefilled `loom batch` template; for quality it groups rule
         /// verdicts by intent; for align it serves a user-interview agenda.
-        /// Supported for discovery, fix, quality, and align (capped at 50).
+        /// Supported for discovery, fix, quality, align, and review (capped at 50).
         #[arg(long, default_value_t = 0, conflicts_with = "all")]
         take: usize,
 
@@ -317,7 +317,8 @@ pub enum Command {
     /// loop, the done-condition, and a mode-specific population checklist.
     Guide {
         /// greenfield (design first) | brownfield (map existing code) |
-        /// refactor (change existing) | seed (interview user). Auto-detected from the repo if omitted.
+        /// refactor (change existing) | port (re-realize a mapped system in a
+        /// new language/repo) | seed (interview user). Auto-detected from the repo if omitted.
         #[arg(long)]
         mode: Option<String>,
         /// Adopt a role: print the charge for builder|analyzer|fixer|validator|quality
