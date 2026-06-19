@@ -783,10 +783,21 @@ fn rust_visibility_prefix(node: Node<'_>, content: &str) -> Option<String> {
 }
 
 fn rust_symbol_is_test(node: Node<'_>, content: &str) -> bool {
-    text(node, content).is_some_and(rust_attr_text_marks_test)
-        || preceding_attribute_lines(content, node.start_position().row)
-            .iter()
-            .any(|line| rust_attr_text_marks_test(line))
+    // Scope test-classification to the item's OWN preceding attributes, never
+    // its subtree text. The previous first clause scanned `text(node, content)`
+    // — the ENTIRE subtree — for `#[cfg(test`/`#[test`, so any production impl
+    // containing one nested `#[cfg(test)]` helper was tagged test and made
+    // invisible to the size/panic detectors. That hid loom's largest behavioral
+    // unit: the 4137-line `impl SqliteGraphStore` is exempt because its body
+    // contains `#[cfg(test)] pub fn in_memory()`.
+    //
+    // A test item still classifies itself: a `#[test] fn`/`#[cfg(test)] mod`
+    // carries its attribute on the line(s) immediately above the keyword, which
+    // `preceding_attribute_lines` collects. Individual test fns are never lost
+    // (each owns its `#[test]`); only the false container-tagging goes away.
+    preceding_attribute_lines(content, node.start_position().row)
+        .iter()
+        .any(|line| rust_attr_text_marks_test(line))
 }
 
 fn rust_attr_text_marks_test(raw: &str) -> bool {
@@ -917,5 +928,106 @@ mod tests {
         let tree = parse(Lang::JavaScript.language(), content).unwrap();
 
         assert_eq!(string_value(tree.root_node(), content), None);
+    }
+
+    // FALSE-GREEN [is-test-subtree-substring-misclassification]: a production
+    // `impl` whose body contains one `#[cfg(test)]` helper must NOT be tagged
+    // test — that hid loom's largest behavioral unit (`impl SqliteGraphStore`,
+    // 4137 lines) from the large_behavioral_symbol detector. is_test is scoped
+    // to the item's OWN preceding attributes; the nested helper still tags
+    // itself (it carries `#[cfg(test)]` on its own preceding line).
+    fn first_node_of_kind<'a>(root: Node<'a>, kind: &str) -> Option<Node<'a>> {
+        let mut q = std::collections::VecDeque::new();
+        q.push_back(root);
+        while let Some(n) = q.pop_front() {
+            if n.kind() == kind {
+                return Some(n);
+            }
+            for i in 0..n.child_count() {
+                if let Some(c) = n.child(i as u32) {
+                    q.push_back(c);
+                }
+            }
+        }
+        None
+    }
+
+    fn fn_node_named<'a>(root: Node<'a>, content: &'a str, name: &str) -> Option<Node<'a>> {
+        let mut q = std::collections::VecDeque::new();
+        q.push_back(root);
+        while let Some(n) = q.pop_front() {
+            if n.kind() == "function_item" {
+                let nm = n
+                    .child_by_field_name("name")
+                    .and_then(|c| text(c, content))
+                    .unwrap_or("");
+                if nm == name {
+                    return Some(n);
+                }
+            }
+            for i in 0..n.child_count() {
+                if let Some(c) = n.child(i as u32) {
+                    q.push_back(c);
+                }
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn rust_symbol_is_test_scoped_to_own_attributes_not_subtree() {
+        // A production impl with a nested #[cfg(test)] helper, plus a real
+        // #[test] fn and a plain production fn. Mirrors src/db/sqlite.rs.
+        let src = "\
+struct Foo;
+
+impl Foo {
+    pub fn production_method(&self) -> i32 {
+        42
+    }
+
+    #[cfg(test)]
+    pub fn in_memory() -> Self {
+        Self
+    }
+}
+
+#[test]
+fn real_test() {
+    assert!(true);
+}
+";
+        let tree = parse(Lang::Rust.language(), src).unwrap();
+        let root = tree.root_node();
+
+        // The bug: the whole `impl Foo` was tagged test because its subtree text
+        // contains `#[cfg(test]`. It must read as production (false).
+        let impl_node = first_node_of_kind(root, "impl_item").expect("impl_item present");
+        assert!(
+            !rust_symbol_is_test(impl_node, src),
+            "a production impl with a nested #[cfg(test)] helper must NOT be tagged test"
+        );
+
+        // The nested helper still classifies itself (own preceding #[cfg(test)]).
+        let in_memory = fn_node_named(root, src, "in_memory").expect("in_memory present");
+        assert!(
+            rust_symbol_is_test(in_memory, src),
+            "the nested #[cfg(test)] helper must still tag itself test"
+        );
+
+        // A real #[test] fn is still detected via its own preceding attribute.
+        let real_test = fn_node_named(root, src, "real_test").expect("real_test present");
+        assert!(
+            rust_symbol_is_test(real_test, src),
+            "a #[test] fn is detected via its own preceding #[test] attribute"
+        );
+
+        // A plain production fn is not test.
+        let prod =
+            fn_node_named(root, src, "production_method").expect("production_method present");
+        assert!(
+            !rust_symbol_is_test(prod, src),
+            "a plain production fn must not be tagged test"
+        );
     }
 }
