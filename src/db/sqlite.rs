@@ -525,7 +525,7 @@ impl SqliteGraphStore {
     fn write_tx(&mut self) -> Result<rusqlite::Transaction<'_>> {
         if self.write_lock.is_none() {
             if let Some(lock_path) = self.lock_path.clone() {
-                self.write_lock = Some(acquire_write_lock(&lock_path, 5000)?);
+                self.write_lock = Some(acquire_write_lock(&lock_path, lock_deadline_ms())?);
             }
         }
         Ok(self
@@ -5027,6 +5027,16 @@ fn configure_connection(conn: &Connection, persistent: bool) -> Result<()> {
 /// readers run concurrently). Retries for a few seconds — matching the
 /// connection `busy_timeout` — then fails with a NAMED, actionable error
 /// instead of a raw OS/rusqlite "database is locked".
+/// How long a writer waits for the cross-process write lock before failing with
+/// the named error. `LOOM_LOCK_DEADLINE_MS` tunes it (an ops knob, and lets
+/// tests fail fast); defaults to 5000 to match the connection busy_timeout.
+fn lock_deadline_ms() -> u64 {
+    std::env::var("LOOM_LOCK_DEADLINE_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(5000)
+}
+
 fn acquire_write_lock(lock_path: &Path, deadline_ms: u64) -> Result<std::fs::File> {
     let file = std::fs::OpenOptions::new()
         .create(true)

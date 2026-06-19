@@ -1645,6 +1645,12 @@ pub enum PopulateCmd {
         /// Report what would change without writing to the graph.
         #[arg(long)]
         dry_run: bool,
+
+        /// After repopulating, delete interface surfaces left with NO CALLS — the
+        /// stale surfaces a renamed/removed endpoint orphaned (the reachable form
+        /// of the `surface_without_calls` gap remedy, in bulk).
+        #[arg(long)]
+        prune: bool,
     },
 
     /// Backfill mechanical relationship kinds (imports | shares_file |

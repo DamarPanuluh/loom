@@ -24,7 +24,8 @@ pub fn run(cmd: PopulateCmd, printer: &Printer) -> Result<()> {
         PopulateCmd::Interfaces {
             from_sagas,
             dry_run,
-        } => populate_interfaces(from_sagas, dry_run, printer),
+            prune,
+        } => populate_interfaces(from_sagas, dry_run, prune, printer),
         PopulateCmd::Kinds { dry_run } => populate_kinds(dry_run, printer),
     }
 }
@@ -221,7 +222,12 @@ fn plan(printer: &Printer) -> Result<()> {
     render_plan(&plan, true, printer)
 }
 
-fn populate_interfaces(from_sagas: bool, dry_run: bool, printer: &Printer) -> Result<()> {
+fn populate_interfaces(
+    from_sagas: bool,
+    dry_run: bool,
+    prune: bool,
+    printer: &Printer,
+) -> Result<()> {
     if !from_sagas {
         anyhow::bail!(
             "`loom populate interfaces` currently requires --from-sagas. \
@@ -232,7 +238,7 @@ fn populate_interfaces(from_sagas: bool, dry_run: bool, printer: &Printer) -> Re
     crate::gate::acting_in_lane(&crate::gate::lane::POPULATE_GRAPH, None)?;
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
-    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     store.ensure_owned("populate derived graph structure")?;
 
     if dry_run {
@@ -307,6 +313,29 @@ fn populate_interfaces(from_sagas: bool, dry_run: bool, printer: &Printer) -> Re
         sagas_processed += 1;
     }
 
+    // --prune: after repopulation, drop surfaces no CALLS reference (a renamed/
+    // removed endpoint's orphan) — the reachable, bulk form of the
+    // surface_without_calls gap remedy.
+    let mut surfaces_pruned = 0usize;
+    if prune {
+        let called: HashSet<String> = store
+            .list_all_calls()?
+            .into_iter()
+            .map(|call| call.interface_id)
+            .collect();
+        let orphans: Vec<String> = store
+            .list_interface_surfaces()?
+            .into_iter()
+            .filter(|surface| !called.contains(&surface.id))
+            .map(|surface| surface.id)
+            .collect();
+        for id in &orphans {
+            if store.delete_interface_surface(id)? {
+                surfaces_pruned += 1;
+            }
+        }
+    }
+
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok",
@@ -318,6 +347,7 @@ fn populate_interfaces(from_sagas: bool, dry_run: bool, printer: &Printer) -> Re
             "deleted_calls": deleted_calls,
             "interface_surfaces_created": surfaces_created,
             "calls_written": calls_written,
+            "surfaces_pruned": surfaces_pruned,
             "next_step": "`loom interface list`; then `loom export` after graph changes",
         }));
         return Ok(());
@@ -328,6 +358,9 @@ fn populate_interfaces(from_sagas: bool, dry_run: bool, printer: &Printer) -> Re
     println!(
         "  CALLS replaced: deleted {deleted_calls}, wrote {calls_written}; interface surfaces created: {surfaces_created}"
     );
+    if prune {
+        println!("  Pruned {surfaces_pruned} orphan interface surface(s) (no CALLS).");
+    }
     if !skipped.is_empty() {
         println!("  Skipped saga(s):");
         for skip in &skipped {

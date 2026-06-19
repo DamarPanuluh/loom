@@ -79,23 +79,47 @@ fn run_remove_with_sqlite(cwd: &std::path::Path, key: String, printer: &Printer)
 fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printer) -> Result<()> {
     let mut personas = db.list_personas()?;
     let total = apply_limit(&mut personas, limit);
+    // An ORPHAN persona has no SERVES and no JOURNEYS — dead weight an agent
+    // should remove (`loom persona remove`). Surfacing it makes the stale
+    // persona DETECTABLE (the removal half already shipped). Bounded: personas
+    // is already limited.
+    let mut orphans: Vec<String> = Vec::new();
+    for p in &personas {
+        if db.list_serves_for_persona(&p.id)?.is_empty()
+            && db.list_journeys_for_persona(&p.id)?.is_empty()
+        {
+            orphans.push(p.id.clone());
+        }
+    }
     if printer.json {
         printer.print_json(&serde_json::json!({
             "personas": personas,
             "total": total,
             "truncated": total > personas.len(),
+            "orphans": orphans,
         }));
     } else if personas.is_empty() {
         println!("(no personas — add one: loom persona add --name <name> --description \"<who they are>\")");
     } else {
         for p in &personas {
-            println!("  {:<36}  {}", p.id, p.name);
+            let mark = if orphans.contains(&p.id) {
+                "   ⚠ orphan (no SERVES/JOURNEYS)"
+            } else {
+                ""
+            };
+            println!("  {:<36}  {}{}", p.id, p.name, mark);
             println!("    {}", p.description);
         }
         if let Some(m) =
             crate::output::more_marker(total, personas.len(), "loom persona list --limit 0")
         {
             println!("  {m}");
+        }
+        if !orphans.is_empty() {
+            println!(
+                "  ⚠ {} orphan persona(s) — no SERVES/JOURNEYS; remove with `loom persona remove <id>`.",
+                orphans.len()
+            );
         }
         println!("\n  → loom persona show <id>   to see a persona's SERVES edges");
     }

@@ -2574,3 +2574,285 @@ fn sqlite_federation_child_export_change_ripples_to_seam_intents() {
         "a child export change must ripple to the seam intent: {after}"
     );
 }
+
+#[test]
+fn sqlite_populate_interfaces_prune_removes_orphan_surfaces() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("sqlite-prune-surface");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    insert_interface_surface(&graph.root, "orphan", "GET /old", "GET", "/old");
+    let before = run_json(&graph.root, &["interface", "gaps", "--json"]);
+    assert_eq!(before["interface_gaps"]["surface_without_calls"], 1);
+    // No sagas → nothing recreated; --prune removes the call-less orphan.
+    let res = run_json_as(
+        &graph.root,
+        &[
+            "populate",
+            "interfaces",
+            "--from-sagas",
+            "--prune",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert_eq!(
+        res["surfaces_pruned"], 1,
+        "the orphan surface was pruned: {res}"
+    );
+    let after = run_json(&graph.root, &["interface", "gaps", "--json"]);
+    assert_eq!(after["interface_gaps"]["surface_without_calls"], 0);
+}
+
+#[test]
+fn sqlite_persona_list_flags_orphans() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("sqlite-persona-orphan");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "persona",
+            "add",
+            "--name",
+            "ghost",
+            "--description",
+            "an audience segment with no serves or journeys whatsoever",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let listed = run_json(&graph.root, &["persona", "list", "--json"]);
+    assert_eq!(
+        listed["orphans"].as_array().unwrap().len(),
+        1,
+        "a persona with no SERVES/JOURNEYS is flagged orphan: {listed}"
+    );
+}
+
+#[test]
+fn loom_write_blocks_with_named_error_while_lock_held() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("lock-race");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--description",
+            "first intent for the lock race test",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "beta",
+            "--description",
+            "second intent for the lock race test",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let a_id = a["id"].as_str().unwrap().to_string();
+    let b_id = b["id"].as_str().unwrap().to_string();
+
+    // Hold the cross-process write lock from THIS process — the SAME flock file
+    // the binary locks. A competing TRANSACTIONAL write must then fail (after a
+    // short deadline) with the NAMED error, not a raw rusqlite "database locked".
+    let lock_path = graph.root.join(".loom/graph.lock");
+    let held = std::fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .truncate(false)
+        .open(&lock_path)
+        .unwrap();
+    fs2::FileExt::lock_exclusive(&held).unwrap();
+
+    let out = Command::new(loom_bin())
+        .args([
+            "edge",
+            "explore",
+            &a_id,
+            &b_id,
+            "ground",
+            "--criterion",
+            "alpha relates to beta; verified by the lock-race test",
+            "--confidence",
+            "0.9",
+            "--json",
+        ])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:analyzer")
+        .env("LOOM_LOCK_DEADLINE_MS", "300")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .unwrap();
+    assert!(
+        !out.status.success(),
+        "a write must fail while another session holds the lock"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        combined.contains("write lock is held by another loom session"),
+        "expected the named lock error, got: {combined}"
+    );
+
+    // After the holder releases, the same write succeeds.
+    fs2::FileExt::unlock(&held).unwrap();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a_id,
+            &b_id,
+            "ground",
+            "--criterion",
+            "alpha relates to beta; verified after lock release",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+}
+
+#[test]
+fn sqlite_federation_ripple_edge_cases() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("federation-edges");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Three intents, two passing RELATES_TO into a shared target; A and C are seams.
+    let mk = |name: &str, desc: &str| -> String {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                desc,
+                "--level",
+                "feature",
+                "--json",
+            ],
+            "llm:builder",
+        )["id"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let a = mk(
+        "gateway one",
+        "first parent seam onto the grid child contract",
+    );
+    let c = mk(
+        "gateway two",
+        "second parent seam onto the grid child contract",
+    );
+    let b = mk("shared cache", "shared downstream both gateways feed");
+    for from in [&a, &c] {
+        run_json_as(
+            &graph.root,
+            &[
+                "edge",
+                "explore",
+                from,
+                &b,
+                "ground",
+                "--criterion",
+                "gateway feeds the shared cache; verified call order",
+                "--confidence",
+                "0.9",
+                "--json",
+            ],
+            "llm:analyzer",
+        );
+    }
+
+    write_scratch_file(&graph.root, "child/loom.graph.json", "child-v1");
+    run_json_as(
+        &graph.root,
+        &[
+            "delegate",
+            "add",
+            "child/**",
+            "--to",
+            "child/loom.graph.json",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    // MULTIPLE seams on one delegation.
+    run_json_as(
+        &graph.root,
+        &["delegate", "seam", "child/**", &a, "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["delegate", "seam", "child/**", &c, "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", ".", "--json"]); // baseline
+
+    // Child changes → BOTH seams' edges re-open.
+    write_scratch_file(&graph.root, "child/loom.graph.json", "child-v2-changed");
+    run_json(&graph.root, &["sync", ".", "--json"]);
+    let sa = run_json(&graph.root, &["intent", "show", &a, "--json"]);
+    let sc = run_json(&graph.root, &["intent", "show", &c, "--json"]);
+    assert_eq!(
+        relates_status_to(&sa, &b),
+        "needs_reverification",
+        "seam A rippled: {sa}"
+    );
+    assert_eq!(
+        relates_status_to(&sc, &b),
+        "needs_reverification",
+        "seam C rippled: {sc}"
+    );
+
+    // EDGE CASE: a DELETED child export must not crash sync and must not ripple.
+    // Re-ground A→B to passing, delete the child export, sync.
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "re-grounded after the ripple; verified again",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    std::fs::remove_file(graph.root.join("child/loom.graph.json")).unwrap();
+    run_json(&graph.root, &["sync", ".", "--json"]); // must succeed (missing child export skipped)
+    let sa2 = run_json(&graph.root, &["intent", "show", &a, "--json"]);
+    assert_eq!(
+        relates_status_to(&sa2, &b),
+        "passing",
+        "a missing child export must not ripple (skipped, no crash): {sa2}"
+    );
+}

@@ -33,6 +33,11 @@ rusqlite = { version = "0.40.1", features = ["bundled"] }
 # (pure-Rust: thin libc/winapi FFI, no C toolchain). See src/db/sqlite.rs.
 fs2 = "0.4"
 
+[dev-dependencies]
+# Integration tests hold the cross-process graph lock to assert a competing
+# writer fails with the named error (same flock the binary uses).
+fs2 = "0.4"
+
 [features]
 default = ["treesitter"]
 treesitter = [
