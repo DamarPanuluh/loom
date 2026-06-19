@@ -2460,3 +2460,117 @@ fn sqlite_to_be_removed_lifecycle_round_trips() {
         "to_be_removed must survive the schema CHECK + read path: {shown}"
     );
 }
+
+/// inspection_status of the RELATES_TO edge between `intent show` subject and
+/// `other_id`, from the show JSON's `edges` array.
+fn relates_status_to(shown: &Value, other_id: &str) -> String {
+    shown["edges"]
+        .as_array()
+        .expect("edges array")
+        .iter()
+        .find(|e| e["from_id"] == other_id || e["to_id"] == other_id)
+        .and_then(|e| e["inspection_status"].as_str())
+        .unwrap_or("(none)")
+        .to_string()
+}
+
+#[test]
+fn sqlite_federation_child_export_change_ripples_to_seam_intents() {
+    let _guard = sqlite_test_lock();
+    // A fresh, codefile-free graph: the ONLY possible staleness source is the
+    // cross-service federation ripple (no files to flag, no import).
+    let graph = ScratchGraph::new("federation-ripple");
+    run_json(&graph.root, &["init", ".", "--json"]);
+
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "grid query gateway",
+            "--description",
+            "parent seam that consumes the grid child service contract",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let a_id = a["id"].as_str().expect("intent a id").to_string();
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "result cache",
+            "--description",
+            "caches grid responses for the gateway",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let b_id = b["id"].as_str().expect("intent b id").to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a_id,
+            &b_id,
+            "ground",
+            "--criterion",
+            "the gateway feeds the cache after each grid call; verified the call order",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+
+    // A child export artifact + a delegation whose seam is intent A.
+    write_scratch_file(&graph.root, "child/loom.graph.json", "child-export-v1");
+    run_json_as(
+        &graph.root,
+        &[
+            "delegate",
+            "add",
+            "child/**",
+            "--to",
+            "child/loom.graph.json",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["delegate", "seam", "child/**", &a_id, "--json"],
+        "llm:builder",
+    );
+
+    // First sync only baselines the child-export hash — no ripple.
+    run_json(&graph.root, &["sync", ".", "--json"]);
+    let before = run_json(&graph.root, &["intent", "show", &a_id, "--json"]);
+    assert_eq!(
+        relates_status_to(&before, &b_id),
+        "passing",
+        "baseline sync must not ripple: {before}"
+    );
+
+    // The child's committed contract changes → the next sync re-opens the seam.
+    write_scratch_file(
+        &graph.root,
+        "child/loom.graph.json",
+        "child-export-v2-CHANGED",
+    );
+    run_json(&graph.root, &["sync", ".", "--json"]);
+    let after = run_json(&graph.root, &["intent", "show", &a_id, "--json"]);
+    assert_eq!(
+        relates_status_to(&after, &b_id),
+        "needs_reverification",
+        "a child export change must ripple to the seam intent: {after}"
+    );
+}

@@ -650,6 +650,19 @@ pub enum DelegateCmd {
         pattern: String,
     },
 
+    /// Link a parent SEAM intent to a delegation — "this intent depends on the
+    /// child service's contract." When the child's committed export changes,
+    /// `loom sync` re-opens the seam intents' claims (cross-service ripple).
+    #[command(after_help = "EXAMPLE (monorepo root):\n  \
+        loom delegate seam 'services/grid/**' \"grid query gateway\"")]
+    Seam {
+        /// Delegation id or exact glob pattern (`loom delegate list`).
+        delegation: String,
+
+        /// Parent intent id, name, or unique fragment that consumes the child.
+        intent: String,
+    },
+
     /// List all delegations (and whether each child export exists).
     List,
 }

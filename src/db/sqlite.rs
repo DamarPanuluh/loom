@@ -171,9 +171,12 @@ const DELEGATION_PROPS: &[&str] = &[
     prop::ID,
     prop::PATTERN,
     prop::TARGET,
+    prop::EXPORT_HASH,
+    prop::SEAM_INTENTS,
     prop::AUTHOR,
     prop::CREATED_AT,
 ];
+const DELEGATION_LIST_PROPS: &[&str] = &[prop::SEAM_INTENTS];
 
 const HYPOTHESIS_PROPS: &[&str] = &[
     prop::ID,
@@ -332,7 +335,7 @@ const NODE_SPECS: &[NodeSpec] = &[
         label: label::DELEGATION,
         table: "delegation",
         props: DELEGATION_PROPS,
-        list_props: EMPTY_LIST_PROPS,
+        list_props: DELEGATION_LIST_PROPS,
     },
     NodeSpec {
         label: label::HYPOTHESIS,
@@ -1879,7 +1882,7 @@ impl SqliteGraphStore {
 
     pub fn list_delegations(&self) -> Result<Vec<Delegation>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, pattern, target, author, created_at
+            "SELECT id, pattern, target, author, created_at, export_hash, seam_intents
              FROM delegation
              ORDER BY pattern",
         )?;
@@ -1890,6 +1893,8 @@ impl SqliteGraphStore {
                 target: row.get(2)?,
                 author: row.get(3)?,
                 created_at: row.get(4)?,
+                export_hash: row.get(5)?,
+                seam_intents: string_list_sql(row.get::<_, String>(6)?.as_str())?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -1898,16 +1903,64 @@ impl SqliteGraphStore {
 
     pub fn insert_delegation(&self, delegation: &Delegation) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO delegation(id, pattern, target, author, created_at)
-             VALUES(?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO delegation(id, pattern, target, author, created_at, export_hash, seam_intents)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 delegation.id,
                 delegation.pattern,
                 delegation.target,
                 delegation.author,
-                delegation.created_at
+                delegation.created_at,
+                delegation.export_hash,
+                serde_json::to_string(&delegation.seam_intents)?,
             ],
         )?;
+        Ok(())
+    }
+
+    /// Resolve a delegation by id or pattern.
+    pub fn resolve_delegation(&self, key: &str) -> Result<Delegation> {
+        let delegations = self.list_delegations()?;
+        delegations
+            .iter()
+            .find(|d| d.id == key || d.pattern == key)
+            .cloned()
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No delegation matches '{key}' (by id or pattern). `loom delegate list`."
+                )
+            })
+    }
+
+    /// Add a parent seam intent to a delegation (idempotent, sorted, deduped).
+    pub fn add_delegation_seam(&mut self, delegation_id: &str, intent_id: &str) -> Result<bool> {
+        let mut delegation = self.resolve_delegation(delegation_id)?;
+        if delegation.seam_intents.iter().any(|i| i == intent_id) {
+            return Ok(false);
+        }
+        delegation.seam_intents.push(intent_id.to_string());
+        delegation.seam_intents.sort();
+        delegation.seam_intents.dedup();
+        let tx = self.write_tx()?;
+        tx.execute(
+            "UPDATE delegation SET seam_intents = ?1 WHERE id = ?2",
+            params![
+                serde_json::to_string(&delegation.seam_intents)?,
+                delegation.id
+            ],
+        )?;
+        tx.commit()?;
+        Ok(true)
+    }
+
+    /// Persist the observed child-export content hash (the watched baseline).
+    pub fn set_delegation_export_hash(&mut self, delegation_id: &str, hash: &str) -> Result<()> {
+        let tx = self.write_tx()?;
+        tx.execute(
+            "UPDATE delegation SET export_hash = ?1 WHERE id = ?2",
+            params![hash, delegation_id],
+        )?;
+        tx.commit()?;
         Ok(())
     }
 
@@ -5190,6 +5243,8 @@ CREATE TABLE IF NOT EXISTS delegation(
   id TEXT PRIMARY KEY,
   pattern TEXT NOT NULL UNIQUE,
   target TEXT NOT NULL,
+  export_hash TEXT NOT NULL DEFAULT '',
+  seam_intents TEXT NOT NULL DEFAULT '[]',
   author TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
@@ -5432,6 +5487,8 @@ impl SqliteGraphStore {
             ("relates_to", "stable", "TEXT NOT NULL DEFAULT ''"),
             ("quality_rule", "kind", "TEXT NOT NULL DEFAULT ''"),
             ("intent", "criterion", "TEXT NOT NULL DEFAULT ''"),
+            ("delegation", "export_hash", "TEXT NOT NULL DEFAULT ''"),
+            ("delegation", "seam_intents", "TEXT NOT NULL DEFAULT '[]'"),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;

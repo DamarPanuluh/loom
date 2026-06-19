@@ -32,7 +32,43 @@ pub fn run(cmd: DelegateCmd, printer: &Printer) -> Result<()> {
             ensure_initialized(&cwd)?;
             run_remove_with_sqlite(&cwd, pattern, printer)
         }
+        DelegateCmd::Seam { delegation, intent } => {
+            ensure_initialized(&cwd)?;
+            run_seam_with_sqlite(&cwd, delegation, intent, printer)
+        }
     }
+}
+
+fn run_seam_with_sqlite(
+    root: &std::path::Path,
+    delegation_key: String,
+    intent_key: String,
+    printer: &Printer,
+) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    store.ensure_owned("link a seam intent to a delegation")?;
+    let delegation = store.resolve_delegation(&delegation_key)?;
+    let intent_id = crate::commands::resolve::resolve_intent_with_db(&store, &intent_key)?;
+    let added = store.add_delegation_seam(&delegation.id, &intent_id)?;
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "delegation": delegation.pattern,
+            "intent": intent_id,
+            "added": added,
+            "next_step": "loom sync  (a change to the child export now re-opens this seam intent's claims)",
+        }));
+        return Ok(());
+    }
+    if added {
+        println!(
+            "✓ Seam linked: intent depends on child '{}'. `loom sync` will re-open it when {} changes.",
+            delegation.pattern, delegation.target
+        );
+    } else {
+        println!("✓ Already a seam of '{}'.", delegation.pattern);
+    }
+    Ok(())
 }
 
 fn run_add_with_sqlite(
@@ -61,6 +97,8 @@ fn run_add_with_sqlite(
         id: Uuid::new_v4().to_string(),
         pattern: pattern.clone(),
         target: target.clone(),
+        export_hash: String::new(),
+        seam_intents: Vec::new(),
         author: by,
         created_at: chrono::Utc::now().to_rfc3339(),
     };

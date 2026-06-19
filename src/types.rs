@@ -990,6 +990,15 @@ pub struct Delegation {
     pub pattern: String,
     /// Path to the child graph's committed export (e.g. services/grid/loom.graph.json).
     pub target: String,
+    /// Content hash of the child export at the last sync — the watched-artifact
+    /// baseline. When it changes, sync re-opens the seam intents. Empty until the
+    /// first sync observes the export (v10).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub export_hash: String,
+    /// Parent intent ids that depend on this child's contract (the seams a child
+    /// export change ripples to). Set via `loom delegate seam` (v10).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub seam_intents: Vec<String>,
     pub author: String,
     pub created_at: String,
 }

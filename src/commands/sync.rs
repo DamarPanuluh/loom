@@ -353,6 +353,55 @@ fn run_with_sqlite(
         }
     }
 
+    // Cross-service (federation) ripple. A delegation watches a child graph's
+    // committed export; when that export's content hash changes the child's
+    // contract may have moved, so re-open the seam intents that depend on it.
+    // First observation just records the baseline (no ripple). The baseline is
+    // advanced AFTER the seam edges are flagged so a crash leaves it
+    // re-detectable (same discipline as the codefile hashes). No delegations →
+    // this whole block is a no-op (the single-repo case, e.g. loom's own graph).
+    let delegations = store.list_delegations()?;
+    for delegation in &delegations {
+        let Some(rel) = crate::repo::confine(base, Path::new(&delegation.target)) else {
+            continue;
+        };
+        let Ok(bytes) = fs::read(base.join(rel)) else {
+            continue; // missing child export — `loom coverage`/`delegate list` report it
+        };
+        let new_hash = crate::repo::content_hash(&bytes);
+        if new_hash == delegation.export_hash {
+            continue;
+        }
+        if !delegation.export_hash.is_empty() {
+            // Ripple BEFORE advancing the baseline (crash-safety).
+            let cause = format!("child export {} changed", delegation.target);
+            for iid in delegation
+                .seam_intents
+                .iter()
+                .filter(|i| active.contains(*i))
+            {
+                for edge in all_relates
+                    .iter()
+                    .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
+                {
+                    if related_edges_flagged.insert(edge.id.clone())
+                        && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
+                    {
+                        relates_to_flagged += 1;
+                    }
+                }
+                for edge in all_validates.iter().filter(|edge| &edge.intent_id == iid) {
+                    if invalidated_validation_ids.insert(edge.validation_id.clone())
+                        && store.invalidate_validation(&edge.validation_id)?
+                    {
+                        validations_invalidated += 1;
+                    }
+                }
+            }
+        }
+        store.set_delegation_export_hash(&delegation.id, &new_hash)?;
+    }
+
     // Flush deferred content-hash updates LAST: every file's ripple above has
     // now landed, so advancing the hashes here can no longer leave a torn graph
     // (see pending_hash_updates above). A crash mid-flush is still safe — the

@@ -121,7 +121,8 @@ pub fn prop_type(p: &str) -> &'static str {
             || x == prop::IMPORTS
             || x == prop::SYMBOLS
             || x == prop::SYMBOL_FACTS
-            || x == prop::LINKS =>
+            || x == prop::LINKS
+            || x == prop::SEAM_INTENTS =>
         {
             "list"
         }
@@ -410,6 +411,13 @@ pub mod prop {
     // Delegation (federation: subtree owned by another graph)
     /// Delegation: path to the child graph's committed export (loom.graph.json).
     pub const TARGET: &str = "target";
+    /// Delegation: content hash of the child export at the last `loom sync` — the
+    /// watched-artifact baseline. When the child export's hash changes, sync
+    /// ripples staleness to the delegation's seam intents (cross-service ripple).
+    pub const EXPORT_HASH: &str = "export_hash";
+    /// Delegation: parent intent ids that depend on this child's contract (the
+    /// seams). A change to the child export re-opens their claims. JSON list.
+    pub const SEAM_INTENTS: &str = "seam_intents";
     // InboxItem
     pub const RAW_TEXT: &str = "raw_text";
     pub const NORMALIZED_CLAIM: &str = "normalized_claim";
