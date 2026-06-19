@@ -112,8 +112,13 @@ pub enum Command {
         /// meaning against the user) | quality (quality: earn GOVERNS green)
         /// | review (re-inspect low-confidence verdicts) | prove (analyzer:
         /// prove proposed hypotheses — the pre-decision plane, optional).
-        #[arg(long, default_value = "discovery")]
-        mode: String,
+        /// OMIT --mode to follow the compass phase (`loom status` shows it):
+        /// bare `loom next` serves the phase's lane — fix when there are
+        /// failures/staleness, build when intents need realizing, validate
+        /// when proofs are pending, quality when gates are unchecked, and
+        /// discovery once the vertical spine is green.
+        #[arg(long)]
+        mode: Option<String>,
 
         /// The CLOSEOUT view: every role queue at once — counts + top item per
         /// queue, vertical-completeness gaps, and doctor health, as one
@@ -125,7 +130,10 @@ pub enum Command {
         /// call. For discovery/fix this groups by the file that staled them
         /// with a prefilled `loom batch` template; for quality it groups rule
         /// verdicts by intent; for align it serves a user-interview agenda.
-        /// Supported for discovery, fix, quality, align, and review (capped at 50).
+        /// Supported for discovery, fix, quality, align, and review (capped at
+        /// 50). On the one-command-per-item modes (build, populate, validate,
+        /// prove) --take is accepted but caps to 1 (those queues aren't
+        /// bulkable); use `loom next --all` for a full queue overview.
         #[arg(long, default_value_t = 0, conflicts_with = "all")]
         take: usize,
 
@@ -2161,7 +2169,7 @@ mod tests {
                 discovery_class,
                 ..
             }) => {
-                assert_eq!(mode, "discovery");
+                assert_eq!(mode.as_deref(), Some("discovery"));
                 assert_eq!(discovery_class.as_deref(), Some("impact-map"));
             }
             _ => panic!("expected next command"),

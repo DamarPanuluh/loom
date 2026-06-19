@@ -775,6 +775,91 @@ fn sqlite_batch_rejects_confidence_placeholder_verbatim_paste() {
     );
 }
 
+// loom-dx #6: bare `loom next` (no --mode) follows the compass phase instead
+// of a hardcoded discovery. The phase is read from `loom status`; the default
+// mode must serve that phase's lane. Mirrors phase_default_mode in next.rs.
+fn phase_default_mode_for_test(phase: &str) -> &str {
+    match phase {
+        "build" => "build",
+        "fix" => "fix",
+        "validate" => "validate",
+        "quality" => "quality",
+        "discovery" => "discovery",
+        _ => "discovery",
+    }
+}
+
+#[test]
+fn sqlite_next_default_follows_compass_phase() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("next-default-phase");
+    let st = run_json(&graph.root, &["status", "--json"]);
+    let phase = st["graph_state"]["phase"]
+        .as_str()
+        .expect("status carries graph_state.phase");
+    let bare = run_json(&graph.root, &["next", "--json"]);
+    let mode = bare["mode"]
+        .as_str()
+        .expect("bare `loom next` JSON carries a `mode` field");
+    assert_eq!(
+        mode,
+        phase_default_mode_for_test(phase),
+        "bare `loom next` must follow the compass phase ({phase}), not a hardcoded default"
+    );
+    // The regression: the old binary always returned discovery. On a fixture
+    // in a mapped non-discovery phase, the default must NOT be discovery.
+    if matches!(phase, "fix" | "build" | "validate" | "quality") {
+        assert_ne!(
+            mode, "discovery",
+            "compass phase is {phase} but bare `loom next` defaulted to discovery"
+        );
+    }
+}
+
+#[test]
+fn sqlite_next_explicit_mode_overrides_phase_default() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("next-explicit-mode");
+    let st = run_json(&graph.root, &["status", "--json"]);
+    let phase = st["graph_state"]["phase"]
+        .as_str()
+        .expect("status carries graph_state.phase");
+    // Asking for discovery explicitly must win even when the phase is fix.
+    let disc = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
+    let mode = disc["mode"].as_str().expect("next mode field");
+    assert_eq!(mode, "discovery");
+    if phase != "discovery" {
+        assert_ne!(
+            mode, phase,
+            "explicit --mode must override the phase default (phase was {phase})"
+        );
+    }
+}
+
+// loom-dx #4: --take on a one-command-per-item mode (build/populate/validate/
+// prove) used to hard-error. It now caps to 1 and ANNOUNCES the cap — a silent
+// cap is the trap this closes. run_json panics on non-zero exit, so reaching
+// the assertions proves the hard error is gone.
+#[test]
+fn sqlite_next_take_caps_to_one_on_non_bulk_mode() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("next-take-cap");
+    let v = run_json(
+        &graph.root,
+        &["next", "--mode", "validate", "--take", "50", "--json"],
+    );
+    assert_eq!(v["mode"], "validate");
+    assert_eq!(
+        v["take_capped_to"], 1,
+        "the cap must be visible in JSON: {v}"
+    );
+    let note = v["take_note"].as_str().expect("take_note field");
+    assert!(
+        note.contains("one command per item") && note.contains("--all"),
+        "the note must explain the cap + point to `loom next --all`: {note}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();

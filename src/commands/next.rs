@@ -50,10 +50,53 @@ struct NextOpts<'a> {
     take: usize,
     discovery_class: Option<&'a str>,
     compact: bool,
+    /// `loom-dx #4`: Some(note) when `--take` was passed on a
+    /// one-command-per-item mode (build/populate/validate/prove) and capped to
+    /// a single item. The driver asked for N and got one — the note makes the
+    /// cap VISIBLE (a silent cap is the trap this card exists to close).
+    /// Carried into each non-bulk renderer so both the human line and the JSON
+    /// `take_note` field surface it (human/json parity).
+    take_note: Option<String>,
+}
+
+/// `loom-dx #6`: the default mode when `--mode` is omitted follows the compass
+/// phase — bare `loom next` serves the phase's lane instead of always
+/// discovery. The phase is computed from the same snapshot the queues score,
+/// so a mapped phase's lane is guaranteed non-empty (`queue_nonempty_for_phase`
+/// in stats.rs asserts this invariant). Phases whose action is NOT a
+/// `loom next --mode` lane (seed → guide, incomplete/audit → doctor, ground →
+/// edge implement/coverage) fall back to discovery — the honest exploration
+/// default; `loom status`'s `next_action` carries the real directive for those.
+fn phase_default_mode(phase: &str) -> &'static str {
+    match phase {
+        "build" => "build",
+        "fix" => "fix",
+        "validate" => "validate",
+        "quality" => "quality",
+        "discovery" => "discovery",
+        _ => "discovery",
+    }
+}
+
+/// `loom-dx #4`: stamp the take-cap note into a non-bulk renderer's JSON
+/// envelope. `take_note` is Some only when --take was capped to 1; the field
+/// pair (`take_note` + `take_capped_to`) makes the cap visible to JSON agents
+/// — the audience that most needs it (a silent cap is the trap this closes).
+pub(crate) fn inject_take_note(
+    mut v: serde_json::Value,
+    take_note: Option<&str>,
+) -> serde_json::Value {
+    if let Some(note) = take_note {
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert("take_note".to_string(), note.into());
+            obj.insert("take_capped_to".to_string(), 1.into());
+        }
+    }
+    v
 }
 
 pub fn run(
-    mode: &str,
+    mode: Option<&str>,
     all: bool,
     take: usize,
     discovery_class: Option<&str>,
@@ -62,15 +105,46 @@ pub fn run(
 ) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
+    // #6: omit --mode → follow the compass phase.
+    let (mode, from_phase) = match mode {
+        Some(m) => (m.to_string(), false),
+        None => {
+            let snap = store.query_snapshot()?;
+            let gs = store.graph_state(&snap)?;
+            (phase_default_mode(&gs.phase).to_string(), true)
+        }
+    };
+    // #4: --take on a one-command-per-item mode caps to 1 (those queues aren't
+    // bulkable) — and the cap is announced, not silent. The bulk modes keep
+    // --take as a real bulk read.
+    let bulk = matches!(
+        mode.as_str(),
+        "discovery" | "fix" | "quality" | "align" | "review"
+    );
+    let (take, take_note) = if take > 0 && !bulk {
+        (
+            1,
+            Some(
+                "--take is a bulk read of the discovery/fix/quality/align/review queues; \
+                 {mode} resolves one command per item, so serving the top 1. For the full \
+                 queue overview: `loom next --all`."
+                    .replace("{mode}", &mode),
+            ),
+        )
+    } else {
+        (take, None)
+    };
+    let _ = from_phase; // reserved: the `mode` field already names the lane served.
     run_with_repo(
         &store,
         &cwd,
         &NextOpts {
-            mode,
+            mode: &mode,
             all,
             take,
             discovery_class,
             compact,
+            take_note,
         },
         printer,
     )
@@ -82,13 +156,12 @@ fn run_with_repo(
     opts: &NextOpts<'_>,
     printer: &Printer,
 ) -> Result<()> {
-    let NextOpts {
-        mode,
-        all,
-        take,
-        discovery_class,
-        compact,
-    } = *opts;
+    let mode = opts.mode;
+    let all = opts.all;
+    let take = opts.take;
+    let discovery_class = opts.discovery_class;
+    let compact = opts.compact;
+    let take_note = opts.take_note.as_deref();
     if all {
         return run_all(db, root, printer);
     }
@@ -126,13 +199,9 @@ fn run_with_repo(
         );
     }
 
-    if take > 0 && !matches!(mode, "discovery" | "fix" | "quality" | "align" | "review") {
-        anyhow::bail!(
-            "--take is a bulk read of the discovery/fix/quality/review queues (post-sync/post-rule \
-             batch reads, and the low-confidence double-check) and the align queue (a human-interview \
-             agenda). The other modes resolve one command per item — use `loom next --mode {mode}`."
-        );
-    }
+    // `loom-dx #4`: --take on a one-command-per-item mode used to hard-error.
+    // It now caps to 1 (run() already clamped `take` + built `take_note`); the
+    // cap is announced below, not silent. The bulk modes keep --take as-is.
 
     if discovery_class.is_some() && mode != "discovery" {
         anyhow::bail!(
@@ -150,10 +219,19 @@ fn run_with_repo(
         );
     }
 
+    // #4 human legibility: announce the cap once, above whichever non-bulk
+    // renderer we dispatch to (JSON paths carry `take_note` in their envelope).
+    if !printer.json {
+        if let Some(note) = take_note {
+            println!("  note: {note}");
+            println!();
+        }
+    }
+
     match mode {
-        "build" => return run_build(db, printer),
-        "populate" => return crate::commands::populate::render_next(db, root, printer),
-        "validate" => return run_validate(db, printer),
+        "build" => return run_build(db, take_note, printer),
+        "populate" => return crate::commands::populate::render_next(db, root, take_note, printer),
+        "validate" => return run_validate(db, take_note, printer),
         "align" => {
             return if take > 0 {
                 run_take_align(db, take, printer)
@@ -175,7 +253,7 @@ fn run_with_repo(
                 run_review(db, printer)
             }
         }
-        "prove" => return run_prove(db, printer),
+        "prove" => return run_prove(db, take_note, printer),
         _ => {}
     }
 
@@ -283,6 +361,11 @@ fn run_relates_with_repo(
             // Output contract (output.rs): every output carries a runnable
             // `next_step`. The full menu lives in `suggested_action`; this is the
             // single canonical command so driving is field-driven, not parsed.
+            // `mode` parity: the human header prints `[mode=… priority=…]`; the
+            // JSON envelope must name the lane too — especially now that bare
+            // `loom next` follows the compass phase (#6), so a driver can see
+            // WHICH lane was served without cross-referencing `loom status`.
+            obj.insert("mode".to_string(), mode.into());
             obj.insert(
                 "next_step".to_string(),
                 build_suggested_action_compact(top_edge).into(),
@@ -1459,7 +1542,11 @@ fn render_all(
 // Build mode: realize `planned` / `needs_change` intents (greenfield/refactor)
 // ---------------------------------------------------------------------------
 
-fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+fn run_build(
+    db: &dyn GraphReadRepository,
+    take_note: Option<&str>,
+    printer: &Printer,
+) -> Result<()> {
     db.ensure_owned("work the build queue (there is nothing to build in someone else's repo)")?;
     // ONE snapshot feeds both the queue and the pulse (production uses the
     // same snapshot scoring as the compass — coherence by construction — and
@@ -1470,12 +1557,15 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
 
     if candidates.is_empty() {
         if printer.json {
-            printer.print_json(&serde_json::json!({
-                "status": "empty", "mode": "build",
-                "message": "No planned or needs_change intents — nothing to build.",
-                "next_step": gs.next_action,
-                "graph_state": pulse_json(&gs),
-            }));
+            printer.print_json(&inject_take_note(
+                serde_json::json!({
+                    "status": "empty", "mode": "build",
+                    "message": "No planned or needs_change intents — nothing to build.",
+                    "next_step": gs.next_action,
+                    "graph_state": pulse_json(&gs),
+                }),
+                take_note,
+            ));
         } else {
             println!("✓ No planned/needs_change intents — nothing to build.");
             println!();
@@ -1535,7 +1625,7 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
             obj.insert("validations_total".to_string(), validations_total.into());
             add_dispatch(obj, role, effort);
         }
-        printer.print_json(&v);
+        printer.print_json(&inject_take_note(v, take_note));
         return Ok(());
     }
 
@@ -1607,7 +1697,11 @@ fn run_build(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
 // Validate mode: the validator's queue — intents with failing/unrun/missing proof
 // ---------------------------------------------------------------------------
 
-fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+fn run_validate(
+    db: &dyn GraphReadRepository,
+    take_note: Option<&str>,
+    printer: &Printer,
+) -> Result<()> {
     // ONE snapshot for both the queue and the pulse (shares the compass's
     // validate_selection scoring; no second full graph load).
     let snapshot = db.query_snapshot()?;
@@ -1616,12 +1710,15 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
 
     if candidates.is_empty() {
         if printer.json {
-            printer.print_json(&serde_json::json!({
-                "status": "empty", "mode": "validate",
-                "message": "Every intent's proof is green — nothing to validate.",
-                "next_step": gs.next_action,
-                "graph_state": pulse_json(&gs),
-            }));
+            printer.print_json(&inject_take_note(
+                serde_json::json!({
+                    "status": "empty", "mode": "validate",
+                    "message": "Every intent's proof is green — nothing to validate.",
+                    "next_step": gs.next_action,
+                    "graph_state": pulse_json(&gs),
+                }),
+                take_note,
+            ));
         } else {
             println!("✓ Every intent's proof is green — nothing to validate.");
             println!();
@@ -1690,7 +1787,7 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     let validations_total = cap_section(&mut validations);
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&inject_take_note(serde_json::json!({
             "mode":             "validate",
             "reason":           c.reason,
             "priority_score":   c.score,
@@ -1704,7 +1801,7 @@ fn run_validate(db: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
             "effort":           if validations.is_empty() { "mid" } else { "low" },
             "dispatch":         dispatch_line("validator"),
             "graph_state":      pulse_json(&gs),
-        }));
+        }), take_note));
         return Ok(());
     }
 
@@ -2630,19 +2727,23 @@ fn run_take_review(store: &dyn GraphReadRepository, take: usize, printer: &Print
 // optional like discovery/review (speculation never blocks complete).
 // ---------------------------------------------------------------------------
 
-fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+fn run_prove(
+    store: &dyn GraphReadRepository,
+    take_note: Option<&str>,
+    printer: &Printer,
+) -> Result<()> {
     let snapshot = store.query_snapshot()?;
     let candidates = store.prove_candidates(&snapshot)?;
     let gs = store.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
         if printer.json {
-            printer.print_json(&serde_json::json!({
+            printer.print_json(&inject_take_note(serde_json::json!({
                 "status": "empty", "mode": "prove",
                 "message": "No proposed hypotheses and no stale support — the pre-decision plane is clear.",
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
-            }));
+            }), take_note));
         } else {
             println!(
                 "✓ No proposed hypotheses and no stale support — the pre-decision plane is clear."
@@ -2693,7 +2794,7 @@ fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
     let implements_total = cap_section(&mut implements);
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&inject_take_note(serde_json::json!({
             "mode":             "prove",
             "priority_score":   score,
             "hypothesis":       h,
@@ -2708,7 +2809,7 @@ fn run_prove(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
             "effort":           "high",
             "dispatch":         dispatch_line("analyzer"),
             "graph_state":      pulse_json(&gs),
-        }));
+        }), take_note));
         return Ok(());
     }
 
@@ -2852,7 +2953,25 @@ fn note_surfaces(
 
 #[cfg(test)]
 mod tests {
-    use super::{build_suggested_action_compact, note_surfaces};
+    use super::{build_suggested_action_compact, note_surfaces, phase_default_mode};
+
+    #[test]
+    fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery() {
+        // loom-dx #6: the five lanes whose compass phase names a `loom next
+        // --mode` queue map to themselves; the rest (seed/incomplete/ground/
+        // audit/complete — actions that are NOT a next-mode) fall back to
+        // discovery, the honest exploration default.
+        for lane in ["build", "fix", "validate", "quality", "discovery"] {
+            assert_eq!(phase_default_mode(lane), lane);
+        }
+        for non_lane in ["seed", "incomplete", "ground", "audit", "complete", "??"] {
+            assert_eq!(
+                phase_default_mode(non_lane),
+                "discovery",
+                "{non_lane} has no next-mode lane → discovery fallback"
+            );
+        }
+    }
 
     fn note(kind: &str, text: &str, audience: &str) -> crate::types::Note {
         crate::types::Note {

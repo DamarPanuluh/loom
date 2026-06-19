@@ -802,6 +802,7 @@ fn interface_gap_examples_json(examples: &[InterfaceGap]) -> Vec<serde_json::Val
 pub(crate) fn render_next(
     db: &dyn GraphReadRepository,
     root: &Path,
+    take_note: Option<&str>,
     printer: &Printer,
 ) -> Result<()> {
     let snapshot = db.query_snapshot()?;
@@ -812,10 +813,10 @@ pub(crate) fn render_next(
 
     if !p.is_pending() {
         if gaps.is_pending() {
-            return render_next_interface_gap(gaps, &gs, printer);
+            return render_next_interface_gap(gaps, &gs, take_note, printer);
         }
         if printer.json {
-            printer.print_json(&serde_json::json!({
+            printer.print_json(&crate::commands::next::inject_take_note(serde_json::json!({
                 "status": "empty",
                 "mode": "populate",
                 "message": "No deterministic graph-population work or interface-plane gaps are pending.",
@@ -823,7 +824,7 @@ pub(crate) fn render_next(
                 "interface_gaps": interface_gaps_json(gaps),
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
-            }));
+            }), take_note));
         } else {
             println!("✓ No deterministic graph-population work is pending.");
             if !p.sagas_skipped.is_empty() {
@@ -837,7 +838,7 @@ pub(crate) fn render_next(
     }
 
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&crate::commands::next::inject_take_note(serde_json::json!({
             "mode": "populate",
             "kind": "interface_from_sagas",
             "owner_role": "builder",
@@ -852,7 +853,7 @@ pub(crate) fn render_next(
             "skipped_sagas": skipped_json(&p.sagas_skipped),
             "suggested_action": POPULATE_INTERFACES_FROM_SAGAS_CMD,
             "graph_state": pulse_json(&gs),
-        }));
+        }), take_note));
         return Ok(());
     }
 
@@ -874,10 +875,11 @@ pub(crate) fn render_next(
 fn render_next_interface_gap(
     gaps: &InterfaceGapPlan,
     gs: &crate::db::queries::GraphState,
+    take_note: Option<&str>,
     printer: &Printer,
 ) -> Result<()> {
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        printer.print_json(&crate::commands::next::inject_take_note(serde_json::json!({
             "mode": "populate",
             "kind": "interface_gaps",
             "owner_role": "builder",
@@ -887,7 +889,7 @@ fn render_next_interface_gap(
             "interface_gaps": interface_gaps_json(gaps),
             "suggested_action": "loom interface gaps",
             "graph_state": pulse_json(gs),
-        }));
+        }), take_note));
         return Ok(());
     }
 
