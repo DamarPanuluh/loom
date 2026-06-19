@@ -91804,15 +91804,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [compass-must-not-overstate] [compass/medium] Narrow green out-ranks co-located negatives instead of being qualified by them: audit deferred indefinitely behind `285 stale edge(s) (optional grid upkeep)` while smells reports 84; report prints '✓ Every implemented leaf is realized' directly above 5 Completeness Gaps (3 confirmed intents not grounded); doctor/coverage '✓ healthy / no gaps' ride over weak-kind edges and adjudication-bought green demoted to 'never fail the check'. loc: src/db/queries/stats.rs:388-468 (phase cascade defers audit below optional rt_needs_rev); src/commands/report.rs:303-318; src/commands/coverage.rs:293-294. impact: a driver heeding loom's own framing never sees the 84 findings or the ungrounded intents. suggestion: the strongest co-located negative signal bounds the headline ✓; surface open_findings regardless of phase; scope-label the report ✓ as 'every LEAF' and reconcile with the adjacent gaps.",
-        "resolution": "",
+        "resolution": "Headline ✓ bounded by co-located negatives. report.rs: '✓ every leaf realized' (vc.complete = LEAF spine only) now scope-labeled + reconciled with the adjacent completeness_gaps count when gaps non-empty (confirmed non-leaf intents not grounded / missing proof / path coverage) — no more bare ✓ above 'N Completeness Gaps'. coverage.rs: '✓ No open actionable symbol gaps' now discloses adjudicated-bought green + raw gaps next to the ✓ (live graph: 570 adjudicated -> qualifier fires). Ask 2 (surface open_findings regardless of phase) already satisfied: status 'advisories' line+JSON field computed unconditionally (advisory_counts status.rs:107) so the open-finding count shows at any phase; audit pulse stays null-when-deferred per the status-audit card's honest contract. Regression tests: stats::leaf_spine_sound_does_not_imply_no_completeness_gaps + e2e sqlite_coverage_qualifies_no_gaps_with_adjudicated_green. Committed 39cd372. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.320880+00:00"
+        "updated_at": "2026-06-19T17:24:38.365451+00:00"
       },
       {
         "author": "llm",
