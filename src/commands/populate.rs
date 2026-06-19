@@ -472,11 +472,16 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
         }
     }
 
+    // Only INBOUND boundary intents are expected to have a CALLS binding: a saga
+    // step proves a surface the system SERVES (a provider contract). An OUTBOUND
+    // intent is a consumer dependency on someone else's contract — there is no
+    // system-served surface for a saga to drive, so requiring a CALLS for it is
+    // a category error (it produced false "missing saga step" smells).
     let mut boundary_intent_without_calls = 0usize;
     for intent in snapshot
         .intents
         .iter()
-        .filter(|intent| boundary_intent(intent))
+        .filter(|intent| served_inbound_intent(intent))
     {
         if !calls_by_intent.contains_key(intent.id.as_str()) {
             boundary_intent_without_calls += 1;
@@ -485,8 +490,8 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
                 InterfaceGap {
                     kind: BOUNDARY_INTENT_WITHOUT_CALLS,
                     summary: format!(
-                        "{} boundary intent '{}' has no CALLS binding",
-                        intent.boundary, intent.name
+                        "inbound boundary intent '{}' exposes a surface with no CALLS binding",
+                        intent.name
                     ),
                     surface_id: String::new(),
                     surface: String::new(),
@@ -495,7 +500,7 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
                     validation_id: String::new(),
                     validation: String::new(),
                     suggested_action:
-                        "add/repair a saga step for this boundary behavior, or clear the intent boundary if it is internal"
+                        "add/repair a saga step that exercises this exposed surface, or clear the intent boundary if it is internal"
                             .to_string(),
                 },
             );
@@ -536,15 +541,16 @@ fn interface_gaps_plan(db: &dyn GraphReadRepository) -> Result<InterfaceGapPlan>
     })
 }
 
-fn boundary_intent(intent: &Intent) -> bool {
+/// An implemented, non-deprecated intent that EXPOSES a surface (boundary =
+/// inbound). Only these are expected to be exercised by a saga step; outbound
+/// (consumer-dependency) intents are deliberately excluded — see the caller.
+fn served_inbound_intent(intent: &Intent) -> bool {
     let lifecycle = if intent.lifecycle.is_empty() {
         "implemented"
     } else {
         intent.lifecycle.as_str()
     };
-    lifecycle == "implemented"
-        && intent.status != "deprecated"
-        && matches!(intent.boundary.as_str(), "inbound" | "outbound")
+    lifecycle == "implemented" && intent.status != "deprecated" && intent.boundary == "inbound"
 }
 
 fn calls_by_interface(calls: &[CallsEdge]) -> HashMap<&str, Vec<&CallsEdge>> {
