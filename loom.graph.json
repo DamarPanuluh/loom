@@ -91678,15 +91678,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "HONESTY-NEXT [always-on-map-vs-territory-in-compass] [status/medium] the disk-reconciliation gate (map=territory) is lazy: it only runs in the audit-gate else branch, i.e. at phase=audit|complete. On a red graph (loom's own sits at phase=fix) a driver NEVER sees that 4 files on disk aren't in the graph — the information exists (loom coverage shows unaccounted: loom-onboarding-prompt.md, loom.wiki.md, src/commands/explain.rs, src/commands/wiki.rs) but the compass hides it behind near-green. loc: src/db/queries/stats.rs (audit-gate else branch ~:495, disk closure) + src/commands/status.rs. impact: 2 of the false-green cluster's own fixes (disk gate, report leaf-spine qualifier) could not be observed firing on loom's graph because the graph is red for other reasons — a red graph is blind to its latent green-gates. suggestion: mirror the advisories-always pattern (card #4 ask #2, advisory_counts at status.rs:107 computed unconditionally): add an unconditional 'map!=territory: N unaccounted - M drifted - K missing' line to loom status at ANY phase. Cheap — disk_reconciliation_from_parts already exists; surface it in status regardless of phase.",
-        "resolution": "",
+        "resolution": "status advisory honesty cluster. H2 always-on-map-vs-territory: loom status now surfaces a DiskPulse (unaccounted + drifted + missing + total + message) as a map_vs_territory JSON field + a human map line at EVERY phase, not only the audit gate. Computed in run() so the disk-walk cost is paid by loom status alone, not every graph_state pulse. Verified live: prints 47 files on disk the graph doesnt account for (4 unmapped, 43 drifted, 0 missing) at phase=fix -- previously hidden. D3 notes-weighing-advisory-unclearable: the cap-greater-than-0 note-hygiene branch no longer implies a false remedy -- it teaches that prune --transitions compacts ONLY transition churn, so Nothing-to-prune on legitimate memory is expected not a bug; the cap-equals-0 branch keeps its set-cap remedy. No new query. Tests: sqlite_status_always_surfaces_map_vs_territory + frozen status-keys contract updated + two note-hygiene unit tests. Committed SHA. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:46:38.406373+00:00"
+        "updated_at": "2026-06-19T18:56:38.387960+00:00"
       },
       {
         "author": "llm",
@@ -92074,15 +92074,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "LOOM-DX [notes-weighing-advisory-unclearable] [status/medium] loom status repeatedly says to run 'loom note prune --transitions', but running it returns 'Nothing to prune (no dangling notes or excess transition notes)' and the advisory persists across every subsequent status call. The notes are confirm/decision/justification (legitimate memory), not transition-type, but the advisory implies a remedy that isn't there. loc: src/commands/status.rs (the notes-weighing advisory) + the note prune command. impact: a driver chases a remedy that does nothing; the advisory reads actionable but is informational. suggestion: the advisory should clear when the remedy finds nothing, or distinguish 'informational: N notes exist, mostly non-transition' from 'actionable: run this command' — same shape as the honest-null-when-deferred contract from the status-audit card.",
-        "resolution": "",
+        "resolution": "status advisory honesty cluster. H2 always-on-map-vs-territory: loom status now surfaces a DiskPulse (unaccounted + drifted + missing + total + message) as a map_vs_territory JSON field + a human map line at EVERY phase, not only the audit gate. Computed in run() so the disk-walk cost is paid by loom status alone, not every graph_state pulse. Verified live: prints 47 files on disk the graph doesnt account for (4 unmapped, 43 drifted, 0 missing) at phase=fix -- previously hidden. D3 notes-weighing-advisory-unclearable: the cap-greater-than-0 note-hygiene branch no longer implies a false remedy -- it teaches that prune --transitions compacts ONLY transition churn, so Nothing-to-prune on legitimate memory is expected not a bug; the cap-equals-0 branch keeps its set-cap remedy. No new query. Tests: sqlite_status_always_surfaces_map_vs_territory + frozen status-keys contract updated + two note-hygiene unit tests. Committed SHA. Bar green both feature sets.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "llm",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:50:19.813106+00:00"
+        "updated_at": "2026-06-19T18:56:38.375023+00:00"
       },
       {
         "author": "llm",
