@@ -275,7 +275,7 @@ pub fn graph_state_from_snapshot_parts(
 
     let is_parent: std::collections::HashSet<&str> =
         hierarchy.iter().map(|(p, _)| p.as_str()).collect();
-    let with_code = &snapshot.with_code;
+    let with_current_code = &snapshot.with_current_code;
     let implemented_leaves: Vec<&Intent> = all_intents
         .iter()
         .filter(|i| i.lifecycle == "implemented" && !is_parent.contains(i.id.as_str()))
@@ -283,7 +283,7 @@ pub fn graph_state_from_snapshot_parts(
     let realized_leaves = CoverageAxis {
         covered: implemented_leaves
             .iter()
-            .filter(|i| with_code.contains(&i.id))
+            .filter(|i| with_current_code.contains(&i.id))
             .count() as i64,
         total: implemented_leaves.len() as i64,
     };
@@ -293,7 +293,11 @@ pub fn graph_state_from_snapshot_parts(
     let grounded: std::collections::HashSet<&str> = snapshot
         .implements
         .iter()
-        .filter(|edge| active_ids.contains(edge.intent_id.as_str()))
+        .filter(|edge| {
+            active_ids.contains(edge.intent_id.as_str())
+                && edge.inspection_status != "needs_reverification"
+                && edge.inspection_status != "failing"
+        })
         .map(|edge| edge.codefile_path.as_str())
         .collect();
     let grounded_files = CoverageAxis {

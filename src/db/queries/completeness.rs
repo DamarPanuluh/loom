@@ -96,10 +96,16 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
         .collect();
     non_system_roots.sort();
 
-    let realized = &snapshot.with_code;
+    // Realization uses CURRENT groundings only — a leaf whose only grounding
+    // is stale (needs_reverification) or broken (failing) is NOT realized; the
+    // map must match the territory. The cleanup spine below is the inverse
+    // question ("is the to_be_removed code gone yet?") and still counts ANY
+    // grounding, because a stale locator means the file changed, not that the
+    // code was removed.
+    let realized_current = &snapshot.with_current_code;
     let mut unrealized_leaves: Vec<String> = leaves
         .iter()
-        .filter(|i| i.lifecycle == "implemented" && !realized.contains(&i.id))
+        .filter(|i| i.lifecycle == "implemented" && !realized_current.contains(&i.id))
         .map(|i| i.name.clone())
         .collect();
     unrealized_leaves.sort();
@@ -107,18 +113,26 @@ pub fn vertical_completeness_from_snapshot(snapshot: &QuerySnapshot) -> Vertical
     // Cleanup spine: a to_be_removed leaf is "done" by ABSENCE — it gates the
     // spine while its code is still grounded, and clears once the grounding is
     // gone (the inverse of unrealized).
+    let realized_any = &snapshot.with_code;
     let mut unremoved_leaves: Vec<String> = leaves
         .iter()
-        .filter(|i| i.lifecycle == "to_be_removed" && realized.contains(&i.id))
+        .filter(|i| i.lifecycle == "to_be_removed" && realized_any.contains(&i.id))
         .map(|i| i.name.clone())
         .collect();
     unremoved_leaves.sort();
 
     let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
+    // A file is "reached" only by a CURRENT grounding — a file reached solely
+    // by stale/broken locators is not honestly grounded and surfaces as
+    // unreached (the territory drifted from the map).
     let reached: HashSet<&str> = snapshot
         .implements
         .iter()
-        .filter(|edge| active_ids.contains(edge.intent_id.as_str()))
+        .filter(|edge| {
+            active_ids.contains(edge.intent_id.as_str())
+                && edge.inspection_status != "needs_reverification"
+                && edge.inspection_status != "failing"
+        })
         .map(|edge| edge.codefile_path.as_str())
         .collect();
     let mut unreached_codefiles: Vec<String> = snapshot
@@ -181,4 +195,137 @@ fn has_cycle(edges: &[(String, String)]) -> bool {
         }
     }
     processed < nodes.len()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::schema::{edge, edge_key};
+    use crate::types::{CodeFile, Implements};
+
+    fn intent(id: &str, name: &str, level: &str, lifecycle: &str) -> Intent {
+        Intent {
+            id: id.into(),
+            name: name.into(),
+            description: name.into(),
+            criterion: String::new(),
+            abstraction_level: level.into(),
+            domain: String::new(),
+            layer: String::new(),
+            source_refs: Vec::new(),
+            status: "active".into(),
+            aspect: "happy".into(),
+            tags: Vec::new(),
+            visibility: "internal".into(),
+            boundary: String::new(),
+            lifecycle: lifecycle.into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+        }
+    }
+
+    fn grounding(intent_id: &str, cf_id: &str, path: &str, status: &str) -> Implements {
+        Implements {
+            id: edge_key(edge::IMPLEMENTS, intent_id, cf_id),
+            intent_id: intent_id.into(),
+            codefile_id: cf_id.into(),
+            intent_name: intent_id.into(),
+            codefile_path: path.into(),
+            inspection_status: status.into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: String::new(),
+            notes: String::new(),
+            created_at: "t".into(),
+        }
+    }
+
+    fn codefile(id: &str, path: &str) -> CodeFile {
+        CodeFile {
+            id: id.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+        }
+    }
+
+    // FALSE-GREEN [map-vs-territory-reconcile-on-read]: a leaf grounded ONLY by
+    // a stale (needs_reverification) or broken (failing) locator is NOT realized
+    // — the map must match the territory. A passing grounding realizes; a stale-
+    // only or failing-only leaf surfaces as unrealized and its file as unreached.
+    #[test]
+    fn stale_or_failing_grounding_is_not_realization() {
+        let root = intent("root", "root", "system", "implemented");
+        let leaf_pass = intent("a", "leaf A fresh", "feature", "implemented");
+        let leaf_stale = intent("b", "leaf B stale", "feature", "implemented");
+        let leaf_fail = intent("c", "leaf C failing", "feature", "implemented");
+        let snapshot = QuerySnapshot::from_parts(
+            vec![root, leaf_pass, leaf_stale, leaf_fail],
+            vec![
+                ("root".into(), "a".into()),
+                ("root".into(), "b".into()),
+                ("root".into(), "c".into()),
+            ],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![
+                grounding("a", "cfa", "src/a.rs", "passing"),
+                grounding("b", "cfb", "src/b.rs", "needs_reverification"),
+                grounding("c", "cfc", "src/c.rs", "failing"),
+            ],
+            vec![
+                codefile("cfa", "src/a.rs"),
+                codefile("cfb", "src/b.rs"),
+                codefile("cfc", "src/c.rs"),
+            ],
+            None,
+        );
+        let vc = vertical_completeness_from_snapshot(&snapshot);
+        // Only leaf A (passing) is realized; B (stale) and C (failing) are not.
+        assert!(
+            !vc.unrealized_leaves.contains(&"leaf A fresh".to_string()),
+            "a passing grounding realizes: {:?}",
+            vc.unrealized_leaves
+        );
+        assert!(
+            vc.unrealized_leaves.contains(&"leaf B stale".to_string()),
+            "a needs_reverification-only grounding is NOT realization: {:?}",
+            vc.unrealized_leaves
+        );
+        assert!(
+            vc.unrealized_leaves.contains(&"leaf C failing".to_string()),
+            "a failing grounding is NOT realization: {:?}",
+            vc.unrealized_leaves
+        );
+        // Files reached only by stale/broken locators are unreached.
+        assert!(
+            !vc.unreached_codefiles.contains(&"src/a.rs".to_string()),
+            "src/a.rs is reached by a passing grounding: {:?}",
+            vc.unreached_codefiles
+        );
+        assert!(
+            vc.unreached_codefiles.contains(&"src/b.rs".to_string()),
+            "src/b.rs (stale-only grounding) is unreached: {:?}",
+            vc.unreached_codefiles
+        );
+        assert!(
+            vc.unreached_codefiles.contains(&"src/c.rs".to_string()),
+            "src/c.rs (failing grounding) is unreached: {:?}",
+            vc.unreached_codefiles
+        );
+        assert!(
+            !vc.complete,
+            "stale/broken groundings must block vertical completeness: {vc:?}"
+        );
+    }
 }

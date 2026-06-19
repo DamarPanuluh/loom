@@ -342,10 +342,18 @@ fn grounded_paths_from_snapshot(snapshot: &QuerySnapshot) -> HashSet<String> {
         .iter()
         .map(|intent| intent.id.as_str())
         .collect();
+    // Current groundings only — a file grounded solely by a stale
+    // (needs_reverification) or broken (failing) locator is not honestly
+    // grounded; it surfaces as registered-ungrounded so the map≠territory gap
+    // is visible instead of laundered into "grounded".
     snapshot
         .implements
         .iter()
-        .filter(|implements| active_ids.contains(implements.intent_id.as_str()))
+        .filter(|implements| {
+            active_ids.contains(implements.intent_id.as_str())
+                && implements.inspection_status != "needs_reverification"
+                && implements.inspection_status != "failing"
+        })
         .map(|implements| implements.codefile_path.clone())
         .collect()
 }

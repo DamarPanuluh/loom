@@ -18,6 +18,16 @@ pub struct QuerySnapshot {
     pub implements: Vec<Implements>,
     pub codefiles: Vec<CodeFile>,
     pub with_code: HashSet<String>,
+    /// Implemented intents with a CURRENT grounding — an IMPLEMENTS edge whose
+    /// inspection_status is NOT `needs_reverification` (stale: code changed
+    /// since the locator was verified) and NOT `failing` (locator checked and
+    /// does not resolve). `with_code` (above) counts ANY grounding including
+    /// stale ones, which the scoring/normative grid still wants; the
+    /// realized/grounded axes and the vertical spine use THIS set so a stale
+    /// grounding can no longer read as "realized" — the map must match the
+    /// territory. `uninspected` (pending verification, not known-stale) counts
+    /// here so a freshly registered grounding isn't over-fired as unrealized.
+    pub with_current_code: HashSet<String>,
     pub degrees: HashMap<String, i64>,
     /// All notes (newest last), lazily loaded the first time a consumer asks.
     /// The Note label holds thousands of append-only `transition` notes on a
@@ -52,6 +62,15 @@ impl QuerySnapshot {
         notes: Option<Vec<Note>>,
     ) -> Self {
         let with_code: HashSet<String> = implements.iter().map(|im| im.intent_id.clone()).collect();
+        // Current groundings only — excludes stale (needs_reverification) and
+        // broken (failing) locators. See the field doc on `with_current_code`.
+        let with_current_code: HashSet<String> = implements
+            .iter()
+            .filter(|im| {
+                im.inspection_status != "needs_reverification" && im.inspection_status != "failing"
+            })
+            .map(|im| im.intent_id.clone())
+            .collect();
         let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
         let mut degrees: HashMap<String, i64> = HashMap::new();
         for edge in &relates {
@@ -81,6 +100,7 @@ impl QuerySnapshot {
             implements,
             codefiles,
             with_code,
+            with_current_code,
             degrees,
             notes: note_cache,
             betweenness: OnceCell::new(),
