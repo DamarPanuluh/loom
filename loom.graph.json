@@ -91660,15 +91660,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [oversized-file-loc-detector] [smells/medium] No physical file-LOC detector exists — the only size signal is per-symbol (large_behavioral_symbol, 200-line threshold), so a 6734-line file (src/db/sqlite.rs) reads as 13 separate tangled-file/large-symbol findings that each get adjudicated away rather than a single irreducible 'this file is too big' signal. loc: src/db/queries/smells.rs (detector set; LARGE_BEHAVIORAL_SYMBOL_LINES=200 at :79). impact: the god-file's physical size is never measured as such; it only surfaces as adjudicable per-symbol/per-intent findings. suggestion: add an oversized_file detector keyed on total file LOC (independent of impl/test classification) that survives the per-symbol adjudication path. This is the irreducible specific behind the god-file once the general fixes land.",
-        "resolution": "",
+        "resolution": "fix(false-green oversized-file-loc-detector): new oversized_file smell keyed on file physical extent (last symbol line_end, lower-bound LOC proxy) at the 2000-line god-file threshold; survives the per-symbol adjudication path (identity oversized_file:<path> != large_behavioral_symbol:<path>:<label>). Regression test sqlite_oversized_file_survives_per_symbol_adjudication.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.351638+00:00"
+        "updated_at": "2026-06-19T10:35:47.396419+00:00"
       },
       {
         "author": "llm",
@@ -91704,7 +91704,7 @@
         "source": "code_audit",
         "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T10:27:11.048057+00:00"
+        "updated_at": "2026-06-19T10:36:04.155928+00:00"
       },
       {
         "author": "llm",

@@ -2894,3 +2894,111 @@ fn sqlite_status_audit_open_findings_null_when_deferred() {
         "audit.top_kinds must be an array even when deferred: {audit}"
     );
 }
+
+// FALSE-GREEN [oversized-file-loc-detector]: a god-file's physical size must
+// surface as a single file-level finding that survives the per-symbol
+// adjudication path — not as N adjudicable per-symbol findings that each get
+// ruled away. Adjudication is keyed on <kind>:<scope>, so a ruling about one
+// symbol cannot launder the file finding; only its own oversized_file:<path>
+// ruling answers it.
+fn smell_open_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
+    value["smells"]
+        .as_array()
+        .map(|a| {
+            a.iter().any(|s| {
+                s["kind"] == kind
+                    && s["summary"]
+                        .as_str()
+                        .map(|t| t.starts_with(path_prefix))
+                        .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn smell_adjudicated_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
+    value["adjudicated"]
+        .as_array()
+        .map(|a| {
+            a.iter().any(|s| {
+                s["kind"] == kind
+                    && s["summary"]
+                        .as_str()
+                        .map(|t| t.starts_with(path_prefix))
+                        .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
+#[test]
+fn sqlite_oversized_file_survives_per_symbol_adjudication() {
+    let _g = sqlite_test_lock();
+    let graph = setup_imported_graph("oversized-file");
+    let smells = || run_json(&graph.root, &["smells", "--limit", "500", "--json"]);
+    let path = "src/db/sqlite.rs";
+
+    // 1. The god-file (~5960 physical lines) surfaces as an open oversized_file
+    //    finding — physical size measured as such, independent of impl/test.
+    let s = smells();
+    assert!(
+        smell_open_for(&s, "oversized_file", path),
+        "oversized_file must fire on the god-file {path}: {s}"
+    );
+
+    // 2. A PER-SYMBOL ruling (large_behavioral_symbol:<path>:<label>) must NOT
+    //    launder the file-level finding — adjudication is keyed on <kind>:<scope>,
+    //    so a ruling about one symbol cannot clear the file. This is the crux of
+    //    the card: the god-file must not be hidden behind per-symbol rulings.
+    run_json(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--smell",
+            "large_behavioral_symbol:src/db/sqlite.rs:impl SqliteGraphStore",
+            "--kind",
+            "decision",
+            "--text",
+            "the impl is deliberately large; this ruling is about a SYMBOL, not the file",
+            "--json",
+        ],
+    );
+    let s = smells();
+    assert!(
+        smell_open_for(&s, "oversized_file", path),
+        "a per-symbol large_behavioral_symbol ruling must NOT launder the file-level \
+         oversized_file finding: {s}"
+    );
+    assert!(
+        !smell_adjudicated_for(&s, "oversized_file", path),
+        "the file finding must not appear adjudicated from a per-symbol ruling: {s}"
+    );
+
+    // 3. The finding IS answerable by its OWN identity — a decision note keyed
+    //    on oversized_file:<path> suppresses it (and surfaces in adjudicated
+    //    with its ruling), so a deliberate god-file can be recorded honestly.
+    run_json(
+        &graph.root,
+        &[
+            "note",
+            "add",
+            "--smell",
+            "oversized_file:src/db/sqlite.rs",
+            "--kind",
+            "decision",
+            "--text",
+            "god-file is deliberate for now; this ruling is about the FILE",
+            "--json",
+        ],
+    );
+    let s = smells();
+    assert!(
+        !smell_open_for(&s, "oversized_file", path),
+        "the own oversized_file:<path> ruling must suppress the file finding: {s}"
+    );
+    assert!(
+        smell_adjudicated_for(&s, "oversized_file", path),
+        "the suppressed file finding must surface in adjudicated with its ruling: {s}"
+    );
+}

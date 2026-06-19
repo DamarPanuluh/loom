@@ -77,6 +77,17 @@ pub const MIN_CLONE_LINES: usize = 5;
 /// Behavioral symbols above this span are large enough to inspect for splitting.
 /// Deliberately high: this is a coarse snapshot signal, not real complexity.
 pub const LARGE_BEHAVIORAL_SYMBOL_LINES: usize = 200;
+/// Files whose physical extent crosses this are god-files — large enough that
+/// the per-symbol `large_behavioral_symbol` detector fans out into many
+/// adjudicable per-symbol findings that each get ruled away, never surfacing
+/// the irreducible "this whole file is too big". `oversized_file` keys on the
+/// file's total physical extent (independent of impl/test classification), so
+/// it survives the per-symbol adjudication path. Deliberately high: this is a
+/// coarse god-file signal, and the finding is a suspicion to inspect, not a
+/// violation. Extent is a lower bound on LOC (the graph stores no line count —
+/// it's the last symbol's end line), so the threshold sits well below the
+/// 6734-line god-file that motivated it.
+pub const OVERSIZED_FILE_LINES: usize = 2000;
 /// Repeated string-contract detection ignores short labels and implementation
 /// tokens. These floors are intentionally conservative for the first pass.
 pub const MIN_STRING_CONTRACT_CHARS: usize = 24;
@@ -106,7 +117,7 @@ pub struct Smell {
     /// | unused_rule | happy_path_only | vocab_drift | duplicate_detection_unarmed
     /// | hypothesis_accumulation | symbol_accountability_gap | dependency_cycle
     /// | intent_island | transitive_layering_violation | cochange_coupling
-    /// | nonlocal_proof | code_clone | large_behavioral_symbol
+    /// | nonlocal_proof | code_clone | large_behavioral_symbol | oversized_file
     /// | string_contract_duplicate | panic_marker_risk | shotgun_surgery
     pub kind: String,
     /// Higher = look first (kind-relative magnitude).
@@ -327,6 +338,19 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "do not extract helpers that hide the same branchy behavior behind vague names".into(),
             ],
             done_when: "the behavior is split into smaller named units, or a current decision note on the file explains why this large symbol is deliberate".into(),
+        },
+        "oversized_file" => SmellTeaching {
+            principle: "A file large enough to be a god-file usually concentrates unrelated responsibilities; physical size is only a suspicion, so inspect the file before splitting.".into(),
+            inspect: vec![
+                "read the file's table of contents (its top-level symbols) and ask whether they are one cohesive module or several mashed together".into(),
+                "check whether the size is incidental (one large generated/protocol block) or structural (many intents ground here)".into(),
+                "prefer splitting along intent/module lines so each new file owns one responsibility".into(),
+            ],
+            avoid: vec![
+                "do not split a file that is large for a single deliberate reason (a protocol, a big match, generated code) just to beat the threshold".into(),
+                "do not move the problem: a mechanical split that leaves the same intents co-owning the new files just scatters the god-file".into(),
+            ],
+            done_when: "the file is split along intent/module lines so each new file owns one responsibility, or a current decision note on the file explains why this size is deliberate".into(),
         },
         "panic_marker_risk" => SmellTeaching {
             principle: "A panic/unwrap/expect/todo marker in non-test behavior can turn an expected sad path into a process abort or unfinished path; it needs an explicit boundary decision.".into(),
@@ -1176,7 +1200,69 @@ pub fn compute_smells_from_parts(
         }
     }
 
-    // 4d. Repeated string contracts — long user-facing/help/error/example
+    // 4d. Oversized file — the irreducible god-file signal. The per-symbol
+    //     large_behavioral_symbol detector (4b) is adjudicable PER SYMBOL, so a
+    //     god-file reads as N separate per-symbol findings that each get ruled
+    //     away and the file's physical size is never measured as such. This
+    //     detector keys on the FILE's total physical extent — the last symbol's
+    //     end line (a lower-bound LOC proxy; the graph stores no line count) —
+    //     independent of impl/test classification, so it survives the per-symbol
+    //     adjudication path: a ruling on one symbol cannot launder it
+    //     (adjudication is keyed on `oversized_file:<path>`, a different identity
+    //     than any `large_behavioral_symbol:<path>:<label>`). A ruling naming the
+    //     file re-opens when the file is modified after it (anchor = file mtime).
+    for cf in &snapshot.codefiles {
+        // Physical extent = the last line of the file's last symbol. Lower
+        // bound on LOC (misses trailing blanks/comments), but a strong god-file
+        // signal — and robust against the is_test misclassification (no is_test
+        // filter), so a production impl that 4b was wrongly skipping still
+        // contributes its line_end here.
+        let extent = cf
+            .symbol_facts
+            .iter()
+            .map(|f| f.line_end)
+            .max()
+            .unwrap_or(0);
+        if extent < OVERSIZED_FILE_LINES {
+            continue;
+        }
+        let summary = format!(
+            "{} spans ~{} lines (last symbol ends at line {})",
+            cf.path, extent, extent
+        );
+        if let Some(note) = adjudicated(
+            "oversized_file",
+            cf.path.as_str(),
+            cf.last_modified.as_str(),
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "oversized_file".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "the file is modified after the ruling".into(),
+                teaching: teaching_for("oversized_file"),
+            });
+            continue;
+        }
+        smells.push(Smell {
+            kind: "oversized_file".into(),
+            score: extent as f64 / 200.0,
+            summary,
+            evidence: format!(
+                "{}: physical extent {} lines (last symbol end) >= {} god-file threshold",
+                cf.path, extent, OVERSIZED_FILE_LINES
+            ),
+            remedy: format!(
+                "split {path} along intent/module lines so each new file owns one responsibility (a code split is a redesign — propose it: `loom hypothesis add --name \"split {path}\" --claim \"<why this file is too big>\" --proposal \"<the split>\" --target <owning intent>`); if the size is DELIBERATE (one protocol, one generated block, one cohesive module), record why: `loom note add --smell \"oversized_file:{path}\" --kind decision --text \"<why this file stays large>\"` resolves THIS finding (editing the file re-opens it). A per-symbol `large_behavioral_symbol` ruling does NOT clear this — it is keyed on the file, not a symbol.",
+                path = cf.path
+            ),
+            teaching: teaching_for("oversized_file"),
+        });
+    }
+
+    // 4e. Repeated string contracts — long user-facing/help/error/example
     //     strings copied across symbols can drift silently. This is deliberately
     //     conservative and ignores short labels, path-like values, and tests.
     let mut strings: HashMap<String, Vec<StringContractLoc<'_>>> = HashMap::new();
