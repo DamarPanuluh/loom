@@ -13,16 +13,17 @@ use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::{CodeFile, Implements, Intent};
 
-pub fn run(summary: bool, printer: &Printer) -> Result<()> {
+pub fn run(summary: bool, adjudicated: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let db = GraphReadHandle::open(&cwd)?;
-    run_with_db(&db, &cwd, summary, printer)
+    run_with_db(&db, &cwd, summary, adjudicated, printer)
 }
 
 pub fn run_with_db(
     db: &dyn GraphReadRepository,
     root: &std::path::Path,
     summary: bool,
+    adjudicated: bool,
     printer: &Printer,
 ) -> Result<()> {
     let disk = crate::repo::walk_files(root)?;
@@ -102,6 +103,10 @@ pub fn run_with_db(
         &snapshot.implements,
         &decision_notes,
     );
+
+    if adjudicated {
+        return render_adjudicated_drilldown(&symbol_accountability, printer);
+    }
 
     if summary {
         if printer.json {
@@ -343,6 +348,132 @@ pub fn run_with_db(
     Ok(())
 }
 
+/// `loom coverage --adjudicated`: turn the adjudicated-symbol COUNT into an
+/// auditable per-symbol trail. Each bought symbol shows the ruling (decision
+/// note) that bought its green, who ruled, when (staleness = ruling age), and
+/// the condition that re-opens it — so a stale/copied/low-trust ruling can be
+/// surfaced and challenged individually instead of laundering in behind a
+/// single number.
+///
+/// Honest gap: decision notes carry no confidence field, so the drill-down
+/// surfaces staleness + author (the challenge handles), not a confidence
+/// grade. If graded adjudication is wanted, that's a schema change, not a view.
+fn render_adjudicated_drilldown(
+    symbol_accountability: &crate::db::queries::SymbolAccountabilityReport,
+    printer: &Printer,
+) -> Result<()> {
+    let gaps = &symbol_accountability.adjudicated_symbol_gaps;
+    let now = chrono::Utc::now();
+    if printer.json {
+        let payload = serde_json::json!({
+            "scope": "adjudicated",
+            "adjudicated_total": gaps.len(),
+            "adjudicated_symbol_gaps": gaps,
+            "note": "Decision notes carry no confidence field; staleness = ruled_at age. \
+                     Challenge a ruling by re-grounding (`loom edge implement`) or by adding a \
+                     newer decision note (`loom note add --kind decision`).",
+            "next_step": "challenge a stale ruling: re-ground the symbol or record a newer decision note",
+        });
+        printer.print_json(&payload);
+        return Ok(());
+    }
+
+    println!("── loom coverage · adjudication drill-down ────────────────────────");
+    if gaps.is_empty() {
+        println!("  ✓ No symbols resolved by adjudication — every required symbol is");
+        println!("    grounded or accepted, not bought green by a decision note.");
+        println!("  (Adjudication is green earned by a ruling, not a locator. When it");
+        println!("   appears, this view audits each bought symbol individually.)");
+        return Ok(());
+    }
+    println!(
+        "  {} symbol(s) resolved by a decision note (bought green, not grounded).",
+        gaps.len()
+    );
+    println!("  Each is auditable: the ruling that bought it, who ruled, when");
+    println!("  (staleness = ruling age), and what would re-open it. Decision notes");
+    println!("  carry no confidence field — staleness + author are the challenge handles.");
+    println!();
+    for (i, gap) in gaps.iter().take(40).enumerate() {
+        let owners = if gap.owner_intents.is_empty() {
+            "(no owner intent)".to_string()
+        } else {
+            gap.owner_intents.join(", ")
+        };
+        println!(
+            "  [{}] {}:{}  {} {}",
+            i + 1,
+            gap.path,
+            gap.line_start,
+            gap.kind,
+            gap.label
+        );
+        println!("      owner: {owners}");
+        // The ruling is freeform note text — cap it so one verbose note can't
+        // drown the rest of the audit trail.
+        let ruling = truncate_ruling(&gap.ruling, 160);
+        println!("      ruling: {ruling}");
+        println!(
+            "      ruled by: {}   at: {}{}",
+            gap.ruled_by,
+            gap.ruled_at,
+            fmt_ruling_age(&gap.ruled_at, now)
+        );
+        println!("      re-opens when: {}", gap.reopens_when);
+    }
+    if let Some(m) = crate::output::more_marker(
+        gaps.len(),
+        40,
+        "`loom coverage --adjudicated --json` for the full list",
+    ) {
+        println!("  {m}");
+    }
+    println!();
+    println!("  → Challenge a stale ruling: re-ground the symbol");
+    println!("    (`loom edge implement <intent> <path>`) or record a newer");
+    println!("    decision note (`loom note add --kind decision --target …`).");
+    Ok(())
+}
+
+/// Cap a freeform ruling so one verbose note can't drown the audit trail.
+fn truncate_ruling(text: &str, max: usize) -> String {
+    let stripped = text.trim();
+    if stripped.chars().count() <= max {
+        return stripped.to_string();
+    }
+    let mut out: String = stripped.chars().take(max).collect();
+    out.push('…');
+    out
+}
+
+/// Human staleness for a ruling: how long ago `ruled_at` landed, or an honest
+/// marker when it's empty/unparseable (an untimestamped ruling is the hardest
+/// to challenge — surface that, don't paper over it).
+fn fmt_ruling_age(ruled_at: &str, now: chrono::DateTime<chrono::Utc>) -> String {
+    if ruled_at.trim().is_empty() {
+        return "  (untimestamped — no ruling age to challenge)".to_string();
+    }
+    let Ok(ts) = chrono::DateTime::parse_from_rfc3339(ruled_at) else {
+        return "  (unparseable timestamp)".to_string();
+    };
+    let elapsed = now.signed_duration_since(ts.with_timezone(&chrono::Utc));
+    let days = elapsed.num_days();
+    if days < 0 {
+        return String::new();
+    }
+    if days == 0 {
+        let hours = elapsed.num_hours();
+        return format!("  (age: {hours}h)");
+    }
+    if days < 30 {
+        return format!("  (age: {days}d)");
+    }
+    if days < 365 {
+        return format!("  (age: {}mo)", days / 30);
+    }
+    format!("  (age: {}y)", days / 365)
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct SymbolCoverage {
     grounded: usize,
@@ -452,6 +583,34 @@ fn symbol_is_grounded(symbol: &str, locators: &[String]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn truncate_ruling_caps_verbose_notes_and_leaves_short_ones_intact() {
+        // A short ruling is returned verbatim (trimmed), not padded or mangled.
+        assert_eq!(truncate_ruling("  it's fine ", 160), "it's fine");
+        // A verbose ruling is capped to the limit + an ellipsis, counted by
+        // chars (not bytes) so multibyte notes don't split a codepoint.
+        let long = "x".repeat(200);
+        let capped = truncate_ruling(&long, 10);
+        assert_eq!(capped.chars().count(), 11, "10 chars + ellipsis");
+        assert!(capped.ends_with('…'));
+    }
+
+    #[test]
+    fn fmt_ruling_age_marks_untimestamped_and_parses_rfc3339() {
+        let now = chrono::Utc::now();
+        // An untimestamped ruling is the hardest to challenge — surface it,
+        // don't pretend it's fresh.
+        assert!(fmt_ruling_age("", now).contains("untimestamped"));
+        // A garbage timestamp is reported as unparseable, not silently fresh.
+        assert!(fmt_ruling_age("not a date", now).contains("unparseable"));
+        // A 10-day-old ruling reads its age in days.
+        let ten_days_ago = (now - chrono::Duration::days(10)).to_rfc3339();
+        assert!(fmt_ruling_age(&ten_days_ago, now).contains("age: 10d"));
+        // A future timestamp yields no age marker (not negative, not fresh).
+        let future = (now + chrono::Duration::days(5)).to_rfc3339();
+        assert_eq!(fmt_ruling_age(&future, now), "");
+    }
 
     #[test]
     fn symbol_diagnostics_report_ungrounded_symbols_without_gating_files() {

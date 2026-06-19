@@ -1028,6 +1028,57 @@ fn sqlite_doctor_clean_orphans_dry_run_then_yes_removes_relics() {
     );
 }
 
+// HONESTY-NEXT adjudication-drill-down (card 71d45ddf): `loom coverage
+// --adjudicated` turns the "N adjudicated (bought green, not grounded)" COUNT
+// into an auditable per-symbol trail. The JSON scope is `adjudicated`, the full
+// archive ships under adjudicated_symbol_gaps, and the note is honest that
+// decision notes carry no confidence field (staleness + author are the
+// challenge handles). The human view carries the drill-down header.
+#[test]
+fn sqlite_coverage_adjudicated_drills_down_per_symbol() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("coverage-adjudicated");
+
+    // JSON: scoped payload, full archive, honest no-confidence note, next_step.
+    let json = run_json(&graph.root, &["coverage", "--adjudicated", "--json"]);
+    assert_eq!(
+        json["scope"].as_str().expect("scope"),
+        "adjudicated",
+        "adjudicated view is its own scope, not the full coverage dump: {json}"
+    );
+    assert!(
+        json["adjudicated_total"].is_i64(),
+        "carries an adjudicated_total count: {json}"
+    );
+    assert!(
+        json["adjudicated_symbol_gaps"].is_array(),
+        "ships the full per-symbol archive (not just a count): {json}"
+    );
+    let note = json["note"].as_str().expect("note");
+    assert!(
+        note.contains("confidence"),
+        "the note is honest that decision notes carry no confidence field: {note}"
+    );
+    assert!(
+        json["next_step"].is_string(),
+        "carries a challenge next_step: {json}"
+    );
+
+    // Human: the drill-down header (not the regular coverage banner).
+    let text = run_text_as(&graph.root, &["coverage", "--adjudicated"], "llm:quality");
+    assert!(
+        text.contains("adjudication drill-down"),
+        "human view carries the drill-down header: {text}"
+    );
+    // Whether loom's own graph has 0 or N adjudicated symbols, the honest
+    // framing is present either way (the empty-state teaches what adjudication
+    // IS, the populated state audits each bought symbol).
+    assert!(
+        text.contains("adjudication") && text.contains("decision note"),
+        "teaches that adjudication = green earned by a ruling, not a locator: {text}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();

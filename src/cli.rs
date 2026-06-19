@@ -446,6 +446,12 @@ pub enum Command {
         /// Print only counts and actionable gaps; omit full symbol/finding archives.
         #[arg(long)]
         summary: bool,
+        /// Drill into adjudicated symbols — the green bought by a decision
+        /// note, not a grounding locator. Lists each bought symbol with the
+        /// ruling that bought it, who ruled, when (staleness), and what would
+        /// re-open it, so adjudication is auditable per-symbol, not just a count.
+        #[arg(long)]
+        adjudicated: bool,
     },
 
     /// Detect the repo's stack and whether there's existing source to map
