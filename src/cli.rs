@@ -1116,6 +1116,23 @@ pub enum EdgeCmd {
     /// Show full detail of one RELATES_TO edge including both intent nodes.
     Show { edge_id: String },
 
+    /// Mark a grounded RELATES_TO edge `stable` (a settled coupling) so `loom
+    /// sync` stops re-opening it every time either endpoint's file changes. Use
+    /// `--off` to clear the flag. The horizontal grid is the dominant
+    /// re-verification cost; stable is the lever to retire that churn for
+    /// relationships you've decided are settled.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom edge stable \"request routing\" \"session auth\"   (settled; sync won't re-open it)\n  \
+        loom edge stable \"request routing\" \"session auth\" --off")]
+    Stable {
+        intent_a_id: String,
+        intent_b_id: String,
+
+        /// Clear the stable flag (re-arm sync reverification for this edge).
+        #[arg(long)]
+        off: bool,
+    },
+
     /// Mark a failing RELATES_TO edge as passing and propagate reverification.
     #[command(after_help = "EXAMPLE:\n  \
         loom edge fix rt:a1b2:c3d4 --description \"moved auth middleware registration ahead of route dispatch\"\n  \

@@ -174,8 +174,12 @@ fn run_with_sqlite(
                 .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
                 // Kind-aware staleness: a meaning-only edge (every kind is
                 // shares_vocab/same_domain/doc_reference) tracks concept overlap,
-                // not this file's code — a code change must not re-open it.
-                .filter(|edge| crate::types::relates_stales_on_code_change(&edge.kinds))
+                // not this file's code — a code change must not re-open it. A
+                // `stable` edge is a settled coupling the analyst exempted from
+                // code-change churn (`loom edge stable`), so skip it too.
+                .filter(|edge| {
+                    !edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds)
+                })
             {
                 if related_edges_flagged.insert(edge.id.clone())
                     && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
@@ -295,8 +299,12 @@ fn run_with_sqlite(
                 .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
                 // Kind-aware staleness: a meaning-only edge (every kind is
                 // shares_vocab/same_domain/doc_reference) tracks concept overlap,
-                // not this file's code — a code change must not re-open it.
-                .filter(|edge| crate::types::relates_stales_on_code_change(&edge.kinds))
+                // not this file's code — a code change must not re-open it. A
+                // `stable` edge is a settled coupling the analyst exempted from
+                // code-change churn (`loom edge stable`), so skip it too.
+                .filter(|edge| {
+                    !edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds)
+                })
             {
                 if related_edges_flagged.insert(edge.id.clone())
                     && store.flag_relates_to_needs_reverification(edge, &cause, &now)?

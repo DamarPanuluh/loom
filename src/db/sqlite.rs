@@ -243,6 +243,7 @@ const INSPECTABLE_PROPS_WITH_PRIORITY: &[&str] = &[
     prop::INSPECTED_BY,
     prop::PRIORITY_SCORE,
     prop::KINDS,
+    prop::STABLE,
     prop::NOTES,
     prop::CREATED_AT,
 ];
@@ -2032,7 +2033,7 @@ impl SqliteGraphStore {
             (
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status,
                         e.criterion, e.confidence, e.evidence, e.last_inspected,
-                        e.inspected_by, e.priority_score, e.notes, e.kinds
+                        e.inspected_by, e.priority_score, e.notes, e.kinds, e.stable
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -2042,7 +2043,7 @@ impl SqliteGraphStore {
             (
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status,
                         e.criterion, e.confidence, e.evidence, e.last_inspected,
-                        e.inspected_by, e.priority_score, e.notes, e.kinds
+                        e.inspected_by, e.priority_score, e.notes, e.kinds, e.stable
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -2069,6 +2070,7 @@ impl SqliteGraphStore {
                     priority_score: row.get(10)?,
                     notes: row.get(11)?,
                     kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
+                    stable: row.get::<_, String>(13)? == "true",
                     discovery_class: String::new(),
                     discovery_signals: Vec::new(),
                     discovery_centrality: Default::default(),
@@ -2279,7 +2281,7 @@ impl SqliteGraphStore {
         let mut stmt = self.conn.prepare(
             "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                     e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.priority_score,
-                    e.notes, e.kinds
+                    e.notes, e.kinds, e.stable
              FROM relates_to e
              JOIN intent src ON src.id = e.from_id
              JOIN intent dst ON dst.id = e.to_id
@@ -2303,6 +2305,7 @@ impl SqliteGraphStore {
                 priority_score: row.get(10)?,
                 notes: row.get(11)?,
                 kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
+                stable: row.get::<_, String>(13)? == "true",
                 discovery_class: String::new(),
                 discovery_signals: Vec::new(),
                 discovery_centrality: Default::default(),
@@ -2317,7 +2320,7 @@ impl SqliteGraphStore {
             .query_row(
                 "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                         e.confidence, e.evidence, e.last_inspected, e.inspected_by,
-                        e.priority_score, e.notes, e.kinds
+                        e.priority_score, e.notes, e.kinds, e.stable
                  FROM relates_to e
                  JOIN intent src ON src.id = e.from_id
                  JOIN intent dst ON dst.id = e.to_id
@@ -2341,6 +2344,7 @@ impl SqliteGraphStore {
                         priority_score: row.get(10)?,
                         notes: row.get(11)?,
                         kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
+                        stable: row.get::<_, String>(13)? == "true",
                         discovery_class: String::new(),
                         discovery_signals: Vec::new(),
                         discovery_centrality: Default::default(),
@@ -2381,6 +2385,25 @@ impl SqliteGraphStore {
         }
     }
 
+    /// Set (or clear) the `stable` low-churn flag on a RELATES_TO edge. Returns
+    /// false when no such edge exists. A stable edge is exempt from `loom sync`
+    /// code-change reverification (see sync.rs).
+    pub fn set_relates_to_stable(
+        &mut self,
+        from_id: &str,
+        to_id: &str,
+        stable: bool,
+    ) -> Result<bool> {
+        let value = if stable { "true" } else { "" };
+        let tx = self.write_tx()?;
+        let changed = tx.execute(
+            "UPDATE relates_to SET stable = ?1 WHERE from_id = ?2 AND to_id = ?3",
+            params![value, from_id, to_id],
+        )?;
+        tx.commit()?;
+        Ok(changed > 0)
+    }
+
     fn get_relates_to_between_tx(
         tx: &rusqlite::Transaction<'_>,
         from_id: &str,
@@ -2389,7 +2412,7 @@ impl SqliteGraphStore {
         tx.query_row(
             "SELECT e.from_id, e.to_id, src.name, dst.name, e.inspection_status, e.criterion,
                     e.confidence, e.evidence, e.last_inspected, e.inspected_by,
-                    e.priority_score, e.notes, e.kinds
+                    e.priority_score, e.notes, e.kinds, e.stable
              FROM relates_to e
              JOIN intent src ON src.id = e.from_id
              JOIN intent dst ON dst.id = e.to_id
@@ -2413,6 +2436,7 @@ impl SqliteGraphStore {
                     priority_score: row.get(10)?,
                     notes: row.get(11)?,
                     kinds: string_list_sql(row.get::<_, String>(12)?.as_str())?,
+                    stable: row.get::<_, String>(13)? == "true",
                     discovery_class: String::new(),
                     discovery_signals: Vec::new(),
                     discovery_centrality: Default::default(),
@@ -5208,6 +5232,7 @@ CREATE TABLE IF NOT EXISTS relates_to(
   priority_score REAL NOT NULL DEFAULT 0,
   notes TEXT NOT NULL DEFAULT '',
   kinds TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(kinds)),
+  stable TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT '',
   PRIMARY KEY(from_id, to_id),
   CHECK(from_id <> to_id)
@@ -5346,6 +5371,15 @@ impl SqliteGraphStore {
         self.ensure_meta_columns()?;
         self.ensure_taxonomy_columns()?;
         self.ensure_inbox_kind_vocabulary()?;
+        // The additive ensure_* migrations above bring an older graph to the
+        // current shape; stamp the version so `doctor`/`export` agree with this
+        // binary. Opening with a newer loom IS the migration — there is no
+        // separate migrate step. No-op when the meta row doesn't exist yet (a
+        // fresh `init` inserts it immediately after).
+        self.conn.execute(
+            "UPDATE meta SET schema_version = ?1 WHERE id = 1",
+            params![schema::SCHEMA_VERSION],
+        )?;
         Ok(())
     }
 
@@ -5356,6 +5390,7 @@ impl SqliteGraphStore {
     fn ensure_taxonomy_columns(&self) -> Result<()> {
         for (table, column, definition) in [
             ("relates_to", "kinds", "TEXT NOT NULL DEFAULT '[]'"),
+            ("relates_to", "stable", "TEXT NOT NULL DEFAULT ''"),
             ("quality_rule", "kind", "TEXT NOT NULL DEFAULT ''"),
         ] {
             if !table_has_column(&self.conn, table, column)? {

@@ -85,6 +85,11 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
         } => run_validates_with_sqlite(&cwd, validation_id, intent_id, notes, printer),
         EdgeCmd::List { status, limit } => run_list_with_sqlite(&cwd, status, limit, printer),
         EdgeCmd::Show { edge_id } => run_show_with_sqlite(&cwd, edge_id, printer),
+        EdgeCmd::Stable {
+            intent_a_id,
+            intent_b_id,
+            off,
+        } => run_stable_with_sqlite(&cwd, intent_a_id, intent_b_id, off, printer),
         EdgeCmd::Fix {
             edge_id,
             description,
@@ -95,6 +100,48 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+fn run_stable_with_sqlite(
+    root: &std::path::Path,
+    intent_a_key: String,
+    intent_b_key: String,
+    off: bool,
+    printer: &Printer,
+) -> Result<()> {
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    store.ensure_owned("mark a relationship stable")?;
+    let intent_a_id = resolve_intent_with_db(&store, &intent_a_key)?;
+    let intent_b_id = resolve_intent_with_db(&store, &intent_b_key)?;
+    let stable = !off;
+    let changed = store.set_relates_to_stable(&intent_a_id, &intent_b_id, stable)?;
+    if !changed {
+        anyhow::bail!(
+            "No RELATES_TO edge between '{intent_a_key}' and '{intent_b_key}' — explore/ground it \
+             first (`loom edge explore <a> <b> ground …`). Only a grounded relationship can be \
+             marked stable."
+        );
+    }
+    let edge = store.get_relates_to_between(&intent_a_id, &intent_b_id)?;
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "stable": stable,
+            "edge": edge,
+            "next_step": if stable {
+                "sync will no longer re-open this edge on endpoint code changes (`loom edge stable … --off` to re-arm)"
+            } else {
+                "sync reverification re-armed for this edge"
+            },
+        }));
+        return Ok(());
+    }
+    if stable {
+        println!("✓ Marked relationship stable — `loom sync` will not re-open it on code changes.");
+    } else {
+        println!("✓ Cleared stable — `loom sync` reverification re-armed for this relationship.");
+    }
+    Ok(())
+}
 
 fn run_explore_with_sqlite(
     root: &std::path::Path,

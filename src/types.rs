@@ -1051,6 +1051,11 @@ pub struct RelatesTo {
     /// locator. Validated against `RelationKind`; empty = un-kinded (legacy).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub kinds: Vec<String>,
+    /// Low-churn flag: a settled grounded relationship that `loom sync` must NOT
+    /// re-open on every endpoint code change (set via `loom edge stable <a> <b>`).
+    /// Owner: analyzer. Stored as TEXT ("true") in SQLite; a bool here.
+    #[serde(default)]
+    pub stable: bool,
     /// Synthetic discovery queue metadata. Empty for stored RELATES_TO edges.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub discovery_class: String,

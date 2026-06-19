@@ -404,9 +404,9 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["status"], "ok");
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
-    assert_eq!(migrated["version"], "9");
+    assert_eq!(migrated["version"], "10");
     assert_eq!(migrated["current"], true);
-    assert_eq!(migrated["expected"], "9");
+    assert_eq!(migrated["expected"], "10");
     assert!(
         migrated["next_step"].is_null(),
         "current graph needs no rebuild: {migrated}"

@@ -2884,6 +2884,7 @@ mod tests {
             priority_score: 0.0,
             notes: String::new(),
             kinds: Vec::new(),
+            stable: false,
             discovery_class: String::new(),
             discovery_signals: Vec::new(),
             discovery_centrality: Default::default(),

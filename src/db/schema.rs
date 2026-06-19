@@ -77,7 +77,14 @@
 /// Still v9 after the InboxItem plane: additive — free-form language can be
 /// captured as durable intake cards before it becomes graph truth. Older
 /// graphs simply open with an empty inbox table.
-pub const SCHEMA_VERSION: &str = "9";
+/// v10 (data-model expansion): RELATES_TO gains a `stable` low-churn flag
+/// (sync stops re-opening it on every endpoint code change); Intent gains a
+/// first-class `criterion` and a `to_be_removed` lifecycle (cleanup is now a
+/// tracked, falsifiable-by-absence verb); Persona/InterfaceSurface gain a
+/// `lifecycle` + removal; a new EXPOSES edge links a provider Intent to the
+/// InterfaceSurface it serves. All additive — older graphs migrate on open via
+/// the ensure_*_columns ALTERs and import normalization.
+pub const SCHEMA_VERSION: &str = "10";
 
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
@@ -362,6 +369,11 @@ pub mod prop {
     /// coupled. Owner: analyzer (judgment tier) + populate (mechanical tier).
     /// (The QualityRule norm category reuses [`KIND`], same column name.)
     pub const KINDS: &str = "kinds";
+    /// RELATES_TO: a low-churn flag ("true" = stable). A stable grounded
+    /// relationship is exempt from sync's code-change reverification — its
+    /// coupling is settled and should not re-open every time either endpoint's
+    /// file is touched. Owner: analyzer. Stored TEXT ("" = not stable).
+    pub const STABLE: &str = "stable";
     // Validation node
     pub const VALIDATION_TYPE: &str = "validation_type";
     pub const COMMAND: &str = "command";

@@ -1012,6 +1012,7 @@ pub fn unexplored_pairs_scored_from_snapshot(
                         .into_iter()
                         .map(|k| k.as_str().to_string())
                         .collect(),
+                    stable: false,
                     discovery_class: discovery_class.to_string(),
                     discovery_signals: signals,
                     discovery_centrality: DiscoveryCentrality {
@@ -1102,6 +1103,7 @@ mod tests {
             priority_score: 0.0,
             notes: String::new(),
             kinds: Vec::new(),
+            stable: false,
             discovery_class: String::new(),
             discovery_signals: Vec::new(),
             discovery_centrality: DiscoveryCentrality::default(),
