@@ -480,8 +480,10 @@ fn audit_inspectable_edges(
         ));
     }
 
-    // Epistemic-health accumulation: per-author confidence on real verdicts.
-    let mut conf_by_author: std::collections::HashMap<String, Vec<f64>> =
+    // Epistemic-health accumulation: confidence per (author, edge-type) on real
+    // verdicts (per-etype so a uniform GOVERNS batch isn't diluted by RELATES_TO
+    // spread), carrying evidence so copied evidence counts as one trust unit.
+    let mut conf_by_author: std::collections::HashMap<(String, &'static str), Vec<(f64, String)>> =
         std::collections::HashMap::new();
     for c in claims {
         // `independent` is valid on RELATES_TO (confirmed unrelated), on
@@ -593,15 +595,19 @@ fn audit_inspectable_edges(
                     c.etype, c.label, c.inspected_by, r, r,
                 ));
             }
+            // NOTE: a bare `llm` inspector (role_of/known_bare_role both None) is
+            // NOT flagged here — that is the legitimate solo-mode provenance the
+            // gate accepts by design. A laundered bare-llm batch is caught instead
+            // by the per-(author, edge-type) concentration detector below.
         }
         if c.etype != schema::edge::IMPLEMENTS
             && matches!(c.status.as_str(), "passing" | "failing")
             && !c.inspected_by.trim().is_empty()
         {
             conf_by_author
-                .entry(c.inspected_by.clone())
+                .entry((c.inspected_by.clone(), c.etype))
                 .or_default()
-                .push(c.confidence);
+                .push((c.confidence, c.evidence.clone()));
         }
     }
     hints.extend(confidence_concentration_hints(&conf_by_author));
@@ -616,17 +622,18 @@ fn audit_inspectable_edges(
 /// lanes span 9–13 distinct confidence values, so the `distinct <= 2` guard
 /// keeps them quiet while a uniform-0.9 scout (1 distinct value) trips it.
 fn confidence_concentration_hints(
-    conf_by_author: &std::collections::HashMap<String, Vec<f64>>,
+    conf_by_author: &std::collections::HashMap<(String, &'static str), Vec<(f64, String)>>,
 ) -> Vec<String> {
     /// Below this, a distribution is too small to judge.
     const MIN_VERDICTS: usize = 20;
-    let mut concentrated: Vec<(String, usize, f64, usize)> = Vec::new();
-    for (author, confs) in conf_by_author {
-        if confs.len() < MIN_VERDICTS {
+    // (author, etype, n, mode_conf, distinct_conf, distinct_evidence)
+    let mut concentrated: Vec<(String, &'static str, usize, f64, usize, usize)> = Vec::new();
+    for ((author, etype), entries) in conf_by_author {
+        if entries.len() < MIN_VERDICTS {
             continue;
         }
         let mut buckets: std::collections::HashMap<u64, usize> = std::collections::HashMap::new();
-        for cf in confs {
+        for (cf, _) in entries {
             *buckets.entry((cf * 100.0).round() as u64).or_default() += 1;
         }
         let distinct = buckets.len();
@@ -636,24 +643,39 @@ fn confidence_concentration_hints(
             .max_by_key(|(_, n)| **n)
             .map(|(k, _)| *k)
             .unwrap_or(0);
-        // distinct <= 2 AND the mode covers >= 90% of the verdicts.
-        if distinct <= 2 && mode_count * 10 >= confs.len() * 9 {
+        let distinct_evidence = entries
+            .iter()
+            .map(|(_, e)| e.trim())
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        // Per (author, edge-type): near-uniform confidence (<=2 distinct, mode
+        // >=90%) OR copied evidence (a handful of strings behind many verdicts).
+        let near_uniform = distinct <= 2 && mode_count * 10 >= entries.len() * 9;
+        let copied_evidence = distinct_evidence * 5 <= entries.len();
+        if near_uniform || copied_evidence {
             concentrated.push((
                 author.clone(),
-                confs.len(),
+                etype,
+                entries.len(),
                 mode_key as f64 / 100.0,
                 distinct,
+                distinct_evidence,
             ));
         }
     }
-    concentrated.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    concentrated.sort_by(|a, b| {
+        b.2.cmp(&a.2)
+            .then_with(|| a.0.cmp(&b.0))
+            .then_with(|| a.1.cmp(b.1))
+    });
     concentrated
         .into_iter()
-        .map(|(author, n, conf, distinct)| {
+        .map(|(author, etype, n, conf, distinct, evidence)| {
             format!(
-                "epistemic: '{author}' recorded {n} passing/failing verdict(s) at near-uniform \
-                 confidence (~{conf:.2}, {distinct} distinct value(s)) — a lane that rates everything \
-                 the same is the uniform-confidence smell; sample it with `loom next --mode review`"
+                "epistemic: '{author}' recorded {n} {etype} passing/failing verdict(s) at \
+                 near-uniform confidence (~{conf:.2}, {distinct} distinct value(s)) backed by only \
+                 {evidence} distinct evidence string(s) — a lane that rates everything the same with \
+                 copied evidence is the laundering smell; sample it with `loom next --mode review`"
             )
         })
         .collect()
@@ -664,16 +686,29 @@ mod epistemic_tests {
     use super::confidence_concentration_hints;
     use std::collections::HashMap;
 
+    type ConfMap = HashMap<(String, &'static str), Vec<(f64, String)>>;
+
     #[test]
     fn flags_uniform_confidence_lane_but_spares_spread() {
-        let mut m: HashMap<String, Vec<f64>> = HashMap::new();
-        // A uniform-0.9 scout across 25 verdicts → the corrupt-batch smell.
-        m.insert("llm:scout".into(), vec![0.9; 25]);
-        // A well-spread analyzer (5 distinct values over 40 verdicts) → quiet.
-        let spread: Vec<f64> = (0..40).map(|i| 0.5 + (i % 5) as f64 * 0.1).collect();
-        m.insert("llm:analyzer".into(), spread);
+        let mut m: ConfMap = HashMap::new();
+        // A uniform-0.9 scout across 25 GOVERNS verdicts (distinct evidence each)
+        // → the near-uniform corrupt-batch smell.
+        m.insert(
+            ("llm:scout".into(), "GOVERNS"),
+            (0..25).map(|i| (0.9, format!("evidence {i}"))).collect(),
+        );
+        // A well-spread analyzer (5 distinct conf, distinct evidence over 40) → quiet.
+        m.insert(
+            ("llm:analyzer".into(), "RELATES_TO"),
+            (0..40)
+                .map(|i| (0.5 + (i % 5) as f64 * 0.1, format!("evidence {i}")))
+                .collect(),
+        );
         // Uniform but too few verdicts to judge → quiet.
-        m.insert("llm:fixer".into(), vec![0.9; 10]);
+        m.insert(
+            ("llm:fixer".into(), "RELATES_TO"),
+            (0..10).map(|i| (0.9, format!("evidence {i}"))).collect(),
+        );
 
         let hints = confidence_concentration_hints(&m);
         assert_eq!(
@@ -682,6 +717,34 @@ mod epistemic_tests {
             "only the uniform lane should flag: {hints:?}"
         );
         assert!(hints[0].contains("llm:scout"), "got: {hints:?}");
-        assert!(hints[0].contains("near-uniform"), "got: {hints:?}");
+        assert!(
+            hints[0].contains("GOVERNS"),
+            "names the edge type: {hints:?}"
+        );
+    }
+
+    #[test]
+    fn flags_copied_evidence_even_with_spread_confidence() {
+        let mut m: ConfMap = HashMap::new();
+        // 30 verdicts, SPREAD confidence (not near-uniform) but only 2 evidence
+        // strings behind them → the copied-evidence laundering signal.
+        m.insert(
+            ("llm:scout".into(), "GOVERNS"),
+            (0..30)
+                .map(|i| {
+                    (
+                        0.5 + (i % 6) as f64 * 0.08,
+                        if i % 2 == 0 { "A".into() } else { "B".into() },
+                    )
+                })
+                .collect(),
+        );
+        let hints = confidence_concentration_hints(&m);
+        assert_eq!(
+            hints.len(),
+            1,
+            "copied evidence should flag even with spread confidence: {hints:?}"
+        );
+        assert!(hints[0].contains("distinct evidence"), "got: {hints:?}");
     }
 }
