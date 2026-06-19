@@ -5780,6 +5780,53 @@ mod tests {
     use super::*;
     use serde::Serialize;
 
+    fn table_columns(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare(&format!("PRAGMA table_info({table})"))
+            .expect("table_info");
+        let cols = stmt
+            .query_map([], |row| row.get::<_, String>(1))
+            .expect("query")
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .expect("collect");
+        cols
+    }
+
+    /// Every column of every NODE/EDGE table must be covered by its props spec
+    /// (edge FK from/to columns excepted). A column added to CREATE TABLE but
+    /// forgotten in *_PROPS is silently dropped on export and ignored on import,
+    /// symmetrically — so `export --check` stays green and doctor can't see it.
+    /// This is the mechanical guard for that latent trap.
+    #[test]
+    fn every_table_column_is_covered_by_its_props_spec() {
+        let store = SqliteGraphStore::in_memory().unwrap();
+        for spec in NODE_SPECS {
+            for col in table_columns(&store.conn, spec.table) {
+                assert!(
+                    spec.props.contains(&col.as_str()),
+                    "node table '{}' column '{}' is missing from its props spec — it would be \
+                     silently dropped on export/import",
+                    spec.table,
+                    col
+                );
+            }
+        }
+        for spec in EDGE_SPECS {
+            for col in table_columns(&store.conn, spec.table) {
+                if col == spec.from_col || col == spec.to_col {
+                    continue; // carried as from/to, not a prop
+                }
+                assert!(
+                    spec.props.contains(&col.as_str()),
+                    "edge table '{}' column '{}' is missing from its props spec — it would be \
+                     silently dropped on export/import",
+                    spec.table,
+                    col
+                );
+            }
+        }
+    }
+
     #[test]
     fn write_lock_serializes_writers_with_a_named_error() {
         let path = std::env::temp_dir().join(format!(

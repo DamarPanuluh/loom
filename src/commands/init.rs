@@ -6,7 +6,13 @@ use crate::db::schema::SCHEMA_VERSION;
 use crate::db::{db_path, loom_dir};
 use crate::output::Printer;
 
-pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer) -> Result<()> {
+pub fn run(
+    path_str: &str,
+    name: Option<&str>,
+    observed: bool,
+    no_hook: bool,
+    printer: &Printer,
+) -> Result<()> {
     let target = Path::new(path_str)
         .canonicalize()
         .unwrap_or_else(|_| Path::new(path_str).to_path_buf());
@@ -18,6 +24,13 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
     if !loom.exists() {
         fs::create_dir_all(&loom)?;
     }
+
+    // Install the green-bar pre-commit hook (best-effort; never fails init).
+    let hook_status = if no_hook {
+        "skipped (--no-hook)".to_string()
+    } else {
+        install_pre_commit_hook(&target).unwrap_or_else(|e| format!("not installed ({e})"))
+    };
 
     let store = crate::db::sqlite::SqliteGraphStore::open(&db_file)?;
 
@@ -61,6 +74,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
                 "message": format!("Already initialised at {}", loom.display()),
                 "graph_id": new_id, "graph_name": new_name, "custody": new_custody,
                 "identity_updated": changed,
+                "pre_commit_hook": hook_status,
             }));
         } else {
             println!(
@@ -74,6 +88,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
                 new_custody,
                 if changed { "  [identity updated]" } else { "" }
             );
+            println!("  pre-commit hook: {hook_status}");
         }
         return Ok(());
     }
@@ -92,6 +107,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
             "graph_id": graph_id,
             "graph_name": graph_name,
             "custody": custody,
+            "pre_commit_hook": hook_status,
             "next_steps": [
                 "Read the driving protocol: `loom guide`.",
                 "Seed 1–3 system intents: `loom intent add --name \"…\" --level system --description \"…\"`.",
@@ -105,6 +121,7 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
             "  graph: '{}' ({})  custody: {}",
             graph_name, graph_id, custody
         );
+        println!("  pre-commit hook: {hook_status}");
         if observed {
             println!("  Observed graph: you're mapping code you don't own — build/fix lanes are");
             println!("  disabled; record findings (issue verdicts, notes), not fixes.");
@@ -114,3 +131,77 @@ pub fn run(path_str: &str, name: Option<&str>, observed: bool, printer: &Printer
     }
     Ok(())
 }
+
+/// Marker line identifying a loom-written pre-commit hook, so a re-run refreshes
+/// OURS but never clobbers a hook the user (or another tool) wrote.
+const HOOK_MARKER: &str = "# loom-managed pre-commit hook";
+
+/// Install the green-bar git pre-commit hook (best-effort). Returns a status
+/// string for the init output; never errors out of init (a missing/locked git
+/// dir just reports "skipped").
+fn install_pre_commit_hook(target: &Path) -> Result<String> {
+    let git_dir = target.join(".git");
+    if !git_dir.exists() {
+        return Ok("skipped (not a git repo)".to_string());
+    }
+    if !git_dir.is_dir() {
+        // Worktrees/submodules use a `.git` FILE pointing at the real gitdir;
+        // resolving that is out of scope — report rather than guess.
+        return Ok("skipped (.git is a file — worktree/submodule)".to_string());
+    }
+    let hooks_dir = git_dir.join("hooks");
+    fs::create_dir_all(&hooks_dir)?;
+    let hook_path = hooks_dir.join("pre-commit");
+    if hook_path.exists() {
+        let existing = fs::read_to_string(&hook_path).unwrap_or_default();
+        if !existing.contains(HOOK_MARKER) {
+            return Ok(
+                "skipped (a non-loom pre-commit hook already exists — add `loom export --check` \
+                 + `loom wiki --check` to it yourself)"
+                    .to_string(),
+            );
+        }
+        // It's ours — fall through and refresh it to the latest content.
+    }
+    fs::write(&hook_path, hook_body())?;
+    make_executable(&hook_path);
+    Ok("installed (.git/hooks/pre-commit)".to_string())
+}
+
+/// The hook script: the UNIVERSAL loom freshness gates, plus a teach-adapt slot
+/// for the repo's own build/lint/test bar (loom can't know it — it differs per
+/// stack, so it teaches instead of hardcoding). Bypass once with
+/// `git commit --no-verify`.
+fn hook_body() -> String {
+    format!(
+        "#!/bin/sh\n\
+         {HOOK_MARKER} — regenerate with `loom init` (re-run is safe). Bypass once: git commit --no-verify\n\
+         set -e\n\
+         \n\
+         # --- loom freshness gates (universal: the committed projections must not drift) ---\n\
+         if command -v loom >/dev/null 2>&1; then\n\
+         \x20 loom export --check\n\
+         \x20 loom wiki --check\n\
+         else\n\
+         \x20 echo 'loom not on PATH — skipping graph freshness gates' >&2\n\
+         fi\n\
+         \n\
+         # --- this repo's bar (teach-adapt: uncomment what applies) ---\n\
+         # Rust:   cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo build && cargo test\n\
+         # Node:   npm test\n\
+         # Python: ruff check . && pytest\n"
+    )
+}
+
+#[cfg(unix)]
+fn make_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(meta) = fs::metadata(path) {
+        let mut perms = meta.permissions();
+        perms.set_mode(0o755);
+        let _ = fs::set_permissions(path, perms);
+    }
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) {}

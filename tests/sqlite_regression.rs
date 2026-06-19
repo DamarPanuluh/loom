@@ -2369,3 +2369,94 @@ fn sqlite_populate_next_prioritizes_deterministic_backfill_before_interface_gaps
     assert_eq!(next["kind"], "interface_from_sagas");
     assert_eq!(next["missing_surfaces"], 1);
 }
+
+#[test]
+fn sqlite_status_json_top_level_keys_are_frozen() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-status-keys");
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let mut keys: Vec<String> = status
+        .as_object()
+        .expect("status --json is an object")
+        .keys()
+        .cloned()
+        .collect();
+    keys.sort();
+    // The --json contract is the agent-facing driving interface. This frozen set
+    // makes a dropped/renamed top-level key a TEST failure, not a silent break.
+    // Changing it must be DELIBERATE: update this list in the same commit.
+    let expected = [
+        "advisories",
+        "audit",
+        "blocked_validations",
+        "committed_export",
+        "completion",
+        "failing_edges",
+        "graph_state",
+        "human_gated",
+        "independent_edges",
+        "intake",
+        "intents_without_validations",
+        "needs_reverification",
+        "open_issues",
+        "other_lanes",
+        "passing_edges",
+        "populate",
+        "total_codefiles",
+        "total_edges",
+        "total_intents",
+        "total_validations",
+        "uninspected_edges",
+        "uninspected_outside_queues",
+        "validation_health",
+        "validation_pass_rate",
+        "validation_pass_rate_runnable",
+    ];
+    assert_eq!(
+        keys, expected,
+        "status --json top-level key set changed — update the frozen set DELIBERATELY"
+    );
+}
+
+#[test]
+fn sqlite_to_be_removed_lifecycle_round_trips() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-to-be-removed");
+    let added = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "legacy shim slated for deletion",
+            "--description",
+            "a compatibility shim that should be removed once callers migrate",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let id = added["id"].as_str().expect("new intent id").to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "mark",
+            &id,
+            "--lifecycle",
+            "to_be_removed",
+            "--reason",
+            "superseded by the v2 API; delete after callers migrate",
+            "--json",
+        ],
+        "llm:fixer",
+    );
+    let shown = run_json(&graph.root, &["intent", "show", &id, "--json"]);
+    assert_eq!(
+        shown["intent"]["lifecycle"], "to_be_removed",
+        "to_be_removed must survive the schema CHECK + read path: {shown}"
+    );
+}

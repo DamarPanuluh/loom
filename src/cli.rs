@@ -71,6 +71,13 @@ pub enum Command {
         /// fixes. Verdicts export as observer testimony.
         #[arg(long)]
         observed: bool,
+
+        /// Skip installing the git pre-commit hook (the green-bar gate:
+        /// `loom export --check` + `loom wiki --check`, plus a teach-adapt slot
+        /// for the repo's own fmt/lint/test). Installed by default in a git repo
+        /// when no foreign pre-commit hook is present.
+        #[arg(long)]
+        no_hook: bool,
     },
 
     /// Show graph health: intent count, edge coverage, open issues.
