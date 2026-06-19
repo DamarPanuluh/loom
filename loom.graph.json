@@ -90778,15 +90778,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [adjudication-scope-and-relevance] [smells/high] Adjudication silences far more than any ruling justifies: it is keyed on (file_id, file_mtime) and never reads the ruling text, so one note mutes every per-symbol finding in a file and an unrelated note clears an unrelated finding. loc: src/db/queries/smells.rs:650-655 (adjudicated closure), 610-618 (last_decision), 1062/1115/1216 (per-symbol detectors pass cf.id). impact: 84 findings / 64 adjudicated; 28 share ONE ruling text; god-file `src/db/sqlite.rs serves 13 distinct intents` is cleared by a `create_table_batch` ruling whose own large-symbol finding is STILL OPEN. The audit gate (binding per the guide) reads clean on laundered green. suggestion: key adjudication on finding identity (kind+symbol/span/target) not file; require the ruling to name/match the accepted concern; treat one ruling reused across N targets as 1 cover, not N. The >=10-char gate must not be the only check.",
-        "resolution": "",
+        "resolution": "implemented + committed eb455b7 (kind-scoped adjudication / per-(author,edge-type) concentration audit)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.282665+00:00"
+        "updated_at": "2026-06-19T09:42:50.206382+00:00"
       },
       {
         "author": "llm",
@@ -91984,15 +91984,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "FALSE-GREEN [per-author-per-etype-confidence-and-copied-evidence] [epistemic/high] The uniform-confidence detector is blind to a real laundered batch: it pools confidence per author across all etypes (except IMPLEMENTS) and never collapses copied evidence, so 34 GOVERNS 'passing' by bare `llm` at confidence exactly 0.9 (1 distinct value) with only 2 evidence strings (22 + 12) are diluted to author-`llm` 5-distinct/86%, just under the distinct<=2 AND >=90% guard. loc: src/db/queries/integrity.rs:597-660 (conf_by_author pooled per author; confidence_concentration_hints). Also bare `llm` returns role_of=None so it free-passes the quality lane (gate.rs:368-377) and the provenance audit (integrity.rs:573-595). impact: doctor reports healthy:true / 0 issues; the normative-plane verdict laundered. suggestion: measure concentration per (author,etype); count copied evidence as one verdict's trust; subject bare-llm GOVERNS to the lane/provenance audit.",
-        "resolution": "",
+        "resolution": "implemented + committed 00ac9b8 (kind-scoped adjudication / per-(author,edge-type) concentration audit)",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T08:48:39.308997+00:00"
+        "updated_at": "2026-06-19T09:42:50.192851+00:00"
       },
       {
         "author": "llm",
