@@ -85,6 +85,7 @@ fn run_add_with_sqlite(
         command: command.unwrap_or_default(),
         last_run: String::new(),
         last_result: "not_run".to_string(),
+        last_executed_run: String::new(),
     };
     store.insert_validation(&v)?;
 
@@ -205,6 +206,10 @@ fn run_mark_with_sqlite(
         &edge_note,
         &marker,
         &now,
+        // A hand-mark is ASSERTED proof, not machine-executed — pass None so a
+        // prior last_executed_run (if the executor ran it before) is preserved
+        // and a never-run proof stays empty (asserted, not executed).
+        None,
     )?;
     let next_step = validation_mark_next_step(&res);
     if printer.json {

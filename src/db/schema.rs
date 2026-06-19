@@ -84,7 +84,16 @@
 /// `lifecycle` + removal; a new EXPOSES edge links a provider Intent to the
 /// InterfaceSurface it serves. All additive — older graphs migrate on open via
 /// the ensure_*_columns ALTERs and import normalization.
-pub const SCHEMA_VERSION: &str = "10";
+/// v11 (proven-axis honesty): Validation gains `last_executed_run` — the
+/// machine-run discriminator. The executor (`loom validate` / `loom saga run`)
+/// stamps it ONLY when it actually ran the command; a hand-mark never does. The
+/// proven axis splits EXECUTED (last_executed_run non-empty + passed) from
+/// ASSERTED, closing the declared-not-executed laundering hole. Additive —
+/// older graphs gain the column on open via ensure_taxonomy_columns (the
+/// version bump forces the read-only path through the read-write open that runs
+/// the ALTER; without it a matching-version read-only open would skip the
+/// migration and SELECT would fail on the missing column).
+pub const SCHEMA_VERSION: &str = "11";
 
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
@@ -380,6 +389,14 @@ pub mod prop {
     pub const COMMAND: &str = "command";
     pub const LAST_RUN: &str = "last_run";
     pub const LAST_RESULT: &str = "last_result";
+    /// Timestamp the EXECUTOR (loom validate) last ran the command — set ONLY
+    /// by the executor, never by `loom validation mark` (a hand-mark sets
+    /// `last_run` but not this). The proven axis discriminates EXECUTED
+    /// (machine-verified) from ASSERTED (hand-marked) on this field: a
+    /// command-bearing validation marked passed by hand has `last_run` set but
+    /// `last_executed_run` empty, so it reads ASSERTED — closing the
+    /// declared-not-executed laundering hole.
+    pub const LAST_EXECUTED_RUN: &str = "last_executed_run";
     // edges (state + meta)
     pub const INSPECTION_STATUS: &str = "inspection_status";
     pub const CRITERION: &str = "criterion";

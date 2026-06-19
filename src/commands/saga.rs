@@ -112,6 +112,7 @@ fn add_sqlite(
                 command,
                 last_run: String::new(),
                 last_result: "not_run".to_string(),
+                last_executed_run: String::new(),
             })?;
             (id, true)
         }
@@ -332,6 +333,10 @@ fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
         &summary,
         &agent,
         &now,
+        // `loom saga run` EXECUTES the saga against the live target — machine-
+        // run proof, so stamp last_executed_run (counts as EXECUTED, not
+        // ASSERTED, on the proven axis).
+        Some(&now),
     )?;
 
     let mut stamped_passing = 0usize;

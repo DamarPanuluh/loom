@@ -3656,6 +3656,7 @@ mod proof_locality_tests {
             command: command.into(),
             last_run: String::new(),
             last_result: result.into(),
+            last_executed_run: String::new(),
         }
     }
 

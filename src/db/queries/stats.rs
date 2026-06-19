@@ -352,15 +352,18 @@ pub fn graph_state_from_snapshot_parts(
 
     // Proven = implemented leaves whose proof actually PASSED (blocked/not_run
     // are visible elsewhere; this axis counts earned proof only). Split into
-    // EXECUTED vs ASSERTED: the graph records a pass identically whether a
-    // command RAN and passed or a human `loom validation mark --result passed`
-    // stamped it (mark_validation_result sets last_run too), so last_run cannot
-    // tell them apart. The honest discriminator is the validation's SHAPE — a
-    // runnable validation_type (test/assertion/benchmark/saga) WITH a command is
-    // executed proof; a manual_check or an empty command is asserted proof
-    // (hand-marked acceptance that never executed anything). Surfacing both
-    // stops a green "proven N/M" from hiding the leaves proven only by stamped
-    // manual_check passes (the false-green axis).
+    // EXECUTED vs ASSERTED. The honest discriminator is `last_executed_run`:
+    // the executor (`loom validate` / `loom saga run`) stamps it ONLY when it
+    // actually ran the command; a hand-mark (`loom validation mark --result
+    // passed`) sets `last_run` but never `last_executed_run`. So a
+    // command-bearing validation marked passed by hand has `last_run` set but
+    // `last_executed_run` empty — it reads ASSERTED, not EXECUTED. This closes
+    // the declared-not-executed laundering hole (the single biggest remaining
+    // honesty gap): 'proven (exec N)' could once be bought by typing a command
+    // + marking it passed; now exec means the command RAN (machine-verified),
+    // observed not declared. `last_result=passed` already implies sync hasn't
+    // invalidated it (sync flips a stale proof to not_run on code change), so
+    // `last_executed_run` non-empty + passed = ran AND still current.
     let validation_by_id: std::collections::HashMap<&str, &Validation> = snapshot
         .validations
         .iter()
@@ -373,7 +376,16 @@ pub fn graph_state_from_snapshot_parts(
     }) {
         proven_ids.insert(edge.intent_id.as_str());
         if let Some(v) = validation_by_id.get(edge.validation_id.as_str()) {
-            if !v.command.is_empty() && v.validation_type != "manual_check" {
+            // EXECUTED requires the command actually RAN (last_executed_run
+            // stamped by the executor) — not merely that a command string
+            // exists. command non-empty + type != manual_check are kept as
+            // guards (an empty-command or manual_check proof is never executed
+            // even if somehow stamped), but last_executed_run is the load-bearing
+            // discriminator.
+            if !v.command.is_empty()
+                && v.validation_type != "manual_check"
+                && !v.last_executed_run.is_empty()
+            {
                 executed_intent_ids.insert(edge.intent_id.as_str());
             }
         }
@@ -1189,7 +1201,97 @@ mod tests {
             command: String::new(),
             last_run: String::new(),
             last_result: result.into(),
+            last_executed_run: String::new(),
         }
+    }
+
+    /// A command-bearing, runnable validation (type=test, command set) — the
+    /// shape that USED to read as EXECUTED on the proven axis by static shape
+    /// alone. `last_executed_run` is the new discriminator: empty = hand-marked
+    /// (ASSERTED), non-empty = the executor ran it (EXECUTED).
+    fn cmd_val(id: &str, result: &str, last_executed_run: &str) -> Validation {
+        Validation {
+            id: id.into(),
+            name: id.into(),
+            description: String::new(),
+            validation_type: "test".into(),
+            command: "cargo test".into(),
+            last_run: "2026-06-19T00:00:00Z".into(),
+            last_result: result.into(),
+            last_executed_run: last_executed_run.into(),
+        }
+    }
+
+    /// honesty-next / execute-runnable-validations (the headliner): the proven
+    /// axis splits EXECUTED (the executor RAN the command — last_executed_run
+    /// non-empty) from ASSERTED (hand-marked — last_executed_run empty). A
+    /// command-bearing validation marked passed by HAND must read ASSERTED, not
+    /// EXECUTED — closing the declared-not-executed laundering hole (you can no
+    /// longer buy 'proven (exec N)' by typing a command + marking it passed).
+    #[test]
+    fn proven_executed_requires_last_executed_run_not_just_a_command() {
+        let leaf = intent("leaf", "implemented");
+        let imp = implements("leaf", "src/x.rs");
+
+        // Case 1: command-bearing validation, passed, but last_executed_run EMPTY
+        // — a hand-mark (`loom validation mark --result passed`) on a proof that
+        // never ran. Proven? yes (it passed). Executed? NO — asserted only.
+        let snap_hand = QuerySnapshot::from_parts(
+            vec![leaf.clone()],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![validates("vh", "leaf", "passing")],
+            vec![cmd_val("vh", "passed", "")],
+            vec![imp.clone()],
+            vec![],
+            None,
+        );
+        let gs_hand = gs_of(&snap_hand);
+        assert_eq!(
+            gs_hand.coverage.proven_leaves.covered, 1,
+            "a passed validation proves the leaf"
+        );
+        assert_eq!(
+            gs_hand.coverage.proven_executed_leaves.covered, 0,
+            "a hand-marked command-bearing proof is ASSERTED, not EXECUTED — last_executed_run empty"
+        );
+        assert_eq!(
+            gs_hand.coverage.proven_asserted_leaves.covered, 1,
+            "the hand-mark lands in the asserted-only bucket"
+        );
+
+        // Case 2: same shape, but the EXECUTOR ran it (last_executed_run stamped).
+        // Now it reads EXECUTED — machine-verified, not declared.
+        let snap_exec = QuerySnapshot::from_parts(
+            vec![leaf],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![validates("ve", "leaf", "passing")],
+            vec![cmd_val("ve", "passed", "2026-06-19T00:00:00Z")],
+            vec![imp],
+            vec![],
+            None,
+        );
+        let gs_exec = gs_of(&snap_exec);
+        assert_eq!(
+            gs_exec.coverage.proven_executed_leaves.covered, 1,
+            "an executor-stamped last_executed_run is EXECUTED (the command ran)"
+        );
+        assert_eq!(
+            gs_exec.coverage.proven_asserted_leaves.covered, 0,
+            "an executed proof is not in the asserted-only bucket"
+        );
+        // Invariant from the field doc: proven == executed + asserted-only.
+        assert_eq!(
+            gs_exec.coverage.proven_leaves.covered,
+            gs_exec.coverage.proven_executed_leaves.covered
+                + gs_exec.coverage.proven_asserted_leaves.covered,
+            "proven decomposes into executed + asserted-only"
+        );
     }
 
     fn validates(validation_id: &str, intent_id: &str, status: &str) -> ValidatesEdge {

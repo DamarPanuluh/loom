@@ -147,6 +147,7 @@ const VALIDATION_PROPS: &[&str] = &[
     prop::COMMAND,
     prop::LAST_RUN,
     prop::LAST_RESULT,
+    prop::LAST_EXECUTED_RUN,
 ];
 
 const NOTE_PROPS: &[&str] = &[
@@ -1818,7 +1819,7 @@ impl SqliteGraphStore {
     pub fn validations_for_intent(&self, intent_id: &str) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
             "SELECT v.id, v.name, v.description, v.validation_type, v.command,
-                    v.last_run, v.last_result
+                    v.last_run, v.last_result, v.last_executed_run
              FROM validates e
              JOIN validation v ON v.id = e.validation_id
              WHERE e.intent_id = ?1",
@@ -1832,6 +1833,7 @@ impl SqliteGraphStore {
                 command: row.get(4)?,
                 last_run: row.get(5)?,
                 last_result: row.get(6)?,
+                last_executed_run: row.get(7)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -4224,7 +4226,7 @@ impl SqliteGraphStore {
 
     pub fn list_validations(&self) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, validation_type, command, last_run, last_result
+            "SELECT id, name, description, validation_type, command, last_run, last_result, last_executed_run
              FROM validation
              ORDER BY name",
         )?;
@@ -4237,6 +4239,7 @@ impl SqliteGraphStore {
                 command: row.get(4)?,
                 last_run: row.get(5)?,
                 last_result: row.get(6)?,
+                last_executed_run: row.get(7)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -4245,8 +4248,8 @@ impl SqliteGraphStore {
 
     pub fn insert_validation(&self, validation: &Validation) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result, last_executed_run)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
                 validation.id,
                 validation.name,
@@ -4254,12 +4257,14 @@ impl SqliteGraphStore {
                 validation.validation_type,
                 validation.command,
                 validation.last_run,
-                validation.last_result
+                validation.last_result,
+                validation.last_executed_run
             ],
         )?;
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn mark_validation_result(
         &mut self,
         key: &str,
@@ -4268,13 +4273,27 @@ impl SqliteGraphStore {
         edge_note: &str,
         marker: &str,
         now: &str,
+        executed_run: Option<&str>,
     ) -> Result<(String, usize)> {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;
-        tx.execute(
-            "UPDATE validation SET last_result = ?1, last_run = ?2 WHERE id = ?3",
-            params![last_result, now, validation.id],
-        )?;
+        // The executor passes Some(timestamp) to stamp last_executed_run (the
+        // machine-run discriminator); a hand-mark passes None so it NEVER
+        // overwrites a prior machine-run timestamp — `loom validation mark` on
+        // an already-executed proof keeps its executed status, and a hand-mark
+        // on a never-run proof leaves last_executed_run empty (asserted, not
+        // executed).
+        if let Some(ts) = executed_run {
+            tx.execute(
+                "UPDATE validation SET last_result = ?1, last_run = ?2, last_executed_run = ?3 WHERE id = ?4",
+                params![last_result, now, ts, validation.id],
+            )?;
+        } else {
+            tx.execute(
+                "UPDATE validation SET last_result = ?1, last_run = ?2 WHERE id = ?3",
+                params![last_result, now, validation.id],
+            )?;
+        }
         let intents_updated: i64 = tx.query_row(
             "SELECT count(*) FROM validates WHERE validation_id = ?1",
             params![validation.id],
@@ -5273,7 +5292,8 @@ CREATE TABLE IF NOT EXISTS validation(
   validation_type TEXT NOT NULL CHECK(validation_type IN ('test','assertion','benchmark','manual_check','saga')),
   command TEXT NOT NULL DEFAULT '',
   last_run TEXT NOT NULL DEFAULT '',
-  last_result TEXT NOT NULL CHECK(last_result IN ('passed','failed','not_run','blocked',''))
+  last_result TEXT NOT NULL CHECK(last_result IN ('passed','failed','not_run','blocked','')),
+  last_executed_run TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS note(
@@ -5547,6 +5567,11 @@ impl SqliteGraphStore {
             ("intent", "criterion", "TEXT NOT NULL DEFAULT ''"),
             ("delegation", "export_hash", "TEXT NOT NULL DEFAULT ''"),
             ("delegation", "seam_intents", "TEXT NOT NULL DEFAULT '[]'"),
+            (
+                "validation",
+                "last_executed_run",
+                "TEXT NOT NULL DEFAULT ''",
+            ),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;
@@ -6047,8 +6072,9 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
             1,
             "hierarchy edge must survive the intent-table rebuild (no FK cascade)"
         );
-        // Version stamped only after the migration.
-        assert_eq!(store.graph_meta().unwrap().unwrap().version, "10");
+        // Version stamped only after the migration (v11 = v10's data-model
+        // expansion + Validation.last_executed_run, the proven-axis discriminator).
+        assert_eq!(store.graph_meta().unwrap().unwrap().version, "11");
         // The widened CHECK now admits to_be_removed.
         let check: String = store
             .conn
@@ -6593,6 +6619,7 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
                 command: "loom saga run checkout-flow".into(),
                 last_run: "".into(),
                 last_result: "not_run".into(),
+                last_executed_run: "".into(),
             })
             .unwrap();
 

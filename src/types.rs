@@ -800,11 +800,20 @@ pub struct Validation {
     pub validation_type: String,
     /// Shell command to run, e.g. "cargo test --test foo"
     pub command: String,
-    /// RFC3339 timestamp of last run (empty = never run)
+    /// RFC3339 timestamp of last run (empty = never run). Set by BOTH the
+    /// executor (`loom validate`) and a hand-mark (`loom validation mark`) —
+    /// so it alone cannot tell machine-run from hand-marked.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_run: String,
     /// passed | failed | not_run
     pub last_result: String,
+    /// RFC3339 timestamp the EXECUTOR last ran the command (empty = never
+    /// machine-run). Set ONLY by `loom validate`, never by `loom validation
+    /// mark`. The proven axis uses this to split EXECUTED (machine-verified)
+    /// from ASSERTED (hand-marked) — a command-bearing validation marked
+    /// passed by hand has `last_run` set but this empty, so it reads ASSERTED.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub last_executed_run: String,
 }
 
 // ---------------------------------------------------------------------------

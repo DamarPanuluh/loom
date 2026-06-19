@@ -404,9 +404,9 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["status"], "ok");
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
-    assert_eq!(migrated["version"], "10");
+    assert_eq!(migrated["version"], "11");
     assert_eq!(migrated["current"], true);
-    assert_eq!(migrated["expected"], "10");
+    assert_eq!(migrated["expected"], "11");
     assert!(
         migrated["next_step"].is_null(),
         "current graph needs no rebuild: {migrated}"
@@ -3454,9 +3454,11 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
     let graph = ScratchGraph::new("sqlite-proven-discriminator");
     run_json(&graph.root, &["init", ".", "--json"]);
 
-    // Root with two implemented leaves: A proven ONLY by a manual_check (empty
-    // command → ASSERTED), B proven by a runnable test (non-empty command →
-    // EXECUTED). proven must be 2, executed 1 (B), asserted 1 (A).
+    // Root with two implemented leaves: A proven ONLY by a manual_check
+    // hand-mark (empty command, never run → ASSERTED), B proven by a test the
+    // EXECUTOR actually runs (last_executed_run stamped → EXECUTED). proven must
+    // be 2, executed 1 (B), asserted 1 (A). A hand-mark on a command-bearing
+    // proof is ASSERTED, not EXECUTED — the executor must have run it.
     let root = run_json_as(
         &graph.root,
         &[
@@ -3578,7 +3580,12 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
         &["edge", "validates", vmanual_id, leaf_a_id, "--json"],
     );
 
-    // B: a runnable test with a non-empty command — executed proof. Executed.
+    // B: a runnable test — EXECUTED proof. We actually RUN it via the validator
+    // lane (`loom validate` runs the command and stamps last_executed_run), NOT
+    // a hand-mark. This is the crux of the proven-axis honesty fix: a hand-mark
+    // on a command-bearing proof is ASSERTED, not EXECUTED — you cannot buy
+    // 'executed' by typing a command and marking it passed; the executor must
+    // have run it. (A trivially-passing command keeps the test hermetic.)
     let vtest = run_json(
         &graph.root,
         &[
@@ -3589,28 +3596,17 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
             "--type",
             "test",
             "--command",
-            "cargo test --test b",
+            "test -f src/b.rs",
             "--json",
         ],
     );
     let vtest_id = vtest["id"].as_str().expect("test validation id");
     run_json(
         &graph.root,
-        &[
-            "validation",
-            "mark",
-            vtest_id,
-            "--result",
-            "passed",
-            "--evidence",
-            "ran the suite green in external ci run",
-            "--json",
-        ],
-    );
-    run_json(
-        &graph.root,
         &["edge", "validates", vtest_id, leaf_b_id, "--json"],
     );
+    // The executor runs it — last_executed_run is stamped, so B reads EXECUTED.
+    run_json(&graph.root, &["validate", leaf_b_id, "--json"]);
 
     let status = run_json(&graph.root, &["status", "--json"]);
     let cov = coverage_proven(&status);

@@ -261,6 +261,9 @@ fn execute_and_record(
             edge_note,
             marker,
             &now,
+            // The executor RAN the command — stamp last_executed_run so the
+            // proven axis counts this as EXECUTED, not merely ASSERTED.
+            Some(&now),
         )?;
     }
 
