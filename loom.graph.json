@@ -91876,15 +91876,15 @@
         "links": [],
         "normalized_claim": "SERVES (Persona to Intent) is declared inspectable with full verdict fields (schema.rs:629) and writable, but doctor never audits it - no QuerySnapshot.serves, not in audit_inspectable_edges (integrity.rs:300). Its epistemic floor is unenforced.",
         "raw_text": "AUDIT [high/epistemic] SERVES (Persona to Intent) is declared inspectable with full verdict fields (schema.rs:629-638, owner analyzer) and writable via loom persona serve, but the doctor value-validity audit never includes it - no QuerySnapshot.serves and it is not pushed into audit_inspectable_edges. loc: src/db/queries/integrity.rs:292-352,234-239; src/db/queries/snapshot.rs:9-19. impact: invalid status/confidence/lane on SERVES verdicts is invisible to doctor; the epistemic floor is unenforced for a whole edge type. suggestion: add serves to QuerySnapshot and push SERVES claims into audit_inspectable_edges (independent_ok=true, analyzer/fixer lane), mirroring TARGETS.",
-        "resolution": "",
+        "resolution": "Already addressed, not a live hole. SERVES verdicts ARE audited end-to-end by doctor. doctor_report builds DoctorInputs.serves_edges via list_all_serves (sqlite.rs:878), which audit_inspectable_edges turns into per-edge EdgeClaims carrying all verdict fields (integrity.rs:521-534). The downstream value-validity pass then enforces on SERVES: status vocab with independent_ok for SERVES (integrity.rs:577-578), confidence in 0.0..=1.0, non-vacuous criterion for passing or failing, confidence not the 0.0 default, non-empty last_inspected, independent SERVES requires non-vacuous notes (integrity.rs:635-638 names SERVES), and provenance lane of inspected_by. The card claimed no QuerySnapshot.serves, which is true but moot: the doctor uses DoctorInputs.serves_edges, a dedicated channel, so adding serves to QuerySnapshot would duplicate DoctorInputs and bloat from_parts for zero audit gain. Verified by reading the audit path; no code change warranted.",
         "route_command": "loom hypothesis add --name \"doctor audits SERVES like every inspectable edge\" --claim \"SERVES verdicts escape the value-validity and lane audit entirely\" --proposal \"add serves to QuerySnapshot and push SERVES claims into audit_inspectable_edges with independent_ok true and the analyzer/fixer lane, mirroring TARGETS\" --predicted-outcome \"an invalid status, confidence or lane on a SERVES verdict surfaces as a doctor issue\"",
         "route_kind": "hypothesis",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "triaged",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-18T13:14:12.789249+00:00"
+        "updated_at": "2026-06-20T01:16:01.784098+00:00"
       },
       {
         "author": "llm",
