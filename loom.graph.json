@@ -91192,15 +91192,15 @@
         "links": [],
         "normalized_claim": "a deleted (metadata fails, continue at sync.rs:79) or non-UTF8 (sync.rs:223, text warning only) registered file flags ZERO edges; its IMPLEMENTS/GOVERNS/validation claims stay green.",
         "raw_text": "AUDIT [high/correctness] a registered file deleted from disk (metadata fails, missing_files.push plus continue) or unreadable as UTF-8 (only a text warning) flags ZERO edges; its IMPLEMENTS/GOVERNS/validation claims stay green. loc: src/commands/sync.rs:77-82,223-232. impact: an intent reads fully proven while its grounding code is gone or unverifiable. suggestion: on a missing or unreadable registered file, flag its IMPLEMENTS edges to needs_reverification and ripple one hop, mirroring the changed-file path.",
-        "resolution": "",
+        "resolution": "Already addressed (verified vs current sync.rs): missing/escaped/non-utf8 files are collected at the scan phase (82-93) then fed into the unverifiable set (277-281), which flags every IMPLEMENTS grounding on such a file (296) and ripples one hop to relates/governs/targets/serves (297-329) and invalidates linked validations (220-228). Non-UTF8 files also push locators_stale + flag IMPLEMENTS (245-254). So a deleted/unreadable registered file does NOT leave its claims green.",
         "route_command": "loom hypothesis add --name \"missing or unreadable files invalidate their grounded edges\" --claim \"a registered file that is gone or unreadable leaves every edge it grounds green\" --proposal \"on metadata failure or non-UTF8, flag the file IMPLEMENTS edges to needs_reverification and ripple one hop like the changed-file path, alongside the existing missing/non-utf8 report\" --predicted-outcome \"deleting or corrupting a grounded file turns its intents stale, not silently proven\"",
         "route_kind": "hypothesis",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "triaged",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-18T13:14:12.765606+00:00"
+        "updated_at": "2026-06-20T01:02:03.622252+00:00"
       },
       {
         "author": "llm",
@@ -91318,15 +91318,15 @@
         "links": [],
         "normalized_claim": "sync writes new mtime to the DB on byte-identical files (sync.rs:128-131) and last_modified is an exported prop, so a no-op sync after git checkout churns loom.graph.json and defeats export --check.",
         "raw_text": "AUDIT [high/correctness] sync rewrites codefile mtime into the DB on byte-identical files (changed=false but mtime differs) and last_modified is an exported prop, so a no-op sync after git checkout churns loom.graph.json. loc: src/commands/sync.rs:128-131. impact: defeats loom export --check as a CI/pre-commit drift gate and trains agents to dread harmless syncs. suggestion: stop persisting mtime once content_hash is the authority - drop the mtime-only write, or exclude last_modified from the CODEFILE export props.",
-        "resolution": "",
+        "resolution": "Already addressed (verified vs current sync.rs:135-147): last_modified moves ONLY with content. For content-addressed graphs changed is hash-based (new_hash != cf.content_hash) and if !changed { continue } precedes any mtime update, so a no-op sync with newer mtime but identical bytes does not churn loom.graph.json. Legacy graphs (no content_hash) adopt the hash at line 135-144 WITHOUT touching mtime, so after one sync they become content-addressed and the mtime hole closes. export --check stays a reliable CI gate.",
         "route_command": "loom hypothesis add --name \"content_hash is the sole codefile freshness authority\" --claim \"persisting mtime on byte-identical files drifts the committed graph and breaks export --check\" --proposal \"drop the mtime-only DB write when content_hash matches, or exclude last_modified from the exported CODEFILE props so the travel format is content-addressed\" --predicted-outcome \"a no-op sync after git checkout produces 0 lines of loom.graph.json diff; export --check stays a reliable CI gate\"",
         "route_kind": "hypothesis",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "triaged",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-18T13:14:12.755636+00:00"
+        "updated_at": "2026-06-20T01:01:55.516624+00:00"
       },
       {
         "author": "llm",
