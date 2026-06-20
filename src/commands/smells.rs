@@ -10,6 +10,7 @@
 //! is an audit surface a human may want to overrule.
 
 use anyhow::Result;
+use serde::Serialize;
 use std::collections::HashMap;
 
 use crate::db::queries::{
@@ -19,10 +20,10 @@ use crate::db::queries::{
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
-pub fn run(limit: usize, summary: bool, printer: &Printer) -> Result<()> {
+pub fn run(limit: usize, summary: bool, stale: bool, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
-    run_with_db(&store, &cwd, limit, summary, printer)
+    run_with_db(&store, &cwd, limit, summary, stale, printer)
 }
 
 pub fn run_with_db(
@@ -30,9 +31,13 @@ pub fn run_with_db(
     root: &std::path::Path,
     limit: usize,
     summary: bool,
+    stale: bool,
     printer: &Printer,
 ) -> Result<()> {
     let snapshot = db.query_snapshot()?;
+    if stale {
+        return render_stale_severity(&snapshot, root, limit, printer);
+    }
     let report = db.smell_report(&snapshot)?;
     let registry = db.vocab_term_count()?;
     let ignores = db.list_ignores()?;
@@ -49,6 +54,282 @@ pub fn run_with_db(
         printer,
     )
 }
+/// `loom smells --stale`: turn the undifferentiated "N stale" wall of red into
+/// a triaged queue (card 6171c646). Staleness is binary today (sync flips
+/// `needs_reverification` when a grounding file's content_hash changes), so
+/// 343 stale reads the same for a one-line tweak as a full rewrite. This view
+/// splits + ranks by what loom can HONESTLY know live:
+///
+///   broken   — a grounding file is missing/unreadable, or an IMPLEMENTS
+///              locator is no longer present in the file. The grounding target
+///              is GONE; this needs re-grounding (`loom edge implement`), not
+///              just re-inspection. Highest priority.
+///   drift    — the file changed but the grounding target survived. Needs
+///              re-inspection (`loom next --mode fix`). Ranked within the tier
+///              by current blast radius (symbol count of the grounding file) —
+///              biggest re-inspection cost first.
+///   no_grounding — the edge's endpoint intent(s) have no code grounding (a
+///              concept-level edge). Nothing to re-inspect; lowest priority.
+///
+/// Honest gap: this ranks by re-inspection COST, not retrospective drift
+/// MAGNITUDE. Sync overwrites the stored symbol set to current at flag time,
+/// so "how much drifted" is not recoverable live — that needs a future schema
+/// field stamped at flag time. The view says so rather than pretending.
+fn render_stale_severity(
+    snapshot: &QuerySnapshot,
+    root: &std::path::Path,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    // endpoint intent_id -> the codefiles grounding it (path + optional locator)
+    let files_by_intent: HashMap<&str, Vec<(&str, &str)>> = snapshot
+        .implements
+        .iter()
+        .map(|im| {
+            (
+                im.intent_id.as_str(),
+                (im.codefile_path.as_str(), im.locator.as_str()),
+            )
+        })
+        .fold(HashMap::new(), |mut acc, (iid, pair)| {
+            acc.entry(iid).or_default().push(pair);
+            acc
+        });
+
+    let mut rows: Vec<StaleEdge> = Vec::new();
+    // IMPLEMENTS: the edge itself is the grounding (direct file + locator).
+    for im in snapshot
+        .implements
+        .iter()
+        .filter(|im| im.inspection_status == "needs_reverification")
+    {
+        rows.push(score_stale_edge(
+            "implements",
+            &format!("{} ({})", im.intent_name, im.intent_id),
+            vec![(im.codefile_path.as_str(), im.locator.as_str())],
+            root,
+        ));
+    }
+    // RELATES_TO: endpoints are both intents; grounding files = union.
+    for rt in snapshot
+        .relates
+        .iter()
+        .filter(|rt| rt.inspection_status == "needs_reverification")
+    {
+        let mut files: Vec<(&str, &str)> = Vec::new();
+        for eid in [rt.from_id.as_str(), rt.to_id.as_str()] {
+            if let Some(fs) = files_by_intent.get(eid) {
+                files.extend(fs.iter().copied());
+            }
+        }
+        rows.push(score_stale_edge(
+            "relates_to",
+            &format!("{} ↔ {}", rt.from_name, rt.to_name),
+            files,
+            root,
+        ));
+    }
+    // GOVERNS: the intent is the code-grounded endpoint (the rule isn't code).
+    for g in snapshot
+        .governs
+        .iter()
+        .filter(|g| g.inspection_status == "needs_reverification")
+    {
+        let files = files_by_intent
+            .get(g.intent_id.as_str())
+            .cloned()
+            .unwrap_or_default();
+        rows.push(score_stale_edge(
+            "governs",
+            &format!("{} ⊢ {}", g.rule_name, g.intent_name),
+            files,
+            root,
+        ));
+    }
+
+    // Sort: broken first (by broken-count desc), then drift (by weight desc),
+    // then no_grounding, then a stable name tiebreaker.
+    rows.sort_by(|a, b| {
+        a.tier_rank()
+            .cmp(&b.tier_rank())
+            .then_with(|| b.weight.cmp(&a.weight))
+            .then_with(|| a.endpoints.cmp(&b.endpoints))
+    });
+
+    let broken = rows.iter().filter(|r| r.tier == "broken").count();
+    let drift = rows.iter().filter(|r| r.tier == "drift").count();
+    let no_grounding = rows.iter().filter(|r| r.tier == "no_grounding").count();
+    let total = rows.len();
+
+    if printer.json {
+        let shown: Vec<&StaleEdge> = rows.iter().take(limit.max(1)).collect();
+        printer.print_json(&serde_json::json!({
+            "scope": "stale",
+            "stale_total": total,
+            "broken": broken,
+            "drift": drift,
+            "no_grounding": no_grounding,
+            "truncated": shown.len() < total,
+            "edges": shown,
+            "note": "Severity ranks by re-inspection cost (current blast radius), not \
+                     retrospective drift magnitude — sync overwrites the prior symbol set \
+                     at flag time, so drift magnitude needs a future schema field. broken \
+                     = re-ground; drift = re-inspect; no_grounding = concept edge, nothing \
+                     to re-inspect.",
+            "next_step": "broken: re-ground (`loom edge implement`); drift: re-inspect (`loom next --mode fix`)",
+        }));
+        return Ok(());
+    }
+
+    println!("── loom smells · stale severity ────────────────────────────────────");
+    if total == 0 {
+        println!("  ✓ No stale edges — nothing flagged needs_reverification.");
+        return Ok(());
+    }
+    println!(
+        "  {total} stale edge(s) — {broken} broken (re-ground) · {drift} drift (re-inspect) · {no_grounding} no grounding"
+    );
+    println!("  broken first (grounding target gone), then drift by blast radius.");
+    println!("  Ranks by re-inspection cost, NOT drift magnitude (sync overwrites the");
+    println!("  prior symbol set at flag time — drift magnitude needs a future field).");
+    println!();
+    for row in rows.iter().take(limit.max(1)) {
+        let mark = match row.tier.as_str() {
+            "broken" => "✗",
+            "drift" => "~",
+            _ => "·",
+        };
+        println!(
+            "  {mark} [{tier}] {kind}  {endpoints}",
+            tier = row.tier,
+            kind = row.kind,
+            endpoints = row.endpoints
+        );
+        println!(
+            "      files: {}",
+            if row.files.is_empty() {
+                "(none)".into()
+            } else {
+                row.files.join(", ")
+            }
+        );
+        println!("      {}", row.note);
+    }
+    if let Some(m) = crate::output::more_marker(
+        total,
+        limit.max(1),
+        "`loom smells --stale --json` for the full list",
+    ) {
+        println!("  {m}");
+    }
+    println!();
+    println!("  → broken: re-ground (`loom edge implement <intent> <path> --locator …`);");
+    println!("    drift: re-inspect (`loom next --mode fix`).");
+    Ok(())
+}
+
+/// Score one stale edge into a tier + weight from the live state of its
+/// grounding files. `files` is (path, locator) pairs; for non-IMPLEMENTS edges
+/// the locator is "" (the edge is file-level, not symbol-level).
+fn score_stale_edge(
+    kind: &'static str,
+    endpoints: &str,
+    files: Vec<(&str, &str)>,
+    root: &std::path::Path,
+) -> StaleEdge {
+    if files.is_empty() {
+        return StaleEdge {
+            kind,
+            endpoints: endpoints.to_string(),
+            tier: "no_grounding".to_string(),
+            weight: 0,
+            files: Vec::new(),
+            note: "no code grounding (concept edge) — nothing to re-inspect".to_string(),
+        };
+    }
+    let mut broken_count = 0usize;
+    let mut max_blast = 0usize;
+    let mut broken_reasons: Vec<&str> = Vec::new();
+    // Dedup by path (both endpoints may ground the same file) so a single
+    // missing file isn't counted twice toward broken_count and the display
+    // stays clean. First locator wins; later duplicates are dropped.
+    let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    let deduped: Vec<(&str, &str)> = files
+        .iter()
+        .filter(|(p, _)| seen.insert(p))
+        .copied()
+        .collect();
+    for (path, locator) in &deduped {
+        match std::fs::read_to_string(root.join(path)) {
+            Ok(content) => {
+                if !locator.is_empty() && !crate::repo::locator_present(&content, locator) {
+                    broken_count += 1;
+                    if !broken_reasons.contains(&"locator gone") {
+                        broken_reasons.push("locator gone");
+                    }
+                    continue;
+                }
+                let blast = crate::repo::extract_physical_facts(root, path, &content)
+                    .symbols
+                    .len();
+                if blast > max_blast {
+                    max_blast = blast;
+                }
+            }
+            Err(_) => {
+                broken_count += 1;
+                if !broken_reasons.contains(&"file missing/unreadable") {
+                    broken_reasons.push("file missing/unreadable");
+                }
+            }
+        }
+    }
+    let (tier, weight, note) = if broken_count > 0 {
+        (
+            "broken".to_string(),
+            broken_count,
+            format!(
+                "grounding target gone ({}): re-ground",
+                broken_reasons.join(", ")
+            ),
+        )
+    } else {
+        (
+            "drift".to_string(),
+            max_blast,
+            format!("target survived; blast radius {max_blast} symbol(s): re-inspect"),
+        )
+    };
+    StaleEdge {
+        kind,
+        endpoints: endpoints.to_string(),
+        tier,
+        weight,
+        files: deduped.iter().map(|(p, _)| p.to_string()).collect(),
+        note,
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct StaleEdge {
+    kind: &'static str,
+    endpoints: String,
+    tier: String,
+    weight: usize,
+    files: Vec<String>,
+    note: String,
+}
+
+impl StaleEdge {
+    fn tier_rank(&self) -> u8 {
+        match self.tier.as_str() {
+            "broken" => 0,
+            "drift" => 1,
+            _ => 2,
+        }
+    }
+}
+
 fn kind_counts(smells: &[Smell]) -> std::collections::BTreeMap<String, usize> {
     let mut counts = std::collections::BTreeMap::new();
     for smell in smells {
@@ -599,6 +880,70 @@ fn max_time(current: String, candidate: String) -> String {
 mod tests {
     use super::*;
     use crate::types::{Intent, Note};
+
+    #[test]
+    fn stale_edge_with_no_grounding_is_no_grounding_tier_not_broken() {
+        // A concept-level edge (endpoint intent has no IMPLEMENTS grounding)
+        // scores no_grounding — there is nothing to re-inspect, so it must NOT
+        // read as broken (which would send a driver re-grounding nothing).
+        let edge = score_stale_edge("relates_to", "A ↔ B", vec![], std::path::Path::new("."));
+        assert_eq!(edge.tier, "no_grounding");
+        assert_eq!(edge.weight, 0);
+        assert!(edge.note.contains("concept edge"));
+    }
+
+    #[test]
+    fn stale_edges_sort_broken_first_then_drift_by_blast_radius() {
+        // The queue triages: broken (re-ground) before drift (re-inspect), and
+        // within drift the biggest blast radius first. no_grounding is last.
+        let mut rows = [
+            StaleEdge {
+                kind: "relates_to",
+                endpoints: "small".into(),
+                tier: "drift".into(),
+                weight: 3,
+                files: vec![],
+                note: "n".into(),
+            },
+            StaleEdge {
+                kind: "relates_to",
+                endpoints: "big".into(),
+                tier: "drift".into(),
+                weight: 109,
+                files: vec![],
+                note: "n".into(),
+            },
+            StaleEdge {
+                kind: "implements",
+                endpoints: "gone".into(),
+                tier: "broken".into(),
+                weight: 1,
+                files: vec![],
+                note: "n".into(),
+            },
+            StaleEdge {
+                kind: "relates_to",
+                endpoints: "concept".into(),
+                tier: "no_grounding".into(),
+                weight: 0,
+                files: vec![],
+                note: "n".into(),
+            },
+        ];
+        rows.sort_by(|a, b| {
+            a.tier_rank()
+                .cmp(&b.tier_rank())
+                .then_with(|| b.weight.cmp(&a.weight))
+                .then_with(|| a.endpoints.cmp(&b.endpoints))
+        });
+        assert_eq!(rows[0].endpoints, "gone", "broken is first");
+        assert_eq!(
+            rows[1].endpoints, "big",
+            "drift ranked by blast radius desc"
+        );
+        assert_eq!(rows[2].endpoints, "small");
+        assert_eq!(rows[3].endpoints, "concept", "no_grounding is last");
+    }
 
     fn intent(id: &str, updated_at: &str) -> Intent {
         Intent {

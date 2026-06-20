@@ -1079,6 +1079,67 @@ fn sqlite_coverage_adjudicated_drills_down_per_symbol() {
     );
 }
 
+// HONESTY-NEXT staleness-severity (card 6171c646): `loom smells --stale` turns
+// the undifferentiated "N stale" wall of red into a triaged queue. The JSON
+// scope is `stale`; broken + drift + no_grounding partition the total; the note
+// is honest that severity ranks by re-inspection cost (blast radius), NOT
+// retrospective drift magnitude (sync overwrites the prior symbol set). The
+// human view carries the stale-severity header + the broken/drift split.
+#[test]
+fn sqlite_smells_stale_triages_the_wall_of_red() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("smells-stale");
+
+    let json = run_json(&graph.root, &["smells", "--stale", "--json"]);
+    assert_eq!(
+        json["scope"].as_str().expect("scope"),
+        "stale",
+        "stale view is its own scope: {json}"
+    );
+    let total = json["stale_total"].as_i64().expect("stale_total");
+    let broken = json["broken"].as_i64().expect("broken");
+    let drift = json["drift"].as_i64().expect("drift");
+    let no_grounding = json["no_grounding"].as_i64().expect("no_grounding");
+    assert!(total >= 0, "stale_total is a non-negative count: {json}");
+    assert_eq!(
+        broken + drift + no_grounding,
+        total,
+        "broken + drift + no_grounding partitions the stale total: {json}"
+    );
+    let edges = json["edges"].as_array().expect("edges array");
+    for edge in edges {
+        let tier = edge["tier"].as_str().expect("tier");
+        assert!(
+            matches!(tier, "broken" | "drift" | "no_grounding"),
+            "every edge has a known tier: {edge}"
+        );
+        assert!(
+            edge["files"].is_array(),
+            "every edge carries its files: {edge}"
+        );
+        assert!(
+            edge["note"].is_string(),
+            "every edge carries a note: {edge}"
+        );
+    }
+    let note = json["note"].as_str().expect("note");
+    assert!(
+        note.contains("drift magnitude"),
+        "the note is honest that this is NOT retrospective drift magnitude: {note}"
+    );
+
+    // Human: the stale-severity header + the broken/drift split line.
+    let text = run_text_as(&graph.root, &["smells", "--stale"], "llm:quality");
+    assert!(
+        text.contains("stale severity"),
+        "human view carries the stale-severity header: {text}"
+    );
+    assert!(
+        text.contains("broken") && text.contains("drift"),
+        "human view splits broken vs drift: {text}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();

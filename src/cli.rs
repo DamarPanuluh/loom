@@ -438,6 +438,16 @@ pub enum Command {
         /// Print only counts, top summaries, and instrumentation blind spots.
         #[arg(long)]
         summary: bool,
+        /// Rank stale edges by severity — turn the undifferentiated "N stale"
+        /// wall of red into a triaged queue. Splits broken groundings (locator
+        /// gone / file missing → re-ground) from drift (target survived →
+        /// re-inspect), ranked within drift by current blast radius (symbol
+        /// count of the grounding file). Honest about what it can't know: sync
+        /// overwrites the prior symbol set, so retrospective drift MAGNITUDE
+        /// needs a future schema field stamped at flag time; this ranks by
+        /// re-inspection cost, not drift size.
+        #[arg(long)]
+        stale: bool,
     },
 
     /// Reconcile files on disk against the graph: grounded / excluded /

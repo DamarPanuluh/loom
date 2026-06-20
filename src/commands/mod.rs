@@ -104,7 +104,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
-        Command::Smells      { limit, summary } => smells::run(limit, summary, &printer),
+        Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
