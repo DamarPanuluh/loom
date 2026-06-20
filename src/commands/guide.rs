@@ -88,6 +88,11 @@ const ORCHESTRATION: &[&str] = &[
     // `orchestration.performance` field can never drift — see that const).
     "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
     "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
+    "SOLO MODE IS SILENT BY DEFAULT: a bare `llm` (no LOOM_AGENT role) passes every lane — correct for",
+    "  one driver, but in a MULTI-AGENT run a forgotten LOOM_AGENT silently records every verdict as",
+    "  unguarded solo (separation of duties collapses with no error). `loom batch` FLAGS this at record",
+    "  time (advisory, never rejected), and `loom doctor` hints when ALL verdicts are solo — set",
+    "  LOOM_AGENT=llm:<role> per agent before recording verdicts if you mean the lanes to bind.",
     "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
     "  fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and the AUDIT gate",
     "  (zero open `loom smells` findings — every suspicion resolved or refuted via its remedy).",

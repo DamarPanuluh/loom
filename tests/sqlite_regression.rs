@@ -540,6 +540,65 @@ fn sqlite_batch_flags_copied_evidence() {
     );
 }
 
+// audit #17 (lane-bypass): a bare `llm` agent (no LOOM_AGENT role) solo-passes
+// every lane, so a multi-agent batch run with a forgotten LOOM_AGENT silently
+// records every verdict as unguarded solo. The batch path must FLAG that at
+// record time (advisory, never reject — solo batch by one driver is legit).
+// Runs the honest edge-specific-evidence fixture (no copied-evidence warning)
+// with a bare `llm` so the ONLY warning that can fire is the solo-mode one.
+#[test]
+fn sqlite_batch_flags_solo_mode_when_no_role_declared() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sqlite-batch-solo");
+    let ids = first_n_intent_ids(&graph.root, 4);
+    assert!(ids.len() >= 4, "need 4 intents for the solo-mode fixture");
+
+    // Edge-specific evidence → no copied-evidence warning. Bare `llm` →
+    // session_role() is None → the solo-mode advisory is the only warning.
+    let honest: Vec<String> = (1..4)
+        .map(|i| {
+            format!(
+                "{{\"op\":\"ground\",\"a\":\"{}\",\"b\":\"{}\",\
+                 \"criterion\":\"these coexist cleanly without coupling\",\
+                 \"evidence\":\"edge {i}: a distinct, specific observation about this exact pair\",\"confidence\":0.6}}",
+                ids[0], ids[i]
+            )
+        })
+        .collect();
+    write_scratch_file(&graph.root, "scratch/solo.jsonl", &honest.join("\n"));
+    let flagged = run_json_as(
+        &graph.root,
+        &["batch", "scratch/solo.jsonl", "--json"],
+        "llm", // bare — no role, solo mode
+    );
+    assert_eq!(flagged["failed"], 0, "solo verdicts apply: {flagged}");
+    assert_eq!(
+        flagged["warnings_total"].as_i64().unwrap_or(-1),
+        1,
+        "exactly one warning — the solo-mode advisory (no copied evidence here): {flagged}"
+    );
+    let warnings = flagged["warnings"].as_array().expect("warnings array");
+    assert!(
+        warnings
+            .iter()
+            .any(|w| w.as_str().unwrap_or("").starts_with("solo mode:")),
+        "the solo-mode advisory must be present: {flagged}"
+    );
+
+    // Same fixture, role declared → no solo warning, no copied-evidence
+    // warning → clean. Proves the warning is solo-mode-specific, not unconditional.
+    let clean = run_json_as(
+        &graph.root,
+        &["batch", "scratch/solo.jsonl", "--json"],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        clean["warnings_total"].as_i64().unwrap_or(-1),
+        0,
+        "a role-declared batch with edge-specific evidence stays clean: {clean}"
+    );
+}
+
 #[test]
 fn sqlite_batch_resolves_evidence_locators() {
     let _guard = sqlite_test_lock();

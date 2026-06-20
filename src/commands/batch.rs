@@ -120,7 +120,7 @@ fn run_with_sqlite(
         .filter(|(_, c)| *c >= REUSE_FLAG)
         .collect();
     reused.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
-    let warnings: Vec<String> = reused
+    let mut warnings: Vec<String> = reused
         .iter()
         .map(|(evidence, c)| {
             let preview: String = evidence.chars().take(60).collect();
@@ -130,6 +130,24 @@ fn run_with_sqlite(
             )
         })
         .collect();
+
+    // Lane-bypass honesty (audit card 76223551): a bare `llm`/`human` agent
+    // (no LOOM_AGENT role) solo-passes every lane, so a multi-agent batch run
+    // with a forgotten LOOM_AGENT silently records every verdict as unguarded
+    // solo — separation of duties collapses with NO signal at record time. Solo
+    // batch by one driver is legitimate, so FLAG (advisory, like the
+    // copied-evidence warning), never reject. `loom doctor` carries the
+    // durable graph-wide version (it already hints when ALL verdicts are solo);
+    // this is the at-record-time surfacing the doctor hint can't give, fired
+    // once per run only when a verdict was actually recorded in solo mode.
+    if ok > 0 && crate::agent::session_role().is_none() {
+        warnings.push(format!(
+            "solo mode: {ok} verdict(s) recorded with no LOOM_AGENT role declared — lane gates are \
+             OFF (a bare llm passes every lane). Legitimate for one driver; for real separation of \
+             duties in a multi-agent run set LOOM_AGENT=llm:<role> per agent \
+             (analyzer|fixer|quality|reviewer|validator). See `loom guide`."
+        ));
+    }
 
     let snapshot = store.query_snapshot()?;
     let gs = store.graph_state(&snapshot)?;
@@ -173,7 +191,7 @@ fn run_with_sqlite(
         }
         if !warnings.is_empty() {
             println!(
-                "  ⚠ {} epistemic warning(s) (advisory — not rejected):",
+                "  ⚠ {} advisory warning(s) (flagged — not rejected):",
                 warnings.len()
             );
             for w in &warnings {
