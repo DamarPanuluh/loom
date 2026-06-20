@@ -774,6 +774,33 @@ fn sqlite_take_template_confidence_placeholder_and_hints_json() {
         joined.contains("--dry-run"),
         "the dry-run guardrail must be surfaced next to the template: {joined}"
     );
+
+    // The QUALITY lane (GOVERNS verdicts — the highest-stakes green) routes
+    // through a SEPARATE emitter (run_take_quality), which historically hard-coded
+    // a paste-ready "confidence": 0.9 while promising a placeholder. Assert it now
+    // carries the same placeholder, so a verbatim paste can't blind-stamp norms.
+    let q = run_json(
+        &graph.root,
+        &["next", "--take", "5", "--mode", "quality", "--json"],
+    );
+    let qtmpl = q["batch_template"]
+        .as_array()
+        .expect("quality batch_template array");
+    assert!(
+        !qtmpl.is_empty(),
+        "quality --take must emit rule_verdict template lines on this fixture: {q}"
+    );
+    for l in qtmpl {
+        let s = l.as_str().expect("template line is a JSON string");
+        assert!(
+            s.contains("\"op\":\"rule_verdict\""),
+            "quality lane emits rule_verdict ops: {s}"
+        );
+        assert!(
+            s.contains("\"confidence\":\"<confidence>\"") && !s.contains("\"confidence\":0.9"),
+            "quality verdict template must carry a confidence placeholder, not a 0.9 default: {s}"
+        );
+    }
 }
 
 #[test]

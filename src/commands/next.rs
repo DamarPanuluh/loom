@@ -523,7 +523,7 @@ fn run_take_quality(store: &dyn GraphReadRepository, take: usize, printer: &Prin
             "intent": g.intent_id,
             "status": "passing",
             "evidence": "<evidence>",
-            "confidence": 0.9,
+            "confidence": "<confidence>",
         });
         if g.criterion.is_empty() {
             line["criterion"] = "<criterion>".into();
