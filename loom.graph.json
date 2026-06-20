@@ -91336,15 +91336,15 @@
         "links": [],
         "normalized_claim": "",
         "raw_text": "HONESTY-NEXT [staleness-severity-rank-the-red] [status/medium] loom's dominant red is undifferentiated: '343 stale' reads the same for a one-line typo tweak as for a full rewrite. loc: staleness is tracked per-edge (last_inspected vs content_hash drift) but no severity ranking; src/db/queries/stats.rs + the fix/validate queues. impact: honest but low-signal — trivial staleness drowns real drift, so a driver cannot triage the wall of red. suggestion: loom already holds per-codefile content_hash and IMPLEMENTS locators with line spans — compute how much the grounded region actually drifted (hash the locator span now vs at inspection, or a diff-size proxy) and rank stale edges by severity. Turns '343 stale' into a ranked, actionable queue. Honesty is the floor; honest + triaged is the next step.",
-        "resolution": "",
+        "resolution": "Shipped in e9fa117. loom smells --stale splits the 343 stale into broken (re-ground) vs drift (re-inspect, ranked by blast radius) vs no_grounding. Ranks by re-inspection cost honestly, flagging that drift magnitude needs a future schema field. The wall of red is now a triaged queue.",
         "route_command": "",
         "route_kind": "",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "new",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-19T17:46:38.517163+00:00"
+        "updated_at": "2026-06-20T00:58:13.154528+00:00"
       },
       {
         "author": "llm",
