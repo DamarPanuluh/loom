@@ -5,7 +5,10 @@ use std::path::Path;
 
 use crate::db::ensure_initialized;
 use crate::output::Printer;
-use crate::types::SyncReport;
+use crate::types::{
+    CodeFile, Governs, Implements, RelatesTo, ServesEdge, SyncReport, TargetsEdge, ValidatesEdge,
+    Validation,
+};
 
 pub fn run(path: &str, printer: &Printer) -> Result<()> {
     let base = if path == "." {
@@ -21,8 +24,12 @@ pub fn run(path: &str, printer: &Printer) -> Result<()> {
     run_with_sqlite(&mut store, &base, printer)
 }
 
+type SqliteStore = crate::db::sqlite::SqliteGraphStore;
+
+const REPORT_CAP: usize = 20;
+
 fn run_with_sqlite(
-    store: &mut crate::db::sqlite::SqliteGraphStore,
+    store: &mut SqliteStore,
     base: &std::path::Path,
     printer: &Printer,
 ) -> Result<()> {
@@ -30,109 +37,138 @@ fn run_with_sqlite(
     let files_checked = codefiles.len();
     let now = chrono::Utc::now().to_rfc3339();
 
+    let sync_data = load_sync_data(store)?;
+    let intents_by_codefile = group_intents_by_codefile(&sync_data.all_implements);
+    let ctx = SyncContext {
+        now: &now,
+        active: &sync_data.active,
+        intents_by_codefile: &intents_by_codefile,
+        all_implements: &sync_data.all_implements,
+        all_relates: &sync_data.all_relates,
+        all_governs: &sync_data.all_governs,
+        all_targets: &sync_data.all_targets,
+        all_serves: &sync_data.all_serves,
+        all_validates: &sync_data.all_validates,
+        all_validations: &sync_data.all_validations,
+    };
+    let mut state = SyncState::default();
+
+    scan_files_and_flag_changes(store, base, &codefiles, &ctx, &mut state)?;
+    update_physical_facts_and_flag_locators(store, base, &codefiles, &ctx, &mut state)?;
+    flag_unverifiable_files(store, &codefiles, &ctx, &mut state)?;
+    ripple_delegations(store, base, &ctx, &mut state)?;
+    flush_pending_hash_updates(store, &state.pending_hash_updates)?;
+
+    store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
+
+    let transitions_compacted = compact_transitions(store)?;
+    let post_snapshot = store.query_snapshot()?;
+    let intents_priority_bumped = crate::db::queries::ripple_bump_by_intent(&post_snapshot).len();
+    let report = build_sync_report(
+        files_checked,
+        intents_priority_bumped,
+        transitions_compacted,
+        state,
+    );
+
+    print_sync_report(store, printer, &post_snapshot, report)
+}
+
+struct SyncData {
+    active: HashSet<String>,
+    all_implements: Vec<Implements>,
+    all_relates: Vec<RelatesTo>,
+    all_governs: Vec<Governs>,
+    all_validates: Vec<ValidatesEdge>,
+    all_validations: Vec<Validation>,
+    all_targets: Vec<TargetsEdge>,
+    all_serves: Vec<ServesEdge>,
+}
+
+struct SyncContext<'a> {
+    now: &'a str,
+    active: &'a HashSet<String>,
+    intents_by_codefile: &'a HashMap<&'a str, Vec<String>>,
+    all_implements: &'a [Implements],
+    all_relates: &'a [RelatesTo],
+    all_governs: &'a [Governs],
+    all_validates: &'a [ValidatesEdge],
+    all_validations: &'a [Validation],
+    all_targets: &'a [TargetsEdge],
+    all_serves: &'a [ServesEdge],
+}
+
+#[derive(Default)]
+struct SyncState {
+    files_changed: usize,
+    targets_flagged: usize,
+    relates_to_flagged: usize,
+    governs_flagged: usize,
+    serves_flagged: usize,
+    validations_invalidated: usize,
+    changes: Vec<String>,
+    missing_files: Vec<String>,
+    escaped_files: Vec<String>,
+    locators_stale: Vec<String>,
+    text_contents: HashMap<String, String>,
+    non_utf8_files: HashSet<String>,
+    related_edges_flagged: HashSet<String>,
+    governs_edges_flagged_ids: HashSet<String>,
+    targets_edges_flagged_ids: HashSet<String>,
+    serves_edges_flagged_ids: HashSet<String>,
+    invalidated_validation_ids: HashSet<String>,
+    pending_hash_updates: Vec<(String, String, Option<String>)>,
+}
+
+struct ScannedCodeFile {
+    mtime_str: String,
+    disk_utc: chrono::DateTime<chrono::Utc>,
+    new_hash: String,
+}
+
+fn load_sync_data(store: &mut SqliteStore) -> Result<SyncData> {
     let snapshot = store.query_snapshot()?;
-    let active: HashSet<String> = snapshot
+    let active = snapshot
         .intents
         .iter()
         .map(|intent| intent.id.clone())
         .collect();
-    let all_implements = snapshot.implements.clone();
+    Ok(SyncData {
+        active,
+        all_implements: snapshot.implements.clone(),
+        all_relates: snapshot.relates.clone(),
+        all_governs: snapshot.governs.clone(),
+        all_validates: snapshot.validates.clone(),
+        all_validations: snapshot.validations.clone(),
+        all_targets: store.list_all_targets()?,
+        all_serves: store.list_all_serves()?,
+    })
+}
+
+fn group_intents_by_codefile(all_implements: &[Implements]) -> HashMap<&str, Vec<String>> {
     let mut intents_by_codefile: HashMap<&str, Vec<String>> = HashMap::new();
-    for im in &all_implements {
+    for im in all_implements {
         intents_by_codefile
             .entry(im.codefile_id.as_str())
             .or_default()
             .push(im.intent_id.clone());
     }
-    let all_relates = snapshot.relates.clone();
-    let all_governs = snapshot.governs.clone();
-    let all_validates = snapshot.validates.clone();
-    let all_validations = snapshot.validations.clone();
-    let all_targets = store.list_all_targets()?;
-    let all_serves = store.list_all_serves()?;
+    intents_by_codefile
+}
 
-    let mut files_changed = 0usize;
-    let mut targets_flagged = 0usize;
-    let mut relates_to_flagged = 0usize;
-    let mut governs_flagged = 0usize;
-    let mut serves_flagged = 0usize;
-    let mut validations_invalidated = 0usize;
-    let mut changes: Vec<String> = Vec::new();
-    let mut missing_files: Vec<String> = Vec::new();
-    let mut escaped_files: Vec<String> = Vec::new();
-    let mut text_contents: HashMap<String, String> = HashMap::new();
-    let mut non_utf8_files: HashSet<String> = HashSet::new();
-    let mut related_edges_flagged: HashSet<String> = HashSet::new();
-    let mut governs_edges_flagged_ids: HashSet<String> = HashSet::new();
-    let mut targets_edges_flagged_ids: HashSet<String> = HashSet::new();
-    let mut serves_edges_flagged_ids: HashSet<String> = HashSet::new();
-    let mut invalidated_validation_ids: HashSet<String> = HashSet::new();
-    // Crash-safety (atomic-enough sync): a changed file's content hash is the
-    // signal that suppresses re-processing on the next sync. Writing it BEFORE
-    // the file's ripple (edge flips / validation invalidation / fact updates)
-    // means a kill in between would advance the hash while leaving dependent
-    // edges green-but-stale, and the file would never be re-detected. So we
-    // COLLECT hash updates here and flush them LAST, after every file's ripple
-    // has landed. A kill anywhere before the flush leaves the hash unadvanced;
-    // the next `loom sync` re-detects the file and re-applies the (idempotent)
-    // ripple. (cf_id, new_hash, Some(mtime) for a content change | None to adopt
-    // a legacy hash without touching mtime.)
-    let mut pending_hash_updates: Vec<(String, String, Option<String>)> = Vec::new();
-
-    for cf in &codefiles {
-        let Some(rel) = crate::repo::confine(base, Path::new(&cf.path)) else {
-            escaped_files.push(cf.path.clone());
+fn scan_files_and_flag_changes(
+    store: &mut SqliteStore,
+    base: &Path,
+    codefiles: &[CodeFile],
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+) -> Result<()> {
+    for cf in codefiles {
+        let Some(scanned) = scan_codefile(base, cf, state)? else {
             continue;
         };
-        let abs_path = base.join(rel);
-        let meta = match fs::metadata(&abs_path) {
-            Ok(m) => m,
-            Err(_) => {
-                missing_files.push(cf.path.clone());
-                continue;
-            }
-        };
-        let mtime = meta.modified().map_err(|e| {
-            anyhow::anyhow!(
-                "Cannot read mtime for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
-                abs_path.display(), e
-            )
-        })?;
-        let mtime_str = {
-            let dt: chrono::DateTime<chrono::Utc> = mtime.into();
-            dt.to_rfc3339()
-        };
-        let bytes = fs::read(&abs_path).map_err(|e| {
-            anyhow::anyhow!(
-                "Cannot read bytes for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
-                abs_path.display(), e
-            )
-        })?;
-        let new_hash = crate::repo::content_hash(&bytes);
-        match String::from_utf8(bytes) {
-            Ok(content) => {
-                text_contents.insert(cf.path.clone(), content);
-            }
-            Err(_) => {
-                non_utf8_files.insert(cf.path.clone());
-            }
-        }
-        let changed = if !cf.content_hash.is_empty() {
-            new_hash != cf.content_hash
-        } else if cf.last_modified.is_empty() {
-            true
-        } else {
-            match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
-                Ok(stored) => {
-                    let stored_utc = stored.with_timezone(&chrono::Utc);
-                    let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
-                    disk_utc > stored_utc
-                }
-                Err(_) => true,
-            }
-        };
-
-        let hash_updated = new_hash != cf.content_hash;
+        let changed = codefile_changed(cf, &scanned);
+        let hash_updated = scanned.new_hash != cf.content_hash;
         if hash_updated && !changed {
             // Legacy graph (no stored content_hash): adopt the content hash so
             // future syncs are content-addressed. Deliberately does NOT touch
@@ -140,22 +176,34 @@ fn run_with_sqlite(
             // must never drift the committed graph (so `loom export --check`
             // stays a reliable gate and smell adjudication only re-opens on
             // real content change). last_modified now moves ONLY with content.
-            pending_hash_updates.push((cf.id.clone(), new_hash.clone(), None));
+            state
+                .pending_hash_updates
+                .push((cf.id.clone(), scanned.new_hash.clone(), None));
         }
         if !changed {
             continue;
         }
 
-        files_changed += 1;
-        changes.push(cf.path.clone());
-        pending_hash_updates.push((cf.id.clone(), new_hash.clone(), Some(mtime_str.clone())));
+        state.files_changed += 1;
+        state.changes.push(cf.path.clone());
+        state.pending_hash_updates.push((
+            cf.id.clone(),
+            scanned.new_hash.clone(),
+            Some(scanned.mtime_str.clone()),
+        ));
 
         let cause = format!("{} changed", cf.path);
-        let intent_ids = intents_by_codefile
+        let intent_ids = ctx
+            .intents_by_codefile
             .get(cf.id.as_str())
             .cloned()
             .unwrap_or_default();
-        let affected = affected_intents(base, cf, text_contents.get(&cf.path), &all_implements);
+        let affected = affected_intents(
+            base,
+            cf,
+            state.text_contents.get(&cf.path),
+            ctx.all_implements,
+        );
         let effective_ids: Vec<String> = match &affected {
             None => intent_ids.clone(),
             Some(set) => intent_ids
@@ -165,73 +213,212 @@ fn run_with_sqlite(
                 .collect(),
         };
 
-        for iid in effective_ids
-            .iter()
-            .filter(|intent_id| active.contains(*intent_id))
-        {
-            for edge in all_relates
-                .iter()
-                .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
-                // Kind-aware staleness: a meaning-only edge (every kind is
-                // shares_vocab/same_domain/doc_reference) tracks concept overlap,
-                // not this file's code — a code change must not re-open it. A
-                // `stable` edge is a settled coupling the analyst exempted from
-                // code-change churn (`loom edge stable`), so skip it too.
-                .filter(|edge| {
-                    !edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds)
-                })
-            {
-                if related_edges_flagged.insert(edge.id.clone())
-                    && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
-                {
-                    relates_to_flagged += 1;
-                }
-            }
-            for edge in all_governs.iter().filter(|edge| edge.intent_id == *iid) {
-                if governs_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_governs_needs_reverification(edge, &cause, &now)?
-                {
-                    governs_flagged += 1;
-                }
-            }
-            for edge in all_targets.iter().filter(|edge| edge.intent_id == *iid) {
-                if targets_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_targets_needs_reverification(edge, &cause, &now)?
-                {
-                    targets_flagged += 1;
-                }
-            }
-            for edge in all_serves.iter().filter(|edge| edge.intent_id == *iid) {
-                if serves_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_serves_needs_reverification(edge, &cause, &now)?
-                {
-                    serves_flagged += 1;
-                }
-            }
-        }
+        flag_code_ripple_for_intents(store, ctx, state, &effective_ids, &cause)?;
+        invalidate_validations(store, ctx, state, &effective_ids)?;
+    }
+    Ok(())
+}
 
-        for edge in all_validates
-            .iter()
-            .filter(|edge| effective_ids.iter().any(|iid| iid == &edge.intent_id))
-        {
-            if !invalidated_validation_ids.insert(edge.validation_id.clone()) {
-                continue;
-            }
-            if all_validations.iter().any(|validation| {
-                validation.id == edge.validation_id
-                    && validation.last_result != "not_run"
-                    && validation.last_result != "blocked"
-                    && !validation.last_result.is_empty()
-            }) && store.invalidate_validation(&edge.validation_id)?
-            {
-                validations_invalidated += 1;
-            }
+fn scan_codefile(
+    base: &Path,
+    cf: &CodeFile,
+    state: &mut SyncState,
+) -> Result<Option<ScannedCodeFile>> {
+    let Some(rel) = crate::repo::confine(base, Path::new(&cf.path)) else {
+        state.escaped_files.push(cf.path.clone());
+        return Ok(None);
+    };
+    let abs_path = base.join(rel);
+    let meta = match fs::metadata(&abs_path) {
+        Ok(m) => m,
+        Err(_) => {
+            state.missing_files.push(cf.path.clone());
+            return Ok(None);
+        }
+    };
+    let mtime = meta.modified().map_err(|e| {
+        anyhow::anyhow!(
+            "Cannot read mtime for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
+            abs_path.display(), e
+        )
+    })?;
+    let disk_utc: chrono::DateTime<chrono::Utc> = mtime.into();
+    let mtime_str = disk_utc.to_rfc3339();
+    let bytes = fs::read(&abs_path).map_err(|e| {
+        anyhow::anyhow!(
+            "Cannot read bytes for {}: {} — restore the file (or `loom codefile remove <path>` if it is intentionally gone), then re-run `loom sync`.",
+            abs_path.display(), e
+        )
+    })?;
+    let new_hash = crate::repo::content_hash(&bytes);
+    match String::from_utf8(bytes) {
+        Ok(content) => {
+            state.text_contents.insert(cf.path.clone(), content);
+        }
+        Err(_) => {
+            state.non_utf8_files.insert(cf.path.clone());
         }
     }
+    Ok(Some(ScannedCodeFile {
+        mtime_str,
+        disk_utc,
+        new_hash,
+    }))
+}
 
-    let mut locators_stale: Vec<String> = Vec::new();
-    for cf in &codefiles {
-        if let Some(content) = text_contents.get(&cf.path) {
+fn codefile_changed(cf: &CodeFile, scanned: &ScannedCodeFile) -> bool {
+    if !cf.content_hash.is_empty() {
+        scanned.new_hash != cf.content_hash
+    } else if cf.last_modified.is_empty() {
+        true
+    } else {
+        match chrono::DateTime::parse_from_rfc3339(&cf.last_modified) {
+            Ok(stored) => scanned.disk_utc > stored.with_timezone(&chrono::Utc),
+            Err(_) => true,
+        }
+    }
+}
+
+fn flag_code_ripple_for_intents(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    intent_ids: &[String],
+    cause: &str,
+) -> Result<()> {
+    for iid in intent_ids
+        .iter()
+        .filter(|intent_id| ctx.active.contains(*intent_id))
+    {
+        flag_relates(store, ctx, state, iid, cause, true)?;
+        flag_governs(store, ctx, state, iid, cause)?;
+        flag_targets(store, ctx, state, iid, cause)?;
+        flag_serves(store, ctx, state, iid, cause)?;
+    }
+    Ok(())
+}
+
+fn flag_relates(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    iid: &str,
+    cause: &str,
+    require_code_stale_kind: bool,
+) -> Result<()> {
+    for edge in ctx
+        .all_relates
+        .iter()
+        .filter(|edge| edge.from_id == iid || edge.to_id == iid)
+        // Kind-aware staleness: a meaning-only edge (every kind is
+        // shares_vocab/same_domain/doc_reference) tracks concept overlap,
+        // not this file's code — a code change must not re-open it. A
+        // `stable` edge is a settled coupling the analyst exempted from
+        // code-change churn (`loom edge stable`), so skip it too.
+        .filter(|edge| {
+            !require_code_stale_kind
+                || (!edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds))
+        })
+    {
+        if state.related_edges_flagged.insert(edge.id.clone())
+            && store.flag_relates_to_needs_reverification(edge, cause, ctx.now)?
+        {
+            state.relates_to_flagged += 1;
+        }
+    }
+    Ok(())
+}
+
+fn flag_governs(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    iid: &str,
+    cause: &str,
+) -> Result<()> {
+    for edge in ctx.all_governs.iter().filter(|edge| edge.intent_id == iid) {
+        if state.governs_edges_flagged_ids.insert(edge.id.clone())
+            && store.flag_governs_needs_reverification(edge, cause, ctx.now)?
+        {
+            state.governs_flagged += 1;
+        }
+    }
+    Ok(())
+}
+
+fn flag_targets(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    iid: &str,
+    cause: &str,
+) -> Result<()> {
+    for edge in ctx.all_targets.iter().filter(|edge| edge.intent_id == iid) {
+        if state.targets_edges_flagged_ids.insert(edge.id.clone())
+            && store.flag_targets_needs_reverification(edge, cause, ctx.now)?
+        {
+            state.targets_flagged += 1;
+        }
+    }
+    Ok(())
+}
+
+fn flag_serves(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    iid: &str,
+    cause: &str,
+) -> Result<()> {
+    for edge in ctx.all_serves.iter().filter(|edge| edge.intent_id == iid) {
+        if state.serves_edges_flagged_ids.insert(edge.id.clone())
+            && store.flag_serves_needs_reverification(edge, cause, ctx.now)?
+        {
+            state.serves_flagged += 1;
+        }
+    }
+    Ok(())
+}
+
+fn invalidate_validations(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    intent_ids: &[String],
+) -> Result<()> {
+    for edge in ctx
+        .all_validates
+        .iter()
+        .filter(|edge| intent_ids.iter().any(|iid| iid == &edge.intent_id))
+    {
+        if !state
+            .invalidated_validation_ids
+            .insert(edge.validation_id.clone())
+        {
+            continue;
+        }
+        if ctx.all_validations.iter().any(|validation| {
+            validation.id == edge.validation_id
+                && validation.last_result != "not_run"
+                && validation.last_result != "blocked"
+                && !validation.last_result.is_empty()
+        }) && store.invalidate_validation(&edge.validation_id)?
+        {
+            state.validations_invalidated += 1;
+        }
+    }
+    Ok(())
+}
+
+fn update_physical_facts_and_flag_locators(
+    store: &mut SqliteStore,
+    base: &Path,
+    codefiles: &[CodeFile],
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+) -> Result<()> {
+    for cf in codefiles {
+        if let Some(content) = state.text_contents.get(&cf.path) {
             let facts = crate::repo::extract_physical_facts(base, &cf.path, content);
             if facts.imports != cf.imports {
                 store.update_codefile_imports(&cf.id, &facts.imports)?;
@@ -242,10 +429,10 @@ fn run_with_sqlite(
             if facts.symbol_facts != cf.symbol_facts {
                 store.update_codefile_symbol_facts(&cf.id, &facts.symbol_facts)?;
             }
-        } else if non_utf8_files.contains(&cf.path) {
-            for im in &all_implements {
+        } else if state.non_utf8_files.contains(&cf.path) {
+            for im in ctx.all_implements {
                 if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
-                    locators_stale.push(format!(
+                    state.locators_stale.push(format!(
                         "{} @ '{}' (intent '{}') — file is not readable as text; locator unverifiable",
                         im.codefile_path, im.locator, im.intent_name
                     ));
@@ -253,19 +440,27 @@ fn run_with_sqlite(
             }
         }
     }
-    for im in &all_implements {
-        let Some(content) = text_contents.get(&im.codefile_path) else {
+    for im in ctx.all_implements {
+        let Some(content) = state.text_contents.get(&im.codefile_path) else {
             continue;
         };
         if !crate::repo::locator_present(content, &im.locator) {
-            locators_stale.push(format!(
+            state.locators_stale.push(format!(
                 "{} @ '{}' (intent '{}')",
                 im.codefile_path, im.locator, im.intent_name
             ));
             store.flag_implements_needs_reverification(&im.intent_id, &im.codefile_id)?;
         }
     }
+    Ok(())
+}
 
+fn flag_unverifiable_files(
+    store: &mut SqliteStore,
+    codefiles: &[CodeFile],
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+) -> Result<()> {
     // Unverifiable files: a registered file that is gone (missing), outside the
     // graph root (escaped), or unreadable as text (non-UTF8) cannot prove the
     // claims grounded in it, so those claims must not stay green. There is no
@@ -274,85 +469,44 @@ fn run_with_sqlite(
     // ripple one hop (relates/governs/targets/serves), and invalidate linked
     // validations — mirroring the changed-file path above. Without this, an
     // intent reads fully realized/proven while its code is missing.
-    let unverifiable: HashSet<&str> = missing_files
+    let unverifiable: HashSet<String> = state
+        .missing_files
         .iter()
-        .chain(escaped_files.iter())
-        .chain(non_utf8_files.iter())
-        .map(String::as_str)
+        .chain(state.escaped_files.iter())
+        .chain(state.non_utf8_files.iter())
+        .cloned()
         .collect();
-    for cf in &codefiles {
+    for cf in codefiles {
         if !unverifiable.contains(cf.path.as_str()) {
             continue;
         }
         let cause = format!("{} unverifiable (missing/escaped/unreadable)", cf.path);
-        let intent_ids = intents_by_codefile
+        let intent_ids = ctx
+            .intents_by_codefile
             .get(cf.id.as_str())
             .cloned()
             .unwrap_or_default();
         for iid in intent_ids
             .iter()
-            .filter(|intent_id| active.contains(*intent_id))
+            .filter(|intent_id| ctx.active.contains(*intent_id))
         {
             store.flag_implements_needs_reverification(iid, &cf.id)?;
-            for edge in all_relates
-                .iter()
-                .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
-                // Kind-aware staleness: a meaning-only edge (every kind is
-                // shares_vocab/same_domain/doc_reference) tracks concept overlap,
-                // not this file's code — a code change must not re-open it. A
-                // `stable` edge is a settled coupling the analyst exempted from
-                // code-change churn (`loom edge stable`), so skip it too.
-                .filter(|edge| {
-                    !edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds)
-                })
-            {
-                if related_edges_flagged.insert(edge.id.clone())
-                    && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
-                {
-                    relates_to_flagged += 1;
-                }
-            }
-            for edge in all_governs.iter().filter(|edge| edge.intent_id == *iid) {
-                if governs_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_governs_needs_reverification(edge, &cause, &now)?
-                {
-                    governs_flagged += 1;
-                }
-            }
-            for edge in all_targets.iter().filter(|edge| edge.intent_id == *iid) {
-                if targets_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_targets_needs_reverification(edge, &cause, &now)?
-                {
-                    targets_flagged += 1;
-                }
-            }
-            for edge in all_serves.iter().filter(|edge| edge.intent_id == *iid) {
-                if serves_edges_flagged_ids.insert(edge.id.clone())
-                    && store.flag_serves_needs_reverification(edge, &cause, &now)?
-                {
-                    serves_flagged += 1;
-                }
-            }
+            flag_relates(store, ctx, state, iid, &cause, true)?;
+            flag_governs(store, ctx, state, iid, &cause)?;
+            flag_targets(store, ctx, state, iid, &cause)?;
+            flag_serves(store, ctx, state, iid, &cause)?;
         }
-        for edge in all_validates
-            .iter()
-            .filter(|edge| intent_ids.iter().any(|iid| iid == &edge.intent_id))
-        {
-            if !invalidated_validation_ids.insert(edge.validation_id.clone()) {
-                continue;
-            }
-            if all_validations.iter().any(|validation| {
-                validation.id == edge.validation_id
-                    && validation.last_result != "not_run"
-                    && validation.last_result != "blocked"
-                    && !validation.last_result.is_empty()
-            }) && store.invalidate_validation(&edge.validation_id)?
-            {
-                validations_invalidated += 1;
-            }
-        }
+        invalidate_validations(store, ctx, state, &intent_ids)?;
     }
+    Ok(())
+}
 
+fn ripple_delegations(
+    store: &mut SqliteStore,
+    base: &Path,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+) -> Result<()> {
     // Cross-service (federation) ripple. A delegation watches a child graph's
     // committed export; when that export's content hash changes the child's
     // contract may have moved, so re-open the seam intents that depend on it.
@@ -378,43 +532,57 @@ fn run_with_sqlite(
             for iid in delegation
                 .seam_intents
                 .iter()
-                .filter(|i| active.contains(*i))
+                .filter(|i| ctx.active.contains(*i))
             {
-                for edge in all_relates
-                    .iter()
-                    .filter(|edge| edge.from_id == *iid || edge.to_id == *iid)
-                {
-                    if related_edges_flagged.insert(edge.id.clone())
-                        && store.flag_relates_to_needs_reverification(edge, &cause, &now)?
-                    {
-                        relates_to_flagged += 1;
-                    }
-                }
-                for edge in all_validates.iter().filter(|edge| &edge.intent_id == iid) {
-                    if invalidated_validation_ids.insert(edge.validation_id.clone())
-                        && store.invalidate_validation(&edge.validation_id)?
-                    {
-                        validations_invalidated += 1;
-                    }
-                }
+                flag_relates(store, ctx, state, iid, &cause, false)?;
+                invalidate_delegation_validations(store, ctx, state, iid)?;
             }
         }
         store.set_delegation_export_hash(&delegation.id, &new_hash)?;
     }
+    Ok(())
+}
 
+fn invalidate_delegation_validations(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    iid: &str,
+) -> Result<()> {
+    for edge in ctx
+        .all_validates
+        .iter()
+        .filter(|edge| edge.intent_id == iid)
+    {
+        if state
+            .invalidated_validation_ids
+            .insert(edge.validation_id.clone())
+            && store.invalidate_validation(&edge.validation_id)?
+        {
+            state.validations_invalidated += 1;
+        }
+    }
+    Ok(())
+}
+
+fn flush_pending_hash_updates(
+    store: &mut SqliteStore,
+    pending_hash_updates: &[(String, String, Option<String>)],
+) -> Result<()> {
     // Flush deferred content-hash updates LAST: every file's ripple above has
     // now landed, so advancing the hashes here can no longer leave a torn graph
     // (see pending_hash_updates above). A crash mid-flush is still safe — the
     // unflushed files simply re-process next sync (idempotently).
-    for (cf_id, hash, mtime) in &pending_hash_updates {
+    for (cf_id, hash, mtime) in pending_hash_updates {
         match mtime {
             Some(mtime_str) => store.update_codefile_hash_and_mtime(cf_id, hash, mtime_str)?,
             None => store.update_codefile_hash(cf_id, hash)?,
         };
     }
+    Ok(())
+}
 
-    store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
-
+fn compact_transitions(store: &mut SqliteStore) -> Result<usize> {
     // Enforce the transition-note cap that the status nudge and `loom guide`
     // promise: drop routine transition churn beyond `cap` newest per target
     // (regression markers `-> failing`/`-> needs_change` are always preserved by
@@ -422,40 +590,56 @@ fn run_with_sqlite(
     // Behavior now matches the words — long runs no longer leave five-digit
     // routine note counts dragging the read path.
     let transition_cap = store.transition_cap()?;
-    let transitions_compacted = if transition_cap > 0 {
-        let prunable = store.prunable_transition_notes(transition_cap)?;
-        for note in &prunable {
-            store.delete_note_by_id(&note.id)?;
-        }
-        prunable.len()
-    } else {
-        0
-    };
+    if transition_cap == 0 {
+        return Ok(0);
+    }
+    let prunable = store.prunable_transition_notes(transition_cap)?;
+    for note in &prunable {
+        store.delete_note_by_id(&note.id)?;
+    }
+    Ok(prunable.len())
+}
 
-    // Graded ripple: the one-hop flips above produced the stale frontier; count
-    // the intents two/three hops out that now carry a decaying priority bump
-    // (status untouched). Reuse this post-sync snapshot for the closing pulse.
-    let post_snapshot = store.query_snapshot()?;
-    let intents_priority_bumped = crate::db::queries::ripple_bump_by_intent(&post_snapshot).len();
-
-    let report = SyncReport {
+fn build_sync_report(
+    files_checked: usize,
+    intents_priority_bumped: usize,
+    transitions_compacted: usize,
+    state: SyncState,
+) -> SyncReport {
+    SyncReport {
         files_checked,
-        files_changed,
-        relates_to_edges_flagged: relates_to_flagged,
+        files_changed: state.files_changed,
+        relates_to_edges_flagged: state.relates_to_flagged,
         intents_priority_bumped,
-        targets_edges_flagged: targets_flagged,
-        governs_edges_flagged: governs_flagged,
-        serves_edges_flagged: serves_flagged,
-        validations_invalidated,
-        missing_files,
-        escaped_files,
-        locators_stale,
-        changes,
+        targets_edges_flagged: state.targets_flagged,
+        governs_edges_flagged: state.governs_flagged,
+        serves_edges_flagged: state.serves_flagged,
+        validations_invalidated: state.validations_invalidated,
+        missing_files: state.missing_files,
+        escaped_files: state.escaped_files,
+        locators_stale: state.locators_stale,
+        changes: state.changes,
         transitions_compacted,
-    };
+    }
+}
 
-    const REPORT_CAP: usize = 20;
-    let next_step = if report.files_changed == 0
+fn print_sync_report(
+    store: &mut SqliteStore,
+    printer: &Printer,
+    post_snapshot: &crate::db::queries::QuerySnapshot,
+    report: SyncReport,
+) -> Result<()> {
+    let next_step = next_sync_step(&report);
+
+    if printer.json {
+        print_sync_json(store, printer, report, &next_step)
+    } else {
+        print_sync_text(store, post_snapshot, &report, &next_step)
+    }
+}
+
+fn next_sync_step(report: &SyncReport) -> String {
+    if report.files_changed == 0
         && report.missing_files.is_empty()
         && report.escaped_files.is_empty()
         && report.locators_stale.is_empty()
@@ -481,120 +665,156 @@ fn run_with_sqlite(
                 "."
             }
         )
-    };
-
-    if printer.json {
-        let mut v = serde_json::to_value(&report)?;
-        let Some(obj) = v.as_object_mut() else {
-            anyhow::bail!("SyncReport did not serialize to a JSON object");
-        };
-        for (key, total_key) in [
-            ("changes", "changes_total"),
-            ("missing_files", "missing_files_total"),
-            ("escaped_files", "escaped_files_total"),
-            ("locators_stale", "locators_stale_total"),
-        ] {
-            let total = obj
-                .get(key)
-                .and_then(|a| a.as_array())
-                .map_or(0, |a| a.len());
-            if let Some(arr) = obj.get_mut(key).and_then(|a| a.as_array_mut()) {
-                arr.truncate(REPORT_CAP);
-            }
-            obj.insert(total_key.to_string(), total.into());
-        }
-        printer.print_json(&crate::output::with_read_anchor(v, store, &next_step)?);
-    } else {
-        println!("── loom sync ────────────────────────────────────────────────────────");
-        println!("  Files checked:                 {}", report.files_checked);
-        println!("  Files changed since last sync: {}", report.files_changed);
-        println!(
-            "  RELATES_TO edges flagged:      {}",
-            report.relates_to_edges_flagged
-        );
-        if report.intents_priority_bumped > 0 {
-            println!(
-                "  Intents priority-bumped (2-3 hop): {} (graded ripple — no status change)",
-                report.intents_priority_bumped
-            );
-        }
-        println!(
-            "  GOVERNS verdicts flagged:      {}",
-            report.governs_edges_flagged
-        );
-        println!(
-            "  TARGETS edges flagged:         {}",
-            report.targets_edges_flagged
-        );
-        println!(
-            "  SERVES edges flagged:          {}",
-            report.serves_edges_flagged
-        );
-        println!(
-            "  Validations invalidated:       {}",
-            report.validations_invalidated
-        );
-        if report.transitions_compacted > 0 {
-            println!(
-                "  Transition notes compacted:    {} (routine churn beyond the cap; regressions kept)",
-                report.transitions_compacted
-            );
-        }
-        if !report.changes.is_empty() {
-            println!();
-            println!("  Changed files ({}):", report.changes.len());
-            for c in report.changes.iter().take(REPORT_CAP) {
-                println!("    {c}");
-            }
-        }
-        if !report.missing_files.is_empty() {
-            println!();
-            println!(
-                "  ⚠ Registered files MISSING on disk ({}):",
-                report.missing_files.len()
-            );
-            for p in report.missing_files.iter().take(REPORT_CAP) {
-                println!("    {}", p);
-            }
-            println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
-        }
-        if !report.escaped_files.is_empty() {
-            println!();
-            println!(
-                "  ⚠ Registered paths ESCAPING the graph root ({}):",
-                report.escaped_files.len()
-            );
-            for p in report.escaped_files.iter().take(REPORT_CAP) {
-                println!("    {}", p);
-            }
-            println!("    → `loom codefile remove <path>` — files outside the repository cannot be tracked.");
-        }
-        if !report.locators_stale.is_empty() {
-            println!();
-            println!(
-                "  ⚠ STALE locators ({} — symbol renamed/moved? grounding flipped to needs_reverification):",
-                report.locators_stale.len()
-            );
-            for l in report.locators_stale.iter().take(REPORT_CAP) {
-                println!("    {}", l);
-            }
-        }
-        println!();
-        if report.files_changed == 0
-            && report.missing_files.is_empty()
-            && report.escaped_files.is_empty()
-            && report.locators_stale.is_empty()
-        {
-            println!("  ✓ All files up to date — no edges need reverification.");
-        } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
-            println!("  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`).");
-        }
-        let graph_state = store.graph_state(&post_snapshot)?;
-        println!("  → Next: {next_step}");
-        println!("  {}", crate::output::fmt_pulse(&graph_state));
     }
+}
 
+fn print_sync_json(
+    store: &mut SqliteStore,
+    printer: &Printer,
+    report: SyncReport,
+    next_step: &str,
+) -> Result<()> {
+    let mut v = serde_json::to_value(&report)?;
+    let Some(obj) = v.as_object_mut() else {
+        anyhow::bail!("SyncReport did not serialize to a JSON object");
+    };
+    for (key, total_key) in [
+        ("changes", "changes_total"),
+        ("missing_files", "missing_files_total"),
+        ("escaped_files", "escaped_files_total"),
+        ("locators_stale", "locators_stale_total"),
+    ] {
+        let total = obj
+            .get(key)
+            .and_then(|a| a.as_array())
+            .map_or(0, |a| a.len());
+        if let Some(arr) = obj.get_mut(key).and_then(|a| a.as_array_mut()) {
+            arr.truncate(REPORT_CAP);
+        }
+        obj.insert(total_key.to_string(), total.into());
+    }
+    printer.print_json(&crate::output::with_read_anchor(v, store, next_step)?);
     Ok(())
+}
+
+fn print_sync_text(
+    store: &mut SqliteStore,
+    post_snapshot: &crate::db::queries::QuerySnapshot,
+    report: &SyncReport,
+    next_step: &str,
+) -> Result<()> {
+    println!("── loom sync ────────────────────────────────────────────────────────");
+    println!("  Files checked:                 {}", report.files_checked);
+    println!("  Files changed since last sync: {}", report.files_changed);
+    println!(
+        "  RELATES_TO edges flagged:      {}",
+        report.relates_to_edges_flagged
+    );
+    if report.intents_priority_bumped > 0 {
+        println!(
+            "  Intents priority-bumped (2-3 hop): {} (graded ripple — no status change)",
+            report.intents_priority_bumped
+        );
+    }
+    println!(
+        "  GOVERNS verdicts flagged:      {}",
+        report.governs_edges_flagged
+    );
+    println!(
+        "  TARGETS edges flagged:         {}",
+        report.targets_edges_flagged
+    );
+    println!(
+        "  SERVES edges flagged:          {}",
+        report.serves_edges_flagged
+    );
+    println!(
+        "  Validations invalidated:       {}",
+        report.validations_invalidated
+    );
+    if report.transitions_compacted > 0 {
+        println!(
+            "  Transition notes compacted:    {} (routine churn beyond the cap; regressions kept)",
+            report.transitions_compacted
+        );
+    }
+    print_limited_list("Changed files", &report.changes);
+    print_missing_files(&report.missing_files);
+    print_escaped_files(&report.escaped_files);
+    print_stale_locators(&report.locators_stale);
+    println!();
+    if report.files_changed == 0
+        && report.missing_files.is_empty()
+        && report.escaped_files.is_empty()
+        && report.locators_stale.is_empty()
+    {
+        println!("  ✓ All files up to date — no edges need reverification.");
+    } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
+        println!(
+            "  Each flagged edge carries a transition note naming the changed file (`loom edge show <id>`)."
+        );
+    }
+    let graph_state = store.graph_state(post_snapshot)?;
+    println!("  → Next: {next_step}");
+    println!("  {}", crate::output::fmt_pulse(&graph_state));
+    Ok(())
+}
+
+fn print_limited_list(label: &str, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    println!();
+    println!("  {label} ({}):", values.len());
+    for value in values.iter().take(REPORT_CAP) {
+        println!("    {value}");
+    }
+}
+
+fn print_missing_files(missing_files: &[String]) {
+    if missing_files.is_empty() {
+        return;
+    }
+    println!();
+    println!(
+        "  ⚠ Registered files MISSING on disk ({}):",
+        missing_files.len()
+    );
+    for p in missing_files.iter().take(REPORT_CAP) {
+        println!("    {}", p);
+    }
+    println!("    → `loom codefile remove <path>` to drop a phantom, or restore the file.");
+}
+
+fn print_escaped_files(escaped_files: &[String]) {
+    if escaped_files.is_empty() {
+        return;
+    }
+    println!();
+    println!(
+        "  ⚠ Registered paths ESCAPING the graph root ({}):",
+        escaped_files.len()
+    );
+    for p in escaped_files.iter().take(REPORT_CAP) {
+        println!("    {}", p);
+    }
+    println!(
+        "    → `loom codefile remove <path>` — files outside the repository cannot be tracked."
+    );
+}
+
+fn print_stale_locators(locators_stale: &[String]) {
+    if locators_stale.is_empty() {
+        return;
+    }
+    println!();
+    println!(
+        "  ⚠ STALE locators ({} — symbol renamed/moved? grounding flipped to needs_reverification):",
+        locators_stale.len()
+    );
+    for l in locators_stale.iter().take(REPORT_CAP) {
+        println!("    {}", l);
+    }
 }
 
 // ---------------------------------------------------------------------------

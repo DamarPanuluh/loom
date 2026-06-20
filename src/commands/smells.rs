@@ -42,6 +42,7 @@ pub fn run_with_db(
     let registry = db.vocab_term_count()?;
     let ignores = db.list_ignores()?;
     let decision_notes = db.notes_by_kind("decision")?;
+    let hypotheses = db.list_hypotheses(None)?;
     render(
         root,
         &snapshot,
@@ -49,6 +50,7 @@ pub fn run_with_db(
         registry,
         &ignores,
         &decision_notes,
+        &hypotheses,
         limit,
         summary,
         printer,
@@ -356,6 +358,7 @@ fn render(
     registry: usize,
     ignores: &[crate::types::Ignore],
     decision_notes: &[crate::types::Note],
+    hypotheses: &[crate::types::Hypothesis],
     limit: usize,
     summary: bool,
     printer: &Printer,
@@ -402,14 +405,22 @@ fn render(
         .iter()
         .filter_map(|i| glob::Pattern::new(&i.pattern).ok())
         .collect();
-    let (clone_adv, adjudicated_clones) = split_advisories_for_adjudication(
+    let clone_rollup = code_clone_dispositions(
         snapshot,
         clone_suggestions(snapshot, &clone_patterns),
         decision_notes,
+        hypotheses,
     );
-    advisory_adjudicated.extend(adjudicated_clones);
-    let clone_total = clone_adv.len();
-    let clone_shown: Vec<_> = clone_adv.into_iter().take(limit.max(1)).collect();
+    let clone_total = clone_rollup.total;
+    let clone_deliberate = clone_rollup.deliberate;
+    let clone_tracked = clone_rollup.tracked;
+    let clone_open = clone_rollup.open;
+    advisory_adjudicated.extend(clone_rollup.adjudicated);
+    let clone_shown: Vec<_> = clone_rollup
+        .open_advisories
+        .into_iter()
+        .take(limit.max(1))
+        .collect();
 
     let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
@@ -446,7 +457,10 @@ fn render(
                 "shotgun_surgery_total": shotgun_total,
                 "proof_locality_suggestions_total": proof_total,
                 "code_clones_total": clone_total,
-                "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Advisory totals count open advisories after current decision-note adjudication; suppressed advisories appear in adjudicated_by_kind.",
+                "code_clones_deliberate": clone_deliberate,
+                "code_clones_tracked": clone_tracked,
+                "code_clones_open": clone_open,
+                "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Advisory totals count open advisories after current decision-note adjudication; code_clones_total counts physical clone groups and code_clones_* reports their dispositions.",
             }));
         } else {
             println!("── loom smells summary ──────────────────────────────────────────────");
@@ -458,7 +472,7 @@ fn render(
             println!("  co-change advisories: {suggestions_total}");
             println!("  shotgun-surgery advisories: {shotgun_total}");
             println!("  proof-locality advisories: {proof_total}");
-            println!("  code-clone advisories: {clone_total}");
+            println!("  code clones: {clone_total} — {clone_deliberate} deliberate, {clone_tracked} tracked, {clone_open} open");
             println!("  tagged coded intents: {tagged}/{coded}");
             if blind > 0 {
                 println!("  duplicate detector blind spot: {blind} untagged coded intent(s)");
@@ -496,6 +510,9 @@ fn render(
             "proof_locality_suggestions_total": proof_total,
             "code_clones": clone_shown,
             "code_clones_total": clone_total,
+            "code_clones_deliberate": clone_deliberate,
+            "code_clones_tracked": clone_tracked,
+            "code_clones_open": clone_open,
             "note": "Findings are suspicions computed from graph structure — resolve each via its remedy, ONE at a time after reading ITS code. A decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it — a ruling that restates the size/shape, or repeats one you used elsewhere, is rubber-stamping and loom rejects it (`loom note add --smell` bounces a vacuous/templated ruling; `loom doctor` flags templated clusters). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
         }));
         return Ok(());
@@ -596,26 +613,30 @@ fn render(
             );
         }
     }
-    if !clone_shown.is_empty() {
+    if clone_total > 0 {
         println!();
         println!(
-            "── code clones ({}) — ADVISORY (structurally duplicated code in unrelated files; never gate green) ──",
-            clone_total
+            "── code clones: {} — {} deliberate, {} tracked, {} open — ADVISORY (structurally duplicated code in unrelated files; never gate green) ──",
+            clone_total, clone_deliberate, clone_tracked, clone_open
         );
         println!();
-        for s in &clone_shown {
-            println!("  [{}]  (score {:.1})", s.kind, s.score);
-            println!("    {}", s.summary);
-            println!("    evidence: {}", s.evidence);
-            println!("    remedy:   {}", s.remedy);
-            println!();
-        }
-        if clone_total > clone_shown.len() {
-            println!(
-                "  ({} more — `loom smells --limit {}`)",
-                clone_total - clone_shown.len(),
-                clone_total
-            );
+        if clone_shown.is_empty() {
+            println!("  (no open clone advisories; all physical clone groups are deliberate or tracked)");
+        } else {
+            for s in &clone_shown {
+                println!("  [{}]  (score {:.1})", s.kind, s.score);
+                println!("    {}", s.summary);
+                println!("    evidence: {}", s.evidence);
+                println!("    remedy:   {}", s.remedy);
+                println!();
+            }
+            if clone_open > clone_shown.len() {
+                println!(
+                    "  ({} more — `loom smells --limit {}`)",
+                    clone_open - clone_shown.len(),
+                    clone_open
+                );
+            }
         }
     }
     if !adjudicated.is_empty() {
@@ -711,6 +732,76 @@ fn render(
     Ok(())
 }
 
+#[derive(Debug)]
+pub(crate) struct CodeCloneDispositions {
+    pub(crate) total: usize,
+    pub(crate) deliberate: usize,
+    pub(crate) tracked: usize,
+    pub(crate) open: usize,
+    pub(crate) open_advisories: Vec<Smell>,
+    pub(crate) adjudicated: Vec<AdjudicatedSmell>,
+}
+
+pub(crate) fn code_clone_dispositions(
+    snapshot: &QuerySnapshot,
+    advisories: Vec<Smell>,
+    decision_notes: &[crate::types::Note],
+    hypotheses: &[crate::types::Hypothesis],
+) -> CodeCloneDispositions {
+    let total = advisories.len();
+    let (not_deliberate, adjudicated) =
+        split_advisories_for_adjudication(snapshot, advisories, decision_notes);
+    let deliberate = adjudicated.len();
+    let mut open_advisories = Vec::new();
+    let mut tracked = 0usize;
+
+    for advisory in not_deliberate {
+        if active_refactor_hypothesis_tracks_clone(snapshot, &advisory, hypotheses) {
+            tracked += 1;
+        } else {
+            open_advisories.push(advisory);
+        }
+    }
+
+    CodeCloneDispositions {
+        total,
+        deliberate,
+        tracked,
+        open: open_advisories.len(),
+        open_advisories,
+        adjudicated,
+    }
+}
+
+/// Heuristic only: clone advisories do not carry a first-class refactor edge, so
+/// an active hypothesis tracks a clone when its claim/proposal/outcome names any
+/// participating file path. Decision notes still win first, keeping the three
+/// clone dispositions disjoint.
+fn active_refactor_hypothesis_tracks_clone(
+    snapshot: &QuerySnapshot,
+    advisory: &Smell,
+    hypotheses: &[crate::types::Hypothesis],
+) -> bool {
+    let paths = codefile_paths_in_clone_evidence(snapshot, &advisory.evidence);
+    !paths.is_empty()
+        && hypotheses.iter().any(|hypothesis| {
+            active_hypothesis_status(hypothesis.status.as_str())
+                && paths
+                    .iter()
+                    .any(|path| hypothesis_mentions_path(hypothesis, path))
+        })
+}
+
+fn active_hypothesis_status(status: &str) -> bool {
+    matches!(status, "proposed" | "supported" | "adopted")
+}
+
+fn hypothesis_mentions_path(hypothesis: &crate::types::Hypothesis, path: &str) -> bool {
+    hypothesis.claim.contains(path)
+        || hypothesis.proposal.contains(path)
+        || hypothesis.predicted_outcome.contains(path)
+}
+
 pub(crate) fn split_advisories_for_adjudication(
     snapshot: &QuerySnapshot,
     advisories: Vec<Smell>,
@@ -803,17 +894,14 @@ fn advisory_anchor(snapshot: &QuerySnapshot, advisory: &Smell) -> Option<Advisor
             })
         }
         "code_clone" => {
-            let targets = codefile_ids_in_clone_evidence(snapshot, &advisory.evidence);
-            if targets.is_empty() {
+            let target = flag_value(&advisory.remedy, "--smell")?;
+            if !target.starts_with("code_clone:") {
                 return None;
             }
-            let newest = latest_codefile_structure(snapshot, &targets);
             Some(AdvisoryAnchor {
-                target_ids: targets,
-                newest_structure: newest,
-                reopens_when:
-                    "any participating file is edited after the ruling, producing a new file timestamp/hash"
-                        .into(),
+                target_ids: vec![target],
+                newest_structure: String::new(),
+                reopens_when: "the clone's normalized shape changes".into(),
             })
         }
         _ => None,
@@ -870,27 +958,21 @@ fn latest_intent_structure(snapshot: &QuerySnapshot, intent_ids: &[String]) -> S
     newest
 }
 
-fn codefile_ids_in_clone_evidence(snapshot: &QuerySnapshot, evidence: &str) -> Vec<String> {
+fn codefile_paths_in_clone_evidence<'a>(snapshot: &'a QuerySnapshot, evidence: &str) -> Vec<&'a str> {
     snapshot
         .codefiles
         .iter()
-        .filter(|codefile| evidence.contains(&format!("{}:", codefile.path)))
-        .map(|codefile| codefile.id.clone())
+        .filter_map(|codefile| {
+            clone_evidence_mentions_path(evidence, codefile.path.as_str())
+                .then_some(codefile.path.as_str())
+        })
         .collect()
 }
 
-fn latest_codefile_structure(snapshot: &QuerySnapshot, codefile_ids: &[String]) -> String {
-    let mut newest = String::new();
-    for id in codefile_ids {
-        if let Some(codefile) = snapshot
-            .codefiles
-            .iter()
-            .find(|codefile| codefile.id == *id)
-        {
-            newest = max_time(newest, codefile.last_modified.clone());
-        }
-    }
-    newest
+fn clone_evidence_mentions_path(evidence: &str, path: &str) -> bool {
+    evidence
+        .match_indices(path)
+        .any(|(idx, _)| evidence.as_bytes().get(idx + path.len()) == Some(&b':'))
 }
 
 fn max_time(current: String, candidate: String) -> String {
@@ -904,7 +986,7 @@ fn max_time(current: String, candidate: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Intent, Note};
+    use crate::types::{CodeFile, Hypothesis, Intent, Note, SymbolFact};
 
     #[test]
     fn stale_edge_with_no_grounding_is_no_grounding_tier_not_broken() {
@@ -1018,6 +1100,126 @@ mod tests {
                 done_when: "test".into(),
             },
         }
+    }
+
+    fn clone_sym(name: &str, body_hash: &str, shape_hash: &str, line_start: usize) -> SymbolFact {
+        SymbolFact {
+            label: format!("fn {name}"),
+            name: name.into(),
+            kind: "fn".into(),
+            visibility: "private".into(),
+            line_start,
+            line_end: line_start + 9,
+            is_test: false,
+            string_literals: Vec::new(),
+            panic_marker_count: 0,
+            panic_markers: Vec::new(),
+            body_hash: body_hash.into(),
+            shape_hash: shape_hash.into(),
+        }
+    }
+
+    fn clone_cf(path: &str, fact: SymbolFact) -> CodeFile {
+        CodeFile {
+            id: path.into(),
+            path: path.into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: Vec::new(),
+            symbols: vec![fact.label.clone()],
+            symbol_facts: vec![fact],
+            content_hash: String::new(),
+        }
+    }
+
+    fn clone_hypothesis(text: &str) -> Hypothesis {
+        Hypothesis {
+            id: "hyp-tracked-clone".into(),
+            name: "tracked clone refactor".into(),
+            claim: text.into(),
+            proposal: text.into(),
+            predicted_outcome: "the clone collapses to one implementation".into(),
+            status: "proposed".into(),
+            author: "tester".into(),
+            evidence: String::new(),
+            inspected_by: String::new(),
+            last_inspected: String::new(),
+            created_at: "2026-01-01T00:00:00Z".into(),
+            updated_at: "2026-01-01T00:00:00Z".into(),
+        }
+    }
+
+    fn empty_report() -> SmellReport {
+        SmellReport {
+            open: Vec::new(),
+            adjudicated: Vec::new(),
+            coded_intents: 0,
+            tagged_coded_intents: 0,
+            coded_layers: 0,
+            declared_layers: 0,
+        }
+    }
+
+    #[test]
+    fn render_json_reports_code_clone_disposition_rollup() {
+        let snapshot = QuerySnapshot::from_parts(
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![
+                clone_cf(
+                    "src/deliberate_a.rs",
+                    clone_sym("deliberate_a", "BODY_DA", "SHAPE_DELIBERATE", 1),
+                ),
+                clone_cf(
+                    "src/deliberate_b.rs",
+                    clone_sym("deliberate_b", "BODY_DB", "SHAPE_DELIBERATE", 20),
+                ),
+                clone_cf(
+                    "src/tracked_a.rs",
+                    clone_sym("tracked_a", "BODY_TA", "SHAPE_TRACKED", 40),
+                ),
+                clone_cf(
+                    "src/tracked_b.rs",
+                    clone_sym("tracked_b", "BODY_TB", "SHAPE_TRACKED", 60),
+                ),
+                clone_cf("src/open_a.rs", clone_sym("open_a", "BODY_OA", "SHAPE_OPEN", 80)),
+                clone_cf("src/open_b.rs", clone_sym("open_b", "BODY_OB", "SHAPE_OPEN", 100)),
+            ],
+            Some(Vec::new()),
+        );
+        let printer = crate::output::Printer::capturing(true);
+        render(
+            std::path::Path::new("."),
+            &snapshot,
+            empty_report(),
+            0,
+            &[],
+            &[decision("code_clone:SHAPE_DELIBERATE", "2026-01-01T00:00:00Z")],
+            &[clone_hypothesis("dedupe src/tracked_a.rs after the release")],
+            10,
+            false,
+            &printer,
+        )
+        .expect("rendering smells JSON should succeed");
+
+        let captured = printer.captured().expect("json should be captured");
+        let json: serde_json::Value =
+            serde_json::from_str(&captured).expect("rendered smells output is JSON");
+        assert_eq!(json["code_clones_total"], 3);
+        assert_eq!(json["code_clones_deliberate"], 1);
+        assert_eq!(json["code_clones_tracked"], 1);
+        assert_eq!(json["code_clones_open"], 1);
+        assert_eq!(
+            json["code_clones"].as_array().expect("open clone list").len(),
+            1,
+            "only unadjudicated and untracked clones stay in the open advisory list"
+        );
     }
 
     #[test]

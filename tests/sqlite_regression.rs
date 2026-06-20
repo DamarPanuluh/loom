@@ -1940,6 +1940,271 @@ fn sqlite_sync_compacts_transition_notes() {
 }
 
 #[test]
+fn sqlite_hypothesis_adoption_outcome_validation_confirms_and_stales_targets() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("hypothesis-outcome-flow");
+    run_json(&graph.root, &["init", ".", "--json"]);
+
+    write_scratch_file(
+        &graph.root,
+        "src/outcome_flow.rs",
+        "pub fn adoption_outcome_flow() -> bool {\n    false\n}\n",
+    );
+    assert_status_ok(&run_json_as(
+        &graph.root,
+        &["codefile", "add", "src/outcome_flow.rs", "--json"],
+        "llm:builder",
+    ));
+
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "adoption outcome target",
+            "--description",
+            "target behavior for proving hypothesis adoption outcomes",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let target_id = intent["id"].as_str().expect("target intent id");
+    assert_status_ok(&run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            target_id,
+            "src/outcome_flow.rs",
+            "--locator",
+            "fn adoption_outcome_flow",
+            "--json",
+        ],
+        "llm:builder",
+    ));
+
+    let predicted_outcome = "adopted hypothesis outcome is captured as a passable proof";
+    let hypothesis = run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "adoption outcome proof",
+            "--claim",
+            "adoption needs to preserve the promised outcome as follow-up evidence",
+            "--proposal",
+            "turn the promised outcome into a validation when adopting",
+            "--predicted-outcome",
+            predicted_outcome,
+            "--target",
+            target_id,
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let hypothesis_id = hypothesis["id"].as_str().expect("hypothesis id");
+    assert_eq!(
+        hypothesis["status"], "proposed",
+        "adding a hypothesis should start it in the pre-decision state: {hypothesis}"
+    );
+    assert!(
+        hypothesis["targets"]
+            .as_array()
+            .expect("hypothesis targets")
+            .iter()
+            .any(|target| target == target_id),
+        "hypothesis add must TARGET the requested intent: {hypothesis}"
+    );
+
+    assert_status_ok(&run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "prove",
+            hypothesis_id,
+            "--verdict",
+            "supported",
+            "--evidence",
+            "the scratch target needs an adoption outcome proof",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    ));
+    let supported = run_json_as(
+        &graph.root,
+        &["hypothesis", "show", hypothesis_id, "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        supported["hypothesis"]["status"], "supported",
+        "supported proof should move the hypothesis to the adoptable state: {supported}"
+    );
+    assert!(
+        supported["targets"]
+            .as_array()
+            .expect("supported targets")
+            .iter()
+            .any(|target| {
+                target["intent_id"] == target_id && target["inspection_status"] == "passing"
+            }),
+        "supporting the hypothesis must stamp its TARGETS evidence passing: {supported}"
+    );
+
+    let adopted = run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "adopt",
+            hypothesis_id,
+            "--spawned",
+            target_id,
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert_eq!(
+        adopted["adopted"], true,
+        "adopt should report the hypothesis decision: {adopted}"
+    );
+    assert!(
+        adopted["spawned"]
+            .as_array()
+            .expect("spawned intents")
+            .iter()
+            .any(|spawned| spawned == target_id),
+        "adopt should attach the spawned/target intent to the decision: {adopted}"
+    );
+
+    let outcome_validation = run_json(
+        &graph.root,
+        &[
+            "validation",
+            "show",
+            "hypothesis outcome: adoption outcome proof",
+            "--json",
+        ],
+    );
+    let outcome_validation_id = outcome_validation["id"]
+        .as_str()
+        .expect("outcome validation id");
+    assert_eq!(
+        outcome_validation["validation_type"], "manual_check",
+        "adoption outcome proof should be a manual validation: {outcome_validation}"
+    );
+    assert_eq!(
+        outcome_validation["last_result"], "not_run",
+        "adoption should create the predicted outcome proof as not_run: {outcome_validation}"
+    );
+    assert!(
+        outcome_validation["description"]
+            .as_str()
+            .expect("outcome validation description")
+            .contains(predicted_outcome),
+        "the outcome validation should carry the predicted_outcome text: {outcome_validation}"
+    );
+    assert!(
+        outcome_validation["description"]
+            .as_str()
+            .expect("outcome validation description")
+            .contains(hypothesis_id),
+        "the outcome validation should retain the source hypothesis id for confirmation: {outcome_validation}"
+    );
+
+    let db = graph.root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    let (validates_status, validates_notes): (String, String) = conn
+        .query_row(
+            "SELECT inspection_status, notes FROM validates WHERE validation_id = ?1 AND intent_id = ?2",
+            rusqlite::params![outcome_validation_id, target_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .expect("outcome validation is VALIDATES-linked to the spawned target");
+    assert_eq!(
+        validates_status, "uninspected",
+        "the new not_run outcome proof should not claim validation evidence yet"
+    );
+    assert_eq!(
+        validates_notes, "hypothesis outcome proof",
+        "the VALIDATES edge should identify that it came from hypothesis adoption"
+    );
+
+    let marked = run_json(
+        &graph.root,
+        &[
+            "validation",
+            "mark",
+            outcome_validation_id,
+            "--result",
+            "passed",
+            "--evidence",
+            "manual acceptance confirms the predicted outcome",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        marked["result"], "passed",
+        "marking the outcome validation should record a pass: {marked}"
+    );
+    assert_eq!(
+        marked["intents_updated"], 1,
+        "the passed outcome validation should update the one linked target intent: {marked}"
+    );
+    let confirmed = run_json_as(
+        &graph.root,
+        &["hypothesis", "show", hypothesis_id, "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        confirmed["hypothesis"]["status"], "confirmed",
+        "passing the adopted outcome validation should confirm the hypothesis: {confirmed}"
+    );
+
+    write_scratch_file(
+        &graph.root,
+        "src/outcome_flow.rs",
+        "pub fn adoption_outcome_flow() -> bool {\n    true\n}\n",
+    );
+    let synced = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        synced["changes"]
+            .as_array()
+            .expect("sync changes")
+            .iter()
+            .any(|path| path == "src/outcome_flow.rs"),
+        "sync should observe the relevant code change: {synced}"
+    );
+    assert_eq!(
+        synced["targets_edges_flagged"], 1,
+        "the target code change should stale the one passing TARGETS edge: {synced}"
+    );
+
+    let staled = run_json_as(
+        &graph.root,
+        &["hypothesis", "show", hypothesis_id, "--json"],
+        "llm:builder",
+    );
+    assert!(
+        staled["targets"]
+            .as_array()
+            .expect("staled targets")
+            .iter()
+            .any(|target| {
+                target["intent_id"] == target_id
+                    && target["inspection_status"] == "needs_reverification"
+            }),
+        "sync should stale the hypothesis TARGETS evidence on target code change: {staled}"
+    );
+}
+
+#[test]
 fn sqlite_audit_summary_surfaces_stay_bounded() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-audit-summary");

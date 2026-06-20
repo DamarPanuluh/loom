@@ -467,11 +467,31 @@ const SMELL_TEMPLATE_CLUSTER_MIN: usize = 3;
 /// not inspected." The write-time gate (`gate::require_distinct_smell_ruling`)
 /// blocks NEW batch-stamps; this surfaces a pre-existing backlog to re-audit.
 fn audit_smell_adjudications(notes: &[Note], issues: &mut Vec<String>, hints: &mut Vec<String>) {
-    let rulings: Vec<(&str, &str)> = notes
+    // Only the NEWEST decision note per smell target is the ACTIVE adjudication
+    // (mirrors `last_decision` in smells.rs). Auditing the full note HISTORY
+    // would make a rubber-stamp unrecoverable: re-auditing — superseding a
+    // templated ruling with a genuine one, the exact remedy this hint names —
+    // must be able to clear it. `note prune` never removes a live-target
+    // decision note, so history-based auditing would be a permanent scar.
+    let mut active: std::collections::HashMap<&str, &Note> = std::collections::HashMap::new();
+    for n in notes
         .iter()
         .filter(|n| n.kind == "decision" && n.target_kind == "smell")
+    {
+        active
+            .entry(n.target_id.as_str())
+            .and_modify(|e| {
+                if n.created_at > e.created_at {
+                    *e = n;
+                }
+            })
+            .or_insert(n);
+    }
+    let mut rulings: Vec<(&str, &str)> = active
+        .values()
         .map(|n| (n.target_id.as_str(), n.text.as_str()))
         .collect();
+    rulings.sort_by(|a, b| a.0.cmp(b.0)); // deterministic clustering + sample
     if rulings.is_empty() {
         return;
     }
@@ -995,5 +1015,79 @@ mod disk_reconciliation_tests {
         let rec = disk_reconciliation_from_parts(&[], &[], &[], &[], &|_| None);
         assert_eq!(rec, DiskReconciliation::default());
         assert_eq!(rec.issue_count(), 0);
+    }
+}
+
+#[cfg(test)]
+mod smell_adjudication_audit_tests {
+    use super::audit_smell_adjudications;
+    use crate::types::Note;
+
+    fn smell_note(target: &str, text: &str, created_at: &str) -> Note {
+        Note {
+            id: format!("n:{target}:{created_at}"),
+            kind: "decision".to_string(),
+            text: text.to_string(),
+            author: "llm".to_string(),
+            target_kind: "smell".to_string(),
+            target_id: target.to_string(),
+            audience: String::new(),
+            created_at: created_at.to_string(),
+        }
+    }
+
+    const TEMPLATE: &str =
+        "Deliberate: this file serves several subcommand intents in one cohesive command module surface.";
+
+    fn genuine(n: usize) -> &'static str {
+        [
+            "Audited intent.rs: a flat match over eight Intent lifecycle verbs, each a linear resolve-mutate-render arm.",
+            "Audited rule.rs: dispatch add/seed/verdict/list/detect/show, expanding const pack tables into governable rules.",
+            "Audited saga.rs: add/run/diagnose/list/show over consumer-plane proofs; the runner invokes diagnose on failure.",
+        ][n]
+    }
+
+    // The defect this guards: `audit_smell_adjudications` must audit the ACTIVE
+    // adjudication (newest decision note per target), not the full note HISTORY.
+    // A rubber-stamp superseded by a genuine per-finding ruling — the exact
+    // remedy the hint prescribes — must clear; else re-auditing could never
+    // satisfy the audit, since `note prune` won't remove a live-target note.
+    #[test]
+    fn audits_active_adjudication_not_superseded_history() {
+        let targets = ["tangled_file:a.rs", "tangled_file:b.rs", "tangled_file:c.rs"];
+        let mut notes = Vec::new();
+        for (i, t) in targets.iter().enumerate() {
+            notes.push(smell_note(t, TEMPLATE, "2026-01-01T00:00:00Z")); // old rubber-stamp
+            notes.push(smell_note(t, genuine(i), "2026-02-01T00:00:00Z")); // genuine re-audit
+        }
+        let (mut issues, mut hints) = (Vec::new(), Vec::new());
+        audit_smell_adjudications(&notes, &mut issues, &mut hints);
+        assert!(
+            issues.is_empty(),
+            "genuine active rulings are not vacuous: {issues:?}"
+        );
+        assert!(
+            hints.is_empty(),
+            "superseded templated history must NOT cluster — only active distinct rulings count: {hints:?}"
+        );
+    }
+
+    // The flip side: if the ACTIVE (newest) ruling is the templated one,
+    // re-stamping over a genuine note must STILL flag the cluster.
+    #[test]
+    fn flags_templated_active_rulings() {
+        let targets = ["tangled_file:a.rs", "tangled_file:b.rs", "tangled_file:c.rs"];
+        let mut notes = Vec::new();
+        for (i, t) in targets.iter().enumerate() {
+            notes.push(smell_note(t, genuine(i), "2026-01-01T00:00:00Z")); // genuine first
+            notes.push(smell_note(t, TEMPLATE, "2026-02-01T00:00:00Z")); // then rubber-stamped
+        }
+        let (mut issues, mut hints) = (Vec::new(), Vec::new());
+        audit_smell_adjudications(&notes, &mut issues, &mut hints);
+        assert_eq!(
+            hints.len(),
+            1,
+            "3 templated active rulings must cluster into one hint: {hints:?}"
+        );
     }
 }

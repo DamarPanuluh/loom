@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 
-use crate::types::Intent;
+use crate::types::{Hypothesis, Intent};
 
 use super::snapshot::QuerySnapshot;
 
@@ -78,6 +78,40 @@ fn try_resolve_intent_from_list(intents: &[Intent], key: &str) -> Result<Option<
                 shown
             )
         }
+    }
+}
+
+/// Resolve a hypothesis key — exact id, exact name (case-insensitive), or a
+/// unique name fragment — to the hypothesis id. Shared by the store's
+/// `resolve_hypothesis` and the command layer so both apply identical matching
+/// and surface the identical not-found / ambiguity errors.
+pub fn resolve_hypothesis_from_list(hypotheses: &[Hypothesis], key: &str) -> Result<String> {
+    if hypotheses.iter().any(|hypothesis| hypothesis.id == key) {
+        return Ok(key.to_string());
+    }
+    let kl = key.to_lowercase();
+    let exact: Vec<_> = hypotheses
+        .iter()
+        .filter(|hypothesis| hypothesis.name.to_lowercase() == kl)
+        .collect();
+    if exact.len() == 1 {
+        return Ok(exact[0].id.clone());
+    }
+    let subs: Vec<_> = hypotheses
+        .iter()
+        .filter(|hypothesis| hypothesis.name.to_lowercase().contains(&kl))
+        .collect();
+    match subs.len() {
+        1 => Ok(subs[0].id.clone()),
+        0 => anyhow::bail!(
+            "No hypothesis matches '{}' (by id, name, or fragment). Run `loom hypothesis list`.",
+            key
+        ),
+        _ => anyhow::bail!(
+            "'{}' is ambiguous — matches {} hypotheses. Use the id (`loom hypothesis list`).",
+            key,
+            subs.len()
+        ),
     }
 }
 
