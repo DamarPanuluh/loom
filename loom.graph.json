@@ -91426,15 +91426,15 @@
         "links": [],
         "normalized_claim": "agent acting falls back to bare llm (agent.rs:20) when LOOM_AGENT/--inspected-by unset; role_of(llm)=None is solo mode that passes EVERY lane (gate.rs:366). A forgotten LOOM_AGENT collapses separation-of-duties silently, including batch.",
         "raw_text": "AUDIT [high/epistemic] agent acting falls back to bare llm when neither --inspected-by nor LOOM_AGENT is set; role_of(llm) is None and enforce_lane treats None as solo mode that passes EVERY lane. A scout that forgets LOOM_AGENT=llm:<role> silently green-lights its own work across all gates including batch. loc: src/agent.rs:20-32; src/gate.rs:32-37,365-375; src/commands/batch.rs:162. impact: separation of duties is opt-in by environment variable; one missing export collapses the lane system to solo with no warning. suggestion: when a multi-lane bulk path (batch) or a declared multi-agent run is detected, require an explicit role (reject bare llm), or at minimum stamp and surface that the verdict was recorded in unguarded solo mode.",
-        "resolution": "",
+        "resolution": "Shipped in 41f66da. Solo mode (bare llm, no LOOM_AGENT role) passes every lane by design for one driver, but a forgotten LOOM_AGENT in a multi-agent run silently collapses separation of duties at record time. Two bounded FLAG-never-reject fixes: (1) loom batch appends one advisory warning per run when a verdict was recorded in solo mode, via the same warnings channel as copied-evidence, surfaced in --json and the human render (header relabeled advisory warning(s) to be honest for both epistemic and lane kinds); (2) loom guide SEPARATION OF DUTIES section teaches that solo is silent by default, that batch flags it, and that doctor hints when all verdicts are solo, mandating LOOM_AGENT=llm:role per agent if lanes should bind. Runtime enforcement was rejected: it would break solo, spam humans, and acting_in_lane has no Printer. Bar green both feature sets.",
         "route_command": "loom hypothesis add --name \"guard against accidental solo-mode in multi-agent runs\" --claim \"separation of duties is opt-in by env var; one missing LOOM_AGENT export collapses all lane gates to solo with no warning\" --proposal \"when a batch multi-lane bulk path runs or a multi-agent run is declared, require an explicit role and reject bare llm; otherwise stamp and surface that a verdict was recorded in unguarded solo mode\" --predicted-outcome \"a scout that forgets LOOM_AGENT is told, not silently allowed to green-light its own work\"",
         "route_kind": "hypothesis",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "triaged",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-18T13:14:12.798178+00:00"
+        "updated_at": "2026-06-20T01:21:11.512400+00:00"
       },
       {
         "author": "llm",
