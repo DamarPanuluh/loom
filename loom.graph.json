@@ -90832,15 +90832,15 @@
         "links": [],
         "normalized_claim": "retire_intent (sqlite.rs:1271) sets deprecated but never drops IMPLEMENTS edges, and list_all_implements has no status filter, so retired code keeps producing undeclared_coupling/tangled_file smells (smells.rs:1283) keyed by dead UUIDs that gate green.",
         "raw_text": "AUDIT [high/correctness] retire_intent sets status=deprecated but never drops the intent IMPLEMENTS edges, and list_all_implements JOINs with no status filter, so retired code keeps producing undeclared_coupling and tangled_file findings keyed by dead UUIDs. loc: src/db/sqlite.rs:1271-1295,2653-2685; src/db/queries/smells.rs:1283-1336,972-1010. impact: open smells from retired intents gate green (phase=audit) and waste adjudication. suggestion: build an active-intent set from the snapshot once and skip non-active owners in the file-ownership and layering detectors, or drop IMPLEMENTS edges on retire.",
-        "resolution": "",
+        "resolution": "Shipped in 74ba1cf. query_snapshot now filters retired-intent IMPLEMENTS from the active snapshot so smells stop firing undeclared_coupling and tangled_file on dead UUIDs; retire_intent stales its IMPLEMENTS edges matching the other edge types. Export keeps all IMPLEMENTS history via list_all_implements. Snapshot-shape test moved to active-vs-history. Bar green both feature sets.",
         "route_command": "loom hypothesis add --name \"smells ignore deprecated-intent ownership\" --claim \"retired intents leak IMPLEMENTS edges into file-ownership detectors, producing green-gating false findings\" --proposal \"build an active-intent set from the snapshot once and skip non-active owners in undeclared_coupling, tangled_file and the layering passes, or drop IMPLEMENTS edges on retire\" --predicted-outcome \"retiring an intent removes its smells; no finding is keyed by a deprecated UUID\"",
         "route_kind": "hypothesis",
         "route_target_id": "",
         "route_target_kind": "",
         "source": "code_audit",
-        "status": "triaged",
+        "status": "routed",
         "tags": [],
-        "updated_at": "2026-06-18T13:14:12.779811+00:00"
+        "updated_at": "2026-06-20T01:14:06.495779+00:00"
       },
       {
         "author": "llm",
