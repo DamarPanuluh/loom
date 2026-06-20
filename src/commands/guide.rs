@@ -68,14 +68,14 @@ const ORCHESTRATION: &[&str] = &[
     "  · one agent declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
     "  · many agents in sequence — builder finishes → analyzer picks up → … (handoff via the graph)",
     "  · many agents in parallel — each role works its own lane at once (see CONCURRENCY below)",
-    "CONCURRENCY (be honest about it): loom does NOT cross-process-lock `.loom/graph.sqlite`. There",
-    "  is no single-writer flock, no named collision error — parallel writers against one graph rely only on",
-    "  SQLite WAL + a short busy_timeout, and a write collision surfaces as a RAW rusqlite",
-    "  'database is locked' / BUSY_SNAPSHOT error, never a loom-named one. So for parallel lane agents:",
-    "  serialize them in YOUR orchestrator (one writer to the graph at a time — the lanes are independent,",
-    "  but the store is one), OR give each parallel writer its own graph clone + merge later, OR wrap the",
-    "  raw BUSY error in a retry. Do NOT assume loom serializes — it does not. Sequential shapes (the",
-    "  three above) never hit this; the tension is real only for true parallel-writer fan-out.",
+    "CONCURRENCY (loom handles it): loom DOES cross-process-lock writes — an advisory flock on",
+    "  `.loom/graph.lock`, taken per write transaction, so at most one write session touches a graph at a",
+    "  time (readers still run concurrently under WAL). A competing writer waits up to LOOM_LOCK_DEADLINE_MS",
+    "  (default 5000ms), then fails with a NAMED error ('graph write lock is held by another loom session …",
+    "  loom serializes writers'), never a raw 'database is locked'. So parallel lane agents are SAFE against",
+    "  corruption on one graph — loom serializes them for you. For heavy parallel WRITE fan-out, handle that",
+    "  named lock-wait error (retry/backoff) or give each writer its own graph clone + merge later. Sequential",
+    "  shapes never contend; reads never block.",
     "THE CONTRACT (identical in every shape):",
     "  · declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo)",
     "  · stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane",
@@ -478,7 +478,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
                     "many agents in sequence — builder finishes, analyzer picks up, … (handoff via the graph)",
                     "many agents in parallel — each role works its own lane at once (see concurrency)",
                 ],
-                "concurrency": "loom does NOT cross-process-lock `.loom/graph.sqlite`: no single-writer flock, no named collision error. Parallel writers against one graph rely only on SQLite WAL + a short busy_timeout, and a write collision surfaces as a RAW rusqlite 'database is locked' / BUSY_SNAPSHOT error, never a loom-named one. For parallel lane agents: serialize them in YOUR orchestrator (one writer to the graph at a time — the lanes are independent but the store is one), OR give each parallel writer its own graph clone + merge later, OR wrap the raw BUSY error in a retry. Do NOT assume loom serializes — it does not. Sequential shapes never hit this; the tension is real only for true parallel-writer fan-out.",
+                "concurrency": "loom DOES cross-process-lock writes: an advisory flock on `.loom/graph.lock` taken per write transaction, so at most one write session touches a graph at a time (readers run concurrently under WAL). A competing writer waits up to LOOM_LOCK_DEADLINE_MS (default 5000ms), then fails with a NAMED error ('graph write lock is held by another loom session … loom serializes writers'), never a raw 'database is locked'. Parallel lane agents are therefore safe against corruption on one graph — loom serializes them for you. For heavy parallel WRITE fan-out, handle that named lock-wait error (retry/backoff) or give each writer its own graph clone + merge later. Sequential shapes never contend; reads never block.",
                 "contract": "Identical in every shape: declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo); stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane; hand off through the GRAPH (status/next/notes), not chat.",
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground + populate derived structure) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
                 "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
@@ -780,44 +780,42 @@ mod tests {
         }
     }
 
-    /// honesty-next #4 / loom-dx #? (concurrent-flock): the guide must NOT
-    /// promise a serialization guarantee loom doesn't provide. loom has no
-    /// cross-process lock — parallel writers get a RAW rusqlite BUSY error,
-    /// never a named one. Both audiences must say so honestly + name the safe
-    /// options, so an orchestrator spawning parallel lane agents doesn't assume
-    /// loom serializes them. Regression: if someone later claims loom added a
-    /// flock, this test forces them to update the honesty text deliberately
-    /// rather than let the false guarantee sneak back.
+    /// honesty-next #4 / loom-dx (concurrent-flock): the guide must teach the
+    /// REAL concurrency behavior. loom DOES cross-process-lock writes (advisory
+    /// flock on `.loom/graph.lock` per write tx; see acquire_write_lock /
+    /// write_tx in src/db/sqlite.rs) and a collision yields a loom-NAMED error,
+    /// never a raw "database is locked". Both audiences must say so — an
+    /// orchestrator must know loom serializes writers for it (so it doesn't build
+    /// redundant serialization or key error-handling on a raw string loom never
+    /// emits). Guards against the obsolete no-lock claim sneaking back; mirrors
+    /// the lock's own unit test write_lock_serializes_writers_with_a_named_error.
     #[test]
-    fn orchestration_concurrency_is_honest_about_no_lock() {
+    fn orchestration_concurrency_teaches_the_real_write_lock() {
         let v = guide_json("brownfield");
         let concurrency = v["orchestration"]["concurrency"]
             .as_str()
             .expect("orchestration.concurrency present in guide --json");
         assert!(
-            concurrency.contains("does NOT cross-process-lock"),
-            "must state loom does NOT lock the graph (no false serialization guarantee): {concurrency}"
+            concurrency.contains("cross-process-lock") && concurrency.contains("serializes"),
+            "must state loom DOES serialize writers via a cross-process lock: {concurrency}"
         );
         assert!(
-            concurrency.contains("database is locked"),
-            "must name the RAW error a parallel writer actually hits: {concurrency}"
+            concurrency.contains("NAMED error") || concurrency.contains("named error"),
+            "must say a collision yields a loom-named error (not a raw one): {concurrency}"
         );
         assert!(
-            concurrency.contains("serialize") && concurrency.contains("own graph clone"),
-            "must name the safe options (serialize / own clone): {concurrency}"
+            !concurrency.contains("does NOT cross-process-lock"),
+            "must NOT carry the obsolete no-lock falsehood: {concurrency}"
         );
         // Human parity: the prose render prints the ORCHESTRATION array verbatim
         // (raw println!, which bypasses Printer capture — so assert on the const
-        // that IS the human source of truth, not a captured buffer). The honesty
-        // must live in both audiences, not just the json one.
+        // that IS the human source of truth). The truth must live in both audiences.
         let human = super::ORCHESTRATION.join(" ");
         assert!(
-            human.contains("CONCURRENCY") && human.contains("does NOT cross-process-lock"),
-            "human guide (ORCHESTRATION const) carries the concurrency honesty too: {human}"
-        );
-        assert!(
-            human.contains("database is locked"),
-            "human guide names the RAW error too: {human}"
+            human.contains("CONCURRENCY")
+                && human.contains("cross-process-lock")
+                && !human.contains("does NOT cross-process-lock"),
+            "human guide (ORCHESTRATION const) carries the real lock story too: {human}"
         );
     }
 
