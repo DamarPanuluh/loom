@@ -143,6 +143,22 @@ fn prepare_add_note(
         _ => ("none".to_string(), String::new()),
     };
 
+    // The anti-rubber-stamp bar. A `decision` note scoped to a smell SUPPRESSES
+    // an audit finding — the one write surface that historically had no evidence
+    // gate, which let an agent batch-stamp every open finding with one pasted
+    // rationale. Here a smell ruling must be substantive AND not reuse the
+    // wording of a ruling already on a DIFFERENT finding: the first ruling of a
+    // template passes, the second bounces, forcing per-finding inspection.
+    if kind == "decision" && target_kind == "smell" {
+        let prior_notes = db.notes_by_kind("decision")?;
+        let prior_rulings: Vec<(&str, &str)> = prior_notes
+            .iter()
+            .filter(|n| n.target_kind == "smell" && n.target_id != target_id)
+            .map(|n| (n.target_id.as_str(), n.text.as_str()))
+            .collect();
+        crate::gate::require_distinct_smell_ruling(&text, &prior_rulings)?;
+    }
+
     let audience = match &for_role {
         Some(r) => {
             // The canonical lane set (gate.rs reads the same constant) —

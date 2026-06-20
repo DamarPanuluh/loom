@@ -16,6 +16,15 @@
 //! on each finding stays with the inspecting agent, via the exact remedy
 //! command each smell carries.
 
+// The `detect_*` helpers below were extracted from `compute_smells_from_parts`
+// (one function per smell). Each inherently consumes several pre-computed graph
+// planes, so some exceed clippy's 7-argument guideline — bundling them into a
+// context struct would only trade arg-count for field-count. Each helper is also
+// doc-numbered to match its position in the orchestrator, so its leading "N."
+// reads as a markdown list item to clippy's doc linter though it is deliberate
+// ordering. Both are intentional for this detector module.
+#![allow(clippy::too_many_arguments, clippy::doc_lazy_continuation)]
+
 use anyhow::Result;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -243,7 +252,7 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "if splitting is needed, propose it through `loom hypothesis add`".into(),
             ],
             avoid: vec!["do not split a coordinator file just to silence the smell".into()],
-            done_when: "cohabitation has a current decision note, or an adopted/proven hypothesis restructures ownership".into(),
+            done_when: "cohabitation has a current decision note naming the shared boundary that makes these intents one home (not a generic 'cohesive'), or an adopted/proven hypothesis restructures ownership".into(),
         },
         "unmeasured_intents" => SmellTeaching {
             principle: "A quality rule only matters where it has been honestly held against coded behavior; independent is a valid measured result.".into(),
@@ -337,7 +346,7 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "do not split a deliberately linear workflow just to satisfy the threshold".into(),
                 "do not extract helpers that hide the same branchy behavior behind vague names".into(),
             ],
-            done_when: "the behavior is split into smaller named units, or a current decision note on the file explains why this large symbol is deliberate".into(),
+            done_when: "the behavior is split into smaller named units, or a current decision note gives a finding-specific reason this symbol resists extraction — the decomposition considered + why it is wrong here, not a restatement of its size".into(),
         },
         "oversized_file" => SmellTeaching {
             principle: "A file large enough to be a god-file usually concentrates unrelated responsibilities; physical size is only a suspicion, so inspect the file before splitting.".into(),
@@ -350,7 +359,7 @@ fn teaching_for(kind: &str) -> SmellTeaching {
                 "do not split a file that is large for a single deliberate reason (a protocol, a big match, generated code) just to beat the threshold".into(),
                 "do not move the problem: a mechanical split that leaves the same intents co-owning the new files just scatters the god-file".into(),
             ],
-            done_when: "the file is split along intent/module lines so each new file owns one responsibility, or a current decision note on the file explains why this size is deliberate".into(),
+            done_when: "the file is split along intent/module lines so each new file owns one responsibility, or a current decision note gives a finding-specific reason this file must stay whole — the split considered + why it is wrong here, not a restatement of its size".into(),
         },
         "panic_marker_risk" => SmellTeaching {
             principle: "A panic/unwrap/expect/todo marker in non-test behavior can turn an expected sad path into a process abort or unfinished path; it needs an explicit boundary decision.".into(),
@@ -557,6 +566,22 @@ pub struct SmellInputs<'a> {
     pub targets: &'a [TargetsEdge],
 }
 
+/// Adjudication lookup shared by the extracted per-detector helpers: a
+/// kind=decision note keyed on the finding identity (`<kind>:<target>`) and
+/// newer than `anchor` resolves the finding. Lifted from
+/// `compute_smells_from_parts`' closure so each `detect_*` helper can call it.
+fn adjudicate<'a>(
+    last_decision: &HashMap<&str, &'a crate::types::Note>,
+    kind: &str,
+    target: &str,
+    anchor: &str,
+) -> Option<&'a crate::types::Note> {
+    last_decision
+        .get(format!("{kind}:{target}").as_str())
+        .filter(|n| rfc3339_after(n.created_at.as_str(), anchor))
+        .copied()
+}
+
 /// Snapshot + input reusing form for storage backends that can load the read
 /// planes directly.
 pub fn compute_smells_from_parts(
@@ -662,23 +687,6 @@ pub fn compute_smells_from_parts(
         .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
         .collect();
     roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
-    // Adjudicated: a decision on `target` newer than the structure's newest
-    // change at `anchor` ("" = no structural timestamp recorded). Returns the
-    // ruling note — suppressed findings surface WITH their ruling, never
-    // silently.
-    // Adjudication is keyed on the FINDING IDENTITY (`<kind>:<scope>`), not on the
-    // raw target id: a ruling about one finding can no longer launder a different
-    // finding that merely shares a file/intent (e.g. a per-symbol
-    // large_behavioral_symbol note can't clear the file-level tangled_file
-    // finding). The decision note must be recorded with that identity
-    // (`loom note add --smell "<kind>:<scope>"`); legacy file/intent-scoped notes
-    // no longer match and the finding honestly re-opens.
-    let adjudicated = |kind: &str, target: &str, anchor: &str| -> Option<&crate::types::Note> {
-        last_decision
-            .get(format!("{kind}:{target}").as_str())
-            .filter(|n| rfc3339_after(n.created_at.as_str(), anchor))
-            .copied()
-    };
 
     let mut smells: Vec<Smell> = Vec::new();
     let mut adjudicated_out: Vec<AdjudicatedSmell> = Vec::new();
@@ -694,1882 +702,187 @@ pub fn compute_smells_from_parts(
             .push(intent);
     }
 
-    // 1. Twin intents — split-brain in the semantic plane: two intents at the
-    //    same abstraction level that read like the same responsibility, with
-    //    no recorded relationship between them.
-    for same_level in intents_by_level.values() {
-        for i in 0..same_level.len() {
-            for j in (i + 1)..same_level.len() {
-                let (a, b) = (same_level[i], same_level[j]);
-                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                    continue;
-                }
-                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-                if sim >= TWIN_SIMILARITY {
-                    smells.push(Smell {
-                        kind: "twin_intents".into(),
-                        score: sim * 10.0,
-                        summary: format!(
-                            "'{}' and '{}' read like the same responsibility twice",
-                            a.name, b.name
-                        ),
-                        evidence: format!(
-                            "name+description similarity {:.2} at the same level ({}), no edge between them",
-                            sim, a.abstraction_level
-                        ),
-                        remedy: format!(
-                            "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
-                            a = a.id, b = b.id
-                        ),
-                        teaching: teaching_for("twin_intents"),
-                    });
-                }
-            }
-        }
-    }
+    // 1. Twin intents — two same-level intents reading like one responsibility.
+    detect_twin_intents(&intents_by_level, &linked, &signal_toks, &mut smells);
 
-    // 1b. Duplicated responsibility — the collision detector the bounded tag
-    //     vocabulary exists for: two same-level intents whose REGISTERED tags
-    //     collide (rarity-weighted), grounded in DISJOINT files with no import
-    //     between them and no recorded relationship. Exactly the case every
-    //     other detector misses: lexical twins need shared wording,
-    //     overlapping_ownership needs a shared file, undeclared_coupling needs
-    //     an import — same responsibility implemented twice in unrelated code
-    //     has none of those. Tags remain the strongest signal, but an untagged
-    //     coded pair gets a stricter lexical fallback so missing tags do not
-    //     make the detector entirely blind.
-    for same_level in intents_by_level.values() {
-        for i in 0..same_level.len() {
-            for j in (i + 1)..same_level.len() {
-                let (a, b) = (same_level[i], same_level[j]);
-                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                    continue;
-                }
-                // Physical separation: no shared file, no import between their code.
-                let (Some(fa), Some(fb)) = (
-                    discovery.files_of.get(a.id.as_str()),
-                    discovery.files_of.get(b.id.as_str()),
-                ) else {
-                    continue; // duplicate implementation requires real code on both sides
-                };
-                if fa.intersection(fb).next().is_some() {
-                    continue; // overlapping_ownership owns this case
-                }
-                let imports = fa
-                    .iter()
-                    .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
-                    .any(|p| discovery.import_links.contains(&p));
-                if imports {
-                    continue; // undeclared_coupling owns this case
-                }
-                let empty_tags: &[String] = &[];
-                let ta = discovery
-                    .tags_by_intent
-                    .get(a.id.as_str())
-                    .map(Vec::as_slice)
-                    .unwrap_or(empty_tags);
-                let tb = discovery
-                    .tags_by_intent
-                    .get(b.id.as_str())
-                    .map(Vec::as_slice)
-                    .unwrap_or(empty_tags);
-                let (weight, shared_terms) =
-                    super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
-                if weight >= DUP_TAG_WEIGHT {
-                    let term_detail = shared_terms
-                        .iter()
-                        .map(|t| {
-                            format!(
-                                "'{}' ({} intents carry it)",
-                                t,
-                                discovery.tag_counts.get(t).copied().unwrap_or(1)
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    smells.push(Smell {
-                        kind: "duplicated_responsibility".into(),
-                        score: weight * 8.0,
-                        summary: format!(
-                            "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
-                            a.name, b.name
-                        ),
-                        evidence: format!(
-                            "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
-                            term_detail, weight
-                        ),
-                        remedy: format!(
-                            "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
-                            a = a.id, b = b.id
-                        ),
-                        teaching: teaching_for("duplicated_responsibility"),
-                    });
-                    continue;
-                }
-                if ta.is_empty() || tb.is_empty() {
-                    let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
-                        .intersection(&signal_toks[b.id.as_str()])
-                        .cloned()
-                        .collect();
-                    let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-                    if sim < DUP_UNTAGGED_SIMILARITY
-                        || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
-                    {
-                        continue;
-                    }
-                    let mut shared_tokens = shared_tokens;
-                    shared_tokens.sort();
-                    smells.push(Smell {
-                        kind: "duplicated_responsibility".into(),
-                        score: 2.0 + sim * 8.0,
-                        summary: format!(
-                            "'{}' and '{}' read alike, are under-tagged, and live in unrelated code — same responsibility twice?",
-                            a.name, b.name
-                        ),
-                        evidence: format!(
-                            "untagged lexical fallback: name+description similarity {:.2} with shared token(s) {}; tag coverage is {} vs {}; groundings are disjoint with no import between them",
-                            sim,
-                            shared_tokens.join(", "),
-                            if ta.is_empty() { "none" } else { "present" },
-                            if tb.is_empty() { "none" } else { "present" },
-                        ),
-                        remedy: format!(
-                            "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
-                            a = a.id, b = b.id
-                        ),
-                        teaching: teaching_for("duplicated_responsibility"),
-                    });
-                }
-            }
-        }
-    }
+    // 1b. Duplicated responsibility — same-level intents whose tags collide in
+    // disjoint, non-importing code.
+    detect_duplicated_responsibility(
+        &intents_by_level,
+        &linked,
+        &discovery,
+        &signal_toks,
+        &mut smells,
+    );
 
-    // 1c. Duplicate detector coverage — tags are still optional at write time,
-    //     but once an intent has code, untagged coverage is audit-relevant. The
-    //     lexical fallback above is deliberately weaker than bounded vocabulary;
-    //     this aggregate finding keeps "fallback only" from looking as strong as
-    //     registered terms. A root decision may consciously accept the remaining
-    //     blind spot, but a newly grounded untagged coded intent re-opens it.
-    {
-        let coded: Vec<&crate::types::Intent> = intents
-            .iter()
-            .filter(|i| files_of.contains_key(i.id.as_str()))
-            .collect();
-        if coded.len() >= 2 {
-            let untagged: Vec<&crate::types::Intent> = coded
-                .iter()
-                .copied()
-                .filter(|i| {
-                    discovery
-                        .tags_by_intent
-                        .get(i.id.as_str())
-                        .map(|t| t.is_empty())
-                        .unwrap_or(true)
-                })
-                .collect();
-            if !untagged.is_empty() {
-                let registry = inputs.vocab_terms.len();
-                let newest_untagged_grounding = untagged
-                    .iter()
-                    .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
-                    .max()
-                    .unwrap_or("");
-                let sample: Vec<&str> = untagged.iter().take(5).map(|i| i.name.as_str()).collect();
-                let summary = if registry == 0 {
-                    format!(
-                        "duplicated-responsibility tag detector is unarmed: no vocabulary and {} coded intent(s) are untagged",
-                        untagged.len()
-                    )
-                } else {
-                    format!(
-                        "duplicated-responsibility tag detector is under-armed: {} of {} coded intent(s) are untagged",
-                        untagged.len(),
-                        coded.len()
-                    )
-                };
-                let adjudicated_note = roots.first().and_then(|root| {
-                    adjudicated(
-                        "duplicate_detection_unarmed",
-                        root.id.as_str(),
-                        newest_untagged_grounding,
-                    )
-                });
-                if let Some(note) = adjudicated_note {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "duplicate_detection_unarmed".into(),
-                        summary,
-                        ruling: note.text.clone(),
-                        ruled_by: note.author.clone(),
-                        ruled_at: note.created_at.clone(),
-                        reopens_when:
-                            "a new or newly grounded untagged coded intent lands after the ruling"
-                                .into(),
-                        teaching: teaching_for("duplicate_detection_unarmed"),
-                    });
-                } else {
-                    smells.push(Smell {
-                        kind: "duplicate_detection_unarmed".into(),
-                        score: 4.0 + untagged.len() as f64,
-                        summary,
-                        evidence: format!(
-                            "{} of {} coded intent(s) have no registered tag; fallback lexical matching is weaker than bounded vocabulary. Examples: {}",
-                            untagged.len(),
-                            coded.len(),
-                            sample.join(" · ")
-                        ),
-                        remedy: if registry == 0 {
-                            "seed the bounded vocabulary (`loom vocab add <term> --why \"covers X, not Y\"`), then tag coded intents with `loom intent tag add <intent> <term>`; if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
-                        } else {
-                            "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
-                        },
-                        teaching: teaching_for("duplicate_detection_unarmed"),
-                    });
-                }
-            }
-        }
-    }
+    // 1c. Duplicate detector coverage — coded intents left untagged weaken the
+    // duplicated-responsibility signal.
+    detect_duplicate_detection_unarmed(
+        intents,
+        &discovery,
+        &files_of,
+        &newest_grounding,
+        &roots,
+        inputs.vocab_terms.len(),
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 2. Overlapping ownership — split-brain in the physical plane: two
-    //    intents grounded in the same file with no recorded relationship.
-    //    (Parent/child sharing a file is structure, not a smell — `linked`
-    //    covers HIERARCHY too.)
-    for i in 0..intents.len() {
-        for j in (i + 1)..intents.len() {
-            let (a, b) = (&intents[i], &intents[j]);
-            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                continue;
-            }
-            let (Some(fa), Some(fb)) = (files_of.get(a.id.as_str()), files_of.get(b.id.as_str()))
-            else {
-                continue;
-            };
-            let shared: Vec<&&str> = fa.intersection(fb).collect();
-            if !shared.is_empty() {
-                let mut names: Vec<String> = shared.iter().map(|s| s.to_string()).collect();
-                names.sort();
-                smells.push(Smell {
-                    kind: "overlapping_ownership".into(),
-                    score: 3.0 * shared.len() as f64,
-                    summary: format!(
-                        "'{}' and '{}' both claim {} file(s) but no relationship is recorded",
-                        a.name, b.name, shared.len()
-                    ),
-                    evidence: format!("shared: {}", names.join(", ")),
-                    remedy: format!(
-                        "loom edge explore {} {}  → who owns what? ground the contract or mark independent with why",
-                        a.id, b.id
-                    ),
-                    teaching: teaching_for("overlapping_ownership"),
-                });
-            }
-        }
-    }
+    // 2. Overlapping ownership — two intents grounded in the same file with no
+    // recorded relationship.
+    detect_overlapping_ownership(intents, &linked, &files_of, &mut smells);
 
-    // 3. Scattered intent — one responsibility smeared across many files
-    //    (threshold scales with abstraction level).
-    for i in intents {
-        let (Some(files), Some(threshold)) = (
-            files_of.get(i.id.as_str()),
-            scatter_threshold(&i.abstraction_level),
-        ) else {
-            continue;
-        };
-        if files.len() >= threshold {
-            // Adjudicated: a decision note on the intent newer than its newest
-            // grounding says the spread is deliberate. A grounding added after
-            // the decision re-opens the question.
-            if let Some(note) = adjudicated(
-                "scattered_intent",
-                i.id.as_str(),
-                newest_grounding.get(i.id.as_str()).copied().unwrap_or(""),
-            ) {
-                adjudicated_out.push(AdjudicatedSmell {
-                    kind: "scattered_intent".into(),
-                    summary: format!("'{}' is grounded in {} files", i.name, files.len()),
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "a new grounding lands on this intent".into(),
-                    teaching: teaching_for("scattered_intent"),
-                });
-                continue;
-            }
-            // Group the grounded files by directory — the mechanical clustering
-            // evidence for a split. The flagging stays judgment-free: loom shows
-            // where the files cluster; the driving LLM names the child intents.
-            let mut by_dir: HashMap<&str, usize> = HashMap::new();
-            for f in files {
-                let dir = std::path::Path::new(f)
-                    .parent()
-                    .and_then(|p| p.to_str())
-                    .filter(|d| !d.is_empty())
-                    .unwrap_or(".");
-                *by_dir.entry(dir).or_insert(0) += 1;
-            }
-            let mut dirs: Vec<(&str, usize)> = by_dir.into_iter().collect();
-            dirs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
-            let clusters = dirs
-                .iter()
-                .map(|(d, n)| format!("{d} ({n})"))
-                .collect::<Vec<_>>()
-                .join(" · ");
-            smells.push(Smell {
-                kind: "scattered_intent".into(),
-                score: files.len() as f64,
-                summary: format!(
-                    "'{}' is grounded in {} files — responsibility may be fragmented",
-                    i.name,
-                    files.len()
-                ),
-                evidence: format!(
-                    "a {}-level intent normally stays under {} files; groundings cluster by directory: {}",
-                    i.abstraction_level, threshold, clusters
-                ),
-                remedy: format!(
-                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --smell \"scattered_intent:{id}\" --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
-                    id = i.id
-                ),
-                teaching: teaching_for("scattered_intent"),
-            });
-        }
-    }
+    // 3. Scattered intent — one responsibility smeared across many files.
+    detect_scattered_intent(
+        intents,
+        &files_of,
+        &newest_grounding,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 4. Tangled file — one file serving many intents (this is `loom hotspots`
-    //    made actionable with a threshold + remedy).
-    for (path, iids) in &intents_on_file {
-        let distinct: HashSet<&&str> = iids.iter().collect();
-        if distinct.len() >= TANGLE_INTENTS {
-            // Adjudicated: a decision note on the FILE newer than its newest
-            // claim ("loom note add --file … --kind decision") says the
-            // cohabitation is deliberate. A new claim re-opens it.
-            if let Some(note) = adjudicated(
-                "tangled_file",
-                path,
-                newest_claim.get(path).copied().unwrap_or(""),
-            ) {
-                adjudicated_out.push(AdjudicatedSmell {
-                    kind: "tangled_file".into(),
-                    summary: format!("{} serves {} distinct intents", path, distinct.len()),
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "a new IMPLEMENTS claim lands on this file".into(),
-                    teaching: teaching_for("tangled_file"),
-                });
-                continue;
-            }
-            let mut names: Vec<&str> = distinct
-                .iter()
-                .filter_map(|id| name_of.get(**id).copied())
-                .collect();
-            names.sort();
-            smells.push(Smell {
-                kind: "tangled_file".into(),
-                score: distinct.len() as f64,
-                summary: format!("{} serves {} distinct intents", path, distinct.len()),
-                evidence: format!("intents: {}", names.join(" · ")),
-                remedy: format!(
-                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; if the cohabitation is DELIBERATE, record it: `loom note add --smell \"tangled_file:{path}\" --kind decision --text \"<why these intents share a home>\"` resolves this finding (a new claim re-opens it)",
-                    n = distinct.len(),
-                ),
-                teaching: teaching_for("tangled_file"),
-            });
-        }
-    }
+    // 4. Tangled file — one file serving many distinct intents.
+    detect_tangled_file(
+        &intents_on_file,
+        &newest_claim,
+        &name_of,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 4b. Large behavioral symbol — a pure physical snapshot signal for
-    //     functions/methods/defs/impls whose span is large enough to deserve
-    //     inspection. No complexity field needed: this deliberately coarse pass
-    //     only says "read this large behavior before trusting the boundary".
-    for cf in &snapshot.codefiles {
-        for f in &cf.symbol_facts {
-            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) {
-                continue;
-            }
-            let span = f.line_end.saturating_sub(f.line_start) + 1;
-            if span < LARGE_BEHAVIORAL_SYMBOL_LINES {
-                continue;
-            }
-            let summary = format!("{} in {} spans {} lines", f.label, cf.path, span);
-            let adj_scope = format!("{}:{}", cf.path, f.label);
-            if let Some(note) = adjudicated(
-                "large_behavioral_symbol",
-                &adj_scope,
-                cf.last_modified.as_str(),
-            ) {
-                adjudicated_out.push(AdjudicatedSmell {
-                    kind: "large_behavioral_symbol".into(),
-                    summary,
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "the file is modified after the ruling".into(),
-                    teaching: teaching_for("large_behavioral_symbol"),
-                });
-                continue;
-            }
-            let visibility = if f.visibility.is_empty() {
-                "unknown"
-            } else {
-                f.visibility.as_str()
-            };
-            smells.push(Smell {
-                kind: "large_behavioral_symbol".into(),
-                score: span as f64 / 20.0,
-                summary,
-                evidence: format!(
-                    "{}:{}-{} is a non-test {} symbol (kind={}, visibility={}) above the {}-line threshold",
-                    cf.path,
-                    f.line_start,
-                    f.line_end,
-                    span,
-                    f.kind,
-                    visibility,
-                    LARGE_BEHAVIORAL_SYMBOL_LINES
-                ),
-                remedy: format!(
-                    "inspect {}:{}-{}; split distinct phases/modes into named helpers or smaller owned behavior, or record why the large symbol is deliberate: `loom note add --smell \"large_behavioral_symbol:{}:{}\" --kind decision --text \"<why {} stays large>\"` resolves THIS finding (editing the file re-opens it)",
-                    cf.path, f.line_start, f.line_end, cf.path, f.label, f.label
-                ),
-                teaching: teaching_for("large_behavioral_symbol"),
-            });
-        }
-    }
+    // 4b. Large behavioral symbol — a function/method/impl whose span is large
+    // enough to deserve inspection.
+    detect_large_behavioral_symbol(snapshot, &last_decision, &mut smells, &mut adjudicated_out);
 
-    // 4c. Panic/unwrap/todo markers in implemented behavior — token-derived
-    //     source facts populated during sync. These are not automatically bugs:
-    //     they are places where sad-path behavior depends on an invariant that
-    //     must be inspected, proven, or explicitly accepted.
-    for cf in &snapshot.codefiles {
-        for f in &cf.symbol_facts {
-            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) || f.panic_marker_count == 0 {
-                continue;
-            }
-            let summary = format!(
-                "{} in {} has {} panic/unfinished marker(s)",
-                f.label, cf.path, f.panic_marker_count
-            );
-            let adj_scope = format!("{}:{}", cf.path, f.label);
-            if let Some(note) =
-                adjudicated("panic_marker_risk", &adj_scope, cf.last_modified.as_str())
-            {
-                adjudicated_out.push(AdjudicatedSmell {
-                    kind: "panic_marker_risk".into(),
-                    summary,
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "the file is modified after the ruling".into(),
-                    teaching: teaching_for("panic_marker_risk"),
-                });
-                continue;
-            }
-            let markers = if f.panic_markers.is_empty() {
-                "unknown".to_string()
-            } else {
-                f.panic_markers.join(", ")
-            };
-            let path_weight = if command_or_public_surface(&cf.path, f) {
-                2.0
-            } else {
-                1.0
-            };
-            smells.push(Smell {
-                kind: "panic_marker_risk".into(),
-                score: f.panic_marker_count as f64 * path_weight,
-                summary,
-                evidence: format!(
-                    "{}:{}-{} markers=[{}] count={}{}",
-                    cf.path,
-                    f.line_start,
-                    f.line_end,
-                    markers,
-                    f.panic_marker_count,
-                    if path_weight > 1.0 {
-                        " on command/public surface"
-                    } else {
-                        ""
-                    }
-                ),
-                remedy: format!(
-                    "inspect {}:{}-{}; replace recoverable aborts with handled errors/proofs, move unfinished behavior to planned work, or accept the invariant: `loom note add --smell \"panic_marker_risk:{}:{}\" --kind decision --text \"<why these markers are deliberate>\"` resolves THIS finding (editing the file re-opens it)",
-                    cf.path, f.line_start, f.line_end, cf.path, f.label
-                ),
-                teaching: teaching_for("panic_marker_risk"),
-            });
-        }
-    }
+    // 4c. Panic/unwrap/todo markers in implemented behavior.
+    detect_panic_marker_risk(snapshot, &last_decision, &mut smells, &mut adjudicated_out);
 
-    // 4d. Oversized file — the irreducible god-file signal. The per-symbol
-    //     large_behavioral_symbol detector (4b) is adjudicable PER SYMBOL, so a
-    //     god-file reads as N separate per-symbol findings that each get ruled
-    //     away and the file's physical size is never measured as such. This
-    //     detector keys on the FILE's total physical extent — the last symbol's
-    //     end line (a lower-bound LOC proxy; the graph stores no line count) —
-    //     independent of impl/test classification, so it survives the per-symbol
-    //     adjudication path: a ruling on one symbol cannot launder it
-    //     (adjudication is keyed on `oversized_file:<path>`, a different identity
-    //     than any `large_behavioral_symbol:<path>:<label>`). A ruling naming the
-    //     file re-opens when the file is modified after it (anchor = file mtime).
-    for cf in &snapshot.codefiles {
-        // Physical extent = the last line of the file's last symbol. Lower
-        // bound on LOC (misses trailing blanks/comments), but a strong god-file
-        // signal — and robust against the is_test misclassification (no is_test
-        // filter), so a production impl that 4b was wrongly skipping still
-        // contributes its line_end here.
-        let extent = cf
-            .symbol_facts
-            .iter()
-            .map(|f| f.line_end)
-            .max()
-            .unwrap_or(0);
-        if extent < OVERSIZED_FILE_LINES {
-            continue;
-        }
-        let summary = format!(
-            "{} spans ~{} lines (last symbol ends at line {})",
-            cf.path, extent, extent
-        );
-        if let Some(note) = adjudicated(
-            "oversized_file",
-            cf.path.as_str(),
-            cf.last_modified.as_str(),
-        ) {
-            adjudicated_out.push(AdjudicatedSmell {
-                kind: "oversized_file".into(),
-                summary,
-                ruling: note.text.clone(),
-                ruled_by: note.author.clone(),
-                ruled_at: note.created_at.clone(),
-                reopens_when: "the file is modified after the ruling".into(),
-                teaching: teaching_for("oversized_file"),
-            });
-            continue;
-        }
-        smells.push(Smell {
-            kind: "oversized_file".into(),
-            score: extent as f64 / 200.0,
-            summary,
-            evidence: format!(
-                "{}: physical extent {} lines (last symbol end) >= {} god-file threshold",
-                cf.path, extent, OVERSIZED_FILE_LINES
-            ),
-            remedy: format!(
-                "split {path} along intent/module lines so each new file owns one responsibility (a code split is a redesign — propose it: `loom hypothesis add --name \"split {path}\" --claim \"<why this file is too big>\" --proposal \"<the split>\" --target <owning intent>`); if the size is DELIBERATE (one protocol, one generated block, one cohesive module), record why: `loom note add --smell \"oversized_file:{path}\" --kind decision --text \"<why this file stays large>\"` resolves THIS finding (editing the file re-opens it). A per-symbol `large_behavioral_symbol` ruling does NOT clear this — it is keyed on the file, not a symbol.",
-                path = cf.path
-            ),
-            teaching: teaching_for("oversized_file"),
-        });
-    }
+    // 4d. Oversized file — the irreducible god-file signal (file's physical
+    // extent), keyed on the file so a per-symbol ruling cannot launder it.
+    detect_oversized_file(snapshot, &last_decision, &mut smells, &mut adjudicated_out);
 
-    // 4e. Repeated string contracts — long user-facing/help/error/example
-    //     strings copied across symbols can drift silently. This is deliberately
-    //     conservative and ignores short labels, path-like values, and tests.
-    let mut strings: HashMap<String, Vec<StringContractLoc<'_>>> = HashMap::new();
-    for cf in &snapshot.codefiles {
-        for f in &cf.symbol_facts {
-            if f.is_test {
-                continue;
-            }
-            for literal in &f.string_literals {
-                let Some(key) = normalized_contract_string(&literal.value) else {
-                    continue;
-                };
-                strings.entry(key).or_default().push(StringContractLoc {
-                    path: cf.path.as_str(),
-                    file_modified: cf.last_modified.as_str(),
-                    label: f.label.as_str(),
-                    line: literal.line,
-                    value: literal.value.as_str(),
-                });
-            }
-        }
-    }
-    for (_key, mut locs) in strings {
-        locs.sort_by(|a, b| {
-            a.path
-                .cmp(b.path)
-                .then_with(|| a.line.cmp(&b.line))
-                .then_with(|| a.label.cmp(b.label))
-        });
-        locs.dedup_by(|a, b| a.path == b.path && a.line == b.line && a.label == b.label);
-        let distinct_files = locs.iter().map(|l| l.path).collect::<HashSet<_>>().len();
-        let distinct_symbols = locs
-            .iter()
-            .map(|l| (l.path, l.label))
-            .collect::<HashSet<_>>()
-            .len();
-        if distinct_files < 2 && distinct_symbols < 2 {
-            continue;
-        }
-        let anchor = locs[0];
-        let newest = locs
-            .iter()
-            .map(|l| l.file_modified)
-            .max()
-            .unwrap_or(anchor.file_modified);
-        let excerpt = short_contract_excerpt(anchor.value);
-        let summary = format!(
-            "string contract repeated in {} location(s): \"{}\"",
-            locs.len(),
-            excerpt
-        );
-        if let Some(note) = adjudicated("string_contract_duplicate", anchor.path, newest) {
-            adjudicated_out.push(AdjudicatedSmell {
-                kind: "string_contract_duplicate".into(),
-                summary,
-                ruling: note.text.clone(),
-                ruled_by: note.author.clone(),
-                ruled_at: note.created_at.clone(),
-                reopens_when: "one of the files carrying the repeated string changes".into(),
-                teaching: teaching_for("string_contract_duplicate"),
-            });
-            continue;
-        }
-        let evidence = locs
-            .iter()
-            .take(8)
-            .map(|l| format!("{}:{} '{}'", l.path, l.line, l.label))
-            .collect::<Vec<_>>()
-            .join(" · ");
-        smells.push(Smell {
-            kind: "string_contract_duplicate".into(),
-            score: locs.len() as f64 * (anchor.value.len() as f64 / 40.0).max(1.0),
-            summary,
-            evidence: format!(
-                "normalized repeated text appears in {} symbol(s) across {} file(s): {}",
-                distinct_symbols, distinct_files, evidence
-            ),
-            remedy: format!(
-                "inspect the repeated text; extract one source of truth if the wording must change together, or record deliberate independence: `loom note add --file {} --kind decision --text \"<why this repeated string is intentional>\"` resolves this finding (editing any carrying file re-opens it)",
-                anchor.path
-            ),
-            teaching: teaching_for("string_contract_duplicate"),
-        });
-    }
+    // 4e. Repeated string contracts — long user-facing strings copied across
+    // symbols can drift silently.
+    detect_string_contract_duplicate(snapshot, &last_decision, &mut smells, &mut adjudicated_out);
 
-    // 5. The measuring stick, unused — the normative plane only measures where
-    //    someone thought to apply a rule. Surface every rule × intent-with-code
-    //    pairing that was never considered (no GOVERNS edge of ANY state —
-    //    `independent` records "considered, doesn't apply" and silences this).
-    //
-    //    HIERARCHY-AWARE: a verdict INHERITS DOWN the tree. A rule held against
-    //    a component covers that component's descendants (a child can still get
-    //    its own, more specific edge). Measuring at the highest altitude where
-    //    the evidence is honest is the *encouraged* strategy — without
-    //    inheritance this smell punished it by re-flagging every leaf, inviting
-    //    a busywork sweep of vacuous per-leaf verdicts.
-    let considered: HashSet<(&str, &str)> = governs
-        .iter()
-        .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
-        .collect();
-    let parent_of: HashMap<&str, &str> = hierarchy
-        .iter()
-        .map(|(p, c)| (c.as_str(), p.as_str()))
-        .collect();
-    // Considered directly OR via any ancestor's verdict on the same rule.
-    // The tree is insert-enforced acyclic; the visited set is belt-and-braces.
-    let considered_up = |rule_id: &str, intent_id: &str| -> bool {
-        let mut cur = Some(intent_id);
-        let mut visited: HashSet<&str> = HashSet::new();
-        while let Some(id) = cur {
-            if !visited.insert(id) {
-                return false;
-            }
-            if considered.contains(&(rule_id, id)) {
-                return true;
-            }
-            cur = parent_of.get(id).copied();
-        }
-        false
-    };
-    for r in rules {
-        let unmeasured: Vec<&crate::types::Intent> = intents
-            .iter()
-            .filter(|i| {
-                i.status != "deprecated"
-                    && files_of.contains_key(i.id.as_str()) // has real code to measure
-                    && !considered_up(&r.id, &i.id)
-            })
-            .collect();
-        if unmeasured.is_empty() {
-            continue;
-        }
-        let sample: Vec<String> = unmeasured
-            .iter()
-            .take(3)
-            .map(|i| format!("{} ({})", i.name, i.id))
-            .collect();
-        smells.push(Smell {
-            kind: "unmeasured_intents".into(),
-            score: unmeasured.len() as f64,
-            summary: format!(
-                "rule '{}' has never been held against {} intent(s) that have code (neither directly nor via an ancestor's verdict)",
-                r.name,
-                unmeasured.len()
-            ),
-            evidence: format!("e.g. {}", sample.join(" · ")),
-            remedy: format!(
-                "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite",
-                r.id
-            ),
-            teaching: teaching_for("unmeasured_intents"),
-        });
-    }
+    // 5. The measuring stick, unused — rule × coded-intent pairings never
+    // considered (hierarchy-aware: a verdict inherits down the tree).
+    detect_unmeasured_intents(intents, rules, governs, hierarchy, &files_of, &mut smells);
 
-    // 6. Undeclared coupling — the physical plane contradicts the semantic:
-    //    file A statically imports file B, but the intents owning A and B have
-    //    no recorded relationship. The strongest split-brain detector loom has,
-    //    because it is grounded in the code itself, not in testimony.
-    {
-        let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
-        for cf in &snapshot.codefiles {
-            let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
-                continue;
-            };
-            for target in &cf.imports {
-                let Some(owners_b) = intents_on_file.get(target.as_str()) else {
-                    continue;
-                };
-                let example = format!("{} → {}", cf.path, target);
-                let mut seen_pairs: HashSet<(String, String)> = HashSet::new();
-                for a in owners_a {
-                    for b in owners_b {
-                        if a == b || linked.contains(&(*a, *b)) {
-                            continue;
-                        }
-                        let key = if a < b {
-                            (a.to_string(), b.to_string())
-                        } else {
-                            (b.to_string(), a.to_string())
-                        };
-                        if seen_pairs.insert(key.clone()) {
-                            pair_files.entry(key).or_default().push(example.clone());
-                        }
-                    }
-                }
-            }
-        }
-        for ((a, b), examples) in pair_files {
-            let (na, nb) = (
-                name_of.get(a.as_str()).copied().unwrap_or(&a),
-                name_of.get(b.as_str()).copied().unwrap_or(&b),
-            );
-            smells.push(Smell {
-                kind: "undeclared_coupling".into(),
-                score: 4.0 + examples.len() as f64,
-                summary: format!(
-                    "code of '{}' imports code of '{}' but no relationship is recorded",
-                    na, nb
-                ),
-                evidence: format!("imports: {}", examples.join(", ")),
-                remedy: format!(
-                    "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
-                    a, b
-                ),
-                teaching: teaching_for("undeclared_coupling"),
-            });
-        }
-    }
+    // 6. Undeclared coupling — file A imports file B but their owning intents
+    // have no recorded relationship.
+    detect_undeclared_coupling(snapshot, &intents_on_file, &linked, &name_of, &mut smells);
 
-    // 6b. Layering violation — the declared order judging the import graph:
-    //     code owned by a LOWER layer imports code owned by a HIGHER layer.
-    //     Direction always existed in the physical plane (imports are
-    //     directed); what was missing is the normative input — a violation
-    //     only exists relative to a DECLARED order (`loom layer order`,
-    //     top layer first; undeclared layers are exempt). Crucially, a
-    //     recorded RELATES_TO edge does NOT excuse direction: undeclared_
-    //     coupling asks "is the contact declared?", this asks "does the
-    //     dependency point the right way?" — independent questions.
-    {
-        let layer_rank: HashMap<String, usize> = inputs
-            .layer_order
-            .iter()
-            .cloned()
-            .enumerate()
-            .map(|(rank, layer)| (layer, rank))
-            .collect();
-        if !layer_rank.is_empty() {
-            let layer_of: HashMap<&str, &str> = intents
-                .iter()
-                .map(|i| (i.id.as_str(), i.layer.as_str()))
-                .collect();
-            // Ordered pair (lower importer, higher imported) → example imports.
-            let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
-            for cf in &snapshot.codefiles {
-                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
-                    continue;
-                };
-                for target in &cf.imports {
-                    let Some(owners_b) = intents_on_file.get(target.as_str()) else {
-                        continue;
-                    };
-                    for a in owners_a {
-                        for b in owners_b {
-                            let (Some(&ra), Some(&rb)) = (
-                                layer_of.get(*a).and_then(|d| layer_rank.get(*d)),
-                                layer_of.get(*b).and_then(|d| layer_rank.get(*d)),
-                            ) else {
-                                continue; // undeclared layer — exempt
-                            };
-                            // Bigger rank = deeper layer; flag deep → shallow.
-                            if a == b || ra <= rb {
-                                continue;
-                            }
-                            let example = format!("{} → {}", cf.path, target);
-                            let entry = pair_files
-                                .entry((a.to_string(), b.to_string()))
-                                .or_default();
-                            if !entry.contains(&example) {
-                                entry.push(example);
-                            }
-                        }
-                    }
-                }
-            }
-            for ((a, b), examples) in pair_files {
-                let (na, nb) = (
-                    name_of.get(a.as_str()).copied().unwrap_or(&a),
-                    name_of.get(b.as_str()).copied().unwrap_or(&b),
-                );
-                let (da, db_) = (
-                    layer_of.get(a.as_str()).copied().unwrap_or(""),
-                    layer_of.get(b.as_str()).copied().unwrap_or(""),
-                );
-                // Adjudicated: a decision note on the IMPORTING (lower)
-                // intent newer than its newest grounding says the
-                // up-dependency is deliberate; a new grounding re-opens it.
-                if let Some(note) = adjudicated(
-                    "layering_violation",
-                    a.as_str(),
-                    newest_grounding.get(a.as_str()).copied().unwrap_or(""),
-                ) {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "layering_violation".into(),
-                        summary: format!(
-                            "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
-                        ),
-                        ruling: note.text.clone(),
-                        ruled_by: note.author.clone(),
-                        ruled_at: note.created_at.clone(),
-                        reopens_when: "a new grounding lands on the importing intent".into(),
-                        teaching: teaching_for("layering_violation"),
-                    });
-                    continue;
-                }
-                smells.push(Smell {
-                    kind: "layering_violation".into(),
-                    score: 6.0 + examples.len() as f64,
-                    summary: format!(
-                        "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
-                    ),
-                    evidence: format!(
-                        "`loom layer order` puts '{da}' below '{db_}', but the dependency points UP: {} (a recorded relationship does not excuse direction)",
-                        examples.join(", ")
-                    ),
-                    remedy: format!(
-                        "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --smell \"layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
-                    ),
-                    teaching: teaching_for("layering_violation"),
-                });
-                // Kind-aware cross-check: an `architecture`-category rule that
-                // PASSES on an intent loom's own layering detector just flagged
-                // is a contradiction — the rule says direction is fine; the
-                // mechanical check disagrees. One of them is wrong.
-                let arch_passes = governs.iter().any(|g| {
-                    g.intent_id == a
-                        && g.inspection_status == "passing"
-                        && rule_kind.get(g.rule_id.as_str()).copied() == Some("architecture")
-                });
-                if arch_passes {
-                    smells.push(Smell {
-                        kind: "architecture_verdict_contradicts_layering".into(),
-                        score: 9.0,
-                        summary: format!(
-                            "'{na}' carries a PASSING architecture rule but its dependencies violate the declared layer order"
-                        ),
-                        evidence: format!(
-                            "an architecture-category GOVERNS verdict passes on '{na}', yet the layering detector flags it: {}",
-                            examples.join(", ")
-                        ),
-                        remedy: format!(
-                            "reconcile the two: re-inspect the architecture rule on '{na}' (`loom rule verdict` — the verdict may be wrong), or fix the layer order (`loom layer order …`); a passing architecture verdict must not coexist with an open layering violation"
-                        ),
-                        teaching: teaching_for("architecture_verdict_contradicts_layering"),
-                    });
-                }
-            }
-        }
-    }
+    // 6b. Layering violation — code owned by a LOWER layer imports code owned by
+    // a HIGHER layer, against the declared order.
+    detect_layering_violation(
+        snapshot,
+        intents,
+        &intents_on_file,
+        inputs.layer_order,
+        &name_of,
+        &newest_grounding,
+        governs,
+        &rule_kind,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 6c. Transitive layering violation — an up-the-order dependency that is
-    //     CLEAN at every single hop (6b never fires) but illegal across the
-    //     whole path. Because a chain of declared, non-violating hops keeps the
-    //     layer rank non-decreasing, the only way to reach a SHALLOWER layer
-    //     through all-clean hops is to route through UNLAYERED intermediates —
-    //     so this catches exactly what the direct check is blind to.
-    {
-        let layer_rank: HashMap<&str, usize> = inputs
-            .layer_order
-            .iter()
-            .enumerate()
-            .map(|(r, l)| (l.as_str(), r))
-            .collect();
-        if !layer_rank.is_empty() {
-            let layer_of: HashMap<&str, &str> = intents
-                .iter()
-                .map(|i| (i.id.as_str(), i.layer.as_str()))
-                .collect();
-            let rank = |id: &str| layer_of.get(id).and_then(|l| layer_rank.get(*l)).copied();
-            // Intent-level import graph. `adj` keeps only CLEAN hops (a hop a→b
-            // is dropped when both are layered and rank(a) > rank(b) — those are
-            // 6b's). `direct` records every direct import so we never re-report
-            // a direct pair here.
-            let mut adj: HashMap<&str, HashSet<&str>> = HashMap::new();
-            let mut direct: HashSet<(&str, &str)> = HashSet::new();
-            for cf in &snapshot.codefiles {
-                let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
-                    continue;
-                };
-                for target in &cf.imports {
-                    let Some(owners_b) = intents_on_file.get(target.as_str()) else {
-                        continue;
-                    };
-                    for a in owners_a {
-                        for b in owners_b {
-                            if a == b {
-                                continue;
-                            }
-                            direct.insert((*a, *b));
-                            if let (Some(ra), Some(rb)) = (rank(a), rank(b)) {
-                                if ra > rb {
-                                    continue; // directly-violating hop — 6b owns it
-                                }
-                            }
-                            adj.entry(*a).or_default().insert(*b);
-                        }
-                    }
-                }
-            }
-            let mut layered: Vec<&str> = intents
-                .iter()
-                .filter(|i| i.status != "deprecated" && rank(i.id.as_str()).is_some())
-                .map(|i| i.id.as_str())
-                .collect();
-            layered.sort();
-            for &a in &layered {
-                let Some(ra) = rank(a) else {
-                    continue;
-                };
-                // BFS over clean hops from `a`, tracking a parent for one path.
-                let mut parent: HashMap<&str, &str> = HashMap::new();
-                let mut seen: HashSet<&str> = HashSet::new();
-                let mut q: VecDeque<&str> = VecDeque::new();
-                seen.insert(a);
-                q.push_back(a);
-                while let Some(v) = q.pop_front() {
-                    if let Some(nbrs) = adj.get(v) {
-                        let mut ns: Vec<&str> = nbrs.iter().copied().collect();
-                        ns.sort(); // deterministic path reconstruction
-                        for w in ns {
-                            if seen.insert(w) {
-                                parent.insert(w, v);
-                                q.push_back(w);
-                            }
-                        }
-                    }
-                }
-                let mut reached: Vec<&str> = seen.iter().copied().filter(|&c| c != a).collect();
-                reached.sort();
-                for c in reached {
-                    let Some(rc) = rank(c) else {
-                        continue;
-                    };
-                    if rc >= ra || direct.contains(&(a, c)) {
-                        continue; // not a violating direction, or 6b's direct case
-                    }
-                    // Reconstruct the clean path a → … → c (≥1 unlayered hop).
-                    let mut path = vec![c];
-                    let mut cur = c;
-                    while let Some(&p) = parent.get(cur) {
-                        path.push(p);
-                        if p == a {
-                            break;
-                        }
-                        cur = p;
-                    }
-                    path.reverse();
-                    if path.len() < 3 {
-                        continue; // need at least one intermediate
-                    }
-                    let trail = path
-                        .iter()
-                        .map(|id| {
-                            let n = name_of.get(*id).copied().unwrap_or(id);
-                            let l = layer_of.get(*id).copied().unwrap_or("");
-                            if l.is_empty() {
-                                format!("'{n}' (unlayered)")
-                            } else {
-                                format!("'{n}' ({l})")
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join(" → ");
-                    let (na, nc) = (
-                        name_of.get(a).copied().unwrap_or(a),
-                        name_of.get(c).copied().unwrap_or(c),
-                    );
-                    let (la, lc) = (
-                        layer_of.get(a).copied().unwrap_or(""),
-                        layer_of.get(c).copied().unwrap_or(""),
-                    );
-                    let summary = format!(
-                        "'{na}' ({la}) transitively depends on '{nc}' ({lc}) against the declared layer order — clean at every hop"
-                    );
-                    if let Some(note) = adjudicated(
-                        "transitive_layering_violation",
-                        a,
-                        newest_grounding.get(a).copied().unwrap_or(""),
-                    ) {
-                        adjudicated_out.push(AdjudicatedSmell {
-                            kind: "transitive_layering_violation".into(),
-                            summary,
-                            ruling: note.text.clone(),
-                            ruled_by: note.author.clone(),
-                            ruled_at: note.created_at.clone(),
-                            reopens_when: "a new grounding lands on the importing intent".into(),
-                            teaching: teaching_for("transitive_layering_violation"),
-                        });
-                        continue;
-                    }
-                    smells.push(Smell {
-                        kind: "transitive_layering_violation".into(),
-                        score: 6.0 + (path.len() - 2) as f64,
-                        summary,
-                        evidence: format!(
-                            "every hop is clean (6b sees nothing), but the chain routes a deeper layer up to a shallower one through unlayered intermediate(s): {trail}"
-                        ),
-                        remedy: format!(
-                            "fix the END-TO-END direction: whatever '{la}' reaches up to use belongs at or below '{la}' (move it down / extract a lower shared module); OR give the unlayered intermediate(s) a `--layer` so the direct check governs each hop; OR if this up-dependency is DELIBERATE, record it: `loom note add --smell \"transitive_layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` (a new grounding re-opens it)"
-                        ),
-                        teaching: teaching_for("transitive_layering_violation"),
-                    });
-                }
-            }
-        }
-    }
+    // 6c. Transitive layering violation — an up-the-order dependency clean at
+    // every hop but illegal across the whole path (routed through unlayered
+    // intermediates).
+    detect_transitive_layering_violation(
+        snapshot,
+        intents,
+        &intents_on_file,
+        inputs.layer_order,
+        &name_of,
+        &newest_grounding,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 7. Recurrent trouble — the graph's memory of regressions: targets whose
-    //    transition history keeps returning to failing / needs_change. A spot
-    //    that broke twice will break a third time; it needs redesign, not
-    //    another patch.
-    //
-    //    TERMINAL STATE: a kind=decision note on the target that is NEWER than
-    //    its last regression refutes the finding ("redesigned/resolved, here's
-    //    why") — the append-only history stays intact, but an addressed
-    //    recurrence stops nagging. A regression AFTER the decision re-flags.
-    {
-        let mut trouble: HashMap<(String, String), usize> = HashMap::new();
-        let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
-        let mut trouble_notes: HashMap<(String, String), Vec<&crate::types::Note>> = HashMap::new();
-        for n in inputs.notes {
-            if n.kind == "transition"
-                && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
-            {
-                let key = (n.target_kind.clone(), n.target_id.clone());
-                *trouble.entry(key.clone()).or_insert(0) += 1;
-                trouble_notes.entry(key.clone()).or_default().push(n);
-                let e = last_trouble.entry(key).or_default();
-                if n.created_at > *e {
-                    *e = n.created_at.clone();
-                }
-            }
-        }
-        let edge_label: HashMap<&str, String> = {
-            let mut m: HashMap<&str, String> = HashMap::new();
-            for e in relates {
-                m.insert(e.id.as_str(), format!("{} × {}", e.from_name, e.to_name));
-            }
-            for g in governs {
-                m.insert(
-                    g.id.as_str(),
-                    format!("{} → {}", g.rule_name, g.intent_name),
-                );
-            }
-            m
-        };
-        for ((kind, id), count) in trouble {
-            if count < 2 {
-                continue;
-            }
-            let label = if kind == "intent" {
-                name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
-            } else {
-                edge_label
-                    .get(id.as_str())
-                    .cloned()
-                    .unwrap_or_else(|| id.clone())
-            };
-            // The last regression: guaranteed present (filled in the same
-            // pass that counted `trouble`); doubles as the adjudication
-            // anchor and the evidence timestamp.
-            let last = last_trouble
-                .get(&(kind.clone(), id.clone()))
-                .map(String::as_str)
-                .unwrap_or("");
-            let mut recent = trouble_notes
-                .get(&(kind.clone(), id.clone()))
-                .cloned()
-                .unwrap_or_default();
-            recent.sort_by(|a, b| {
-                b.created_at
-                    .cmp(&a.created_at)
-                    .then_with(|| b.text.cmp(&a.text))
-            });
-            let recent_detail = recent
-                .iter()
-                .take(3)
-                .map(|n| format!("{} {} by {}", n.created_at, n.text, n.author))
-                .collect::<Vec<_>>()
-                .join(" · ");
-            let history_cmd = if kind == "intent" {
-                format!("loom note list --intent {id} --kind transition --limit 0")
-            } else {
-                format!("loom note list --edge {id} --kind transition --limit 0")
-            };
-            // Addressed: a decision note recorded after the last regression.
-            if let Some(d) = last_decision.get(id.as_str()) {
-                if d.created_at.as_str() > last {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "recurrent_trouble".into(),
-                        summary: format!("'{}' has regressed {} times", label, count),
-                        ruling: d.text.clone(),
-                        ruled_by: d.author.clone(),
-                        ruled_at: d.created_at.clone(),
-                        reopens_when:
-                            "another failing/needs_change transition lands after the ruling".into(),
-                        teaching: recurrent_teaching(&kind, &id),
-                    });
-                    continue;
-                }
-            }
-            smells.push(Smell {
-                kind: "recurrent_trouble".into(),
-                score: 2.0 * count as f64,
-                summary: format!(
-                    "'{}' has regressed {} times (transitions to failing/needs_change)",
-                    label, count
-                ),
-                evidence: format!(
-                    "{count} transition(s) to failing/needs_change, the last at {last}; recent regressions: {recent_detail}; full history: `{history_cmd}`"
-                ),
-                remedy: format!(
-                    "recurring breakage means the criterion or the design is wrong — propose the redesign instead of patching again: `loom hypothesis add --name \"…\" --claim \"<what keeps regressing and the structural why>\" --proposal \"<the redesign>\" --predicted-outcome \"<no failing/needs_change transition after the next N syncs>\"{target}` (proven → adopted → planned intents); once addressed, `loom note add{nt} --kind decision --text \"<what was redesigned and why it won't recur>\"` resolves this finding (a decision newer than the last regression; history stays intact)",
-                    target = if kind == "intent" { format!(" --target {id}") } else { String::new() },
-                    nt = if kind == "intent" { format!(" --intent {id}") } else { format!(" --edge {id}") },
-                ),
-                teaching: recurrent_teaching(&kind, &id),
-            });
-        }
-    }
+    // 7. Recurrent trouble — targets whose transition history keeps regressing.
+    detect_recurrent_trouble(
+        inputs.notes,
+        relates,
+        governs,
+        &name_of,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 8. Hypothesis accumulation — the pre-decision plane turning into a note
-    //    dump. Proposed hypotheses are intentionally optional and non-gating
-    //    while small/fresh, but a stale or swollen queue means agents are adding
-    //    redesign ideas faster than they prove, reject, or adopt them. The
-    //    remedy is not a decision note; the terminal states live on the
-    //    hypothesis state machine itself.
-    {
-        let proposed = inputs.proposed_hypotheses;
-        if !proposed.is_empty() {
-            let now = chrono::Utc::now();
-            let stale: Vec<&crate::types::Hypothesis> = proposed
-                .iter()
-                .filter(|h| {
-                    chrono::DateTime::parse_from_rfc3339(&h.created_at)
-                        .map(|created| {
-                            now.signed_duration_since(created.with_timezone(&chrono::Utc))
-                                .num_days()
-                                >= HYPOTHESIS_STALE_DAYS
-                        })
-                        .unwrap_or(false)
-                })
-                .collect();
-            if proposed.len() >= HYPOTHESIS_BACKLOG_LIMIT || !stale.is_empty() {
-                let targeted: HashSet<&str> = inputs
-                    .targets
-                    .iter()
-                    .map(|t| t.hypothesis_id.as_str())
-                    .collect();
-                let untargeted = proposed
-                    .iter()
-                    .filter(|h| !targeted.contains(h.id.as_str()))
-                    .count();
-                if let Some(oldest) = proposed.iter().min_by(|a, b| {
-                    a.created_at
-                        .cmp(&b.created_at)
-                        .then_with(|| a.name.cmp(&b.name))
-                }) {
-                    let sample: Vec<&str> =
-                        proposed.iter().take(5).map(|h| h.name.as_str()).collect();
-                    let stale_names: Vec<&str> =
-                        stale.iter().take(5).map(|h| h.name.as_str()).collect();
-                    let stale_detail = if stale_names.is_empty() {
-                        "none".to_string()
-                    } else {
-                        stale_names.join(" · ")
-                    };
-                    smells.push(Smell {
-                        kind: "hypothesis_accumulation".into(),
-                        score: proposed.len() as f64 + 3.0 * stale.len() as f64,
-                        summary: format!(
-                            "{} proposed hypothesis(es) are waiting for proof; {} stale, {} untargeted",
-                            proposed.len(),
-                            stale.len(),
-                            untargeted
-                        ),
-                        evidence: format!(
-                            "{} proposed hypothesis(es), {} older than {}d, {} without TARGETS; oldest is '{}' created at {}; examples: {}; stale examples: {}",
-                            proposed.len(),
-                            stale.len(),
-                            HYPOTHESIS_STALE_DAYS,
-                            untargeted,
-                            oldest.name,
-                            oldest.created_at,
-                            sample.join(" · "),
-                            stale_detail
-                        ),
-                        remedy: format!(
-                            "drain the pre-decision plane: `loom next --mode prove` then `loom hypothesis prove <id> --verdict supported|refuted --evidence \"…\"`; for supported claims, adopt or reject them (`loom hypothesis adopt|reject`); for untargeted claims, add TARGETS first (`loom hypothesis target <id> <intent>`). Green requires fewer than {limit} proposed hypotheses and none older than {days}d.",
-                            limit = HYPOTHESIS_BACKLOG_LIMIT,
-                            days = HYPOTHESIS_STALE_DAYS,
-                        ),
-                        teaching: teaching_for("hypothesis_accumulation"),
-                    });
-                }
-            }
-        }
-    }
+    // 8. Hypothesis accumulation — the pre-decision plane swelling or staling.
+    detect_hypothesis_accumulation(inputs.proposed_hypotheses, inputs.targets, &mut smells);
 
-    // 9. Happy path only — the behavioral vantage point: a feature group that
-    //    declared its sunny-day intent (aspect=happy) but never realized and
-    //    proved what failure or degradation look like. The happy aspect is the
-    //    trigger; sad/fallback only clear the smell once they are implemented,
-    //    grounded, and directly proven. The LLM still decides whether
-    //    sad/fallback are real requirements here or honestly N/A (record that
-    //    as a decision note).
-    {
-        let mut child_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
-        let mut satisfied_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
-        let mut newest_aspect_child: HashMap<&str, &str> = HashMap::new();
-        let by_id: HashMap<&str, &crate::types::Intent> =
-            intents.iter().map(|i| (i.id.as_str(), i)).collect();
-        let passed_validation_ids: HashSet<&str> = snapshot
-            .validations
-            .iter()
-            .filter(|v| v.last_result == "passed")
-            .map(|v| v.id.as_str())
-            .collect();
-        let directly_proven_intents: HashSet<&str> = snapshot
-            .validates
-            .iter()
-            .filter(|e| passed_validation_ids.contains(e.validation_id.as_str()))
-            .map(|e| e.intent_id.as_str())
-            .collect();
-        for (p, c) in hierarchy {
-            let Some(child) = by_id.get(c.as_str()) else {
-                continue;
-            };
-            if child.aspect.is_empty() {
-                continue;
-            }
-            child_aspects
-                .entry(p.as_str())
-                .or_default()
-                .insert(child.aspect.as_str());
-            // A required-sibling child counts as SATISFIED only when realized,
-            // grounded, and directly proven — the gating bar, applied to any
-            // family's required aspects (sad/fallback, empty/error, …).
-            if child.lifecycle == "implemented"
-                && files_of.contains_key(child.id.as_str())
-                && directly_proven_intents.contains(child.id.as_str())
-            {
-                satisfied_aspects
-                    .entry(p.as_str())
-                    .or_default()
-                    .insert(child.aspect.as_str());
-            }
-            let e = newest_aspect_child.entry(p.as_str()).or_default();
-            if rfc3339_after(child.created_at.as_str(), e) {
-                *e = &child.created_at;
-            }
-        }
-        for (parent_id, aspects) in &child_aspects {
-            let satisfied = satisfied_aspects.get(parent_id);
-            // One finding per TRIGGERED family (a parent could own both a
-            // behavioral happy path and a UI populated state — each owes its own
-            // siblings). `loading` is recognized but never required.
-            for (trigger, required) in ASPECT_FAMILIES {
-                if !aspects.contains(trigger) {
-                    continue;
-                }
-                let missing: Vec<&str> = required
-                    .iter()
-                    .filter(|a| !satisfied.is_some_and(|s| s.contains(*a)))
-                    .copied()
-                    .collect();
-                if missing.is_empty() {
-                    continue;
-                }
-                // Adjudicated: a decision note on the parent newer than its
-                // newest aspect-carrying child records why the missing path is
-                // N/A. A new aspect-tagged child re-opens the question.
-                let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
-                let summary = format!(
-                    "'{pname}' declares a '{trigger}' aspect but no realized+proven {} sibling",
-                    missing.join("/")
-                );
-                if let Some(note) = adjudicated(
-                    "happy_path_only",
-                    parent_id,
-                    newest_aspect_child.get(parent_id).copied().unwrap_or(""),
-                ) {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "happy_path_only".into(),
-                        summary,
-                        ruling: note.text.clone(),
-                        ruled_by: note.author.clone(),
-                        ruled_at: note.created_at.clone(),
-                        reopens_when: "a new aspect-tagged child lands under this intent".into(),
-                        teaching: teaching_for("happy_path_only"),
-                    });
-                    continue;
-                }
-                smells.push(Smell {
-                    kind: "happy_path_only".into(),
-                    score: 2.0 + 2.0 * missing.len() as f64,
-                    summary,
-                    evidence: format!(
-                        "children carry aspects {{{}}}; realized+proven siblings {{{}}} — the '{trigger}' family's {} path(s) are not implemented, grounded, and directly proven",
-                        {
-                            let mut v: Vec<&str> = aspects.iter().copied().collect();
-                            v.sort();
-                            v.join(", ")
-                        },
-                        {
-                            let mut v: Vec<&str> = satisfied
-                                .map(|s| s.iter().copied().collect())
-                                .unwrap_or_default();
-                            v.sort();
-                            v.join(", ")
-                        },
-                        missing.join("/")
-                    ),
-                    remedy: format!(
-                        "realize and prove the missing path(s): loom intent add --aspect {first} --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --smell \"happy_path_only:{parent_id}\" --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
-                        first = missing[0],
-                        m = missing.join("/")
-                    ),
-                    teaching: teaching_for("happy_path_only"),
-                });
-            }
-        }
-    }
+    // 9. Happy path only — a feature group declared its happy aspect but never
+    // realized+proved the required sad/fallback (or empty/error) siblings.
+    detect_happy_path_only(
+        snapshot,
+        intents,
+        hierarchy,
+        &files_of,
+        &name_of,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
     // 10. Unused rule — a measuring stick connected to nothing at all.
-    let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
-    for r in rules {
-        if !used.contains(r.id.as_str()) {
-            smells.push(Smell {
-                kind: "unused_rule".into(),
-                score: 5.0,
-                summary: format!("rule '{}' governs nothing", r.name),
-                evidence: "a quality rule with zero GOVERNS edges measures nothing".into(),
-                remedy: format!(
-                    "loom rule verdict {} <intent-id> --status passing|failing|independent --criterion … --evidence … (the verdict creates the edge and measures it in one step; independent = the rule does not apply) — or delete it if it was a mistake",
-                    r.id
-                ),
-                teaching: teaching_for("unused_rule"),
-            });
-        }
-    }
+    detect_unused_rule(rules, governs, &mut smells);
 
-    // 11. Vocab drift — the registry policing itself: two registered terms
-    //     that read like the same word (edit distance / containment). The
-    //     vocabulary's value is forced collision; synonym terms split the
-    //     keyspace and silently halve the signal. Detection-and-merge is the
-    //     designed governance — never a closed list.
-    {
-        let terms = inputs.vocab_terms;
-        let counts = super::vocab::tag_counts(intents)?;
-        for i in 0..terms.len() {
-            for j in (i + 1)..terms.len() {
-                let (a, b) = (&terms[i], &terms[j]);
-                if !super::vocab::terms_look_alike(&a.name, &b.name) {
-                    continue;
-                }
-                let (ua, ub) = (
-                    counts.get(&a.name).copied().unwrap_or(0),
-                    counts.get(&b.name).copied().unwrap_or(0),
-                );
-                // Keep the better-established term; merge the other into it.
-                let (keep, drop) = if ua >= ub { (a, b) } else { (b, a) };
-                smells.push(Smell {
-                    kind: "vocab_drift".into(),
-                    score: 3.0 + (ua + ub) as f64,
-                    summary: format!(
-                        "vocab terms '{}' and '{}' read like the same word — split keyspace halves collision signal",
-                        a.name, b.name
-                    ),
-                    evidence: format!(
-                        "'{}' tags {} intent(s), '{}' tags {} intent(s); intents split across synonym terms never collide in duplicate detection",
-                        a.name, ua, b.name, ub
-                    ),
-                    remedy: format!(
-                        "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely distinct concepts the NAMES must stop reading alike — register a sharper term (`loom vocab add`), retag its intents (`loom intent tag`), then merge the look-alike away",
-                        drop.name, keep.name, drop.name
-                    ),
-                    teaching: teaching_for("vocab_drift"),
-                });
-            }
-        }
-    }
+    // 11. Vocab drift — two registered terms that read like the same word.
+    detect_vocab_drift(intents, inputs.vocab_terms, &mut smells)?;
 
-    // 12. Unjourneyed surface — the consumer plane's completeness check: a
-    //     user_visible intent with real code that NO PASSED saga exercises
-    //     end-to-end. The product claims a consumer can see/feel it; no consumer
-    //     journey ever proves it. Visibility is the key — this smell is what
-    //     makes the `user_visible` ruling load-bearing outside the align
-    //     interview.
-    //
-    //     Two regimes, so a journey-less repo isn't flooded:
-    //     - ZERO passed sagas → ONE aggregate finding on the root intent
-    //       ("no proven consumer journey at all"), adjudicated by a decision
-    //       note on the root newer than the newest user_visible intent.
-    //     - ≥1 passed saga → per-intent findings; the instrument is in use, so
-    //       each gap is meaningful. Adjudicated by a decision note on the intent
-    //       newer than its last redefinition (updated_at).
-    //
-    //     Coverage propagates BOTH ways through the tree: a step bound at
-    //     component altitude exercises the features the journey runs through,
-    //     and a journeyed leaf suppresses its ancestors' own findings
-    //     (unjourneyed SIBLINGS still fire individually).
-    {
-        let all_saga_ids: HashSet<&str> = snapshot
-            .validations
-            .iter()
-            .filter(|v| v.validation_type == "saga")
-            .map(|v| v.id.as_str())
-            .collect();
-        let passed_saga_ids: HashSet<&str> = snapshot
-            .validations
-            .iter()
-            .filter(|v| v.validation_type == "saga" && v.last_result == "passed")
-            .map(|v| v.id.as_str())
-            .collect();
-        let journeyed: HashSet<&str> = snapshot
-            .validates
-            .iter()
-            .filter(|e| passed_saga_ids.contains(e.validation_id.as_str()))
-            .map(|e| e.intent_id.as_str())
-            .collect();
-        let mut covered: HashSet<&str> = journeyed.clone();
-        // Ancestors of journeyed intents (parent_of comes from section 5;
-        // the tree is insert-enforced acyclic, visited is belt-and-braces).
-        for id in &journeyed {
-            let mut cur = *id;
-            let mut visited: HashSet<&str> = HashSet::new();
-            while let Some(p) = parent_of.get(cur) {
-                if !visited.insert(cur) {
-                    break;
-                }
-                covered.insert(p);
-                cur = p;
-            }
-        }
-        // Descendants of journeyed intents.
-        let mut children_of: HashMap<&str, Vec<&str>> = HashMap::new();
-        for (p, c) in hierarchy {
-            children_of.entry(p.as_str()).or_default().push(c.as_str());
-        }
-        let mut stack: Vec<&str> = journeyed.iter().copied().collect();
-        let mut walked: HashSet<&str> = HashSet::new();
-        while let Some(id) = stack.pop() {
-            if !walked.insert(id) {
-                continue;
-            }
-            if let Some(kids) = children_of.get(id) {
-                for k in kids {
-                    covered.insert(k);
-                    stack.push(k);
-                }
-            }
-        }
-        let candidates: Vec<&crate::types::Intent> = intents
-            .iter()
-            .filter(|i| {
-                i.visibility == "user_visible"
-                    && i.status != "deprecated"
-                    && i.abstraction_level != "system" // system grounds to manifests; journeys live below
-                    && files_of.contains_key(i.id.as_str()) // real code to exercise
-                    && !covered.contains(i.id.as_str())
-            })
-            .collect();
+    // 12. Unjourneyed surface — a user_visible intent with code that no passed
+    // saga exercises end-to-end.
+    detect_unjourneyed_surface(
+        snapshot,
+        intents,
+        hierarchy,
+        &files_of,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-        if passed_saga_ids.is_empty() {
-            if !candidates.is_empty() {
-                // The aggregate target: the system root (or any root) — "this
-                // product has no proven consumer surface" is a claim about the root.
-                let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
-                let mut roots: Vec<&crate::types::Intent> = intents
-                    .iter()
-                    .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
-                    .collect();
-                roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
-                if let Some(root) = roots.first() {
-                    let newest_uv = intents
-                        .iter()
-                        .filter(|i| i.visibility == "user_visible")
-                        .map(|i| i.created_at.as_str())
-                        .max()
-                        .unwrap_or("");
-                    let newest_saga_binding = snapshot
-                        .validates
-                        .iter()
-                        .filter(|e| all_saga_ids.contains(e.validation_id.as_str()))
-                        .map(|e| e.created_at.as_str())
-                        .max()
-                        .unwrap_or("");
-                    let newest_consumer_surface = std::cmp::max(newest_uv, newest_saga_binding);
-                    if let Some(note) = adjudicated(
-                        "unjourneyed_surface",
-                        root.id.as_str(),
-                        newest_consumer_surface,
-                    ) {
-                        adjudicated_out.push(AdjudicatedSmell {
-                            kind: "unjourneyed_surface".into(),
-                            summary: format!(
-                                "no passed consumer journey — {} user_visible intent(s) never exercised end-to-end",
-                                candidates.len()
-                            ),
-                            ruling: note.text.clone(),
-                            ruled_by: note.author.clone(),
-                            ruled_at: note.created_at.clone(),
-                            reopens_when: "a new user_visible intent or saga binding lands after the ruling (or a first saga passes — per-intent gaps become visible)".into(),
-                            teaching: teaching_for("unjourneyed_surface"),
-                        });
-                    } else {
-                        let sample: Vec<&str> =
-                            candidates.iter().take(3).map(|i| i.name.as_str()).collect();
-                        smells.push(Smell {
-                            kind: "unjourneyed_surface".into(),
-                            score: 3.0 + candidates.len() as f64,
-                            summary: format!(
-                                "no passed consumer journey — {} user_visible intent(s) are never exercised end-to-end",
-                                candidates.len()
-                            ),
-                            evidence: format!(
-                                "the product claims these are consumer-visible, but no passed saga touches any intent: e.g. {}",
-                                sample.join(" · ")
-                            ),
-                            remedy: format!(
-                                "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --smell \"unjourneyed_surface:{}\" --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
-                                root.id
-                            ),
-                            teaching: teaching_for("unjourneyed_surface"),
-                        });
-                    }
-                }
-            }
-        } else {
-            for i in candidates {
-                if let Some(note) =
-                    adjudicated("unjourneyed_surface", i.id.as_str(), i.updated_at.as_str())
-                {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "unjourneyed_surface".into(),
-                        summary: format!(
-                            "'{}' is user_visible but no passed journey exercises it",
-                            i.name
-                        ),
-                        ruling: note.text.clone(),
-                        ruled_by: note.author.clone(),
-                        ruled_at: note.created_at.clone(),
-                        reopens_when: "the intent is redefined after the ruling".into(),
-                        teaching: teaching_for("unjourneyed_surface"),
-                    });
-                    continue;
-                }
-                smells.push(Smell {
-                    kind: "unjourneyed_surface".into(),
-                    score: if i.abstraction_level == "component" { 5.0 } else { 4.0 },
-                    summary: format!(
-                        "'{}' is user_visible but no passed consumer journey exercises it",
-                        i.name
-                    ),
-                    evidence: format!(
-                        "a {}-level intent ruled user_visible, grounded in code, reached by no passed saga (directly or via the tree)",
-                        i.abstraction_level
-                    ),
-                    remedy: format!(
-                        "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --smell \"unjourneyed_surface:{id}\" --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
-                        id = i.id
-                    ),
-                    teaching: teaching_for("unjourneyed_surface"),
-                });
-            }
-        }
-    }
+    // 14. Symbol accountability — public/risky symbols without precise ownership.
+    detect_symbol_accountability(
+        snapshot,
+        intents,
+        implements,
+        inputs.notes,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 14. Symbol accountability — raw symbol coverage is noisy, but public or
-    // risky-file symbols without precise ownership are real accountability
-    // gaps. This detector consumes the same structural instrument that
-    // `loom coverage` renders in detail.
-    {
-        let report = super::symbol_accountability::symbol_accountability_from_parts_with_notes(
-            &snapshot.codefiles,
-            intents,
-            implements,
-            inputs.notes,
-        );
-        if !report.actionable_symbol_gaps.is_empty() {
-            let examples: Vec<String> = report
-                .actionable_symbol_gaps
-                .iter()
-                .take(5)
-                .map(|gap| format!("{} @ {}:{}", gap.label, gap.path, gap.line_start))
-                .collect();
-            smells.push(Smell {
-                kind: "symbol_accountability_gap".into(),
-                score: 6.0 + report.actionable_symbol_gaps.len() as f64,
-                summary: format!(
-                    "{} open actionable symbol gap(s): behavior-significant symbols lack precise ownership",
-                    report.actionable_symbol_gaps.len()
-                ),
-                evidence: format!(
-                    "symbol accountability: {} required, {} grounded, {} accepted, {} adjudicated, {} raw gap(s), {} open gap(s). Examples: {}",
-                    report.summary.required,
-                    report.summary.grounded,
-                    report.summary.accepted,
-                    report.summary.adjudicated,
-                    report.summary.raw_actionable_gaps,
-                    report.summary.actionable_gaps,
-                    examples.join(" · ")
-                ),
-                remedy: "Use `loom coverage --json` → actionable_symbol_gaps. For each top gap, inspect `loom codefile show <path>`, then refine the right IMPLEMENTS locator, split/add the behavior intent, or record a current decision note on the file/owning intent accepting broad ownership.".into(),
-                teaching: teaching_for("symbol_accountability_gap"),
-            });
-        } else if let Some(gap) = report
-            .adjudicated_symbol_gaps
-            .iter()
-            .max_by_key(|gap| gap.ruled_at.as_str())
-        {
-            adjudicated_out.push(AdjudicatedSmell {
-                kind: "symbol_accountability_gap".into(),
-                summary: format!(
-                    "{} raw symbol gap(s) accepted by current decision notes",
-                    report.summary.raw_actionable_gaps
-                ),
-                ruling: gap.ruling.clone(),
-                ruled_by: gap.ruled_by.clone(),
-                ruled_at: gap.ruled_at.clone(),
-                reopens_when: gap.reopens_when.clone(),
-                teaching: teaching_for("symbol_accountability_gap"),
-            });
-        }
-    }
+    // 15. Reciprocal dependency — mutual RELATES_TO stored twice (double-counts).
+    detect_reciprocal_dependency(
+        snapshot,
+        intents,
+        relates,
+        &name_of,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
-    // 15. Reciprocal dependency — the one circular RELATES_TO pattern whose
-    //     meaning survives loom's storage. RELATES_TO rows are stored directed
-    //     (PRIMARY KEY(from_id,to_id)) but `loom edge explore` never
-    //     canonicalizes endpoint order and the snapshot's `linked` set adds BOTH
-    //     directions for every undirected analysis — so a long directed "cycle"
-    //     a→b→c→a is just typing-order noise (an SCC over it is vacuous; on
-    //     loom's own graph it surfaced as one 39-intent blob that gated green for
-    //     nothing). The only honest signal is a RECIPROCAL pair: two intents
-    //     where BOTH directed rows a→b AND b→a carry a real verdict. That is one
-    //     undirected relationship stored twice — it double-counts in
-    //     degree/betweenness (the snapshot adds both directions) and skews
-    //     `loom next` ranking, and the two rows can carry silently-disagreeing
-    //     verdicts. We require BOTH directions GROUNDED (status not uninspected,
-    //     not independent) precisely to EXCLUDE the mechanically-created kind:
-    //     `loom saga add` writes *uninspected* directed path edges, so a
-    //     round-trip consumer journey legitimately produces an a↔b pair —
-    //     gating on those would false-alarm on a healthy graph with wrong advice.
-    //     (FUTURE: a real saga-flow cycle detector wants a stored saga-edge
-    //     provenance marker; deferred — no such marker exists yet. RETIREMENT:
-    //     if RELATES_TO storage is ever canonicalized at insert, reciprocal
-    //     pairs become impossible and this detector should be retired, not left
-    //     as a zero-yield gate.)
-    {
-        let active_ids: HashSet<&str> = intents
-            .iter()
-            .filter(|i| i.status != "deprecated")
-            .map(|i| i.id.as_str())
-            .collect();
-        // Grounded directed rows only: a verdict recorded (NOT uninspected, NOT
-        // independent) between two active intents. Indexed for O(1) reverse
-        // lookup and to read each direction's status/last_inspected.
-        let mut grounded: HashMap<(&str, &str), &crate::types::RelatesTo> = HashMap::new();
-        for e in relates {
-            if e.inspection_status == "uninspected"
-                || e.inspection_status == "independent"
-                || e.from_id == e.to_id
-                || !active_ids.contains(e.from_id.as_str())
-                || !active_ids.contains(e.to_id.as_str())
-            {
-                continue;
-            }
-            grounded.insert((e.from_id.as_str(), e.to_id.as_str()), e);
-        }
-        for (&(a, b), fwd) in &grounded {
-            if a >= b {
-                continue; // each unordered pair once; the a<b guard dedupes it
-            }
-            let Some(rev) = grounded.get(&(b, a)) else {
-                continue; // only one direction grounded — not a reciprocal pair
-            };
-            let (na, nb) = (
-                name_of.get(a).copied().unwrap_or(a),
-                name_of.get(b).copied().unwrap_or(b),
-            );
-            // Both rows are grounded, so both carry a real last_inspected — no
-            // empty-anchor phantom suppression. Re-opens when either is re-inspected.
-            let pair_anchor = fwd.last_inspected.as_str().max(rev.last_inspected.as_str());
-            let summary =
-                format!("mutual RELATES_TO dependency: '{na}' ↔ '{nb}' (both directions grounded)");
-            if let Some(note) = adjudicated("dependency_cycle", a, pair_anchor) {
-                adjudicated_out.push(AdjudicatedSmell {
-                    kind: "dependency_cycle".into(),
-                    summary,
-                    ruling: note.text.clone(),
-                    ruled_by: note.author.clone(),
-                    ruled_at: note.created_at.clone(),
-                    reopens_when: "either direction's edge is re-inspected".into(),
-                    teaching: teaching_for("dependency_cycle"),
-                });
-            } else {
-                let deg =
-                    *snapshot.degrees.get(a).unwrap_or(&0) + *snapshot.degrees.get(b).unwrap_or(&0);
-                smells.push(Smell {
-                    kind: "dependency_cycle".into(),
-                    score: 6.0 + deg as f64,
-                    summary,
-                    evidence: format!(
-                        "both directed rows are grounded — {na}→{nb} is {} and {nb}→{na} is {}. RELATES_TO is semantically undirected (the snapshot adds both directions for degree/centrality), so this is ONE relationship stored twice: it double-counts in degree/betweenness and skews `loom next` ranking, and the two verdicts can silently disagree.",
-                        fwd.inspection_status, rev.inspection_status
-                    ),
-                    remedy: format!(
-                        "`loom edge show rt:{a}:{b}` and `loom edge show rt:{b}:{a}`; decide which way the dependency really runs, then `loom edge explore <incidental-from> <incidental-to> independent` to retire the redundant direction (keep the better-grounded verdict). If '{na}' and '{nb}' are one responsibility, merge them. If the mutual relationship is DELIBERATE (true peers / a mutual contract), record it: `loom note add --smell \"dependency_cycle:{a}\" --kind decision --text \"<why both directions hold>\"` (re-inspecting either edge re-opens this)."
-                    ),
-                    teaching: teaching_for("dependency_cycle"),
-                });
-            }
-        }
-    }
-
-    // 16. Intent island — a subgraph with no path to a system-level root. The
-    //     UNDIRECTED connectivity over HIERARCHY + non-independent RELATES_TO
-    //     partitions intents into components; a component holding no
-    //     system-level intent cannot reach any product purpose. One finding per
-    //     island. When the graph has NO system root at all the detector is
-    //     unarmed (nothing to be an island relative to) and stays silent — the
-    //     missing-system-root gap is the granularity contract's problem, not
-    //     this detector's.
-    {
-        let active: Vec<&crate::types::Intent> = intents
-            .iter()
-            .filter(|i| i.status != "deprecated")
-            .collect();
-        let n = active.len();
-        let has_system = active.iter().any(|i| i.abstraction_level == "system");
-        if has_system && n > 0 {
-            let idx: HashMap<&str, usize> = active
-                .iter()
-                .enumerate()
-                .map(|(i, intent)| (intent.id.as_str(), i))
-                .collect();
-            let mut neighbors: Vec<HashSet<usize>> = vec![HashSet::new(); n];
-            for (p, c) in hierarchy {
-                if let (Some(&a), Some(&b)) = (idx.get(p.as_str()), idx.get(c.as_str())) {
-                    if a != b {
-                        neighbors[a].insert(b);
-                        neighbors[b].insert(a);
-                    }
-                }
-            }
-            for e in relates {
-                if e.inspection_status == "independent" {
-                    continue;
-                }
-                if let (Some(&a), Some(&b)) =
-                    (idx.get(e.from_id.as_str()), idx.get(e.to_id.as_str()))
-                {
-                    if a != b {
-                        neighbors[a].insert(b);
-                        neighbors[b].insert(a);
-                    }
-                }
-            }
-            let adjacency: Vec<Vec<usize>> = neighbors
-                .into_iter()
-                .map(|s| s.into_iter().collect())
-                .collect();
-            for comp in super::graph_algo::connected_components(n, &adjacency) {
-                if comp
-                    .iter()
-                    .any(|&i| active[i].abstraction_level == "system")
-                {
-                    continue; // reaches a system root — not an island
-                }
-                let mut members: Vec<&crate::types::Intent> =
-                    comp.iter().map(|&i| active[i]).collect();
-                members.sort_by(|a, b| a.id.cmp(&b.id));
-                let names: Vec<String> = members.iter().map(|i| format!("'{}'", i.name)).collect();
-                let anchor = members[0]; // smallest id
-                                         // A re-grounding of a member is the structural change that
-                                         // re-opens a "deliberately separate" ruling.
-                let island_anchor = members
-                    .iter()
-                    .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
-                    .max()
-                    .unwrap_or("");
-                let summary = format!(
-                    "{} intent(s) form an island with no path to a system-level root: {}",
-                    members.len(),
-                    names.join(", ")
-                );
-                if let Some(note) = adjudicated("intent_island", anchor.id.as_str(), island_anchor)
-                {
-                    adjudicated_out.push(AdjudicatedSmell {
-                        kind: "intent_island".into(),
-                        summary,
-                        ruling: note.text.clone(),
-                        ruled_by: note.author.clone(),
-                        ruled_at: note.created_at.clone(),
-                        reopens_when: "a member is re-grounded".into(),
-                        teaching: teaching_for("intent_island"),
-                    });
-                } else {
-                    smells.push(Smell {
-                        kind: "intent_island".into(),
-                        score: 5.0 + members.len() as f64,
-                        summary,
-                        evidence: format!(
-                            "no HIERARCHY or non-independent RELATES_TO path connects {} to any system-level intent: {}",
-                            if members.len() == 1 { "this intent" } else { "these intents" },
-                            names.join(", ")
-                        ),
-                        remedy: format!(
-                            "attach the island: `loom edge hierarchy <parent> <child>` under its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph; if it is a genuinely separate top-level purpose, add a system intent for it; if the separation is DELIBERATE, record it: `loom note add --smell \"intent_island:{}\" --kind decision --text \"<why this subgraph is intentionally disconnected>\"` (re-grounding a member re-opens this)",
-                            anchor.id
-                        ),
-                        teaching: teaching_for("intent_island"),
-                    });
-                }
-            }
-        }
-    }
+    // 16. Intent island — a subgraph with no path to a system-level root.
+    detect_intent_island(
+        intents,
+        hierarchy,
+        relates,
+        &newest_grounding,
+        &last_decision,
+        &mut smells,
+        &mut adjudicated_out,
+    );
 
     smells.sort_by(|a, b| {
         b.score
@@ -2617,6 +930,502 @@ pub fn compute_smells_from_parts(
         coded_layers,
         declared_layers,
     })
+}
+
+/// 12. Unjourneyed surface — the consumer plane's completeness check: a
+/// user_visible intent with real code that NO PASSED saga exercises end-to-end.
+/// Two regimes: zero passed sagas → one aggregate finding on the root;
+/// ≥1 passed saga → per-intent findings. Coverage propagates both ways through
+/// the tree.
+fn detect_unjourneyed_surface(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    hierarchy: &[(String, String)],
+    files_of: &HashMap<&str, HashSet<&str>>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let parent_of: HashMap<&str, &str> = hierarchy
+        .iter()
+        .map(|(p, c)| (c.as_str(), p.as_str()))
+        .collect();
+    let all_saga_ids: HashSet<&str> = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.validation_type == "saga")
+        .map(|v| v.id.as_str())
+        .collect();
+    let passed_saga_ids: HashSet<&str> = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.validation_type == "saga" && v.last_result == "passed")
+        .map(|v| v.id.as_str())
+        .collect();
+    let journeyed: HashSet<&str> = snapshot
+        .validates
+        .iter()
+        .filter(|e| passed_saga_ids.contains(e.validation_id.as_str()))
+        .map(|e| e.intent_id.as_str())
+        .collect();
+    let mut covered: HashSet<&str> = journeyed.clone();
+    for id in &journeyed {
+        let mut cur = *id;
+        let mut visited: HashSet<&str> = HashSet::new();
+        while let Some(p) = parent_of.get(cur) {
+            if !visited.insert(cur) {
+                break;
+            }
+            covered.insert(p);
+            cur = p;
+        }
+    }
+    let mut children_of: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (p, c) in hierarchy {
+        children_of.entry(p.as_str()).or_default().push(c.as_str());
+    }
+    let mut stack: Vec<&str> = journeyed.iter().copied().collect();
+    let mut walked: HashSet<&str> = HashSet::new();
+    while let Some(id) = stack.pop() {
+        if !walked.insert(id) {
+            continue;
+        }
+        if let Some(kids) = children_of.get(id) {
+            for k in kids {
+                covered.insert(k);
+                stack.push(k);
+            }
+        }
+    }
+    let candidates: Vec<&crate::types::Intent> = intents
+        .iter()
+        .filter(|i| {
+            i.visibility == "user_visible"
+                && i.status != "deprecated"
+                && i.abstraction_level != "system"
+                && files_of.contains_key(i.id.as_str())
+                && !covered.contains(i.id.as_str())
+        })
+        .collect();
+
+    if passed_saga_ids.is_empty() {
+        if !candidates.is_empty() {
+            let is_child: HashSet<&str> = hierarchy.iter().map(|(_, c)| c.as_str()).collect();
+            let mut roots: Vec<&crate::types::Intent> = intents
+                .iter()
+                .filter(|i| i.status != "deprecated" && !is_child.contains(i.id.as_str()))
+                .collect();
+            roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
+            if let Some(root) = roots.first() {
+                let newest_uv = intents
+                    .iter()
+                    .filter(|i| i.visibility == "user_visible")
+                    .map(|i| i.created_at.as_str())
+                    .max()
+                    .unwrap_or("");
+                let newest_saga_binding = snapshot
+                    .validates
+                    .iter()
+                    .filter(|e| all_saga_ids.contains(e.validation_id.as_str()))
+                    .map(|e| e.created_at.as_str())
+                    .max()
+                    .unwrap_or("");
+                let newest_consumer_surface = std::cmp::max(newest_uv, newest_saga_binding);
+                if let Some(note) = adjudicate(
+                    last_decision,
+                    "unjourneyed_surface",
+                    root.id.as_str(),
+                    newest_consumer_surface,
+                ) {
+                    adjudicated_out.push(AdjudicatedSmell {
+                        kind: "unjourneyed_surface".into(),
+                        summary: format!(
+                            "no passed consumer journey — {} user_visible intent(s) never exercised end-to-end",
+                            candidates.len()
+                        ),
+                        ruling: note.text.clone(),
+                        ruled_by: note.author.clone(),
+                        ruled_at: note.created_at.clone(),
+                        reopens_when: "a new user_visible intent or saga binding lands after the ruling (or a first saga passes — per-intent gaps become visible)".into(),
+                        teaching: teaching_for("unjourneyed_surface"),
+                    });
+                } else {
+                    let sample: Vec<&str> =
+                        candidates.iter().take(3).map(|i| i.name.as_str()).collect();
+                    smells.push(Smell {
+                        kind: "unjourneyed_surface".into(),
+                        score: 3.0 + candidates.len() as f64,
+                        summary: format!(
+                            "no passed consumer journey — {} user_visible intent(s) are never exercised end-to-end",
+                            candidates.len()
+                        ),
+                        evidence: format!(
+                            "the product claims these are consumer-visible, but no passed saga touches any intent: e.g. {}",
+                            sample.join(" · ")
+                        ),
+                        remedy: format!(
+                            "narrate the first consumer journey: write the saga YAML (each step binds to the intent it exercises) and `loom saga add <spec.yaml>` (steps may spawn missing intents with --spawn-missing); if this product exposes NO consumer-reachable surface, record the call: `loom note add --smell \"unjourneyed_surface:{}\" --kind decision --text \"no consumer surface: <why>\"` resolves this finding (a new user_visible intent re-opens it)",
+                            root.id
+                        ),
+                        teaching: teaching_for("unjourneyed_surface"),
+                    });
+                }
+            }
+        }
+    } else {
+        for i in candidates {
+            if let Some(note) = adjudicate(
+                last_decision,
+                "unjourneyed_surface",
+                i.id.as_str(),
+                i.updated_at.as_str(),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "unjourneyed_surface".into(),
+                    summary: format!(
+                        "'{}' is user_visible but no passed journey exercises it",
+                        i.name
+                    ),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "the intent is redefined after the ruling".into(),
+                    teaching: teaching_for("unjourneyed_surface"),
+                });
+                continue;
+            }
+            smells.push(Smell {
+                kind: "unjourneyed_surface".into(),
+                score: if i.abstraction_level == "component" { 5.0 } else { 4.0 },
+                summary: format!(
+                    "'{}' is user_visible but no passed consumer journey exercises it",
+                    i.name
+                ),
+                evidence: format!(
+                    "a {}-level intent ruled user_visible, grounded in code, reached by no passed saga (directly or via the tree)",
+                    i.abstraction_level
+                ),
+                remedy: format!(
+                    "extend a journey (or narrate a new one) with a step bound to this intent, then `loom saga add <spec.yaml>` + `loom saga run <name>`; if this surface is not consumer-reachable after all, the ruling is wrong — `loom intent confirm {id} --visibility internal`; if it IS consumer-visible but honestly un-journeyable, record the call: `loom note add --smell \"unjourneyed_surface:{id}\" --kind decision --text \"<why no journey>\"` resolves this finding (a redefinition re-opens it)",
+                    id = i.id
+                ),
+                teaching: teaching_for("unjourneyed_surface"),
+            });
+        }
+    }
+}
+
+/// 10. Unused rule — a measuring stick connected to nothing at all.
+fn detect_unused_rule(
+    rules: &[crate::types::QualityRule],
+    governs: &[crate::types::Governs],
+    smells: &mut Vec<Smell>,
+) {
+    let used: HashSet<&str> = governs.iter().map(|g| g.rule_id.as_str()).collect();
+    for r in rules {
+        if !used.contains(r.id.as_str()) {
+            smells.push(Smell {
+                kind: "unused_rule".into(),
+                score: 5.0,
+                summary: format!("rule '{}' governs nothing", r.name),
+                evidence: "a quality rule with zero GOVERNS edges measures nothing".into(),
+                remedy: format!(
+                    "loom rule verdict {} <intent-id> --status passing|failing|independent --criterion … --evidence … (the verdict creates the edge and measures it in one step; independent = the rule does not apply) — or delete it if it was a mistake",
+                    r.id
+                ),
+                teaching: teaching_for("unused_rule"),
+            });
+        }
+    }
+}
+
+/// 11. Vocab drift — the registry policing itself: two registered terms that
+/// read like the same word. Synonym terms split the keyspace and silently halve
+/// the duplicate-detection signal.
+fn detect_vocab_drift(
+    intents: &[crate::types::Intent],
+    vocab_terms: &[crate::types::VocabTerm],
+    smells: &mut Vec<Smell>,
+) -> Result<()> {
+    let terms = vocab_terms;
+    let counts = super::vocab::tag_counts(intents)?;
+    for i in 0..terms.len() {
+        for j in (i + 1)..terms.len() {
+            let (a, b) = (&terms[i], &terms[j]);
+            if !super::vocab::terms_look_alike(&a.name, &b.name) {
+                continue;
+            }
+            let (ua, ub) = (
+                counts.get(&a.name).copied().unwrap_or(0),
+                counts.get(&b.name).copied().unwrap_or(0),
+            );
+            // Keep the better-established term; merge the other into it.
+            let (keep, drop) = if ua >= ub { (a, b) } else { (b, a) };
+            smells.push(Smell {
+                kind: "vocab_drift".into(),
+                score: 3.0 + (ua + ub) as f64,
+                summary: format!(
+                    "vocab terms '{}' and '{}' read like the same word — split keyspace halves collision signal",
+                    a.name, b.name
+                ),
+                evidence: format!(
+                    "'{}' tags {} intent(s), '{}' tags {} intent(s); intents split across synonym terms never collide in duplicate detection",
+                    a.name, ua, b.name, ub
+                ),
+                remedy: format!(
+                    "loom vocab merge {} {}  → retags every intent and deletes '{}' (one sweep, nothing to re-inspect); if they are genuinely distinct concepts the NAMES must stop reading alike — register a sharper term (`loom vocab add`), retag its intents (`loom intent tag`), then merge the look-alike away",
+                    drop.name, keep.name, drop.name
+                ),
+                teaching: teaching_for("vocab_drift"),
+            });
+        }
+    }
+    Ok(())
+}
+
+/// 14. Symbol accountability — public or risky-file symbols without precise
+/// ownership are real accountability gaps. Consumes the same instrument that
+/// `loom coverage` renders in detail.
+fn detect_symbol_accountability(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    implements: &[crate::types::Implements],
+    notes: &[crate::types::Note],
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let report = super::symbol_accountability::symbol_accountability_from_parts_with_notes(
+        &snapshot.codefiles,
+        intents,
+        implements,
+        notes,
+    );
+    if !report.actionable_symbol_gaps.is_empty() {
+        let examples: Vec<String> = report
+            .actionable_symbol_gaps
+            .iter()
+            .take(5)
+            .map(|gap| format!("{} @ {}:{}", gap.label, gap.path, gap.line_start))
+            .collect();
+        smells.push(Smell {
+            kind: "symbol_accountability_gap".into(),
+            score: 6.0 + report.actionable_symbol_gaps.len() as f64,
+            summary: format!(
+                "{} open actionable symbol gap(s): behavior-significant symbols lack precise ownership",
+                report.actionable_symbol_gaps.len()
+            ),
+            evidence: format!(
+                "symbol accountability: {} required, {} grounded, {} accepted, {} adjudicated, {} raw gap(s), {} open gap(s). Examples: {}",
+                report.summary.required,
+                report.summary.grounded,
+                report.summary.accepted,
+                report.summary.adjudicated,
+                report.summary.raw_actionable_gaps,
+                report.summary.actionable_gaps,
+                examples.join(" · ")
+            ),
+            remedy: "Use `loom coverage --json` → actionable_symbol_gaps. For each top gap, inspect `loom codefile show <path>`, then refine the right IMPLEMENTS locator, split/add the behavior intent, or record a current decision note on the file/owning intent accepting broad ownership.".into(),
+            teaching: teaching_for("symbol_accountability_gap"),
+        });
+    } else if let Some(gap) = report
+        .adjudicated_symbol_gaps
+        .iter()
+        .max_by_key(|gap| gap.ruled_at.as_str())
+    {
+        adjudicated_out.push(AdjudicatedSmell {
+            kind: "symbol_accountability_gap".into(),
+            summary: format!(
+                "{} raw symbol gap(s) accepted by current decision notes",
+                report.summary.raw_actionable_gaps
+            ),
+            ruling: gap.ruling.clone(),
+            ruled_by: gap.ruled_by.clone(),
+            ruled_at: gap.ruled_at.clone(),
+            reopens_when: gap.reopens_when.clone(),
+            teaching: teaching_for("symbol_accountability_gap"),
+        });
+    }
+}
+
+/// 15. Reciprocal dependency — two intents where BOTH directed RELATES_TO rows
+/// carry a real verdict: one undirected relationship stored twice. It
+/// double-counts in degree/betweenness and the two rows can silently disagree.
+fn detect_reciprocal_dependency(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    relates: &[crate::types::RelatesTo],
+    name_of: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let active_ids: HashSet<&str> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated")
+        .map(|i| i.id.as_str())
+        .collect();
+    let mut grounded: HashMap<(&str, &str), &crate::types::RelatesTo> = HashMap::new();
+    for e in relates {
+        if e.inspection_status == "uninspected"
+            || e.inspection_status == "independent"
+            || e.from_id == e.to_id
+            || !active_ids.contains(e.from_id.as_str())
+            || !active_ids.contains(e.to_id.as_str())
+        {
+            continue;
+        }
+        grounded.insert((e.from_id.as_str(), e.to_id.as_str()), e);
+    }
+    for (&(a, b), fwd) in &grounded {
+        if a >= b {
+            continue; // each unordered pair once; the a<b guard dedupes it
+        }
+        let Some(rev) = grounded.get(&(b, a)) else {
+            continue; // only one direction grounded — not a reciprocal pair
+        };
+        let (na, nb) = (
+            name_of.get(a).copied().unwrap_or(a),
+            name_of.get(b).copied().unwrap_or(b),
+        );
+        let pair_anchor = fwd.last_inspected.as_str().max(rev.last_inspected.as_str());
+        let summary =
+            format!("mutual RELATES_TO dependency: '{na}' ↔ '{nb}' (both directions grounded)");
+        if let Some(note) = adjudicate(last_decision, "dependency_cycle", a, pair_anchor) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "dependency_cycle".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "either direction's edge is re-inspected".into(),
+                teaching: teaching_for("dependency_cycle"),
+            });
+        } else {
+            let deg =
+                *snapshot.degrees.get(a).unwrap_or(&0) + *snapshot.degrees.get(b).unwrap_or(&0);
+            smells.push(Smell {
+                kind: "dependency_cycle".into(),
+                score: 6.0 + deg as f64,
+                summary,
+                evidence: format!(
+                    "both directed rows are grounded — {na}→{nb} is {} and {nb}→{na} is {}. RELATES_TO is semantically undirected (the snapshot adds both directions for degree/centrality), so this is ONE relationship stored twice: it double-counts in degree/betweenness and skews `loom next` ranking, and the two verdicts can silently disagree.",
+                    fwd.inspection_status, rev.inspection_status
+                ),
+                remedy: format!(
+                    "`loom edge show rt:{a}:{b}` and `loom edge show rt:{b}:{a}`; decide which way the dependency really runs, then `loom edge explore <incidental-from> <incidental-to> independent` to retire the redundant direction (keep the better-grounded verdict). If '{na}' and '{nb}' are one responsibility, merge them. If the mutual relationship is DELIBERATE (true peers / a mutual contract), record it: `loom note add --smell \"dependency_cycle:{a}\" --kind decision --text \"<why both directions hold>\"` (re-inspecting either edge re-opens this)."
+                ),
+                teaching: teaching_for("dependency_cycle"),
+            });
+        }
+    }
+}
+
+/// 16. Intent island — a subgraph with no path to a system-level root. The
+/// UNDIRECTED connectivity over HIERARCHY + non-independent RELATES_TO
+/// partitions intents into components; a component holding no system-level
+/// intent cannot reach any product purpose. One finding per island. When the
+/// graph has NO system root at all the detector is unarmed and stays silent.
+fn detect_intent_island(
+    intents: &[crate::types::Intent],
+    hierarchy: &[(String, String)],
+    relates: &[crate::types::RelatesTo],
+    newest_grounding: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let active: Vec<&crate::types::Intent> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated")
+        .collect();
+    let n = active.len();
+    let has_system = active.iter().any(|i| i.abstraction_level == "system");
+    if !(has_system && n > 0) {
+        return;
+    }
+    let idx: HashMap<&str, usize> = active
+        .iter()
+        .enumerate()
+        .map(|(i, intent)| (intent.id.as_str(), i))
+        .collect();
+    let mut neighbors: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    for (p, c) in hierarchy {
+        if let (Some(&a), Some(&b)) = (idx.get(p.as_str()), idx.get(c.as_str())) {
+            if a != b {
+                neighbors[a].insert(b);
+                neighbors[b].insert(a);
+            }
+        }
+    }
+    for e in relates {
+        if e.inspection_status == "independent" {
+            continue;
+        }
+        if let (Some(&a), Some(&b)) = (idx.get(e.from_id.as_str()), idx.get(e.to_id.as_str())) {
+            if a != b {
+                neighbors[a].insert(b);
+                neighbors[b].insert(a);
+            }
+        }
+    }
+    let adjacency: Vec<Vec<usize>> = neighbors
+        .into_iter()
+        .map(|s| s.into_iter().collect())
+        .collect();
+    for comp in super::graph_algo::connected_components(n, &adjacency) {
+        if comp
+            .iter()
+            .any(|&i| active[i].abstraction_level == "system")
+        {
+            continue; // reaches a system root — not an island
+        }
+        let mut members: Vec<&crate::types::Intent> = comp.iter().map(|&i| active[i]).collect();
+        members.sort_by(|a, b| a.id.cmp(&b.id));
+        let names: Vec<String> = members.iter().map(|i| format!("'{}'", i.name)).collect();
+        let anchor = members[0]; // smallest id
+        let island_anchor = members
+            .iter()
+            .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
+            .max()
+            .unwrap_or("");
+        let summary = format!(
+            "{} intent(s) form an island with no path to a system-level root: {}",
+            members.len(),
+            names.join(", ")
+        );
+        if let Some(note) = adjudicate(
+            last_decision,
+            "intent_island",
+            anchor.id.as_str(),
+            island_anchor,
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "intent_island".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "a member is re-grounded".into(),
+                teaching: teaching_for("intent_island"),
+            });
+        } else {
+            smells.push(Smell {
+                kind: "intent_island".into(),
+                score: 5.0 + members.len() as f64,
+                summary,
+                evidence: format!(
+                    "no HIERARCHY or non-independent RELATES_TO path connects {} to any system-level intent: {}",
+                    if members.len() == 1 { "this intent" } else { "these intents" },
+                    names.join(", ")
+                ),
+                remedy: format!(
+                    "attach the island: `loom edge hierarchy <parent> <child>` under its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph; if it is a genuinely separate top-level purpose, add a system intent for it; if the separation is DELIBERATE, record it: `loom note add --smell \"intent_island:{}\" --kind decision --text \"<why this subgraph is intentionally disconnected>\"` (re-grounding a member re-opens this)",
+                    anchor.id
+                ),
+                teaching: teaching_for("intent_island"),
+            });
+        }
+    }
 }
 
 /// `cochange_coupling` suggestions — the ADVISORY, git-derived counterpart to
@@ -5136,5 +3945,1441 @@ mod transitive_layering_tests {
             1,
             "a passing architecture verdict over a layering violation is the contradiction"
         );
+    }
+}
+
+/// 7. Recurrent trouble — the graph's memory of regressions: targets whose
+/// transition history keeps returning to failing/needs_change. A decision note
+/// newer than the last regression refutes the finding; a later regression
+/// re-flags.
+fn detect_recurrent_trouble(
+    notes: &[crate::types::Note],
+    relates: &[crate::types::RelatesTo],
+    governs: &[crate::types::Governs],
+    name_of: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let mut trouble: HashMap<(String, String), usize> = HashMap::new();
+    let mut last_trouble: HashMap<(String, String), String> = HashMap::new();
+    let mut trouble_notes: HashMap<(String, String), Vec<&crate::types::Note>> = HashMap::new();
+    for n in notes {
+        if n.kind == "transition"
+            && (n.text.ends_with("→ failing") || n.text.ends_with("→ needs_change"))
+        {
+            let key = (n.target_kind.clone(), n.target_id.clone());
+            *trouble.entry(key.clone()).or_insert(0) += 1;
+            trouble_notes.entry(key.clone()).or_default().push(n);
+            let e = last_trouble.entry(key).or_default();
+            if n.created_at > *e {
+                *e = n.created_at.clone();
+            }
+        }
+    }
+    let edge_label: HashMap<&str, String> = {
+        let mut m: HashMap<&str, String> = HashMap::new();
+        for e in relates {
+            m.insert(e.id.as_str(), format!("{} × {}", e.from_name, e.to_name));
+        }
+        for g in governs {
+            m.insert(
+                g.id.as_str(),
+                format!("{} → {}", g.rule_name, g.intent_name),
+            );
+        }
+        m
+    };
+    for ((kind, id), count) in trouble {
+        if count < 2 {
+            continue;
+        }
+        let label = if kind == "intent" {
+            name_of.get(id.as_str()).copied().unwrap_or(&id).to_string()
+        } else {
+            edge_label
+                .get(id.as_str())
+                .cloned()
+                .unwrap_or_else(|| id.clone())
+        };
+        let last = last_trouble
+            .get(&(kind.clone(), id.clone()))
+            .map(String::as_str)
+            .unwrap_or("");
+        let mut recent = trouble_notes
+            .get(&(kind.clone(), id.clone()))
+            .cloned()
+            .unwrap_or_default();
+        recent.sort_by(|a, b| {
+            b.created_at
+                .cmp(&a.created_at)
+                .then_with(|| b.text.cmp(&a.text))
+        });
+        let recent_detail = recent
+            .iter()
+            .take(3)
+            .map(|n| format!("{} {} by {}", n.created_at, n.text, n.author))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        let history_cmd = if kind == "intent" {
+            format!("loom note list --intent {id} --kind transition --limit 0")
+        } else {
+            format!("loom note list --edge {id} --kind transition --limit 0")
+        };
+        if let Some(d) = last_decision.get(id.as_str()) {
+            if d.created_at.as_str() > last {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "recurrent_trouble".into(),
+                    summary: format!("'{}' has regressed {} times", label, count),
+                    ruling: d.text.clone(),
+                    ruled_by: d.author.clone(),
+                    ruled_at: d.created_at.clone(),
+                    reopens_when: "another failing/needs_change transition lands after the ruling"
+                        .into(),
+                    teaching: recurrent_teaching(&kind, &id),
+                });
+                continue;
+            }
+        }
+        smells.push(Smell {
+            kind: "recurrent_trouble".into(),
+            score: 2.0 * count as f64,
+            summary: format!(
+                "'{}' has regressed {} times (transitions to failing/needs_change)",
+                label, count
+            ),
+            evidence: format!(
+                "{count} transition(s) to failing/needs_change, the last at {last}; recent regressions: {recent_detail}; full history: `{history_cmd}`"
+            ),
+            remedy: format!(
+                "recurring breakage means the criterion or the design is wrong — propose the redesign instead of patching again: `loom hypothesis add --name \"…\" --claim \"<what keeps regressing and the structural why>\" --proposal \"<the redesign>\" --predicted-outcome \"<no failing/needs_change transition after the next N syncs>\"{target}` (proven → adopted → planned intents); once addressed, `loom note add{nt} --kind decision --text \"<what was redesigned and why it won't recur>\"` resolves this finding (a decision newer than the last regression; history stays intact)",
+                target = if kind == "intent" { format!(" --target {id}") } else { String::new() },
+                nt = if kind == "intent" { format!(" --intent {id}") } else { format!(" --edge {id}") },
+            ),
+            teaching: recurrent_teaching(&kind, &id),
+        });
+    }
+}
+
+/// 8. Hypothesis accumulation — the pre-decision plane turning into a note dump.
+/// A stale or swollen proposed-hypothesis queue means agents add redesign ideas
+/// faster than they prove/reject/adopt them.
+fn detect_hypothesis_accumulation(
+    proposed: &[crate::types::Hypothesis],
+    targets: &[crate::types::TargetsEdge],
+    smells: &mut Vec<Smell>,
+) {
+    if proposed.is_empty() {
+        return;
+    }
+    let now = chrono::Utc::now();
+    let stale: Vec<&crate::types::Hypothesis> = proposed
+        .iter()
+        .filter(|h| {
+            chrono::DateTime::parse_from_rfc3339(&h.created_at)
+                .map(|created| {
+                    now.signed_duration_since(created.with_timezone(&chrono::Utc))
+                        .num_days()
+                        >= HYPOTHESIS_STALE_DAYS
+                })
+                .unwrap_or(false)
+        })
+        .collect();
+    if proposed.len() >= HYPOTHESIS_BACKLOG_LIMIT || !stale.is_empty() {
+        let targeted: HashSet<&str> = targets.iter().map(|t| t.hypothesis_id.as_str()).collect();
+        let untargeted = proposed
+            .iter()
+            .filter(|h| !targeted.contains(h.id.as_str()))
+            .count();
+        if let Some(oldest) = proposed.iter().min_by(|a, b| {
+            a.created_at
+                .cmp(&b.created_at)
+                .then_with(|| a.name.cmp(&b.name))
+        }) {
+            let sample: Vec<&str> = proposed.iter().take(5).map(|h| h.name.as_str()).collect();
+            let stale_names: Vec<&str> = stale.iter().take(5).map(|h| h.name.as_str()).collect();
+            let stale_detail = if stale_names.is_empty() {
+                "none".to_string()
+            } else {
+                stale_names.join(" · ")
+            };
+            smells.push(Smell {
+                kind: "hypothesis_accumulation".into(),
+                score: proposed.len() as f64 + 3.0 * stale.len() as f64,
+                summary: format!(
+                    "{} proposed hypothesis(es) are waiting for proof; {} stale, {} untargeted",
+                    proposed.len(),
+                    stale.len(),
+                    untargeted
+                ),
+                evidence: format!(
+                    "{} proposed hypothesis(es), {} older than {}d, {} without TARGETS; oldest is '{}' created at {}; examples: {}; stale examples: {}",
+                    proposed.len(),
+                    stale.len(),
+                    HYPOTHESIS_STALE_DAYS,
+                    untargeted,
+                    oldest.name,
+                    oldest.created_at,
+                    sample.join(" · "),
+                    stale_detail
+                ),
+                remedy: format!(
+                    "drain the pre-decision plane: `loom next --mode prove` then `loom hypothesis prove <id> --verdict supported|refuted --evidence \"…\"`; for supported claims, adopt or reject them (`loom hypothesis adopt|reject`); for untargeted claims, add TARGETS first (`loom hypothesis target <id> <intent>`). Green requires fewer than {limit} proposed hypotheses and none older than {days}d.",
+                    limit = HYPOTHESIS_BACKLOG_LIMIT,
+                    days = HYPOTHESIS_STALE_DAYS,
+                ),
+                teaching: teaching_for("hypothesis_accumulation"),
+            });
+        }
+    }
+}
+
+/// 9. Happy path only — a feature group that declared its sunny-day intent
+/// (aspect=happy/populated) but never realized and proved the required failure
+/// or degradation siblings. The required path clears only when implemented,
+/// grounded, and directly proven.
+fn detect_happy_path_only(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    hierarchy: &[(String, String)],
+    files_of: &HashMap<&str, HashSet<&str>>,
+    name_of: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let mut child_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut satisfied_aspects: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut newest_aspect_child: HashMap<&str, &str> = HashMap::new();
+    let by_id: HashMap<&str, &crate::types::Intent> =
+        intents.iter().map(|i| (i.id.as_str(), i)).collect();
+    let passed_validation_ids: HashSet<&str> = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.last_result == "passed")
+        .map(|v| v.id.as_str())
+        .collect();
+    let directly_proven_intents: HashSet<&str> = snapshot
+        .validates
+        .iter()
+        .filter(|e| passed_validation_ids.contains(e.validation_id.as_str()))
+        .map(|e| e.intent_id.as_str())
+        .collect();
+    for (p, c) in hierarchy {
+        let Some(child) = by_id.get(c.as_str()) else {
+            continue;
+        };
+        if child.aspect.is_empty() {
+            continue;
+        }
+        child_aspects
+            .entry(p.as_str())
+            .or_default()
+            .insert(child.aspect.as_str());
+        if child.lifecycle == "implemented"
+            && files_of.contains_key(child.id.as_str())
+            && directly_proven_intents.contains(child.id.as_str())
+        {
+            satisfied_aspects
+                .entry(p.as_str())
+                .or_default()
+                .insert(child.aspect.as_str());
+        }
+        let e = newest_aspect_child.entry(p.as_str()).or_default();
+        if rfc3339_after(child.created_at.as_str(), e) {
+            *e = &child.created_at;
+        }
+    }
+    for (parent_id, aspects) in &child_aspects {
+        let satisfied = satisfied_aspects.get(parent_id);
+        for (trigger, required) in ASPECT_FAMILIES {
+            if !aspects.contains(trigger) {
+                continue;
+            }
+            let missing: Vec<&str> = required
+                .iter()
+                .filter(|a| !satisfied.is_some_and(|s| s.contains(*a)))
+                .copied()
+                .collect();
+            if missing.is_empty() {
+                continue;
+            }
+            let pname = name_of.get(parent_id).copied().unwrap_or(parent_id);
+            let summary = format!(
+                "'{pname}' declares a '{trigger}' aspect but no realized+proven {} sibling",
+                missing.join("/")
+            );
+            if let Some(note) = adjudicate(
+                last_decision,
+                "happy_path_only",
+                parent_id,
+                newest_aspect_child.get(parent_id).copied().unwrap_or(""),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "happy_path_only".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new aspect-tagged child lands under this intent".into(),
+                    teaching: teaching_for("happy_path_only"),
+                });
+                continue;
+            }
+            smells.push(Smell {
+                kind: "happy_path_only".into(),
+                score: 2.0 + 2.0 * missing.len() as f64,
+                summary,
+                evidence: format!(
+                    "children carry aspects {{{}}}; realized+proven siblings {{{}}} — the '{trigger}' family's {} path(s) are not implemented, grounded, and directly proven",
+                    {
+                        let mut v: Vec<&str> = aspects.iter().copied().collect();
+                        v.sort();
+                        v.join(", ")
+                    },
+                    {
+                        let mut v: Vec<&str> = satisfied
+                            .map(|s| s.iter().copied().collect())
+                            .unwrap_or_default();
+                        v.sort();
+                        v.join(", ")
+                    },
+                    missing.join("/")
+                ),
+                remedy: format!(
+                    "realize and prove the missing path(s): loom intent add --aspect {first} --level feature … then loom edge hierarchy {parent_id} <child>, ground it with `loom edge implement`, and attach a passed validation; or record why it's N/A: loom note add --smell \"happy_path_only:{parent_id}\" --kind decision --text \"<why no {m} path>\" (resolves this finding; a new aspect-tagged child re-opens it)",
+                    first = missing[0],
+                    m = missing.join("/")
+                ),
+                teaching: teaching_for("happy_path_only"),
+            });
+        }
+    }
+}
+
+/// 1. Twin intents — split-brain in the semantic plane: two intents at the same
+/// abstraction level that read like the same responsibility, with no recorded
+/// relationship between them.
+fn detect_twin_intents(
+    intents_by_level: &HashMap<&str, Vec<&crate::types::Intent>>,
+    linked: &HashSet<(&str, &str)>,
+    signal_toks: &HashMap<&str, HashSet<String>>,
+    smells: &mut Vec<Smell>,
+) {
+    for same_level in intents_by_level.values() {
+        for i in 0..same_level.len() {
+            for j in (i + 1)..same_level.len() {
+                let (a, b) = (same_level[i], same_level[j]);
+                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                    continue;
+                }
+                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+                if sim >= TWIN_SIMILARITY {
+                    smells.push(Smell {
+                        kind: "twin_intents".into(),
+                        score: sim * 10.0,
+                        summary: format!(
+                            "'{}' and '{}' read like the same responsibility twice",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "name+description similarity {:.2} at the same level ({}), no edge between them",
+                            sim, a.abstraction_level
+                        ),
+                        remedy: format!(
+                            "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("twin_intents"),
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// 1b. Duplicated responsibility — two same-level intents whose REGISTERED tags
+/// collide (rarity-weighted), grounded in DISJOINT files with no import between
+/// them and no recorded relationship. An untagged coded pair gets a stricter
+/// lexical fallback so missing tags do not blind the detector.
+fn detect_duplicated_responsibility(
+    intents_by_level: &HashMap<&str, Vec<&crate::types::Intent>>,
+    linked: &HashSet<(&str, &str)>,
+    discovery: &DiscoverySnapshot,
+    signal_toks: &HashMap<&str, HashSet<String>>,
+    smells: &mut Vec<Smell>,
+) {
+    for same_level in intents_by_level.values() {
+        for i in 0..same_level.len() {
+            for j in (i + 1)..same_level.len() {
+                let (a, b) = (same_level[i], same_level[j]);
+                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                    continue;
+                }
+                let (Some(fa), Some(fb)) = (
+                    discovery.files_of.get(a.id.as_str()),
+                    discovery.files_of.get(b.id.as_str()),
+                ) else {
+                    continue; // duplicate implementation requires real code on both sides
+                };
+                if fa.intersection(fb).next().is_some() {
+                    continue; // overlapping_ownership owns this case
+                }
+                let imports = fa
+                    .iter()
+                    .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+                    .any(|p| discovery.import_links.contains(&p));
+                if imports {
+                    continue; // undeclared_coupling owns this case
+                }
+                let empty_tags: &[String] = &[];
+                let ta = discovery
+                    .tags_by_intent
+                    .get(a.id.as_str())
+                    .map(Vec::as_slice)
+                    .unwrap_or(empty_tags);
+                let tb = discovery
+                    .tags_by_intent
+                    .get(b.id.as_str())
+                    .map(Vec::as_slice)
+                    .unwrap_or(empty_tags);
+                let (weight, shared_terms) =
+                    super::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
+                if weight >= DUP_TAG_WEIGHT {
+                    let term_detail = shared_terms
+                        .iter()
+                        .map(|t| {
+                            format!(
+                                "'{}' ({} intents carry it)",
+                                t,
+                                discovery.tag_counts.get(t).copied().unwrap_or(1)
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    smells.push(Smell {
+                        kind: "duplicated_responsibility".into(),
+                        score: weight * 8.0,
+                        summary: format!(
+                            "'{}' and '{}' collide on rare vocabulary but live in unrelated code — same responsibility twice?",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "shared tag(s) {} (collision weight {:.2}); groundings are disjoint with no import between them, so no physical detector can see this pair",
+                            term_detail, weight
+                        ),
+                        remedy: format!(
+                            "loom edge explore {a} {b}  → ground the real relationship or mark independent with why; if one implementation should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"one responsibility is implemented twice\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one grounding; this finding disappears\" --target {a} --target {b}`",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("duplicated_responsibility"),
+                    });
+                    continue;
+                }
+                if ta.is_empty() || tb.is_empty() {
+                    let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
+                        .intersection(&signal_toks[b.id.as_str()])
+                        .cloned()
+                        .collect();
+                    let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+                    if sim < DUP_UNTAGGED_SIMILARITY
+                        || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
+                    {
+                        continue;
+                    }
+                    let mut shared_tokens = shared_tokens;
+                    shared_tokens.sort();
+                    smells.push(Smell {
+                        kind: "duplicated_responsibility".into(),
+                        score: 2.0 + sim * 8.0,
+                        summary: format!(
+                            "'{}' and '{}' read alike, are under-tagged, and live in unrelated code — same responsibility twice?",
+                            a.name, b.name
+                        ),
+                        evidence: format!(
+                            "untagged lexical fallback: name+description similarity {:.2} with shared token(s) {}; tag coverage is {} vs {}; groundings are disjoint with no import between them",
+                            sim,
+                            shared_tokens.join(", "),
+                            if ta.is_empty() { "none" } else { "present" },
+                            if tb.is_empty() { "none" } else { "present" },
+                        ),
+                        remedy: format!(
+                            "first make the detector honest: `loom vocab list` then `loom intent tag add {a} <term>` and/or `loom intent tag add {b} <term>`; then inspect the pair with `loom edge explore {a} {b}` to ground the real relationship or mark independent",
+                            a = a.id, b = b.id
+                        ),
+                        teaching: teaching_for("duplicated_responsibility"),
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// 1c. Duplicate detector coverage — once an intent has code, untagged coverage
+/// is audit-relevant. A root decision may accept the blind spot; a newly
+/// grounded untagged coded intent re-opens it.
+fn detect_duplicate_detection_unarmed(
+    intents: &[crate::types::Intent],
+    discovery: &DiscoverySnapshot,
+    files_of: &HashMap<&str, HashSet<&str>>,
+    newest_grounding: &HashMap<&str, &str>,
+    roots: &[&crate::types::Intent],
+    vocab_registry_len: usize,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let coded: Vec<&crate::types::Intent> = intents
+        .iter()
+        .filter(|i| files_of.contains_key(i.id.as_str()))
+        .collect();
+    if coded.len() < 2 {
+        return;
+    }
+    let untagged: Vec<&crate::types::Intent> = coded
+        .iter()
+        .copied()
+        .filter(|i| {
+            discovery
+                .tags_by_intent
+                .get(i.id.as_str())
+                .map(|t| t.is_empty())
+                .unwrap_or(true)
+        })
+        .collect();
+    if untagged.is_empty() {
+        return;
+    }
+    let registry = vocab_registry_len;
+    let newest_untagged_grounding = untagged
+        .iter()
+        .filter_map(|i| newest_grounding.get(i.id.as_str()).copied())
+        .max()
+        .unwrap_or("");
+    let sample: Vec<&str> = untagged.iter().take(5).map(|i| i.name.as_str()).collect();
+    let summary = if registry == 0 {
+        format!(
+            "duplicated-responsibility tag detector is unarmed: no vocabulary and {} coded intent(s) are untagged",
+            untagged.len()
+        )
+    } else {
+        format!(
+            "duplicated-responsibility tag detector is under-armed: {} of {} coded intent(s) are untagged",
+            untagged.len(),
+            coded.len()
+        )
+    };
+    let adjudicated_note = roots.first().and_then(|root| {
+        adjudicate(
+            last_decision,
+            "duplicate_detection_unarmed",
+            root.id.as_str(),
+            newest_untagged_grounding,
+        )
+    });
+    if let Some(note) = adjudicated_note {
+        adjudicated_out.push(AdjudicatedSmell {
+            kind: "duplicate_detection_unarmed".into(),
+            summary,
+            ruling: note.text.clone(),
+            ruled_by: note.author.clone(),
+            ruled_at: note.created_at.clone(),
+            reopens_when: "a new or newly grounded untagged coded intent lands after the ruling"
+                .into(),
+            teaching: teaching_for("duplicate_detection_unarmed"),
+        });
+    } else {
+        smells.push(Smell {
+            kind: "duplicate_detection_unarmed".into(),
+            score: 4.0 + untagged.len() as f64,
+            summary,
+            evidence: format!(
+                "{} of {} coded intent(s) have no registered tag; fallback lexical matching is weaker than bounded vocabulary. Examples: {}",
+                untagged.len(),
+                coded.len(),
+                sample.join(" · ")
+            ),
+            remedy: if registry == 0 {
+                "seed the bounded vocabulary (`loom vocab add <term> --why \"covers X, not Y\"`), then tag coded intents with `loom intent tag add <intent> <term>`; if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+            } else {
+                "tag the untagged coded intents from the registered vocabulary (`loom vocab list`, then `loom intent tag add <intent> <term>`); if the remaining blind spot is deliberate, record it on the graph root with `loom note add --smell \"duplicate_detection_unarmed:<root-id>\" --kind decision --text \"<why untagged coded intents are acceptable>\"`".into()
+            },
+            teaching: teaching_for("duplicate_detection_unarmed"),
+        });
+    }
+}
+
+/// 2. Overlapping ownership — split-brain in the physical plane: two intents
+/// grounded in the same file with no recorded relationship.
+fn detect_overlapping_ownership(
+    intents: &[crate::types::Intent],
+    linked: &HashSet<(&str, &str)>,
+    files_of: &HashMap<&str, HashSet<&str>>,
+    smells: &mut Vec<Smell>,
+) {
+    for i in 0..intents.len() {
+        for j in (i + 1)..intents.len() {
+            let (a, b) = (&intents[i], &intents[j]);
+            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                continue;
+            }
+            let (Some(fa), Some(fb)) = (files_of.get(a.id.as_str()), files_of.get(b.id.as_str()))
+            else {
+                continue;
+            };
+            let shared: Vec<&&str> = fa.intersection(fb).collect();
+            if !shared.is_empty() {
+                let mut names: Vec<String> = shared.iter().map(|s| s.to_string()).collect();
+                names.sort();
+                smells.push(Smell {
+                    kind: "overlapping_ownership".into(),
+                    score: 3.0 * shared.len() as f64,
+                    summary: format!(
+                        "'{}' and '{}' both claim {} file(s) but no relationship is recorded",
+                        a.name, b.name, shared.len()
+                    ),
+                    evidence: format!("shared: {}", names.join(", ")),
+                    remedy: format!(
+                        "loom edge explore {} {}  → who owns what? ground the contract or mark independent with why",
+                        a.id, b.id
+                    ),
+                    teaching: teaching_for("overlapping_ownership"),
+                });
+            }
+        }
+    }
+}
+
+/// 3. Scattered intent — one responsibility smeared across many files (threshold
+/// scales with abstraction level). A decision note newer than the newest
+/// grounding accepts the spread; a later grounding re-opens it.
+fn detect_scattered_intent(
+    intents: &[crate::types::Intent],
+    files_of: &HashMap<&str, HashSet<&str>>,
+    newest_grounding: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for i in intents {
+        let (Some(files), Some(threshold)) = (
+            files_of.get(i.id.as_str()),
+            scatter_threshold(&i.abstraction_level),
+        ) else {
+            continue;
+        };
+        if files.len() >= threshold {
+            if let Some(note) = adjudicate(
+                last_decision,
+                "scattered_intent",
+                i.id.as_str(),
+                newest_grounding.get(i.id.as_str()).copied().unwrap_or(""),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "scattered_intent".into(),
+                    summary: format!("'{}' is grounded in {} files", i.name, files.len()),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new grounding lands on this intent".into(),
+                    teaching: teaching_for("scattered_intent"),
+                });
+                continue;
+            }
+            let mut by_dir: HashMap<&str, usize> = HashMap::new();
+            for f in files {
+                let dir = std::path::Path::new(f)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .filter(|d| !d.is_empty())
+                    .unwrap_or(".");
+                *by_dir.entry(dir).or_insert(0) += 1;
+            }
+            let mut dirs: Vec<(&str, usize)> = by_dir.into_iter().collect();
+            dirs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+            let clusters = dirs
+                .iter()
+                .map(|(d, n)| format!("{d} ({n})"))
+                .collect::<Vec<_>>()
+                .join(" · ");
+            smells.push(Smell {
+                kind: "scattered_intent".into(),
+                score: files.len() as f64,
+                summary: format!(
+                    "'{}' is grounded in {} files — responsibility may be fragmented",
+                    i.name,
+                    files.len()
+                ),
+                evidence: format!(
+                    "a {}-level intent normally stays under {} files; groundings cluster by directory: {}",
+                    i.abstraction_level, threshold, clusters
+                ),
+                remedy: format!(
+                    "split the INTENT, not the code (a too-coarse seed is normal): add a child intent per cohesive slice along the directory clusters, `loom edge hierarchy {id} <child>`, then move groundings down (`loom edge unimplement {id} '<dir>/**'` + `loom edge implement <child> …`); if the CODE itself is the problem, propose that separately: `loom hypothesis add … --claim \"<why this layout fights the design>\" --target {id}`; if the spread is DELIBERATE, record the call: `loom note add --smell \"scattered_intent:{id}\" --kind decision --text \"<why this layout is right>\"` resolves this finding (a new grounding re-opens it)",
+                    id = i.id
+                ),
+                teaching: teaching_for("scattered_intent"),
+            });
+        }
+    }
+}
+
+/// 4. Tangled file — one file serving many intents (`loom hotspots` made
+/// actionable). A decision note on the file newer than its newest claim accepts
+/// the cohabitation; a new claim re-opens it.
+fn detect_tangled_file(
+    intents_on_file: &HashMap<&str, Vec<&str>>,
+    newest_claim: &HashMap<&str, &str>,
+    name_of: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for (path, iids) in intents_on_file {
+        let distinct: HashSet<&&str> = iids.iter().collect();
+        if distinct.len() >= TANGLE_INTENTS {
+            if let Some(note) = adjudicate(
+                last_decision,
+                "tangled_file",
+                path,
+                newest_claim.get(path).copied().unwrap_or(""),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "tangled_file".into(),
+                    summary: format!("{} serves {} distinct intents", path, distinct.len()),
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new IMPLEMENTS claim lands on this file".into(),
+                    teaching: teaching_for("tangled_file"),
+                });
+                continue;
+            }
+            let mut names: Vec<&str> = distinct
+                .iter()
+                .filter_map(|id| name_of.get(**id).copied())
+                .collect();
+            names.sort();
+            smells.push(Smell {
+                kind: "tangled_file".into(),
+                score: distinct.len() as f64,
+                summary: format!("{} serves {} distinct intents", path, distinct.len()),
+                evidence: format!("intents: {}", names.join(" · ")),
+                remedy: format!(
+                    "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; rule the cohabitation deliberate ONLY after reading the file: `loom note add --smell \"tangled_file:{path}\" --kind decision --text \"<the shared boundary that makes these intents one home, and why splitting is wrong HERE — NOT 'cohesive: one module', which restates the finding>\"` resolves this finding (a new claim re-opens it). loom rejects a vacuous or templated ruling — audit each file on its own contents",
+                    n = distinct.len(),
+                ),
+                teaching: teaching_for("tangled_file"),
+            });
+        }
+    }
+}
+
+/// 4b. Large behavioral symbol — a pure physical snapshot signal for
+/// functions/methods/defs/impls whose span is large enough to deserve
+/// inspection.
+fn detect_large_behavioral_symbol(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) {
+                continue;
+            }
+            let span = f.line_end.saturating_sub(f.line_start) + 1;
+            if span < LARGE_BEHAVIORAL_SYMBOL_LINES {
+                continue;
+            }
+            let summary = format!("{} in {} spans {} lines", f.label, cf.path, span);
+            let adj_scope = format!("{}:{}", cf.path, f.label);
+            if let Some(note) = adjudicate(
+                last_decision,
+                "large_behavioral_symbol",
+                &adj_scope,
+                cf.last_modified.as_str(),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "large_behavioral_symbol".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "the file is modified after the ruling".into(),
+                    teaching: teaching_for("large_behavioral_symbol"),
+                });
+                continue;
+            }
+            let visibility = if f.visibility.is_empty() {
+                "unknown"
+            } else {
+                f.visibility.as_str()
+            };
+            smells.push(Smell {
+                kind: "large_behavioral_symbol".into(),
+                score: span as f64 / 20.0,
+                summary,
+                evidence: format!(
+                    "{}:{}-{} is a non-test {} symbol (kind={}, visibility={}) above the {}-line threshold",
+                    cf.path,
+                    f.line_start,
+                    f.line_end,
+                    span,
+                    f.kind,
+                    visibility,
+                    LARGE_BEHAVIORAL_SYMBOL_LINES
+                ),
+                remedy: format!(
+                    "inspect {}:{}-{}; split the distinct phases/modes into named helpers, or rule it deliberate ONLY after reading the body: `loom note add --smell \"large_behavioral_symbol:{}:{}\" --kind decision --text \"<the extraction you considered and the concrete reason {} resists it HERE — NOT a restatement of its size like 'reflects N cases'>\"` resolves THIS finding (editing the file re-opens it). loom rejects a vacuous ruling or one that reuses your wording from another finding — audit each symbol on its own body",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label, f.label
+                ),
+                teaching: teaching_for("large_behavioral_symbol"),
+            });
+        }
+    }
+}
+
+/// 4c. Panic/unwrap/todo markers in implemented behavior — places where
+/// sad-path behavior depends on an invariant that must be inspected, proven, or
+/// explicitly accepted.
+fn detect_panic_marker_risk(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test || !behavioral_symbol_kind(f.kind.as_str()) || f.panic_marker_count == 0 {
+                continue;
+            }
+            let summary = format!(
+                "{} in {} has {} panic/unfinished marker(s)",
+                f.label, cf.path, f.panic_marker_count
+            );
+            let adj_scope = format!("{}:{}", cf.path, f.label);
+            if let Some(note) = adjudicate(
+                last_decision,
+                "panic_marker_risk",
+                &adj_scope,
+                cf.last_modified.as_str(),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "panic_marker_risk".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "the file is modified after the ruling".into(),
+                    teaching: teaching_for("panic_marker_risk"),
+                });
+                continue;
+            }
+            let markers = if f.panic_markers.is_empty() {
+                "unknown".to_string()
+            } else {
+                f.panic_markers.join(", ")
+            };
+            let path_weight = if command_or_public_surface(&cf.path, f) {
+                2.0
+            } else {
+                1.0
+            };
+            smells.push(Smell {
+                kind: "panic_marker_risk".into(),
+                score: f.panic_marker_count as f64 * path_weight,
+                summary,
+                evidence: format!(
+                    "{}:{}-{} markers=[{}] count={}{}",
+                    cf.path,
+                    f.line_start,
+                    f.line_end,
+                    markers,
+                    f.panic_marker_count,
+                    if path_weight > 1.0 {
+                        " on command/public surface"
+                    } else {
+                        ""
+                    }
+                ),
+                remedy: format!(
+                    "inspect {}:{}-{}; replace recoverable aborts with handled errors/proofs, move unfinished behavior to planned work, or accept the invariant: `loom note add --smell \"panic_marker_risk:{}:{}\" --kind decision --text \"<why these markers are deliberate>\"` resolves THIS finding (editing the file re-opens it)",
+                    cf.path, f.line_start, f.line_end, cf.path, f.label
+                ),
+                teaching: teaching_for("panic_marker_risk"),
+            });
+        }
+    }
+}
+
+/// 4d. Oversized file — the irreducible god-file signal: the file's total
+/// physical extent (last symbol end line), keyed on `oversized_file:<path>` so a
+/// per-symbol large_behavioral_symbol ruling cannot launder it.
+fn detect_oversized_file(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    for cf in &snapshot.codefiles {
+        let extent = cf
+            .symbol_facts
+            .iter()
+            .map(|f| f.line_end)
+            .max()
+            .unwrap_or(0);
+        if extent < OVERSIZED_FILE_LINES {
+            continue;
+        }
+        let summary = format!(
+            "{} spans ~{} lines (last symbol ends at line {})",
+            cf.path, extent, extent
+        );
+        if let Some(note) = adjudicate(
+            last_decision,
+            "oversized_file",
+            cf.path.as_str(),
+            cf.last_modified.as_str(),
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "oversized_file".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "the file is modified after the ruling".into(),
+                teaching: teaching_for("oversized_file"),
+            });
+            continue;
+        }
+        smells.push(Smell {
+            kind: "oversized_file".into(),
+            score: extent as f64 / 200.0,
+            summary,
+            evidence: format!(
+                "{}: physical extent {} lines (last symbol end) >= {} god-file threshold",
+                cf.path, extent, OVERSIZED_FILE_LINES
+            ),
+            remedy: format!(
+                "split {path} along intent/module lines so each new file owns one responsibility (a code split is a redesign — propose it: `loom hypothesis add --name \"split {path}\" --claim \"<why this file is too big>\" --proposal \"<the split>\" --target <owning intent>`); rule it deliberate ONLY after reading the file (one protocol, one generated block, one truly cohesive module): `loom note add --smell \"oversized_file:{path}\" --kind decision --text \"<the split you considered and the concrete reason it is wrong for THIS file — NOT 'size reflects N items', which restates the size>\"` resolves THIS finding (editing the file re-opens it). loom rejects a vacuous or templated ruling — audit each file on its own contents. A per-symbol `large_behavioral_symbol` ruling does NOT clear this — it is keyed on the file, not a symbol.",
+                path = cf.path
+            ),
+            teaching: teaching_for("oversized_file"),
+        });
+    }
+}
+
+/// 4e. Repeated string contracts — long user-facing/help/error/example strings
+/// copied across symbols can drift silently. Conservative: ignores short
+/// labels, path-like values, and tests.
+fn detect_string_contract_duplicate(
+    snapshot: &QuerySnapshot,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let mut strings: HashMap<String, Vec<StringContractLoc<'_>>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        for f in &cf.symbol_facts {
+            if f.is_test {
+                continue;
+            }
+            for literal in &f.string_literals {
+                let Some(key) = normalized_contract_string(&literal.value) else {
+                    continue;
+                };
+                strings.entry(key).or_default().push(StringContractLoc {
+                    path: cf.path.as_str(),
+                    file_modified: cf.last_modified.as_str(),
+                    label: f.label.as_str(),
+                    line: literal.line,
+                    value: literal.value.as_str(),
+                });
+            }
+        }
+    }
+    for (_key, mut locs) in strings {
+        locs.sort_by(|a, b| {
+            a.path
+                .cmp(b.path)
+                .then_with(|| a.line.cmp(&b.line))
+                .then_with(|| a.label.cmp(b.label))
+        });
+        locs.dedup_by(|a, b| a.path == b.path && a.line == b.line && a.label == b.label);
+        let distinct_files = locs.iter().map(|l| l.path).collect::<HashSet<_>>().len();
+        let distinct_symbols = locs
+            .iter()
+            .map(|l| (l.path, l.label))
+            .collect::<HashSet<_>>()
+            .len();
+        if distinct_files < 2 && distinct_symbols < 2 {
+            continue;
+        }
+        let anchor = locs[0];
+        let newest = locs
+            .iter()
+            .map(|l| l.file_modified)
+            .max()
+            .unwrap_or(anchor.file_modified);
+        let excerpt = short_contract_excerpt(anchor.value);
+        let summary = format!(
+            "string contract repeated in {} location(s): \"{}\"",
+            locs.len(),
+            excerpt
+        );
+        if let Some(note) = adjudicate(
+            last_decision,
+            "string_contract_duplicate",
+            anchor.path,
+            newest,
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "string_contract_duplicate".into(),
+                summary,
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "one of the files carrying the repeated string changes".into(),
+                teaching: teaching_for("string_contract_duplicate"),
+            });
+            continue;
+        }
+        let evidence = locs
+            .iter()
+            .take(8)
+            .map(|l| format!("{}:{} '{}'", l.path, l.line, l.label))
+            .collect::<Vec<_>>()
+            .join(" · ");
+        smells.push(Smell {
+            kind: "string_contract_duplicate".into(),
+            score: locs.len() as f64 * (anchor.value.len() as f64 / 40.0).max(1.0),
+            summary,
+            evidence: format!(
+                "normalized repeated text appears in {} symbol(s) across {} file(s): {}",
+                distinct_symbols, distinct_files, evidence
+            ),
+            remedy: format!(
+                "inspect the repeated text; extract one source of truth if the wording must change together, or rule the copies independent ONLY after reading both: `loom note add --smell \"string_contract_duplicate:{}\" --kind decision --text \"<the contract each copy serves and why they must evolve apart — NOT 'intentional', which restates the finding>\"` resolves this finding (editing any carrying file re-opens it). loom rejects a vacuous or templated ruling — audit each pair on its own text",
+                anchor.path
+            ),
+            teaching: teaching_for("string_contract_duplicate"),
+        });
+    }
+}
+
+/// 5. The measuring stick, unused — the normative plane only measures where
+/// someone applied a rule. Surfaces every rule × coded-intent pairing never
+/// considered (no GOVERNS edge directly or via an ancestor's verdict).
+fn detect_unmeasured_intents(
+    intents: &[crate::types::Intent],
+    rules: &[crate::types::QualityRule],
+    governs: &[crate::types::Governs],
+    hierarchy: &[(String, String)],
+    files_of: &HashMap<&str, HashSet<&str>>,
+    smells: &mut Vec<Smell>,
+) {
+    let considered: HashSet<(&str, &str)> = governs
+        .iter()
+        .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
+        .collect();
+    let parent_of: HashMap<&str, &str> = hierarchy
+        .iter()
+        .map(|(p, c)| (c.as_str(), p.as_str()))
+        .collect();
+    let considered_up = |rule_id: &str, intent_id: &str| -> bool {
+        let mut cur = Some(intent_id);
+        let mut visited: HashSet<&str> = HashSet::new();
+        while let Some(id) = cur {
+            if !visited.insert(id) {
+                return false;
+            }
+            if considered.contains(&(rule_id, id)) {
+                return true;
+            }
+            cur = parent_of.get(id).copied();
+        }
+        false
+    };
+    for r in rules {
+        let unmeasured: Vec<&crate::types::Intent> = intents
+            .iter()
+            .filter(|i| {
+                i.status != "deprecated"
+                    && files_of.contains_key(i.id.as_str())
+                    && !considered_up(&r.id, &i.id)
+            })
+            .collect();
+        if unmeasured.is_empty() {
+            continue;
+        }
+        let sample: Vec<String> = unmeasured
+            .iter()
+            .take(3)
+            .map(|i| format!("{} ({})", i.name, i.id))
+            .collect();
+        smells.push(Smell {
+            kind: "unmeasured_intents".into(),
+            score: unmeasured.len() as f64,
+            summary: format!(
+                "rule '{}' has never been held against {} intent(s) that have code (neither directly nor via an ancestor's verdict)",
+                r.name,
+                unmeasured.len()
+            ),
+            evidence: format!("e.g. {}", sample.join(" · ")),
+            remedy: format!(
+                "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite",
+                r.id
+            ),
+            teaching: teaching_for("unmeasured_intents"),
+        });
+    }
+}
+
+/// 6. Undeclared coupling — the physical plane contradicts the semantic: file A
+/// statically imports file B, but the intents owning A and B have no recorded
+/// relationship.
+fn detect_undeclared_coupling(
+    snapshot: &QuerySnapshot,
+    intents_on_file: &HashMap<&str, Vec<&str>>,
+    linked: &HashSet<(&str, &str)>,
+    name_of: &HashMap<&str, &str>,
+    smells: &mut Vec<Smell>,
+) {
+    let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+            continue;
+        };
+        for target in &cf.imports {
+            let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                continue;
+            };
+            let example = format!("{} → {}", cf.path, target);
+            let mut seen_pairs: HashSet<(String, String)> = HashSet::new();
+            for a in owners_a {
+                for b in owners_b {
+                    if a == b || linked.contains(&(*a, *b)) {
+                        continue;
+                    }
+                    let key = if a < b {
+                        (a.to_string(), b.to_string())
+                    } else {
+                        (b.to_string(), a.to_string())
+                    };
+                    if seen_pairs.insert(key.clone()) {
+                        pair_files.entry(key).or_default().push(example.clone());
+                    }
+                }
+            }
+        }
+    }
+    for ((a, b), examples) in pair_files {
+        let (na, nb) = (
+            name_of.get(a.as_str()).copied().unwrap_or(&a),
+            name_of.get(b.as_str()).copied().unwrap_or(&b),
+        );
+        smells.push(Smell {
+            kind: "undeclared_coupling".into(),
+            score: 4.0 + examples.len() as f64,
+            summary: format!(
+                "code of '{}' imports code of '{}' but no relationship is recorded",
+                na, nb
+            ),
+            evidence: format!("imports: {}", examples.join(", ")),
+            remedy: format!(
+                "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
+                a, b
+            ),
+            teaching: teaching_for("undeclared_coupling"),
+        });
+    }
+}
+
+/// 6b. Layering violation — the declared order judging the import graph: code
+/// owned by a LOWER layer imports code owned by a HIGHER layer. A decision note
+/// on the importing intent accepts the up-dependency; a new grounding re-opens.
+fn detect_layering_violation(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    intents_on_file: &HashMap<&str, Vec<&str>>,
+    layer_order: &[String],
+    name_of: &HashMap<&str, &str>,
+    newest_grounding: &HashMap<&str, &str>,
+    governs: &[crate::types::Governs],
+    rule_kind: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let layer_rank: HashMap<String, usize> = layer_order
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(rank, layer)| (layer, rank))
+        .collect();
+    if layer_rank.is_empty() {
+        return;
+    }
+    let layer_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.layer.as_str()))
+        .collect();
+    let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
+    for cf in &snapshot.codefiles {
+        let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+            continue;
+        };
+        for target in &cf.imports {
+            let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                continue;
+            };
+            for a in owners_a {
+                for b in owners_b {
+                    let (Some(&ra), Some(&rb)) = (
+                        layer_of.get(*a).and_then(|d| layer_rank.get(*d)),
+                        layer_of.get(*b).and_then(|d| layer_rank.get(*d)),
+                    ) else {
+                        continue; // undeclared layer — exempt
+                    };
+                    if a == b || ra <= rb {
+                        continue;
+                    }
+                    let example = format!("{} → {}", cf.path, target);
+                    let entry = pair_files
+                        .entry((a.to_string(), b.to_string()))
+                        .or_default();
+                    if !entry.contains(&example) {
+                        entry.push(example);
+                    }
+                }
+            }
+        }
+    }
+    for ((a, b), examples) in pair_files {
+        let (na, nb) = (
+            name_of.get(a.as_str()).copied().unwrap_or(&a),
+            name_of.get(b.as_str()).copied().unwrap_or(&b),
+        );
+        let (da, db_) = (
+            layer_of.get(a.as_str()).copied().unwrap_or(""),
+            layer_of.get(b.as_str()).copied().unwrap_or(""),
+        );
+        if let Some(note) = adjudicate(
+            last_decision,
+            "layering_violation",
+            a.as_str(),
+            newest_grounding.get(a.as_str()).copied().unwrap_or(""),
+        ) {
+            adjudicated_out.push(AdjudicatedSmell {
+                kind: "layering_violation".into(),
+                summary: format!(
+                    "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
+                ),
+                ruling: note.text.clone(),
+                ruled_by: note.author.clone(),
+                ruled_at: note.created_at.clone(),
+                reopens_when: "a new grounding lands on the importing intent".into(),
+                teaching: teaching_for("layering_violation"),
+            });
+            continue;
+        }
+        smells.push(Smell {
+            kind: "layering_violation".into(),
+            score: 6.0 + examples.len() as f64,
+            summary: format!(
+                "'{na}' ({da}) depends on '{nb}' ({db_}) against the declared layer order"
+            ),
+            evidence: format!(
+                "`loom layer order` puts '{da}' below '{db_}', but the dependency points UP: {} (a recorded relationship does not excuse direction)",
+                examples.join(", ")
+            ),
+            remedy: format!(
+                "invert the dependency: whatever '{da}' code reaches up to use belongs at or below '{da}' — move it down (or extract it into a lower shared module) so '{db_}' imports it instead of being imported; if the ARCHITECTURE changed, redeclare it: `loom layer order <top> … <bottom>`; if this up-dependency is DELIBERATE, record the call: `loom note add --smell \"layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` resolves this finding (a new grounding re-opens it)"
+            ),
+            teaching: teaching_for("layering_violation"),
+        });
+        let arch_passes = governs.iter().any(|g| {
+            g.intent_id == a
+                && g.inspection_status == "passing"
+                && rule_kind.get(g.rule_id.as_str()).copied() == Some("architecture")
+        });
+        if arch_passes {
+            smells.push(Smell {
+                kind: "architecture_verdict_contradicts_layering".into(),
+                score: 9.0,
+                summary: format!(
+                    "'{na}' carries a PASSING architecture rule but its dependencies violate the declared layer order"
+                ),
+                evidence: format!(
+                    "an architecture-category GOVERNS verdict passes on '{na}', yet the layering detector flags it: {}",
+                    examples.join(", ")
+                ),
+                remedy: format!(
+                    "reconcile the two: re-inspect the architecture rule on '{na}' (`loom rule verdict` — the verdict may be wrong), or fix the layer order (`loom layer order …`); a passing architecture verdict must not coexist with an open layering violation"
+                ),
+                teaching: teaching_for("architecture_verdict_contradicts_layering"),
+            });
+        }
+    }
+}
+
+/// 6c. Transitive layering violation — an up-the-order dependency CLEAN at every
+/// single hop (6b never fires) but illegal across the whole path, routed through
+/// UNLAYERED intermediates.
+fn detect_transitive_layering_violation(
+    snapshot: &QuerySnapshot,
+    intents: &[crate::types::Intent],
+    intents_on_file: &HashMap<&str, Vec<&str>>,
+    layer_order: &[String],
+    name_of: &HashMap<&str, &str>,
+    newest_grounding: &HashMap<&str, &str>,
+    last_decision: &HashMap<&str, &crate::types::Note>,
+    smells: &mut Vec<Smell>,
+    adjudicated_out: &mut Vec<AdjudicatedSmell>,
+) {
+    let layer_rank: HashMap<&str, usize> = layer_order
+        .iter()
+        .enumerate()
+        .map(|(r, l)| (l.as_str(), r))
+        .collect();
+    if layer_rank.is_empty() {
+        return;
+    }
+    let layer_of: HashMap<&str, &str> = intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.layer.as_str()))
+        .collect();
+    let rank = |id: &str| layer_of.get(id).and_then(|l| layer_rank.get(*l)).copied();
+    let mut adj: HashMap<&str, HashSet<&str>> = HashMap::new();
+    let mut direct: HashSet<(&str, &str)> = HashSet::new();
+    for cf in &snapshot.codefiles {
+        let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+            continue;
+        };
+        for target in &cf.imports {
+            let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                continue;
+            };
+            for a in owners_a {
+                for b in owners_b {
+                    if a == b {
+                        continue;
+                    }
+                    direct.insert((*a, *b));
+                    if let (Some(ra), Some(rb)) = (rank(a), rank(b)) {
+                        if ra > rb {
+                            continue; // directly-violating hop — 6b owns it
+                        }
+                    }
+                    adj.entry(*a).or_default().insert(*b);
+                }
+            }
+        }
+    }
+    let mut layered: Vec<&str> = intents
+        .iter()
+        .filter(|i| i.status != "deprecated" && rank(i.id.as_str()).is_some())
+        .map(|i| i.id.as_str())
+        .collect();
+    layered.sort();
+    for &a in &layered {
+        let Some(ra) = rank(a) else {
+            continue;
+        };
+        let mut parent: HashMap<&str, &str> = HashMap::new();
+        let mut seen: HashSet<&str> = HashSet::new();
+        let mut q: VecDeque<&str> = VecDeque::new();
+        seen.insert(a);
+        q.push_back(a);
+        while let Some(v) = q.pop_front() {
+            if let Some(nbrs) = adj.get(v) {
+                let mut ns: Vec<&str> = nbrs.iter().copied().collect();
+                ns.sort(); // deterministic path reconstruction
+                for w in ns {
+                    if seen.insert(w) {
+                        parent.insert(w, v);
+                        q.push_back(w);
+                    }
+                }
+            }
+        }
+        let mut reached: Vec<&str> = seen.iter().copied().filter(|&c| c != a).collect();
+        reached.sort();
+        for c in reached {
+            let Some(rc) = rank(c) else {
+                continue;
+            };
+            if rc >= ra || direct.contains(&(a, c)) {
+                continue; // not a violating direction, or 6b's direct case
+            }
+            let mut path = vec![c];
+            let mut cur = c;
+            while let Some(&p) = parent.get(cur) {
+                path.push(p);
+                if p == a {
+                    break;
+                }
+                cur = p;
+            }
+            path.reverse();
+            if path.len() < 3 {
+                continue; // need at least one intermediate
+            }
+            let trail = path
+                .iter()
+                .map(|id| {
+                    let n = name_of.get(*id).copied().unwrap_or(id);
+                    let l = layer_of.get(*id).copied().unwrap_or("");
+                    if l.is_empty() {
+                        format!("'{n}' (unlayered)")
+                    } else {
+                        format!("'{n}' ({l})")
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" → ");
+            let (na, nc) = (
+                name_of.get(a).copied().unwrap_or(a),
+                name_of.get(c).copied().unwrap_or(c),
+            );
+            let (la, lc) = (
+                layer_of.get(a).copied().unwrap_or(""),
+                layer_of.get(c).copied().unwrap_or(""),
+            );
+            let summary = format!(
+                "'{na}' ({la}) transitively depends on '{nc}' ({lc}) against the declared layer order — clean at every hop"
+            );
+            if let Some(note) = adjudicate(
+                last_decision,
+                "transitive_layering_violation",
+                a,
+                newest_grounding.get(a).copied().unwrap_or(""),
+            ) {
+                adjudicated_out.push(AdjudicatedSmell {
+                    kind: "transitive_layering_violation".into(),
+                    summary,
+                    ruling: note.text.clone(),
+                    ruled_by: note.author.clone(),
+                    ruled_at: note.created_at.clone(),
+                    reopens_when: "a new grounding lands on the importing intent".into(),
+                    teaching: teaching_for("transitive_layering_violation"),
+                });
+                continue;
+            }
+            smells.push(Smell {
+                kind: "transitive_layering_violation".into(),
+                score: 6.0 + (path.len() - 2) as f64,
+                summary,
+                evidence: format!(
+                    "every hop is clean (6b sees nothing), but the chain routes a deeper layer up to a shallower one through unlayered intermediate(s): {trail}"
+                ),
+                remedy: format!(
+                    "fix the END-TO-END direction: whatever '{la}' reaches up to use belongs at or below '{la}' (move it down / extract a lower shared module); OR give the unlayered intermediate(s) a `--layer` so the direct check governs each hop; OR if this up-dependency is DELIBERATE, record it: `loom note add --smell \"transitive_layering_violation:{a}\" --kind decision --text \"<why this layer may reach up>\"` (a new grounding re-opens it)"
+                ),
+                teaching: teaching_for("transitive_layering_violation"),
+            });
+        }
     }
 }

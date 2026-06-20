@@ -452,18 +452,6 @@ pub fn graph_state_from_snapshot_parts(
             "recommended",
             format!("{planned} planned intent(s) to build: `loom next --mode build`."),
         )
-    } else if rt_needs_rev > 0 {
-        // Stale RELATES_TO is the OPTIONAL horizontal grid — re-verifying it
-        // ranks BELOW building `planned` intents (the binding vertical spine).
-        // `rt_failing` (a genuine violation) is handled above and stays urgent.
-        // Both branches route to the same `loom next --mode fix` queue, which
-        // serves failing|needs_reverification; here rt_failing == 0, so it
-        // serves the stale items.
-        (
-            "fix",
-            "recommended",
-            format!("{rt_needs_rev} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`."),
-        )
     } else if !vc.multi_parent.is_empty() || vc.cycle {
         ("incomplete", "directive", "HIERARCHY isn't a tree (an intent has >1 parent, or there's a cycle): run `loom doctor`, then fix the edges.".to_string())
     } else if !vc.unrealized_leaves.is_empty() {
@@ -500,20 +488,26 @@ pub fn graph_state_from_snapshot_parts(
         ))
     } else if rules_count == 0 && nc.intents_with_code > 0 {
         ("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
-    } else if rt_uninspected > 0 || unexplored_pairs > 0 {
-        ("discovery", "recommended", format!(
-            "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
-        ))
     } else {
-        // The audit gate — the last gate before green. The FIRST sub-check is
-        // map-vs-territory: files on disk the graph doesn't account for
-        // (unmapped real files, drifted content, phantom registrations). This
-        // is the false-green hole — green used to TRUST the declared graph and
-        // only TELL you to "confirm with `loom coverage`", so a file with no
-        // intent laundered into a clean compass. Now it GATES: the map must
-        // match the territory. Computed lazily (only graphs that cleared every
-        // other gate pay for the on-disk walk + content-hash pass), and the
-        // caller supplies the count so the pure-graph layer stays disk-free.
+        // The audit gate — the binding gate before green. Ranks ABOVE
+        // optional stale grid upkeep and discovery: open smells (godfiles,
+        // oversized functions, undeclared coupling) are structural problems
+        // that gate phase=complete, while stale RELATES_TO is optional
+        // re-verification and discovery is optional exploration. The
+        // false-green hole this closes: stale edges (recommended) used to
+        // route to `fix` before the audit gate was reached, deferring open
+        // findings indefinitely behind "audit: deferred while phase=fix
+        // keeps another lane active."
+        //
+        // The FIRST sub-check is map-vs-territory: files on disk the graph
+        // doesn't account for (unmapped real files, drifted content, phantom
+        // registrations). This is the false-green hole — green used to TRUST
+        // the declared graph and only TELL you to "confirm with `loom coverage`",
+        // so a file with no intent laundered into a clean compass. Now it GATES:
+        // the map must match the territory. Computed lazily (only graphs that
+        // cleared every other gate pay for the on-disk walk + content-hash
+        // pass), and the caller supplies the count so the pure-graph layer
+        // stays disk-free.
         let disk_issues = disk_integrity_issues(snapshot)?;
         if disk_issues > 0 {
             ("audit", "directive", format!(
@@ -524,13 +518,28 @@ pub fn graph_state_from_snapshot_parts(
             // was ANSWERED (structurally fixed, or refuted via its remedy — an
             // `independent` verdict / vocab merge / decision note counts
             // exactly as much as a fix). Computed lazily: only graphs that
-            // cleared every other gate pay for the O(N²) scan, and at this
-            // point every pair is linked, so the pairwise detectors
-            // short-circuit.
+            // cleared every other gate pay for the O(N²) scan.
             let open_findings = open_findings(snapshot)?;
             if open_findings > 0 {
                 ("audit", "recommended", format!(
-                    "{open_findings} open finding(s) — `loom smells`: resolve or refute each via its remedy (an `independent` verdict or decision note is as valuable as a fix). Green requires 0 open findings."
+                    "{open_findings} open finding(s) — `loom smells`: resolve each via its remedy, ONE at a time after reading its code. A decision note must give a finding-specific reason (the decomposition considered + why it's wrong HERE), not a reused template — loom rejects vacuous/rubber-stamped rulings. Green requires 0 open findings."
+                ))
+            } else if rt_needs_rev > 0 {
+                // Stale RELATES_TO is the OPTIONAL horizontal grid —
+                // re-verification ranks BELOW the audit gate (binding for
+                // green) but above discovery (pure exploration). `rt_failing`
+                // (a genuine violation) is handled above and stays urgent.
+                // Both branches route to the same `loom next --mode fix` queue,
+                // which serves failing|needs_reverification; here
+                // rt_failing == 0, so it serves the stale items.
+                (
+                    "fix",
+                    "recommended",
+                    format!("{rt_needs_rev} stale edge(s) to re-verify (optional grid upkeep after a code change) — `loom next --mode fix`."),
+                )
+            } else if rt_uninspected > 0 || unexplored_pairs > 0 {
+                ("discovery", "recommended", format!(
+                    "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
                 ))
             } else {
                 // The pre-decision plane never gates green (a proposal is not
@@ -1797,6 +1806,50 @@ mod tests {
         )
     }
 
+    /// A snapshot that clears EVERY binding gate (grounded, realized, validated,
+    /// measured) and has ONLY a stale RELATES_TO edge. Used to verify that stale
+    /// edges route to `fix` from within the audit gate — after all binding gates
+    /// clear — not from above them (where they used to bury grounding gaps,
+    /// validation debt, and the audit gate itself).
+    fn stale_clearing_snapshot() -> QuerySnapshot {
+        let mut sys = intent("sys", "implemented");
+        sys.abstraction_level = "system".to_string();
+        let feat = intent("feat", "implemented");
+        QuerySnapshot::from_parts(
+            vec![sys, feat],
+            vec![("sys".to_string(), "feat".to_string())],
+            vec![rel("sys", "feat", "needs_reverification")],
+            vec![Governs {
+                id: "gov:r1:sys".to_string(),
+                rule_id: "r1".to_string(),
+                intent_id: "sys".to_string(),
+                rule_name: "r1".to_string(),
+                intent_name: "sys".to_string(),
+                inspection_status: "passing".to_string(),
+                criterion: String::new(),
+                confidence: 1.0,
+                evidence: String::new(),
+                last_inspected: String::new(),
+                inspected_by: String::new(),
+                notes: String::new(),
+            }],
+            vec![QualityRule {
+                id: "r1".to_string(),
+                name: "r1".to_string(),
+                description: String::new(),
+                detection_logic: String::new(),
+                severity: "low".to_string(),
+                kind: String::new(),
+                inspection_effort: String::new(),
+            }],
+            vec![validates("v1", "feat", "passing")],
+            vec![val("v1", "passed")],
+            vec![implements("feat", "src/a.rs")],
+            vec![codefile("src/a.rs", vec![])],
+            None,
+        )
+    }
+
     // FALSE-GREEN [map-vs-territory-reconcile-on-read]: a graph that clears
     // every other gate must NOT read `complete` while the disk has files the
     // graph doesn't account for. Green used to trust the declared graph and
@@ -1903,11 +1956,12 @@ mod tests {
         assert!(queue_nonempty_for_phase("fix", &failing));
 
         // Stale-only (needs_reverification, no failing, no planned) still routes
-        // to `fix` — and the fix queue serves the stale items.
-        let stale_only = snap(
-            vec![intent("a", "implemented"), intent("b", "implemented")],
-            vec![rel("a", "b", "needs_reverification")],
-        );
+        // to `fix` — but from WITHIN the audit gate, after all binding gates
+        // clear. A bare `snap` (ungrounded leaves) would hit `ground` first,
+        // which is the correct precedence: grounding gaps are binding, stale
+        // edges are optional. Use a snapshot that clears every binding gate so
+        // stale edges are the only issue.
+        let stale_only = stale_clearing_snapshot();
         assert_eq!(phase_of(&stale_only), "fix");
         assert!(queue_nonempty_for_phase("fix", &stale_only));
 
@@ -1948,11 +2002,58 @@ mod tests {
         assert_eq!(gs.next_kind, "recommended");
 
         // Stale-only re-verification is optional grid upkeep: recommended.
-        let stale_only = snap(
-            vec![intent("a", "implemented"), intent("b", "implemented")],
-            vec![rel("a", "b", "needs_reverification")],
-        );
+        // Uses a clearing snapshot so stale edges are the only issue (a bare
+        // `snap` has ungrounded leaves → `ground` directive fires first).
+        let stale_only = stale_clearing_snapshot();
         assert_eq!(gs_of(&stale_only).next_kind, "recommended");
+    }
+
+    // FALSE-GREEN [audit-gate-not-deferred-by-stale-edges]: the audit gate (open
+    // smells — godfiles, oversized functions, undeclared coupling) is a binding
+    // gate for phase=complete. Stale RELATES_TO is optional grid upkeep. The
+    // audit gate MUST rank above stale edges: a graph with BOTH open findings
+    // AND stale edges routes to `audit`, not `fix`. The old ordering put
+    // `rt_needs_rev` above the audit gate, deferring open findings indefinitely
+    // behind "audit: deferred while phase=fix keeps another lane active" — a
+    // false-green where 84 open smell findings (including 3 godfiles) hid
+    // behind 285 stale edges.
+    #[test]
+    fn audit_gate_outranks_stale_edges() {
+        let snapshot = stale_clearing_snapshot();
+        // With 0 open findings: stale edges route to `fix` (recommended).
+        assert_eq!(
+            phase_of(&snapshot),
+            "fix",
+            "stale edges with a clean audit gate route to fix"
+        );
+        // With open findings: the audit gate intercepts — phase is `audit`,
+        // not `fix`. The stale edges are still visible in `other open lanes`
+        // but don't bury the structural findings.
+        let gs = graph_state_from_snapshot_parts(
+            &snapshot,
+            GraphStateContext {
+                meta: None,
+                notes: 0,
+                transition_cap: 0,
+            },
+            |_| Ok(84), // open findings exist
+            || Ok(0),
+            |_| Ok(0), // disk reconciled
+        )
+        .unwrap();
+        assert_eq!(
+            gs.phase, "audit",
+            "open findings must route to audit even when stale edges exist: {gs:?}"
+        );
+        assert_eq!(
+            gs.next_kind, "recommended",
+            "open findings (not disk issues) are recommended, not directive: {gs:?}"
+        );
+        assert!(
+            gs.next_action.contains("open finding"),
+            "the action should name the audit findings: {}",
+            gs.next_action
+        );
     }
 
     #[test]

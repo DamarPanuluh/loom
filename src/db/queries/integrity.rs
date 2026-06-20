@@ -397,6 +397,11 @@ pub fn check_graph_from_parts(
         }
     }
 
+    // 5b. Smell-adjudication quality — the rubber-stamp audit. The write-time
+    // gate blocks NEW batch-stamps; this surfaces a pre-existing backlog of
+    // findings ruled away on vacuous or templated rationales.
+    audit_smell_adjudications(inputs.notes, &mut issues, &mut hints);
+
     audit_inspectable_edges(
         query_snapshot,
         &inputs.target_edges,
@@ -448,6 +453,75 @@ struct EdgeClaim {
     last_inspected: String,
     notes: String,
     inspected_by: String,
+}
+
+/// A cluster of this many smell rulings sharing one template is the
+/// batch-rubber-stamp signature (one rationale pasted across findings).
+const SMELL_TEMPLATE_CLUSTER_MIN: usize = 3;
+
+/// Audit smell-adjudication decision notes for the rubber-stamp pattern. A
+/// vacuous ruling that suppresses a finding without inspecting it is an ISSUE
+/// (same floor as a vacuous criterion). A CLUSTER of rulings that reuse one
+/// template across many findings is a HINT — the green gate is `loom smells`,
+/// not doctor; this is the provenance read that says "these read as stamped,
+/// not inspected." The write-time gate (`gate::require_distinct_smell_ruling`)
+/// blocks NEW batch-stamps; this surfaces a pre-existing backlog to re-audit.
+fn audit_smell_adjudications(notes: &[Note], issues: &mut Vec<String>, hints: &mut Vec<String>) {
+    let rulings: Vec<(&str, &str)> = notes
+        .iter()
+        .filter(|n| n.kind == "decision" && n.target_kind == "smell")
+        .map(|n| (n.target_id.as_str(), n.text.as_str()))
+        .collect();
+    if rulings.is_empty() {
+        return;
+    }
+    // A finding ruled away on placeholder/too-short text — never an inspection.
+    for (target, text) in &rulings {
+        if crate::gate::is_vacuous(text)
+            || text.trim().chars().count() < crate::gate::MIN_SMELL_RULING_LEN
+        {
+            issues.push(format!(
+                "Smell adjudication on '{target}' is vacuous/too short ('{got}') — a finding ruled \
+                 deliberate must name the decomposition considered and why it is wrong HERE; \
+                 re-inspect and re-rule, or let the finding re-open",
+                got = text.trim(),
+            ));
+        }
+    }
+    // Template clusters: group rulings that reuse each other's wording. Greedy
+    // single-pass clustering is enough to surface the pattern (doctor is not a
+    // hot path, and the hint only needs to name the size + a sample).
+    let mut clustered = vec![false; rulings.len()];
+    for i in 0..rulings.len() {
+        if clustered[i] {
+            continue;
+        }
+        let members: Vec<usize> = (i..rulings.len())
+            .filter(|&j| {
+                !clustered[j]
+                    && (j == i
+                        || crate::gate::smell_rulings_are_templated(rulings[i].1, rulings[j].1))
+            })
+            .collect();
+        if members.len() >= SMELL_TEMPLATE_CLUSTER_MIN {
+            for &m in &members {
+                clustered[m] = true;
+            }
+            let sample = rulings[i].1.trim();
+            let sample: String = if sample.chars().count() > 100 {
+                format!("{}…", sample.chars().take(100).collect::<String>())
+            } else {
+                sample.to_string()
+            };
+            hints.push(format!(
+                "{} smell adjudications share one ruling template (e.g. \"{sample}\") — that \
+                 uniformity is the signature of batch rubber-stamping, not per-finding inspection. \
+                 Re-audit each on its own code (`loom smells --json`); a real ruling is true only of \
+                 its own finding.",
+                members.len(),
+            ));
+        }
+    }
 }
 
 /// Audit every inspectable edge for: valid inspection_status, confidence in

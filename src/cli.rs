@@ -1782,7 +1782,12 @@ pub enum NoteCmd {
         /// `--smell "large_behavioral_symbol:src/x.rs:fn foo"` (the exact string
         /// `loom smells` prints in the remedy). A decision note scoped this way
         /// clears ONLY that finding — a per-symbol ruling can no longer launder a
-        /// file-level finding, and one ruling can't silence a whole file.
+        /// file-level finding, and one ruling can't silence a whole file. The
+        /// ruling must be a real inspection of THIS finding: name the
+        /// decomposition you considered and the concrete reason it is wrong here,
+        /// in terms true only of it. loom REJECTS a vacuous ruling or one that
+        /// reuses the wording of a ruling you recorded on another finding —
+        /// batch-stamping the audit gate green is exactly what this guards.
         #[arg(long)]
         smell: Option<String>,
 

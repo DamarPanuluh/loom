@@ -19,6 +19,7 @@
 //! progress: empty or placeholder criteria/evidence, independence claims with
 //! no recorded why, confidence outside [0, 1].
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use anyhow::Result;
@@ -464,6 +465,219 @@ pub fn require_substantive(field: &str, value: &str, purpose: &str) -> Result<()
     Ok(())
 }
 
+// ---------------------------------------------------------------------------
+// Smell-adjudication gate — the anti-rubber-stamp bar
+// ---------------------------------------------------------------------------
+//
+// A `loom smells` finding is suppressed by a `decision` note scoped to it
+// (`loom note add --smell "<kind>:<scope>" --kind decision`). That path is the
+// one write surface with no evidence gate — and an LLM under green-gate pressure
+// will batch-stamp every open finding with one pasted rationale ("Deliberate:
+// size reflects subcommand count") rather than inspect each. These gates make
+// that mechanically impossible: a ruling must be substantive, and it must not
+// reuse the wording of a ruling already recorded on a DIFFERENT finding. The
+// first ruling of a template passes; the second bounces — forcing the agent to
+// read THIS finding's code and rule on its actual structure.
+
+/// Minimum length (chars) for a smell adjudication ruling. A decision note that
+/// SUPPRESSES an audit finding must do more than fill the slot — "Deliberate:
+/// cohesive" is not an audit. The bar is higher than the generic evidence floor
+/// because a finding ruled away on weak words reads as inspected without being
+/// inspected.
+pub const MIN_SMELL_RULING_LEN: usize = 40;
+
+/// Two smell rulings whose content-word overlap meets this fraction are treated
+/// as the same template — the tell of a batch rubber-stamp (one rationale pasted
+/// across many findings). Overlap = |A ∩ B| / min(|A|, |B|), so a short template
+/// embedded in a longer ruling still trips it, while two rulings that merely
+/// share a stock phrase (e.g. "size reflects … count") but are otherwise
+/// specific stay well below it.
+pub const SMELL_RULING_OVERLAP_LIMIT: f64 = 0.7;
+
+/// A ruling must carry at least this many content words before the overlap ratio
+/// means anything; shorter rulings are governed by the length floor alone.
+const MIN_RULING_CONTENT_WORDS: usize = 5;
+
+/// Words ignored when reducing a ruling to its reasoning skeleton: grammatical
+/// glue, the framing verb every batch ruling shared, and the structural nouns
+/// that any ruling about code repeats. Stripping these (and, via the non-alpha
+/// split + length filter, subject tokens like paths/symbols/digits) collapses
+/// two rulings that differ ONLY in their subject onto the same word set.
+const RULING_STOPWORDS: &[&str] = &[
+    // grammatical glue
+    "the",
+    "and",
+    "but",
+    "for",
+    "with",
+    "its",
+    "this",
+    "that",
+    "these",
+    "those",
+    "are",
+    "was",
+    "were",
+    "has",
+    "have",
+    "had",
+    "will",
+    "would",
+    "can",
+    "could",
+    "into",
+    "from",
+    "they",
+    "them",
+    "their",
+    "there",
+    "here",
+    "than",
+    "then",
+    "also",
+    "only",
+    "each",
+    "one",
+    "two",
+    "all",
+    "any",
+    "our",
+    "per",
+    "not",
+    // the framing verb every batch ruling shared — strip so it can't inflate overlap
+    "deliberate",
+    "intentional",
+    // structural nouns any ruling about code repeats
+    "src",
+    "crate",
+    "fn",
+    "impl",
+    "pub",
+    "mod",
+    "line",
+    "lines",
+    "span",
+    "spans",
+    "file",
+    "files",
+    "function",
+    "symbol",
+    "code",
+];
+
+/// Reduce a ruling to the set of content words that carry its REASONING. Drops
+/// parenthetical subject lists (`(add, update, list)`), splits on every
+/// non-alphabetic char (so paths/digits/punctuation fall apart into fragments),
+/// then filters stopwords and < 3-char fragments. Two rulings that differ only
+/// in their subject normalize to near-identical sets.
+fn ruling_content_words(text: &str) -> BTreeSet<String> {
+    let lower = text.to_lowercase();
+    // Remove bracketed subject lists before tokenizing.
+    let mut flat = String::with_capacity(lower.len());
+    let mut depth = 0usize;
+    for ch in lower.chars() {
+        match ch {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth = depth.saturating_sub(1),
+            _ if depth == 0 => flat.push(ch),
+            _ => {}
+        }
+    }
+    flat.split(|c: char| !c.is_ascii_alphabetic())
+        .filter(|w| w.len() >= 3 && !RULING_STOPWORDS.contains(w))
+        .map(|w| w.to_string())
+        .collect()
+}
+
+/// Overlap coefficient (Szymkiewicz–Simpson) of two rulings' content words:
+/// |A ∩ B| / min(|A|, |B|). 0.0 when either side is empty.
+fn ruling_overlap(a: &BTreeSet<String>, b: &BTreeSet<String>) -> f64 {
+    let min = a.len().min(b.len());
+    if min == 0 {
+        return 0.0;
+    }
+    a.intersection(b).count() as f64 / min as f64
+}
+
+/// True when two smell rulings reuse each other's wording closely enough to read
+/// as the same template rather than two independent inspections. Both must carry
+/// enough content words for the ratio to be meaningful.
+pub fn smell_rulings_are_templated(a: &str, b: &str) -> bool {
+    let (wa, wb) = (ruling_content_words(a), ruling_content_words(b));
+    if wa.len() < MIN_RULING_CONTENT_WORDS || wb.len() < MIN_RULING_CONTENT_WORDS {
+        return false;
+    }
+    ruling_overlap(&wa, &wb) >= SMELL_RULING_OVERLAP_LIMIT
+}
+
+/// Count rulings that belong to a template cluster of at least `min_cluster`
+/// (one rationale reused across findings). Greedy single-pass clustering — the
+/// same primitive the doctor audit and the `loom smells` adjudication surface
+/// read uniformity through, so both agree on what "templated" means.
+pub fn count_templated_rulings(rulings: &[&str], min_cluster: usize) -> usize {
+    let mut clustered = vec![false; rulings.len()];
+    let mut total = 0usize;
+    for i in 0..rulings.len() {
+        if clustered[i] {
+            continue;
+        }
+        let members: Vec<usize> = (i..rulings.len())
+            .filter(|&j| {
+                !clustered[j] && (j == i || smell_rulings_are_templated(rulings[i], rulings[j]))
+            })
+            .collect();
+        if members.len() >= min_cluster {
+            for &m in &members {
+                clustered[m] = true;
+            }
+            total += members.len();
+        }
+    }
+    total
+}
+
+/// Gate a smell-adjudication decision note. Rejects (1) a vacuous or too-short
+/// ruling, and (2) a ruling that reuses the wording of one already recorded on
+/// ANOTHER finding — the batch-rubber-stamp pattern. `prior` is
+/// `(finding_identity, ruling_text)` for every existing smell decision note
+/// EXCEPT one already on this finding (re-ruling the same finding is allowed).
+pub fn require_distinct_smell_ruling(text: &str, prior: &[(&str, &str)]) -> Result<()> {
+    let trimmed = text.trim();
+    if is_vacuous(trimmed) || trimmed.chars().count() < MIN_SMELL_RULING_LEN {
+        anyhow::bail!(
+            "A smell ruling must be a substantive inspection (≥{MIN_SMELL_RULING_LEN} chars, not a \
+             placeholder): name the decomposition you considered and the concrete reason it is wrong \
+             for THIS finding — not a restatement of its size/shape. Got: '{got}'. A finding ruled \
+             away on weak words reads as audited without being audited.",
+            got = trimmed,
+        );
+    }
+    for (other, prior_text) in prior {
+        if smell_rulings_are_templated(trimmed, prior_text) {
+            anyhow::bail!(
+                "This ruling reuses the wording of your adjudication on `{other}`:\n  \"{quoted}\"\n\
+                 Two findings ruled deliberate with the same rationale is rubber-stamping, not \
+                 inspection. Re-read THIS finding's code and state why it specifically resists the \
+                 change, in terms true only of it — a different ruling, not a reworded template.",
+                quoted = truncate_for_error(prior_text),
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Cap a quoted prior ruling in an error message so the bounce stays bounded.
+fn truncate_for_error(text: &str) -> String {
+    const CAP: usize = 160;
+    let t = text.trim();
+    if t.chars().count() <= CAP {
+        t.to_string()
+    } else {
+        let head: String = t.chars().take(CAP).collect();
+        format!("{head}…")
+    }
+}
+
 /// Reject a confidence outside [0.0, 1.0].
 pub fn require_confidence(confidence: f64) -> Result<()> {
     if !(0.0..=1.0).contains(&confidence) || confidence.is_nan() {
@@ -754,5 +968,83 @@ mod tests {
         assert!(require_locators_resolve(&dir, &["real.rs:3-1".into()]).is_err());
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // The three rulings below are the REAL batch that prompted this gate: one
+    // "size reflects subcommand count" rationale pasted across multi-arm command
+    // handlers. They are the ground truth the threshold is tuned against.
+    const RULING_INTENT: &str = "Deliberate: intent.rs handles 8 subcommands (add, update, list, show, retire, confirm, tag add/remove) in one match — each arm is a distinct handler, but they share the same DB open + printer setup. Splitting into 8 files would duplicate the boilerplate. The function size reflects subcommand count.";
+    const RULING_HYPOTHESIS: &str = "Deliberate: hypothesis.rs handles 5 subcommands (add, prove, adopt, list, show) — each arm is a distinct handler sharing DB open + printer setup. Size reflects subcommand count.";
+    const RULING_RULE: &str = "Deliberate: rule.rs handles 5 subcommands (add, seed, verdict, list, detect) — each arm shares DB open + printer setup. Size reflects subcommand count.";
+    // Genuinely distinct, finding-specific rulings — even ones that reuse the
+    // stock phrase "size reflects … count" — must NOT read as the same template.
+    const RULING_CLAP: &str = "Deliberate: cli.rs is the clap-derive CLI surface — every command and flag is one struct/enum. Size reflects command+flag count, not logic. Clap-derive is inherently declarative and verbose.";
+    const RULING_DDL: &str = "create_table_batch issues the schema DDL as one atomic transaction; the CREATE statements must run in a single connection, so moving them to separate modules would break the all-or-nothing guarantee.";
+
+    #[test]
+    fn smell_ruling_distinctness_catches_batch_templates() {
+        assert!(
+            smell_rulings_are_templated(RULING_INTENT, RULING_HYPOTHESIS),
+            "the pasted batch template must be caught"
+        );
+        assert!(smell_rulings_are_templated(RULING_HYPOTHESIS, RULING_RULE));
+        assert!(smell_rulings_are_templated(RULING_INTENT, RULING_RULE));
+
+        // The first ruling of a template passes; the second bounces, naming the
+        // finding whose wording it reused.
+        assert!(require_distinct_smell_ruling(RULING_INTENT, &[]).is_ok());
+        let err = require_distinct_smell_ruling(
+            RULING_HYPOTHESIS,
+            &[(
+                "large_behavioral_symbol:src/commands/intent.rs:fn run",
+                RULING_INTENT,
+            )],
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("reuses the wording"), "got: {err}");
+        assert!(
+            err.contains("large_behavioral_symbol:src/commands/intent.rs"),
+            "the bounce must name the finding it echoes: {err}"
+        );
+    }
+
+    #[test]
+    fn smell_ruling_distinctness_passes_genuinely_distinct_rulings() {
+        // The gate must not become a blanket ban: two findings with different,
+        // finding-specific reasons stay distinct — even when they share the
+        // stock phrase "size reflects … count".
+        assert!(!smell_rulings_are_templated(RULING_INTENT, RULING_CLAP));
+        assert!(!smell_rulings_are_templated(RULING_INTENT, RULING_DDL));
+        assert!(!smell_rulings_are_templated(RULING_CLAP, RULING_DDL));
+        assert!(require_distinct_smell_ruling(
+            RULING_DDL,
+            &[("a:b", RULING_CLAP), ("c:d", RULING_INTENT)]
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn smell_ruling_rejects_vacuous_and_short() {
+        // Placeholder / too-short rulings never suppress a finding.
+        assert!(require_distinct_smell_ruling("deliberate", &[]).is_err());
+        assert!(require_distinct_smell_ruling("cohesive module", &[]).is_err());
+        assert!(require_distinct_smell_ruling("", &[]).is_err());
+        // A substantive, finding-specific first ruling passes.
+        assert!(require_distinct_smell_ruling(
+            "the CREATE statements must run in one atomic transaction, so this cannot split across modules",
+            &[]
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn count_templated_rulings_counts_only_real_clusters() {
+        // intent/hypothesis/rule form one cluster of 3; clap stands alone.
+        let all = [RULING_INTENT, RULING_HYPOTHESIS, RULING_RULE, RULING_CLAP];
+        assert_eq!(count_templated_rulings(&all, 3), 3);
+        // Two templated rulings are below the cluster minimum → counted as none.
+        let two = [RULING_INTENT, RULING_HYPOTHESIS, RULING_CLAP];
+        assert_eq!(count_templated_rulings(&two, 3), 0);
     }
 }

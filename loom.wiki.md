@@ -9,7 +9,7 @@
 - **Intents:** 101 (system: 1, component: 20, feature: 80)
 - **Domains:** analysis, audit, cli, concurrency, core, db, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, runtime, test
-- **Code files mapped:** 84
+- **Code files mapped:** 86
 - **Quality rules:** 22
 
 ## Architecture
@@ -156,7 +156,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **computed graph population lane** — Loom computes brownfield and schema-upgrade graph-population work, then backfills interface surfaces and CALLS from existing saga specs without changing product-code lifecycle.  `src/commands/next.rs`, `src/commands/populate.rs`, `src/db/sqlite.rs`, `tests/sqlite_regression.rs`
 - **confirmation stamps freshness for drift ranking** — loom intent confirm ratifies status AND appends a kind=confirm note (the freshness event); last_confirmed_at returns the newest stamp or None; events are append-only so alignment history travels in the export with no schema field  `src/commands/intent.rs`, `src/db/queries/scoring.rs`
 - **design-system standards via QualityRule packs** — UI standards such as accessibility, contrast, touch targets and responsive breakpoints are seeded from rule seed web-ui and mobile and GOVERN the screen and component intents rather than being invented per screen  `src/commands/rule.rs`
-- **dual-mode output** — every command renders human-readable text or --json including a graph_state pulse  `src/output.rs`
+- **dual-mode output** — every command renders human-readable text or --json including a graph_state pulse  `src/commands/wiki.rs`, `src/output.rs`
 - **graph-write command handlers** — handlers that mutate the graph: intent/edge/codefile/validation/note/rule/ignore plus export-import restoration; all lane-gated  `src/commands/batch.rs`, `src/commands/codefile.rs`, `src/commands/export.rs`, `src/commands/ignore.rs`, `src/commands/import.rs`, `src/commands/intent.rs`, `src/commands/note.rs`, `src/commands/rule.rs`, `src/commands/validation.rs`
 - **intent meaning evolves in place with semantic ripple** — loom intent update rewrites an intent's name/description in place (same node, same history); a description change ripples one hop like sync but for meaning: passing/independent RELATES_TO and GOVERNS, passing IMPLEMENTS and TARGETS go needs_reverification and linked proofs go not_run (blocked keeps its reason); the old wording is preserved in a decision note; a name-only change ripples nothing; deprecated intents are rejected  `src/commands/intent.rs`, `src/db/sqlite.rs`
 - **intent-spectrum seed-flow guidance** — loom guide --mode seed stages a want-to-contract-to-logic-to-physical ladder so a driver populates the intent register implicitly through question order, with visibility captured at seed time, rather than via a new Intent subtype
@@ -193,7 +193,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **graph travel format** — deterministic JSON export and restore-into-fresh-init import so the graph travels with the repo and diffs in PRs  `src/commands/export.rs`, `src/commands/import.rs`
 - **interface surface schema vocabulary** — Add the schema/type/export/import vocabulary for a generic interface surface node and a stable call edge, with identity fields that support HTTP endpoints first and leave room for CLI commands, RPC methods, and event topics.  `src/db/schema.rs`, `src/db/sqlite.rs`, `src/types.rs`
 - **schema vocabulary and repository boundary** — single-source graph vocabulary declarations (labels, edges, properties, owners, version), shared type structs, graph root targeting helpers, and the GraphReadRepository/GraphReadHandle boundary backed by SQLite  `src/commands/migrate.rs`, `src/db/mod.rs`, `src/db/schema.rs`, `src/types.rs`
-- **snapshot analysis and annotation helpers** — pure Rust analysis helpers over typed QuerySnapshot data plus annotation-oriented note/vocabulary/meta helpers; SQLite owns storage and mutation while this layer derives queues, integrity, stats, search, smells, and coverage signals  `src/db/queries/meta.rs`, `src/db/queries/mod.rs`
+- **snapshot analysis and annotation helpers** — pure Rust analysis helpers over typed QuerySnapshot data plus annotation-oriented note/vocabulary/meta helpers; SQLite owns storage and mutation while this layer derives queues, integrity, stats, search, smells, and coverage signals  `src/commands/explain.rs`, `src/db/queries/meta.rs`, `src/db/queries/mod.rs`
 - **typed SQLite graph schema** — The SQLite store models Loom's graph as typed node and edge tables with foreign keys, unique endpoint constraints, status CHECKs, queue indexes, JSON-list columns for list facts, and FTS indexes where search uses them.  `src/db/sqlite.rs`
 
 ### docs

@@ -496,7 +496,7 @@ fn render(
             "proof_locality_suggestions_total": proof_total,
             "code_clones": clone_shown,
             "code_clones_total": clone_total,
-            "note": "Findings are suspicions computed from graph structure — resolve or refute each via its remedy (an `independent` verdict / decision note is as valuable as a fix). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
+            "note": "Findings are suspicions computed from graph structure — resolve each via its remedy, ONE at a time after reading ITS code. A decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it — a ruling that restates the size/shape, or repeats one you used elsewhere, is rubber-stamping and loom rejects it (`loom note add --smell` bounces a vacuous/templated ruling; `loom doctor` flags templated clusters). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
         }));
         return Ok(());
     }
@@ -638,6 +638,25 @@ fn render(
             println!("    done:    {}", a.teaching.done_when);
             println!();
         }
+        // The passive aspiration ("five findings all ruled deliberate must
+        // never look alike") made active: if the rulings reuse one template,
+        // say so where they're shown — uniformity reads as rubber-stamping.
+        let ruling_texts: Vec<&str> = adjudicated.iter().map(|a| a.ruling.as_str()).collect();
+        let templated = crate::gate::count_templated_rulings(&ruling_texts, 3);
+        if templated >= 3 {
+            println!(
+                "  ⚠ {templated} of {} adjudications reuse one ruling template — that uniformity",
+                adjudicated.len()
+            );
+            println!(
+                "    reads as batch rubber-stamping, not per-finding inspection. Re-audit each"
+            );
+            println!(
+                "    on its own code (`loom doctor` lists the clusters); a real ruling is true"
+            );
+            println!("    only of its own finding.");
+            println!();
+        }
         println!("  A ruling you disagree with is overruled through the work, not the ledger:");
         println!("  propose the change (`loom hypothesis add … --target <intent>`) — adoption");
         println!("  restructures the graph and the ruling's subject with it.");
@@ -680,8 +699,14 @@ fn render(
     }
     if !smells.is_empty() {
         println!();
-        println!("  Resolve or refute each via its remedy — `independent`/a decision note is as");
-        println!("  valuable as a fix. Open findings gate green: phase=complete requires zero.");
+        println!("  Resolve each via its remedy, ONE finding at a time after reading ITS code. A");
+        println!(
+            "  decision note is audit trail, not a fix: name the decomposition you considered"
+        );
+        println!(
+            "  and why it's wrong HERE — restating the size, or reusing a ruling from another"
+        );
+        println!("  finding, is rubber-stamping (loom rejects it). Open findings gate green.");
     }
     Ok(())
 }
