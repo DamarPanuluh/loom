@@ -733,15 +733,33 @@ impl SqliteGraphStore {
     }
 
     pub fn query_snapshot(&self) -> Result<QuerySnapshot> {
+        // Snapshot.intents is active-only (list_active_intents excludes
+        // deprecated). The IMPLEMENTS table has no such filter — retire_intent
+        // stales RELATES_TO/SERVES/TARGETS/GOVERNS but leaves an intent's
+        // IMPLEMENTS in place (grounding history preserved, not hard-dropped).
+        // Without this filter, snapshot.implements would carry dangling edges
+        // keyed by retired-intent UUIDs that are NOT in snapshot.intents, and
+        // every snapshot consumer (smells' undeclared_coupling / tangled_file,
+        // coverage's grounding, status' realized-leaves) would fire against
+        // dead code. Drop them here so the active snapshot is self-consistent:
+        // implements aligns with the active intents it joins against. The
+        // unfiltered set stays available via list_all_implements (e.g.
+        // retire_fallout, which filters by active itself).
+        let intents = self.list_active_intents()?;
+        let active_ids: std::collections::HashSet<String> =
+            intents.iter().map(|i| i.id.clone()).collect();
         Ok(QuerySnapshot::from_parts(
-            self.list_active_intents()?,
+            intents,
             self.list_hierarchy_pairs()?,
             self.list_relates_to()?,
             self.list_all_governs()?,
             self.list_rules()?,
             self.list_all_validates()?,
             self.list_validations()?,
-            self.list_all_implements()?,
+            self.list_all_implements()?
+                .into_iter()
+                .filter(|im| active_ids.contains(&im.intent_id))
+                .collect(),
             self.list_codefiles()?,
             // Notes are loaded lazily (notes_or_load) — a note-free consumer
             // (report/coverage/hotspots) must not pay the full Note-table scan.
@@ -1458,6 +1476,20 @@ impl SqliteGraphStore {
             .into_iter()
             .filter(|e| e.intent_id == id && e.inspection_status == "passing")
             .collect();
+        // IMPLEMENTS: retire leaves the grounding rows in place (history is
+        // preserved, not hard-dropped), but a passing/independent grounding on
+        // now-dead code must not stay green — stale it like every other edge
+        // type, so un-retiring forces a re-inspection. The active snapshot also
+        // filters retired-intent IMPLEMENTS (query_snapshot), so this staling
+        // is belt-and-suspenders: out of the active view AND honestly marked.
+        let implements_edges: Vec<Implements> = self
+            .list_all_implements()?
+            .into_iter()
+            .filter(|e| {
+                e.intent_id == id
+                    && (e.inspection_status == "passing" || e.inspection_status == "independent")
+            })
+            .collect();
         let tx = self.write_tx()?;
         tx.execute(
             "UPDATE intent SET status = 'deprecated', updated_at = ?1 WHERE id = ?2",
@@ -1521,6 +1553,22 @@ impl SqliteGraphStore {
                 "UPDATE governs SET inspection_status = 'needs_reverification'
                  WHERE rule_id = ?1 AND intent_id = ?2",
                 params![edge.rule_id, edge.intent_id],
+            )?;
+            insert_sync_flip_note_tx(
+                &tx,
+                "edge",
+                &edge.id,
+                &edge.inspection_status,
+                "needs_reverification",
+                &cause,
+                now,
+            )?;
+        }
+        for edge in &implements_edges {
+            tx.execute(
+                "UPDATE implements SET inspection_status = 'needs_reverification'
+                 WHERE intent_id = ?1 AND codefile_id = ?2",
+                params![edge.intent_id, edge.codefile_id],
             )?;
             insert_sync_flip_note_tx(
                 &tx,
@@ -6379,6 +6427,105 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         assert_eq!(grounding[0].created_at, now);
     }
 
+    // AUDIT 14541cf3: retire_intent used to set status=deprecated but leave
+    // the intent's IMPLEMENTS passing, and list_all_implements had no status
+    // filter — so retired code kept producing undeclared_coupling / tangled_file
+    // findings keyed by dead UUIDs. Two fixes: retire_intent now stales the
+    // IMPLEMENTS edge (defensive — un-retiring forces a re-inspection, matching
+    // the RELATES_TO/SERVES/TARGETS/GOVERNS handling), AND query_snapshot filters
+    // IMPLEMENTS whose intent_id isn't in the active intents set (so the active
+    // snapshot is self-consistent and smells never see dangling retired edges).
+    #[test]
+    fn sqlite_retire_stales_implements_and_filters_them_from_active_snapshot() {
+        let now = "2026-01-01T00:00:00Z";
+        let mut store = SqliteGraphStore::in_memory().unwrap();
+        store
+            .initialize(
+                crate::db::schema::SCHEMA_VERSION,
+                "graph-a",
+                "test",
+                "owned",
+                now,
+            )
+            .unwrap();
+        store
+            .insert_intent(&Intent {
+                id: "intent-a".into(),
+                name: "to be retired".into(),
+                description: "Grounding must not stay green after retire.".into(),
+                criterion: String::new(),
+                abstraction_level: "feature".into(),
+                domain: "".into(),
+                layer: "".into(),
+                source_refs: Vec::new(),
+                status: "proposed".into(),
+                aspect: "happy".into(),
+                lifecycle: "implemented".into(),
+                created_at: now.into(),
+                updated_at: now.into(),
+                tags: Vec::new(),
+                visibility: "internal".into(),
+                boundary: "".into(),
+            })
+            .unwrap();
+        store
+            .insert_codefile(&CodeFile {
+                id: "code-a".into(),
+                path: "src/example.rs".into(),
+                language: "rust".into(),
+                last_modified: now.into(),
+                imports: Vec::new(),
+                symbols: vec!["fn foo".into()],
+                symbol_facts: Vec::new(),
+                content_hash: "hash-a".into(),
+            })
+            .unwrap();
+        store
+            .insert_implements("intent-a", "code-a", "fn foo", "", now)
+            .unwrap();
+
+        // Pre-retire: the grounding is passing and visible in the active snapshot.
+        assert_eq!(
+            store.list_implements_for_intent("intent-a").unwrap()[0].inspection_status,
+            "passing"
+        );
+        let snap_before = store.query_snapshot().unwrap();
+        assert!(snap_before
+            .implements
+            .iter()
+            .any(|im| im.intent_id == "intent-a"));
+
+        store
+            .retire_intent("intent-a", "superseded", None, "2026-01-02T00:00:00Z")
+            .unwrap();
+
+        // 1. retire_intent stales the IMPLEMENTS edge (defensive: un-retiring
+        //    forces a re-inspection, matching the other edge types).
+        let after = store.list_implements_for_intent("intent-a").unwrap();
+        assert_eq!(
+            after.len(),
+            1,
+            "the grounding row is preserved (history kept, not hard-dropped)"
+        );
+        assert_eq!(
+            after[0].inspection_status, "needs_reverification",
+            "a passing grounding on now-dead code must not stay green"
+        );
+
+        // 2. The active snapshot excludes the retired intent's IMPLEMENTS — no
+        //    dangling edges keyed by a dead UUID for smells to fire on.
+        let snap_after = store.query_snapshot().unwrap();
+        assert!(
+            !snap_after.intents.iter().any(|i| i.id == "intent-a"),
+            "retired intent is out of the active intents set"
+        );
+        assert!(
+            snap_after.implements.iter().all(|im| im.intent_id != "intent-a"),
+            "retired intent's IMPLEMENTS are filtered from the active snapshot (no dead-UUID findings): {:?}",
+            snap_after.implements
+        );
+    }
+
     #[test]
     fn sqlite_schema_contract() {
         let data = current_export();
@@ -6473,9 +6620,11 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
             signature["relates"].as_array().unwrap().len(),
             data["edges"]["RELATES_TO"].as_array().unwrap().len()
         );
-        assert_eq!(
-            signature["implements"].as_array().unwrap().len(),
-            data["edges"]["IMPLEMENTS"].as_array().unwrap().len()
+        assert!(
+            signature["implements"].as_array().unwrap().len()
+                <= data["edges"]["IMPLEMENTS"].as_array().unwrap().len(),
+            "QuerySnapshot keeps active IMPLEMENTS (a retired intent's groundings \
+             are filtered so smells don't fire on dead code) while export carries history"
         );
         assert_eq!(
             signature["notes"].as_array().unwrap().len(),
