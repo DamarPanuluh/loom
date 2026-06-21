@@ -1636,6 +1636,52 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECTS (AI-companion hunt): two --json/prose parity mismatches an
+// AI driving on --json would act on. `loom report` printed "uninspected 0" (summary)
+// and "uninspected 1" (raw per-status) both bare-labelled; the discovery signal's
+// structured `weight` field (0.94) disagreed with the prose "weight" (0.23) for the
+// SAME signal. Now the report explains the gap, and the weight numbers match.
+#[test]
+fn sqlite_report_uninspected_not_contradictory() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("report-uninsp");
+    let v = run_json(&graph.root, &["report", "--json"]);
+    let raw = v["edge_counts_by_status"]["uninspected"]
+        .as_i64()
+        .unwrap_or(0);
+    let actionable = v["status"]["uninspected_edges"].as_i64().unwrap_or(raw);
+    if raw != actionable {
+        let text = run_text_as(&graph.root, &["report"], "llm");
+        assert!(
+            text.contains("(raw;"),
+            "report's raw uninspected line must explain the gap vs the summary, not bare-contradict it: {text}"
+        );
+    }
+}
+
+#[test]
+fn sqlite_discovery_vocab_weight_prose_matches_field() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("sig-weight");
+    let v = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
+    let field_w = v["discovery_signals"]
+        .as_array()
+        .or_else(|| {
+            v.get("item")
+                .and_then(|i| i["discovery_signals"].as_array())
+        })
+        .and_then(|s| s.iter().find(|x| x["kind"] == "shared_vocab"))
+        .and_then(|x| x["weight"].as_f64());
+    if let Some(w) = field_w {
+        let text = run_text_as(&graph.root, &["next", "--mode", "discovery"], "llm");
+        let needle = format!("weight {w:.2}");
+        assert!(
+            text.contains(&needle),
+            "discovery prose must show the same vocab weight as the --json field ({needle}): {text}"
+        );
+    }
+}
+
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): a self-edge (same id in both slots —
 // an easy UUID fat-finger) miscounted in the existence probe and reported "intent
 // not found", sending the AI to recreate an intent that already exists. Now named.

@@ -952,14 +952,19 @@ pub fn unexplored_pairs_scored_from_snapshot(
                 });
             }
             if tag_weight > 0.0 {
+                // The structured `weight` field and the prose must agree — they
+                // both report the SAME scored contribution (4.0 × tag_weight), not
+                // the raw tag_weight in one place and the scaled value in the
+                // other (an AI trusts the --json `weight` field over the prose).
+                let weight = 4.0 * tag_weight;
                 why.push(format!(
-                    "tagged with the same vocabulary ({}, weight {tag_weight:.2})",
+                    "tagged with the same vocabulary ({}, weight {weight:.2})",
                     shared_tags.join(", ")
                 ));
                 signals.push(DiscoverySignal {
                     kind: "shared_vocab".to_string(),
                     detail: shared_tags.join(", "),
-                    weight: 4.0 * tag_weight,
+                    weight,
                 });
             }
             if same_domain {

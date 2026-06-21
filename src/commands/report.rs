@@ -158,7 +158,19 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
     let mut sorted_statuses: Vec<_> = by_status.iter().collect();
     sorted_statuses.sort_by_key(|(status, _)| *status);
     for (s, count) in &sorted_statuses {
-        println!("  {s:<30}  {count}");
+        // The summary block above reports the ACTIONABLE (queue-served)
+        // uninspected count; this raw per-status tally also includes stale
+        // blocked-validation edges no queue serves. Spell out the gap so the two
+        // "uninspected" numbers don't read as a self-contradiction.
+        if *s == "uninspected" && **count != status.uninspected_edges {
+            let stale = (**count - status.uninspected_edges).max(0);
+            println!(
+                "  {s:<30}  {count}  (raw; {} queue-served + {stale} stale blocked-validation edge(s))",
+                status.uninspected_edges
+            );
+        } else {
+            println!("  {s:<30}  {count}");
+        }
     }
     println!();
 
