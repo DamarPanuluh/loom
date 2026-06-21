@@ -279,6 +279,7 @@ fn greenfield() -> Vec<(&'static str, &'static str)> {
         ("build", "`loom next --mode build` → for each planned LEAF intent: write the code, `loom codefile add`, `loom edge implement`, then `loom intent mark <id> --lifecycle implemented`. Parents are deferred until their children are done, then surface as a roll-up. The criterion you wrote is your test."),
         ("verify", "Once built, `loom next` (discovery) and `loom validate` confirm reality matches the design. For endpoint-exposing designs, add a consumer saga per journey (`loom saga add`, `loom saga diagnose` while triaging, `loom saga run` to stamp) — the design's composition is proven by execution, not just per-leaf tests."),
         ("gate", "Set the quality bar: seed the packs `loom detect` recommends (`loom rule seed <pack>`) + `loom rule add …` for repo-specific sticks, then earn green with `loom next --mode quality` + `loom rule verdict` (the verdict creates the edge; component altitude covers descendants)."),
+        ("hand back to the user", "When `loom next` shows every AUTONOMOUS lane empty but USER-GATED work remains — aesthetic/manual-check confirms, align drift, hypothesis rulings, blocked proofs — CALL `loom session`. It surfaces exactly that batch, ranked by the scarcest resource (the user's presence). Draining the autonomous queues is not 'done' while a user-gated pass is still owed; `loom session` is how you collect it the next time the user is here instead of leaving it invisible."),
     ]
 }
 
@@ -286,7 +287,7 @@ fn refactor() -> Vec<(&'static str, &'static str)> {
     vec![
         ("map first if needed", "If the area isn't in the graph yet, do the brownfield steps for it."),
         ("find the problems", "`loom smells` — the graph surfaces split-brain twins, overlapping ownership, scatter, tangles, oversized behavior, duplicated string contracts, panic/unwrap/todo markers, undeclared coupling, layering violations (imports against the declared `loom layer order`), recurrent trouble, advisory clones/co-change/shotgun surgery/proof-locality drift, and unmeasured quality rules; each finding carries its remedy command."),
-        ("propose & prove redesigns", "Anything redesign-shaped (recurring breakage, a file split, a merge of twins) goes through the HYPOTHESIS PLANE before it becomes work: `loom hypothesis add --claim … --proposal … --predicted-outcome … --target <intent>` (the redesign smells emit this for you), then a DIFFERENT agent proves it (`loom next --mode prove` → `loom hypothesis prove`), then `loom hypothesis adopt --spawned <planned-intent>…` — the predicted outcome becomes a proof on the spawned work, and the hypothesis is `confirmed` only when that proof later passes. Unproven ideas die honestly (`loom hypothesis reject --reason …`) instead of becoming speculative refactors."),
+        ("propose & prove redesigns", "Anything redesign-shaped (recurring breakage, a file split, a merge of twins) goes through the HYPOTHESIS PLANE before it becomes work: `loom hypothesis add --claim … --proposal … --predicted-outcome … --target <intent>` (the redesign smells emit this for you), then a DIFFERENT agent proves it (`loom next --mode prove` → `loom hypothesis prove`), then `loom hypothesis adopt --spawned <planned-intent>…` — the predicted outcome becomes a proof on the spawned work, and the hypothesis is `confirmed` only when that proof later passes. Unproven ideas die honestly (`loom hypothesis reject --reason …`) instead of becoming speculative refactors. SOLO (one agent)? The 'different agent' is you switching hats: propose, then re-inspect to PROVE with a fresh hypothesis FIRST — proposer≠prover is enforced as DISCIPLINE here, not structure, and `loom doctor` audits the provenance either way (it flags an all-solo proof chain), so the separation stays honest without a second process."),
         ("flag what must change", "`loom intent mark <id> --lifecycle needs_change --reason \"…\"`. Set/refresh the criterion to the desired end state; capture rationale (the --reason is recorded as a note). This is the honest 'known issue' state — no faking a verdict."),
         ("build", "`loom next --mode build` surfaces needs_change intents first. Make the minimal change, then `loom intent mark <id> --lifecycle implemented`."),
         ("experiment (optimization)", "Trying VARIANTS of an implementation needs no special node — use the primitives: the intent's criterion is the budget ('p99 < 50ms at 10k entries'), ONE benchmark validation (`loom validation add --type benchmark --command …`) is the yardstick reused across variants, and each variant's result goes in an append-only decision note (`loom note add --intent <id> --kind decision --text \"mutex-based: 120ms; lock-free: 45ms — chose lock-free, contention dominated\"`). The winner is what's on disk (grounded + passing benchmark); the losers live in git history; the WHY lives in the graph forever."),
@@ -301,7 +302,8 @@ fn port() -> Vec<(&'static str, &'static str)> {
     vec![
         ("export the source", "In the SOURCE repo: `loom export` (its committed loom.graph.json carries the semantic plane — intents, hierarchy, criteria, quality rules, proofs-as-specs, the note history)."),
         ("adopt as design", "In the TARGET repo: `loom init . --name <target>` then `loom import <source-export> --as-planned`. Intents/hierarchy/criteria/rules/notes travel; CodeFiles, groundings, verdicts, and proof results do NOT — they were claims about the OLD code. Every intent arrives lifecycle=planned (the design), every proof not_run (the spec), every RELATES_TO/GOVERNS uninspected with its criterion intact (the contract). The target keeps its OWN graph identity — a port is a new graph."),
-        ("re-realize", "`loom next --mode build` walks the design leaf-by-leaf in dependency order: write the code in the new language, `loom codefile add`, `loom edge implement <intent> <file> --locator …`, then `loom intent mark <id> --lifecycle implemented`. The criterion written for the old code is the acceptance test for the new — if it can't be met in the new language, that's a real design decision: record it (`loom note add --kind decision`) and update the intent, never silently diverge."),
+        ("establish target idioms ONCE", "Before realizing leaf-by-leaf, fix the TARGET language's naming/idiom conventions up front so independently-built intents don't drift into N dialects: 'authentication' may be a module in Python and a trait+impl in Rust, but it must read the SAME way across every ported intent. Register the idioms as vocab in the target graph (`loom vocab add <term> --why \"<the target idiom this maps to>\"`) and tag ported intents as you realize them (`loom intent tag add <id> <term>`). The vocab_drift and duplicated_responsibility smells then catch the same concept realized two different ways across files — drift that per-intent isolation, realizing each leaf alone, structurally cannot see."),
+        ("re-realize", "`loom next --mode build` walks the design leaf-by-leaf in dependency order: write the code in the new language (in the idioms you just fixed), `loom codefile add`, `loom edge implement <intent> <file> --locator …`, then `loom intent mark <id> --lifecycle implemented`. The criterion written for the old code is the acceptance test for the new — if it can't be met in the new language, that's a real design decision: record it (`loom note add --kind decision`) and update the intent, never silently diverge."),
         ("re-prove", "Each validation's command is a SPEC from the old toolchain — re-express it (`loom validation update <name> --command \"<new-toolchain equivalent>\"`; the reset-to-not_run is the point), then `loom validate <intent>`. Saga specs are the exception that travels VERBATIM: they speak HTTP, not the implementation language — copy the YAML across, `loom saga add` it, and the old consumer journey becomes the new code's first end-to-end acceptance test. Re-earn quality green per `loom next --mode quality` (the packs apply to the new language exactly as the old)."),
         ("verify the seams", "`loom next` (discovery) on the ported pairs: the criteria still describe how intents coexist — confirm the NEW code honors each, or record the divergence as an issue. Parity is measured per criterion, not vibes."),
         ("close out", "`loom next --all` until only optional discovery remains; `loom coverage` for unaccounted files (new-repo scaffolding may need `loom ignore add … --reason`); `loom export --check` before committing the new graph."),
@@ -317,10 +319,27 @@ fn seed() -> Vec<(&'static str, &'static str)> {
         ("challenge, don't transcribe", "When the user's term collides with registered vocab, call it out and resolve with `loom vocab add` or a decision note (`loom note add --kind decision`). When a claim contradicts existing intents or code, surface the contradiction and make the user choose. Stress-test boundaries with scenarios: \"a payment fails mid-checkout — what does the user see?\" Each answer usually lands as `loom intent add … --aspect sad|fallback --lifecycle planned`."),
         ("the visual register", "For a user_visible SCREEN the register is REACTION-driven, not interview-driven — a user reacts to a surface faster than they can specify one. Generate an HTML mockup as the reaction surface (`loom codefile add 'mockups/<screen>.html'`, source_ref it from the screen intent), show it, and convert EACH human reaction into a graph delta: a new intent, an `--aspect populated|empty|loading|error` state child (the UI-state family the happy_path_only audit reads — a populated state with no empty/error sibling is flagged), a `loom vocab add` term, or a `loom note add --kind decision`. Then regenerate the mockup and capture the next reaction. LOOP until reactions stop changing the graph's structure — convergence, not exhaustion, is the stop. Verify MACHINE-FIRST where a machine can (a rendered-DOM/assertion validation for structure and copy)."),
         ("mockup is contract, not realization", "A production screen intent source_refs its HTML mockup and STAYS `lifecycle=planned`: the mockup is what the screen must MATCH, not the screen itself, so it NEVER takes a `loom edge implement` from the production intent — grounding the design to its own spec would falsely mark it realized. Ground the production intent only to the real component code, once that exists. The one legitimate IMPLEMENTS→mockup is an EXPLICIT prototype or Storybook intent whose whole purpose IS the artifact — there the mockup is the realization. (Convention, taught here — loom does not hard-block an html grounding, because a real prototype legitimately has one.)"),
-        ("visual-confirm queue", "What a machine cannot judge — the subjective \"does it actually look right?\" residue — does not vanish: capture it as `manual_check` validations with `inspected_by` = human (`loom validation add --type manual_check --intent <screen>`), so the human visual pass is a recorded proof, not lost in chat. These batch into a USER-GATED lane: `loom session` surfaces them by the scarcest resource — the user's presence — alongside align drift, hypothesis rulings, and blocked proofs, so an autonomous agent drains everything it can and leaves ONE batched aesthetic-confirm pass for when the user is actually here."),
+        ("visual-confirm queue", "What a machine cannot judge — the subjective \"does it actually look right?\" residue — does not vanish: capture it as `manual_check` validations with `inspected_by` = human (`loom validation add --type manual_check --intent <screen>`), so the human visual pass is a recorded proof, not lost in chat. These batch into a USER-GATED lane: `loom session` surfaces them by the scarcest resource — the user's presence — alongside align drift, hypothesis rulings, and blocked proofs, so an autonomous agent drains everything it can and leaves ONE batched aesthetic-confirm pass for when the user is actually here. The trigger is mechanical: the moment `loom next` shows the autonomous lanes empty, run `loom session` to surface this batch — don't wait to be asked."),
         ("terminate on completeness, not exhaustion", "The interview ends when the GRAPH says so, never when conversation peters out. Every question must close an enumerable gap: component with no children (`loom edge hierarchy`), feature with no criterion (`loom intent update … --description … --reason …`), happy-path-only group with no `--aspect sad|fallback`, or vocab collision (`loom vocab add`). No open gap → STOP. Explicitly declined scope lands as `loom note add --kind decision`; silence and decision must never look alike."),
         ("the align loop", "On a populated graph, `loom next --mode align` serves drift SUSPECTS only: meanings whose claims flipped since the user last confirmed them — code churn, but also a neighbour's redefinition or retirement rippling in, exactly like a changed codefile stales the claims earned against it — plus quiet wording unaffirmed past a grace period. Intents ruled `internal` are NEVER served (machinery isn't interview material) until a redefinition clears the ruling. Align the CONCEPT, not the wording: present what the product can DO because this exists (one or two plain sentences — jargon test: would a non-coder nod?), why it matters (its place in the design), and its audience UP FRONT — internal machinery presented as a product capability is how interviews go wrong. The item carries `visibility`, `where_it_sits`, and `not_to_confuse_with` (siblings + verified-independent neighbours) for exactly this. Vocabulary enters only when the user asks, stumbles, or uses a term that conflicts with the graph. Record exactly ONE outcome: concept still right → `loom intent confirm <id>`; words confusing, concept right → `loom intent update <id> --description … --reword --reason …` (no ripple, clock resets); concept evolved → translate their words BACK into a falsifiable description, `loom intent update <id> --description … --reason …`; internal machinery → `loom intent confirm <id> --visibility internal` (stops the asking until redefined); superseded → `loom intent retire <id> --reason … --replaced-by <successor>`; revealed gap → `loom intent add … --lifecycle planned`. A laundry-list meaning that needs 'and' is itself a finding — propose the split. Every outcome resets that intent's suspicion clock; then pull the queue AGAIN — it drains to empty, and empty is the stopping point: never one question, never the whole graph."),
         ("handoff", "After seeding/aligning, builder lanes take over: `loom status` routes the compass, and planned intents flow through `loom next --mode build`. Iterate code freely while intents are `planned` (nothing downstream to stale). After grounding, every meaning change uses `loom intent update … --reason …` and costs re-verification through `loom sync` — which is the point."),
+    ]
+}
+
+/// IMPORT / ADOPT: bring a pattern, subsystem, or contract from ANOTHER repo
+/// into this one. Not fresh greenfield, not a local refactor — the source of
+/// truth lives elsewhere, so the spine is OBSERVE → CAPTURE → ROUTE → realize
+/// HERE, never a blind copy. Composes existing primitives (import --as-planned,
+/// init --observed, the inbox boundary, the hypothesis plane, federation).
+fn import_idea() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("name what you're adopting", "Decide the unit, because it picks the path: a single PATTERN (one idea — 'their retry-with-jitter'), a SUBSYSTEM (a cohesive chunk you'll re-implement here), or a CONTRACT you must consume (their API/SDK). Adopting a copy and depending on a live upstream are different jobs — see the last step."),
+        ("get the source into view (don't own it)", "If the source repo HAS a loom graph, adopt its INTENTS, not just its code: `loom import <their-export> --as-planned` into a SCRATCH graph (or read its committed loom.graph.json) so you import the why. If it does NOT, map only the slice you care about as OBSERVED — `loom init --observed` makes it understanding/measuring/proving-only (build & fix lanes OFF) so you never pretend to own upstream code. Either way the source stays REFERENCE, never your graph's truth."),
+        ("capture through the inbox, never hand-copy", "Every claim you want to bring over enters THROUGH the intake boundary: `loom inbox add \"<the pattern/contract/decision>\" --source import --link file:<their/path>` (the link records provenance). Capture the rationale too — `loom door \"<the idea>\" --why \"<why it fits HERE>\"` — because adopting a pattern without its reasoning is exactly how cargo-culting starts. The inbox is the gate that stops someone else's prose laundering straight into your graph truth."),
+        ("route each card against THIS repo", "`loom inbox triage`, then normalize each card against YOUR code and route it: a capability you'll build here → `intent` (lands `--lifecycle planned`; it's now greenfield-of-this-slice); a redesign of something you already have → `hypothesis` (PROVE it pays off here before adopting — their context isn't yours); a norm worth enforcing → `quality_rule`; a decision/why → `note`; already covered or a bad fit for this repo → `ignore` (the dismissed card is the audit trail of why you did NOT adopt it). The code you have always wins over the pattern you admire."),
+        ("realize + prove HERE", "Adopted intents are ordinary planned work: `loom next --mode build`, write the code in THIS repo's idioms, ground it, and prove its criterion — the source's passing tests DO NOT transfer (their code, their toolchain). A consumed CONTRACT proves best as a consumer saga against the real upstream (`loom saga add` the YAML journey)."),
+        ("live dependency? federate, don't import", "If you are not adopting a COPY but will keep DEPENDING on the other repo as it evolves, don't import — DELEGATE: `loom delegate add '<their-path-glob>' --to <their-loom.graph.json>` and link your SEAM intents (`loom delegate seam '<pattern>' <intent>`). `loom sync` then watches their committed export and re-opens your seam claims when their contract shifts. Data flows UP (they export, you observe); you never write into their graph."),
+        ("close out", "`loom next --all` until the adopted slice is built and proven and only optional discovery remains; `loom export --check` before committing."),
     ]
 }
 
@@ -332,8 +351,9 @@ fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
             "refactor" => Ok("refactor"),
             "port" => Ok("port"),
             "seed" => Ok("seed"),
+            "import" | "adopt" => Ok("import"),
             other => anyhow::bail!(
-                "Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed",
+                "Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed, import",
                 other
             ),
         };
@@ -425,6 +445,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
         "refactor" => refactor(),
         "port" => port(),
         "seed" => seed(),
+        "import" => import_idea(),
         _ => brownfield(),
     };
 
@@ -685,6 +706,48 @@ mod tests {
                 "guide --json is missing canonical teaching section '{key}'. Provide it in the json payload, or remove it from GUIDE_SECTIONS — the build refuses a half-landed section."
             );
         }
+    }
+
+    /// R7/R8/R9/R10 (audit close-out): the mode guidance must teach cross-intent
+    /// idiom consistency on PORT, the solo proposer≠prover discipline on
+    /// REFACTOR, the when-to-call-`loom session` cue on GREENFIELD + SEED, and
+    /// IMPORT/ADOPT must exist as a first-class observe→capture→route walkthrough.
+    #[test]
+    fn mode_guidance_closes_the_audit_gaps() {
+        // R7: port teaches cross-intent naming/idiom consistency via vocab.
+        let port = serde_json::to_string(&guide_json("port")).unwrap();
+        assert!(
+            port.contains("idioms")
+                && port.contains("vocab_drift")
+                && port.contains("loom vocab add"),
+            "port mode must teach cross-intent idiom consistency"
+        );
+        // R8: refactor teaches the solo proposer≠prover discipline + doctor audit.
+        let refactor = serde_json::to_string(&guide_json("refactor")).unwrap();
+        assert!(
+            refactor.contains("SOLO")
+                && refactor.contains("proposer≠prover")
+                && refactor.contains("loom doctor"),
+            "refactor mode must teach the solo proposer≠prover discipline"
+        );
+        // R9: greenfield + seed cue WHEN to call loom session for user-gated work.
+        for mode in ["greenfield", "seed"] {
+            let blob = serde_json::to_string(&guide_json(mode)).unwrap();
+            assert!(
+                blob.contains("loom session") && blob.to_lowercase().contains("autonomous lane"),
+                "{mode} mode must cue when to call loom session"
+            );
+        }
+        // R10: import/adopt is a first-class mode with the observe→capture→route spine.
+        let import = serde_json::to_string(&guide_json("import")).unwrap();
+        for beat in ["--observed", "inbox add", "delegate", "--as-planned"] {
+            assert!(
+                import.contains(beat),
+                "import mode must teach the '{beat}' beat"
+            );
+        }
+        // The --adopt alias resolves to the same mode.
+        assert_eq!(guide_json("adopt")["mode"], serde_json::json!("import"));
     }
 
     /// SEED-LADDER RATCHET: the seed mode must stage the want→contract→logic→
