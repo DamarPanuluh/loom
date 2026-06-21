@@ -440,7 +440,7 @@ pub fn graph_state_from_snapshot_parts(
     // the work is discretionary improvement it may sequence against other open
     // lanes (the verb the `→ Next:` / `→ Recommended:` line picks from).
     let (phase, next_kind, next_action) = if intents == 0 {
-        ("seed", "directive", "Empty graph — capture the user's head first: `loom guide --mode seed` teaches the interview; land answers with `loom intent add --level system …`.".to_string())
+        ("seed", "directive", "Empty graph — SEED the full surface, not a sketch: `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt). Then `loom inbox triage` decomposes each into intents. `loom guide --mode seed` teaches the loop.".to_string())
     } else if needs_change > 0 {
         ("build", "directive", format!("{needs_change} intent(s) need changes (known issues/refactor): `loom next --mode build`."))
     } else if !vc.unremoved_leaves.is_empty() {

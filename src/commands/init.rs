@@ -117,9 +117,9 @@ pub fn run(
             "gitignore": gitignore_status,
             "next_steps": [
                 "Read the driving protocol: `loom guide`.",
-                "Mine candidate intents from the code: `loom seed --suggest`.",
-                "Seed/refine system intents: `loom intent add --name \"…\" --level system --description \"…\"`.",
-                "Then drive with `loom next`.",
+                "SEED the full surface (anti-sketch): `loom seed --inbox` ingests every doc + source file into the inbox to triage (empty repo → a vision prompt).",
+                "Process it: `loom inbox triage` decomposes each item into intents (existing code → realized; spec/gap → planned to build).",
+                "Then drive with `loom next` / `loom status`; `loom complete` for comprehensiveness gaps.",
             ],
         }));
     } else {
@@ -136,11 +136,12 @@ pub fn run(
             println!("  disabled; record findings (issue verdicts, notes), not fixes.");
         }
         println!();
+        println!("  → Next: `loom guide` to learn the loop, then SEED the full surface:");
         println!(
-            "  → Next: `loom guide` to learn the loop. On existing code, `loom seed --suggest`"
+            "    `loom seed --inbox` ingests every doc + source file into the inbox to triage"
         );
         println!(
-            "    drafts candidate intents from the code; refine them into intents and ground them."
+            "    (empty repo → a vision prompt); `loom inbox triage` decomposes each into intents."
         );
     }
     Ok(())
