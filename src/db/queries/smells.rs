@@ -200,311 +200,62 @@ pub struct SmellReport {
     pub declared_layers: usize,
 }
 
+/// The per-smell teaching corpus — a flat kind→(principle, inspect, avoid,
+/// done_when) data table, in the same const-table idiom as guide.rs's
+/// `ROLE_DISCIPLINE`. `teaching_for` re-inflates a row into the owned
+/// `SmellTeaching` the renderer wants. `recurrent_trouble` is computed
+/// (it formats a selector), so it stays out of the table.
+#[allow(clippy::type_complexity)]
+const TEACHING_TABLE: &[(&str, &str, &[&str], &[&str], &str)] = &[
+    ("twin_intents", "Similar wording is a suspicion, not proof; inspect both meanings and code before merging or declaring independence.", &["read both intent criteria and descriptions", "inspect each intent's groundings before recording the edge verdict", "use `loom edge explore <a> <b>` only after evidence is checked"], &["do not merge or mark independent from name similarity alone"], "a RELATES_TO verdict explains the real relationship, or a proven merge hypothesis replaces one responsibility with one intent"),
+    ("duplicated_responsibility", "Duplicate responsibility hides when unrelated files implement the same idea; tags and lexical fallback only point to where inspection must happen.", &["compare both intents' criteria, tags, and grounded code", "check whether the two implementations should share one owner or remain explicitly independent", "record the result with `loom edge explore <a> <b>`"], &["do not treat a tag or token collision as proof without reading the code"], "the pair has a grounded/independent relationship, or a proven merge hypothesis removes the duplicated ownership"),
+    ("duplicate_detection_unarmed", "A quiet duplicate audit is weak when coded intents lack registered vocabulary tags; the lexical fallback is not equivalent to bounded terms.", &["`loom vocab suggest` — candidate terms mined from THIS graph's own intents (loom can't know your codebase's vocabulary), ranked by collision potential", "register the ones that name a real shared responsibility (`loom vocab add <term> --why …`) and tag coded intents with them (`loom intent tag add <intent> <term>`)", "`loom smells` after tagging to re-run duplicate detection"], &["do not accept a no-duplicate result while most coded intents are untagged"], "coded intents are tagged enough for duplicate detection, or a root decision records why the remaining blind spot is accepted"),
+    ("overlapping_ownership", "Two intents claiming the same file need an explicit ownership contract; shared code is physical evidence of a relationship.", &["`loom codefile show <path>` for the shared file", "read the shared file once and decide what each intent owns", "`loom edge explore <a> <b>` to ground or refute the relationship"], &["do not leave shared-file ownership implicit"], "the intents have a grounded relationship, an independent verdict, or one grounding is moved to the correct owner"),
+    ("scattered_intent", "A scattered intent usually means the graph intent is too broad; split intent meaning before proposing code movement.", &["read the directory clusters in the evidence", "`loom intent show <intent>` to inspect all groundings", "look for cohesive child responsibilities along the file clusters"], &["do not start a code refactor before proving the graph split or design problem"], "groundings are moved to cohesive child intents, or a newer decision explains why this spread is deliberate"),
+    ("tangled_file", "A tangled file may be deliberate coordination or a real split candidate; code splitting is redesign work and should be proven first.", &["`loom codefile show <path>`", "read the listed intent owners and the shared transaction/module boundary", "if splitting is needed, propose it through `loom hypothesis add`"], &["do not split a coordinator file just to silence the smell"], "cohabitation has a current decision note naming the shared boundary that makes these intents one home (not a generic 'cohesive'), or an adopted/proven hypothesis restructures ownership"),
+    ("unmeasured_intents", "A quality rule only matters where it has been honestly held against coded behavior; independent is a valid measured result.", &["`loom next --mode quality`", "measure at the highest honest component altitude before dropping to leaves", "record passing, failing, or independent with concrete evidence"], &["do not stamp broad rules across leaves with vacuous evidence"], "the rule has GOVERNS verdicts directly or via honest ancestor coverage for every coded intent it should measure"),
+    ("undeclared_coupling", "Static imports are executable evidence that two owned responsibilities touch; the semantic graph must either declare or remove that coupling.", &["read the importing and imported files named in evidence", "inspect the two owning intents' criteria", "`loom edge explore <a> <b>` to ground the contract or record the issue"], &["do not add a relationship without naming the actual call/import contract"], "the coupling is grounded with evidence, marked as an issue to untangle, or the import is removed"),
+    ("cochange_coupling", "Files that keep changing together are coupled even when neither imports the other — git history reveals the hidden contract static analysis misses. It is a SUGGESTION to investigate, not a defect: confirm the relationship or explain why the co-change is incidental.", &["read both intents' criteria and the files named in evidence", "decide if they share a hidden contract (serializer/deserializer, schema/consumer, code/fixture) or just co-changed in a wide refactor", "`loom edge explore <a> <b>` to ground the relationship or mark it independent"], &["do not treat co-change as proof of a relationship without reading the code; a wide refactor couples files incidentally"], "the pair has a grounded or independent RELATES_TO verdict (this is advisory — it never gates phase=complete)"),
+    ("shotgun_surgery", "When one owned behavior repeatedly changes with many unrelated owned files, the boundary may be too broad, too central, or missing explicit relationships; git history exposes change pressure the static graph cannot.", &["read the named intent and the co-changing files in evidence", "decide whether the changes are one hidden contract, a wide mechanical refactor pattern, or a responsibility that should be split/reowned", "`loom edge explore <a> <b>` for real hidden contracts; use a decision note when the co-change is incidental"], &["do not split a stable coordinator just because it is central; prove the maintenance pain first", "do not add relationship edges from history alone without reading the current code"], "the hidden relationships are grounded/refuted, the broad responsibility is split through a proven hypothesis, or a decision note records why the recurring wide co-change is incidental (this is advisory — it never gates phase=complete)"),
+    ("nonlocal_proof", "A passing LINKED validation is not a test that EXERCISES the intent's grounded code. The `proven` axis counts the link, so a leaf proven only by a test living in OTHER files reads green while its own code may have no direct test — partial-coverage overstatement. It is a SUGGESTION to investigate, not a defect.", &["read the intent's grounded file(s) and ask whether the named test actually drives that code path", "`loom intent show <intent>` for its groundings; `loom validation list` for the proof's command", "if the real proof is an e2e/subprocess check, record it as an `assertion`/`saga` validation — this advisory defers to those (it only judges `test`-type proofs it can statically locate)"], &["do not read a green `proven` axis as coverage of the grounded code; a co-grounded test can pass without touching this file"], "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)"),
+    ("code_clone", "Structurally identical code in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; copy-paste with renamed identifiers in disjoint code has none. It is a SUGGESTION to investigate, not a defect: a clone can be legitimate (generated code, deliberately independent copies that must not be coupled). Detection is not the decision — the same shape_hash flags both a coincidental dispatch shim (leave it) and a real five-copy utility (dedupe it); only reading the code tells them apart.", &["read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally similar", "`loom intent show <intent>` / `loom codefile show <path>` to see who owns each copy", "if both copies are owned, `loom edge explore <a> <b>` — a structural clone is evidence for a `duplicated_responsibility` merge", "real dup you are not deduping this pass? capture it as work, not a note: `loom hypothesis add` — the clone is the claim, the shape collapsing to one definition is the predicted outcome; `adopt --spawned` makes it a planned refactor"], &["do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist", "do not treat a short similar body as proof; the size floor already filters trivia, but read before merging", "do not bury a real-but-deferred dedupe in a decision note — use a hypothesis when there is real work to do; use a file decision only when the copies are deliberately independent"], "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, a refactor hypothesis tracks a deliberately deferred dedupe, or a decision note marks copies that must stay independent (this is advisory — it never gates phase=complete)"),
+    ("string_contract_duplicate", "Repeated user-facing or contract strings drift when each copy becomes its own tiny source of truth. It is a suspicion to answer, not an automatic defect: exact repetition can be deliberate when the words belong to independent surfaces.", &["read each listed symbol and decide whether the repeated text is one contract, help/error message, or command example", "check whether one constant/helper should own the wording or whether independent copies are intentional", "`loom intent show <intent>` / `loom codefile show <path>` when the repeated strings are owned by mapped behavior"], &["do not centralize wording before confirming the copies must change together", "do not flag tiny labels, enum values, import paths, fixtures, or test strings as product contracts"], "the wording has one source of truth, the copies are intentionally independent and documented with a current decision note, or the owning intents have an explored relationship"),
+    ("large_behavioral_symbol", "A very large function, method, def, or impl is usually carrying multiple decisions; span is only a suspicion, so inspect the behavior before splitting.", &["read the named symbol from top to bottom and identify distinct phases, modes, or responsibilities", "check whether the current intent ownership is broad because the behavior is broad, or because the code needs smaller internal boundaries", "look for validation gaps before extracting helpers so behavior stays pinned"], &["do not split a deliberately linear workflow just to satisfy the threshold", "do not extract helpers that hide the same branchy behavior behind vague names"], "the behavior is split into smaller named units, or a current decision note gives a finding-specific reason this symbol resists extraction — the decomposition considered + why it is wrong here, not a restatement of its size"),
+    ("oversized_file", "A file large enough to be a god-file usually concentrates unrelated responsibilities; physical size is only a suspicion, so inspect the file before splitting.", &["read the file's table of contents (its top-level symbols) and ask whether they are one cohesive module or several mashed together", "check whether the size is incidental (one large generated/protocol block) or structural (many intents ground here)", "prefer splitting along intent/module lines so each new file owns one responsibility"], &["do not split a file that is large for a single deliberate reason (a protocol, a big match, generated code) just to beat the threshold", "do not move the problem: a mechanical split that leaves the same intents co-owning the new files just scatters the god-file"], "the file is split along intent/module lines so each new file owns one responsibility, or a current decision note gives a finding-specific reason this file must stay whole — the split considered + why it is wrong here, not a restatement of its size"),
+    ("panic_marker_risk", "A panic/unwrap/expect/todo marker in non-test behavior can turn an expected sad path into a process abort or unfinished path; it needs an explicit boundary decision.", &["read the symbol and identify whether each marker is on trusted setup code, impossible state, or user/repo input", "check whether the owning intent has a sad/fallback validation for the marker's failure mode", "replace accidental aborts with typed errors or record why the abort is the contract"], &["do not blindly replace every unwrap; first classify invariant versus recoverable failure", "do not accept todo/unimplemented in implemented behavior without an explicit needs_change or decision"], "recoverable failures are handled/proven, unfinished markers are removed or moved to planned work, or a current file decision explains why the abort marker is deliberate"),
+    ("layering_violation", "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.", &["`loom layer list`", "read the upward import named in evidence", "decide whether to invert, extract lower shared code, redeclare layers, or record a deliberate exception"], &["do not silence an up-dependency by adding RELATES_TO; direction is a separate norm"], "the dependency points down, the layer order is corrected, or a current decision on the importing intent justifies the exception"),
+    ("architecture_verdict_contradicts_layering", "A passing architecture-category rule and an open layering violation on the same intent contradict each other — one is wrong. Governance and the mechanical layer check must agree.", &["read the layering_violation: does the dependency really point up the declared order?", "read the architecture rule's recorded evidence: did it actually check dependency direction?"], &["do not leave a green architecture verdict standing over a known layering violation"], "the architecture verdict is re-recorded to match reality, the layer order is corrected, or a decision note justifies the exception"),
+    ("happy_path_only", "The non-sunny states of a behavior are real only when realized, grounded, and proven; naming the trigger (a 'happy' behavior or a 'populated' UI state) without its required siblings is not enough. Two families: behavioral happy → sad/fallback, and UI-state populated → empty/error (loading is recognized but not required).", &["inspect the parent's aspect-tagged children for the triggered family", "check lifecycle, IMPLEMENTS groundings, and passed validations for each required sibling (sad/fallback, or empty/error)", "add or prove the missing path/state, or record why it is not applicable"], &["do not clear the debt with planned or unproven child intents"], "the required sibling paths/states are implemented, grounded, and directly proven, or a current decision explains why they are not required"),
+    ("unused_rule", "A rule connected to nothing is not a quality bar; it is dormant policy text.", &["`loom rule list`", "find the highest honest intent surface the rule should govern", "apply it with `loom rule verdict` or delete it if it was a mistake"], &["do not keep unused rules as implied standards"], "the rule governs at least one relevant intent, or it is removed as unused policy"),
+    ("vocab_drift", "Near-synonym vocabulary terms split the collision signal that duplicate detection depends on.", &["`loom vocab list`", "compare the two term definitions and their tagged intents", "merge synonyms or rename/retag to make the distinction sharp"], &["do not let agents choose between look-alike terms for the same concept"], "the look-alike terms are merged, or the remaining terms have names and definitions that no longer collide"),
+    ("unjourneyed_surface", "User-visible code needs passed consumer-journey proof; per-leaf tests and declared-but-unrun sagas do not prove the composed experience.", &["`loom saga list`", "inspect whether a passed saga step binds to this intent or its relevant tree path", "add and pass a saga, mark visibility internal, or record why no journey can exercise it"], &["do not treat user_visible as proven by unit coverage alone"], "a passed consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable"),
+    ("hypothesis_accumulation", "A hypothesis is a falsifiable proof item, not long-term memory; accumulation teaches the next LLM to prove, reject, or adopt instead of stockpiling ideas.", &["`loom next --mode prove` for the highest-blast-radius proposal", "`loom hypothesis list --status proposed` to batch the backlog", "target untargeted hypotheses before proving, or reject them if they are not actionable"], &["do not add another hypothesis when existing proposals are unproven", "do not convert speculative notes into planned work before proof"], "the proposed backlog is below the threshold and no proposed hypothesis is stale; each old idea is supported, refuted, adopted, or rejected with evidence"),
+    ("symbol_accountability_gap", "Behavior-significant symbols should be owned, accepted, or turned into explicit work; raw helper coverage is not the target.", &["`loom coverage --json` and read actionable_symbol_gaps", "`loom codefile show <path>` for each top gap before changing graph ownership", "decide whether the symbol needs a precise locator, a split intent, or a decision note accepting broad ownership"], &["do not chase 100% raw symbol coverage", "do not create intents for every private helper", "do not bulk-ground symbols without checking intent meaning"], "actionable symbol gaps are grounded with precise locators, accepted with a current decision note, or converted into real intent split/build work"),
+    ("dependency_cycle", "RELATES_TO is semantically undirected, so a relationship belongs in ONE row. Two GROUNDED rows for the same pair (a→b and b→a both carry a verdict) store the relationship twice: it double-counts in degree/centrality and skews `loom next` ranking, and the two verdicts can silently disagree. Exactly one direction is the redundant/incidental one to retire — unless the mutuality is a deliberate peer contract.", &["`loom edge show rt:<a>:<b>` and `loom edge show rt:<b>:<a>` — compare the two verdicts and criteria", "read both intents' criteria; decide which way the dependency actually runs", "check whether the two are really one responsibility (a merge) or genuine mutual peers (a deliberate contract)"], &["do not keep both directions as the default; do not 'fix' an uninspected saga round-trip flow as if it were graph-hygiene debt (those edges are never flagged here — only deliberately grounded pairs are)"], "the redundant direction is marked independent (or the two intents merged), or a current decision note on the smaller-id intent records why both directions deliberately hold"),
+    ("transitive_layering_violation", "The direct layering check exempts unlayered intents, so an illegal up-the-order dependency can hide by routing THROUGH them — every single hop looks clean, but the composed path makes a deeper layer depend on a shallower one. Direction is violated end-to-end even though no one import is.", &["read the path in the evidence — the unlayered intermediate(s) are where the violation hides", "decide: should the intermediate carry a layer (arming the direct check), or is the end-to-end dependency itself wrong?", "fix the real direction (move shared code down / invert), or `loom layer order` the intermediate, or record a deliberate exception on the importing intent"], &["do not assume an all-clean-hops path is fine — the order is violated across the whole chain; do not silence it by adding a relationship"], "the end-to-end dependency points down (or the intermediate is layered so the direct check governs the hop), or a current decision note on the importing intent justifies it"),
+    ("intent_island", "Every intent should reach a system-level purpose through HIERARCHY or RELATES_TO; an island has no such path, so nothing in the graph explains why it exists in this product.", &["read the island members and find which existing branch they belong under", "`loom edge hierarchy <parent> <child>` to attach the island to its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph", "if the island is a genuinely separate top-level purpose, add or confirm a system-level intent for it"], &["do not leave orphaned intents floating; do not attach an island to an unrelated parent just to silence the finding"], "every island member reaches a system-level root through HIERARCHY or RELATES_TO, or a current decision note records why the disconnected subgraph is intentional"),
+];
+
 fn teaching_for(kind: &str) -> SmellTeaching {
-    match kind {
-        "twin_intents" => SmellTeaching {
-            principle: "Similar wording is a suspicion, not proof; inspect both meanings and code before merging or declaring independence.".into(),
-            inspect: vec![
-                "read both intent criteria and descriptions".into(),
-                "inspect each intent's groundings before recording the edge verdict".into(),
-                "use `loom edge explore <a> <b>` only after evidence is checked".into(),
-            ],
-            avoid: vec!["do not merge or mark independent from name similarity alone".into()],
-            done_when: "a RELATES_TO verdict explains the real relationship, or a proven merge hypothesis replaces one responsibility with one intent".into(),
-        },
-        "duplicated_responsibility" => SmellTeaching {
-            principle: "Duplicate responsibility hides when unrelated files implement the same idea; tags and lexical fallback only point to where inspection must happen.".into(),
-            inspect: vec![
-                "compare both intents' criteria, tags, and grounded code".into(),
-                "check whether the two implementations should share one owner or remain explicitly independent".into(),
-                "record the result with `loom edge explore <a> <b>`".into(),
-            ],
-            avoid: vec!["do not treat a tag or token collision as proof without reading the code".into()],
-            done_when: "the pair has a grounded/independent relationship, or a proven merge hypothesis removes the duplicated ownership".into(),
-        },
-        "duplicate_detection_unarmed" => SmellTeaching {
-            principle: "A quiet duplicate audit is weak when coded intents lack registered vocabulary tags; the lexical fallback is not equivalent to bounded terms.".into(),
-            inspect: vec![
-                "`loom vocab suggest` — candidate terms mined from THIS graph's own intents (loom can't know your codebase's vocabulary), ranked by collision potential".into(),
-                "register the ones that name a real shared responsibility (`loom vocab add <term> --why …`) and tag coded intents with them (`loom intent tag add <intent> <term>`)".into(),
-                "`loom smells` after tagging to re-run duplicate detection".into(),
-            ],
-            avoid: vec!["do not accept a no-duplicate result while most coded intents are untagged".into()],
-            done_when: "coded intents are tagged enough for duplicate detection, or a root decision records why the remaining blind spot is accepted".into(),
-        },
-        "overlapping_ownership" => SmellTeaching {
-            principle: "Two intents claiming the same file need an explicit ownership contract; shared code is physical evidence of a relationship.".into(),
-            inspect: vec![
-                "`loom codefile show <path>` for the shared file".into(),
-                "read the shared file once and decide what each intent owns".into(),
-                "`loom edge explore <a> <b>` to ground or refute the relationship".into(),
-            ],
-            avoid: vec!["do not leave shared-file ownership implicit".into()],
-            done_when: "the intents have a grounded relationship, an independent verdict, or one grounding is moved to the correct owner".into(),
-        },
-        "scattered_intent" => SmellTeaching {
-            principle: "A scattered intent usually means the graph intent is too broad; split intent meaning before proposing code movement.".into(),
-            inspect: vec![
-                "read the directory clusters in the evidence".into(),
-                "`loom intent show <intent>` to inspect all groundings".into(),
-                "look for cohesive child responsibilities along the file clusters".into(),
-            ],
-            avoid: vec!["do not start a code refactor before proving the graph split or design problem".into()],
-            done_when: "groundings are moved to cohesive child intents, or a newer decision explains why this spread is deliberate".into(),
-        },
-        "tangled_file" => SmellTeaching {
-            principle: "A tangled file may be deliberate coordination or a real split candidate; code splitting is redesign work and should be proven first.".into(),
-            inspect: vec![
-                "`loom codefile show <path>`".into(),
-                "read the listed intent owners and the shared transaction/module boundary".into(),
-                "if splitting is needed, propose it through `loom hypothesis add`".into(),
-            ],
-            avoid: vec!["do not split a coordinator file just to silence the smell".into()],
-            done_when: "cohabitation has a current decision note naming the shared boundary that makes these intents one home (not a generic 'cohesive'), or an adopted/proven hypothesis restructures ownership".into(),
-        },
-        "unmeasured_intents" => SmellTeaching {
-            principle: "A quality rule only matters where it has been honestly held against coded behavior; independent is a valid measured result.".into(),
-            inspect: vec![
-                "`loom next --mode quality`".into(),
-                "measure at the highest honest component altitude before dropping to leaves".into(),
-                "record passing, failing, or independent with concrete evidence".into(),
-            ],
-            avoid: vec!["do not stamp broad rules across leaves with vacuous evidence".into()],
-            done_when: "the rule has GOVERNS verdicts directly or via honest ancestor coverage for every coded intent it should measure".into(),
-        },
-        "undeclared_coupling" => SmellTeaching {
-            principle: "Static imports are executable evidence that two owned responsibilities touch; the semantic graph must either declare or remove that coupling.".into(),
-            inspect: vec![
-                "read the importing and imported files named in evidence".into(),
-                "inspect the two owning intents' criteria".into(),
-                "`loom edge explore <a> <b>` to ground the contract or record the issue".into(),
-            ],
-            avoid: vec!["do not add a relationship without naming the actual call/import contract".into()],
-            done_when: "the coupling is grounded with evidence, marked as an issue to untangle, or the import is removed".into(),
-        },
-        "cochange_coupling" => SmellTeaching {
-            principle: "Files that keep changing together are coupled even when neither imports the other — git history reveals the hidden contract static analysis misses. It is a SUGGESTION to investigate, not a defect: confirm the relationship or explain why the co-change is incidental.".into(),
-            inspect: vec![
-                "read both intents' criteria and the files named in evidence".into(),
-                "decide if they share a hidden contract (serializer/deserializer, schema/consumer, code/fixture) or just co-changed in a wide refactor".into(),
-                "`loom edge explore <a> <b>` to ground the relationship or mark it independent".into(),
-            ],
-            avoid: vec!["do not treat co-change as proof of a relationship without reading the code; a wide refactor couples files incidentally".into()],
-            done_when: "the pair has a grounded or independent RELATES_TO verdict (this is advisory — it never gates phase=complete)".into(),
-        },
-        "shotgun_surgery" => SmellTeaching {
-            principle: "When one owned behavior repeatedly changes with many unrelated owned files, the boundary may be too broad, too central, or missing explicit relationships; git history exposes change pressure the static graph cannot.".into(),
-            inspect: vec![
-                "read the named intent and the co-changing files in evidence".into(),
-                "decide whether the changes are one hidden contract, a wide mechanical refactor pattern, or a responsibility that should be split/reowned".into(),
-                "`loom edge explore <a> <b>` for real hidden contracts; use a decision note when the co-change is incidental".into(),
-            ],
-            avoid: vec![
-                "do not split a stable coordinator just because it is central; prove the maintenance pain first".into(),
-                "do not add relationship edges from history alone without reading the current code".into(),
-            ],
-            done_when: "the hidden relationships are grounded/refuted, the broad responsibility is split through a proven hypothesis, or a decision note records why the recurring wide co-change is incidental (this is advisory — it never gates phase=complete)".into(),
-        },
-        "nonlocal_proof" => SmellTeaching {
-            principle: "A passing LINKED validation is not a test that EXERCISES the intent's grounded code. The `proven` axis counts the link, so a leaf proven only by a test living in OTHER files reads green while its own code may have no direct test — partial-coverage overstatement. It is a SUGGESTION to investigate, not a defect.".into(),
-            inspect: vec![
-                "read the intent's grounded file(s) and ask whether the named test actually drives that code path".into(),
-                "`loom intent show <intent>` for its groundings; `loom validation list` for the proof's command".into(),
-                "if the real proof is an e2e/subprocess check, record it as an `assertion`/`saga` validation — this advisory defers to those (it only judges `test`-type proofs it can statically locate)".into(),
-            ],
-            avoid: vec!["do not read a green `proven` axis as coverage of the grounded code; a co-grounded test can pass without touching this file".into()],
-            done_when: "the grounded code has a directly-exercising test, the IMPLEMENTS locator is corrected, or a decision note records why the existing proof suffices (this is advisory — it never gates phase=complete)".into(),
-        },
-        "code_clone" => SmellTeaching {
-            principle: "Structurally identical code in unrelated files is duplicated logic the intent-level detectors are blind to — they need shared tags, a shared file, or an import; copy-paste with renamed identifiers in disjoint code has none. It is a SUGGESTION to investigate, not a defect: a clone can be legitimate (generated code, deliberately independent copies that must not be coupled). Detection is not the decision — the same shape_hash flags both a coincidental dispatch shim (leave it) and a real five-copy utility (dedupe it); only reading the code tells them apart.".into(),
-            inspect: vec![
-                "read the symbol in each listed location and decide whether they are one responsibility implemented twice or coincidentally similar".into(),
-                "`loom intent show <intent>` / `loom codefile show <path>` to see who owns each copy".into(),
-                "if both copies are owned, `loom edge explore <a> <b>` — a structural clone is evidence for a `duplicated_responsibility` merge".into(),
-                "real dup you are not deduping this pass? capture it as work, not a note: `loom hypothesis add` — the clone is the claim, the shape collapsing to one definition is the predicted outcome; `adopt --spawned` makes it a planned refactor".into(),
-            ],
-            avoid: vec![
-                "do not refactor to dedupe before confirming the copies should share one owner — deliberately independent copies exist".into(),
-                "do not treat a short similar body as proof; the size floor already filters trivia, but read before merging".into(),
-                "do not bury a real-but-deferred dedupe in a decision note — use a hypothesis when there is real work to do; use a file decision only when the copies are deliberately independent".into(),
-            ],
-            done_when: "the owning intents have a grounded or independent RELATES_TO verdict, the duplication is removed, a refactor hypothesis tracks a deliberately deferred dedupe, or a decision note marks copies that must stay independent (this is advisory — it never gates phase=complete)".into(),
-        },
-        "string_contract_duplicate" => SmellTeaching {
-            principle: "Repeated user-facing or contract strings drift when each copy becomes its own tiny source of truth. It is a suspicion to answer, not an automatic defect: exact repetition can be deliberate when the words belong to independent surfaces.".into(),
-            inspect: vec![
-                "read each listed symbol and decide whether the repeated text is one contract, help/error message, or command example".into(),
-                "check whether one constant/helper should own the wording or whether independent copies are intentional".into(),
-                "`loom intent show <intent>` / `loom codefile show <path>` when the repeated strings are owned by mapped behavior".into(),
-            ],
-            avoid: vec![
-                "do not centralize wording before confirming the copies must change together".into(),
-                "do not flag tiny labels, enum values, import paths, fixtures, or test strings as product contracts".into(),
-            ],
-            done_when: "the wording has one source of truth, the copies are intentionally independent and documented with a current decision note, or the owning intents have an explored relationship".into(),
-        },
-        "large_behavioral_symbol" => SmellTeaching {
-            principle: "A very large function, method, def, or impl is usually carrying multiple decisions; span is only a suspicion, so inspect the behavior before splitting.".into(),
-            inspect: vec![
-                "read the named symbol from top to bottom and identify distinct phases, modes, or responsibilities".into(),
-                "check whether the current intent ownership is broad because the behavior is broad, or because the code needs smaller internal boundaries".into(),
-                "look for validation gaps before extracting helpers so behavior stays pinned".into(),
-            ],
-            avoid: vec![
-                "do not split a deliberately linear workflow just to satisfy the threshold".into(),
-                "do not extract helpers that hide the same branchy behavior behind vague names".into(),
-            ],
-            done_when: "the behavior is split into smaller named units, or a current decision note gives a finding-specific reason this symbol resists extraction — the decomposition considered + why it is wrong here, not a restatement of its size".into(),
-        },
-        "oversized_file" => SmellTeaching {
-            principle: "A file large enough to be a god-file usually concentrates unrelated responsibilities; physical size is only a suspicion, so inspect the file before splitting.".into(),
-            inspect: vec![
-                "read the file's table of contents (its top-level symbols) and ask whether they are one cohesive module or several mashed together".into(),
-                "check whether the size is incidental (one large generated/protocol block) or structural (many intents ground here)".into(),
-                "prefer splitting along intent/module lines so each new file owns one responsibility".into(),
-            ],
-            avoid: vec![
-                "do not split a file that is large for a single deliberate reason (a protocol, a big match, generated code) just to beat the threshold".into(),
-                "do not move the problem: a mechanical split that leaves the same intents co-owning the new files just scatters the god-file".into(),
-            ],
-            done_when: "the file is split along intent/module lines so each new file owns one responsibility, or a current decision note gives a finding-specific reason this file must stay whole — the split considered + why it is wrong here, not a restatement of its size".into(),
-        },
-        "panic_marker_risk" => SmellTeaching {
-            principle: "A panic/unwrap/expect/todo marker in non-test behavior can turn an expected sad path into a process abort or unfinished path; it needs an explicit boundary decision.".into(),
-            inspect: vec![
-                "read the symbol and identify whether each marker is on trusted setup code, impossible state, or user/repo input".into(),
-                "check whether the owning intent has a sad/fallback validation for the marker's failure mode".into(),
-                "replace accidental aborts with typed errors or record why the abort is the contract".into(),
-            ],
-            avoid: vec![
-                "do not blindly replace every unwrap; first classify invariant versus recoverable failure".into(),
-                "do not accept todo/unimplemented in implemented behavior without an explicit needs_change or decision".into(),
-            ],
-            done_when: "recoverable failures are handled/proven, unfinished markers are removed or moved to planned work, or a current file decision explains why the abort marker is deliberate".into(),
-        },
-        "layering_violation" => SmellTeaching {
-            principle: "A recorded relationship does not excuse dependency direction; layer order judges whether imports point the right way.".into(),
-            inspect: vec![
-                "`loom layer list`".into(),
-                "read the upward import named in evidence".into(),
-                "decide whether to invert, extract lower shared code, redeclare layers, or record a deliberate exception".into(),
-            ],
-            avoid: vec!["do not silence an up-dependency by adding RELATES_TO; direction is a separate norm".into()],
-            done_when: "the dependency points down, the layer order is corrected, or a current decision on the importing intent justifies the exception".into(),
-        },
-        "architecture_verdict_contradicts_layering" => SmellTeaching {
-            principle: "A passing architecture-category rule and an open layering violation on the same intent contradict each other — one is wrong. Governance and the mechanical layer check must agree.".into(),
-            inspect: vec![
-                "read the layering_violation: does the dependency really point up the declared order?".into(),
-                "read the architecture rule's recorded evidence: did it actually check dependency direction?".into(),
-            ],
-            avoid: vec!["do not leave a green architecture verdict standing over a known layering violation".into()],
-            done_when: "the architecture verdict is re-recorded to match reality, the layer order is corrected, or a decision note justifies the exception".into(),
-        },
-        "recurrent_trouble" => recurrent_teaching("edge", "<id>"),
-        "happy_path_only" => SmellTeaching {
-            principle: "The non-sunny states of a behavior are real only when realized, grounded, and proven; naming the trigger (a 'happy' behavior or a 'populated' UI state) without its required siblings is not enough. Two families: behavioral happy → sad/fallback, and UI-state populated → empty/error (loading is recognized but not required).".into(),
-            inspect: vec![
-                "inspect the parent's aspect-tagged children for the triggered family".into(),
-                "check lifecycle, IMPLEMENTS groundings, and passed validations for each required sibling (sad/fallback, or empty/error)".into(),
-                "add or prove the missing path/state, or record why it is not applicable".into(),
-            ],
-            avoid: vec!["do not clear the debt with planned or unproven child intents".into()],
-            done_when: "the required sibling paths/states are implemented, grounded, and directly proven, or a current decision explains why they are not required".into(),
-        },
-        "unused_rule" => SmellTeaching {
-            principle: "A rule connected to nothing is not a quality bar; it is dormant policy text.".into(),
-            inspect: vec![
-                "`loom rule list`".into(),
-                "find the highest honest intent surface the rule should govern".into(),
-                "apply it with `loom rule verdict` or delete it if it was a mistake".into(),
-            ],
-            avoid: vec!["do not keep unused rules as implied standards".into()],
-            done_when: "the rule governs at least one relevant intent, or it is removed as unused policy".into(),
-        },
-        "vocab_drift" => SmellTeaching {
-            principle: "Near-synonym vocabulary terms split the collision signal that duplicate detection depends on.".into(),
-            inspect: vec![
-                "`loom vocab list`".into(),
-                "compare the two term definitions and their tagged intents".into(),
-                "merge synonyms or rename/retag to make the distinction sharp".into(),
-            ],
-            avoid: vec!["do not let agents choose between look-alike terms for the same concept".into()],
-            done_when: "the look-alike terms are merged, or the remaining terms have names and definitions that no longer collide".into(),
-        },
-        "unjourneyed_surface" => SmellTeaching {
-            principle: "User-visible code needs passed consumer-journey proof; per-leaf tests and declared-but-unrun sagas do not prove the composed experience.".into(),
-            inspect: vec![
-                "`loom saga list`".into(),
-                "inspect whether a passed saga step binds to this intent or its relevant tree path".into(),
-                "add and pass a saga, mark visibility internal, or record why no journey can exercise it".into(),
-            ],
-            avoid: vec!["do not treat user_visible as proven by unit coverage alone".into()],
-            done_when: "a passed consumer saga covers the surface through the tree, or a current ruling explains why it is not consumer-reachable".into(),
-        },
-        "hypothesis_accumulation" => SmellTeaching {
-            principle: "A hypothesis is a falsifiable proof item, not long-term memory; accumulation teaches the next LLM to prove, reject, or adopt instead of stockpiling ideas.".into(),
-            inspect: vec![
-                "`loom next --mode prove` for the highest-blast-radius proposal".into(),
-                "`loom hypothesis list --status proposed` to batch the backlog".into(),
-                "target untargeted hypotheses before proving, or reject them if they are not actionable".into(),
-            ],
-            avoid: vec![
-                "do not add another hypothesis when existing proposals are unproven".into(),
-                "do not convert speculative notes into planned work before proof".into(),
-            ],
-            done_when: "the proposed backlog is below the threshold and no proposed hypothesis is stale; each old idea is supported, refuted, adopted, or rejected with evidence".into(),
-        },
-        "symbol_accountability_gap" => SmellTeaching {
-            principle: "Behavior-significant symbols should be owned, accepted, or turned into explicit work; raw helper coverage is not the target.".into(),
-            inspect: vec![
-                "`loom coverage --json` and read actionable_symbol_gaps".into(),
-                "`loom codefile show <path>` for each top gap before changing graph ownership".into(),
-                "decide whether the symbol needs a precise locator, a split intent, or a decision note accepting broad ownership".into(),
-            ],
-            avoid: vec![
-                "do not chase 100% raw symbol coverage".into(),
-                "do not create intents for every private helper".into(),
-                "do not bulk-ground symbols without checking intent meaning".into(),
-            ],
-            done_when: "actionable symbol gaps are grounded with precise locators, accepted with a current decision note, or converted into real intent split/build work".into(),
-        },
-        "dependency_cycle" => SmellTeaching {
-            principle: "RELATES_TO is semantically undirected, so a relationship belongs in ONE row. Two GROUNDED rows for the same pair (a→b and b→a both carry a verdict) store the relationship twice: it double-counts in degree/centrality and skews `loom next` ranking, and the two verdicts can silently disagree. Exactly one direction is the redundant/incidental one to retire — unless the mutuality is a deliberate peer contract.".into(),
-            inspect: vec![
-                "`loom edge show rt:<a>:<b>` and `loom edge show rt:<b>:<a>` — compare the two verdicts and criteria".into(),
-                "read both intents' criteria; decide which way the dependency actually runs".into(),
-                "check whether the two are really one responsibility (a merge) or genuine mutual peers (a deliberate contract)".into(),
-            ],
-            avoid: vec!["do not keep both directions as the default; do not 'fix' an uninspected saga round-trip flow as if it were graph-hygiene debt (those edges are never flagged here — only deliberately grounded pairs are)".into()],
-            done_when: "the redundant direction is marked independent (or the two intents merged), or a current decision note on the smaller-id intent records why both directions deliberately hold".into(),
-        },
-        "transitive_layering_violation" => SmellTeaching {
-            principle: "The direct layering check exempts unlayered intents, so an illegal up-the-order dependency can hide by routing THROUGH them — every single hop looks clean, but the composed path makes a deeper layer depend on a shallower one. Direction is violated end-to-end even though no one import is.".into(),
-            inspect: vec![
-                "read the path in the evidence — the unlayered intermediate(s) are where the violation hides".into(),
-                "decide: should the intermediate carry a layer (arming the direct check), or is the end-to-end dependency itself wrong?".into(),
-                "fix the real direction (move shared code down / invert), or `loom layer order` the intermediate, or record a deliberate exception on the importing intent".into(),
-            ],
-            avoid: vec!["do not assume an all-clean-hops path is fine — the order is violated across the whole chain; do not silence it by adding a relationship".into()],
-            done_when: "the end-to-end dependency points down (or the intermediate is layered so the direct check governs the hop), or a current decision note on the importing intent justifies it".into(),
-        },
-        "intent_island" => SmellTeaching {
-            principle: "Every intent should reach a system-level purpose through HIERARCHY or RELATES_TO; an island has no such path, so nothing in the graph explains why it exists in this product.".into(),
-            inspect: vec![
-                "read the island members and find which existing branch they belong under".into(),
-                "`loom edge hierarchy <parent> <child>` to attach the island to its real parent, or `loom edge explore <a> <b>` to ground a relationship into the connected graph".into(),
-                "if the island is a genuinely separate top-level purpose, add or confirm a system-level intent for it".into(),
-            ],
-            avoid: vec!["do not leave orphaned intents floating; do not attach an island to an unrelated parent just to silence the finding".into()],
-            done_when: "every island member reaches a system-level root through HIERARCHY or RELATES_TO, or a current decision note records why the disconnected subgraph is intentional".into(),
-        },
-        _ => SmellTeaching {
-            principle: "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.".into(),
-            inspect: vec!["read the evidence and run the remedy command with concrete evidence".into()],
-            avoid: vec!["do not silence the finding without a structural fix or decision note".into()],
-            done_when: "the finding is fixed or adjudicated through its remedy".into(),
-        },
+    // recurrent_trouble is computed, not data — keep it as a call.
+    if kind == "recurrent_trouble" {
+        return recurrent_teaching("edge", "<id>");
+    }
+    let (principle, inspect, avoid, done_when) = TEACHING_TABLE
+        .iter()
+        .find(|(k, ..)| *k == kind)
+        .map(|(_, p, i, a, d)| (*p, *i, *a, *d))
+        .unwrap_or((
+            "This smell is a computed suspicion; inspect the named graph and code evidence before changing behavior.",
+            &["read the evidence and run the remedy command with concrete evidence"][..],
+            &["do not silence the finding without a structural fix or decision note"][..],
+            "the finding is fixed or adjudicated through its remedy",
+        ));
+    SmellTeaching {
+        principle: principle.into(),
+        inspect: inspect.iter().map(|s| (*s).to_string()).collect(),
+        avoid: avoid.iter().map(|s| (*s).to_string()).collect(),
+        done_when: done_when.into(),
     }
 }
 
