@@ -23,7 +23,7 @@ const GOLDEN_RULES: &[&str] = &[
     "CLOSE OUT with `loom next --all` — every role queue, vertical gaps, and doctor health as ONE prioritized list (the answer to \"what's left?\" without reconciling five commands by hand).",
     "FEDERATION (monorepo / cross-service): every graph has an identity (`loom init --name`, in the export). A root graph DELEGATES service subtrees (`loom delegate add 'services/x/**' --to services/x/loom.graph.json`) and links its SEAM intents to the child (`loom delegate seam '<pattern>' <intent>`) — `loom sync` watches each child's committed export and re-opens the seam intents' claims when it changes, so a cross-service contract shift ripples into the parent. Data flows UP (children export, parent observes); never write into a child's graph — emit findings and let the child's own agent record them in its lane. Map code you don't own with `loom init --observed`: understanding/measuring/proving work, build/fix lanes are off (findings, not fixes).",
     "A proof that needs a LIVE dependency (DB, service, queue) is NOT automatically blocked — first try to UNBLOCK it yourself. loom cannot know how YOUR repo provisions things, so SCAN the working repo for how it brings them up — docker-compose.yml / compose.yaml, a Makefile/justfile/Taskfile target, scripts/, package.json scripts, a README \"getting started\"/\"running tests\" section, .env.example, testcontainers/fixtures — start the dependency that way, pass its address in at invocation (`BASE_URL=… loom saga diagnose …` while triaging, then `loom saga run …` when ready to stamp proof). Adapt to the repo in front of you; loom ships no mock. ONLY when you genuinely cannot stand it up (no provisioning exists in the repo, or a secret you don't hold) is it `loom validation mark <id> --result blocked --reason \"…\"` — honest and out of the queue, never left looking forgotten as not_run.",
-    "TIERED DRIVING: every work item carries `effort: low|mid|high` — a statement about the WORK (loom never names models; the harness maps tiers). Low-capability agents drive the bulk and record HONEST confidence: 0.5-and-true beats 0.9-and-guessed, because verdicts below 0.7 feed `loom next --mode review` — the strategic double-check, ranked uncertain×central — where a stronger agent independently re-inspects (own hypothesis FIRST, then the recorded evidence) and confirms or overturns. Confidence is the coordination channel between tiers; no agent ever messages another.",
+    "ADOPT THE LANE, THEN DRIVE: when the compass routes you to a lane, `loom guide --role <role>` serves that lane's SKILL just-in-time (its discipline + honesty law) to adopt in-context — no install. Every work item also carries `effort: low|mid|high`, a statement about the WORK (loom never names models). Adopt + drive in your warm context by default; for a genuinely BULK queue you MAY spawn a cheaper sub-context to flood it. Whoever drives records HONEST confidence: 0.5-and-true beats 0.9-and-guessed, because verdicts below 0.7 feed `loom next --mode review` — the strategic double-check, ranked uncertain×central — where a stronger pass independently re-inspects (own hypothesis FIRST, then the recorded evidence) and confirms or overturns. Confidence is the coordination channel; no context ever messages another.",
     "DESIGN CHANGES MIDWAY: when an intent is superseded, `loom intent retire <id> --reason … [--replaced-by <successor>]` — never delete (delete is for mistakes), never leave it counting. Retired = invisible to computation, visible to history; the command reports the triggered work (orphaned children, files that lost their only owner, dangling proofs). Address handoffs: `loom note add --for <role>` puts a message at the top of that lane's next relevant work item.",
     "THE HYPOTHESIS PLANE (pre-decision): an improvement idea is NOT work until it is proven. `loom hypothesis add --claim <what's wrong NOW> --proposal <the change> --predicted-outcome <measurable result> [--target <intent>]…` (any lane; the redesign-shaped smells emit this as their remedy). A DIFFERENT agent proves it: `loom next --mode prove` serves proposals ranked by target blast radius — `loom hypothesis prove <id> --verdict supported|refuted --evidence … --confidence 0.9` (analyzer lane; proposer ≠ prover; the verdict stamps the TARGETS edges). Then the builder decides: `loom hypothesis adopt <id> --spawned <planned-intent>…` converts it into ordinary build work AND writes the predicted outcome as a not_run Validation on the spawned intents — when the validator later marks that proof passed, the hypothesis derives `confirmed`: every adopted improvement is checked for whether it DELIVERED. `loom sync` stales hypothesis support when target code changes (the prove queue re-serves it as a RE-PROVE item). Speculation never counts in coverage/completeness — proving is optional, like discovery/review.",
     "THE CONSUMER PLANE (runtime proof of composition): everything else grounds claims by READING code — a saga proves intents compose by EXECUTING them the way a real consumer will. Write a YAML spec (ordered endpoint chain; every step names the intent it proves; captures thread one response into the next request; optional `auth.requires_scopes` declares endpoint scope requirements for diagnosis), `loom saga add <spec.yaml>` to declare it (Validation type=saga + VALIDATES edges + the RELATES_TO path), `loom saga diagnose <name>` to TRIAGE without stamping graph verdicts, and `loom saga run <name>` to STAMP proof: consecutive passing steps stamp their RELATES_TO edge passing with RUNTIME evidence; the boundary into a failing step goes failing with the exact broken expectation ('expected 200, got 502'); never-reached steps stay untouched. Validator lane; exits non-zero so it runs under `loom validate`/CI; sync re-queues it when step-intent code changes. ENVIRONMENT VALUES: `{{ env.X }}` in a spec means the value arrives AT INVOCATION — `BASE_URL=http://localhost:3000 loom saga diagnose <name>` for diagnosis, then `BASE_URL=http://localhost:3000 loom saga run <name>` to record evidence — never stored in the graph (it points at a LIVE target; start the system under test first — discover how THIS repo brings it up: docker-compose, a Makefile/justfile target, scripts/, package.json scripts, the README — loom ships no mock, it drives the real composition). `loom saga add`/`list` name what's required (`run with: BASE_URL=<value> …`); a missing value refuses to run with the exact invocation to use (nothing stamped — environment-not-ready is never recorded as a failed proof: `loom validate` marks it `blocked` instead). On 401/403, `loom saga diagnose` decodes bearer JWT `scope`/`scp`/`scopes` claims when `auth.requires_scopes` is present and names the missing scope. Use sagas for any endpoint-reachable surface; deliberately not as a general HTTP test tool.",
@@ -199,36 +199,44 @@ pub(crate) fn lane_skill_manifest() -> Vec<(String, &'static str, &'static str)>
 /// hats, sequential subagents, parallel fan-out, or any mix are all valid. loom
 /// enforces the lane when a role is declared; it never dictates when or how many.
 const ORCHESTRATION: &[&str] = &[
-    "loom tells you HOW to work with it; YOU choose how your agents are organized. Valid shapes:",
-    "  · one agent, all roles (bare `llm`) — switch hats as the phase changes",
-    "  · one agent declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
-    "  · many agents in sequence — builder finishes → analyzer picks up → … (handoff via the graph)",
-    "  · many agents in parallel — each role works its own lane at once (see CONCURRENCY below)",
+    "ADOPT THE LANE, don't go find an agent for it. loom serves each lane as a SKILL just-in-time: when",
+    "  the compass routes you to a lane, run `loom guide --role <role>` and the binary hands you that",
+    "  lane's complete discipline (THE LAW + the loop + the honesty guards) to ADOPT in your current",
+    "  context. No install, nothing to scavenge. (`loom skill install` only PINS them as harness skills —",
+    "  optional, for control; the binary alone is enough.)",
+    "loom tells you HOW to work with it; YOU choose the TOPOLOGY. Valid shapes, DEFAULT first:",
+    "  · ONE context, adopt the lane-skill the compass names, switch skills as the phase changes — the",
+    "    default: warm context, no cold-start, no handoff cost (`loom guide --role <role>` per switch)",
+    "  · one context declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
+    "  · SCALE OUT only when a queue is genuinely BULK: spawn a fresh sub-context for that ONE lane (a",
+    "    cheap model can flood thousands of grid edges in isolation), sequential or parallel — handoff via",
+    "    the GRAPH. Reserve this for volume; in-context adoption is the norm, not subprocess fan-out.",
     "CONCURRENCY (loom handles it): loom DOES cross-process-lock writes — an advisory flock on",
     "  `.loom/graph.lock`, taken per write transaction, so at most one write session touches a graph at a",
     "  time (readers still run concurrently under WAL). A competing writer waits up to LOOM_LOCK_DEADLINE_MS",
     "  (default 5000ms), then fails with a NAMED error ('graph write lock is held by another loom session …",
-    "  loom serializes writers'), never a raw 'database is locked'. So parallel lane agents are SAFE against",
-    "  corruption on one graph — loom serializes them for you. For heavy parallel WRITE fan-out, handle that",
+    "  loom serializes writers'), never a raw 'database is locked'. So parallel lane work is SAFE against",
+    "  corruption on one graph — loom serializes it for you. For heavy parallel WRITE fan-out, handle that",
     "  named lock-wait error (retry/backoff) or give each writer its own graph clone + merge later. Sequential",
     "  shapes never contend; reads never block.",
-    "THE CONTRACT (identical in every shape):",
-    "  · declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo)",
+    "THE CONTRACT (identical whether you adopt in-context or spawn a sub-context):",
+    "  · declare your role `LOOM_AGENT=llm:<role>` (the lane-skill's SETUP line does this; or stay bare `llm` for solo)",
     "  · stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane",
-    "  · hand off through the GRAPH, not chat — the next agent reads `loom status`/`loom next`/notes and continues",
+    "  · hand off through the GRAPH, not chat — the next reader (you later, or another context) reads `loom status`/`loom next`/notes and continues",
     "HANDOFF ORDER is a DEPENDENCY, not a schedule: builder (construct + ground) → analyzer (verify)",
     "  → validator (prove) → quality (green); fixer on any failing/needs_change. Run these one at a",
     "  time or overlap where the graph allows — loom enforces the lane, never the timing.",
     // PERFORMANCE/storage guidance is single-sourced in PERFORMANCE_GUIDANCE and
     // printed after this list (so the human render and the json
     // `orchestration.performance` field can never drift — see that const).
-    "SEPARATION OF DUTIES is as strong as your topology: distinct agents per role = real (no one",
-    "  green-lights its own work); one agent switching roles = discipline. `loom doctor` audits either way.",
+    "SEPARATION OF DUTIES is enforced at the WRITE BOUNDARY on the LOOM_AGENT role string — NOT on process",
+    "  identity: a spawned context per role and one context switching lane-skills are held to the SAME gate.",
+    "  Distinct contexts make separation STRUCTURAL; one context switching skills makes it DISCIPLINE —",
+    "  `loom doctor` audits provenance either way.",
     "SOLO MODE IS SILENT BY DEFAULT: a bare `llm` (no LOOM_AGENT role) passes every lane — correct for",
-    "  one driver, but in a MULTI-AGENT run a forgotten LOOM_AGENT silently records every verdict as",
-    "  unguarded solo (separation of duties collapses with no error). `loom batch` FLAGS this at record",
-    "  time (advisory, never rejected), and `loom doctor` hints when ALL verdicts are solo — set",
-    "  LOOM_AGENT=llm:<role> per agent before recording verdicts if you mean the lanes to bind.",
+    "  one driver, but if you mean the lanes to bind, set LOOM_AGENT=llm:<role> before recording verdicts",
+    "  (adopting the lane-skill sets it). `loom batch` FLAGS all-solo at record time (advisory, never",
+    "  rejected), and `loom doctor` hints when ALL verdicts are solo.",
     "THE LOOP: `loom status` → read `phase` → whoever owns that lane acts (`loom next` names the role +",
     "  fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and the AUDIT gate",
     "  (zero open `loom smells` findings — every suspicion resolved or refuted via its remedy).",
@@ -641,11 +649,11 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
                 "what_goes_stale": RIPPLE,
             },
             "roles": {
-                "how": "Many limited agents lift together: each agent declares its role once via \
-                    LOOM_AGENT=llm:<role> (or per-command --inspected-by/--author). Declared roles are ENFORCED — \
-                    acting outside your lane is an error pointing you back to your own queue. \
-                    Bare 'llm'/'human' = solo mode (one agent drives every lane). \
-                    Separation of duties: the builder cannot green-light its own work; verdicts \
+                "how": "ADOPT the lane as a skill — `loom guide --role <role>` hands you its discipline; \
+                    its SETUP declares your role `LOOM_AGENT=llm:<role>` (or per-command --inspected-by/--author). \
+                    Declared roles are ENFORCED at the WRITE BOUNDARY — acting outside your lane is an error \
+                    pointing you back to your own queue. Bare 'llm'/'human' = solo mode (one context drives \
+                    every lane). Separation of duties: the builder cannot green-light its own work; verdicts \
                     (ground/issue/independent, confirm, validate, rule verdict) belong to other lanes. \
                     `loom doctor` audits provenance after the fact.",
                 "lanes": ROLE_LANES.iter().map(|(role, mode, what)| serde_json::json!({
@@ -654,17 +662,16 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
                 "adopt": "`loom guide --role <role>` prints one lane's full charge — mandate, lane (what it MAY do), queue, setup — derived from the enforced lane table so it can't drift. An agent adopts its role from loom itself, no harness-specific instructions.",
             },
             "orchestration": {
-                "principle": "loom defines the CONTRACT (roles, lanes, owned fields, the handoff dependency). It does NOT predefine the TOPOLOGY — you choose how agents are organized; loom enforces the lane when a role is declared, never when or how many.",
+                "principle": "ADOPT THE LANE, don't spawn one: loom serves each lane as a SKILL just-in-time (`loom guide --role <role>` hands you the discipline to adopt IN CONTEXT — no install). loom defines the CONTRACT (roles, lanes, owned fields, the handoff dependency); it does NOT predefine the TOPOLOGY. The default is one context adopting lane-skills as the compass routes; spawning a sub-context is an OPTIONAL scale-out for genuinely bulk queues.",
                 "topologies": [
-                    "one agent, all roles (bare `llm`) — switch hats as the phase changes",
-                    "one agent declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential",
-                    "many agents in sequence — builder finishes, analyzer picks up, … (handoff via the graph)",
-                    "many agents in parallel — each role works its own lane at once (see concurrency)",
+                    "DEFAULT — one context, adopt the lane-skill the compass names, switch skills as the phase changes (warm context, no handoff cost)",
+                    "one context declaring a role per phase (set LOOM_AGENT, work that lane, switch) — sequential hat-switching",
+                    "SCALE OUT (bulk only) — spawn a fresh sub-context for one lane (a cheap model floods thousands of grid edges in isolation); sequential or parallel; handoff via the graph",
                 ],
-                "concurrency": "loom DOES cross-process-lock writes: an advisory flock on `.loom/graph.lock` taken per write transaction, so at most one write session touches a graph at a time (readers run concurrently under WAL). A competing writer waits up to LOOM_LOCK_DEADLINE_MS (default 5000ms), then fails with a NAMED error ('graph write lock is held by another loom session … loom serializes writers'), never a raw 'database is locked'. Parallel lane agents are therefore safe against corruption on one graph — loom serializes them for you. For heavy parallel WRITE fan-out, handle that named lock-wait error (retry/backoff) or give each writer its own graph clone + merge later. Sequential shapes never contend; reads never block.",
-                "contract": "Identical in every shape: declare your role `LOOM_AGENT=llm:<role>` (or stay bare `llm` for solo); stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane; hand off through the GRAPH (status/next/notes), not chat.",
+                "concurrency": "loom DOES cross-process-lock writes: an advisory flock on `.loom/graph.lock` taken per write transaction, so at most one write session touches a graph at a time (readers run concurrently under WAL). A competing writer waits up to LOOM_LOCK_DEADLINE_MS (default 5000ms), then fails with a NAMED error ('graph write lock is held by another loom session … loom serializes writers'), never a raw 'database is locked'. Parallel lane work is therefore safe against corruption on one graph — loom serializes it for you. For heavy parallel WRITE fan-out, handle that named lock-wait error (retry/backoff) or give each writer its own graph clone + merge later. Sequential shapes never contend; reads never block.",
+                "contract": "Identical whether you adopt in-context or spawn a sub-context: declare your role `LOOM_AGENT=llm:<role>` (the lane-skill's SETUP line does this; or stay bare `llm` for solo); stay in your lane; fill ONLY your owned fields (`loom schema`); `loom note` anything out of lane; hand off through the GRAPH (status/next/notes), not chat.",
                 "handoff_order": "A DEPENDENCY, not a schedule: builder (construct + ground + populate derived structure) → analyzer (verify) → validator (prove) → quality (green); fixer on any failing/needs_change. Run sequentially or overlap where the graph allows.",
-                "separation_of_duties": "As strong as your topology: distinct agents per role = real (no one green-lights its own work); one agent switching roles = discipline. `loom doctor` audits provenance either way.",
+                "separation_of_duties": "Enforced at the WRITE BOUNDARY on the LOOM_AGENT role string, NOT on process identity: a spawned context per role and one context switching lane-skills are held to the SAME gate. Distinct contexts make separation structural; one context switching skills makes it discipline — `loom doctor` audits provenance either way.",
                 "loop": "`loom status` → read phase → whoever owns that lane acts (`loom next` names the role + fields per item) → repeat until phase=complete: vertical ✓, horizontal ✓, and zero open `loom smells` findings (the audit gate).",
                 "performance": PERFORMANCE_GUIDANCE,
             },
