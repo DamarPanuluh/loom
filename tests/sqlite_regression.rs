@@ -1405,6 +1405,34 @@ fn sqlite_intake_flags_granularity_preserves_why_and_is_condition_aware() {
         "the rationale card links back to the utterance: {show}"
     );
 
+    // R5 resilience: a too-thin --why must NOT abort capture (CAPTURE FIRST) —
+    // the utterance is still captured, no rationale card, and a warning explains.
+    let thin = run_json(
+        &graph.root,
+        &[
+            "door",
+            "a perfectly capturable utterance here",
+            "--why",
+            "short",
+            "--json",
+        ],
+    );
+    assert!(
+        thin["inbox_item"]["id"].as_str().is_some(),
+        "a thin --why must still capture the utterance: {thin}"
+    );
+    assert!(
+        thin["rationale_card"].is_null(),
+        "a thin --why creates no rationale card: {thin}"
+    );
+    assert!(
+        thin["why_warning"]
+            .as_str()
+            .unwrap_or("")
+            .contains("too thin"),
+        "a thin --why is explained, not silently dropped: {thin}"
+    );
+
     // R6: once source exists on disk, the same door flips to brownfield.
     write_scratch_file(&graph.root, "src/real.rs", "pub fn handler() {}\n");
     let door2 = run_json(
@@ -1458,8 +1486,11 @@ fn sqlite_build_loop_wires_prove_and_flags_unproven() {
         "the build action teaches verify-first grounding: {action}"
     );
     assert!(
-        action.contains("relates to") && action.contains("--for analyzer"),
-        "the build action cues build-time relationship capture: {action}"
+        action.contains("relates to")
+            && action.contains("--for analyzer")
+            && action.contains("note add --intent")
+            && action.contains("--text "),
+        "the build action cues a RUNNABLE relationship-capture command (note add needs --text): {action}"
     );
     // R2b: the criterion (THE acceptance test) rides into the work item.
     assert_eq!(
@@ -1581,6 +1612,27 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     assert!(
         stderr.contains("does not occur in") && stderr.contains("stale on arrival"),
         "the rejection names the missing symbol + why: {stderr}"
+    );
+    // A SUB-TOKEN must not masquerade as the symbol: "real" appears inside
+    // "real_sym" but is not it — word-boundary matching rejects the grounding.
+    let subtoken = std::process::Command::new(loom_bin())
+        .args([
+            "edge",
+            "implement",
+            "r1 real owner",
+            "scratch/r1.rs",
+            "--locator",
+            "real",
+        ])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:builder")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom edge implement with a sub-token locator");
+    assert!(
+        !subtoken.status.success(),
+        "a sub-token locator ('real' inside 'real_sym') must be rejected: {:?}",
+        subtoken.status
     );
 }
 

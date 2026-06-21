@@ -110,20 +110,28 @@ pub fn run_with_db(
     // Preserve the conversational WHY: capture the rationale as its OWN card,
     // linked back to the utterance, so the reasoning/constraints survive the
     // graph boundary as durable, triageable truth instead of dying in chat.
-    let rationale_id = if why.trim().is_empty() {
-        None
+    // CAPTURE FIRST is absolute: a too-thin --why must never abort the utterance
+    // capture — skip the rationale card and tell the user how to record it.
+    let (rationale_id, why_warning) = if why.trim().is_empty() {
+        (None, None)
     } else {
-        Some(
-            crate::commands::inbox::create_item(
-                db,
-                why.to_string(),
-                "user".to_string(),
-                Vec::new(),
-                vec![format!("inbox:{}", inbox_item.id)],
+        match crate::commands::inbox::create_item(
+            db,
+            why.to_string(),
+            "user".to_string(),
+            Vec::new(),
+            vec![format!("inbox:{}", inbox_item.id)],
+            None,
+        ) {
+            Ok(item) => (Some(item.id), None),
+            Err(_) => (
                 None,
-            )?
-            .id,
-        )
+                Some(format!(
+                    "--why \"{}\" was too thin to capture as its own card (needs ≥10 substantive chars); the utterance is still captured — restate the rationale or add it with `loom inbox add`.",
+                    why.trim()
+                )),
+            ),
+        }
     };
     let (intents, _match_total) = db.find_intents(utterance, limit)?;
     let planes = db.door_matches(utterance, limit)?;
@@ -138,6 +146,7 @@ pub fn run_with_db(
         utterance,
         inbox_item,
         rationale_id,
+        why_warning,
         intents,
         planes,
         gs,
@@ -165,6 +174,7 @@ fn render(
     utterance: &str,
     inbox_item: InboxItem,
     rationale_id: Option<String>,
+    why_warning: Option<String>,
     intents: Vec<FindHit>,
     planes: DoorMatches,
     gs: GraphState,
@@ -188,6 +198,7 @@ fn render(
             "utterance": utterance,
             "inbox_item": inbox_item,
             "rationale_card": rationale_id,
+            "why_warning": why_warning,
             "mode": mode,
             "orientation": orientation(has_source),
             "granularity_cue": GRANULARITY_CUE,
@@ -225,6 +236,9 @@ fn render(
     println!("captured inbox item: {}", inbox_item.id);
     if let Some(rid) = &rationale_id {
         println!("captured rationale card: {rid}  (the WHY, linked to the utterance)");
+    }
+    if let Some(w) = &why_warning {
+        println!("  ⚠ {w}");
     }
     println!("  [{mode}] {}", orientation(has_source));
     if let Some(g) = &granularity {

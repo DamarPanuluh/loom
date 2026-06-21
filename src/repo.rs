@@ -450,9 +450,36 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
 
 /// True when an IMPLEMENTS locator can still be found in the file's content.
 /// Empty locators are vacuously present (file-level grounding).
+///
+/// Matching is word-boundary aware, not bare substring: a locator that begins or
+/// ends in an identifier char must not be flanked by another identifier char, so
+/// `"ghost"` does NOT match `ghost_house` and `"run"` does NOT match `rerun`.
+/// This keeps a sub-token from masquerading as the symbol it names (the same
+/// matcher serves `loom edge implement`'s ground-time check and `loom sync`).
+/// It is deliberately lexical, not syntactic: a locator that genuinely appears
+/// as text inside a comment still matches — distinguishing code from comments
+/// needs full parsing, which the symbol-precise sync layer handles separately.
 pub fn locator_present(content: &str, locator: &str) -> bool {
     let l = locator.trim();
-    l.is_empty() || content.contains(l)
+    if l.is_empty() {
+        return true; // file-level grounding
+    }
+    let is_ident = |c: char| c.is_alphanumeric() || c == '_';
+    let lead_ident = l.chars().next().is_some_and(&is_ident);
+    let tail_ident = l.chars().next_back().is_some_and(&is_ident);
+    content.match_indices(l).any(|(start, m)| {
+        let before_ok = !lead_ident
+            || content[..start]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !is_ident(c));
+        let after_ok = !tail_ident
+            || content[start + m.len()..]
+                .chars()
+                .next()
+                .is_none_or(|c| !is_ident(c));
+        before_ok && after_ok
+    })
 }
 
 /// Best-effort static import extraction: repo-relative paths of files that
@@ -1094,6 +1121,25 @@ mod tests {
         assert!(locator_present("fn run() {}", "fn run"));
         assert!(locator_present("anything", "")); // file-level grounding
         assert!(!locator_present("fn walk() {}", "fn run"));
+        // Word-boundary aware: a sub-token must not masquerade as the symbol.
+        assert!(
+            !locator_present("fn ghost_house() {}", "ghost"),
+            "'ghost' must NOT match inside 'ghost_house'"
+        );
+        assert!(
+            !locator_present("fn rerun() {}", "run"),
+            "'run' must NOT match inside 'rerun'"
+        );
+        assert!(
+            locator_present("fn ghost() {}", "ghost"),
+            "'ghost' DOES match the real symbol 'ghost'"
+        );
+        // The leading keyword form still matches at a real boundary.
+        assert!(locator_present("pub fn shorten() {}", "fn shorten"));
+        assert!(!locator_present("pub fn shortener() {}", "fn shorten"));
+        // A locator ending in a non-identifier char only needs a leading boundary.
+        assert!(locator_present("a.foo() end", "foo()"));
+        assert!(!locator_present("a.barfoo() end", "foo()"));
     }
 
     #[test]

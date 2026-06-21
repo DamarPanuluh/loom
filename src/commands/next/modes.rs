@@ -367,7 +367,7 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
                 (no runnable proof? record the manual verdict: loom validation mark <id> --result passed --evidence \"…\"; an endpoint-reachable criterion proves best as a consumer saga: loom saga add <spec.yaml>).\n  \
              5. Mark done: loom intent mark {id} --lifecycle implemented   (a leaf marked implemented with NO validation is flagged implemented-but-unproven).\n  \
              6. Baseline it: loom sync   (stamps the new files; future edits ripple correctly).\n  \
-             Noticed a relationship while coding (this calls or depends on another intent)? Capture it now so discovery need not re-find it: loom note add --intent {id} --for analyzer \"relates to <other intent>: <how>\".",
+             Noticed a relationship while coding (this calls or depends on another intent)? Capture it now so discovery need not re-find it: loom note add --intent {id} --for analyzer --text \"relates to <other intent>: <how>\".",
             id = intent.id,
         ),
         "needs_change" => format!(
