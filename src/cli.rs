@@ -528,6 +528,22 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Pre-change blast radius: given changed files (explicit, or auto-detected
+    /// from git), show the INTENT-level fallout BEFORE the edit lands — which
+    /// groundings go stale, which proofs must re-run, which downstream edges
+    /// ripple. What `loom sync` would flag, computed ahead. Read-only.
+    #[command(
+        after_help = "EXAMPLE:\n  loom impact                 (auto-detect uncommitted changes)\n  loom impact src/auth.rs     (preview specific files)\n  loom impact --staged        (only git-staged changes)"
+    )]
+    Impact {
+        /// Files to preview the impact of. Omit to auto-detect from git.
+        files: Vec<String>,
+
+        /// Only consider git-staged changes (default: all uncommitted vs HEAD).
+        #[arg(long)]
+        staged: bool,
+    },
+
     /// Manage coverage exclusion patterns (the escape hatch), stored in the graph.
     Ignore {
         #[command(subcommand)]

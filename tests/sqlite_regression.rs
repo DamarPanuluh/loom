@@ -2456,6 +2456,101 @@ fn sqlite_tour_reads_intents_in_order_with_proof_status() {
     );
 }
 
+// `loom impact` — pre-change blast radius. Given changed files (here explicit,
+// for determinism — no git dependency), it names the intents whose groundings go
+// stale and the proofs that must re-run, and flags changed source files not in
+// the graph. Read-only.
+#[test]
+fn sqlite_impact_reports_blast_radius_for_changed_files() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("impact");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "store.go",
+        "package store\nfunc Save(id string) error { return nil }\n",
+    );
+    let b = "llm:builder";
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "record storage",
+            "--description",
+            "Save a user record by id.",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        b,
+    );
+    run_json_as(&graph.root, &["codefile", "add", "store.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "record storage",
+            "store.go",
+            "--locator",
+            "func Save",
+            "--json",
+        ],
+        b,
+    );
+    let sid = intent_id_by_name(&graph.root, "record storage");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "save proof",
+            "--type",
+            "test",
+            "--command",
+            "true",
+            "--intent",
+            &sid,
+            "--json",
+        ],
+        "llm:validator",
+    );
+
+    // A registered, grounded file → its intent + proof surface.
+    let v = run_json(&graph.root, &["impact", "store.go", "--json"]);
+    assert!(
+        v["directly_affected"]
+            .as_array()
+            .is_some_and(|a| a.iter().any(|x| x["intent"] == "record storage")),
+        "changed grounded file must flag its intent: {v}"
+    );
+    assert!(
+        v["proofs_to_rerun"]
+            .as_array()
+            .is_some_and(|a| a.iter().any(|x| x["validation"] == "save proof")),
+        "the intent's proof must be listed to re-run: {v}"
+    );
+
+    // An unregistered source file → flagged as a coverage gap, not a fabricated intent.
+    let v2 = run_json(&graph.root, &["impact", "newthing.go", "--json"]);
+    assert!(
+        v2["directly_affected"]
+            .as_array()
+            .is_some_and(|a| a.is_empty()),
+        "an unregistered file affects no intents: {v2}"
+    );
+    assert!(
+        v2["unregistered_changed_source"]
+            .as_array()
+            .is_some_and(|a| a.iter().any(|x| x == "newthing.go")),
+        "unregistered changed source must be flagged: {v2}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export

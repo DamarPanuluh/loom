@@ -19,6 +19,7 @@ pub mod guide;
 pub mod hotspots;
 pub mod hypothesis;
 pub mod ignore;
+pub mod impact;
 pub mod import;
 pub mod inbox;
 pub mod init;
@@ -116,6 +117,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Detect                     => detect::run(&printer),
         Command::Seed        { suggest, limit } => seed::run(suggest, limit, &printer),
         Command::Tour        { target, limit } => tour::run(target.as_deref(), limit, &printer),
+        Command::Impact      { files, staged } => impact::run(files, staged, &printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
         Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
         Command::Export      { path, out, check } => {
