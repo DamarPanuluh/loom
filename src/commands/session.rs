@@ -72,8 +72,8 @@ fn offers(c: &SessionCounts) -> (Vec<Offer>, usize) {
     // only two honest offers are "capture your head" and "map the code".
     if c.intents == 0 {
         let mut menu = vec![Offer {
-            ask: "Tell me what this product should be — I'll capture it as we talk".into(),
-            why: "empty graph: no intents yet — the interview seeds them".into(),
+            ask: "Tell me what this product should do — start with the ONE capability that matters most; I'll ask one thing at a time and we'll seed them together".into(),
+            why: "empty graph: no intents yet — the interview seeds them ATOMICALLY (one falsifiable criterion each, so no idea arrives too big to verify)".into(),
             then: "loom guide --mode seed  (elicit: one question at a time, land every answer)",
         }];
         if c.has_source {
@@ -479,6 +479,19 @@ mod tests {
         let (menu, rec) = offers(&c);
         assert!(menu[rec].then.contains("--mode seed"));
         assert!(menu.iter().all(|o| !o.then.contains("--mode build")));
+        // R6: the seed offer scaffolds a novice — ONE capability at a time,
+        // seeded atomically — instead of the terse "tell me what this should be".
+        assert!(
+            menu[rec].ask.contains("ONE capability")
+                && menu[rec].ask.contains("one thing at a time"),
+            "the seed offer scaffolds the interview: {}",
+            menu[rec].ask
+        );
+        assert!(
+            menu[rec].why.contains("ATOMICALLY"),
+            "the seed offer promises atomic seeding: {}",
+            menu[rec].why
+        );
     }
 
     /// Pre-init: a committed export outranks mapping outranks interviewing.

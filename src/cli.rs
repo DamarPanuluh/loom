@@ -400,6 +400,12 @@ pub enum Command {
     Door {
         /// The user's statement, in their words.
         utterance: String,
+        /// The reasoning behind it — why now, constraints, tradeoffs considered.
+        /// Captured as a SEPARATE card linked to the utterance, so the "why"
+        /// survives the graph boundary instead of dying in chat (conversation
+        /// residue is the failure mode). Triage it like any other card.
+        #[arg(long, default_value = "")]
+        why: String,
         /// How many matches to return per plane.
         #[arg(long, default_value_t = 5)]
         limit: usize,

@@ -475,12 +475,22 @@ fn run_triage_with_db(db: &dyn GraphReadRepository, take: usize, printer: &Print
 }
 
 fn render_show(item: &InboxItem, printer: &Printer) -> Result<()> {
+    // A card routed to become an intent is held to the granularity contract at
+    // the EARLIEST intake point — so a coarse "X and Y" claim is flagged here,
+    // before `intent add`, not after the `scattered` smell fires later.
+    let granularity = (item.route_kind == "intent")
+        .then(|| crate::commands::intent::granularity_advisory(&item.normalized_claim))
+        .flatten();
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let mut body = serde_json::json!({
             "status": "ok",
             "item": item,
             "next_step": next_step_for(item),
-        }));
+        });
+        if let Some(g) = &granularity {
+            body["granularity_advisory"] = g.clone().into();
+        }
+        printer.print_json(&body);
         return Ok(());
     }
     println!(
@@ -506,6 +516,9 @@ fn render_show(item: &InboxItem, printer: &Printer) -> Result<()> {
     }
     if !item.resolution.is_empty() {
         println!("resolution: {}", item.resolution);
+    }
+    if let Some(g) = &granularity {
+        println!("⚑ {g}");
     }
     println!("→ Next: {}", next_step_for(item));
     Ok(())

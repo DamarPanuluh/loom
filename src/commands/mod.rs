@@ -101,7 +101,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
         Command::Wiki        { out, check }    => wiki::run(&out, check, &printer),
-        Command::Door        { utterance, limit } => door::run(&utterance, limit, &printer),
+        Command::Door        { utterance, why, limit } => door::run(&utterance, &why, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
         Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),

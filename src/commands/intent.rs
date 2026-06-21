@@ -295,6 +295,28 @@ struct AddIntentArgs {
     boundary: String,
 }
 
+/// Soft granularity check for intake: a name that joins independent
+/// responsibilities with a conjunction usually wants to be SEVERAL atomic
+/// intents — the contract is one falsifiable criterion each. Advisory only
+/// ("command and control" can legitimately be one concern), so it nudges the
+/// driver to split BEFORE coarse seeding triggers the `scattered` smell later;
+/// it never blocks. Shared with `loom inbox normalize` so the same nudge fires
+/// at the earliest intake point, not only at `intent add`.
+pub(crate) fn granularity_advisory(name: &str) -> Option<String> {
+    let lower = format!(" {} ", name.to_lowercase());
+    let joiner = [" and ", " & ", " plus "]
+        .iter()
+        .find(|j| lower.contains(**j))?;
+    Some(format!(
+        "granularity: this joins responsibilities with '{}'. The contract is ONE \
+         falsifiable criterion per intent — if each side is independently verifiable, \
+         seed them as separate atomic intents under a shared parent rather than one \
+         coarse '{}'.",
+        joiner.trim(),
+        name.trim(),
+    ))
+}
+
 fn handle_add(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     args: AddIntentArgs,
@@ -401,11 +423,17 @@ fn handle_add(
                 steps.push(ts.clone());
             }
             obj.insert("next_steps".to_string(), serde_json::json!(steps));
+            if let Some(g) = granularity_advisory(&name) {
+                obj.insert("granularity_advisory".to_string(), g.into());
+            }
         }
         printer.print_json(&v);
     } else {
         println!("✓ Intent created");
         println!("{}", fmt_intent(&intent));
+        if let Some(g) = granularity_advisory(&name) {
+            println!("  ⚑ {g}");
+        }
         println!("  → Next: {}", tree_step);
         println!("          then ground it: `loom edge implement {} <codefile> --locator \"<symbol>\"` (symbol as written in the file).", id);
         if let Some(ts) = &tag_step {

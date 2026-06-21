@@ -1301,6 +1301,123 @@ fn sqlite_smells_stale_triages_the_wall_of_red() {
     );
 }
 
+// R4/R5/R6 (intake): a conjunction-joined intent/utterance is flagged against the
+// granularity contract at intake (intent add + door), the door's standing
+// granularity cue is always present, the `--why` rationale is preserved as a
+// linked triageable card, and the door's orientation is condition-aware
+// (greenfield with no source, brownfield once code exists).
+#[test]
+fn sqlite_intake_flags_granularity_preserves_why_and_is_condition_aware() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("intake");
+
+    // R4: `intent add` flags a name that joins responsibilities with a conjunction.
+    let coarse = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Undo and Recovery",
+            "--description",
+            "users can undo actions and recover stale state",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert!(
+        coarse["granularity_advisory"]
+            .as_str()
+            .unwrap_or("")
+            .contains("granularity"),
+        "a name joining responsibilities with 'and' is flagged: {coarse}"
+    );
+    // An atomic name is NOT flagged (no false positive).
+    let atomic = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "Undo the last action",
+            "--description",
+            "the user reverses their most recent action",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert!(
+        atomic.get("granularity_advisory").is_none(),
+        "an atomic intent is not flagged: {atomic}"
+    );
+
+    // R4 + R5 + R6 at the door.
+    let door = run_json(
+        &graph.root,
+        &[
+            "door",
+            "I want undo and redo for every editor action",
+            "--why",
+            "users lose work constantly and ask for this weekly",
+            "--json",
+        ],
+    );
+    assert!(
+        door["granularity_cue"]
+            .as_str()
+            .unwrap_or("")
+            .contains("GRANULARITY"),
+        "the door carries a standing granularity cue: {door}"
+    );
+    assert!(
+        door["granularity_advisory"]
+            .as_str()
+            .unwrap_or("")
+            .contains("granularity"),
+        "the door flags the conjunction in the utterance: {door}"
+    );
+    // R6: no source in the scratch graph → greenfield orientation.
+    assert_eq!(
+        door["mode"].as_str(),
+        Some("greenfield"),
+        "no source on disk → greenfield orientation: {door}"
+    );
+    // R5: the --why rationale is preserved as a linked, triageable card.
+    let rationale = door["rationale_card"].as_str().unwrap_or("");
+    assert!(
+        !rationale.is_empty(),
+        "the --why rationale becomes a card: {door}"
+    );
+    let utt_id = door["inbox_item"]["id"].as_str().expect("utterance id");
+    let backlink = format!("inbox:{utt_id}");
+    let show = run_json(&graph.root, &["inbox", "show", rationale, "--json"]);
+    let links = show["item"]["links"].as_array().expect("links array");
+    assert!(
+        links.iter().any(|l| l.as_str() == Some(backlink.as_str())),
+        "the rationale card links back to the utterance: {show}"
+    );
+
+    // R6: once source exists on disk, the same door flips to brownfield.
+    write_scratch_file(&graph.root, "src/real.rs", "pub fn handler() {}\n");
+    let door2 = run_json(
+        &graph.root,
+        &["door", "undo should be reversible everywhere", "--json"],
+    );
+    assert_eq!(
+        door2["mode"].as_str(),
+        Some("brownfield"),
+        "source on disk → brownfield orientation: {door2}"
+    );
+}
+
 // R2 (BUILD wires PROVE): the build action carries an explicit prove-the-criterion
 // step, teaches verify-first grounding, surfaces the criterion itself, and cues
 // build-time relationship capture; marking a realized leaf with no proof flags it

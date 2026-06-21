@@ -79,19 +79,23 @@ const LANDINGS: &[(&str, &str, &str)] = &[
 
 const DOCTRINE: &str = "The door captures first, then advises — the raw utterance is now an \
     InboxItem, not graph truth. Normalize it with `loom inbox normalize <id> …`, run the proposed \
-    graph command separately, then `loom inbox mark <id> --status routed --reason \"…\"`. Before \
-    going autonomous, sweep: every conversational fragment must have landed or been rejected.";
+    graph command separately, then `loom inbox mark <id> --status routed --reason \"…\"`. Capture \
+    the WHY too — the reasoning, constraints, and tradeoffs behind an utterance are graph truth \
+    (kinds: constraint, decision_capture, risk), not chat residue: pass `--why \"…\"` or add linked \
+    cards so the rationale survives. Before going autonomous, sweep: every conversational fragment \
+    must have landed or been rejected.";
 
-pub fn run(utterance: &str, limit: usize, printer: &Printer) -> Result<()> {
+pub fn run(utterance: &str, why: &str, limit: usize, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
-    run_with_db(&store, &cwd, utterance, limit, printer)
+    run_with_db(&store, &cwd, utterance, why, limit, printer)
 }
 
 pub fn run_with_db(
     db: &crate::db::sqlite::SqliteGraphStore,
-    _root: &std::path::Path,
+    root: &std::path::Path,
     utterance: &str,
+    why: &str,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
@@ -103,30 +107,91 @@ pub fn run_with_db(
         Vec::new(),
         None,
     )?;
+    // Preserve the conversational WHY: capture the rationale as its OWN card,
+    // linked back to the utterance, so the reasoning/constraints survive the
+    // graph boundary as durable, triageable truth instead of dying in chat.
+    let rationale_id = if why.trim().is_empty() {
+        None
+    } else {
+        Some(
+            crate::commands::inbox::create_item(
+                db,
+                why.to_string(),
+                "user".to_string(),
+                Vec::new(),
+                vec![format!("inbox:{}", inbox_item.id)],
+                None,
+            )?
+            .id,
+        )
+    };
     let (intents, _match_total) = db.find_intents(utterance, limit)?;
     let planes = db.door_matches(utterance, limit)?;
     let snapshot = db.query_snapshot()?;
     let gs = db.graph_state(&snapshot)?;
-    render(utterance, inbox_item, intents, planes, gs, printer)
+    // Same utterance, opposite flow by condition: in greenfield it is new scope
+    // to seed; in brownfield it more often names existing code to find/flag.
+    let has_source = crate::repo::detect(root)
+        .map(|f| f.has_source)
+        .unwrap_or(true);
+    render(
+        utterance,
+        inbox_item,
+        rationale_id,
+        intents,
+        planes,
+        gs,
+        has_source,
+        printer,
+    )
 }
 
+/// Condition-aware orientation: greenfield routes an utterance toward seeding,
+/// brownfield toward reconciling it against code that already exists.
+fn orientation(has_source: bool) -> &'static str {
+    if has_source {
+        "BROWNFIELD (code exists): check the matches above FIRST — your idea may already be an intent to find (`loom find`) or a complaint to flag (`loom intent mark <id> --lifecycle needs_change`). Only genuinely new scope lands fresh."
+    } else {
+        "GREENFIELD (no source yet): this is new scope — seed it as planned design and build down. `loom guide --mode seed` decomposes it ONE capability at a time so each leaf gets its own falsifiable criterion."
+    }
+}
+
+const GRANULARITY_CUE: &str =
+    "GRANULARITY: if the idea needs an \"and\" to state it, it is probably several intents — land each \
+     atomic capability separately under a shared parent, one falsifiable criterion each.";
+
+#[allow(clippy::too_many_arguments)]
 fn render(
     utterance: &str,
     inbox_item: InboxItem,
+    rationale_id: Option<String>,
     intents: Vec<FindHit>,
     planes: DoorMatches,
     gs: GraphState,
+    has_source: bool,
     printer: &Printer,
 ) -> Result<()> {
     let nothing_known = intents.is_empty()
         && planes.vocab.is_empty()
         && planes.sagas.is_empty()
         && planes.rules.is_empty();
+    let mode = if has_source {
+        "brownfield"
+    } else {
+        "greenfield"
+    };
+    // Hold the utterance to the granularity contract right at the door.
+    let granularity = crate::commands::intent::granularity_advisory(utterance);
 
     if printer.json {
         printer.print_json(&serde_json::json!({
             "utterance": utterance,
             "inbox_item": inbox_item,
+            "rationale_card": rationale_id,
+            "mode": mode,
+            "orientation": orientation(has_source),
+            "granularity_cue": GRANULARITY_CUE,
+            "granularity_advisory": granularity,
             "matches": {
                 "intents": intents.iter().map(|h| serde_json::json!({
                     "id": h.intent.id,
@@ -158,6 +223,13 @@ fn render(
 
     println!("── loom door — \"{utterance}\" ─────────────────────────────────────");
     println!("captured inbox item: {}", inbox_item.id);
+    if let Some(rid) = &rationale_id {
+        println!("captured rationale card: {rid}  (the WHY, linked to the utterance)");
+    }
+    println!("  [{mode}] {}", orientation(has_source));
+    if let Some(g) = &granularity {
+        println!("  ⚑ {g}");
+    }
     println!();
     println!("WHAT THE GRAPH KNOWS");
     if nothing_known {
@@ -195,6 +267,7 @@ fn render(
         println!("      {command}");
     }
     println!();
+    println!("  {GRANULARITY_CUE}");
     println!("  {DOCTRINE}");
     println!(
         "  Normalize: {}",
