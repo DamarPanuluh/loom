@@ -25,11 +25,16 @@ struct Candidate {
     grade: String,
 }
 
-pub fn run(suggest: bool, limit: usize, printer: &Printer) -> Result<()> {
+pub fn run(inbox: bool, suggest: bool, limit: usize, printer: &Printer) -> Result<()> {
     let root = crate::db::resolve_root()?;
 
+    if inbox {
+        return run_inbox_ingest(&root, printer);
+    }
+
     if !suggest {
-        let hint = "Run `loom seed --suggest` to mine candidate intents from your code structure.";
+        let hint = "Run `loom seed --inbox` to ingest the repo into the inbox to triage (the \
+                    full-coverage seed), or `loom seed --suggest` to mine candidate intents.";
         if printer.json {
             printer.print_json(&serde_json::json!({ "next_step": hint }));
         } else {
@@ -59,6 +64,142 @@ pub fn run(suggest: bool, limit: usize, printer: &Printer) -> Result<()> {
         render_human(&candidates, total, shown);
     }
     Ok(())
+}
+
+/// Ingest the full repo surface (every doc + unmodeled source file) into the
+/// inbox as triage items — the disciplined, full-coverage seed: the LLM is forced
+/// to process the WHOLE system, not a sketch. Empty repo → seeds one VISION prompt
+/// instead (ask the user for the system's intent). Idempotent: skips files already
+/// modeled (grounded) or already ingested.
+fn run_inbox_ingest(root: &Path, printer: &Printer) -> Result<()> {
+    use crate::db::queries::comprehensiveness::is_doc_file;
+    let db_file = crate::db::ensure_initialized(root)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&db_file)?;
+    let snapshot = store.query_snapshot()?;
+
+    let grounded: HashSet<&str> = snapshot
+        .implements
+        .iter()
+        .map(|im| im.codefile_path.as_str())
+        .collect();
+    let existing = store.list_inbox_items(None, None)?;
+    let ingested: HashSet<String> = existing
+        .iter()
+        .filter_map(|it| ingest_path(&it.raw_text))
+        .collect();
+
+    // The full surface: source files + documentation.
+    let mut files: Vec<String> = crate::repo::walk_files(root)?
+        .into_iter()
+        .filter(|p| !crate::repo::lang_of(p).is_empty() || is_doc_file(p))
+        .collect();
+    files.sort();
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let author = crate::agent::acting(None);
+
+    // EMPTY repo → seed a single VISION prompt (ask for the system's intent).
+    if files.is_empty() {
+        if !ingested.iter().any(|p| p == "<vision>") {
+            let item = ingest_item(
+                "<vision>".to_string(),
+                "This repo has no code or docs yet. Capture the system VISION: what should it do, \
+                 who is it for, what responsibilities must it have? Triage into PLANNED intents \
+                 (lifecycle=planned) to build, then realize + prove them."
+                    .to_string(),
+                &author,
+                &now,
+            );
+            store.insert_inbox_item(&item)?;
+        }
+        let msg =
+            "Empty repo — seeded a VISION prompt in the inbox. Capture the vision (edit/extend \
+                   it), then `loom inbox triage` to decompose it into planned intents to build.";
+        if printer.json {
+            printer.print_json(
+                &serde_json::json!({ "ingested": 0, "vision_seeded": true, "next_step": msg }),
+            );
+        } else {
+            println!("{msg}");
+        }
+        return Ok(());
+    }
+
+    let mut created = 0usize;
+    for path in &files {
+        if grounded.contains(path.as_str()) || ingested.contains(path) {
+            continue;
+        }
+        let hint = if is_doc_file(path) {
+            "It is a DOC/SPEC — a contract, not a built system. Triage into PLANNED intent(s) to build."
+        } else {
+            "It is CODE — if it is existing working code, model the responsibilities it implements as \
+             intent(s) and ground them (realized); if it reveals a gap, add planned intent(s)."
+        };
+        let item = ingest_item(
+            path.clone(),
+            format!("Triage repo file `{path}`. {hint} Add vocabulary for any new domain terms."),
+            &author,
+            &now,
+        );
+        store.insert_inbox_item(&item)?;
+        created += 1;
+    }
+
+    let next = "Process the inbox to decompose the repo: `loom inbox triage` one item at a time, \
+                normalizing each into intent(s). DONE when the inbox is empty AND every resulting \
+                intent is realized + proven (`loom complete`).";
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "ingested": created,
+            "already_modeled_or_ingested": files.len() - created,
+            "next_step": next,
+        }));
+    } else {
+        println!("── loom seed --inbox ─────────────────────────────────────────────────");
+        println!("  Ingested {created} repo file(s) into the inbox as triage items.");
+        if files.len() > created {
+            println!(
+                "  ({} already modeled or ingested — skipped.)",
+                files.len() - created
+            );
+        }
+        println!();
+        println!("  → {next}");
+    }
+    Ok(())
+}
+
+/// A fresh inbox item anchoring a repo path. The `ingest: <path>` first line makes
+/// re-runs idempotent (parsed back by `ingest_path`).
+fn ingest_item(path: String, prompt: String, author: &str, now: &str) -> crate::types::InboxItem {
+    crate::types::InboxItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        raw_text: format!("ingest: {path}\n{prompt}"),
+        normalized_claim: String::new(),
+        kind: "observation".to_string(),
+        status: "new".to_string(),
+        source: "code_audit".to_string(),
+        author: author.to_string(),
+        tags: Vec::new(),
+        links: Vec::new(),
+        route_kind: String::new(),
+        route_command: String::new(),
+        route_target_kind: String::new(),
+        route_target_id: String::new(),
+        resolution: String::new(),
+        created_at: now.to_string(),
+        updated_at: now.to_string(),
+    }
+}
+
+/// The repo path an ingest item anchors, from its `ingest: <path>` first line.
+fn ingest_path(raw_text: &str) -> Option<String> {
+    raw_text
+        .lines()
+        .next()?
+        .strip_prefix("ingest: ")
+        .map(str::to_string)
 }
 
 /// Repo-relative paths already grounded by an IMPLEMENTS edge (read-only; empty

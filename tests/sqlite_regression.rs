@@ -2347,6 +2347,46 @@ fn sqlite_seed_suggest_mines_candidate_intents() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+// `loom seed --inbox` — the disciplined full-coverage seed: ingest every doc +
+// source file into the inbox as triage items (the anti-gaming anchor — the LLM
+// must process the whole surface). Idempotent on re-run; an empty repo seeds a
+// vision prompt instead.
+#[test]
+fn sqlite_seed_inbox_ingests_surface_idempotently() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("seedinbox");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "store.go", "package store\nfunc Save() {}\n");
+    write_scratch_file(&graph.root, "spec.md", "# Spec\nThe system.\n");
+
+    let v = run_json(&graph.root, &["seed", "--inbox", "--json"]);
+    let ingested = v["ingested"].as_i64().expect("ingested");
+    assert!(ingested >= 2, "every doc + source file is ingested: {v}");
+
+    // The inbox now holds NEW triage items anchored to the files.
+    let inbox = run_json(&graph.root, &["inbox", "list", "--json"]);
+    let items = inbox["items"]
+        .as_array()
+        .or_else(|| inbox.as_array())
+        .expect("inbox items");
+    let anchored: Vec<&str> = items
+        .iter()
+        .filter_map(|i| i["raw_text"].as_str().and_then(|t| t.lines().next()))
+        .collect();
+    assert!(
+        anchored.contains(&"ingest: store.go") && anchored.contains(&"ingest: spec.md"),
+        "items anchor the code + doc files: {anchored:?}"
+    );
+    assert!(
+        items.iter().all(|i| i["status"] == "new"),
+        "ingested items start un-triaged (new): {inbox}"
+    );
+
+    // Idempotent: a re-run ingests nothing new.
+    let v2 = run_json(&graph.root, &["seed", "--inbox", "--json"]);
+    assert_eq!(v2["ingested"], 0, "re-run is idempotent: {v2}");
+}
+
 // `loom tour` — the guided comprehension walkthrough. Reads the graph back in
 // decomposition order (system before its features), and per stop reports what a
 // part is SUPPOSED to do, where it's grounded, and — uniquely to loom — whether

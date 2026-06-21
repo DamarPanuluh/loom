@@ -493,20 +493,24 @@ pub enum Command {
     /// (greenfield vs brownfield). Runs even before `loom init`.
     Detect,
 
-    /// Mine CANDIDATE intents from the repo's code structure — the cold-start
-    /// bootstrap so a fresh graph starts from a draft, not a blank page. Each
-    /// candidate names a code unit + its public surface and emits pre-filled
-    /// adopt commands; you REWRITE the description into what it's SUPPOSED to do
-    /// (a falsifiable intent) before adopting. SUGGEST-only — never writes the graph.
+    /// Seed the graph. `--inbox` (the disciplined path): INGEST the full repo
+    /// surface — every doc + unmodeled source file — into the inbox as items to
+    /// TRIAGE, so the LLM is forced to process the whole system, not a sketch
+    /// (empty repo → seeds a vision prompt instead). `--suggest` (the shortcut):
+    /// mine candidate intents from code structure, SUGGEST-only.
     #[command(
-        after_help = "EXAMPLE:\n  loom seed --suggest\n  loom seed --suggest --limit 0   (show all)"
+        after_help = "EXAMPLE:\n  loom seed --inbox      (ingest the repo into the inbox to triage — the full-coverage seed)\n  loom seed --suggest    (mine candidate intents from code, suggest-only)"
     )]
     Seed {
-        /// Mine candidate intents from the code (currently the only mode).
+        /// Ingest the full repo surface into the inbox as triage items (WRITES).
+        #[arg(long)]
+        inbox: bool,
+
+        /// Mine candidate intents from the code, suggest-only (read-only).
         #[arg(long)]
         suggest: bool,
 
-        /// Max candidates to show (0 = all).
+        /// Max candidates to show for --suggest (0 = all).
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
     },

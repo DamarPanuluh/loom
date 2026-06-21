@@ -26,7 +26,7 @@ use crate::db::queries::symbol_accountability::SymbolAccountabilityReport;
 use crate::db::queries::QuerySnapshot;
 
 /// True if a path is a DOCUMENTATION artifact (a spec/contract), not code.
-fn is_doc_file(path: &str) -> bool {
+pub(crate) fn is_doc_file(path: &str) -> bool {
     matches!(
         path.rsplit('.')
             .next()

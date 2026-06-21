@@ -116,7 +116,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
-        Command::Seed        { suggest, limit } => seed::run(suggest, limit, &printer),
+        Command::Seed        { inbox, suggest, limit } => seed::run(inbox, suggest, limit, &printer),
         Command::Tour        { target, limit } => tour::run(target.as_deref(), limit, &printer),
         Command::Impact      { files, staged } => impact::run(files, staged, &printer),
         Command::Complete    { teach }        => complete::run(teach, &printer),
