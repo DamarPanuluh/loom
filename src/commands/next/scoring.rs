@@ -84,7 +84,8 @@ fn role_fills(role: &str) -> &'static str {
 pub(super) fn dispatch_line(role: &str) -> String {
     let lane = crate::gate::mode_for_role(role).unwrap_or("");
     format!(
-        "this is {role} work — fills {fills}. Whoever takes it declares `LOOM_AGENT=llm:{role}` \
+        "this is {role} work — fills {fills}. ADOPT the lane's discipline JIT: `loom guide --role {role}` \
+         (the binary serves the full loom-{role} skill — no install). Declares `LOOM_AGENT=llm:{role}` \
          (or stay bare `llm` for solo); its queue is `loom next --mode {lane}`. Same contract whether \
          that's you now, a later pass, or a parallel agent.",
         fills = role_fills(role),

@@ -1636,6 +1636,22 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// JIT SKILL ADOPTION: when loom routes work to a lane, the work item CUES the LLM
+// to adopt that lane's discipline just-in-time via `loom guide --role <lane>` (the
+// binary serves the full loom-<lane> skill — no install). The compass is the JIT
+// trigger; the charge is the skill.
+#[test]
+fn sqlite_next_cues_jit_skill_adoption() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("jit-skill-cue");
+    let item = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
+    let dispatch = item["dispatch"].as_str().unwrap_or("");
+    assert!(
+        dispatch.contains("loom guide --role analyzer") && dispatch.contains("ADOPT"),
+        "routing to the analyzer lane cues JIT adoption of the loom-analyzer skill: {dispatch}"
+    );
+}
+
 // The review/prove lanes are AUTONOMOUS (an agent drains them), not human-gated,
 // and were previously invisible in `loom status` — a status-driven driver was
 // blind to them. The compass must now surface them honestly (visible, autonomous,

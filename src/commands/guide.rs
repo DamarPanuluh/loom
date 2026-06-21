@@ -58,6 +58,70 @@ const ROLE_LANES: &[(&str, &str, &str)] = &[
     ("quality",   "quality",   "the green gate: defines rules, applies them, records GOVERNS verdicts (`loom rule verdict`)"),
 ];
 
+/// Per-role working DISCIPLINE — the BODY of the lane-skill the binary serves
+/// JUST-IN-TIME. Adopting a lane = pulling `loom guide --role <role>`, which
+/// renders the mandate (ROLE_LANES) + allowed actions (the gate) + THIS
+/// discipline into one complete, self-contained, adoptable skill. The working
+/// wisdom the lane agent files used to carry now lives IN THE BINARY, emitted on
+/// demand — no shipped/installed markdown to scavenge, and it can't drift from
+/// the gate. (role, the JIT-trigger `description`, the discipline lines).
+const ROLE_DISCIPLINE: &[(&str, &str, &[&str])] = &[
+    ("builder",
+     "Adopt when loom routes you to the builder/build lane — seeding or decomposing intents, or REALIZING a planned intent by writing the code its criterion demands (phase=build, `loom next --mode build`).",
+     &[
+        "GRANULARITY CONTRACT when seeding: 1–3 `system`, 5–15 `component`, MANY ATOMIC `feature` leaves — one falsifiable criterion each. If a description needs an 'and', it is several intents; split it (too coarse trips the `scattered` smell later).",
+        "REALIZE a planned leaf: write the code its criterion demands → `loom codefile add` → `loom edge implement <intent> <file> --locator \"<symbol AS IT APPEARS>\"` (verified against the file NOW) → PROVE the criterion (add + run a validation) → `loom intent mark <id> --lifecycle implemented`.",
+        "A planned PARENT whose children are implemented is a ROLL-UP: verify each child meets its criterion, then mark it — never write code at that altitude.",
+        "SUPERSEDED design → `loom intent retire <id> --reason … [--replaced-by …]` (keeps history, exits computation, reports fallout). Delete is only for things that should never have existed.",
+        "You record NO criterion/evidence/verdicts on your OWN work — analyzer grounds it, validator proves it, quality grades it. That separation is what makes the graph trustworthy; `loom doctor` audits it.",
+     ]),
+    ("analyzer",
+     "Adopt when loom routes you to the analyzer/discovery lane — grounding RELATES_TO edges or proving hypotheses (phase=discovery; `loom next --mode discovery|prove|review`).",
+     &[
+        "THE SOCRATIC LOOP, per edge: read both intents → form a hypothesis (\"I expect the code to show X\") → read the ACTUAL code → record exactly ONE verdict. Never record a verdict you didn't check.",
+        "VERDICTS: `loom edge explore <a> <b> ground --criterion … --confidence <honest>` (it holds) · `… issue --criterion … --evidence …` (the code contradicts the claim) · `… independent --notes …` (they don't interact — a REAL verdict that gives closure at no centrality cost; never fake a relationship to look productive).",
+        "HONEST CONFIDENCE is the cross-tier channel: anything below 0.7 auto-surfaces in `loom next --mode review`. 0.5-and-true beats 0.9-and-guessed — a faked 0.9 poisons the graph AND skips the safety net.",
+        "BULK: `loom next --mode discovery --take 50` groups unexplored pairs with both intents + groundings inline — read each neighborhood ONCE, then apply the whole group in one `loom batch -` (JSONL). `loom cluster <intent>` lists every unresolved edge touching one node.",
+        "REVIEW sub-lane (`loom next --mode review`): low-confidence × central verdicts. Form your OWN hypothesis FIRST, THEN read the recorded evidence, then confirm or OVERTURN. When the evidence reads 'foundation/universal/not specific', the verdict is INDEPENDENT, not passing@0.6.",
+        "HYPOTHESES: prove proposals via `loom next --mode prove` → `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (proposer ≠ prover).",
+     ]),
+    ("fixer",
+     "Adopt when loom routes you to the fixer/fix lane — repairing a failing edge or a needs_change intent at root cause (`loom next --mode fix`).",
+     &[
+        "REPAIR ONLY: failing RELATES_TO edges (`loom edge fix`) and `needs_change` intents. Change EXISTING code at the ROOT CAUSE — new-code construction belongs to the builder.",
+        "THE RIPPLE: end every repair with `loom sync` (it stales every claim the change touched), then re-ground/re-verify what it flagged. Expect fix → sync → re-verify → re-prove → re-green.",
+        "Re-ground what you repaired (`loom edge implement` with a fresh locator if a symbol moved), then `loom intent mark <id> --lifecycle implemented` to close the loop.",
+     ]),
+    ("validator",
+     "Adopt when loom routes you to the validator/validate lane — proving intents by running their validations (`loom next --mode validate`).",
+     &[
+        "PROVE intents: `loom validate <intent>` runs the linked proofs; `loom validate --all` re-runs every not_run proof after a sync flood. Record passed/failed honestly.",
+        "UNBLOCK FIRST: a proof needing a live dep (DB/service/queue) is NOT automatically blocked — scan the repo for how it provisions things (docker-compose, Makefile/justfile, scripts/, package.json, the README), stand it up, and pass the address in at invocation. Only when you genuinely cannot is it `loom validation mark <id> --result blocked --reason …`.",
+        "A FAILING proof means the intent is not fulfilled — flag it (`loom intent mark <id> --lifecycle needs_change --reason …`) or hand the fixer a note. Never fake a pass. Manual/async proof → `loom validation mark <id> --result passed --evidence …`; confirm meaning with `loom intent confirm`.",
+     ]),
+    ("quality",
+     "Adopt when loom routes you to the quality lane — holding quality rules against coded intents and recording GOVERNS verdicts (`loom next --mode quality`).",
+     &[
+        "THE GREEN GATE: seed the packs `loom detect` recommends (`loom rule seed iso5055|…`), then `loom next --mode quality` serves every never-measured rule×intent pair.",
+        "ONE verdict per pair, after reading the intent's grounded code ONCE: `loom rule verdict <rule> <intent> --status passing|failing|independent --criterion … --evidence … --confidence <honest>` (the verdict CREATES the edge). `independent` = measured, no surface here — as valuable as passing; never fake one.",
+        "Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite.",
+        "A `failing` verdict routes to the fixer; quality re-earns green after the fixer's sync. HONEST confidence: <0.7 routes to review. Bulk via `loom next --mode quality --take 50` + `loom batch -`.",
+     ]),
+];
+
+/// The lane-skill name loom serves/installs for a role: `loom-<role>`.
+fn role_skill_name(role: &str) -> String {
+    format!("loom-{role}")
+}
+
+/// Look up a role's JIT-trigger description + discipline lines (the skill body).
+fn role_discipline(role: &str) -> Option<(&'static str, &'static [&'static str])> {
+    ROLE_DISCIPLINE
+        .iter()
+        .find(|(r, _, _)| *r == role)
+        .map(|(_, desc, lines)| (*desc, *lines))
+}
+
 /// Orchestration — loom defines the CONTRACT (roles, lanes, owned fields, the
 /// handoff dependency). It does NOT predefine the TOPOLOGY: one agent switching
 /// hats, sequential subagents, parallel fan-out, or any mix are all valid. loom
@@ -398,26 +462,38 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     let setup = format!("export LOOM_AGENT=llm:{role}");
     let out_of_lane = "Acting outside the lane is a hard error naming the owner. \
         Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
+    let skill = role_skill_name(role);
+    let (description, discipline) = role_discipline(role).unwrap_or(("", &[]));
 
     if printer.json {
         printer.print_json(&serde_json::json!({
+            "skill": skill,
+            "description": description,
             "role": role,
             "mandate": mandate,
             "setup": setup,
             "queue": queue,
             "lane": lane,
+            "discipline": discipline,
             "out_of_lane": out_of_lane,
+            // The binary IS the skill server: this charge is the complete,
+            // self-contained `loom-<role>` skill, served JIT — no install needed.
+            // `loom skill install` can persist it as a harness skill (opt-in).
+            "adopt": format!("Adopt the {skill} discipline below, then: {setup} && {queue}"),
             "next_step": format!("{setup} && {queue}"),
         }));
         return Ok(());
     }
 
     println!(
-        "══ loom — role charge: {} ══════════════════════════════════",
-        role.to_uppercase()
+        "══ loom — adopt the {} skill ══════════════════════════════════",
+        skill.to_uppercase()
     );
     println!();
-    println!("You are operating loom as the {role} lane. Adopt this role for the session.");
+    println!(
+        "You are now operating loom's {role} lane. ADOPT this discipline for the lane's work."
+    );
+    println!("(This is the complete {skill} skill, served by the binary — no install. `loom skill install` to pin it.)");
     println!();
     println!("  MANDATE  {mandate}");
     println!("  SETUP    {setup}");
@@ -426,6 +502,13 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     println!("YOUR LANE (what you MAY do — everything else errors, hand it to its owner):");
     for action in &lane {
         println!("  • {action}");
+    }
+    if !discipline.is_empty() {
+        println!();
+        println!("DISCIPLINE (how this lane works — the part that makes the verdicts honest):");
+        for line in discipline {
+            println!("  • {line}");
+        }
     }
     println!();
     println!("{out_of_lane}");
@@ -677,6 +760,47 @@ mod tests {
                 v["setup"],
                 serde_json::json!(format!("export LOOM_AGENT=llm:{role}")),
                 "setup names the role"
+            );
+        }
+    }
+
+    /// JIT SKILL SERVING: `loom guide --role X` is the complete, self-contained
+    /// `loom-<role>` skill the binary serves on demand — skill name + JIT-trigger
+    /// description + the lane's working discipline — framed as adoption, no
+    /// install. This is the binary AS the skill server.
+    #[test]
+    fn role_charge_is_a_full_adoptable_skill() {
+        let v = charge_json("analyzer");
+        assert_eq!(v["skill"], serde_json::json!("loom-analyzer"), "skill name");
+        assert!(
+            v["description"]
+                .as_str()
+                .unwrap_or("")
+                .contains("Adopt when"),
+            "the description is a JIT adoption trigger: {v}"
+        );
+        let disc = serde_json::to_string(&v["discipline"]).unwrap();
+        assert!(
+            disc.contains("SOCRATIC LOOP")
+                && disc.contains("0.5-and-true beats 0.9-and-guessed")
+                && disc.contains("independent"),
+            "the analyzer discipline carries the lane's honesty rules (the skill BODY): {disc}"
+        );
+        assert!(
+            v["adopt"].as_str().unwrap_or("").contains("loom-analyzer"),
+            "the charge frames itself as skill adoption: {v}"
+        );
+        // EVERY role serves a complete skill (name + non-empty discipline body),
+        // so the binary can serve any lane JIT with no shipped/installed file.
+        for role in crate::db::schema::ROLES {
+            let c = charge_json(role);
+            assert_eq!(c["skill"], serde_json::json!(format!("loom-{role}")));
+            assert!(
+                c["discipline"]
+                    .as_array()
+                    .map(|a| !a.is_empty())
+                    .unwrap_or(false),
+                "role '{role}' serves a non-empty discipline body"
             );
         }
     }
