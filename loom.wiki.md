@@ -6,10 +6,10 @@
 
 ## Overview
 
-- **Intents:** 101 (system: 1, component: 20, feature: 80)
+- **Intents:** 102 (system: 1, component: 20, feature: 81)
 - **Domains:** analysis, audit, cli, concurrency, core, db, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, runtime, test
-- **Code files mapped:** 110
+- **Code files mapped:** 111
 - **Quality rules:** 22
 
 ## Architecture
@@ -114,6 +114,7 @@ The intent hierarchy — what the system is, decomposed top-down.
   - **self-teaching surface** — guide/schema/orientation embed the full driving protocol, including lifecycle transitions and status-family separation, so a cold LLM needs no external docs
     - **ask-the-map keyword search** — loom find: BM25 keyword search over active intent names+descriptions, ranked; hits carry hierarchy chain, IMPLEMENTS groundings with locators, and a stale-edge freshness count; scoring runs in Rust because grafeo's text-index CALL returns internal node ids unjoinable to properties through GQL; a miss points at loom coverage to distinguish unmapped from nonexistent
     - **inbox intake boundary** — loom inbox and door provide the single capture-first boundary for free-form human or LLM language: raw text is stored as an InboxItem, triage supplies context and route proposals, normalize records a proposed graph command or answer, and mark closes the card after the real graph command runs separately so intake candidates never masquerade as graph truth or required completion debt.
+    - **opt-in lane-skill install** — loom skill list|show|install emits the binary-served lane-skills as SKILL.md files for a harness that wants to PIN them; never required — the binary serves each lane JIT via loom guide --role X. The SKILL.md body delegates the live charge back to the binary so a pinned copy can't drift.
     - **seed guide teaches the user interview** — loom guide --mode seed is explicit-only (never auto-detected) and teaches both loops: elicit (altitude calibrated to user fluency, one question per landing, recommended answers, terminate on enumerable gaps not exhaustion) and align (drive loom next --mode align outcomes); an empty graph's compass routes phase=seed pointing at this guide
     - **session opener teaches the turn-zero ask** — loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command
   - **sync flag engine** — mtime-delta detection propagating one hop: RELATES_TO neighbours and passing GOVERNS go needs_reverification, linked validations go not_run; files missing on disk are reported
@@ -233,6 +234,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 ### teaching
 
+- **opt-in lane-skill install** — loom skill list|show|install emits the binary-served lane-skills as SKILL.md files for a harness that wants to PIN them; never required — the binary serves each lane JIT via loom guide --role X. The SKILL.md body delegates the live charge back to the binary so a pinned copy can't drift.  `src/commands/skill.rs`
 - **self-teaching surface** — guide/schema/orientation embed the full driving protocol, including lifecycle transitions and status-family separation, so a cold LLM needs no external docs  `docs/COMMANDS.md`, `src/commands/guide.rs`, `src/commands/schema.rs`
 
 ### testing
