@@ -2347,6 +2347,115 @@ fn sqlite_seed_suggest_mines_candidate_intents() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+// `loom tour` — the guided comprehension walkthrough. Reads the graph back in
+// decomposition order (system before its features), and per stop reports what a
+// part is SUPPOSED to do, where it's grounded, and — uniquely to loom — whether
+// it's PROVEN. Read-only.
+#[test]
+fn sqlite_tour_reads_intents_in_order_with_proof_status() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("tour");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Go file: a locator that's textually present so grounding succeeds in both
+    // build configs (tour reads the graph, not the extractor).
+    write_scratch_file(
+        &graph.root,
+        "store.go",
+        "package store\nfunc Save(id string) error { return nil }\n",
+    );
+    let b = "llm:builder";
+    for (name, desc, level) in [
+        ("user service", "Persist user records.", "system"),
+        ("record storage", "Save a user record by id.", "feature"),
+    ] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                desc,
+                "--level",
+                level,
+                "--json",
+            ],
+            b,
+        );
+    }
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "hierarchy",
+            "user service",
+            "record storage",
+            "--json",
+        ],
+        b,
+    );
+    run_json_as(&graph.root, &["codefile", "add", "store.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "record storage",
+            "store.go",
+            "--locator",
+            "func Save",
+            "--json",
+        ],
+        b,
+    );
+    // Prove the leaf.
+    let sid = intent_id_by_name(&graph.root, "record storage");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "p",
+            "--type",
+            "test",
+            "--command",
+            "true",
+            "--intent",
+            &sid,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    run_json_as(&graph.root, &["validate", &sid, "--json"], "llm:validator");
+
+    let v = run_json(&graph.root, &["tour", "--json"]);
+    let stops = v["stops"].as_array().expect("stops");
+    // The system intent comes first and decomposes into the feature.
+    assert_eq!(stops[0]["level"], "system", "{v}");
+    assert_eq!(stops[0]["name"], "user service", "{v}");
+    assert!(
+        stops[0]["decomposes_into"]
+            .as_array()
+            .is_some_and(|c| c.iter().any(|x| x == "record storage")),
+        "system must decompose into its child: {v}"
+    );
+    // The grounded, proven leaf reads back proven with its file.
+    let leaf = stops
+        .iter()
+        .find(|s| s["name"] == "record storage")
+        .expect("leaf stop");
+    assert_eq!(leaf["proven"], true, "the validated leaf is proven: {leaf}");
+    assert!(
+        leaf["grounded_in"]
+            .as_array()
+            .is_some_and(|g| g.iter().any(|x| x["path"] == "store.go")),
+        "leaf grounding surfaced: {leaf}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export

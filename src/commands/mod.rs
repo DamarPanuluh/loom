@@ -41,6 +41,7 @@ pub mod skill;
 pub mod smells;
 pub mod status;
 pub mod sync;
+pub mod tour;
 pub mod validate;
 pub mod validation;
 pub mod vocab;
@@ -114,6 +115,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
         Command::Seed        { suggest, limit } => seed::run(suggest, limit, &printer),
+        Command::Tour        { target, limit } => tour::run(target.as_deref(), limit, &printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
         Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
         Command::Export      { path, out, check } => {

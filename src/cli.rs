@@ -511,6 +511,23 @@ pub enum Command {
         limit: usize,
     },
 
+    /// Guided comprehension walkthrough of the intent graph in decomposition
+    /// order — what each part is SUPPOSED to do, where it's realized, and (unique
+    /// to loom) whether it is PROVEN. Read-only. Pass an intent to drill into one
+    /// subtree.
+    #[command(
+        after_help = "EXAMPLE:\n  loom tour\n  loom tour \"payment flow\"\n  loom tour --limit 0   (the whole graph)"
+    )]
+    Tour {
+        /// Intent (id / name / unique fragment) to tour the subtree of. Omit for
+        /// the whole graph.
+        target: Option<String>,
+
+        /// Max stops to show (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
     /// Manage coverage exclusion patterns (the escape hatch), stored in the graph.
     Ignore {
         #[command(subcommand)]
