@@ -493,6 +493,24 @@ pub enum Command {
     /// (greenfield vs brownfield). Runs even before `loom init`.
     Detect,
 
+    /// Mine CANDIDATE intents from the repo's code structure — the cold-start
+    /// bootstrap so a fresh graph starts from a draft, not a blank page. Each
+    /// candidate names a code unit + its public surface and emits pre-filled
+    /// adopt commands; you REWRITE the description into what it's SUPPOSED to do
+    /// (a falsifiable intent) before adopting. SUGGEST-only — never writes the graph.
+    #[command(
+        after_help = "EXAMPLE:\n  loom seed --suggest\n  loom seed --suggest --limit 0   (show all)"
+    )]
+    Seed {
+        /// Mine candidate intents from the code (currently the only mode).
+        #[arg(long)]
+        suggest: bool,
+
+        /// Max candidates to show (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
     /// Manage coverage exclusion patterns (the escape hatch), stored in the graph.
     Ignore {
         #[command(subcommand)]

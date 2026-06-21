@@ -1273,7 +1273,7 @@ fn normalize(p: &str) -> String {
     out.join("/")
 }
 
-fn lang_of(path: &str) -> &'static str {
+pub(crate) fn lang_of(path: &str) -> &'static str {
     let ext = Path::new(path)
         .extension()
         .and_then(|e| e.to_str())

@@ -35,6 +35,7 @@ pub mod resolve;
 pub mod rule;
 pub mod saga;
 pub mod schema;
+pub mod seed;
 pub mod session;
 pub mod skill;
 pub mod smells;
@@ -112,6 +113,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
+        Command::Seed        { suggest, limit } => seed::run(suggest, limit, &printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
         Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
         Command::Export      { path, out, check } => {

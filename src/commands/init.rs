@@ -32,6 +32,10 @@ pub fn run(
         install_pre_commit_hook(&target).unwrap_or_else(|e| format!("not installed ({e})"))
     };
 
+    // Keep the `.loom/` cache out of version control — only the committed
+    // loom.graph.json travels. Idempotent + best-effort; never fails init.
+    let gitignore_status = ensure_gitignored(&target);
+
     let store = crate::db::sqlite::SqliteGraphStore::open(&db_file)?;
 
     // The graph's default human name is the directory it maps.
@@ -75,6 +79,7 @@ pub fn run(
                 "graph_id": new_id, "graph_name": new_name, "custody": new_custody,
                 "identity_updated": changed,
                 "pre_commit_hook": hook_status,
+                "gitignore": gitignore_status,
             }));
         } else {
             println!(
@@ -89,6 +94,7 @@ pub fn run(
                 if changed { "  [identity updated]" } else { "" }
             );
             println!("  pre-commit hook: {hook_status}");
+            println!("  .gitignore:      {gitignore_status}");
         }
         return Ok(());
     }
@@ -108,10 +114,12 @@ pub fn run(
             "graph_name": graph_name,
             "custody": custody,
             "pre_commit_hook": hook_status,
+            "gitignore": gitignore_status,
             "next_steps": [
                 "Read the driving protocol: `loom guide`.",
-                "Seed 1–3 system intents: `loom intent add --name \"…\" --level system --description \"…\"`.",
-                "Then drive discovery with `loom next`.",
+                "Mine candidate intents from the code: `loom seed --suggest`.",
+                "Seed/refine system intents: `loom intent add --name \"…\" --level system --description \"…\"`.",
+                "Then drive with `loom next`.",
             ],
         }));
     } else {
@@ -122,14 +130,47 @@ pub fn run(
             graph_name, graph_id, custody
         );
         println!("  pre-commit hook: {hook_status}");
+        println!("  .gitignore:      {gitignore_status}");
         if observed {
             println!("  Observed graph: you're mapping code you don't own — build/fix lanes are");
             println!("  disabled; record findings (issue verdicts, notes), not fixes.");
         }
         println!();
-        println!("  → Next: `loom guide` to learn the loop, then seed intents (`loom intent add … --level system`).");
+        println!(
+            "  → Next: `loom guide` to learn the loop. On existing code, `loom seed --suggest`"
+        );
+        println!(
+            "    drafts candidate intents from the code; refine them into intents and ground them."
+        );
     }
     Ok(())
+}
+
+/// Ensure the repo's `.gitignore` excludes the `.loom/` cache so only the
+/// committed `loom.graph.json` travels. Idempotent + best-effort (a re-run that
+/// finds it already there is a no-op; never fails init). Only acts in a git repo.
+fn ensure_gitignored(target: &Path) -> String {
+    if !target.join(".git").exists() {
+        return "skipped (not a git repo)".to_string();
+    }
+    let gitignore = target.join(".gitignore");
+    let existing = fs::read_to_string(&gitignore).unwrap_or_default();
+    let already = existing.lines().any(|line| {
+        let entry = line.trim().trim_start_matches('/');
+        entry == ".loom" || entry == ".loom/"
+    });
+    if already {
+        return "already ignored".to_string();
+    }
+    let mut content = existing;
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    content.push_str("# loom: the live graph cache — only loom.graph.json travels\n.loom/\n");
+    match fs::write(&gitignore, content) {
+        Ok(()) => "added `.loom/`".to_string(),
+        Err(e) => format!("not written ({e})"),
+    }
 }
 
 /// Marker line identifying a loom-written pre-commit hook, so a re-run refreshes
@@ -205,3 +246,46 @@ fn make_executable(path: &Path) {
 
 #[cfg(not(unix))]
 fn make_executable(_path: &Path) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gitignore_adds_loom_cache_idempotently() {
+        let dir = std::env::temp_dir().join(format!("loom-gi-{}-{}", std::process::id(), line!()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join(".git")).unwrap(); // pretend it's a git repo
+
+        // First init adds the entry.
+        assert_eq!(ensure_gitignored(&dir), "added `.loom/`");
+        let gi = fs::read_to_string(dir.join(".gitignore")).unwrap();
+        assert!(gi.contains(".loom/"), "{gi}");
+
+        // Idempotent: a re-run is a no-op and doesn't duplicate the line.
+        assert_eq!(ensure_gitignored(&dir), "already ignored");
+        assert_eq!(
+            fs::read_to_string(dir.join(".gitignore"))
+                .unwrap()
+                .matches(".loom/")
+                .count(),
+            1
+        );
+
+        // A pre-existing .gitignore is appended to, not clobbered.
+        fs::write(dir.join(".gitignore"), "target/\n").unwrap();
+        assert_eq!(ensure_gitignored(&dir), "added `.loom/`");
+        let gi3 = fs::read_to_string(dir.join(".gitignore")).unwrap();
+        assert!(gi3.contains("target/") && gi3.contains(".loom/"), "{gi3}");
+
+        // Not a git repo → skipped (don't litter non-git dirs).
+        let nogit =
+            std::env::temp_dir().join(format!("loom-gi-nogit-{}-{}", std::process::id(), line!()));
+        let _ = fs::remove_dir_all(&nogit);
+        fs::create_dir_all(&nogit).unwrap();
+        assert_eq!(ensure_gitignored(&nogit), "skipped (not a git repo)");
+
+        let _ = fs::remove_dir_all(&dir);
+        let _ = fs::remove_dir_all(&nogit);
+    }
+}

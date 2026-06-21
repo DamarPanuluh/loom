@@ -2288,6 +2288,65 @@ fn sqlite_detect_routes_to_init_in_both_forms() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+// COLD-START BOOTSTRAP: `loom seed --suggest` mines candidate intents from the
+// code so a fresh repo starts from a draft, not a blank page. It runs WITHOUT a
+// graph (like detect), SUGGESTS only (writes nothing), and emits pre-filled adopt
+// commands per candidate.
+#[test]
+fn sqlite_seed_suggest_mines_candidate_intents() {
+    let _guard = sqlite_test_lock();
+    let dir = std::env::temp_dir().join(format!(
+        "loom-seed-suggest-{}-{}",
+        std::process::id(),
+        line!()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).expect("scratch dir");
+    // Go uses the heuristic extractor in BOTH build configs (tree-sitter off
+    // doesn't extract Rust), so the assertion is build-independent.
+    fs::write(
+        dir.join("store.go"),
+        "// Package store persists records.\npackage store\nfunc Save(id string) error { return nil }\n",
+    )
+    .expect("scratch source");
+
+    let out = Command::new(loom_bin())
+        .args(["seed", "--suggest", "--json"])
+        .current_dir(&dir)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom seed --suggest");
+    let v: Value = serde_json::from_slice(&out.stdout).expect("seed --suggest --json");
+    let cands = v["candidates"].as_array().expect("candidates array");
+    let store = cands
+        .iter()
+        .find(|c| c["path"] == "store.go")
+        .expect("a candidate for store.go");
+    // Mines the public surface + the module doc, and emits adopt commands.
+    assert!(
+        store["public_symbols"]
+            .as_array()
+            .is_some_and(|s| s.iter().any(|x| x == "func Save")),
+        "must surface the public symbol: {store}"
+    );
+    assert_eq!(
+        store["doc"], "Package store persists records.",
+        "doc draft from the leading // comment: {store}"
+    );
+    assert!(
+        store["adopt"].as_array().is_some_and(|a| a.iter().any(|c| c
+            .as_str()
+            .is_some_and(|s| s.contains("loom edge implement")))),
+        "must emit a pre-filled grounding command: {store}"
+    );
+    // SUGGEST-only: it created no graph.
+    assert!(
+        !dir.join(".loom").exists(),
+        "seed --suggest must not write a graph"
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export
