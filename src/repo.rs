@@ -915,13 +915,7 @@ fn extract_symbol_facts_heuristic(rel_path: &str, content: &str) -> Vec<crate::t
         .unwrap_or("");
     let mut facts = Vec::new();
     match ext {
-        "dart" => collect_simple_symbols(
-            rel_path,
-            content,
-            &mut facts,
-            &["class ", "enum ", "mixin ", "extension "],
-            &["void ", "Future<", "Stream<"],
-        ),
+        "dart" => collect_dart_symbols(rel_path, content, &mut facts),
         "go" => collect_go_symbols(rel_path, content, &mut facts),
         "kt" | "kts" => collect_simple_symbols(
             rel_path,
@@ -951,7 +945,10 @@ fn collect_simple_symbols(
     fn_prefixes: &[&str],
 ) {
     for (idx, line) in content.lines().enumerate() {
-        let t = line.trim_start();
+        // Strip a leading run of modifiers (`private`/`final`/`suspend`/…) so a
+        // modified declaration still matches the keyword. Without this, every
+        // `private fun`/`open class` was silently dropped.
+        let t = strip_leading_modifiers(line.trim_start());
         for prefix in type_prefixes {
             if let Some(name) = symbol_name_after(t, prefix) {
                 push_heuristic_symbol(out, rel_path, content, idx, prefix.trim(), &name);
@@ -965,11 +962,46 @@ fn collect_simple_symbols(
     }
 }
 
+/// Dart functions/methods have arbitrary return types (`void`, `Future<void>`,
+/// `Map<String, int>`, a class name…), so a fixed return-type prefix list both
+/// missed most of them and mis-extracted the return token as the name
+/// (`Future<void> doThing()` → `fn void`). Match the `name(` pattern instead.
+fn collect_dart_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types::SymbolFact>) {
+    const TYPE_PREFIXES: &[&str] = &["class ", "enum ", "mixin ", "extension ", "typedef "];
+    for (idx, line) in content.lines().enumerate() {
+        let t = strip_leading_modifiers(line.trim_start());
+        let mut matched_type = false;
+        for prefix in TYPE_PREFIXES {
+            if let Some(name) = symbol_name_after(t, prefix) {
+                push_heuristic_symbol(out, rel_path, content, idx, prefix.trim(), &name);
+                matched_type = true;
+            }
+        }
+        if matched_type {
+            continue;
+        }
+        if let Some(name) = dart_fn_name(t) {
+            push_heuristic_symbol(out, rel_path, content, idx, "fn", &name);
+        }
+    }
+}
+
 fn collect_go_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types::SymbolFact>) {
     for (idx, line) in content.lines().enumerate() {
         let t = line.trim_start();
-        if let Some(name) = symbol_name_after(t, "func ") {
-            push_heuristic_symbol(out, rel_path, content, idx, "func", &name);
+        if let Some(rest) = t.strip_prefix("func ") {
+            // A receiver method — `func (r *Repo) Save() {` — names the method
+            // *after* the receiver parens. Skip them, then read the name; a
+            // plain `func Do() {` has no receiver, so we read directly.
+            let rest = rest.trim_start();
+            let after_recv = if rest.starts_with('(') {
+                after_balanced_parens(rest).trim_start()
+            } else {
+                rest
+            };
+            if let Some(name) = leading_identifier(after_recv) {
+                push_heuristic_symbol(out, rel_path, content, idx, "func", &name);
+            }
         }
         if let Some(rest) = t.strip_prefix("type ") {
             if let Some(name) = rest.split_whitespace().next() {
@@ -977,6 +1009,150 @@ fn collect_go_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types:
             }
         }
     }
+}
+
+/// The slice after the `)` that closes the parenthesis group `s` opens with.
+/// Returns `s` unchanged if the parens are unbalanced.
+fn after_balanced_parens(s: &str) -> &str {
+    let mut depth = 0usize;
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &s[i + c.len_utf8()..];
+                }
+            }
+            _ => {}
+        }
+    }
+    s
+}
+
+/// The leading identifier of `s` (alphanumerics, `_`, `$`), or `None`.
+fn leading_identifier(s: &str) -> Option<String> {
+    let name: String = s
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_' || *c == '$')
+        .collect();
+    (!name.is_empty()).then_some(name)
+}
+
+/// Strip a leading run of declaration modifiers (Kotlin/Swift/Dart) so the
+/// keyword/return-type that follows is what we match against. Only known
+/// modifier words are stripped, and only when another token follows.
+fn strip_leading_modifiers(line: &str) -> &str {
+    const MODIFIERS: &[&str] = &[
+        "public",
+        "private",
+        "protected",
+        "internal",
+        "fileprivate",
+        "open",
+        "final",
+        "abstract",
+        "sealed",
+        "data",
+        "override",
+        "static",
+        "const",
+        "lateinit",
+        "suspend",
+        "inline",
+        "operator",
+        "infix",
+        "external",
+        "actual",
+        "expect",
+        "annotation",
+        "inner",
+        "tailrec",
+        "vararg",
+        "noinline",
+        "crossinline",
+        "reified",
+        "value",
+        "convenience",
+        "required",
+        "mutating",
+        "nonmutating",
+        "dynamic",
+        "lazy",
+        "weak",
+        "unowned",
+        "indirect",
+        "factory",
+    ];
+    let mut s = line.trim_start();
+    loop {
+        let tok_end = s.find(char::is_whitespace).unwrap_or(s.len());
+        let tok = &s[..tok_end];
+        if tok_end < s.len() && MODIFIERS.contains(&tok) {
+            s = s[tok_end..].trim_start();
+        } else {
+            return s;
+        }
+    }
+}
+
+/// A Dart function/method declaration names the identifier immediately before
+/// the parameter `(`. Returns that name, rejecting call sites and statements
+/// (anything with a leading `=`, a `.`-qualified receiver, an empty prefix, or
+/// a control-flow keyword) so `Future<void> doThing() async {` → `doThing`.
+fn dart_fn_name(line: &str) -> Option<String> {
+    let t = line.trim_start();
+    let open = t.find('(')?;
+    let before = t[..open].trim_end();
+    if before.contains('=') {
+        return None; // an assignment whose value is a call
+    }
+    // `return foo()` / `await foo()` / `throw Foo()` are statements, not decls.
+    let first_word: String = before
+        .chars()
+        .take_while(|c| c.is_alphanumeric() || *c == '_')
+        .collect();
+    if is_control_flow_word(&first_word) {
+        return None;
+    }
+    let name_start = before
+        .rfind(|c: char| !(c.is_alphanumeric() || c == '_' || c == '$'))
+        .map(|i| i + 1)
+        .unwrap_or(0);
+    let name = &before[name_start..];
+    let prefix = before[..name_start].trim_end();
+    if name.is_empty()
+        || prefix.is_empty()          // bare `foo(` — a call, not a declaration
+        || prefix.ends_with('.')      // `obj.method(` — a receiver call
+        || name.chars().next().is_some_and(|c| c.is_ascii_digit())
+        || is_control_flow_word(name)
+    {
+        return None;
+    }
+    Some(name.to_string())
+}
+
+fn is_control_flow_word(w: &str) -> bool {
+    matches!(
+        w,
+        "if" | "for"
+            | "while"
+            | "switch"
+            | "catch"
+            | "return"
+            | "await"
+            | "yield"
+            | "throw"
+            | "assert"
+            | "super"
+            | "this"
+            | "else"
+            | "do"
+            | "in"
+            | "is"
+            | "as"
+            | "new"
+    )
 }
 
 fn collect_svelte_symbols(rel_path: &str, content: &str, out: &mut Vec<crate::types::SymbolFact>) {
@@ -1495,6 +1671,56 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    #[test]
+    fn heuristic_extracts_methods_modifiers_and_dart_return_types() {
+        // Go: receiver methods are named after the receiver parens, and were
+        // dropped entirely before.
+        let go = extract_symbols(
+            "repo.go",
+            "package main\n\
+             func New() *Repo { return &Repo{} }\n\
+             func (r *Repo) Save(x int) error { return nil }\n\
+             func (r Repo) Load() (int, error) { return 0, nil }\n",
+        );
+        assert!(go.contains(&"func New".to_string()), "{go:?}");
+        assert!(go.contains(&"func Save".to_string()), "{go:?}");
+        assert!(go.contains(&"func Load".to_string()), "{go:?}");
+
+        // Kotlin/Swift: a leading modifier must not hide the declaration.
+        let kt = extract_symbols(
+            "Thing.kt",
+            "private fun secret() {}\n\
+             sealed class Shape\n\
+             data class Point(val x: Int)\n\
+             suspend fun fetch() {}\n",
+        );
+        assert!(kt.contains(&"fn secret".to_string()), "{kt:?}");
+        assert!(kt.contains(&"class Shape".to_string()), "{kt:?}");
+        assert!(kt.contains(&"class Point".to_string()), "{kt:?}");
+        assert!(kt.contains(&"fn fetch".to_string()), "{kt:?}");
+
+        // Dart: the name is taken from the `name(` pattern, never the return
+        // type. `Future<void> doThing()` used to extract `fn void`.
+        let dart = extract_symbols(
+            "svc.dart",
+            "class Svc {\n\
+            \x20 Future<void> doThing() async {}\n\
+            \x20 int compute(int a) => a + 1;\n\
+            \x20 void render() {}\n\
+            }\n\
+             final cached = load();\n\
+             return helper();\n",
+        );
+        assert!(dart.contains(&"class Svc".to_string()), "{dart:?}");
+        assert!(dart.contains(&"fn doThing".to_string()), "{dart:?}");
+        assert!(dart.contains(&"fn compute".to_string()), "{dart:?}");
+        assert!(dart.contains(&"fn render".to_string()), "{dart:?}");
+        // The return-type token is never the name, and statements aren't decls.
+        assert!(!dart.contains(&"fn void".to_string()), "{dart:?}");
+        assert!(!dart.contains(&"fn load".to_string()), "{dart:?}");
+        assert!(!dart.contains(&"fn helper".to_string()), "{dart:?}");
+    }
+
     #[cfg(feature = "treesitter")]
     #[test]
     fn tree_sitter_rust_extracts_grouped_and_reexport_imports() {
@@ -1767,6 +1993,9 @@ mod tests {
                 "export interface User".to_string(),
                 "export type Id".to_string(),
                 "function outer".to_string(),
+                // `let`/`var` top-level bindings are grounding targets too — a
+                // nested `const local` stays hidden, but `let notConst` surfaces.
+                "let notConst".to_string(),
             ]
         );
     }

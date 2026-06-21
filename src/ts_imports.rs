@@ -298,10 +298,10 @@ fn collect_top_level_symbol(
                 collect_top_level_symbol(child, lang, rel_path, content, true, in_test_context, out)
             });
         }
-        "lexical_declaration"
+        "lexical_declaration" | "variable_declaration"
             if matches!(lang, Lang::TypeScript | Lang::Tsx | Lang::JavaScript) =>
         {
-            collect_js_ts_const_facts(node, rel_path, content, exported, in_test_context, out);
+            collect_js_ts_binding_facts(node, rel_path, content, exported, in_test_context, out);
         }
         _ => {
             if let Some(symbol) =
@@ -456,7 +456,7 @@ fn js_ts_symbol_fact(
     })
 }
 
-fn collect_js_ts_const_facts(
+fn collect_js_ts_binding_facts(
     node: Node<'_>,
     rel_path: &str,
     content: &str,
@@ -467,15 +467,21 @@ fn collect_js_ts_const_facts(
     let Some(raw) = text(node, content).map(str::trim_start) else {
         return;
     };
-    if !raw.starts_with("const ") {
-        return;
-    }
+    // `const`/`let` (lexical_declaration) and `var` (variable_declaration) all
+    // bind a top-level name; an arrow or function expression assigned to any of
+    // them is a real grounding target. Emitting only `const` left a `let`/`var`
+    // export as an invisible symbol — a method-level locator on it could never
+    // resolve, so `loom sync` silently false-greened when its body changed.
+    let keyword = match raw.split_whitespace().next() {
+        Some(kw @ ("const" | "let" | "var")) => kw,
+        _ => return,
+    };
     for_each_named_child(node, |child| {
         if child.kind() == "variable_declarator" {
             if let Some(name_node) = child.child_by_field_name("name") {
                 if name_node.kind() == "identifier" {
                     if let Some(name) = text(name_node, content) {
-                        let base_label = format!("const {name}");
+                        let base_label = format!("{keyword} {name}");
                         push_unique_fact(
                             out,
                             SymbolFact {
@@ -485,7 +491,7 @@ fn collect_js_ts_const_facts(
                                     base_label
                                 },
                                 name: name.into(),
-                                kind: "const".into(),
+                                kind: keyword.into(),
                                 visibility: if exported {
                                     "public".into()
                                 } else {
@@ -928,6 +934,24 @@ mod tests {
         let tree = parse(Lang::JavaScript.language(), content).unwrap();
 
         assert_eq!(string_value(tree.root_node(), content), None);
+    }
+
+    #[test]
+    fn top_level_let_and_var_bindings_are_extracted() {
+        // Only `const` was emitted before, so a `let`/`var` arrow export was an
+        // invisible (un-syncable) grounding target.
+        let content = "export const a = () => 1;\n\
+                       export let b = () => 2;\n\
+                       var c = function () { return 3; };\n";
+        let facts = extract_physical_facts("app.js", content).unwrap();
+        let labels: Vec<&str> = facts
+            .symbol_facts
+            .iter()
+            .map(|f| f.label.as_str())
+            .collect();
+        assert!(labels.contains(&"export const a"), "{labels:?}");
+        assert!(labels.contains(&"export let b"), "{labels:?}");
+        assert!(labels.contains(&"var c"), "{labels:?}");
     }
 
     // FALSE-GREEN [is-test-subtree-substring-misclassification]: a production
