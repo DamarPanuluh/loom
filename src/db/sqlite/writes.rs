@@ -4,44 +4,58 @@ use super::*;
 impl SqliteGraphStore {
     pub fn set_intent_tags(&self, id: &str, tags: Vec<String>, updated_at: &str) -> Result<bool> {
         let encoded = crate::db::queries::vocab::encode_tags(tags)?;
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3",
             params![serde_json::to_string(&encoded)?, updated_at, id],
         )?;
         Ok(changed > 0)
     }
     pub fn add_source_ref(
-        &self,
+        &mut self,
         id: &str,
         path: &str,
         updated_at: &str,
     ) -> Result<Option<Vec<String>>> {
-        let Some(intent) = self.get_intent(id)? else {
-            return Ok(None);
+        // Atomic read-modify-write: read the current refs and write the appended
+        // list inside ONE write transaction. A plain get-then-set let a
+        // concurrent writer's append land between the read and the write and be
+        // silently overwritten (lost-update).
+        let tx = self.write_tx()?;
+        let mut refs = match read_source_refs_in_tx(&tx, id)? {
+            Some(refs) => refs,
+            None => return Ok(None),
         };
-        let mut refs = intent.source_refs;
         if !refs.iter().any(|source_ref| source_ref == path) {
             refs.push(path.to_string());
-            self.set_source_refs(id, &refs, updated_at)?;
+            tx.execute(
+                "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3",
+                params![serde_json::to_string(&refs)?, updated_at, id],
+            )?;
         }
+        tx.commit()?;
         Ok(Some(refs))
     }
     pub fn remove_source_ref(
-        &self,
+        &mut self,
         id: &str,
         path: &str,
         updated_at: &str,
     ) -> Result<Option<bool>> {
-        let Some(intent) = self.get_intent(id)? else {
-            return Ok(None);
+        let tx = self.write_tx()?;
+        let mut refs = match read_source_refs_in_tx(&tx, id)? {
+            Some(refs) => refs,
+            None => return Ok(None),
         };
-        let mut refs = intent.source_refs;
         let before = refs.len();
         refs.retain(|source_ref| source_ref != path);
         if refs.len() == before {
             return Ok(Some(false));
         }
-        self.set_source_refs(id, &refs, updated_at)?;
+        tx.execute(
+            "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3",
+            params![serde_json::to_string(&refs)?, updated_at, id],
+        )?;
+        tx.commit()?;
         Ok(Some(true))
     }
     pub fn initialize(
@@ -52,7 +66,7 @@ impl SqliteGraphStore {
         custody: &str,
         created_at: &str,
     ) -> Result<bool> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "INSERT OR IGNORE INTO meta(
                 id, schema_version, graph_id, graph_name, custody, created_at,
                 last_synced, transition_cap, layer_order
@@ -62,14 +76,14 @@ impl SqliteGraphStore {
         Ok(changed > 0)
     }
     pub fn set_identity(&self, graph_id: &str, graph_name: &str, custody: &str) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE meta SET graph_id = ?1, graph_name = ?2, custody = ?3 WHERE id = 1",
             params![graph_id, graph_name, custody],
         )?;
         Ok(())
     }
     pub fn insert_intent(&self, intent: &Intent) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO intent(
                 id, name, description, abstraction_level, domain, layer, source_refs,
                 status, aspect, tags, visibility, boundary, lifecycle, created_at, updated_at,
@@ -173,14 +187,14 @@ impl SqliteGraphStore {
                 "Invalid visibility '{visibility}'. Valid: user_visible | internal | \"\"."
             );
         }
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3",
             params![visibility, updated_at, id],
         )?;
         Ok(changed > 0)
     }
     pub fn set_intent_layer(&self, id: &str, layer: &str, updated_at: &str) -> Result<bool> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE intent SET layer = ?1, updated_at = ?2 WHERE id = ?3",
             params![layer, updated_at, id],
         )?;
@@ -194,7 +208,7 @@ impl SqliteGraphStore {
         criterion: &str,
         updated_at: &str,
     ) -> Result<bool> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE intent SET criterion = ?1, updated_at = ?2 WHERE id = ?3",
             params![criterion, updated_at, id],
         )?;
@@ -204,7 +218,7 @@ impl SqliteGraphStore {
         if !matches!(boundary, "" | "inbound" | "outbound") {
             anyhow::bail!("Invalid boundary '{boundary}'. Valid: inbound | outbound | \"\".");
         }
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE intent SET boundary = ?1, updated_at = ?2 WHERE id = ?3",
             params![boundary, updated_at, id],
         )?;
@@ -222,25 +236,25 @@ impl SqliteGraphStore {
         }
         match (name, description) {
             (Some(name), Some(description)) => {
-                self.conn.execute(
+                self.write_one(
                     "UPDATE intent SET name = ?1, description = ?2, updated_at = ?3 WHERE id = ?4",
                     params![name, description, updated_at, id],
                 )?;
             }
             (Some(name), None) => {
-                self.conn.execute(
+                self.write_one(
                     "UPDATE intent SET name = ?1, updated_at = ?2 WHERE id = ?3",
                     params![name, updated_at, id],
                 )?;
             }
             (None, Some(description)) => {
-                self.conn.execute(
+                self.write_one(
                     "UPDATE intent SET description = ?1, updated_at = ?2 WHERE id = ?3",
                     params![description, updated_at, id],
                 )?;
             }
             (None, None) => {
-                self.conn.execute(
+                self.write_one(
                     "UPDATE intent SET updated_at = ?1 WHERE id = ?2",
                     params![updated_at, id],
                 )?;
@@ -506,7 +520,7 @@ impl SqliteGraphStore {
         Ok(true)
     }
     pub fn insert_ignore(&self, ignore: &Ignore) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO ignore_rule(id, pattern, reason, author, created_at)
              VALUES(?1, ?2, ?3, ?4, ?5)",
             params![
@@ -520,7 +534,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn insert_delegation(&self, delegation: &Delegation) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO delegation(id, pattern, target, author, created_at, export_hash, seam_intents)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
@@ -573,14 +587,14 @@ impl SqliteGraphStore {
         if existing.is_none() {
             return Ok(None);
         }
-        self.conn.execute(
+        self.write_one(
             "DELETE FROM delegation WHERE pattern = ?1",
             params![pattern],
         )?;
         Ok(existing)
     }
     pub fn insert_codefile(&self, codefile: &CodeFile) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO codefile(id, path, language, last_modified, imports, symbols, symbol_facts, content_hash)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
@@ -616,42 +630,42 @@ impl SqliteGraphStore {
         Ok(Some(codefile))
     }
     pub fn update_codefile_hash(&self, id: &str, hash: &str) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE codefile SET content_hash = ?1 WHERE id = ?2",
             params![hash, id],
         )?;
         Ok(())
     }
     pub fn update_codefile_hash_and_mtime(&self, id: &str, hash: &str, mtime: &str) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE codefile SET content_hash = ?1, last_modified = ?2 WHERE id = ?3",
             params![hash, mtime, id],
         )?;
         Ok(())
     }
     pub fn update_codefile_imports(&self, id: &str, imports: &[String]) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE codefile SET imports = ?1 WHERE id = ?2",
             params![serde_json::to_string(imports)?, id],
         )?;
         Ok(())
     }
     pub fn update_codefile_symbols(&self, id: &str, symbols: &[String]) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE codefile SET symbols = ?1 WHERE id = ?2",
             params![serde_json::to_string(symbols)?, id],
         )?;
         Ok(())
     }
     pub fn update_codefile_symbol_facts(&self, id: &str, facts: &[SymbolFact]) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE codefile SET symbol_facts = ?1 WHERE id = ?2",
             params![serde_json::to_string(facts)?, id],
         )?;
         Ok(())
     }
     pub fn set_transition_cap(&self, cap: usize) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE meta SET transition_cap = ?1 WHERE id = 1",
             params![cap.to_string()],
         )?;
@@ -660,14 +674,14 @@ impl SqliteGraphStore {
     pub fn set_layer_order(&self, order: &[String]) -> Result<Vec<String>> {
         let previous = self.layer_order()?;
         let order_json = serde_json::to_string(order)?;
-        self.conn.execute(
+        self.write_one(
             "UPDATE meta SET layer_order = ?1 WHERE id = 1",
             params![order_json],
         )?;
         Ok(previous)
     }
     pub fn insert_hypothesis(&self, hypothesis: &Hypothesis) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO hypothesis(
                 id, name, claim, proposal, predicted_outcome, status, author,
                 evidence, inspected_by, last_inspected, created_at, updated_at
@@ -751,7 +765,7 @@ impl SqliteGraphStore {
         Ok(true)
     }
     pub fn insert_persona(&self, persona: &Persona) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO persona(id, name, description, author, created_at, updated_at)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
             params![
@@ -766,7 +780,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn insert_inbox_item(&self, item: &InboxItem) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO inbox_item(
                 id, raw_text, normalized_claim, kind, status, source, author,
                 tags, links, route_kind, route_command, route_target_kind,
@@ -794,7 +808,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn update_inbox_item(&self, item: &InboxItem) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE inbox_item
              SET raw_text = ?2,
                  normalized_claim = ?3,
@@ -840,7 +854,7 @@ impl SqliteGraphStore {
         now: &str,
     ) -> Result<InterfaceSurface> {
         let name = interface_surface_name(surface_kind, method, target);
-        self.conn.execute(
+        self.write_one(
             "INSERT OR IGNORE INTO interface_surface(
                 id, name, description, surface_kind, method, target, created_at, updated_at
              )
@@ -877,7 +891,7 @@ impl SqliteGraphStore {
             .map_err(Into::into)
     }
     pub fn insert_vocab_term(&self, term: &VocabTerm) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO vocab_term(id, name, description, author, created_at)
              VALUES(?1, ?2, ?3, ?4, ?5)",
             params![
@@ -940,7 +954,7 @@ impl SqliteGraphStore {
         Ok(retagged)
     }
     pub fn insert_validation(&self, validation: &Validation) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result, last_executed_run)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
@@ -1115,7 +1129,7 @@ impl SqliteGraphStore {
         Ok(validation.id)
     }
     pub fn insert_rule(&self, rule: &QualityRule) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
@@ -1131,7 +1145,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn insert_note(&self, note: &Note) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![
@@ -1167,14 +1181,14 @@ impl SqliteGraphStore {
         if last_result == "not_run" || last_result == "blocked" || last_result.is_empty() {
             return Ok(false);
         }
-        self.conn.execute(
+        self.write_one(
             "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1",
             params![validation_id],
         )?;
         Ok(true)
     }
     pub fn set_last_synced(&self, now: &str) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE meta SET last_synced = ?1 WHERE id = 1",
             params![now],
         )?;
@@ -1189,11 +1203,27 @@ impl SqliteGraphStore {
     /// unaffected. The operator vets one deliberately via `loom validate <intent>`
     /// (which runs a blocked proof). Returns how many were neutralized.
     pub fn block_unvetted_imported_commands(&self) -> Result<usize> {
-        let n = self.conn.execute(
+        let n = self.write_one(
             "UPDATE validation SET last_result = 'blocked' \
              WHERE TRIM(command) <> '' AND last_result = 'not_run'",
             [],
         )?;
         Ok(n)
     }
+}
+
+/// Read an intent's `source_refs` list inside an open write transaction, so the
+/// modify-then-write that follows is atomic with the read. `None` if the intent
+/// does not exist.
+fn read_source_refs_in_tx(tx: &rusqlite::Transaction<'_>, id: &str) -> Result<Option<Vec<String>>> {
+    let raw: String = match tx.query_row(
+        "SELECT source_refs FROM intent WHERE id = ?1",
+        params![id],
+        |row| row.get(0),
+    ) {
+        Ok(raw) => raw,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+    Ok(Some(string_list_sql(&raw)?))
 }

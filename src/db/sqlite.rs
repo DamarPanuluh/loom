@@ -44,11 +44,13 @@ pub struct SqliteGraphStore {
     /// Sibling lock file (`.loom/graph.lock`) backing the cross-process
     /// single-writer guarantee. `None` for the in-memory test store.
     lock_path: Option<PathBuf>,
-    /// The held exclusive write lock, acquired lazily on the FIRST write
-    /// transaction and kept for the store's lifetime. Read-only commands never
-    /// open a write transaction, so they never acquire it — WAL keeps readers
-    /// concurrent with the single writer.
-    write_lock: Option<std::fs::File>,
+    /// The held exclusive write lock, acquired lazily on the FIRST write (a
+    /// `write_tx` OR a single-statement `write_one`) and kept for the store's
+    /// lifetime. Read-only commands never write, so they never acquire it — WAL
+    /// keeps readers concurrent with the single writer. `RefCell` so a writer
+    /// method taking `&self` (most do) can still lazily take the lock; the store
+    /// is single-threaded (one CLI process), so no `Sync` is required.
+    write_lock: std::cell::RefCell<Option<std::fs::File>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -469,7 +471,7 @@ impl SqliteGraphStore {
         let store = Self {
             conn,
             lock_path: Some(path.with_extension("lock")),
-            write_lock: None,
+            write_lock: std::cell::RefCell::new(None),
         };
         store.create_schema()?;
         Ok(store)
@@ -506,7 +508,7 @@ impl SqliteGraphStore {
         Ok(Self {
             conn,
             lock_path: None,
-            write_lock: None,
+            write_lock: std::cell::RefCell::new(None),
         })
     }
     #[cfg(test)]
@@ -516,7 +518,7 @@ impl SqliteGraphStore {
         let store = Self {
             conn,
             lock_path: None,
-            write_lock: None,
+            write_lock: std::cell::RefCell::new(None),
         };
         store.create_schema()?;
         Ok(store)
@@ -528,27 +530,40 @@ impl SqliteGraphStore {
     /// `SQLITE_BUSY_SNAPSHOT` that a read-then-upgrade DEFERRED transaction can
     /// hit (and which `busy_timeout` does NOT retry).
     fn write_tx(&mut self) -> Result<rusqlite::Transaction<'_>> {
-        if self.write_lock.is_none() {
-            if let Some(lock_path) = self.lock_path.clone() {
-                self.write_lock = Some(acquire_write_lock(&lock_path, lock_deadline_ms())?);
-            }
-        }
+        self.ensure_write_lock()?;
         Ok(self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?)
+    }
+    /// Acquire the cross-process exclusive write lock if this store hasn't yet
+    /// (lazy, once per session). EVERY write path — `write_tx` and the
+    /// single-statement `write_one` — funnels through here, so the
+    /// single-writer / named-error contract holds for ALL writes, not just
+    /// transactions. A bare `self.conn.execute` that skips this would surface a
+    /// raw "database is locked" that `LOOM_LOCK_DEADLINE_MS` can't bound.
+    fn ensure_write_lock(&self) -> Result<()> {
+        let mut held = self.write_lock.borrow_mut();
+        if held.is_none() {
+            if let Some(lock_path) = self.lock_path.as_ref() {
+                *held = Some(acquire_write_lock(lock_path, lock_deadline_ms())?);
+            }
+        }
+        Ok(())
+    }
+    /// A single-statement write that takes the flock first. The `&self`-friendly
+    /// counterpart to `write_tx`: use it for one-shot `UPDATE`/`INSERT`/`DELETE`
+    /// writers (most of them) so they serialize cross-process like everything
+    /// else. Read-modify-write sequences must use `write_tx` for atomicity, not
+    /// a pair of `write_one` calls.
+    fn write_one<P: rusqlite::Params>(&self, sql: &str, params: P) -> Result<usize> {
+        self.ensure_write_lock()?;
+        Ok(self.conn.execute(sql, params)?)
     }
     fn list_active_intents(&self) -> Result<Vec<Intent>> {
         self.list_intents_matching(true)
     }
     fn list_all_intents(&self) -> Result<Vec<Intent>> {
         self.list_intents_matching(false)
-    }
-    fn set_source_refs(&self, id: &str, refs: &[String], updated_at: &str) -> Result<()> {
-        self.conn.execute(
-            "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3",
-            params![serde_json::to_string(refs)?, updated_at, id],
-        )?;
-        Ok(())
     }
     fn list_intents_matching(&self, active_only: bool) -> Result<Vec<Intent>> {
         let sql = if active_only {

@@ -45,7 +45,7 @@ fn run_source_with_sqlite(
 ) -> Result<()> {
     gate::acting_in_lane(&gate::lane::INTENT_SOURCE, None)?;
     let now = chrono::Utc::now().to_rfc3339();
-    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
 
     match subcommand {

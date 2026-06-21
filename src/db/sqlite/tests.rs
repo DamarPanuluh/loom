@@ -173,6 +173,94 @@ fn write_lock_serializes_writers_with_a_named_error() {
     let _ = std::fs::remove_file(&path);
 }
 
+// SWEEP #1: single-statement writers (UPDATE/INSERT/DELETE via `self.conn.execute`)
+// bypassed `write_tx` and so NEVER took the cross-process flock — most writes
+// could race into a raw "database is locked" the named-error contract promised
+// never to surface. They now funnel through `write_one`, which takes the lock.
+#[test]
+fn single_statement_write_takes_the_cross_process_lock() {
+    let dir = std::env::temp_dir().join(format!("loom-wl-one-{}-{}", std::process::id(), line!()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("graph.sqlite");
+    let lock_path = path.with_extension("lock");
+    {
+        let store = SqliteGraphStore::open(&path).unwrap();
+        // A single-statement writer, NOT a write_tx.
+        store.insert_intent(&sqlite_test_intent("i1", "t")).unwrap();
+        // Proof it took the flock: an external acquirer is refused by name.
+        let err = acquire_write_lock(&lock_path, 100)
+            .expect_err("the store must hold the write lock after a single-statement write");
+        assert!(
+            err.to_string()
+                .contains("write lock is held by another loom session"),
+            "single-statement writes must serialize like every other write: {err}"
+        );
+    }
+    // Released when the store dropped.
+    acquire_write_lock(&lock_path, 100).expect("lock released on store drop");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// SWEEP #11: add/remove_source_ref were an un-transacted get-then-set, so a
+// concurrent append could land between the read and the write and be lost. They
+// now run the read-modify-write inside ONE write transaction (atomic + flocked).
+#[test]
+fn source_ref_rmw_is_atomic_correct_and_locked() {
+    let dir = std::env::temp_dir().join(format!("loom-srcref-{}-{}", std::process::id(), line!()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("graph.sqlite");
+    let lock_path = path.with_extension("lock");
+    {
+        let mut store = SqliteGraphStore::open(&path).unwrap();
+        store.insert_intent(&sqlite_test_intent("i1", "t")).unwrap();
+        // Append, then append again (order preserved)…
+        let refs = store
+            .add_source_ref("i1", "src/a.rs", "t2")
+            .unwrap()
+            .unwrap();
+        assert_eq!(refs, vec!["src/a.rs".to_string()]);
+        let refs = store
+            .add_source_ref("i1", "src/b.rs", "t3")
+            .unwrap()
+            .unwrap();
+        assert_eq!(refs, vec!["src/a.rs".to_string(), "src/b.rs".to_string()]);
+        // …idempotent on a duplicate…
+        let refs = store
+            .add_source_ref("i1", "src/a.rs", "t4")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            refs.len(),
+            2,
+            "an existing ref is not appended twice: {refs:?}"
+        );
+        // …removal returns Some(true)/Some(false), missing intent returns None.
+        assert_eq!(
+            store.remove_source_ref("i1", "src/a.rs", "t5").unwrap(),
+            Some(true)
+        );
+        assert_eq!(
+            store.remove_source_ref("i1", "src/a.rs", "t6").unwrap(),
+            Some(false)
+        );
+        assert_eq!(store.add_source_ref("ghost", "x", "t").unwrap(), None);
+        // The transactional RMW holds the flock like every other write.
+        let err = acquire_write_lock(&lock_path, 100)
+            .expect_err("the RMW transaction must hold the write lock");
+        assert!(
+            err.to_string()
+                .contains("write lock is held by another loom session"),
+            "{err}"
+        );
+        // Final persisted state is exactly the surviving ref.
+        let persisted = store.get_intent("i1").unwrap().unwrap().source_refs;
+        assert_eq!(persisted, vec!["src/b.rs".to_string()]);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 fn current_export() -> JsonValue {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("loom.graph.json");
     let raw = std::fs::read_to_string(path).expect("read committed export");

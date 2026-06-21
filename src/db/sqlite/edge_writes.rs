@@ -10,7 +10,7 @@ impl SqliteGraphStore {
         notes: &str,
         now: &str,
     ) -> Result<()> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "INSERT INTO implements(
                 intent_id, codefile_id, inspection_status, criterion, confidence, evidence,
                 last_inspected, inspected_by, locator, notes, created_at
@@ -61,7 +61,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn delete_implements(&self, intent_id: &str, codefile_id: &str) -> Result<bool> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "DELETE FROM implements WHERE intent_id = ?1 AND codefile_id = ?2",
             params![intent_id, codefile_id],
         )?;
@@ -129,7 +129,7 @@ impl SqliteGraphStore {
             );
         }
 
-        self.conn.execute(
+        self.write_one(
             "INSERT INTO hierarchy(parent_id, child_id, notes, created_at)
              VALUES(?1, ?2, ?3, ?4)",
             params![parent_id, child_id, notes, now],
@@ -144,7 +144,7 @@ impl SqliteGraphStore {
         to_id: &str,
         kinds: &[String],
     ) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "UPDATE relates_to SET kinds = ?1 WHERE from_id = ?2 AND to_id = ?3",
             params![serde_json::to_string(kinds)?, from_id, to_id],
         )?;
@@ -450,7 +450,7 @@ impl SqliteGraphStore {
         notes: &str,
         now: &str,
     ) -> Result<()> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "INSERT OR IGNORE INTO validates(
                 validation_id, intent_id, inspection_status, notes, created_at
              )
@@ -499,7 +499,7 @@ impl SqliteGraphStore {
         intent_id: &str,
         now: &str,
     ) -> Result<()> {
-        self.conn.execute(
+        self.write_one(
             "INSERT OR REPLACE INTO calls(
                 validation_id, interface_id, step_index, step_name, intent_id, notes, created_at
              )
@@ -519,7 +519,7 @@ impl SqliteGraphStore {
         Ok(())
     }
     pub fn delete_calls_for_validation(&self, validation_id: &str) -> Result<usize> {
-        let deleted = self.conn.execute(
+        let deleted = self.write_one(
             "DELETE FROM calls WHERE validation_id = ?1",
             params![validation_id],
         )?;
@@ -531,7 +531,7 @@ impl SqliteGraphStore {
         intent_id: &str,
         now: &str,
     ) -> Result<ServesEdge> {
-        self.conn.execute(
+        self.write_one(
             "INSERT OR IGNORE INTO serves(
                 persona_id, intent_id, inspection_status, criterion, confidence, evidence,
                 last_inspected, inspected_by, notes, created_at
@@ -684,7 +684,7 @@ impl SqliteGraphStore {
         validation_id: &str,
         now: &str,
     ) -> Result<JourneysEdge> {
-        self.conn.execute(
+        self.write_one(
             "INSERT OR IGNORE INTO journeys(persona_id, validation_id, notes, created_at)
              SELECT ?1, ?2, '', ?3
              WHERE EXISTS(SELECT 1 FROM persona WHERE id = ?1)
@@ -704,7 +704,7 @@ impl SqliteGraphStore {
         }
     }
     pub fn insert_targets(&self, hypothesis_id: &str, intent_id: &str, now: &str) -> Result<()> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "INSERT OR IGNORE INTO targets(
                 hypothesis_id, intent_id, inspection_status, criterion, confidence, evidence,
                 last_inspected, inspected_by, notes, created_at
@@ -855,7 +855,7 @@ impl SqliteGraphStore {
         intent_id: &str,
         codefile_id: &str,
     ) -> Result<bool> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "UPDATE implements
              SET inspection_status = 'needs_reverification'
              WHERE intent_id = ?1 AND codefile_id = ?2 AND inspection_status = 'passing'",
@@ -870,7 +870,7 @@ impl SqliteGraphStore {
         criterion: &str,
         now: &str,
     ) -> Result<()> {
-        let changed = self.conn.execute(
+        let changed = self.write_one(
             "INSERT OR IGNORE INTO governs(
                 rule_id, intent_id, inspection_status, criterion, confidence, evidence,
                 last_inspected, inspected_by, notes, created_at
