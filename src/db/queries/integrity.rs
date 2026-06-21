@@ -658,7 +658,7 @@ fn audit_inspectable_edges(
     // spread), carrying evidence so copied evidence counts as one trust unit.
     let mut conf_by_author: std::collections::HashMap<(String, &'static str), Vec<(f64, String)>> =
         std::collections::HashMap::new();
-    for c in claims {
+    for c in &claims {
         // `independent` is valid on RELATES_TO (confirmed unrelated), on
         // GOVERNS (measured — the rule does not apply to this intent), and on
         // TARGETS (checked — this intent turns out not to be affected).
@@ -783,7 +783,169 @@ fn audit_inspectable_edges(
         }
     }
     hints.extend(confidence_concentration_hints(&conf_by_author));
+    hints.extend(unresolved_locator_hints(
+        &snapshot.implements,
+        &snapshot.codefiles,
+    ));
+    hints.extend(reused_evidence_hints(&claims));
+    hints.extend(high_confidence_no_evidence_hints(&claims));
     Ok(())
+}
+
+/// First `max_chars` of `s`, suffixed `…` when clipped — keeps hint excerpts bounded.
+fn excerpt(s: &str, max_chars: usize) -> String {
+    match s.char_indices().nth(max_chars) {
+        Some((idx, _)) => format!("{}…", &s[..idx]),
+        None => s.to_string(),
+    }
+}
+
+/// A locator that is purely a line / range anchor (digits, `-`, `:`) — it names
+/// a position, not a symbol, so it's exempt from symbol resolution.
+fn is_line_anchor(loc: &str) -> bool {
+    !loc.is_empty()
+        && loc
+            .chars()
+            .all(|c| c.is_ascii_digit() || c == '-' || c == ':')
+}
+
+/// HINT (#2 honesty): a passing/failing IMPLEMENTS edge whose symbol-style
+/// locator does NOT resolve to any extracted symbol in the file — a grounding
+/// that reads green but anchors nothing (the symbol was renamed/moved, or the
+/// stored facts predate the current extractor). Only files that actually
+/// extracted symbols are judged; file-level (empty) and line-anchor locators are
+/// exempt. Advisory, sampled — never an issue. Reuses `fact_is_grounded`.
+fn unresolved_locator_hints(
+    implements: &[crate::types::Implements],
+    codefiles: &[crate::types::CodeFile],
+) -> Vec<String> {
+    use crate::db::queries::symbol_accountability::fact_is_grounded;
+    let facts_by_path: std::collections::HashMap<&str, &Vec<crate::types::SymbolFact>> = codefiles
+        .iter()
+        .filter(|cf| !cf.symbol_facts.is_empty())
+        .map(|cf| (cf.path.as_str(), &cf.symbol_facts))
+        .collect();
+    let mut unresolved: Vec<String> = Vec::new();
+    for im in implements {
+        if !matches!(im.inspection_status.as_str(), "passing" | "failing") {
+            continue;
+        }
+        let loc = im.locator.trim();
+        if loc.is_empty() || is_line_anchor(loc) {
+            continue;
+        }
+        let Some(facts) = facts_by_path.get(im.codefile_path.as_str()) else {
+            continue; // no extracted facts to resolve against (binary / unsupported)
+        };
+        let one = [im.locator.clone()];
+        if !facts.iter().any(|f| fact_is_grounded(f, &one)) {
+            unresolved.push(format!(
+                "'{}' @ {} '{loc}'",
+                im.intent_name, im.codefile_path
+            ));
+        }
+    }
+    if unresolved.is_empty() {
+        return Vec::new();
+    }
+    unresolved.sort();
+    let shown = unresolved
+        .iter()
+        .take(5)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join("; ");
+    let more = unresolved.len().saturating_sub(5);
+    vec![format!(
+        "epistemic: {} passing/failing IMPLEMENTS locator(s) name a symbol NOT in the file's \
+         extracted facts — a grounding that reads green but anchors nothing (symbol renamed/moved, \
+         or the stored facts predate the current extractor — `loom sync` to refresh). Sample: {shown}{}",
+        unresolved.len(),
+        if more > 0 { format!("; … +{more} more") } else { String::new() }
+    )]
+}
+
+/// HINT (#2 honesty): one non-vacuous `evidence` string backing several DIFFERENT
+/// edges — the same inspection text laundered across distinct claims is not N
+/// inspections. Threshold of 3 distinct edges avoids flagging a coincidental
+/// pair. Advisory; reuses `gate::is_vacuous`.
+fn reused_evidence_hints(claims: &[EdgeClaim]) -> Vec<String> {
+    let mut by_evidence: std::collections::HashMap<&str, std::collections::HashSet<&str>> =
+        std::collections::HashMap::new();
+    for c in claims {
+        if c.status == "uninspected" {
+            continue;
+        }
+        let ev = c.evidence.trim();
+        if ev.is_empty() || crate::gate::is_vacuous(ev) {
+            continue;
+        }
+        by_evidence.entry(ev).or_default().insert(c.label.as_str());
+    }
+    let mut laundered: Vec<(&str, usize)> = by_evidence
+        .iter()
+        .filter(|(_, labels)| labels.len() >= 3)
+        .map(|(ev, labels)| (*ev, labels.len()))
+        .collect();
+    if laundered.is_empty() {
+        return Vec::new();
+    }
+    laundered.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+    let (ev, n) = laundered[0];
+    let others = laundered.len() - 1;
+    vec![format!(
+        "epistemic: one evidence string backs {n} DIFFERENT edges{} — the same inspection text \
+         copied across distinct claims is not {n} inspections. Excerpt: \"{}\"; sample with \
+         `loom next --mode review`",
+        if others > 0 {
+            format!(" (and {others} other reused string(s))")
+        } else {
+            String::new()
+        },
+        excerpt(ev, 70)
+    )]
+}
+
+/// HINT (#2 honesty): a non-IMPLEMENTS passing/failing verdict asserting high
+/// confidence (≥0.90) with NO substantive evidence — certainty without a reason
+/// is the laundering tell. IMPLEMENTS is passing-by-construction (evidence
+/// optional) so it's exempt. Advisory; reuses `gate::is_vacuous`.
+///
+/// (The plan named this "per-tier confidence ceiling"; the graph carries no
+/// inspector-tier signal — tiering is an orchestrator concern, not graph state —
+/// so the same laundering is targeted by the confidence/evidence mismatch, which
+/// IS graph-grounded.)
+fn high_confidence_no_evidence_hints(claims: &[EdgeClaim]) -> Vec<String> {
+    let mut overclaimed: Vec<&str> = Vec::new();
+    for c in claims {
+        if c.etype == schema::edge::IMPLEMENTS {
+            continue;
+        }
+        if !matches!(c.status.as_str(), "passing" | "failing") {
+            continue;
+        }
+        let ev = c.evidence.trim();
+        if c.confidence >= 0.9 && (ev.is_empty() || crate::gate::is_vacuous(ev)) {
+            overclaimed.push(c.label.as_str());
+        }
+    }
+    if overclaimed.is_empty() {
+        return Vec::new();
+    }
+    overclaimed.sort_unstable();
+    let shown = overclaimed
+        .iter()
+        .take(5)
+        .copied()
+        .collect::<Vec<_>>()
+        .join("; ");
+    let more = overclaimed.len().saturating_sub(5);
+    vec![format!(
+        "epistemic: {} verdict(s) assert high confidence (≥0.90) with NO substantive evidence — \
+         certainty without a stated reason is the laundering tell. Sample: {shown}{}; `loom next --mode review`",
+        overclaimed.len(),
+        if more > 0 { format!("; … +{more} more") } else { String::new() }
+    )]
 }
 
 /// Epistemic-health detector: a single author whose passing/failing verdicts
@@ -918,6 +1080,160 @@ mod epistemic_tests {
             "copied evidence should flag even with spread confidence: {hints:?}"
         );
         assert!(hints[0].contains("distinct evidence"), "got: {hints:?}");
+    }
+
+    fn claim(
+        etype: &'static str,
+        label: &str,
+        status: &str,
+        conf: f64,
+        ev: &str,
+    ) -> super::EdgeClaim {
+        super::EdgeClaim {
+            etype,
+            label: label.into(),
+            status: status.into(),
+            criterion: String::new(),
+            confidence: conf,
+            evidence: ev.into(),
+            last_inspected: "t".into(),
+            notes: String::new(),
+            inspected_by: "llm:analyzer".into(),
+        }
+    }
+
+    // HINT: one substantive evidence string copied across ≥3 DIFFERENT edges is
+    // laundering, not N inspections. Distinct or vacuous evidence stays quiet.
+    #[test]
+    fn reused_evidence_flags_copied_text_across_edges() {
+        let ev = "verified the dependency by reading both call sites carefully";
+        let laundered = vec![
+            claim("RELATES_TO", "a → b", "passing", 0.8, ev),
+            claim("RELATES_TO", "c → d", "passing", 0.8, ev),
+            claim("GOVERNS", "e → f", "failing", 0.8, ev),
+            claim(
+                "RELATES_TO",
+                "g → h",
+                "passing",
+                0.8,
+                "a genuinely distinct reason for this one",
+            ),
+        ];
+        let hints = super::reused_evidence_hints(&laundered);
+        assert_eq!(hints.len(), 1, "{hints:?}");
+        assert!(hints[0].contains("3 DIFFERENT edges"), "{hints:?}");
+
+        // Distinct evidence on every edge → quiet. Only 2 sharers → under the floor.
+        let clean = vec![
+            claim(
+                "RELATES_TO",
+                "a → b",
+                "passing",
+                0.8,
+                "substantive reason number one here",
+            ),
+            claim(
+                "RELATES_TO",
+                "c → d",
+                "passing",
+                0.8,
+                "substantive reason number two here",
+            ),
+            claim("RELATES_TO", "e → f", "passing", 0.8, ev),
+            claim("RELATES_TO", "g → h", "passing", 0.8, ev),
+        ];
+        assert!(
+            super::reused_evidence_hints(&clean).is_empty(),
+            "{:?}",
+            super::reused_evidence_hints(&clean)
+        );
+        // Vacuous (empty) shared evidence is NOT this detector's job.
+        let vacuous = vec![
+            claim("RELATES_TO", "a → b", "passing", 0.8, ""),
+            claim("RELATES_TO", "c → d", "passing", 0.8, ""),
+            claim("RELATES_TO", "e → f", "passing", 0.8, ""),
+        ];
+        assert!(super::reused_evidence_hints(&vacuous).is_empty());
+    }
+
+    // HINT: a non-IMPLEMENTS passing/failing verdict at ≥0.90 confidence with no
+    // substantive evidence is certainty without a reason.
+    #[test]
+    fn high_confidence_no_evidence_flags_overclaim() {
+        let claims = vec![
+            claim("RELATES_TO", "a → b", "passing", 0.95, ""), // overclaim
+            claim(
+                "RELATES_TO",
+                "c → d",
+                "passing",
+                0.95,
+                "a real substantive grounding reason",
+            ), // fine
+            claim("RELATES_TO", "e → f", "passing", 0.5, ""),  // low conf → not flagged
+            claim("IMPLEMENTS", "x → y", "passing", 1.0, ""),  // IMPLEMENTS exempt
+        ];
+        let hints = super::high_confidence_no_evidence_hints(&claims);
+        assert_eq!(hints.len(), 1, "{hints:?}");
+        assert!(hints[0].contains("1 verdict"), "{hints:?}");
+    }
+
+    // HINT: a passing/failing IMPLEMENTS locator that names a symbol NOT in the
+    // file's extracted facts anchors nothing. Real symbol / file-level / line
+    // anchors are exempt; a file with no extracted facts can't be judged.
+    #[test]
+    fn unresolved_locator_flags_fabricated_symbol() {
+        use crate::types::{CodeFile, Implements, SymbolFact};
+        let fact = SymbolFact {
+            label: "fn real_sym".into(),
+            name: "real_sym".into(),
+            kind: "fn".into(),
+            visibility: "public".into(),
+            line_start: 1,
+            line_end: 2,
+            is_test: false,
+            string_literals: vec![],
+            panic_marker_count: 0,
+            panic_markers: vec![],
+            body_hash: String::new(),
+            shape_hash: String::new(),
+        };
+        let cf = CodeFile {
+            id: "cf1".into(),
+            path: "src/a.rs".into(),
+            language: "rust".into(),
+            last_modified: String::new(),
+            imports: vec![],
+            symbols: vec![],
+            symbol_facts: vec![fact],
+            content_hash: String::new(),
+        };
+        let im = |loc: &str| Implements {
+            id: format!("imp:{loc}"),
+            intent_id: "i".into(),
+            codefile_id: "cf1".into(),
+            intent_name: "intent".into(),
+            codefile_path: "src/a.rs".into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.0,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: String::new(),
+            locator: loc.into(),
+            notes: String::new(),
+            created_at: "t".into(),
+        };
+        // A symbol NOT in the file → flagged.
+        let flagged =
+            super::unresolved_locator_hints(&[im("fn ghost_sym")], std::slice::from_ref(&cf));
+        assert_eq!(flagged.len(), 1, "{flagged:?}");
+        assert!(flagged[0].contains("anchors nothing"), "{flagged:?}");
+        // Real symbol, file-level (empty), and a line anchor are all fine.
+        let clean = super::unresolved_locator_hints(
+            &[im("fn real_sym"), im(""), im("42-50")],
+            std::slice::from_ref(&cf),
+        );
+        assert!(clean.is_empty(), "{clean:?}");
     }
 }
 
