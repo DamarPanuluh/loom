@@ -106,6 +106,16 @@ fn run_list_with_db(
             println!("⚠ {note}");
         }
         println!("(no layer order declared — layering_violation is silent)");
+        // Show the layers intents ALREADY carry, so you can declare an order over
+        // them without grepping the json — the names below are the candidates.
+        if uncovered.is_empty() {
+            println!("  No intents carry a `--layer` label yet — set one with `loom intent add/update --layer <name>`.");
+        } else {
+            println!("  Layers already in use by intents (declare an order over these):");
+            for (layer, n) in &uncovered {
+                println!("  -  {layer:<24} {n:>3} intent(s)");
+            }
+        }
         println!("  → loom layer order <top> … <bottom>   (top layer first)");
     } else {
         if let Some(note) = alias_note {

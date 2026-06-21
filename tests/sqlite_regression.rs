@@ -1697,6 +1697,36 @@ fn sqlite_glob_grounding_refuses_a_locator() {
     );
 }
 
+// DOGFOOD-FOUND GAP: `loom layer list` with no order declared printed nothing
+// about WHICH layers intents already carry — you had to grep json to know what to
+// declare. It now lists the in-use layers as the candidates for an order.
+#[test]
+fn sqlite_layer_list_shows_in_use_layers_when_no_order() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("layer-list");
+    // Give an intent a layer so there's an in-use layer to surface.
+    let (a, _b) = first_two_intent_ids(&graph.root);
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "update",
+            &a,
+            "--layer",
+            "persistence",
+            "--reason",
+            "tagging the storage boundary for the layering audit",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let text = run_text_as(&graph.root, &["layer", "list"], "llm");
+    assert!(
+        text.contains("already in use") && text.contains("persistence"),
+        "layer list surfaces in-use layers as candidates for an order: {text}"
+    );
+}
+
 // DOGFOOD-FOUND DEFECT: `loom layer order` with NO layers used to silently CLEAR
 // the order and print "✓ Layer order declared" — contradicting `loom smells`'s
 // "no declared order" and destructively writing on a query-shaped invocation. It
