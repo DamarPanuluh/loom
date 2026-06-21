@@ -2081,6 +2081,53 @@ fn sqlite_report_json_caps_unbounded_lists() {
     );
 }
 
+// SWEEP #2 (scale): the semantic smell detectors (twin_intents,
+// duplicated_responsibility) no longer scan every O(level²) same-level pair —
+// they generate candidates from an inverted token/tag index. This proves the
+// candidate path still FINDS a real twin: two same-level intents that read alike
+// with no edge between them must still surface, or the pruning lost a true pair.
+#[test]
+fn sqlite_semantic_candidate_path_still_finds_twins() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("twin-candidates");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    for name in ["user session login flow", "user session signin flow"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "authenticate the user and establish a session",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    let smells = run_json(&graph.root, &["smells", "--json"]);
+    let twins: Vec<&str> = smells
+        .as_object()
+        .into_iter()
+        .flat_map(|o| o.values())
+        .filter_map(|v| v.as_array())
+        .flatten()
+        .filter(|s| s["kind"] == "twin_intents")
+        .filter_map(|s| s["summary"].as_str())
+        .collect();
+    assert!(
+        twins
+            .iter()
+            .any(|s| s.contains("login flow") && s.contains("signin flow")),
+        "the candidate path must still surface the twin pair: {twins:?}"
+    );
+}
+
 // SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
 // scores every O(N²) pair — it generates candidates from inverted indices, an
 // EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are

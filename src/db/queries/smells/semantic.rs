@@ -42,32 +42,30 @@ fn detect_twin_intents(
     smells: &mut Vec<Smell>,
 ) {
     for same_level in intents_by_level.values() {
-        for i in 0..same_level.len() {
-            for j in (i + 1)..same_level.len() {
-                let (a, b) = (same_level[i], same_level[j]);
-                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                    continue;
-                }
-                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-                if sim >= TWIN_SIMILARITY {
-                    smells.push(Smell {
-                        kind: "twin_intents".into(),
-                        score: sim * 10.0,
-                        summary: format!(
-                            "'{}' and '{}' read like the same responsibility twice",
-                            a.name, b.name
-                        ),
-                        evidence: format!(
-                            "name+description similarity {:.2} at the same level ({}), no edge between them",
-                            sim, a.abstraction_level
-                        ),
-                        remedy: format!(
-                            "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
-                            a = a.id, b = b.id
-                        ),
-                        teaching: teaching_for("twin_intents"),
-                    });
-                }
+        for (a, b) in candidate_pairs_from_keyed(same_level, &token_items(same_level, signal_toks))
+        {
+            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                continue;
+            }
+            let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+            if sim >= TWIN_SIMILARITY {
+                smells.push(Smell {
+                    kind: "twin_intents".into(),
+                    score: sim * 10.0,
+                    summary: format!(
+                        "'{}' and '{}' read like the same responsibility twice",
+                        a.name, b.name
+                    ),
+                    evidence: format!(
+                        "name+description similarity {:.2} at the same level ({}), no edge between them",
+                        sim, a.abstraction_level
+                    ),
+                    remedy: format!(
+                        "loom edge explore {a} {b}  → ground a real relationship or mark independent with why; if one should absorb the other, propose the merge: `loom hypothesis add --name \"merge …\" --claim \"two intents own one responsibility\" --proposal \"<which absorbs which>\" --predicted-outcome \"one intent, one criterion; this finding disappears\" --target {a} --target {b}`",
+                        a = a.id, b = b.id
+                    ),
+                    teaching: teaching_for("twin_intents"),
+                });
             }
         }
     }
@@ -85,54 +83,54 @@ fn detect_duplicated_responsibility(
     smells: &mut Vec<Smell>,
 ) {
     for same_level in intents_by_level.values() {
-        for i in 0..same_level.len() {
-            for j in (i + 1)..same_level.len() {
-                let (a, b) = (same_level[i], same_level[j]);
-                if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                    continue;
-                }
-                let (Some(fa), Some(fb)) = (
-                    discovery.files_of.get(a.id.as_str()),
-                    discovery.files_of.get(b.id.as_str()),
-                ) else {
-                    continue; // duplicate implementation requires real code on both sides
-                };
-                if fa.intersection(fb).next().is_some() {
-                    continue; // overlapping_ownership owns this case
-                }
-                let imports = fa
+        let mut items = token_items(same_level, signal_toks);
+        items.extend(tag_items(same_level, &discovery.tags_by_intent));
+        for (a, b) in candidate_pairs_from_keyed(same_level, &items) {
+            if linked.contains(&(a.id.as_str(), b.id.as_str())) {
+                continue;
+            }
+            let (Some(fa), Some(fb)) = (
+                discovery.files_of.get(a.id.as_str()),
+                discovery.files_of.get(b.id.as_str()),
+            ) else {
+                continue; // duplicate implementation requires real code on both sides
+            };
+            if fa.intersection(fb).next().is_some() {
+                continue; // overlapping_ownership owns this case
+            }
+            let imports = fa
+                .iter()
+                .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
+                .any(|p| discovery.import_links.contains(&p));
+            if imports {
+                continue; // undeclared_coupling owns this case
+            }
+            let empty_tags: &[String] = &[];
+            let ta = discovery
+                .tags_by_intent
+                .get(a.id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or(empty_tags);
+            let tb = discovery
+                .tags_by_intent
+                .get(b.id.as_str())
+                .map(Vec::as_slice)
+                .unwrap_or(empty_tags);
+            let (weight, shared_terms) =
+                crate::db::queries::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
+            if weight >= DUP_TAG_WEIGHT {
+                let term_detail = shared_terms
                     .iter()
-                    .flat_map(|x| fb.iter().map(move |y| (*x, *y)))
-                    .any(|p| discovery.import_links.contains(&p));
-                if imports {
-                    continue; // undeclared_coupling owns this case
-                }
-                let empty_tags: &[String] = &[];
-                let ta = discovery
-                    .tags_by_intent
-                    .get(a.id.as_str())
-                    .map(Vec::as_slice)
-                    .unwrap_or(empty_tags);
-                let tb = discovery
-                    .tags_by_intent
-                    .get(b.id.as_str())
-                    .map(Vec::as_slice)
-                    .unwrap_or(empty_tags);
-                let (weight, shared_terms) =
-                    crate::db::queries::vocab::shared_tag_weight(ta, tb, &discovery.tag_counts);
-                if weight >= DUP_TAG_WEIGHT {
-                    let term_detail = shared_terms
-                        .iter()
-                        .map(|t| {
-                            format!(
-                                "'{}' ({} intents carry it)",
-                                t,
-                                discovery.tag_counts.get(t).copied().unwrap_or(1)
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    smells.push(Smell {
+                    .map(|t| {
+                        format!(
+                            "'{}' ({} intents carry it)",
+                            t,
+                            discovery.tag_counts.get(t).copied().unwrap_or(1)
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                smells.push(Smell {
                         kind: "duplicated_responsibility".into(),
                         score: weight * 8.0,
                         summary: format!(
@@ -149,22 +147,21 @@ fn detect_duplicated_responsibility(
                         ),
                         teaching: teaching_for("duplicated_responsibility"),
                     });
+                continue;
+            }
+            if ta.is_empty() || tb.is_empty() {
+                let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
+                    .intersection(&signal_toks[b.id.as_str()])
+                    .cloned()
+                    .collect();
+                let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
+                if sim < DUP_UNTAGGED_SIMILARITY || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
+                {
                     continue;
                 }
-                if ta.is_empty() || tb.is_empty() {
-                    let shared_tokens: Vec<String> = signal_toks[a.id.as_str()]
-                        .intersection(&signal_toks[b.id.as_str()])
-                        .cloned()
-                        .collect();
-                    let sim = jaccard(&signal_toks[a.id.as_str()], &signal_toks[b.id.as_str()]);
-                    if sim < DUP_UNTAGGED_SIMILARITY
-                        || shared_tokens.len() < DUP_UNTAGGED_SHARED_TOKENS
-                    {
-                        continue;
-                    }
-                    let mut shared_tokens = shared_tokens;
-                    shared_tokens.sort();
-                    smells.push(Smell {
+                let mut shared_tokens = shared_tokens;
+                shared_tokens.sort();
+                smells.push(Smell {
                         kind: "duplicated_responsibility".into(),
                         score: 2.0 + sim * 8.0,
                         summary: format!(
@@ -184,7 +181,6 @@ fn detect_duplicated_responsibility(
                         ),
                         teaching: teaching_for("duplicated_responsibility"),
                     });
-                }
             }
         }
     }
@@ -282,4 +278,76 @@ fn detect_duplicate_detection_unarmed(
             teaching: teaching_for("duplicate_detection_unarmed"),
         });
     }
+}
+
+/// `(token, same-level index)` items for every intent's signal tokens — the
+/// keying that drives candidate generation for the semantic detectors.
+fn token_items<'a>(
+    same_level: &[&crate::types::Intent],
+    signal_toks: &'a HashMap<&str, HashSet<String>>,
+) -> Vec<(&'a str, usize)> {
+    let mut items = Vec::new();
+    for (idx, intent) in same_level.iter().enumerate() {
+        if let Some(toks) = signal_toks.get(intent.id.as_str()) {
+            for tok in toks {
+                items.push((tok.as_str(), idx));
+            }
+        }
+    }
+    items
+}
+
+/// `(tag, same-level index)` items — the duplicated-responsibility detector also
+/// fires on a shared rare tag, so tags join tokens as candidate keys.
+fn tag_items<'a>(
+    same_level: &[&crate::types::Intent],
+    tags_by_intent: &'a HashMap<String, Vec<String>>,
+) -> Vec<(&'a str, usize)> {
+    let mut items = Vec::new();
+    for (idx, intent) in same_level.iter().enumerate() {
+        if let Some(tags) = tags_by_intent.get(intent.id.as_str()) {
+            for tag in tags {
+                items.push((tag.as_str(), idx));
+            }
+        }
+    }
+    items
+}
+
+/// Same-level intent pairs sharing at least one key — an EXACT superset of the
+/// pairs either semantic detector can fire on (both need shared tokens or a
+/// shared tag), assembled from an inverted index so detection is O(candidates)
+/// instead of O(level²) — the scan that was killed at 90s on 20k intents. A key
+/// shared by more than `BUCKET_CAP` same-level intents is non-discriminating (it
+/// only yields low-similarity pairs below every threshold), so its O(k²)
+/// expansion is skipped; the cap never fires below its size. Pairs come back
+/// sorted, so smell order stays deterministic regardless of bucket iteration.
+fn candidate_pairs_from_keyed<'a>(
+    same_level: &[&'a crate::types::Intent],
+    items: &[(&str, usize)],
+) -> Vec<(&'a crate::types::Intent, &'a crate::types::Intent)> {
+    const BUCKET_CAP: usize = 64;
+    let mut buckets: HashMap<&str, Vec<usize>> = HashMap::new();
+    for &(key, idx) in items {
+        buckets.entry(key).or_default().push(idx);
+    }
+    let mut pairs: HashSet<(usize, usize)> = HashSet::new();
+    for members in buckets.values_mut() {
+        members.sort_unstable();
+        members.dedup();
+        if members.len() > BUCKET_CAP {
+            continue;
+        }
+        for p in 0..members.len() {
+            for q in (p + 1)..members.len() {
+                pairs.insert((members[p], members[q]));
+            }
+        }
+    }
+    let mut pairs: Vec<(usize, usize)> = pairs.into_iter().collect();
+    pairs.sort_unstable();
+    pairs
+        .into_iter()
+        .map(|(i, j)| (same_level[i], same_level[j]))
+        .collect()
 }
