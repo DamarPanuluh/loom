@@ -1636,6 +1636,63 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// OPT-IN INSTALL: `loom skill` emits the lane-skills as real SKILL.md files (a
+// regenerable projection of the gate's lane table) for the user who wants to PIN
+// them — never required (the binary serves them JIT). list → menu; show → one
+// proven-format SKILL.md that delegates the live charge back to the binary;
+// install --write → pins all five.
+#[test]
+fn sqlite_skill_command_emits_lane_skills() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("skill-cmd");
+    // list: the 5 enforced lanes, each a loom-<role> skill with a JIT description.
+    let list = run_json(&graph.root, &["skill", "list", "--json"]);
+    let skills = list["skills"].as_array().expect("skills array");
+    assert_eq!(skills.len(), 5, "five lane-skills: {list}");
+    assert!(
+        skills.iter().any(|s| s["skill"] == "loom-analyzer"
+            && s["description"]
+                .as_str()
+                .unwrap_or("")
+                .contains("Adopt when")),
+        "loom-analyzer is listed with a JIT trigger description: {list}"
+    );
+    // show: one complete SKILL.md in the proven format that points the live charge
+    // back at the binary (so a pinned copy can't drift).
+    let show = run_json(&graph.root, &["skill", "show", "analyzer", "--json"]);
+    let md = show["markdown"].as_str().expect("markdown");
+    assert!(
+        md.starts_with("---\nname: loom-analyzer\n")
+            && md.contains("**THE LAW**")
+            && md.contains("THE SOCRATIC LOOP is the skill")
+            && md.contains("loom guide --role analyzer"),
+        "the SKILL.md is proven-format + delegates the live charge to the binary: {md}"
+    );
+    // install --write: pins all 5 as real files; opt-in, never required.
+    let inst = run_json(
+        &graph.root,
+        &[
+            "skill",
+            "install",
+            "--dir",
+            "scratch/skills",
+            "--write",
+            "--json",
+        ],
+    );
+    assert_eq!(
+        inst["written"].as_array().map(|a| a.len()),
+        Some(5),
+        "five files written: {inst}"
+    );
+    let pinned = graph.root.join("scratch/skills/loom-fixer/SKILL.md");
+    let body = std::fs::read_to_string(&pinned).expect("loom-fixer SKILL.md was written");
+    assert!(
+        body.contains("name: loom-fixer") && body.contains("**THE LAW**"),
+        "the pinned file is a valid lane-skill SKILL.md: {body}"
+    );
+}
+
 // JIT SKILL ADOPTION: when loom routes work to a lane, the work item CUES the LLM
 // to adopt that lane's discipline just-in-time via `loom guide --role <lane>` (the
 // binary serves the full loom-<lane> skill — no install). The compass is the JIT

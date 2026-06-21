@@ -36,6 +36,7 @@ pub mod rule;
 pub mod saga;
 pub mod schema;
 pub mod session;
+pub mod skill;
 pub mod smells;
 pub mod status;
 pub mod sync;
@@ -98,6 +99,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Migrate                    => migrate::run(&printer),
         Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),
         Command::Schema                     => schema::run(&printer),
+        Command::Skill       { command }    => skill::run(command, &printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
         Command::Wiki        { out, check }    => wiki::run(&out, check, &printer),

@@ -361,6 +361,21 @@ pub enum Command {
     /// state machine, and the valid value vocabularies.
     Schema,
 
+    /// The lane-skills, OPT-IN. loom serves each lane's discipline just-in-time
+    /// (`loom guide --role <lane>`) with NO install — this command is only for
+    /// pinning them as harness skills (model-invocable, persistent). It emits the
+    /// lane-skills as SKILL.md files (a regenerable projection of the gate's lane
+    /// table, like `loom wiki`); the LLM/user adds them to their own harness.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom skill list                 # the lane-skill menu\n  \
+        loom skill show analyzer        # one SKILL.md to stdout\n  \
+        loom skill install              # all SKILL.md + where to write them\n  \
+        loom skill install --write      # write them into ./.claude/skills/")]
+    Skill {
+        #[command(subcommand)]
+        command: SkillCmd,
+    },
+
     /// Ask the map: keyword search (BM25) over intent names and descriptions.
     /// Each hit carries its place in the hierarchy, code groundings with
     /// locators, and a freshness warning if claims went stale — the semantic
@@ -712,6 +727,31 @@ pub enum DelegateCmd {
 }
 
 // ---------------------------------------------------------------------------
+// Skill subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum SkillCmd {
+    /// List the lane-skills (name + the JIT-trigger description) — the menu.
+    List,
+    /// Print ONE lane-skill as a complete SKILL.md to stdout.
+    Show {
+        /// The lane: builder | analyzer | fixer | validator | quality.
+        role: String,
+    },
+    /// Emit every lane-skill as a SKILL.md plus where to write it. Without
+    /// `--write`, prints the materialization plan for the LLM/user to apply;
+    /// with `--write`, writes them into the skills dir (default ./.claude/skills).
+    Install {
+        /// Skills directory to write into (default `./.claude/skills`).
+        #[arg(long)]
+        dir: Option<String>,
+        /// Actually write the files (otherwise just print the plan).
+        #[arg(long)]
+        write: bool,
+    },
+}
+
 // Intent subcommands
 // ---------------------------------------------------------------------------
 
