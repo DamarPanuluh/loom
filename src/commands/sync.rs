@@ -1014,6 +1014,40 @@ mod tests {
         );
     }
 
+    // The method-level narrowing: two methods share one `impl`, so a body
+    // change to one bumps the WHOLE impl's hash — whose changed name is the
+    // type, not the method. Without per-method facts the method-level grounding
+    // matched neither the type name nor "" and silently stayed green. Per-method
+    // facts give `add` its own hash, so its grounding flips and `sub`'s does not.
+    #[cfg(feature = "treesitter")]
+    #[test]
+    fn affected_flips_only_the_changed_impl_method() {
+        let base = std::env::temp_dir();
+        let old = "struct Calc;\n\
+                   impl Calc {\n    fn add(&self) -> i32 {\n        1 + 1\n    }\n\
+                   \n    fn sub(&self) -> i32 {\n        2 - 1\n    }\n}\n";
+        let new = "struct Calc;\n\
+                   impl Calc {\n    fn add(&self) -> i32 {\n        1 + 999\n    }\n\
+                   \n    fn sub(&self) -> i32 {\n        2 - 1\n    }\n}\n";
+        let old_facts = crate::repo::extract_physical_facts(&base, "src/foo.rs", old).symbol_facts;
+        assert!(
+            old_facts.iter().any(|f| f.name == "add"),
+            "the method is its own fact: {old_facts:?}"
+        );
+        let codefile = cf(old_facts);
+        let impls = vec![imp("iadd", "fn add"), imp("isub", "fn sub")];
+        let affected = affected_intents(&base, &codefile, Some(&new.to_string()), &impls)
+            .expect("symbol-level diff, not the whole-file fallback");
+        assert!(
+            affected.contains("iadd"),
+            "the grounding on the CHANGED method flips (no longer a silent false-green): {affected:?}"
+        );
+        assert!(
+            !affected.contains("isub"),
+            "the grounding on the UNCHANGED sibling method must NOT flip: {affected:?}"
+        );
+    }
+
     // Content changed but every symbol body is identical (a comment shifted the
     // lines) → conservative whole-file fallback, never a silent miss.
     #[cfg(feature = "treesitter")]

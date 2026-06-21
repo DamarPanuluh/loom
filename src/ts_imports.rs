@@ -303,6 +303,32 @@ fn collect_top_level_symbol(
         {
             collect_js_ts_binding_facts(node, rel_path, content, exported, in_test_context, out);
         }
+        "impl_item" if matches!(lang, Lang::Rust) => {
+            // The impl is one fact spanning the whole block, but its methods
+            // need their OWN facts: a method-level locator (`file:method`) must
+            // resolve to a symbol whose body hash moves when the method body
+            // changes. Without per-method facts, a method edit only flipped the
+            // IMPL's hash — whose changed name is the *type*, not the method —
+            // so `loom sync` silently false-greened the method's grounding.
+            let impl_test = in_test_context || rust_symbol_is_test(node, content);
+            if let Some(symbol) =
+                symbol_fact(node, lang, rel_path, content, exported, in_test_context)
+            {
+                let qualifier = symbol.name.clone();
+                push_unique_fact(out, symbol);
+                if let Some(body) = node.child_by_field_name("body") {
+                    for_each_named_child(body, |m| {
+                        if m.kind() == "function_item" {
+                            if let Some(fact) =
+                                rust_method_fact(m, rel_path, content, &qualifier, impl_test)
+                            {
+                                push_unique_fact(out, fact);
+                            }
+                        }
+                    });
+                }
+            }
+        }
         _ => {
             if let Some(symbol) =
                 symbol_fact(node, lang, rel_path, content, exported, in_test_context)
@@ -394,6 +420,47 @@ fn rust_symbol_fact(
         label,
         name,
         kind: kind.into(),
+        visibility: if visibility_prefix.is_some() {
+            "public".into()
+        } else {
+            "private".into()
+        },
+        line_start: node.start_position().row + 1,
+        line_end: node.end_position().row + 1,
+        is_test: path_is_test(rel_path) || in_test_context || rust_symbol_is_test(node, content),
+        string_literals: string_literal_facts(node, content),
+        panic_marker_count: panic_marker_count(node, content),
+        panic_markers: panic_markers(node, content),
+        body_hash: String::new(),
+        shape_hash: shape_hash(node, content),
+    })
+}
+
+/// A method inside an `impl` block. The label is qualified by the impl's
+/// (trait-aware) type name so two impls' same-named methods (`Display::fmt`
+/// vs `Debug::fmt`) get distinct, non-colliding facts; `name` stays the bare
+/// method name so a `file:method` locator still resolves by identifier word.
+fn rust_method_fact(
+    node: Node<'_>,
+    rel_path: &str,
+    content: &str,
+    qualifier: &str,
+    in_test_context: bool,
+) -> Option<SymbolFact> {
+    let name = node
+        .child_by_field_name("name")
+        .and_then(|n| text(n, content))?
+        .to_string();
+    let visibility_prefix = rust_visibility_prefix(node, content);
+    let base_label = format!("fn {qualifier}::{name}");
+    let label = visibility_prefix
+        .as_ref()
+        .map(|v| format!("{v} {base_label}"))
+        .unwrap_or(base_label);
+    Some(SymbolFact {
+        label,
+        name,
+        kind: "fn".into(),
         visibility: if visibility_prefix.is_some() {
             "public".into()
         } else {
@@ -934,6 +1001,54 @@ mod tests {
         let tree = parse(Lang::JavaScript.language(), content).unwrap();
 
         assert_eq!(string_value(tree.root_node(), content), None);
+    }
+
+    #[test]
+    fn impl_methods_get_their_own_facts() {
+        let content = "\
+struct Repo;
+impl Repo {
+    pub fn save(&self) -> i32 {
+        let x = 1;
+        x + 1
+    }
+}
+impl std::fmt::Display for Repo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, \"r\")
+    }
+}
+impl std::fmt::Debug for Repo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, \"d\")
+    }
+}
+";
+        let facts = extract_physical_facts("src/repo.rs", content).unwrap();
+        let labels: Vec<&str> = facts
+            .symbol_facts
+            .iter()
+            .map(|f| f.label.as_str())
+            .collect();
+        // The method is its own fact, qualified by the impl type.
+        assert!(labels.contains(&"pub fn Repo::save"), "{labels:?}");
+        // Two impls' same-named `fmt` must NOT collide into one fact — distinct
+        // qualifiers keep both, so a change to one is attributable.
+        assert!(
+            labels.iter().any(|l| l.contains("Display for Repo::fmt")),
+            "{labels:?}"
+        );
+        assert!(
+            labels.iter().any(|l| l.contains("Debug for Repo::fmt")),
+            "{labels:?}"
+        );
+        // The bare method name is preserved so a `file:save` locator resolves.
+        let save = facts
+            .symbol_facts
+            .iter()
+            .find(|f| f.label == "pub fn Repo::save")
+            .unwrap();
+        assert_eq!(save.name, "save");
     }
 
     #[test]
