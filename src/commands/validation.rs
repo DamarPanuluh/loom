@@ -59,6 +59,45 @@ pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     }
 }
 
+/// G3 (the proof-honesty content gate): reject proof commands whose STATIC SHAPE
+/// can't falsify the intent — an empty command, an always-pass vacuous command,
+/// or a failure-SWALLOWING tail that passes even when the underlying test fails.
+/// Such a command would mint a false "proven" green (the EXIT-0 launder at the
+/// add boundary). `manual_check` (human gate, no command) and `saga` (command
+/// derived from a spec file) are exempt — their honesty is enforced elsewhere.
+pub(crate) fn check_proof_command_shape(validation_type: &str, command: &str) -> Result<()> {
+    if matches!(validation_type, "manual_check" | "saga") {
+        return Ok(());
+    }
+    let cmd = command.trim();
+    if cmd.is_empty() {
+        anyhow::bail!(
+            "A {validation_type} proof needs a command that runs and ASSERTS something — an empty \
+             command can never falsify the intent. Pass --command \"<runner …>\", or use \
+             --type manual_check for a human gate."
+        );
+    }
+    // Failure-swallowing tails: the command passes even when the test fails.
+    const SWALLOWS: &[&str] = &["|| true", "|| :", "|| exit 0", "|| echo", "; true", "; :"];
+    if let Some(bad) = SWALLOWS.iter().find(|s| cmd.contains(**s)) {
+        anyhow::bail!(
+            "Proof command swallows failure (`{bad}`) — it exits 0 even when the test fails, so it \
+             proves nothing. Remove the failure-swallowing tail."
+        );
+    }
+    // Always-pass vacuous commands.
+    if matches!(
+        cmd,
+        "true" | ":" | "exit 0" | "exit" | "/bin/true" | "/usr/bin/true"
+    ) {
+        anyhow::bail!(
+            "Proof command `{cmd}` always exits 0 without asserting anything — it would mint a false \
+             'proven'. Give the real runner (e.g. `cargo test <name>`, `pytest -k …`, `go test ./…`)."
+        );
+    }
+    Ok(())
+}
+
 fn run_add_with_sqlite(
     root: &std::path::Path,
     name: String,
@@ -72,6 +111,7 @@ fn run_add_with_sqlite(
     validation_type
         .parse::<crate::types::ValidationType>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    check_proof_command_shape(&validation_type, command.as_deref().unwrap_or(""))?;
 
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let snapshot = store.query_snapshot()?;
@@ -250,6 +290,18 @@ fn run_update_with_sqlite(
         anyhow::bail!("Nothing to update — pass --command and/or --description.");
     }
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    // A new command must clear the same G3 honesty gate as `add` (look up the
+    // proof's type — the gate exempts manual_check/saga).
+    if let Some(new_command) = command.as_deref() {
+        let vtype = store
+            .query_snapshot()?
+            .validations
+            .iter()
+            .find(|v| v.id == id)
+            .map(|v| v.validation_type.clone())
+            .unwrap_or_else(|| "test".to_string());
+        check_proof_command_shape(&vtype, new_command)?;
+    }
     let (vid, command_changed, reset_edges) =
         store.update_validation_definition(&id, command.as_deref(), description.as_deref())?;
     if printer.json {
@@ -405,5 +457,48 @@ fn resolve_validation_from_list(validations: &[Validation], key: &str) -> Result
             key,
             subs.len()
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn g3_rejects_unfalsifiable_proof_commands() {
+        // Vacuous / always-pass commands can't falsify anything.
+        for bad in ["", "  ", "true", ":", "exit 0", "/bin/true"] {
+            assert!(
+                check_proof_command_shape("test", bad).is_err(),
+                "{bad:?} should be rejected"
+            );
+        }
+        // Failure-swallowing tails pass even when the test fails.
+        for bad in [
+            "cargo test || true",
+            "pytest || :",
+            "go test ./... || exit 0",
+            "jest ; true",
+        ] {
+            assert!(
+                check_proof_command_shape("test", bad).is_err(),
+                "{bad:?} should be rejected"
+            );
+        }
+        // Real runner commands pass for every executable type.
+        for ok in [
+            "cargo test foo",
+            "pytest -k auth",
+            "go test ./...",
+            "npm test",
+        ] {
+            assert!(
+                check_proof_command_shape("assertion", ok).is_ok(),
+                "{ok:?} should pass"
+            );
+        }
+        // manual_check (human gate) and saga (spec-derived) are exempt, even empty.
+        assert!(check_proof_command_shape("manual_check", "").is_ok());
+        assert!(check_proof_command_shape("saga", "").is_ok());
     }
 }
