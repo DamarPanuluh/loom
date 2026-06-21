@@ -2,10 +2,10 @@ use anyhow::Result;
 
 use crate::db::queries::{
     blocked_validation_summary_from_snapshot, clone_suggestions, cochange_suggestions,
-    lane_depths_from_snapshot, proof_locality_suggestions, shotgun_surgery_suggestions,
-    status_report_from_snapshot, uninspected_outside_queues_from_snapshot,
-    BlockedValidationSummary, GraphState, LaneDepths, QuerySnapshot, Smell,
-    UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
+    lane_depths_from_snapshot, proof_locality_suggestions, review_candidates_from_snapshot,
+    shotgun_surgery_suggestions, status_report_from_snapshot,
+    uninspected_outside_queues_from_snapshot, BlockedValidationSummary, GraphState, LaneDepths,
+    QuerySnapshot, Smell, UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, Printer};
@@ -172,6 +172,12 @@ pub fn run_with_db(
     };
     let align_count = db.align_candidate_count(&snapshot)?;
     let prove = db.prove_candidates(&snapshot)?;
+    // Optional-but-autonomous lanes — surfaced so the compass can't hide them
+    // (they are NOT human-gated and NOT counted in required debt).
+    let optional_lanes = OptionalLanes {
+        review: review_candidates_from_snapshot(&snapshot).len() as i64,
+        prove: prove.len() as i64,
+    };
     let in_prove: std::collections::HashSet<&str> =
         prove.iter().map(|(h, _)| h.id.as_str()).collect();
     let adopt_count = db
@@ -192,6 +198,7 @@ pub fn run_with_db(
         &report,
         &gs,
         &lanes,
+        optional_lanes,
         &populate_pulse,
         &outside,
         &blocked,
@@ -362,6 +369,25 @@ fn gate_reason_counts(
     serde_json::json!(counts)
 }
 
+/// Autonomous lanes that don't gate "green" but MUST stay visible. The single
+/// compass pointer names one lane; `other_lanes` covers the *required* closable
+/// queues; `horizontal ○` flags optional discovery. Review (the tiered
+/// double-check of low-confidence verdicts) and prove (hypotheses awaiting their
+/// proof) had NO compass signal at all — so a status-driven driver was blind to
+/// real autonomous work and could mistake it for human-gated or nonexistent.
+/// This surfaces them honestly: autonomous, drainable now, not required for green.
+#[derive(Debug, Clone, Copy)]
+struct OptionalLanes {
+    review: i64,
+    prove: i64,
+}
+
+impl OptionalLanes {
+    fn any(self) -> bool {
+        self.review > 0 || self.prove > 0
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct CompletionTotals {
     blocked_validation_audit: i64,
@@ -441,6 +467,7 @@ fn render_status(
     report: &StatusReport,
     gs: &GraphState,
     lanes: &LaneDepths,
+    optional: OptionalLanes,
     populate: &PopulatePulse,
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
@@ -461,6 +488,18 @@ fn render_status(
         if let Some(obj) = v.as_object_mut() {
             obj.insert("graph_state".to_string(), serde_json::to_value(gs)?);
             obj.insert("other_lanes".to_string(), other_lanes_json(lanes, populate));
+            // Optional autonomous lanes (review/prove): visible, never required,
+            // never human-gated — so an orchestrator routes an agent, not a person.
+            obj.insert(
+                "optional_autonomous".to_string(),
+                serde_json::json!({
+                    "review": optional.review,
+                    "prove": optional.prove,
+                    "gate": "autonomous",
+                    "required_for_green": false,
+                    "note": "Drainable now by an agent (reviewer re-checks low-confidence verdicts; prove tests hypotheses) — not human-gated, not required for green.",
+                }),
+            );
             obj.insert(
                 "completion".to_string(),
                 completion_json(lanes, populate, align_count, adopt_count, blocked, gs),
@@ -514,6 +553,7 @@ fn render_status(
             report,
             gs,
             lanes,
+            optional,
             populate,
             outside,
             blocked,
@@ -535,6 +575,7 @@ fn render_plain_status(
     report: &StatusReport,
     gs: &GraphState,
     lanes: &LaneDepths,
+    optional: OptionalLanes,
     populate: &PopulatePulse,
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
@@ -653,6 +694,25 @@ fn render_plain_status(
             advisories.cochange_suggestions,
             advisories.shotgun_surgery,
             advisories.proof_locality_suggestions
+        );
+    }
+    if optional.any() {
+        let mut bits = Vec::new();
+        if optional.review > 0 {
+            bits.push(format!(
+                "{} review (re-check low-confidence verdicts)",
+                optional.review
+            ));
+        }
+        if optional.prove > 0 {
+            bits.push(format!(
+                "{} prove (hypotheses awaiting proof)",
+                optional.prove
+            ));
+        }
+        println!(
+            "  optional autonomous: {} — an AGENT drains these (not human-gated), drainable now, not required for green: `loom next --mode review`/`--mode prove`.",
+            bits.join(" · ")
         );
     }
     if audit.computed && audit.open_findings.unwrap_or(0) > 0 {

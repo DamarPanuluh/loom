@@ -1636,6 +1636,52 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// The review/prove lanes are AUTONOMOUS (an agent drains them), not human-gated,
+// and were previously invisible in `loom status` — a status-driven driver was
+// blind to them. The compass must now surface them honestly (visible, autonomous,
+// not required-for-green) so they are never mistaken for human work or nonexistent.
+#[test]
+fn sqlite_status_surfaces_optional_autonomous_lanes() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("optional-autonomous");
+    // Manufacture one low-confidence verdict → it lands in the review lane.
+    let (a, b) = first_two_intent_ids(&graph.root);
+    let line = format!(
+        "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\
+         \"criterion\":\"they coexist but the coupling is uncertain\",\"confidence\":0.5}}"
+    );
+    write_scratch_file(&graph.root, "scratch/lc.jsonl", &line);
+    run_json_as(
+        &graph.root,
+        &["batch", "scratch/lc.jsonl", "--json"],
+        "llm:analyzer",
+    );
+
+    // JSON: the review lane is surfaced, labeled autonomous, and NOT required for green.
+    let st = run_json(&graph.root, &["status", "--json"]);
+    let opt = &st["optional_autonomous"];
+    assert!(
+        opt["review"].as_i64().unwrap_or(0) >= 1,
+        "the review lane is surfaced in the compass: {st}"
+    );
+    assert_eq!(
+        opt["gate"].as_str(),
+        Some("autonomous"),
+        "review is labeled autonomous, not human-gated: {opt}"
+    );
+    assert_eq!(
+        opt["required_for_green"].as_bool(),
+        Some(false),
+        "review is optional, not required for green: {opt}"
+    );
+    // Human parity: the line names it and says an AGENT (not a human) drains it.
+    let text = run_text_as(&graph.root, &["status"], "llm");
+    assert!(
+        text.contains("optional autonomous") && text.contains("review") && text.contains("AGENT"),
+        "the human compass surfaces review as agent-drained autonomous work: {text}"
+    );
+}
+
 #[test]
 fn sqlite_review_take_drains_low_confidence_in_bulk() {
     let _guard = sqlite_test_lock();
@@ -3674,6 +3720,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "map_vs_territory",
         "needs_reverification",
         "open_issues",
+        "optional_autonomous",
         "other_lanes",
         "passing_edges",
         "populate",
