@@ -534,13 +534,17 @@ pub enum Command {
     /// read; the graph stays the source of truth.
     #[command(after_help = "EXAMPLE:\n  \
         loom wiki                       # write loom.wiki.md\n  \
-        loom wiki --out docs/ARCH.md    # choose the path\n  \
-        loom wiki -- -                  # to stdout\n  \
+        loom wiki docs/ARCH.md          # choose the path\n  \
+        loom wiki -                     # to stdout\n  \
         loom wiki --check               # CI/pre-commit: fail if stale")]
     Wiki {
-        /// Output file ("-" for stdout). Defaults to loom.wiki.md.
-        #[arg(long, default_value = "loom.wiki.md")]
-        out: String,
+        /// Output file ("-" for stdout). Positional, mirroring `loom export`
+        /// and `loom import <file>`. Defaults to loom.wiki.md.
+        path: Option<String>,
+
+        /// Output file (legacy flag form; same as the positional path).
+        #[arg(long, conflicts_with = "path")]
+        out: Option<String>,
 
         /// Don't write — verify the existing wiki matches the live graph
         /// byte-for-byte (exits non-zero on drift / missing).

@@ -102,7 +102,10 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Skill       { command }    => skill::run(command, &printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
         Command::Explain     { target, impact } => explain::run(&target, impact, &printer),
-        Command::Wiki        { out, check }    => wiki::run(&out, check, &printer),
+        Command::Wiki        { path, out, check } => {
+            let out = path.or(out).unwrap_or_else(|| "loom.wiki.md".to_string());
+            wiki::run(&out, check, &printer)
+        }
         Command::Door        { utterance, why, limit } => door::run(&utterance, &why, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),

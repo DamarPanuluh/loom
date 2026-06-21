@@ -1636,6 +1636,67 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT: `loom wiki -` failed ("unexpected argument") while
+// `loom export -` worked — inconsistent stdout syntax across the two projection
+// commands. wiki now takes a positional path like export, so `loom wiki -` → stdout.
+#[test]
+fn sqlite_wiki_stdout_parity_with_export() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("wiki-stdout");
+    let out = std::process::Command::new(loom_bin())
+        .args(["wiki", "-"])
+        .current_dir(&graph.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom wiki -");
+    assert!(
+        out.status.success(),
+        "`loom wiki -` must succeed (parity with `loom export -`): {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("# loom"),
+        "`loom wiki -` emits the wiki markdown to stdout: {}",
+        &stdout[..stdout.len().min(80)]
+    );
+}
+
+// DOGFOOD-FOUND DEFECT: `loom edge implement <intent> <glob-matching-many> --locator X`
+// silently DROPPED the locator, skipped verify-first, and mass-grounded the intent
+// to every matched file. A locator names one symbol in one file — glob + locator
+// is now refused.
+#[test]
+fn sqlite_glob_grounding_refuses_a_locator() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("glob-locator");
+    let (a, _b) = first_two_intent_ids(&graph.root);
+    let out = std::process::Command::new(loom_bin())
+        .args([
+            "edge",
+            "implement",
+            &a,
+            "src/commands/*.rs",
+            "--locator",
+            "fn whatever",
+        ])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:builder")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom edge implement glob+locator");
+    assert!(
+        !out.status.success(),
+        "glob + locator must be refused, not silently mass-grounded: {:?}",
+        out.status
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("cannot be used with a glob"),
+        "the refusal explains why: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 // DOGFOOD-FOUND DEFECT: `loom layer order` with NO layers used to silently CLEAR
 // the order and print "✓ Layer order declared" — contradicting `loom smells`'s
 // "no declared order" and destructively writing on a query-shaped invocation. It

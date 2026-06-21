@@ -392,6 +392,22 @@ fn run_implement_with_sqlite(
     let targets = resolve_codefiles_with_db(&store, &codefile_key)?;
     let next_step = "ground more (`loom edge implement …`) or, if the leaf is fully grounded, prove it: `loom next --mode validate`";
     if targets.len() > 1 {
+        // A locator names ONE symbol in ONE file — it cannot apply to a glob that
+        // matched many. Silently dropping it (and skipping verify-first) is how a
+        // typo'd locator used to mass-ground an intent to every file. Refuse.
+        if !locator.trim().is_empty() {
+            anyhow::bail!(
+                "`--locator \"{}\"` cannot be used with a glob that matched {} files ('{}') — a \
+                 locator names one symbol in one file.\n\
+                 Ground per file: loom edge implement {} <one-file> --locator \"{}\"\n\
+                 Or drop --locator for file-level grounding across the match.",
+                locator.trim(),
+                targets.len(),
+                codefile_key,
+                intent_key,
+                locator.trim(),
+            );
+        }
         for cf in &targets {
             store.insert_implements(&intent_id, &cf.id, "", &notes, &now)?;
         }
