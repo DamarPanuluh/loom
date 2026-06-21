@@ -1180,4 +1180,20 @@ impl SqliteGraphStore {
         )?;
         Ok(())
     }
+
+    /// SECURITY: after an import, neutralize unvetted command-carrying proofs so a
+    /// bulk `loom validate --all` cannot SILENTLY execute shell commands that
+    /// arrived in a (possibly untrusted) imported graph — the supply-chain RCE
+    /// footgun. Only `not_run` commands are touched: a settled passed/failed
+    /// result is data `--all` never re-runs, so a legitimate self-restore is
+    /// unaffected. The operator vets one deliberately via `loom validate <intent>`
+    /// (which runs a blocked proof). Returns how many were neutralized.
+    pub fn block_unvetted_imported_commands(&self) -> Result<usize> {
+        let n = self.conn.execute(
+            "UPDATE validation SET last_result = 'blocked' \
+             WHERE TRIM(command) <> '' AND last_result = 'not_run'",
+            [],
+        )?;
+        Ok(n)
+    }
 }

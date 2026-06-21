@@ -1776,6 +1776,87 @@ fn sqlite_reciprocal_relates_to_not_double_counted() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (security hunt): import→exec supply-chain footgun. An
+// imported loom.graph.json carries shell commands that `loom validate` runs via
+// `sh -c`; the documented import→validate-all flow silently executed them with no
+// warning. Import now neutralizes unvetted pending commands (blocked) so a bulk
+// `validate --all` can't run them, and warns loudly.
+#[cfg(unix)]
+#[test]
+fn sqlite_import_blocks_unvetted_commands_from_bulk_validate() {
+    let _guard = sqlite_test_lock();
+    let canary = std::env::temp_dir().join(format!("loom_rce_canary_{}", std::process::id()));
+    let _ = fs::remove_file(&canary);
+    // Attacker graph: a not_run validation whose command writes the canary.
+    let atk = ScratchGraph::new("rce-atk");
+    run_json(&atk.root, &["init", ".", "--json"]);
+    let i = run_json_as(
+        &atk.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "t",
+            "--description",
+            "tdesc",
+            "--level",
+            "feature",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let cmd = format!("touch '{}'", canary.display());
+    run_json_as(
+        &atk.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "hostile",
+            "--type",
+            "test",
+            "--command",
+            &cmd,
+            "--intent",
+            &i,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    std::process::Command::new(loom_bin())
+        .args(["export"])
+        .current_dir(&atk.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("export");
+    let export_file = atk.root.join("loom.graph.json");
+
+    // Victim imports + runs the documented `validate --all`.
+    let vic = ScratchGraph::new("rce-vic");
+    run_json(&vic.root, &["init", ".", "--json"]);
+    let imp = run_json(
+        &vic.root,
+        &["import", export_file.to_str().unwrap(), "--json"],
+    );
+    assert_eq!(
+        imp["unvetted_commands_blocked"].as_i64(),
+        Some(1),
+        "import must block the unvetted command: {imp}"
+    );
+    run_text_as(&vic.root, &["validate", "--all"], "llm:validator");
+    let ran = canary.exists();
+    let _ = fs::remove_file(&canary);
+    assert!(
+        !ran,
+        "`loom validate --all` must NOT execute a command from an imported graph (RCE footgun)"
+    );
+}
+
 // DOGFOOD-FOUND DEFECT (security hunt): a validation's --timeout-secs killed only
 // the `sh` parent, not its process tree — a forked test runner (or a hostile
 // `sleep`) outlived the deadline while validate falsely reported "timed out". Now

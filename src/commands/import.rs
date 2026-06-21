@@ -28,6 +28,12 @@ fn run_with_sqlite(
     };
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&sqlite_db_path(root))?;
     store.import_export_json(&data)?;
+    // SECURITY: an imported graph carries shell commands that `loom validate`
+    // executes — a supply-chain footgun (a PR-merged / federated / cloned
+    // loom.graph.json). Neutralize unvetted pending commands so a bulk
+    // `validate --all` cannot run them silently; the operator vets each
+    // deliberately with `loom validate <intent>`.
+    let unvetted_blocked = store.block_unvetted_imported_commands()?;
     let (nodes, edges) = store.counts()?;
     let next_step = if as_planned {
         "`loom guide --mode port` for the re-realization loop, then `loom next --mode build`."
@@ -44,6 +50,7 @@ fn run_with_sqlite(
             "edges": edges,
             "skipped_nodes": skipped_nodes,
             "skipped_edges": skipped_edges,
+            "unvetted_commands_blocked": unvetted_blocked,
             "next_step": next_step,
         }));
     } else if as_planned {
@@ -54,6 +61,13 @@ fn run_with_sqlite(
         println!("  → Next: {next_step}");
     } else {
         println!("✓ SQLite graph imported from {file}  ({nodes} nodes, {edges} edges)");
+        if unvetted_blocked > 0 {
+            println!(
+                "  ⚠ {unvetted_blocked} imported proof(s) carry shell commands `loom validate` would EXECUTE — \
+                 blocked so `validate --all` won't run them silently. If this graph is from an UNTRUSTED source, \
+                 review them (`loom validation list`) before running `loom validate <intent>` to execute one."
+            );
+        }
         println!("  → Next: {next_step}");
     }
     Ok(())
