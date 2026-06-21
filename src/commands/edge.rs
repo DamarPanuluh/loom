@@ -153,6 +153,13 @@ fn run_explore_with_sqlite(
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let intent_a_id = resolve_intent_with_db(&store, &intent_a_key)?;
     let intent_b_id = resolve_intent_with_db(&store, &intent_b_key)?;
+    // A self-relationship is meaningless and used to miscount as "intent not
+    // found" in the existence probe — name the real cause.
+    if intent_a_id == intent_b_id {
+        anyhow::bail!(
+            "An intent can't relate to itself — both arguments resolved to {intent_a_id}. Pass two different intents (did you paste the same id twice?)."
+        );
+    }
     let now = chrono::Utc::now().to_rfc3339();
 
     match subcommand {
@@ -575,6 +582,15 @@ fn run_hierarchy_with_sqlite(
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let parent_id = resolve_intent_with_db(&store, &parent_key)?;
     let child_id = resolve_intent_with_db(&store, &child_key)?;
+    // A self-edge (same id in both slots — an easy UUID fat-finger) used to hit
+    // the DB's `id IN (a,b)` existence probe, which collapses to one row and
+    // reported "one or both intents not found" — sending the AI to recreate an
+    // intent that exists. Name the real cause instead.
+    if parent_id == child_id {
+        anyhow::bail!(
+            "An intent can't be its own parent — `parent` and `child` both resolved to {parent_id}. Pass two different intents (did you paste the same id twice?)."
+        );
+    }
     let now = chrono::Utc::now().to_rfc3339();
     let notes = notes.as_deref().unwrap_or("");
     store.insert_hierarchy(&parent_id, &child_id, notes, &now)?;

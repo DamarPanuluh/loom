@@ -1197,6 +1197,12 @@ pub fn clone_suggestions(
             .partial_cmp(&a.score)
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.summary.cmp(&b.summary))
+            // Equal score AND summary (two clone groups of the same size/shape)
+            // otherwise fell back to HashMap iteration order — non-deterministic
+            // across runs, churning diffs and breaking positional adjudication.
+            // evidence/remedy carry the clone-specific locations: a stable break.
+            .then_with(|| a.evidence.cmp(&b.evidence))
+            .then_with(|| a.remedy.cmp(&b.remedy))
     });
     out.truncate(MAX_SUGGESTIONS);
     out

@@ -1636,6 +1636,69 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): a self-edge (same id in both slots —
+// an easy UUID fat-finger) miscounted in the existence probe and reported "intent
+// not found", sending the AI to recreate an intent that already exists. Now named.
+#[test]
+fn sqlite_self_edge_named_not_misdiagnosed_as_missing() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("self-edge");
+    let (a, _b) = first_two_intent_ids(&graph.root);
+    let run = |args: &[&str]| {
+        std::process::Command::new(loom_bin())
+            .args(args)
+            .current_dir(&graph.root)
+            .env("LOOM_AGENT", "llm:builder")
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom")
+    };
+    for sub in [["edge", "hierarchy"], ["edge", "explore"]] {
+        let out = run(&[sub[0], sub[1], &a, &a]);
+        assert!(!out.status.success(), "{sub:?} self-edge must be refused");
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            (err.contains("its own parent") || err.contains("relate to itself"))
+                && !err.contains("not found"),
+            "{sub:?} self-edge must name the real cause, not 'not found': {err}"
+        );
+    }
+}
+
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): equal-scored code_clone findings were
+// emitted in HashMap iteration order — non-deterministic across runs, churning
+// diffs and breaking positional adjudication. A stable tie-break fixes it.
+#[test]
+fn sqlite_smells_clone_order_is_deterministic() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("clone-order");
+    let clones = || {
+        let v = run_json(&graph.root, &["smells", "--json"]);
+        v["code_clones"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|c| {
+                        format!(
+                            "{}|{}",
+                            c["summary"].as_str().unwrap_or(""),
+                            c["evidence"].as_str().unwrap_or("")
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    };
+    let first = clones();
+    for _ in 0..5 {
+        assert_eq!(
+            first,
+            clones(),
+            "code_clone order must be stable across runs"
+        );
+    }
+}
+
 // DOGFOOD-FOUND DEFECTS (AI-companion hunt): teaching-vs-behavior drift — the
 // guide footer omitted the valid `import` mode, and the oversized_file remedy
 // emitted a `loom hypothesis add` missing the REQUIRED --predicted-outcome (a
