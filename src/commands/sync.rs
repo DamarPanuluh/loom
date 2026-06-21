@@ -58,6 +58,10 @@ fn run_with_sqlite(
     flag_unverifiable_files(store, &codefiles, &ctx, &mut state)?;
     ripple_delegations(store, base, &ctx, &mut state)?;
     flush_pending_hash_updates(store, &state.pending_hash_updates)?;
+    // Reconcile settled hypothesis lineage: confirmed hypotheses' TARGETS no longer
+    // stale (the ripple skips them), and any staled before that rule existed are
+    // returned to passing here. Idempotent — a no-op once the lineage is settled.
+    store.settle_confirmed_hypothesis_targets()?;
 
     store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
 

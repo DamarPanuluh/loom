@@ -1940,7 +1940,7 @@ fn sqlite_sync_compacts_transition_notes() {
 }
 
 #[test]
-fn sqlite_hypothesis_adoption_outcome_validation_confirms_and_stales_targets() {
+fn sqlite_hypothesis_adoption_outcome_validation_confirms_then_settles_targets() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("hypothesis-outcome-flow");
     run_json(&graph.root, &["init", ".", "--json"]);
@@ -2136,6 +2136,19 @@ fn sqlite_hypothesis_adoption_outcome_validation_confirms_and_stales_targets() {
         "the VALIDATES edge should identify that it came from hypothesis adoption"
     );
 
+    // While the hypothesis is in-flight (proven + adopted, not yet confirmed), a
+    // target code change DOES stale its TARGETS evidence — the sync ripple at work.
+    write_scratch_file(
+        &graph.root,
+        "src/outcome_flow.rs",
+        "pub fn adoption_outcome_flow() -> bool {\n    true\n}\n",
+    );
+    let in_flight_sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        in_flight_sync["targets_edges_flagged"], 1,
+        "an in-flight (pre-confirm) hypothesis's TARGETS stales on a target code change: {in_flight_sync}"
+    );
+
     let marked = run_json(
         &graph.root,
         &[
@@ -2167,40 +2180,34 @@ fn sqlite_hypothesis_adoption_outcome_validation_confirms_and_stales_targets() {
         "passing the adopted outcome validation should confirm the hypothesis: {confirmed}"
     );
 
-    write_scratch_file(
-        &graph.root,
-        "src/outcome_flow.rs",
-        "pub fn adoption_outcome_flow() -> bool {\n    true\n}\n",
-    );
-    let synced = run_json(&graph.root, &["sync", "--json"]);
-    assert!(
-        synced["changes"]
-            .as_array()
-            .expect("sync changes")
-            .iter()
-            .any(|path| path == "src/outcome_flow.rs"),
-        "sync should observe the relevant code change: {synced}"
-    );
-    assert_eq!(
-        synced["targets_edges_flagged"], 1,
-        "the target code change should stale the one passing TARGETS edge: {synced}"
-    );
-
-    let staled = run_json_as(
+    // Once confirmed, the hypothesis is settled: the next sync reconciles its staled
+    // TARGETS back to passing (prove is closed — the live proof is the spawned
+    // intents' validations), and further target code changes never re-stale it.
+    let settle_sync = run_json(&graph.root, &["sync", "--json"]);
+    let settled = run_json_as(
         &graph.root,
         &["hypothesis", "show", hypothesis_id, "--json"],
         "llm:builder",
     );
     assert!(
-        staled["targets"]
+        settled["targets"]
             .as_array()
-            .expect("staled targets")
+            .expect("settled targets")
             .iter()
             .any(|target| {
-                target["intent_id"] == target_id
-                    && target["inspection_status"] == "needs_reverification"
+                target["intent_id"] == target_id && target["inspection_status"] == "passing"
             }),
-        "sync should stale the hypothesis TARGETS evidence on target code change: {staled}"
+        "sync settles a confirmed hypothesis's staled TARGETS back to passing: {settled} (sync: {settle_sync})"
+    );
+    write_scratch_file(
+        &graph.root,
+        "src/outcome_flow.rs",
+        "pub fn adoption_outcome_flow() -> bool {\n    !false\n}\n",
+    );
+    let post_confirm_sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        post_confirm_sync["targets_edges_flagged"], 0,
+        "a confirmed hypothesis's TARGETS is never re-staled by sync: {post_confirm_sync}"
     );
 }
 

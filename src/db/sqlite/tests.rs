@@ -870,6 +870,59 @@ fn set_targets_status_returns_correct_count() {
 }
 
 #[test]
+fn confirmed_hypothesis_targets_are_settled_not_staled() {
+    let now = "2026-01-01T00:00:00Z";
+    let mut store = SqliteGraphStore::in_memory().unwrap();
+    store.insert_intent(&sqlite_test_intent("intent-a", now)).unwrap();
+    store.insert_intent(&sqlite_test_intent("intent-b", now)).unwrap();
+
+    // (A) a confirmed hypothesis's passing TARGETS must NOT be staled by the ripple:
+    // prove is the only re-stamper and it is closed once confirmed, so staling would
+    // strand the edge in needs_reverification forever.
+    let mut h_pass = sqlite_test_hypothesis("hyp-pass", now);
+    h_pass.status = "confirmed".into();
+    store.insert_hypothesis(&h_pass).unwrap();
+    store.insert_targets("hyp-pass", "intent-a", now).unwrap();
+    store
+        .set_targets_status_for_hypothesis("hyp-pass", "passing", "proof", "verified", 0.9, "llm", now)
+        .unwrap();
+    let edge = store.list_targets_for_hypothesis("hyp-pass").unwrap().remove(0);
+    assert!(
+        !store
+            .flag_targets_needs_reverification(&edge, "spawned intent code changed", now)
+            .unwrap(),
+        "a confirmed hypothesis's TARGETS must not stale"
+    );
+    assert_eq!(
+        store.list_targets_for_hypothesis("hyp-pass").unwrap()[0].inspection_status,
+        "passing"
+    );
+
+    // (B) a confirmed hypothesis's already-stale TARGETS is reconciled back to passing.
+    let mut h_stale = sqlite_test_hypothesis("hyp-stale", now);
+    h_stale.status = "confirmed".into();
+    store.insert_hypothesis(&h_stale).unwrap();
+    store.insert_targets("hyp-stale", "intent-b", now).unwrap();
+    store
+        .set_targets_status_for_hypothesis(
+            "hyp-stale",
+            "needs_reverification",
+            "staled before sync skipped decided hypotheses",
+            "x",
+            0.9,
+            "llm",
+            now,
+        )
+        .unwrap();
+    let cleared = store.settle_confirmed_hypothesis_targets().unwrap();
+    assert_eq!(cleared, 1, "settle returns the count of stale TARGETS cleared");
+    assert_eq!(
+        store.list_targets_for_hypothesis("hyp-stale").unwrap()[0].inspection_status,
+        "passing"
+    );
+}
+
+#[test]
 fn sqlite_wal_concurrency_contract() {
     let root =
         std::env::temp_dir().join(format!("loom-sqlite-wal-{}.sqlite", uuid::Uuid::new_v4()));

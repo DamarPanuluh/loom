@@ -783,6 +783,21 @@ impl SqliteGraphStore {
         if edge.inspection_status != "passing" {
             return Ok(false);
         }
+        // A confirmed hypothesis is settled: its TARGETS lineage is historical and
+        // `prove` (the only re-stamper) is closed, so staling here would strand the
+        // edge in needs_reverification forever. The live proof is the spawned intents'
+        // validations, not this evidence edge — so leave it passing.
+        let on_confirmed = self
+            .conn
+            .query_row(
+                "SELECT 1 FROM hypothesis WHERE id = ?1 AND status = 'confirmed'",
+                params![edge.hypothesis_id],
+                |_| Ok(()),
+            )
+            .is_ok();
+        if on_confirmed {
+            return Ok(false);
+        }
         let tx = self.write_tx()?;
         super::stale_targets(&tx, &edge.hypothesis_id, &edge.intent_id)?;
         insert_sync_flip_note_tx(
@@ -796,6 +811,21 @@ impl SqliteGraphStore {
         )?;
         tx.commit()?;
         Ok(true)
+    }
+    /// Reconcile settled hypothesis lineage: a confirmed hypothesis's TARGETS are
+    /// historical (prove is closed, the live proof is the spawned intents'
+    /// validations), so any left `needs_reverification` — e.g. staled before sync
+    /// learned to skip them — are returned to `passing`. Returns the count cleared.
+    pub fn settle_confirmed_hypothesis_targets(&mut self) -> Result<usize> {
+        let tx = self.write_tx()?;
+        let n = tx.execute(
+            "UPDATE targets SET inspection_status = 'passing'
+             WHERE inspection_status = 'needs_reverification'
+               AND hypothesis_id IN (SELECT id FROM hypothesis WHERE status = 'confirmed')",
+            [],
+        )?;
+        tx.commit()?;
+        Ok(n)
     }
     pub fn flag_serves_needs_reverification(
         &mut self,
