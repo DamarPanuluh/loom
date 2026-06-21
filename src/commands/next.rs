@@ -92,6 +92,33 @@ fn phase_default_mode(phase: &str) -> &'static str {
     }
 }
 
+/// Bare `loom next` in phase=audit: there is no `--mode audit` queue, so echo the
+/// compass's own audit directive (which points at `loom smells`) rather than
+/// mis-routing the driver to OPTIONAL discovery while green-blocking findings sit
+/// unadjudicated.
+fn emit_audit_directive(gs: &GraphState, printer: &Printer) -> Result<()> {
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "phase": "audit",
+            "next_kind": gs.next_kind,
+            "next_action": gs.next_action,
+            "note": "phase=audit has no `loom next` queue — `loom smells --summary` is the audit surface; every open finding gates green until resolved (fix or a finding-specific decision note).",
+        }));
+    } else {
+        println!("── Next: phase=audit (the green-blocking gate) ──────────────────────");
+        let arrow = if gs.next_kind == "directive" {
+            "→ Next"
+        } else {
+            "→ Recommended"
+        };
+        println!("  {arrow}: {}", gs.next_action);
+        println!(
+            "  (`loom next` serves no audit queue — `loom smells --summary` is the audit surface; resolve each finding to reach green.)"
+        );
+    }
+    Ok(())
+}
+
 /// `loom-dx #4`: stamp the take-cap note into a non-bulk renderer's JSON
 /// envelope. `take_note` is Some only when --take was capped to 1; the field
 /// pair (`take_note` + `take_capped_to`) makes the cap visible to JSON agents
@@ -112,11 +139,20 @@ pub(crate) fn inject_take_note(
 pub fn run(
     mode: Option<&str>,
     all: bool,
-    take: usize,
+    take: Option<usize>,
     discovery_class: Option<&str>,
     compact: bool,
     printer: &Printer,
 ) -> Result<()> {
+    // An explicit `--take 0` (e.g. a programmatically-computed zero-size chunk)
+    // used to silently fall back to the single-item schema — a different shape
+    // with no take signal. Reject it; omitting --take is the single-item path.
+    if take == Some(0) {
+        anyhow::bail!(
+            "`--take 0` requests zero items — omit --take for the single top item, or pass --take N (N≥1) for a bulk read."
+        );
+    }
+    let take = take.unwrap_or(0);
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
     // #6: omit --mode → follow the compass phase.
@@ -125,6 +161,13 @@ pub fn run(
         None => {
             let snap = store.query_snapshot()?;
             let gs = store.graph_state(&snap)?;
+            // phase=audit has open smell findings that GATE green, but there is
+            // no `next --mode audit` queue — so bare next would mis-route to
+            // OPTIONAL discovery and the AI never reaches the green-blocking work.
+            // Echo the compass's audit directive (→ `loom smells`) instead.
+            if gs.phase == "audit" {
+                return emit_audit_directive(&gs, printer);
+            }
             (phase_default_mode(&gs.phase).to_string(), true)
         }
     };

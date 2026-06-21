@@ -1636,6 +1636,53 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): `loom next --take 0` (a computed
+// zero-size chunk) silently returned the single-item schema instead of a bulk
+// envelope, with no signal. Now an explicit 0 is rejected; omitting --take is the
+// single-item path.
+#[test]
+fn sqlite_next_take_zero_rejected() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("take-zero");
+    let out = std::process::Command::new(loom_bin())
+        .args(["next", "--mode", "discovery", "--take", "0"])
+        .current_dir(&graph.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom");
+    assert!(
+        !out.status.success(),
+        "`--take 0` must be rejected, not a silent single-item"
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("requests zero items"),
+        "the rejection explains itself: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): in phase=audit (open findings gate
+// green) bare `loom next` mis-routed to OPTIONAL discovery — there is no audit
+// queue, so the AI never reached the green-blocking work. Bare next now echoes
+// the compass's audit directive (→ `loom smells`). Guarded on phase since the
+// committed fixture's phase varies.
+#[test]
+fn sqlite_bare_next_in_audit_points_at_gate_not_discovery() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("audit-route");
+    let phase = run_json(&graph.root, &["status", "--json"])["graph_state"]["phase"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    if phase == "audit" {
+        let text = run_text_as(&graph.root, &["next"], "llm");
+        assert!(
+            text.contains("loom smells") && !text.contains("No relationship is tracked yet"),
+            "bare next in phase=audit must point at the audit gate, not optional discovery: {text}"
+        );
+    }
+}
+
 // DOGFOOD-FOUND DEFECTS (AI-companion hunt): two --json/prose parity mismatches an
 // AI driving on --json would act on. `loom report` printed "uninspected 0" (summary)
 // and "uninspected 1" (raw per-status) both bare-labelled; the discovery signal's

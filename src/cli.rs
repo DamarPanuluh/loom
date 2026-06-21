@@ -133,9 +133,12 @@ pub enum Command {
         /// Supported for discovery, fix, quality, align, and review (capped at
         /// 50). On the one-command-per-item modes (build, populate, validate,
         /// prove) --take is accepted but caps to 1 (those queues aren't
-        /// bulkable); use `loom next --all` for a full queue overview.
-        #[arg(long, default_value_t = 0, conflicts_with = "all")]
-        take: usize,
+        /// bulkable); use `loom next --all` for a full queue overview. Omit for
+        /// the single top item; pass N≥1 for a bulk read (`--take 0` is rejected,
+        /// so a computed zero-size chunk fails loudly instead of silently
+        /// switching back to the single-item shape).
+        #[arg(long, conflicts_with = "all")]
+        take: Option<usize>,
 
         /// For generated discovery pairs, choose which class to serve:
         /// suspected-coupling (default: code/vocab/domain signal), impact-map
