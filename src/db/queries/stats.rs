@@ -16,7 +16,7 @@ use super::snapshot::QuerySnapshot;
 /// One axis of the 360° coverage vector: covered/total along one dimension of
 /// understanding. `total == 0` means the axis has no surface yet (e.g. no
 /// quality rules seeded) — rendered as "—", never as a vacuous 100%.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct CoverageAxis {
     pub covered: i64,
     pub total: i64,
@@ -32,7 +32,7 @@ impl CoverageAxis {
 /// each as a counted fraction so the driving LLM always sees which vantage
 /// point is weakest. Surfaced on the pulse footer (every orientation command)
 /// and in `graph_state` JSON; the compass routes to the weakest binding axis.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct Coverage360 {
     /// Physical: CodeFiles reached by ≥1 IMPLEMENTS / all registered CodeFiles.
     pub grounded_files: CoverageAxis,
@@ -62,7 +62,7 @@ pub struct Coverage360 {
 /// Compact "pulse" of the graph — cheap situational awareness + a recommended
 /// next action (the compass). Returned in `--json` and rendered as a one-line
 /// footer by the orientation commands.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct GraphState {
     pub version: String,
     /// This graph's identity (uuid + human name) — what other looms reference.
@@ -1199,6 +1199,79 @@ pub fn tangled_files_from_snapshot(snapshot: &QuerySnapshot, limit: usize) -> Ve
     rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     rows.truncate(limit);
     rows
+}
+
+/// The `fully_proven` terminal badge — "production ready" in the only sense loom
+/// can WITNESS. It is a STRONGER read LAYERED OVER the existing `phase=complete`,
+/// NOT a rival state: one definition of "done" stays the cascade; this is its
+/// proof-quality CEILING. It holds iff phase is complete AND every strengthening
+/// gate below holds, and returns the UNMET gates as `reasons` so an unmet badge
+/// is loud + falsifiable, never a vacuous green. Pure over the snapshot + the
+/// already-computed open smells (re-derivable from the committed graph) — no
+/// agent-controlled denominator, and (post-G2) no exit-0 mint.
+///
+/// It deliberately does NOT claim deploy-fitness (security / perf / ops) — loom
+/// can't witness that; the name asserts proofs RAN, RESOLVE, are LOCAL, and the
+/// denominators are non-trivial.
+pub fn fully_proven_from_state(
+    gs: &GraphState,
+    snapshot: &QuerySnapshot,
+    open_smells: &[crate::db::queries::smells::Smell],
+) -> (bool, Vec<String>) {
+    let mut reasons: Vec<String> = Vec::new();
+
+    // G0 — base: one "done" definition; the badge is its ceiling, not a rival.
+    if gs.phase != "complete" {
+        reasons.push(format!(
+            "phase is '{}', not 'complete' — drive the open lane (`loom next`)",
+            gs.phase
+        ));
+    }
+    // G1 — EXECUTED floor with an honest denominator: every CURRENT-realized leaf
+    // is proven by an EXECUTED (discriminating) proof, not merely asserted. The
+    // denominator is realized_leaves, so a leaf cannot drop out by being unproven.
+    let exec = &gs.coverage.proven_executed_leaves;
+    let realized = &gs.coverage.realized_leaves;
+    if realized.covered == 0 {
+        reasons.push("no realized leaves to prove".to_string());
+    } else if exec.covered < realized.covered {
+        reasons.push(format!(
+            "{} of {} realized leaves are not EXECUTED-proven (asserted-only or unproven) — write and run a discriminating proof",
+            realized.covered - exec.covered,
+            realized.covered
+        ));
+    }
+    // G4 — proof-locality: no OPEN nonlocal_proof finding (a proof that does not
+    // exercise its grounded code). Advisory for phase=complete; BINDING here.
+    let nonlocal = open_smells
+        .iter()
+        .filter(|s| s.kind == "nonlocal_proof")
+        .count();
+    if nonlocal > 0 {
+        reasons.push(format!(
+            "{nonlocal} proof(s) do not exercise their grounded code (nonlocal_proof) — see `loom smells`"
+        ));
+    }
+    // G6 — zero unverified autonomous-inference debt: no record still bearing the
+    // `llm:auto` provenance tier (drafted by the autonomous mode, never verified).
+    // Always 0 until that mode ships; future-proofs the badge against laundering.
+    let auto = snapshot
+        .relates
+        .iter()
+        .filter(|e| e.inspected_by == "llm:auto")
+        .count()
+        + snapshot
+            .governs
+            .iter()
+            .filter(|e| e.inspected_by == "llm:auto")
+            .count();
+    if auto > 0 {
+        reasons.push(format!(
+            "{auto} unverified autonomous inference(s) remain — re-verify or discard before production"
+        ));
+    }
+
+    (reasons.is_empty(), reasons)
 }
 
 #[cfg(test)]

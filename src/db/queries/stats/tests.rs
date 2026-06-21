@@ -1150,3 +1150,58 @@ fn a_deferred_child_does_not_block_parent_rollup() {
         "the deferred child itself is not queued"
     );
 }
+
+#[test]
+fn fully_proven_badge_gates_on_phase_and_executed_proof() {
+    use super::super::snapshot::QuerySnapshot;
+    let empty = QuerySnapshot::from_parts(
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        vec![],
+        None,
+    );
+    // A complete graph with every realized leaf EXECUTED-proven, no smells.
+    let complete = |exec: i64, realized: i64| GraphState {
+        phase: "complete".into(),
+        coverage: Coverage360 {
+            realized_leaves: CoverageAxis {
+                covered: realized,
+                total: realized,
+            },
+            proven_executed_leaves: CoverageAxis {
+                covered: exec,
+                total: realized,
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    // All gates pass → fully_proven.
+    let (ok, reasons) = fully_proven_from_state(&complete(3, 3), &empty, &[]);
+    assert!(ok, "expected fully_proven, got: {reasons:?}");
+
+    // phase != complete blocks it (the base gate).
+    let mut not_complete = complete(3, 3);
+    not_complete.phase = "validate".into();
+    let (ok, reasons) = fully_proven_from_state(&not_complete, &empty, &[]);
+    assert!(!ok);
+    assert!(
+        reasons.iter().any(|r| r.contains("not 'complete'")),
+        "{reasons:?}"
+    );
+
+    // A realized leaf that is only ASSERTED (not executed) blocks it (G1).
+    let (ok, reasons) = fully_proven_from_state(&complete(2, 3), &empty, &[]);
+    assert!(!ok);
+    assert!(
+        reasons.iter().any(|r| r.contains("EXECUTED-proven")),
+        "{reasons:?}"
+    );
+}

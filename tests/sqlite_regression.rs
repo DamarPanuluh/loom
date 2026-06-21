@@ -2745,6 +2745,17 @@ fn sqlite_g2_executed_requires_a_discriminating_runner() {
         cov["proven_asserted_leaves"]["covered"], 1,
         "the inert (exit-0, no assertion) proof falls to ASSERTED: {cov}"
     );
+
+    // The fully_proven badge sees the asserted-only leaf and refuses (G1): the
+    // badge requires EXECUTED proofs, so an asserted leaf names the exact gap.
+    let st = run_json(&graph.root, &["status", "--json"]);
+    assert_eq!(st["fully_proven"], false, "{st}");
+    assert!(
+        st["fully_proven_reasons"].as_array().is_some_and(|rs| rs
+            .iter()
+            .any(|r| r.as_str().is_some_and(|s| s.contains("EXECUTED-proven")))),
+        "the asserted-only leaf must surface as a fully_proven gap: {st}"
+    );
 }
 
 // query-shaped command that secretly mutated state (layer-order with no args,
@@ -5401,6 +5412,8 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "committed_export",
         "completion",
         "failing_edges",
+        "fully_proven",
+        "fully_proven_reasons",
         "graph_state",
         "human_gated",
         "independent_edges",

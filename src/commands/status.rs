@@ -20,6 +20,16 @@ struct AdvisoryCounts {
     proof_locality_suggestions: usize,
 }
 
+/// The `fully_proven` terminal badge — production-ready in the only sense loom
+/// can witness (proofs ran/resolve/are-local, non-trivial denominators, zero
+/// unverified inference). `ok` is the verdict; `reasons` names every unmet gate
+/// so a not-yet-fully-proven graph is loud, never silently green.
+#[derive(Debug, Clone, serde::Serialize)]
+struct FullyProven {
+    ok: bool,
+    reasons: Vec<String>,
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 struct AuditPulse {
     computed: bool,
@@ -184,8 +194,15 @@ pub fn run_with_db(
     let ignores = db.list_ignores()?;
     let decision_notes = db.notes_by_kind("decision")?;
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
+    // Open smells are computed once at the audit gate (phase audit|complete) and
+    // reused for BOTH the audit pulse and the fully_proven badge's proof-locality.
+    let open_smells = if should_compute_audit_pulse(&gs) {
+        db.smell_report(&snapshot)?.open
+    } else {
+        Vec::new()
+    };
     let audit = if should_compute_audit_pulse(&gs) {
-        audit_pulse(db.smell_report(&snapshot)?.open)
+        audit_pulse(open_smells.clone())
     } else {
         deferred_audit_pulse()
     };
@@ -213,6 +230,20 @@ pub fn run_with_db(
     // audit gate), so a red graph can't hide files-on-disk the graph ignores.
     let disk = disk_pulse(&snapshot, db, root)?;
 
+    // The fully_proven terminal badge: the snapshot-pure proof-quality gates,
+    // PLUS the disk/export freshness that only `loom status` can witness (a badge
+    // read off a stale export or unsynced tree would over-claim).
+    let (mut fully_proven, mut fp_reasons) =
+        crate::db::queries::stats::fully_proven_from_state(&gs, &snapshot, &open_smells);
+    if export_freshness == "stale" {
+        fully_proven = false;
+        fp_reasons.push("committed loom.graph.json is STALE — `loom export`".to_string());
+    }
+    let badge = FullyProven {
+        ok: fully_proven,
+        reasons: fp_reasons,
+    };
+
     render_status(
         &report,
         &gs,
@@ -228,6 +259,7 @@ pub fn run_with_db(
         adopt_count,
         export_freshness,
         &disk,
+        &badge,
         printer,
     )
 }
@@ -497,6 +529,7 @@ fn render_status(
     adopt_count: i64,
     export_freshness: &str,
     disk: &DiskPulse,
+    badge: &FullyProven,
     printer: &Printer,
 ) -> Result<()> {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
@@ -547,6 +580,12 @@ fn render_status(
                 "committed_export".to_string(),
                 serde_json::json!(export_freshness),
             );
+            // The terminal badge: production-ready in the sense loom can witness.
+            obj.insert("fully_proven".to_string(), serde_json::json!(badge.ok));
+            obj.insert(
+                "fully_proven_reasons".to_string(),
+                serde_json::json!(badge.reasons),
+            );
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
                 "align_drift_suspects": align_count,
@@ -583,6 +622,7 @@ fn render_status(
             adopt_count,
             export_freshness,
             disk,
+            badge,
             totals,
         );
     }
@@ -605,6 +645,7 @@ fn render_plain_status(
     adopt_count: i64,
     export_freshness: &str,
     disk: &DiskPulse,
+    badge: &FullyProven,
     totals: CompletionTotals,
 ) {
     println!("Completion:");
@@ -770,6 +811,17 @@ fn render_plain_status(
     }
     if let Some(others) = other_lanes_line(lanes, populate, &gs.phase) {
         println!("  other open lanes: {others}");
+    }
+    // The terminal badge — shown at phase=complete, where the strengthening gates
+    // are meaningful. PRODUCTION READY only in the sense loom can WITNESS (proofs
+    // ran/resolve/are-local, non-trivial denominators, zero inference debt) — not
+    // a deploy-fitness claim. When unmet it names the exact remaining gap.
+    if gs.phase == "complete" {
+        if badge.ok {
+            println!("  ✓ PRODUCTION READY (fully_proven) — every realized leaf executed-proven, proofs local, no inference debt.");
+        } else {
+            println!("  ⚠ fully_proven: NOT YET — {}", badge.reasons.join("; "));
+        }
     }
     // The verb signals the compass's own confidence: a directive phase (a
     // failure or binding gap) reads as a command; a recommended phase
