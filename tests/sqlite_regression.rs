@@ -1683,6 +1683,111 @@ fn sqlite_bare_next_in_audit_points_at_gate_not_discovery() {
     }
 }
 
+// DOGFOOD-FOUND DEFECT (integrity hunt): `loom import` is a TRUSTED build path
+// (federation/restore/PR-merged loom.graph.json) but bypassed the structural/value
+// invariants every interactive write enforces — it accepted a HIERARCHY cycle /
+// multi-parent / out-of-range confidence / dangling edge with "✓ imported", and
+// the malformed graph then re-exported byte-clean and TRAVELED. Import now
+// validates the data first and refuses.
+#[test]
+fn sqlite_import_rejects_malformed_graphs() {
+    let _guard = sqlite_test_lock();
+    let src = ScratchGraph::new("imp-src");
+    run_json(&src.root, &["init", ".", "--json"]);
+    let id = |v: Value| v["id"].as_str().unwrap().to_string();
+    let a = id(run_json_as(
+        &src.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--description",
+            "da",
+            "--level",
+            "component",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    ));
+    let b = id(run_json_as(
+        &src.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "bravo",
+            "--description",
+            "db",
+            "--level",
+            "feature",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    ));
+    run_json_as(
+        &src.root,
+        &["edge", "hierarchy", &a, &b, "--json"],
+        "llm:builder",
+    );
+    std::process::Command::new(loom_bin())
+        .args(["export"])
+        .current_dir(&src.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("export");
+    let base: Value = serde_json::from_str(
+        &fs::read_to_string(src.root.join("loom.graph.json")).expect("read export"),
+    )
+    .expect("parse export");
+
+    let import_corrupted = |mutate: &dyn Fn(&mut Value)| -> (bool, String) {
+        let mut g = base.clone();
+        mutate(&mut g);
+        let dst = ScratchGraph::new("imp-dst");
+        run_json(&dst.root, &["init", ".", "--json"]);
+        let bad = dst.root.join("bad.json");
+        fs::write(&bad, serde_json::to_string(&g).unwrap()).unwrap();
+        let out = std::process::Command::new(loom_bin())
+            .args(["import", bad.to_str().unwrap()])
+            .current_dir(&dst.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("import");
+        (
+            out.status.success(),
+            String::from_utf8_lossy(&out.stderr).to_string(),
+        )
+    };
+
+    // Cycle: add the reverse hierarchy edge b->a.
+    let (ok, err) = import_corrupted(&|g| {
+        let e = serde_json::json!({"created_at":"2026-01-01T00:00:00+00:00","from":b.clone(),"to":a.clone(),"notes":""});
+        g["edges"]["HIERARCHY"].as_array_mut().unwrap().push(e);
+    });
+    assert!(
+        !ok && err.contains("cycle"),
+        "cyclic import must be rejected: {err}"
+    );
+
+    // Out-of-range confidence.
+    let (ok, err) = import_corrupted(&|g| {
+        g["edges"]["RELATES_TO"] = serde_json::json!([{"created_at":"2026-01-01T00:00:00+00:00","from":a.clone(),"to":b.clone(),"confidence":5.0,"inspection_status":"passing","criterion":"x","notes":""}]);
+    });
+    assert!(
+        !ok && err.contains("confidence"),
+        "out-of-range confidence must be rejected: {err}"
+    );
+
+    // A valid graph must still import.
+    let (ok, _) = import_corrupted(&|_g| {});
+    assert!(ok, "a valid graph must still import");
+}
+
 // DOGFOOD-FOUND DEFECTS (AI-companion hunt): two --json/prose parity mismatches an
 // AI driving on --json would act on. `loom report` printed "uninspected 0" (summary)
 // and "uninspected 1" (raw per-status) both bare-labelled; the discovery signal's

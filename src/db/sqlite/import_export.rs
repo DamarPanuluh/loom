@@ -1,11 +1,106 @@
 use super::SqliteGraphStore;
 use super::*;
 
+/// Validate an export's structural + value invariants BEFORE any insert, so a
+/// malformed graph (HIERARCHY cycle/multi-parent/self-loop, dangling edge,
+/// out-of-range confidence) is REFUSED rather than silently persisted and then
+/// re-exported as byte-clean "truth". Mirrors what the interactive write paths
+/// and `loom doctor` enforce; the raw import INSERTs only have DDL to lean on,
+/// which can't express these cross-row invariants.
+fn validate_import_data(data: &JsonValue) -> Result<()> {
+    use std::collections::{HashMap, HashSet};
+
+    // Every node id, to catch a dangling edge with a clear message instead of a
+    // raw SQLite foreign-key error.
+    let mut node_ids: HashSet<&str> = HashSet::new();
+    if let Some(nodes) = data.get("nodes").and_then(JsonValue::as_object) {
+        for items in nodes.values() {
+            for n in items.as_array().into_iter().flatten() {
+                if let Some(id) = n.get("id").and_then(JsonValue::as_str) {
+                    node_ids.insert(id);
+                }
+            }
+        }
+    }
+
+    let Some(edges) = data.get("edges").and_then(JsonValue::as_object) else {
+        return Ok(());
+    };
+
+    // Per-edge across all types: endpoints must resolve, confidence stays bounded.
+    for (etype, items) in edges {
+        for e in items.as_array().into_iter().flatten() {
+            for slot in ["from", "to"] {
+                let id = e.get(slot).and_then(JsonValue::as_str).unwrap_or("");
+                if !id.is_empty() && !node_ids.contains(id) {
+                    anyhow::bail!(
+                        "Import rejected: a {etype} edge references a {slot} node '{id}' that no node defines — a dangling edge. Fix the export and re-import (nothing was imported)."
+                    );
+                }
+            }
+            if let Some(c) = e.get("confidence").and_then(JsonValue::as_f64) {
+                if !(0.0..=1.0).contains(&c) {
+                    anyhow::bail!(
+                        "Import rejected: a {etype} edge has confidence {c} outside [0,1] — confidence is a bounded trust signal. Fix the export and re-import (nothing was imported)."
+                    );
+                }
+            }
+        }
+    }
+
+    // HIERARCHY must be an acyclic tree: one parent per child, no self-loop, no cycle.
+    if let Some(hier) = edges.get("HIERARCHY").and_then(JsonValue::as_array) {
+        let mut parent_of: HashMap<&str, &str> = HashMap::new();
+        for e in hier {
+            let parent = e.get("from").and_then(JsonValue::as_str).unwrap_or("");
+            let child = e.get("to").and_then(JsonValue::as_str).unwrap_or("");
+            if parent.is_empty() || child.is_empty() {
+                continue;
+            }
+            if parent == child {
+                anyhow::bail!(
+                    "Import rejected: intent '{child}' is its own HIERARCHY parent (a self-loop). Fix the export and re-import (nothing was imported)."
+                );
+            }
+            if let Some(prev) = parent_of.insert(child, parent) {
+                if prev != parent {
+                    anyhow::bail!(
+                        "Import rejected: intent '{child}' has two HIERARCHY parents ('{prev}' and '{parent}') — the hierarchy must be a tree (one parent per child). Fix the export and re-import (nothing was imported)."
+                    );
+                }
+            }
+        }
+        // A cycle = following a child up its parent chain revisits a node.
+        for start in parent_of.keys() {
+            let mut seen: HashSet<&str> = HashSet::new();
+            let mut cur: &str = start;
+            while let Some(&p) = parent_of.get(cur) {
+                if !seen.insert(cur) {
+                    anyhow::bail!(
+                        "Import rejected: the HIERARCHY contains a cycle (through '{cur}') — the hierarchy must be an acyclic tree. Fix the export and re-import (nothing was imported)."
+                    );
+                }
+                cur = p;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl SqliteGraphStore {
     pub fn import_export_json(&mut self, data: &JsonValue) -> Result<()> {
         if data.get("loom_export").and_then(JsonValue::as_i64) != Some(1) {
             anyhow::bail!("Not a loom export (missing/unknown `loom_export` marker).");
         }
+        // Import is a TRUSTED graph-construction path (federation, restore, a
+        // PR-merged loom.graph.json), but it inserts with raw INSERTs that only
+        // the DDL constraints guard — so a hand-edit or bad merge could persist a
+        // graph the interactive write paths (and `loom doctor`) would condemn:
+        // a HIERARCHY cycle/multi-parent, an out-of-range confidence, a dangling
+        // edge. Validate the data FIRST so a malformed graph never imports
+        // "successfully" and then travels as byte-clean truth.
+        validate_import_data(data)?;
 
         let tx = self.write_tx()?;
         clear_all(&tx)?;
