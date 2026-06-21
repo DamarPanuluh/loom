@@ -85,9 +85,11 @@ output carries decorative headers, and even `next --take N --json` emits a
 evidence gate rejects. Copy the template lines, fill the criteria, then paste.
 Pin a session to one repo's graph: `export LOOM_GRAPH=<path>` (or `--graph`)
 — every loom call then hits that graph regardless of cd mistakes.
-Tiered agents: every work item carries `effort: low|mid|high` (about the WORK,
-never a model); record HONEST confidence — verdicts < 0.7 feed
-`loom next --mode review` for a stronger agent's independent re-inspection.
+Adopt the lane as a skill: when the compass routes you to a lane, `loom guide
+--role <lane>` serves its full discipline JIT to adopt in-context (no install).
+Every item also carries `effort: low|mid|high` (about the WORK, never a model);
+record HONEST confidence — verdicts < 0.7 feed `loom next --mode review` for a
+stronger pass's independent re-inspection.
 Superseded design: `loom intent retire <id> --reason … [--replaced-by …]`
 (invisible to computation, visible to history; fallout reported).
 Directed handoff: `loom note add --for <role>` = that lane sees it first.
@@ -96,8 +98,10 @@ exports rejected, no partial graphs). Porting: `loom guide --mode port`.
 Ship the graph: `loom export` (commit `loom.graph.json`, gitignore `.loom/`);
 guard freshness with `loom export --check` (non-zero on drift — pre-commit/CI).
 
-Multi-agent: set `LOOM_AGENT=llm:builder|analyzer|fixer|validator|quality`
-per agent — lanes are enforced. Unset (bare `llm`) = solo mode, all lanes pass.
+Lanes: adopt each via `loom guide --role builder|analyzer|fixer|validator|quality`
+(its SETUP sets `LOOM_AGENT=llm:<lane>`) — enforced at the write boundary. One
+context switching lane-skills is the default; spawn a sub-context only for a
+genuinely bulk queue. Unset (bare `llm`) = solo mode, all lanes pass.
 
 ## Gotchas (all hit for real)
 
