@@ -133,6 +133,14 @@ struct SyncState {
     escaped_files: Vec<String>,
     locators_stale: Vec<String>,
     text_contents: HashMap<String, String>,
+    /// Paths whose on-disk content hash differs from the stored one — the ONLY
+    /// files whose physical facts can have changed. Re-extraction (tree-sitter
+    /// parse) is content-addressed: an unchanged file's facts are already
+    /// current, so a no-op sync must not re-parse every file (it cost ~15s per
+    /// large file, scaling with repo size instead of change size). Stale facts
+    /// can only ever persist on an UNCHANGED file, where nothing changed to
+    /// detect — any edit that could matter also moves the hash into this set.
+    content_changed: HashSet<String>,
     non_utf8_files: HashSet<String>,
     related_edges_flagged: HashSet<String>,
     governs_edges_flagged_ids: HashSet<String>,
@@ -191,6 +199,12 @@ fn scan_files_and_flag_changes(
         };
         let changed = codefile_changed(cf, &scanned);
         let hash_updated = scanned.new_hash != cf.content_hash;
+        if hash_updated {
+            // Hash differs from the stored one (a real edit OR a legacy file with
+            // no recorded hash): its physical facts may have changed, so the
+            // facts pass must re-extract it. Equal hash → byte-identical → skip.
+            state.content_changed.insert(cf.path.clone());
+        }
         if hash_updated && !changed {
             // Legacy graph (no stored content_hash): adopt the content hash so
             // future syncs are content-addressed. Deliberately does NOT touch
@@ -441,6 +455,13 @@ fn update_physical_facts_and_flag_locators(
 ) -> Result<()> {
     for cf in codefiles {
         if let Some(content) = state.text_contents.get(&cf.path) {
+            // Content-addressed: a file whose hash matches the stored one is
+            // byte-identical, so re-parsing it reproduces the exact same facts.
+            // Skip the tree-sitter parse for it — the #9 win (a no-op sync no
+            // longer re-parses every file, ~15s each on large files).
+            if !state.content_changed.contains(&cf.path) {
+                continue;
+            }
             let facts = crate::repo::extract_physical_facts(base, &cf.path, content);
             if facts.imports != cf.imports {
                 store.update_codefile_imports(&cf.id, &facts.imports)?;
