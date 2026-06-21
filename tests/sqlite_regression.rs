@@ -2243,6 +2243,51 @@ fn sqlite_large_graph_read_commands_stay_under_budget() {
 }
 
 // ENHANCEMENT #5 — reads must not write. The campaign's worst class of bug was a
+// LIFECYCLE ENTRY POINT: `loom detect` runs BEFORE a graph exists and is the
+// first command a cold agent runs on a new repo. Its routing must point at
+// `loom init` first (every later step needs a graph), in BOTH human and --json —
+// a dry-run of the full lane lifecycle found the --json form carried repo facts
+// with no next action, and even the human form skipped `init`.
+#[test]
+fn sqlite_detect_routes_to_init_in_both_forms() {
+    let _guard = sqlite_test_lock();
+    let dir = std::env::temp_dir().join(format!(
+        "loom-detect-route-{}-{}",
+        std::process::id(),
+        line!()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(dir.join("src")).expect("scratch src dir");
+    fs::write(dir.join("src/lib.rs"), "pub fn a() {}\n").expect("scratch source");
+    let run = |json: bool| {
+        let mut args = vec!["detect"];
+        if json {
+            args.push("--json");
+        }
+        let out = Command::new(loom_bin())
+            .args(&args)
+            .current_dir(&dir)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom detect");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    // --json carries a next_step that routes to `loom init`.
+    let v: Value = serde_json::from_str(&run(true)).expect("detect --json");
+    assert!(
+        v["next_step"]
+            .as_str()
+            .is_some_and(|s| s.contains("loom init")),
+        "detect --json must route to `loom init` first: {v}"
+    );
+    // Human form names it too (parity).
+    assert!(
+        run(false).contains("loom init"),
+        "human detect must route to `loom init` first"
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export

@@ -10,8 +10,27 @@ pub fn run(printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let d = crate::repo::detect(&cwd)?;
 
+    // Entry-point routing: `detect` runs BEFORE a graph exists, and every later
+    // step needs one — so point at `loom init` FIRST, then the driving loop.
+    // Carried in BOTH human and --json (parity): without it a cold --json agent
+    // gets repo facts with no next action, and even the human form skipped `init`.
+    let next_step = if d.has_source {
+        "Existing code (brownfield): create the graph, then map it — `loom init .`, \
+         read `loom guide`, then drive with `loom status` / `loom next`."
+    } else {
+        "No source yet (greenfield): create the graph, then design — `loom init .`, \
+         then `loom guide --mode seed` to interview and `loom intent add --level system …`."
+    };
+
     if printer.json {
-        printer.print_json(&d);
+        let mut v = serde_json::to_value(&d)?;
+        if let Some(obj) = v.as_object_mut() {
+            obj.insert(
+                "next_step".to_string(),
+                serde_json::Value::String(next_step.to_string()),
+            );
+        }
+        printer.print_json(&v);
         return Ok(());
     }
 
@@ -44,10 +63,6 @@ pub fn run(printer: &Printer) -> Result<()> {
         }
     }
     println!();
-    if d.has_source {
-        println!("  → Existing code found — brownfield: map it (`loom guide`, then `loom next`).");
-    } else {
-        println!("  → No source yet — greenfield: design intents first (`loom guide`).");
-    }
+    println!("  → {next_step}");
     Ok(())
 }
