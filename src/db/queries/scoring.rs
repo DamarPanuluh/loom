@@ -881,14 +881,17 @@ pub fn unexplored_pairs_scored_from_snapshot(
         .collect();
     let base_urgency = InspectionStatus::Uninspected.urgency();
     let empty_files = std::collections::HashSet::new();
-    let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
 
-    for i in 0..snapshot.intents.len() {
-        for j in (i + 1)..snapshot.intents.len() {
+    // Score one candidate pair by intent index. Returns None when the pair is
+    // already linked, or — after computing its signals — its discovery class is
+    // not the one requested. Identical predicates to the old all-pairs body, so
+    // the candidate path below is a pure pruning of which (i, j) we evaluate.
+    let score_pair = |i: usize, j: usize| -> Option<(RelatesTo, f64)> {
+        {
             let a = &snapshot.intents[i];
             let b = &snapshot.intents[j];
             if linked.contains(&(a.id.as_str(), b.id.as_str())) {
-                continue;
+                return None;
             }
 
             let fa = discovery.files_of.get(&a.id).unwrap_or(&empty_files);
@@ -998,11 +1001,11 @@ pub fn unexplored_pairs_scored_from_snapshot(
                 "suspected_coupling"
             };
             if !class_filter.accepts(discovery_class) {
-                continue;
+                return None;
             }
 
             let score = degree_a as f64 + degree_b as f64 + base_urgency + suspicion;
-            scored.push((
+            Some((
                 RelatesTo {
                     id: String::new(),
                     from_id: a.id.clone(),
@@ -1030,11 +1033,171 @@ pub fn unexplored_pairs_scored_from_snapshot(
                     },
                 },
                 score,
-            ));
+            ))
+        }
+    };
+
+    let n = snapshot.intents.len();
+    let mut scored: Vec<(RelatesTo, f64)> = Vec::new();
+    match class_filter {
+        // `impact_map` ranks the SIGNAL-LESS pairs by structural centrality, so it
+        // genuinely needs every pair; `all` covers both classes → every pair too.
+        // These deliberate "scan everything" requests keep the O(N²) walk.
+        DiscoveryClassFilter::ImpactMap | DiscoveryClassFilter::All => {
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    if let Some(pair) = score_pair(i, j) {
+                        scored.push(pair);
+                    }
+                }
+            }
+        }
+        // The DEFAULT. Every `suspected_coupling` pair shares a file, an import
+        // link, a tag, a domain, or a description token — so the candidate set
+        // built from inverted indices is an EXACT superset, and scoring it is
+        // O(candidates) instead of the O(N²) all-pairs scan (75s → sub-second on
+        // a few-thousand-intent graph). `score_pair` re-applies the exact same
+        // predicates, so a generated pair that doesn't actually qualify is dropped.
+        DiscoveryClassFilter::SuspectedCoupling => {
+            for (i, j) in suspected_coupling_candidates(snapshot, &discovery) {
+                if let Some(pair) = score_pair(i, j) {
+                    scored.push(pair);
+                }
+            }
         }
     }
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     Ok(scored)
+}
+
+/// Candidate intent-index pairs for the `suspected_coupling` discovery class —
+/// an EXACT superset of the signal-bearing pairs, assembled from inverted
+/// indices so the default discovery scan is O(candidates) rather than O(N²).
+///
+/// Pairs sharing a file, an import link, or a tag are sparse and enumerated in
+/// full. The DENSE facets — same-domain and shared-description-token — are
+/// bounded by a per-bucket cap: a facet shared by more than `BUCKET_CAP` intents
+/// is not discriminating (it only ever yields weakest-signal pairs that never
+/// reach the served top of a large queue), so its O(k²) expansion is skipped.
+/// The cap never fires below its size, so small graphs keep exact behavior; a
+/// pair that also shares a sparse facet is still generated via that facet.
+fn suspected_coupling_candidates(
+    snapshot: &QuerySnapshot,
+    discovery: &DiscoverySnapshot,
+) -> Vec<(usize, usize)> {
+    const BUCKET_CAP: usize = 64;
+
+    let index: HashMap<&str, usize> = snapshot
+        .intents
+        .iter()
+        .enumerate()
+        .map(|(i, it)| (it.id.as_str(), i))
+        .collect();
+    let mut pairs: HashSet<(usize, usize)> = HashSet::new();
+
+    // File ownership inversion: file index → its sorted, unique owning intents.
+    let path_index: HashMap<&str, usize> = snapshot
+        .codefiles
+        .iter()
+        .enumerate()
+        .map(|(i, cf)| (cf.path.as_str(), i))
+        .collect();
+    let mut owners_of_file: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (path, intent_ids) in &discovery.intents_on_file {
+        let Some(&file_idx) = path_index.get(path.as_str()) else {
+            continue;
+        };
+        let mut members: Vec<usize> = intent_ids
+            .iter()
+            .filter_map(|id| index.get(id.as_str()).copied())
+            .collect();
+        members.sort_unstable();
+        members.dedup();
+        owners_of_file.insert(file_idx, members);
+    }
+    // File-sharing candidates (sparse, enumerated in full).
+    for members in owners_of_file.values() {
+        add_intra_bucket_pairs(members, &mut pairs);
+    }
+    // Import-link candidates: file x imports file y → owners(x) × owners(y).
+    for (x, y) in &discovery.import_links {
+        let (Some(ox), Some(oy)) = (owners_of_file.get(x), owners_of_file.get(y)) else {
+            continue;
+        };
+        for &a in ox {
+            for &b in oy {
+                if a != b {
+                    pairs.insert(if a < b { (a, b) } else { (b, a) });
+                }
+            }
+        }
+    }
+    // Shared-tag candidates (sparse).
+    add_inverted_bucket_pairs(
+        discovery.tags_by_intent.iter().flat_map(|(id, tags)| {
+            index
+                .get(id.as_str())
+                .copied()
+                .into_iter()
+                .flat_map(move |i| tags.iter().map(move |t| (t.as_str(), i)))
+        }),
+        usize::MAX,
+        &mut pairs,
+    );
+    // Same-domain candidates (DENSE → capped).
+    add_inverted_bucket_pairs(
+        snapshot.intents.iter().enumerate().filter_map(|(i, it)| {
+            (!it.domain.is_empty() && it.domain != "unknown").then_some((it.domain.as_str(), i))
+        }),
+        BUCKET_CAP,
+        &mut pairs,
+    );
+    // Shared-description-token candidates (DENSE → capped).
+    add_inverted_bucket_pairs(
+        discovery.tokens_by_intent.iter().flat_map(|(id, tokens)| {
+            index
+                .get(id.as_str())
+                .copied()
+                .into_iter()
+                .flat_map(move |i| tokens.iter().map(move |t| (t.as_str(), i)))
+        }),
+        BUCKET_CAP,
+        &mut pairs,
+    );
+
+    pairs.into_iter().collect()
+}
+
+/// All unordered pairs of `members` (assumed small), inserted canonically.
+fn add_intra_bucket_pairs(members: &[usize], pairs: &mut HashSet<(usize, usize)>) {
+    for p in 0..members.len() {
+        for q in (p + 1)..members.len() {
+            let (a, b) = (members[p], members[q]);
+            pairs.insert(if a < b { (a, b) } else { (b, a) });
+        }
+    }
+}
+
+/// Group `(key, intent_index)` items by key, then emit every intra-group pair —
+/// EXCEPT for a group larger than `cap`, whose non-discriminating O(k²) blowup
+/// is skipped. `cap = usize::MAX` keeps the facet uncapped (sparse facets).
+fn add_inverted_bucket_pairs<'a, I: Iterator<Item = (&'a str, usize)>>(
+    items: I,
+    cap: usize,
+    pairs: &mut HashSet<(usize, usize)>,
+) {
+    let mut buckets: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (key, idx) in items {
+        buckets.entry(key).or_default().push(idx);
+    }
+    for members in buckets.values_mut() {
+        members.sort_unstable();
+        members.dedup();
+        if members.len() > cap {
+            continue;
+        }
+        add_intra_bucket_pairs(members, pairs);
+    }
 }
 
 /// Per-lane queue depths for the autonomous work modes, computed in one pass

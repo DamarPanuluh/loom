@@ -2081,6 +2081,51 @@ fn sqlite_report_json_caps_unbounded_lists() {
     );
 }
 
+// SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
+// scores every O(N²) pair — it generates candidates from inverted indices, an
+// EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are
+// all under the dense-facet cap (loom's own), the candidate path must therefore
+// produce EXACTLY the same suspected_coupling set the full scan does. The full
+// scan's suspected count is `all - impact_map` (every pair is one class or the
+// other), so candidate-path `suspected-coupling` total must equal that. (If this
+// ever diverges, the DF-cap has started firing on loom's graph — raise it or
+// accept the drop; it can only ever drop weakest-signal pairs, never add wrong ones.)
+#[test]
+fn sqlite_discovery_candidate_path_matches_full_scan() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("disc-candidates");
+    let total = |class: &str| -> i64 {
+        // `--take` yields the bulk envelope whose `queue_total` is the FULL queue
+        // size for the class (not the taken count) — the number we're comparing.
+        run_json(
+            &graph.root,
+            &[
+                "next",
+                "--mode",
+                "discovery",
+                "--class",
+                class,
+                "--take",
+                "50",
+                "--json",
+            ],
+        )["queue_total"]
+            .as_i64()
+            .unwrap_or(-1)
+    };
+    let suspected = total("suspected-coupling");
+    let impact = total("impact-map");
+    let all = total("all");
+    assert!(suspected > 0, "loom's graph has signal-bearing pairs");
+    assert_eq!(
+        suspected,
+        all - impact,
+        "candidate-path suspected-coupling ({suspected}) must equal the full scan's \
+         suspected count (all {all} - impact_map {impact} = {})",
+        all - impact
+    );
+}
+
 #[test]
 fn sqlite_discovery_vocab_weight_prose_matches_field() {
     let _guard = sqlite_test_lock();
