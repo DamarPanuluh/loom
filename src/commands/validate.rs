@@ -312,6 +312,16 @@ fn run_validation_command(
     // Throwaway-graph proofs (temp-dir init/import) must not inherit a pinned
     // session — LOOM_GRAPH beats cwd and would mutate the driver's graph.
     cmd.env_remove("LOOM_GRAPH");
+    // Run the command in its OWN process group so the timeout can kill the WHOLE
+    // tree. `sh -c` forks the real runner (cargo, a test, a hostile `sleep`);
+    // killing only `sh` let the child outlive the deadline — the timeout read as
+    // enforced ("timed out after 1s") while the work ran to completion (a DoS
+    // guard that didn't guard).
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        cmd.process_group(0);
+    }
     let mut child = cmd.spawn()?;
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
@@ -320,12 +330,28 @@ fn run_validation_command(
             return Ok(CommandOutcome::Exited(status));
         }
         if Instant::now() >= deadline {
-            let _ = child.kill();
+            terminate_command_tree(&mut child);
             let _ = child.wait();
             return Ok(CommandOutcome::TimedOut);
         }
         thread::sleep(Duration::from_millis(100));
     }
+}
+
+/// Kill a timed-out validation command AND its descendants. With `process_group(0)`
+/// the child is its own group leader (pgid == child pid), so `kill -KILL -<pgid>`
+/// reaches every forked process — not just `sh`. Pure-std (shells out to `kill`);
+/// `child.kill()` is the belt-and-suspenders fallback for the leader itself.
+fn terminate_command_tree(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    {
+        let pgid = child.id();
+        let _ = StdCommand::new("kill")
+            .arg("-KILL")
+            .arg(format!("-{pgid}"))
+            .status();
+    }
+    let _ = child.kill();
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +363,12 @@ fn run_validation_command(
 /// read (then the command runs and fails loudly on its own).
 fn saga_missing_env(root: &std::path::Path, v: &crate::types::Validation) -> Option<Vec<String>> {
     let rel = crate::commands::saga::spec_path_of(v)?;
-    let spec = crate::saga::spec::load_spec_file(&root.join(rel)).ok()?;
+    // Confine the spec path to the repo root before reading it — a tampered/
+    // imported graph's `spec:` line could be `../../../etc/...` and this preflight
+    // would otherwise open and parse a file outside the repo (`saga run` already
+    // confines; this read had drifted from that guard).
+    let confined = crate::repo::confine(root, std::path::Path::new(&rel))?;
+    let spec = crate::saga::spec::load_spec_file(&root.join(confined)).ok()?;
     let missing = crate::saga::spec::missing_env(&spec);
     if missing.is_empty() {
         None

@@ -70,18 +70,31 @@ fn validate_import_data(data: &JsonValue) -> Result<()> {
                 }
             }
         }
-        // A cycle = following a child up its parent chain revisits a node.
+        // A cycle = following a child up its parent chain revisits a node. Walk
+        // each chain ONCE: a `safe` set of nodes already proven to reach a root
+        // (or a known-safe node) makes this O(N) total instead of O(N^2) — the
+        // naive per-node re-walk let a crafted long chain hang import for seconds.
+        let mut safe: HashSet<&str> = HashSet::new();
         for start in parent_of.keys() {
-            let mut seen: HashSet<&str> = HashSet::new();
+            let mut on_path: HashSet<&str> = HashSet::new();
+            let mut path: Vec<&str> = Vec::new();
             let mut cur: &str = start;
-            while let Some(&p) = parent_of.get(cur) {
-                if !seen.insert(cur) {
+            loop {
+                if safe.contains(cur) {
+                    break;
+                }
+                if !on_path.insert(cur) {
                     anyhow::bail!(
                         "Import rejected: the HIERARCHY contains a cycle (through '{cur}') — the hierarchy must be an acyclic tree. Fix the export and re-import (nothing was imported)."
                     );
                 }
-                cur = p;
+                path.push(cur);
+                match parent_of.get(cur) {
+                    Some(&p) => cur = p,
+                    None => break,
+                }
             }
+            safe.extend(path);
         }
     }
 

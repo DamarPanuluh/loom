@@ -1776,6 +1776,76 @@ fn sqlite_reciprocal_relates_to_not_double_counted() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (security hunt): a validation's --timeout-secs killed only
+// the `sh` parent, not its process tree — a forked test runner (or a hostile
+// `sleep`) outlived the deadline while validate falsely reported "timed out". Now
+// the command runs in its own process group and the timeout kills the whole group.
+#[cfg(unix)]
+#[test]
+fn sqlite_validate_timeout_kills_the_process_tree() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("vtimeout");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let i = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "t",
+            "--description",
+            "tdesc",
+            "--level",
+            "feature",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let canary = graph.root.join("survivor_canary");
+    // A forked child writes the canary AFTER the 1s timeout — the old bug let it
+    // survive because only `sh` was killed.
+    let cmd = format!("( sleep 2 && touch '{}' ) ; echo done", canary.display());
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "probe",
+            "--type",
+            "test",
+            "--command",
+            &cmd,
+            "--intent",
+            &i,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    let start = std::time::Instant::now();
+    run_text_as(
+        &graph.root,
+        &["validate", &i, "--timeout-secs", "1"],
+        "llm:validator",
+    );
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(5),
+        "validate must return promptly on timeout, took {:?}",
+        start.elapsed()
+    );
+    // Wait past when the survivor WOULD fire; the group-kill must have prevented it.
+    std::thread::sleep(std::time::Duration::from_millis(2500));
+    assert!(
+        !canary.exists(),
+        "the forked child must be killed with the process group, not survive the timeout"
+    );
+}
+
 // DOGFOOD-FOUND DEFECT (integrity hunt): `loom import` is a TRUSTED build path
 // (federation/restore/PR-merged loom.graph.json) but bypassed the structural/value
 // invariants every interactive write enforces — it accepted a HIERARCHY cycle /
