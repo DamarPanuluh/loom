@@ -152,6 +152,17 @@ follow them:
    the FULL GraphState travels). Same reason `loom next --take` template
    lines omit `criterion`: `loom batch` reuses the recorded one, so neither
    loom nor the agent re-transmits text the graph already holds.
+5. **Reads don't write.** A read-shaped command (`status`, `next`, `find`,
+   `explain`, `coverage`, `report`, `doctor`, `wiki`, `schema`, `guide`,
+   `smells`, `export`, every `show`/`list`) MUST leave the committed export
+   byte-identical — no timestamp bump, no fact rewrite, no "helpful" backfill.
+   loom's worst historical bugs were query-shaped commands that secretly
+   mutated (a no-arg `layer order` that cleared the order, a glob+locator that
+   ground edges). This is now a standing, enforced invariant: the
+   `sqlite_read_commands_do_not_mutate_the_graph` ratchet runs every read
+   command and asserts the export is unchanged. A command that needs to persist
+   something is a mutation and owes invariant 1 (an anchor); it may not hide
+   under a read verb.
 
 
 ## Build

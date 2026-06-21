@@ -73,6 +73,7 @@ fn run_with_sqlite(
     // CONTENT, which drives export staleness on its own, so skipping the
     // timestamp on a genuine no-op is safe and makes sync idempotent.
     let anything_changed = state.files_changed > 0
+        || state.facts_rewritten > 0
         || state.targets_flagged > 0
         || state.relates_to_flagged > 0
         || state.governs_flagged > 0
@@ -128,6 +129,11 @@ struct SyncState {
     governs_flagged: usize,
     serves_flagged: usize,
     validations_invalidated: usize,
+    /// Physical-fact rewrites (imports/symbols/symbol_facts) persisted this sync.
+    /// Folded into `anything_changed` so a fact rewrite — e.g. from an extractor
+    /// change on a file whose content didn't move — can never masquerade as a
+    /// no-op and silently drift the committed export out from under `export --check`.
+    facts_rewritten: usize,
     changes: Vec<String>,
     missing_files: Vec<String>,
     escaped_files: Vec<String>,
@@ -465,12 +471,15 @@ fn update_physical_facts_and_flag_locators(
             let facts = crate::repo::extract_physical_facts(base, &cf.path, content);
             if facts.imports != cf.imports {
                 store.update_codefile_imports(&cf.id, &facts.imports)?;
+                state.facts_rewritten += 1;
             }
             if facts.symbols != cf.symbols {
                 store.update_codefile_symbols(&cf.id, &facts.symbols)?;
+                state.facts_rewritten += 1;
             }
             if facts.symbol_facts != cf.symbol_facts {
                 store.update_codefile_symbol_facts(&cf.id, &facts.symbol_facts)?;
+                state.facts_rewritten += 1;
             }
         } else if state.non_utf8_files.contains(&cf.path) {
             for im in ctx.all_implements {

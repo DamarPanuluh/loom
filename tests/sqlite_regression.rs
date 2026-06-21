@@ -2242,6 +2242,52 @@ fn sqlite_large_graph_read_commands_stay_under_budget() {
     timed(&["smells", "--json"]);
 }
 
+// ENHANCEMENT #5 — reads must not write. The campaign's worst class of bug was a
+// query-shaped command that secretly mutated state (layer-order with no args,
+// glob+locator). This turns "reads don't write" into a standing, enforced
+// invariant: every read-shaped command must leave the committed export
+// BYTE-IDENTICAL. A command that writes (even a benign-looking timestamp bump or
+// fact rewrite) flips the export and fails here loudly, instead of drifting
+// `export --check` silently. Command exit codes are ignored on purpose — whether
+// a read succeeds or errors, it must not mutate.
+#[test]
+fn sqlite_read_commands_do_not_mutate_the_graph() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("reads-no-write");
+    let export = || run_text_as(&graph.root, &["export", "-"], "llm");
+    let baseline = export();
+
+    let read_cmds: &[&[&str]] = &[
+        &["status", "--json"],
+        &["next", "--mode", "discovery", "--json"],
+        &["next", "--mode", "fix", "--json"],
+        &["smells", "--json"],
+        &["report", "--json"],
+        &["doctor", "--json"],
+        &["coverage", "--json"],
+        &["schema", "--json"],
+        &["guide", "--json"],
+        &["wiki", "-"],
+        &["find", "graph", "--json"],
+        &["explain", "src/repo.rs", "--json"],
+    ];
+    for args in read_cmds {
+        // Run it; ignore output AND exit code — the only contract under test is
+        // that it does not write.
+        let _ = Command::new(loom_bin())
+            .args(*args)
+            .current_dir(&graph.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .unwrap_or_else(|e| panic!("run loom {args:?}: {e}"));
+        assert_eq!(
+            export(),
+            baseline,
+            "read command {args:?} mutated the graph (the export changed) — reads must not write"
+        );
+    }
+}
+
 // SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
 // scores every O(N²) pair — it generates candidates from inverted indices, an
 // EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are
