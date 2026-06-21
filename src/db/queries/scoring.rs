@@ -155,13 +155,7 @@ pub fn scored_candidates_from_snapshot(
     let mut candidates: Vec<RelatesTo> = snapshot
         .relates
         .iter()
-        .filter(|edge| match mode {
-            "fix" => matches!(
-                edge.inspection_status.as_str(),
-                "failing" | "needs_reverification"
-            ),
-            _ => edge.inspection_status == "uninspected",
-        })
+        .filter(|edge| is_relates_candidate(edge, mode))
         .cloned()
         .collect();
 
@@ -225,6 +219,39 @@ pub fn scored_candidates_from_snapshot(
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     scored
 }
+
+/// Whether a RELATES_TO edge belongs to `mode`'s candidate queue. The single
+/// source of truth shared by the scored ranking and the count-only path, so the
+/// two can never drift on which edges count.
+fn is_relates_candidate(edge: &RelatesTo, mode: &str) -> bool {
+    match mode {
+        "fix" => matches!(
+            edge.inspection_status.as_str(),
+            "failing" | "needs_reverification"
+        ),
+        _ => edge.inspection_status == "uninspected",
+    }
+}
+
+/// How many edges `mode`'s queue holds — the SAME set `scored_candidates_from_snapshot`
+/// returns, counted WITHOUT the Brandes betweenness pass that only affects
+/// ranking. `loom status` (turn-zero, the most-run command) needs the depth, not
+/// the order, so it must not pay O(V·E) centrality just to print a number.
+pub fn relates_candidate_count_from_snapshot(snapshot: &QuerySnapshot, mode: &str) -> usize {
+    let active: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let mut seen = std::collections::HashSet::new();
+    snapshot
+        .relates
+        .iter()
+        .filter(|edge| is_relates_candidate(edge, mode))
+        .filter(|edge| {
+            active.contains(edge.from_id.as_str()) && active.contains(edge.to_id.as_str())
+        })
+        .filter(|edge| seen.insert(edge.id.as_str()))
+        .count()
+}
+
 #[derive(Debug, Clone)]
 pub struct BuildCandidate {
     pub intent: Intent,
@@ -1217,7 +1244,8 @@ pub struct LaneDepths {
 pub fn lane_depths_from_snapshot(snapshot: &QuerySnapshot) -> LaneDepths {
     LaneDepths {
         build: build_candidates_from_snapshot(snapshot).len() as i64,
-        fix: scored_candidates_from_snapshot(snapshot, "fix").len() as i64,
+        // Count-only: the depth, not the ranking — skips Brandes betweenness.
+        fix: relates_candidate_count_from_snapshot(snapshot, "fix") as i64,
         validate: validate_candidates_from_snapshot(snapshot).len() as i64,
         quality: quality_candidates_from_snapshot(snapshot).len() as i64,
     }
@@ -1340,5 +1368,36 @@ mod tests {
 
         assert_eq!(relates_ids, ["rel-failing-low", "rel-passing-low"]);
         assert_eq!(governs_ids, ["gov-failing-low", "gov-passing-low"]);
+    }
+
+    // SWEEP #12: `loom status`'s fix-lane depth must count the SAME edges the
+    // scored ranking selects — but without paying the Brandes betweenness pass
+    // (which only affects order). The count-only path and `scored.len()` must agree.
+    #[test]
+    fn fix_lane_count_matches_scored_len_without_betweenness() {
+        let snapshot = QuerySnapshot::from_parts(
+            vec![intent("a"), intent("b")],
+            Vec::new(),
+            vec![
+                relates("rel-failing", "failing", 0.6),
+                relates("rel-needs-rev", "needs_reverification", 0.6),
+                relates("rel-passing", "passing", 0.6), // not a fix candidate
+                relates("rel-uninspected", "uninspected", 0.6), // discovery, not fix
+            ],
+            Vec::new(),
+            vec![rule("rule")],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+        assert_eq!(
+            relates_candidate_count_from_snapshot(&snapshot, "fix"),
+            scored_candidates_from_snapshot(&snapshot, "fix").len(),
+            "the count-only status path must select the same set as the scored ranking"
+        );
+        // And it actually counts the two fix-candidate edges.
+        assert_eq!(relates_candidate_count_from_snapshot(&snapshot, "fix"), 2);
     }
 }
