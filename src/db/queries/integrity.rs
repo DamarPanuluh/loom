@@ -557,8 +557,6 @@ fn audit_inspectable_edges(
     issues: &mut Vec<String>,
     hints: &mut Vec<String>,
 ) -> Result<()> {
-    use crate::db::schema::role;
-
     let mut claims: Vec<EdgeClaim> = Vec::new();
     for e in &snapshot.relates {
         claims.push(EdgeClaim {
@@ -749,10 +747,9 @@ fn audit_inspectable_edges(
         // Provenance lane: a verdict stamped by an out-of-lane role.
         if c.status != "uninspected" {
             if let Some(r) = crate::gate::role_of(&c.inspected_by) {
-                let allowed: &[&str] = match c.etype {
-                    schema::edge::GOVERNS => &[role::QUALITY],
-                    _ => &[role::ANALYZER, role::FIXER],
-                };
+                // Same source of truth as the write-time gate (gate.rs), so the
+                // audit can't drift from what the gate actually enforces.
+                let allowed = crate::gate::inspector_roles_for_edge(c.etype);
                 if !allowed.contains(&r) {
                     issues.push(format!(
                         "{} edge {} was inspected by '{}' — out of lane (expected {}); \

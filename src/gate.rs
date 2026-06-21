@@ -59,6 +59,19 @@ pub fn mode_for_role(r: &str) -> Option<&'static str> {
     }
 }
 
+/// The roles permitted to record a verdict on an edge of `etype` (GOVERNS is the
+/// quality lane; every other inspectable edge is analyzer/fixer). This is the
+/// SINGLE source of truth shared by the write-time lane gate (whose per-command
+/// verdict `Lane`s carry the same `allowed`) and the doctor provenance audit, so
+/// the two can never drift on separation of duties. `lane_verdict_roles_agree`
+/// pins it against the `lane::` consts.
+pub fn inspector_roles_for_edge(etype: &str) -> &'static [&'static str] {
+    match etype {
+        crate::db::schema::edge::GOVERNS => &[role::QUALITY],
+        _ => &[role::ANALYZER, role::FIXER],
+    }
+}
+
 // ---------------------------------------------------------------------------
 // The lane table — the single source of truth for who may do what.
 //
@@ -819,6 +832,33 @@ mod tests {
         assert_eq!(role_of("llm"), None);
         assert_eq!(role_of("human"), None);
         assert_eq!(role_of("llm:"), None);
+    }
+
+    // INVARIANT PARITY: `inspector_roles_for_edge` (the doctor provenance audit's
+    // source of truth) must agree with the write-time verdict `Lane`s — otherwise
+    // the audit could pass a verdict the gate would reject, or vice versa. Pin
+    // them together so a change to one side breaks the build until both move.
+    #[test]
+    fn lane_verdict_roles_agree() {
+        use crate::db::schema::edge;
+        assert_eq!(
+            inspector_roles_for_edge(edge::GOVERNS),
+            lane::GOVERNS_VERDICT.allowed,
+            "GOVERNS verdict roles must match between the audit and the gate lane"
+        );
+        assert_eq!(
+            inspector_roles_for_edge(edge::RELATES_TO),
+            lane::GROUND_RELATES_TO.allowed,
+            "RELATES_TO verdict roles must match between the audit and the gate lane"
+        );
+        // The non-GOVERNS bucket the audit applies to every other inspectable edge.
+        for etype in [edge::IMPLEMENTS, edge::TARGETS, edge::SERVES] {
+            assert_eq!(
+                inspector_roles_for_edge(etype),
+                &[role::ANALYZER, role::FIXER],
+                "non-GOVERNS edge {etype} must share the analyzer/fixer verdict lane"
+            );
+        }
     }
 
     #[test]

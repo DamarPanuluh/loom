@@ -165,6 +165,25 @@ follow them:
    under a read verb.
 
 
+## Single source of truth for invariants
+
+An invariant enforced in two places will drift. loom's recurring bug shape was a
+CHECK implemented separately from the THING it checks — a `delegate add` that
+validated its target one way while `sync` confined it another; single-statement
+writers that skipped the flock the contract promised; an audit that re-encoded a
+lane→role rule the gate already owned. **Never inline a rule that is enforced
+elsewhere — extract it to one function both sides call.** Examples already
+consolidated: `repo::confine` (delegate add ↔ sync), `SqliteGraphStore::write_one`/
+`ensure_write_lock` (every write ↔ the flock), `gate::inspector_roles_for_edge`
+(verdict gate ↔ doctor audit), `scoring::is_relates_candidate` (scored ranking ↔
+count). Where a single function is impractical, pin the two sides with a **parity
+test** that fails when they diverge — `lane_verdict_roles_agree`,
+`fix_lane_count_matches_scored_len_without_betweenness`,
+`sqlite_discovery_candidate_path_matches_full_scan`,
+`sqlite_delegate_add_rejects_out_of_root_targets`. A new such pair owes one or the
+other.
+
+
 ## Build
 
 ```bash
