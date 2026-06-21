@@ -1,15 +1,25 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::db::queries::snapshot::QuerySnapshot;
 use super::{adjudicate, teaching_for, AdjudicatedSmell, Smell, SmellCtx};
+use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Shared reopen-trigger disclosure for the coupling-plane detectors, which
 /// reopen when a new IMPLEMENTS grounding changes the import graph.
 const REOPENS_ON_NEW_GROUNDING: &str = "a new grounding lands on the importing intent";
 
 /// Coupling plane — undeclared imports and layer-order violations.
-pub(super) fn detect_coupling_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj: &mut Vec<AdjudicatedSmell>) {
-    detect_undeclared_coupling(ctx.snapshot, &ctx.intents_on_file, &ctx.linked, &ctx.name_of, smells);
+pub(super) fn detect_coupling_plane(
+    ctx: &SmellCtx,
+    smells: &mut Vec<Smell>,
+    adj: &mut Vec<AdjudicatedSmell>,
+) {
+    detect_undeclared_coupling(
+        ctx.snapshot,
+        &ctx.intents_on_file,
+        &ctx.linked,
+        &ctx.name_of,
+        smells,
+    );
     detect_layering_violation(
         ctx.snapshot,
         ctx.intents,

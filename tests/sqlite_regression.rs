@@ -1175,7 +1175,83 @@ fn sqlite_smells_stale_triages_the_wall_of_red() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("smells-stale");
 
+    // The committed fixture is fully green by design (no stale edges), so
+    // manufacture one deterministically: ground a code-kind RELATES_TO on a
+    // real file, then change that file and sync — the edge flips to
+    // needs_reverification. This keeps the test independent of whatever the
+    // committed graph happens to contain.
+    write_scratch_file(
+        &graph.root,
+        "scratch/stale_src.rs",
+        "pub fn anchor() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/stale_src.rs", "--json"],
+        "llm:builder",
+    );
+    for nm in ["stale owner one", "stale owner two"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns the stale-severity anchor symbol for the wall-of-red test",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &[
+                "edge",
+                "implement",
+                nm,
+                "scratch/stale_src.rs",
+                "--locator",
+                "fn anchor",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    let sa = intent_id_by_name(&graph.root, "stale owner one");
+    let sb = intent_id_by_name(&graph.root, "stale owner two");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &sa,
+            &sb,
+            "ground",
+            "--criterion",
+            "both realize the shared anchor symbol",
+            "--confidence",
+            "0.9",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    write_scratch_file(
+        &graph.root,
+        "scratch/stale_src.rs",
+        "pub fn anchor() -> u8 { 2 }\n",
+    );
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+
     let json = run_json(&graph.root, &["smells", "--stale", "--json"]);
+    assert!(
+        json["stale_total"].as_i64().expect("stale_total") >= 1,
+        "the manufactured code change must stale at least one edge: {json}"
+    );
     assert_eq!(
         json["scope"].as_str().expect("scope"),
         "stale",
@@ -1222,6 +1298,172 @@ fn sqlite_smells_stale_triages_the_wall_of_red() {
     assert!(
         text.contains("broken") && text.contains("drift"),
         "human view splits broken vs drift: {text}"
+    );
+}
+
+// R2 (BUILD wires PROVE): the build action carries an explicit prove-the-criterion
+// step, teaches verify-first grounding, surfaces the criterion itself, and cues
+// build-time relationship capture; marking a realized leaf with no proof flags it
+// implemented-but-UNPROVEN instead of reading as silently done.
+#[test]
+fn sqlite_build_loop_wires_prove_and_flags_unproven() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("build-prove");
+    // The committed fixture is fully implemented, so a single planned leaf is the
+    // sole build candidate — deterministic.
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "r2 build target",
+            "--description",
+            "the worker must realize then prove this leaf",
+            "--criterion",
+            "users can undo the last action within the session",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let item = run_json(&graph.root, &["next", "--mode", "build", "--json"]);
+    let action = item["suggested_action"].as_str().expect("suggested_action");
+    assert!(
+        action.contains("PROVE") && action.contains("loom validation add"),
+        "the build action wires an explicit prove step: {action}"
+    );
+    assert!(
+        action.contains("verified against the file"),
+        "the build action teaches verify-first grounding: {action}"
+    );
+    assert!(
+        action.contains("relates to") && action.contains("--for analyzer"),
+        "the build action cues build-time relationship capture: {action}"
+    );
+    // R2b: the criterion (THE acceptance test) rides into the work item.
+    assert_eq!(
+        item["intent_a"]["criterion"].as_str().unwrap_or(""),
+        "users can undo the last action within the session",
+        "the criterion is surfaced in the build item: {item}"
+    );
+
+    // R2c / R11: marking a realized leaf with no proof flags it unproven.
+    let id = item["intent_a"]["id"]
+        .as_str()
+        .expect("intent id")
+        .to_string();
+    let marked = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "mark",
+            &id,
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert!(
+        marked["advisory"]
+            .as_str()
+            .unwrap_or("")
+            .contains("UNPROVEN"),
+        "an unproven realized leaf is flagged on mark: {marked}"
+    );
+}
+
+// R1 (verify-first grounding): `loom edge implement` rejects a locator that does
+// NOT occur in the file at ground time — a grounding can no longer be born stale
+// and surface only at the next sync. A real symbol grounds; a file-level (empty)
+// locator grounds; a ghost symbol bails non-zero, naming the miss.
+#[test]
+fn sqlite_edge_implement_verifies_locator_at_ground_time() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("verify-ground");
+    write_scratch_file(
+        &graph.root,
+        "scratch/r1.rs",
+        "pub fn real_sym() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/r1.rs", "--json"],
+        "llm:builder",
+    );
+    for nm in ["r1 real owner", "r1 file owner"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns the verify-first grounding anchor symbol",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    // A real symbol grounds cleanly.
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "r1 real owner",
+            "scratch/r1.rs",
+            "--locator",
+            "fn real_sym",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    // A file-level (empty) locator grounds cleanly.
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "r1 file owner",
+            "scratch/r1.rs",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    // A ghost symbol is rejected AT GROUND TIME, naming the miss.
+    let out = std::process::Command::new(loom_bin())
+        .args([
+            "edge",
+            "implement",
+            "r1 real owner",
+            "scratch/r1.rs",
+            "--locator",
+            "fn ghost_symbol",
+        ])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:builder")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom edge implement with a ghost locator");
+    assert!(
+        !out.status.success(),
+        "grounding a non-existent locator must exit non-zero: {:?}",
+        out.status
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("does not occur in") && stderr.contains("stale on arrival"),
+        "the rejection names the missing symbol + why: {stderr}"
     );
 }
 

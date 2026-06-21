@@ -621,7 +621,9 @@ fn render(
         );
         println!();
         if clone_shown.is_empty() {
-            println!("  (no open clone advisories; all physical clone groups are deliberate or tracked)");
+            println!(
+                "  (no open clone advisories; all physical clone groups are deliberate or tracked)"
+            );
         } else {
             for s in &clone_shown {
                 println!("  [{}]  (score {:.1})", s.kind, s.score);
@@ -958,7 +960,10 @@ fn latest_intent_structure(snapshot: &QuerySnapshot, intent_ids: &[String]) -> S
     newest
 }
 
-fn codefile_paths_in_clone_evidence<'a>(snapshot: &'a QuerySnapshot, evidence: &str) -> Vec<&'a str> {
+fn codefile_paths_in_clone_evidence<'a>(
+    snapshot: &'a QuerySnapshot,
+    evidence: &str,
+) -> Vec<&'a str> {
     snapshot
         .codefiles
         .iter()
@@ -1188,8 +1193,14 @@ mod tests {
                     "src/tracked_b.rs",
                     clone_sym("tracked_b", "BODY_TB", "SHAPE_TRACKED", 60),
                 ),
-                clone_cf("src/open_a.rs", clone_sym("open_a", "BODY_OA", "SHAPE_OPEN", 80)),
-                clone_cf("src/open_b.rs", clone_sym("open_b", "BODY_OB", "SHAPE_OPEN", 100)),
+                clone_cf(
+                    "src/open_a.rs",
+                    clone_sym("open_a", "BODY_OA", "SHAPE_OPEN", 80),
+                ),
+                clone_cf(
+                    "src/open_b.rs",
+                    clone_sym("open_b", "BODY_OB", "SHAPE_OPEN", 100),
+                ),
             ],
             Some(Vec::new()),
         );
@@ -1200,8 +1211,13 @@ mod tests {
             empty_report(),
             0,
             &[],
-            &[decision("code_clone:SHAPE_DELIBERATE", "2026-01-01T00:00:00Z")],
-            &[clone_hypothesis("dedupe src/tracked_a.rs after the release")],
+            &[decision(
+                "code_clone:SHAPE_DELIBERATE",
+                "2026-01-01T00:00:00Z",
+            )],
+            &[clone_hypothesis(
+                "dedupe src/tracked_a.rs after the release",
+            )],
             10,
             false,
             &printer,
@@ -1216,7 +1232,10 @@ mod tests {
         assert_eq!(json["code_clones_tracked"], 1);
         assert_eq!(json["code_clones_open"], 1);
         assert_eq!(
-            json["code_clones"].as_array().expect("open clone list").len(),
+            json["code_clones"]
+                .as_array()
+                .expect("open clone list")
+                .len(),
             1,
             "only unadjudicated and untracked clones stay in the open advisory list"
         );

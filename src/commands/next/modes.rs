@@ -356,17 +356,18 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
             id = intent.id,
         ),
         "planned" => format!(
-            "BUILD this intent — its description/criteria are the spec/acceptance check.
-\
-             1. Write the code.
-  \
-             2. Register it: loom codefile add <path>
-  \
-             3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"
-  \
-             4. Mark done: loom intent mark {id} --lifecycle implemented
-  \
-             5. Baseline it: loom sync   (stamps the new files; future edits ripple correctly)",
+            "BUILD this intent — its description + criterion ARE the spec and the acceptance check.\n\
+             1. Write the code.\n  \
+             2. Register it: loom codefile add <path>\n  \
+             3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"\n     \
+                (the locator is verified against the file NOW — a typo'd or renamed symbol is rejected here, not silently staled at the next sync).\n  \
+             4. PROVE the criterion — don't just assert it. Encode the criterion as a check and run it:\n       \
+                loom validation add --name \"<criterion, as a check>\" --type test --command \"<cmd>\" --intent {id}\n       \
+                loom validate {id}\n     \
+                (no runnable proof? record the manual verdict: loom validation mark <id> --result passed --evidence \"…\"; an endpoint-reachable criterion proves best as a consumer saga: loom saga add <spec.yaml>).\n  \
+             5. Mark done: loom intent mark {id} --lifecycle implemented   (a leaf marked implemented with NO validation is flagged implemented-but-unproven).\n  \
+             6. Baseline it: loom sync   (stamps the new files; future edits ripple correctly).\n  \
+             Noticed a relationship while coding (this calls or depends on another intent)? Capture it now so discovery need not re-find it: loom note add --intent {id} --for analyzer \"relates to <other intent>: <how>\".",
             id = intent.id,
         ),
         "needs_change" => format!(

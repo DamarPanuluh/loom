@@ -6,7 +6,11 @@ use super::{
 };
 
 /// Lifecycle plane — recurrent regressions and pre-decision-plane backlog.
-pub(super) fn detect_lifecycle_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj: &mut Vec<AdjudicatedSmell>) {
+pub(super) fn detect_lifecycle_plane(
+    ctx: &SmellCtx,
+    smells: &mut Vec<Smell>,
+    adj: &mut Vec<AdjudicatedSmell>,
+) {
     detect_recurrent_trouble(
         ctx.notes,
         ctx.relates,

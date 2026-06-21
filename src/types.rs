@@ -1340,6 +1340,11 @@ pub struct IntentSurface {
     pub id: String,
     pub name: String,
     pub description: String,
+    /// The falsifiable acceptance check — THE test for this intent. Surfaced into
+    /// work items so a builder/validator proves the actual criterion, not a
+    /// paraphrase of the description. Empty for intents that never declared one.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub criterion: String,
     pub level: String,
     #[serde(skip_serializing_if = "domain_is_unknown")]
     pub domain: String,
@@ -1365,6 +1370,7 @@ impl From<&Intent> for IntentSurface {
             id: i.id.clone(),
             name: i.name.clone(),
             description: i.description.clone(),
+            criterion: i.criterion.clone(),
             level: i.abstraction_level.clone(),
             domain: i.domain.clone(),
             layer: i.layer.clone(),

@@ -245,8 +245,7 @@ fn blocked_validation_summary_leads_with_validation_objects_not_edges() {
 use crate::db::queries::scoring::{
     build_candidates_from_snapshot, quality_candidates_from_snapshot, ripple_bump_by_intent,
     scored_candidates_from_snapshot, unexplored_pairs_scored_from_snapshot,
-    validate_candidates_from_snapshot, DiscoveryClassFilter, RIPPLE_BUMP_HOP2,
-    RIPPLE_BUMP_HOP3,
+    validate_candidates_from_snapshot, DiscoveryClassFilter, RIPPLE_BUMP_HOP2, RIPPLE_BUMP_HOP3,
 };
 
 fn intent(id: &str, lifecycle: &str) -> Intent {
@@ -447,11 +446,9 @@ fn unexplored_shared_file_pair_is_suspected_coupling() {
         vec![codefile("src/shared.rs", vec![])],
     );
 
-    let scored = unexplored_pairs_scored_from_snapshot(
-        &snapshot,
-        DiscoveryClassFilter::SuspectedCoupling,
-    )
-    .unwrap();
+    let scored =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
 
     assert_eq!(scored.len(), 1);
     let edge = &scored[0].0;
@@ -474,11 +471,9 @@ fn unexplored_import_pair_is_suspected_coupling() {
         ],
     );
 
-    let scored = unexplored_pairs_scored_from_snapshot(
-        &snapshot,
-        DiscoveryClassFilter::SuspectedCoupling,
-    )
-    .unwrap();
+    let scored =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
 
     assert_eq!(scored.len(), 1);
     let edge = &scored[0].0;
@@ -497,11 +492,9 @@ fn unexplored_same_domain_pair_is_suspected_coupling() {
     b.domain = "db".to_string();
     let snapshot = snap(vec![a, b], vec![]);
 
-    let scored = unexplored_pairs_scored_from_snapshot(
-        &snapshot,
-        DiscoveryClassFilter::SuspectedCoupling,
-    )
-    .unwrap();
+    let scored =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
 
     assert_eq!(scored.len(), 1);
     let edge = &scored[0].0;
@@ -519,24 +512,20 @@ fn centrality_only_pairs_route_to_impact_map_not_default_discovery() {
         vec![],
     );
 
-    let default = unexplored_pairs_scored_from_snapshot(
-        &snapshot,
-        DiscoveryClassFilter::SuspectedCoupling,
-    )
-    .unwrap();
+    let default =
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::SuspectedCoupling)
+            .unwrap();
     assert!(default.is_empty());
 
     let impact =
-        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::ImpactMap)
-            .unwrap();
+        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::ImpactMap).unwrap();
     assert_eq!(impact.len(), 1);
     let edge = &impact[0].0;
     assert_eq!(edge.discovery_class, "impact_map");
     assert!(edge.discovery_signals.is_empty());
     assert!(edge.notes.contains("structural centrality only"));
 
-    let all =
-        unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
+    let all = unexplored_pairs_scored_from_snapshot(&snapshot, DiscoveryClassFilter::All).unwrap();
     assert_eq!(all.len(), 1);
 }
 
@@ -906,8 +895,8 @@ fn bridge_ranking_inverts_when_direct_cross_cluster_edge_removes_chokepoint() {
     fn dense_bridge_snapshot(with_direct_cross_edge: bool) -> QuerySnapshot {
         let mut intents = Vec::new();
         for id in [
-            "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "bridge", "b0", "b1",
-            "b2", "b3", "b4", "b5", "b6", "b7",
+            "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "bridge", "b0", "b1", "b2", "b3",
+            "b4", "b5", "b6", "b7",
         ] {
             intents.push(intent(id, "implemented"));
         }

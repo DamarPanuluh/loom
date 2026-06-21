@@ -413,6 +413,29 @@ fn run_implement_with_sqlite(
         }
     } else {
         let cf = &targets[0];
+        // Verify-first grounding: a non-empty locator must actually occur in the
+        // file NOW — otherwise the grounding is born stale and only surfaces at
+        // the next `loom sync`, after the worker has moved on. We check at ground
+        // time using the SAME matcher sync uses (`repo::locator_present`). Only
+        // enforced when the file is readable on disk; a file missing on disk is a
+        // separate condition that codefile registration / sync already report.
+        if !locator.trim().is_empty() {
+            if let Ok(content) = std::fs::read_to_string(root.join(&cf.path)) {
+                if !crate::repo::locator_present(&content, &locator) {
+                    anyhow::bail!(
+                        "Locator '{}' does not occur in {} — the grounding would be stale on arrival.\n\
+                         Use the symbol AS IT APPEARS in the file (e.g. `fn run`, `def shorten`, `class Link`).\n\
+                         `loom explain {}` shows how related intents are grounded; re-run with the real symbol:\n  \
+                         loom edge implement {} {} --locator \"<symbol>\"",
+                        locator.trim(),
+                        cf.path,
+                        intent_id,
+                        intent_key,
+                        cf.path,
+                    );
+                }
+            }
+        }
         store.insert_implements(&intent_id, &cf.id, &locator, &notes, &now)?;
         let edge_id =
             crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, &intent_id, &cf.id);

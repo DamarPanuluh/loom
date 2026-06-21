@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::db::queries::snapshot::QuerySnapshot;
 use super::{
     adjudicate, rfc3339_after, teaching_for, AdjudicatedSmell, Smell, SmellCtx, ASPECT_FAMILIES,
 };
+use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Consumer plane — journeys, aspects, symbol accountability, islands.
-pub(super) fn detect_consumer_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj: &mut Vec<AdjudicatedSmell>) {
+pub(super) fn detect_consumer_plane(
+    ctx: &SmellCtx,
+    smells: &mut Vec<Smell>,
+    adj: &mut Vec<AdjudicatedSmell>,
+) {
     detect_happy_path_only(
         ctx.snapshot,
         ctx.intents,
@@ -26,7 +30,14 @@ pub(super) fn detect_consumer_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj
         smells,
         adj,
     );
-    detect_symbol_accountability(ctx.snapshot, ctx.intents, ctx.implements, ctx.notes, smells, adj);
+    detect_symbol_accountability(
+        ctx.snapshot,
+        ctx.intents,
+        ctx.implements,
+        ctx.notes,
+        smells,
+        adj,
+    );
     detect_reciprocal_dependency(
         ctx.snapshot,
         ctx.intents,
@@ -361,12 +372,13 @@ fn detect_symbol_accountability(
     smells: &mut Vec<Smell>,
     adjudicated_out: &mut Vec<AdjudicatedSmell>,
 ) {
-    let report = crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes(
-        &snapshot.codefiles,
-        intents,
-        implements,
-        notes,
-    );
+    let report =
+        crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes(
+            &snapshot.codefiles,
+            intents,
+            implements,
+            notes,
+        );
     if !report.actionable_symbol_gaps.is_empty() {
         let examples: Vec<String> = report
             .actionable_symbol_gaps

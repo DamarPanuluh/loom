@@ -32,12 +32,12 @@ use std::collections::{HashMap, HashSet};
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
 use crate::types::{Hypothesis, Note, TargetsEdge, VocabTerm};
 
-mod semantic;
-mod physical;
-mod coupling;
-mod normative;
-mod lifecycle;
 mod consumer;
+mod coupling;
+mod lifecycle;
+mod normative;
+mod physical;
+mod semantic;
 
 // Thresholds — deliberately conservative: a smell should be worth a look.
 /// Name+description token overlap at/above this is a twin-intent suspicion.
@@ -709,7 +709,10 @@ fn build_smell_ctx<'a>(
         .collect();
     roots.sort_by_key(|i| (i.abstraction_level != "system", i.name.clone()));
     let mut intents_by_level: HashMap<&str, Vec<&crate::types::Intent>> = HashMap::new();
-    for intent in intents.iter().filter(|intent| intent.status != "deprecated") {
+    for intent in intents
+        .iter()
+        .filter(|intent| intent.status != "deprecated")
+    {
         intents_by_level
             .entry(intent.abstraction_level.as_str())
             .or_default()
@@ -742,7 +745,6 @@ fn build_smell_ctx<'a>(
         intents_by_level,
     }
 }
-
 
 /// Snapshot + input reusing form for storage backends that can load the read
 /// planes directly.
@@ -814,7 +816,6 @@ pub fn compute_smells_from_parts(
         declared_layers,
     })
 }
-
 
 /// `cochange_coupling` suggestions — the ADVISORY, git-derived counterpart to
 /// `undeclared_coupling`. Intent pairs whose files keep changing together
@@ -1519,13 +1520,9 @@ fn short_contract_excerpt(value: &str) -> String {
     out
 }
 
-
 #[cfg(test)]
 include!("smells/advisory_tests.inc");
 #[cfg(test)]
 include!("smells/source_fact_tests.inc");
 #[cfg(test)]
 include!("smells/graph_tests.inc");
-
-
-

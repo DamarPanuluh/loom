@@ -1064,8 +1064,7 @@ pub(crate) const RELATES_TO_SELECT_BETWEEN: &str =
 
 /// Idempotent RELATES_TO creation guarded by endpoint existence (and self-edge
 /// rejection). One source of truth for the pooled and in-transaction creators.
-pub(crate) const RELATES_TO_UPSERT: &str =
-    "INSERT OR IGNORE INTO relates_to(
+pub(crate) const RELATES_TO_UPSERT: &str = "INSERT OR IGNORE INTO relates_to(
         from_id, to_id, inspection_status, criterion, confidence, evidence,
         last_inspected, inspected_by, priority_score, notes, created_at
      )
@@ -1140,25 +1139,41 @@ pub(crate) fn get_or_create_relates_to_conn(
 /// connection. One per edge table because the natural-key columns differ; the
 /// shared sentinel keeps the staling contract identical across the standalone
 /// `flag_*` API and the ripple/retire cascades.
-pub(crate) fn stale_relates_to(conn: &Connection, from_id: &str, to_id: &str) -> rusqlite::Result<usize> {
+pub(crate) fn stale_relates_to(
+    conn: &Connection,
+    from_id: &str,
+    to_id: &str,
+) -> rusqlite::Result<usize> {
     conn.execute(
         "UPDATE relates_to SET inspection_status = 'needs_reverification' WHERE from_id = ?1 AND to_id = ?2",
         params![from_id, to_id],
     )
 }
-pub(crate) fn stale_targets(conn: &Connection, hypothesis_id: &str, intent_id: &str) -> rusqlite::Result<usize> {
+pub(crate) fn stale_targets(
+    conn: &Connection,
+    hypothesis_id: &str,
+    intent_id: &str,
+) -> rusqlite::Result<usize> {
     conn.execute(
         "UPDATE targets SET inspection_status = 'needs_reverification' WHERE hypothesis_id = ?1 AND intent_id = ?2",
         params![hypothesis_id, intent_id],
     )
 }
-pub(crate) fn stale_serves(conn: &Connection, persona_id: &str, intent_id: &str) -> rusqlite::Result<usize> {
+pub(crate) fn stale_serves(
+    conn: &Connection,
+    persona_id: &str,
+    intent_id: &str,
+) -> rusqlite::Result<usize> {
     conn.execute(
         "UPDATE serves SET inspection_status = 'needs_reverification' WHERE persona_id = ?1 AND intent_id = ?2",
         params![persona_id, intent_id],
     )
 }
-pub(crate) fn stale_governs(conn: &Connection, rule_id: &str, intent_id: &str) -> rusqlite::Result<usize> {
+pub(crate) fn stale_governs(
+    conn: &Connection,
+    rule_id: &str,
+    intent_id: &str,
+) -> rusqlite::Result<usize> {
     conn.execute(
         "UPDATE governs SET inspection_status = 'needs_reverification' WHERE rule_id = ?1 AND intent_id = ?2",
         params![rule_id, intent_id],

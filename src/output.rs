@@ -437,6 +437,11 @@ pub fn fmt_intent_surface(i: &crate::types::IntentSurface) -> String {
         s.push_str(&format!("\n  tags:        {}", i.tags.join(", ")));
     }
     s.push_str(&format!("\n  description: {}", i.description));
+    // The falsifiable acceptance check rides into the work item so the driver
+    // proves THIS criterion, not a paraphrase of the description.
+    if !i.criterion.is_empty() {
+        s.push_str(&format!("\n  criterion:   {}", i.criterion));
+    }
     if !i.sources.is_empty() {
         s.push_str(&format!("\n  sources:     {}", i.sources.join(", ")));
     }
@@ -951,6 +956,7 @@ mod tests {
             id: "i".into(),
             name: "n".into(),
             description: "d".into(),
+            criterion: String::new(),
             level: "feature".into(),
             domain: "unknown".into(),
             layer: String::new(),

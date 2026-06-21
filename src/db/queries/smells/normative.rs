@@ -5,7 +5,14 @@ use super::{teaching_for, Smell, SmellCtx};
 
 /// Normative plane — quality-rule coverage and vocab hygiene.
 pub(super) fn detect_normative_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>) -> Result<()> {
-    detect_unmeasured_intents(ctx.intents, ctx.rules, ctx.governs, ctx.hierarchy, &ctx.files_of, smells);
+    detect_unmeasured_intents(
+        ctx.intents,
+        ctx.rules,
+        ctx.governs,
+        ctx.hierarchy,
+        &ctx.files_of,
+        smells,
+    );
     detect_unused_rule(ctx.rules, ctx.governs, smells);
     detect_vocab_drift(ctx.intents, ctx.vocab_terms, smells)?;
     Ok(())

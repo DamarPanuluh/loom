@@ -873,8 +873,12 @@ fn set_targets_status_returns_correct_count() {
 fn confirmed_hypothesis_targets_are_settled_not_staled() {
     let now = "2026-01-01T00:00:00Z";
     let mut store = SqliteGraphStore::in_memory().unwrap();
-    store.insert_intent(&sqlite_test_intent("intent-a", now)).unwrap();
-    store.insert_intent(&sqlite_test_intent("intent-b", now)).unwrap();
+    store
+        .insert_intent(&sqlite_test_intent("intent-a", now))
+        .unwrap();
+    store
+        .insert_intent(&sqlite_test_intent("intent-b", now))
+        .unwrap();
 
     // (A) a confirmed hypothesis's passing TARGETS must NOT be staled by the ripple:
     // prove is the only re-stamper and it is closed once confirmed, so staling would
@@ -884,9 +888,14 @@ fn confirmed_hypothesis_targets_are_settled_not_staled() {
     store.insert_hypothesis(&h_pass).unwrap();
     store.insert_targets("hyp-pass", "intent-a", now).unwrap();
     store
-        .set_targets_status_for_hypothesis("hyp-pass", "passing", "proof", "verified", 0.9, "llm", now)
+        .set_targets_status_for_hypothesis(
+            "hyp-pass", "passing", "proof", "verified", 0.9, "llm", now,
+        )
         .unwrap();
-    let edge = store.list_targets_for_hypothesis("hyp-pass").unwrap().remove(0);
+    let edge = store
+        .list_targets_for_hypothesis("hyp-pass")
+        .unwrap()
+        .remove(0);
     assert!(
         !store
             .flag_targets_needs_reverification(&edge, "spawned intent code changed", now)
@@ -915,7 +924,10 @@ fn confirmed_hypothesis_targets_are_settled_not_staled() {
         )
         .unwrap();
     let cleared = store.settle_confirmed_hypothesis_targets().unwrap();
-    assert_eq!(cleared, 1, "settle returns the count of stale TARGETS cleared");
+    assert_eq!(
+        cleared, 1,
+        "settle returns the count of stale TARGETS cleared"
+    );
     assert_eq!(
         store.list_targets_for_hypothesis("hyp-stale").unwrap()[0].inspection_status,
         "passing"

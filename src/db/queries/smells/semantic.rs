@@ -1,13 +1,17 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::db::queries::snapshot::DiscoverySnapshot;
 use super::{
-    adjudicate, jaccard, teaching_for, AdjudicatedSmell, Smell, SmellCtx,
-    DUP_TAG_WEIGHT, DUP_UNTAGGED_SHARED_TOKENS, DUP_UNTAGGED_SIMILARITY, TWIN_SIMILARITY,
+    adjudicate, jaccard, teaching_for, AdjudicatedSmell, Smell, SmellCtx, DUP_TAG_WEIGHT,
+    DUP_UNTAGGED_SHARED_TOKENS, DUP_UNTAGGED_SIMILARITY, TWIN_SIMILARITY,
 };
+use crate::db::queries::snapshot::DiscoverySnapshot;
 
 /// Semantic plane — same-responsibility / duplicate-detection signals.
-pub(super) fn detect_semantic_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj: &mut Vec<AdjudicatedSmell>) {
+pub(super) fn detect_semantic_plane(
+    ctx: &SmellCtx,
+    smells: &mut Vec<Smell>,
+    adj: &mut Vec<AdjudicatedSmell>,
+) {
     detect_twin_intents(&ctx.intents_by_level, &ctx.linked, &ctx.signal_toks, smells);
     detect_duplicated_responsibility(
         &ctx.intents_by_level,

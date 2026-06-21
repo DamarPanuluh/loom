@@ -1,18 +1,22 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::db::queries::snapshot::QuerySnapshot;
 use super::{
     adjudicate, behavioral_symbol_kind, command_or_public_surface, normalized_contract_string,
     scatter_threshold, short_contract_excerpt, teaching_for, AdjudicatedSmell, Smell, SmellCtx,
     StringContractLoc, LARGE_BEHAVIORAL_SYMBOL_LINES, OVERSIZED_FILE_LINES, TANGLE_INTENTS,
 };
+use crate::db::queries::snapshot::QuerySnapshot;
 
 /// Shared reopen-trigger disclosure for the physical-plane detectors, whose
 /// adjudications are all invalidated by a file content-hash change.
 const REOPENS_ON_FILE_EDIT: &str = "the file is modified after the ruling";
 
 /// Physical plane — ownership, file/symbol size, markers, string contracts.
-pub(super) fn detect_physical_plane(ctx: &SmellCtx, smells: &mut Vec<Smell>, adj: &mut Vec<AdjudicatedSmell>) {
+pub(super) fn detect_physical_plane(
+    ctx: &SmellCtx,
+    smells: &mut Vec<Smell>,
+    adj: &mut Vec<AdjudicatedSmell>,
+) {
     detect_overlapping_ownership(ctx.intents, &ctx.linked, &ctx.files_of, smells);
     detect_scattered_intent(
         ctx.intents,

@@ -152,7 +152,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             )?;
             gate::require_confidence(confidence)?;
             let hid = store.resolve_hypothesis(&id)?;
-            let h = store.get_hypothesis(&hid)?.ok_or_else(|| hypothesis_not_found(&hid))?;
+            let h = store
+                .get_hypothesis(&hid)?
+                .ok_or_else(|| hypothesis_not_found(&hid))?;
             if matches!(h.status.as_str(), "adopted" | "confirmed" | "rejected") {
                 anyhow::bail!(
                     "Hypothesis '{}' is already decided ({}) — propose a new hypothesis instead of re-litigating this one.",
@@ -212,7 +214,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
             let by = gate::acting_in_lane(&gate::lane::ADOPT_HYPOTHESIS, None)?;
             store.ensure_owned("adopt a hypothesis (a promise to change the code)")?;
             let hid = store.resolve_hypothesis(&id)?;
-            let h = store.get_hypothesis(&hid)?.ok_or_else(|| hypothesis_not_found(&hid))?;
+            let h = store
+                .get_hypothesis(&hid)?
+                .ok_or_else(|| hypothesis_not_found(&hid))?;
             if h.status != "supported" {
                 anyhow::bail!(
                     "Only a SUPPORTED hypothesis can be adopted — '{}' is '{}'.",
@@ -341,7 +345,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 "why this hypothesis is not being pursued",
             )?;
             let hid = store.resolve_hypothesis(&id)?;
-            let h = store.get_hypothesis(&hid)?.ok_or_else(|| hypothesis_not_found(&hid))?;
+            let h = store
+                .get_hypothesis(&hid)?
+                .ok_or_else(|| hypothesis_not_found(&hid))?;
             if matches!(h.status.as_str(), "adopted" | "confirmed") {
                 anyhow::bail!(
                     "Hypothesis '{}' was adopted — its spawned intents are real work now.",
@@ -510,7 +516,10 @@ fn resolve_hypothesis_with_db(db: &dyn GraphReadRepository, key: &str) -> Result
 /// The post-resolution lookup error, shared by every hypothesis subcommand so
 /// the "not found" message stays one source of truth.
 fn hypothesis_not_found(hid: &str) -> anyhow::Error {
-    anyhow::anyhow!("Hypothesis '{}' not found. Run `loom hypothesis list`.", hid)
+    anyhow::anyhow!(
+        "Hypothesis '{}' not found. Run `loom hypothesis list`.",
+        hid
+    )
 }
 
 fn fmt_hypothesis(h: &Hypothesis) -> String {

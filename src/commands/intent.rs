@@ -921,6 +921,31 @@ fn handle_mark(
             created_at: now.clone(),
         })?;
     }
+    // Mark → implemented closes the build loop, so report the RESULTING state
+    // instead of leaving the driver to re-derive it from `loom status`, and flag
+    // the honesty gap the loop was thinnest on: a realized leaf with no proof is
+    // implemented-but-UNPROVEN — its criterion is asserted, never checked.
+    let advisory = if lifecycle == "implemented" {
+        let has_children = store
+            .list_hierarchy_for_intent(&id)?
+            .iter()
+            .any(|h| h.parent_id == id);
+        if has_children {
+            Some(
+                "roll-up marked: its children carry the proof — confirm each still meets its criterion (`loom intent show <id>` lists them).".to_string(),
+            )
+        } else if store.validations_for_intent(&id)?.is_empty() {
+            Some(format!(
+                "implemented but UNPROVEN — this leaf has no validation, so its criterion is asserted, not checked. Encode the criterion as a proof: `loom validation add --type test --command \"…\" --intent {id}` then `loom validate {id}`."
+            ))
+        } else {
+            Some(
+                "leaf realized with proof(s) on file — re-run them if a code change staled them: `loom validate <id>`.".to_string(),
+            )
+        }
+    } else {
+        None
+    };
     let next_step = match lifecycle.as_str() {
         "planned" | "needs_change" => "`loom next --mode build` will surface it.",
         "implemented" => "if this leaf is fully grounded, prove it: `loom next --mode validate`",
@@ -930,12 +955,19 @@ fn handle_mark(
         _ => "`loom next` serves the next item",
     };
     if printer.json {
-        printer.print_json(&serde_json::json!({
+        let mut body = serde_json::json!({
             "status": "ok", "id": id, "lifecycle": lifecycle,
             "next_step": next_step,
-        }));
+        });
+        if let Some(ref a) = advisory {
+            body["advisory"] = serde_json::Value::String(a.clone());
+        }
+        printer.print_json(&body);
     } else {
         println!("✓ Intent {} → lifecycle '{}'", id, lifecycle);
+        if let Some(ref a) = advisory {
+            println!("  ⚑ {a}");
+        }
         println!("  → Next: {next_step}");
     }
     Ok(())

@@ -1054,7 +1054,11 @@ mod smell_adjudication_audit_tests {
     // satisfy the audit, since `note prune` won't remove a live-target note.
     #[test]
     fn audits_active_adjudication_not_superseded_history() {
-        let targets = ["tangled_file:a.rs", "tangled_file:b.rs", "tangled_file:c.rs"];
+        let targets = [
+            "tangled_file:a.rs",
+            "tangled_file:b.rs",
+            "tangled_file:c.rs",
+        ];
         let mut notes = Vec::new();
         for (i, t) in targets.iter().enumerate() {
             notes.push(smell_note(t, TEMPLATE, "2026-01-01T00:00:00Z")); // old rubber-stamp
@@ -1076,7 +1080,11 @@ mod smell_adjudication_audit_tests {
     // re-stamping over a genuine note must STILL flag the cluster.
     #[test]
     fn flags_templated_active_rulings() {
-        let targets = ["tangled_file:a.rs", "tangled_file:b.rs", "tangled_file:c.rs"];
+        let targets = [
+            "tangled_file:a.rs",
+            "tangled_file:b.rs",
+            "tangled_file:c.rs",
+        ];
         let mut notes = Vec::new();
         for (i, t) in targets.iter().enumerate() {
             notes.push(smell_note(t, genuine(i), "2026-01-01T00:00:00Z")); // genuine first
