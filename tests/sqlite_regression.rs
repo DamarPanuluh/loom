@@ -1636,6 +1636,38 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECTS (AI-companion hunt): commands that silently no-op'd on
+// bad input — a glob matching zero files, an empty pattern/text/identifier —
+// reported success or dumped the whole graph instead of failing loudly. An AI
+// believes it acted when it didn't. Each now refuses with guidance.
+#[test]
+fn sqlite_bad_input_guards_refuse_silent_noops() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("bad-input");
+    let expect_refused = |args: &[&str], frag: &str| {
+        let out = std::process::Command::new(loom_bin())
+            .args(args)
+            .current_dir(&graph.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom");
+        assert!(
+            !out.status.success(),
+            "{args:?} must be refused, not a silent no-op: {:?}",
+            out.status
+        );
+        let err = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            err.contains(frag),
+            "{args:?} should explain the refusal ({frag:?}): {err}"
+        );
+    };
+    expect_refused(&["codefile", "add", "src/zzz_none_*.rs"], "matched 0 files");
+    expect_refused(&["ignore", "add", "", "--reason", "x"], "can't be empty");
+    expect_refused(&["note", "add", "--text", ""], "needs text");
+    expect_refused(&["intent", "show", ""], "can't be empty");
+}
+
 // DOGFOOD-FOUND DEFECT: `loom wiki -` failed ("unexpected argument") while
 // `loom export -` worked — inconsistent stdout syntax across the two projection
 // commands. wiki now takes a positional path like export, so `loom wiki -` → stdout.

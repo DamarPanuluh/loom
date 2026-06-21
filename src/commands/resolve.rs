@@ -3,6 +3,13 @@ use anyhow::Result;
 use crate::db::GraphReadRepository;
 
 pub(crate) fn resolve_intent_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<String> {
+    // An empty/blank key (a common unset-variable accident) would `contains("")`-
+    // match every intent and dump the whole list — refuse it cleanly instead.
+    if key.trim().is_empty() {
+        anyhow::bail!(
+            "An intent identifier can't be empty — pass an id or a name fragment. `loom intent list` shows them."
+        );
+    }
     let intents = db.list_intents(None, None)?;
     if intents.iter().any(|intent| intent.id == key) {
         return Ok(key.to_string());
@@ -62,6 +69,11 @@ pub(crate) fn resolve_validation_with_db(
     db: &dyn GraphReadRepository,
     key: &str,
 ) -> Result<String> {
+    if key.trim().is_empty() {
+        anyhow::bail!(
+            "A validation identifier can't be empty — pass an id or a name fragment. `loom validation list` shows them."
+        );
+    }
     let validations = db.list_validations()?;
     if validations.iter().any(|validation| validation.id == key) {
         return Ok(key.to_string());

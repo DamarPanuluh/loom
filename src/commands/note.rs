@@ -102,6 +102,14 @@ fn prepare_add_note(
     // Validate the kind against the vocabulary.
     kind.parse::<NoteKind>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    // A note is loom's durable free-text memory (incl. directed lane handoffs via
+    // --for). An empty/blank one is pure pollution — it surfaces in `loom note
+    // list` and `loom next`. Refuse it.
+    if text.trim().is_empty() {
+        anyhow::bail!(
+            "A note needs text — `--text` was empty/blank. A content-free note just clutters `loom note list` and `loom next`."
+        );
+    }
     if [
         intent.is_some(),
         edge.is_some(),

@@ -31,6 +31,13 @@ fn run_add_with_sqlite(
     author: Option<String>,
     printer: &Printer,
 ) -> Result<()> {
+    // An empty/blank pattern persists a junk row that pollutes `ignore list` and
+    // could read as match-everything downstream. Refuse it.
+    if pattern.trim().is_empty() {
+        anyhow::bail!(
+            "An ignore pattern can't be empty — pass a glob, e.g. `loom ignore add 'target/**' --reason \"build output\"`."
+        );
+    }
     let ig = Ignore {
         id: Uuid::new_v4().to_string(),
         pattern,

@@ -112,6 +112,18 @@ fn prepare_additions(
                 v.push(p.display().to_string());
             }
         }
+        // A glob matching zero files is a silent no-op trap: `edge implement`'s
+        // own error tells the AI to run `loom codefile add '<glob>'`, so a false
+        // "✓ Registered 0" sends it in circles. Fail loudly with the pattern.
+        if v.is_empty() {
+            anyhow::bail!(
+                "Glob '{}' matched 0 files on disk under {} — nothing to register. \
+                 Check the pattern (quote it: `loom codefile add 'src/**/*.rs'`) or the graph root; \
+                 a plain path (no * ? [) registers a single file even if absent.",
+                path,
+                root.display()
+            );
+        }
         v
     } else {
         vec![path.clone()]
