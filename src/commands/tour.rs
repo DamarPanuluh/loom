@@ -360,6 +360,10 @@ fn render_human(stops: &[Stop], graph_name: &str, total: usize) {
     println!(
         "  → Next: read the files named under each stop; `loom explain <intent>` for full detail."
     );
+    println!(
+        "  Terminal state = `fully_proven` (QUALITY: every leaf executed-proven) AND `loom complete`"
+    );
+    println!("  (COVERAGE: entrypoint/boundary/invariant/journey/behavioral). RECORD ≠ DISCHARGE.");
 }
 
 fn render_json(stops: &[Stop], graph_name: &str, total: usize, printer: &Printer) {
@@ -394,6 +398,6 @@ fn render_json(stops: &[Stop], graph_name: &str, total: usize, printer: &Printer
         "shown": stops.len(),
         "total": total,
         "truncated": stops.len() < total,
-        "next_step": "Read the files named in each stop's read_files in order; `loom tour <intent>` drills into a subtree, `loom explain <intent>` gives full detail.",
+        "next_step": "Read the files named in each stop's read_files in order; `loom tour <intent>` drills into a subtree, `loom explain <intent>` gives full detail. Terminal state = `fully_proven` (quality) AND `loom complete` (coverage: entrypoint/boundary/invariant/journey/behavioral) — RECORD ≠ DISCHARGE.",
     }));
 }
