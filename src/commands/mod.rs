@@ -5,6 +5,7 @@ use anyhow::Result;
 pub mod batch;
 pub mod cluster;
 pub mod codefile;
+pub mod complete;
 pub mod coverage;
 pub mod delegate;
 pub mod detect;
@@ -118,6 +119,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Seed        { suggest, limit } => seed::run(suggest, limit, &printer),
         Command::Tour        { target, limit } => tour::run(target.as_deref(), limit, &printer),
         Command::Impact      { files, staged } => impact::run(files, staged, &printer),
+        Command::Complete    { teach }        => complete::run(teach, &printer),
         Command::Ignore      { subcommand } => ignore::run(subcommand, &printer),
         Command::Delegate    { subcommand } => delegate::run(subcommand, &printer),
         Command::Export      { path, out, check } => {

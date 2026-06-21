@@ -2758,6 +2758,127 @@ fn sqlite_g2_executed_requires_a_discriminating_runner() {
     );
 }
 
+// `loom complete` — the comprehensiveness projection. Pins the crux honesty law,
+// RECORD ≠ DISCHARGE: a behavioral gap (a happy leaf with no failure-path sibling)
+// is OWED, and recording a PLANNED sad sibling does NOT discharge it — only a
+// realized one does. Also pins the journey ledger (a user_visible leaf owes a saga).
+#[test]
+fn sqlite_complete_record_is_not_discharge() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("complete");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "pay.go",
+        "package pay\nfunc Charge() {}\nfunc Refund() {}\n",
+    );
+    let b = "llm:builder";
+    // A system parent + a realized, user_visible, happy leaf.
+    let sys = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "payments",
+            "--description",
+            "Payments.",
+            "--level",
+            "system",
+            "--json",
+        ],
+        b,
+    );
+    let sys_id = sys["id"].as_str().unwrap().to_string();
+    let happy = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "charge happy path",
+            "--description",
+            "Charge a card.",
+            "--level",
+            "feature",
+            "--aspect",
+            "happy",
+            "--visibility",
+            "user_visible",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        b,
+    );
+    let happy_id = happy["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", &sys_id, &happy_id, "--json"],
+        b,
+    );
+    run_json_as(&graph.root, &["codefile", "add", "pay.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &happy_id,
+            "pay.go",
+            "--locator",
+            "func Charge",
+            "--json",
+        ],
+        b,
+    );
+
+    // Behavioral: enumerated 1, discharged 0 (no failure sibling). Journey: the
+    // user_visible leaf owes a saga.
+    let c1 = run_json(&graph.root, &["complete", "--json"])["comprehensiveness"].clone();
+    assert_eq!(c1["behavioral"]["enumerated"], 1, "{c1}");
+    assert_eq!(
+        c1["behavioral"]["discharged"], 0,
+        "happy leaf with no sibling is owed: {c1}"
+    );
+    assert_eq!(
+        c1["journey"]["discharged"], 0,
+        "user_visible leaf owes a saga: {c1}"
+    );
+
+    // RECORD ≠ DISCHARGE: a PLANNED sad sibling does NOT discharge the gap.
+    let sad = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "charge declined",
+            "--description",
+            "Card declined.",
+            "--level",
+            "feature",
+            "--aspect",
+            "sad",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        b,
+    );
+    let sad_id = sad["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", &sys_id, &sad_id, "--json"],
+        b,
+    );
+    let c2 = run_json(&graph.root, &["complete", "--json"])["comprehensiveness"].clone();
+    assert_eq!(
+        c2["behavioral"]["discharged"], 0,
+        "a PLANNED sibling is binding debt, not a discharge (RECORD ≠ DISCHARGE): {c2}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export

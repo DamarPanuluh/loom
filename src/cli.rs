@@ -544,6 +544,20 @@ pub enum Command {
         staged: bool,
     },
 
+    /// COMPREHENSIVENESS check — the coverage half of production-ready (the
+    /// quality half is `fully_proven`). Projects the five canonical rubric
+    /// dimensions (entrypoint, boundary, invariant, journey, behavioral) as
+    /// enumerated/discharged + the fully_proven badge. RECORD ≠ DISCHARGE: a
+    /// recorded placeholder is binding debt, not a satisfaction. Read-only.
+    #[command(
+        after_help = "EXAMPLE:\n  loom complete\n  loom complete --teach   (the canonical rubric the LLM instantiates per repo)"
+    )]
+    Complete {
+        /// Emit the canonical completeness rubric instead of checking the graph.
+        #[arg(long)]
+        teach: bool,
+    },
+
     /// Manage coverage exclusion patterns (the escape hatch), stored in the graph.
     Ignore {
         #[command(subcommand)]
