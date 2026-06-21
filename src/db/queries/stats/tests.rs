@@ -1183,14 +1183,29 @@ fn fully_proven_badge_gates_on_phase_and_executed_proof() {
         ..Default::default()
     };
 
+    // Entrypoint comprehensiveness axis that fully passes (all public symbols owned).
+    let full = CoverageAxis {
+        covered: 5,
+        total: 5,
+    };
+
     // All gates pass → fully_proven.
-    let (ok, reasons) = fully_proven_from_state(&complete(3, 3), &empty, &[]);
+    let (ok, reasons) = fully_proven_from_state(&complete(3, 3), &empty, &[], &full);
     assert!(ok, "expected fully_proven, got: {reasons:?}");
+
+    // G7: an unowned public symbol blocks it (entrypoint comprehensiveness).
+    let gap = CoverageAxis {
+        covered: 4,
+        total: 5,
+    };
+    let (ok, reasons) = fully_proven_from_state(&complete(3, 3), &empty, &[], &gap);
+    assert!(!ok);
+    assert!(reasons.iter().any(|r| r.contains("unowned")), "{reasons:?}");
 
     // phase != complete blocks it (the base gate).
     let mut not_complete = complete(3, 3);
     not_complete.phase = "validate".into();
-    let (ok, reasons) = fully_proven_from_state(&not_complete, &empty, &[]);
+    let (ok, reasons) = fully_proven_from_state(&not_complete, &empty, &[], &full);
     assert!(!ok);
     assert!(
         reasons.iter().any(|r| r.contains("not 'complete'")),
@@ -1198,7 +1213,7 @@ fn fully_proven_badge_gates_on_phase_and_executed_proof() {
     );
 
     // A realized leaf that is only ASSERTED (not executed) blocks it (G1).
-    let (ok, reasons) = fully_proven_from_state(&complete(2, 3), &empty, &[]);
+    let (ok, reasons) = fully_proven_from_state(&complete(2, 3), &empty, &[], &full);
     assert!(!ok);
     assert!(
         reasons.iter().any(|r| r.contains("EXECUTED-proven")),

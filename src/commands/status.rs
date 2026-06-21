@@ -230,11 +230,27 @@ pub fn run_with_db(
     // audit gate), so a red graph can't hide files-on-disk the graph ignores.
     let disk = disk_pulse(&snapshot, db, root)?;
 
+    // Comprehensiveness axes (entrypoint + boundary) — the mechanical, FORCED
+    // half of "production ready". Computed here where the decision notes (for
+    // symbol adjudication) are in scope; they gate the badge as G7/G8.
+    let symbol_report =
+        crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes(
+            &snapshot.codefiles,
+            &snapshot.intents,
+            &snapshot.implements,
+            &decision_notes,
+        );
+    let entrypoint = crate::db::queries::comprehensiveness::entrypoint_coverage(&symbol_report);
+
     // The fully_proven terminal badge: the snapshot-pure proof-quality gates,
     // PLUS the disk/export freshness that only `loom status` can witness (a badge
     // read off a stale export or unsynced tree would over-claim).
-    let (mut fully_proven, mut fp_reasons) =
-        crate::db::queries::stats::fully_proven_from_state(&gs, &snapshot, &open_smells);
+    let (mut fully_proven, mut fp_reasons) = crate::db::queries::stats::fully_proven_from_state(
+        &gs,
+        &snapshot,
+        &open_smells,
+        &entrypoint,
+    );
     if export_freshness == "stale" {
         fully_proven = false;
         fp_reasons.push("committed loom.graph.json is STALE — `loom export`".to_string());

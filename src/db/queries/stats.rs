@@ -1217,6 +1217,7 @@ pub fn fully_proven_from_state(
     gs: &GraphState,
     snapshot: &QuerySnapshot,
     open_smells: &[crate::db::queries::smells::Smell],
+    entrypoint: &CoverageAxis,
 ) -> (bool, Vec<String>) {
     let mut reasons: Vec<String> = Vec::new();
 
@@ -1268,6 +1269,18 @@ pub fn fully_proven_from_state(
     if auto > 0 {
         reasons.push(format!(
             "{auto} unverified autonomous inference(s) remain — re-verify or discard before production"
+        ));
+    }
+    // G7 — ENTRYPOINT COMPREHENSIVENESS (mechanical, FORCED): every externally
+    // public symbol must be grounded / accepted / adjudicated. Anchored to the
+    // real surface (symbol_accountability's `required`), so a thin graph can't
+    // under-claim coverage. (Boundary comprehensiveness is the other mechanical
+    // dimension; it needs the raw external-import surface, which the snapshot
+    // doesn't persist, so it lives in `loom complete`'s disk scan, not here.)
+    if entrypoint.covered < entrypoint.total {
+        reasons.push(format!(
+            "{} public symbol(s) are unowned (no intent/grounding) — `loom complete` / `loom coverage`",
+            entrypoint.total - entrypoint.covered
         ));
     }
 

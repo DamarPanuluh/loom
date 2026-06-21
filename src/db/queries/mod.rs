@@ -5,6 +5,7 @@
 //! ranking, smells, reports, and vocabulary helpers.
 
 pub mod completeness;
+pub mod comprehensiveness;
 pub mod find;
 pub mod graph_algo;
 pub mod integrity;
