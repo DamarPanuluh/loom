@@ -47,11 +47,14 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     } else {
         Vec::new()
     };
+    let inbox = store.list_inbox_items(None, None)?;
+    let inbox_untriaged = inbox.iter().filter(|i| i.status == "new").count();
     let (mut fp_ok, mut fp_reasons) = crate::db::queries::stats::fully_proven_from_state(
         &gs,
         &snapshot,
         &open_smells,
         &entrypoint,
+        inbox_untriaged,
     );
     if store.committed_export_stale(&root)? == Some(true) {
         fp_ok = false;
@@ -96,6 +99,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
             },
             "undesigned_dimensions": undesigned,
             "doc_only_realizations": doc_realizations,
+            "inbox_untriaged": inbox_untriaged,
             "boundary_owed_files": boundary_owed,
             "fully_proven": fp_ok,
             "fully_proven_reasons": fp_reasons,
@@ -158,6 +162,14 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         // false-alarm on a well-modeled graph). It surfaces the gaps it CAN see and
         // makes YOU reflect on the ones it can't.
         println!("  ⟲ SELF-CHECK — loom certifies your SEED, not the system you never modeled.");
+        if inbox_untriaged > 0 {
+            println!(
+                "    INBOX: {inbox_untriaged} un-triaged item(s) — pieces of the repo enumerated but NOT yet"
+            );
+            println!(
+                "      decomposed into intents. Not complete until processed — `loom inbox triage`."
+            );
+        }
         if !doc_realizations.is_empty() {
             let shown: Vec<&str> = doc_realizations
                 .iter()

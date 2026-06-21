@@ -250,6 +250,7 @@ pub fn run_with_db(
         &snapshot,
         &open_smells,
         &entrypoint,
+        intake.untriaged.max(0) as usize,
     );
     if export_freshness == "stale" {
         fully_proven = false;

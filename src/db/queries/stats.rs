@@ -1218,8 +1218,19 @@ pub fn fully_proven_from_state(
     snapshot: &QuerySnapshot,
     open_smells: &[crate::db::queries::smells::Smell],
     entrypoint: &CoverageAxis,
+    inbox_untriaged: usize,
 ) -> (bool, Vec<String>) {
     let mut reasons: Vec<String> = Vec::new();
+
+    // G_INBOX — the decomposition ledger: every file `loom seed --inbox` enumerated
+    // must be PROCESSED into intents. Un-triaged items are pieces of the system not
+    // yet decomposed — you can't be production-ready over an un-processed surface.
+    // Vacuous (0) for graphs that never used the inbox-seed flow, so no false block.
+    if inbox_untriaged > 0 {
+        reasons.push(format!(
+            "{inbox_untriaged} inbox item(s) un-triaged — repo pieces not yet decomposed (`loom inbox triage`)"
+        ));
+    }
 
     // G0 — base: one "done" definition; the badge is its ceiling, not a rival.
     if gs.phase != "complete" {
