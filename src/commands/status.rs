@@ -100,12 +100,31 @@ fn disk_pulse(
     let drifted = recon.drifted_codefiles.len();
     let missing = recon.missing_codefiles.len();
     let total = unaccounted + drifted + missing;
+    // Split by bucket — each needs a DIFFERENT remedy, and lumping them under
+    // "on disk the graph doesn't account for" is wrong for `missing` (registered
+    // but GONE from disk — not on disk at all) and points the AI at `loom
+    // coverage`/`codefile add`, which don't fix deletions. coverage only shows
+    // UNMAPPED, so a missing-dominated count there reads as "0 missed".
     let message = if total == 0 {
-        "disk reconciled ✓ — nothing on disk unmapped/drifted/missing.".to_string()
+        "disk reconciled ✓ — nothing unmapped/drifted/missing.".to_string()
     } else {
-        format!(
-            "{total} file(s) on disk the graph doesn't account for ({unaccounted} unmapped · {drifted} drifted · {missing} missing) — the map must match the territory: `loom coverage` to see them, `loom sync` to re-hash drifted files, `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude."
-        )
+        let mut parts: Vec<String> = Vec::new();
+        if unaccounted > 0 {
+            parts.push(format!(
+                "{unaccounted} unmapped (on disk, not in the graph) — `loom coverage` to see them; `loom codefile add` + `loom edge implement` to map, or `loom ignore add <glob> --reason …` to exclude"
+            ));
+        }
+        if drifted > 0 {
+            parts.push(format!(
+                "{drifted} drifted (content changed since last sync) — `loom sync` to re-hash"
+            ));
+        }
+        if missing > 0 {
+            parts.push(format!(
+                "{missing} MISSING (registered, now gone from disk) — `loom codefile remove <path>` to drop them, or `loom sync` to detect"
+            ));
+        }
+        format!("map ≠ territory: {}.", parts.join(" · "))
     };
     Ok(DiskPulse {
         unaccounted,

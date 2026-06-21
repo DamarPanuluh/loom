@@ -1636,6 +1636,40 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): `loom status` lumped registered-but-
+// DELETED files in with "on disk the graph doesn't account for" and pointed the
+// AI at `loom coverage` / `codefile add` / `ignore` — none of which fix a
+// deletion (and coverage reports the opposite, "0 missed"). The compass thus
+// contradicted itself. Now MISSING files are labelled + offered `codefile remove`.
+#[test]
+fn sqlite_status_labels_missing_files_with_the_right_remedy() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("missing-files");
+    let run = |args: &[&str]| {
+        std::process::Command::new(loom_bin())
+            .args(args)
+            .current_dir(&graph.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom")
+    };
+    run(&["init", "."]);
+    write_scratch_file(&graph.root, "src/gone.rs", "pub fn a() {}\n");
+    run(&["codefile", "add", "src/gone.rs"]);
+    run(&["sync"]);
+    fs::remove_file(graph.root.join("src/gone.rs")).expect("delete the registered file");
+    let out = run(&["status"]);
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("MISSING") && text.contains("codefile remove"),
+        "status must label a deleted-but-registered file MISSING + offer codefile remove: {text}"
+    );
+    assert!(
+        !text.contains("on disk the graph doesn't account for"),
+        "must NOT lump MISSING under 'on disk ... doesn't account for': {text}"
+    );
+}
+
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): a no-op `loom sync` (0 changes
 // reported) unconditionally bumped `last_synced`, which travels in the committed
 // export, flipping `export --check` to STALE — and never converging. loom's own
