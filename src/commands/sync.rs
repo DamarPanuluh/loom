@@ -63,9 +63,27 @@ fn run_with_sqlite(
     // returned to passing here. Idempotent — a no-op once the lineage is settled.
     store.settle_confirmed_hypothesis_targets()?;
 
-    store.set_last_synced(&chrono::Utc::now().to_rfc3339())?;
-
     let transitions_compacted = compact_transitions(store)?;
+
+    // A TRUE no-op sync must NOT bump last_synced. That field travels in the
+    // committed export and `export --check` is a byte-exact compare, so an
+    // unconditional bump flips the freshness gate to STALE with nothing actually
+    // changed — and never converges (export → no-op sync → STALE, forever). Only
+    // stamp it when something moved; any real graph change also moves graph
+    // CONTENT, which drives export staleness on its own, so skipping the
+    // timestamp on a genuine no-op is safe and makes sync idempotent.
+    let anything_changed = state.files_changed > 0
+        || state.targets_flagged > 0
+        || state.relates_to_flagged > 0
+        || state.governs_flagged > 0
+        || state.serves_flagged > 0
+        || state.validations_invalidated > 0
+        || !state.pending_hash_updates.is_empty()
+        || !state.locators_stale.is_empty()
+        || transitions_compacted > 0;
+    if anything_changed {
+        store.set_last_synced(&now)?;
+    }
     let post_snapshot = store.query_snapshot()?;
     let intents_priority_bumped = crate::db::queries::ripple_bump_by_intent(&post_snapshot).len();
     let report = build_sync_report(

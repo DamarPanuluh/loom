@@ -1636,6 +1636,41 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT (AI-companion hunt): a no-op `loom sync` (0 changes
+// reported) unconditionally bumped `last_synced`, which travels in the committed
+// export, flipping `export --check` to STALE — and never converging. loom's own
+// help tells the AI to sync after any change, so it hits a green-looking sync
+// that breaks the freshness gate it relies on. Now a true no-op leaves it green.
+#[test]
+fn sqlite_noop_sync_keeps_export_check_green() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("noop-sync");
+    let run = |args: &[&str]| {
+        std::process::Command::new(loom_bin())
+            .args(args)
+            .current_dir(&graph.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom")
+    };
+    run(&["init", "."]);
+    // a real file on disk so sync finds nothing missing/changed (a true no-op)
+    write_scratch_file(&graph.root, "src/lib.rs", "pub fn x() {}\n");
+    run(&["codefile", "add", "src/lib.rs"]);
+    run(&["sync"]);
+    run(&["sync"]); // settle
+    run(&["export"]); // write loom.graph.json
+    assert!(
+        run(&["export", "--check"]).status.success(),
+        "fresh export must be clean"
+    );
+    run(&["sync"]); // the no-op that used to bump last_synced
+    assert!(
+        run(&["export", "--check"]).status.success(),
+        "a no-op sync must NOT flip export --check to STALE (last_synced churn)"
+    );
+}
+
 // DOGFOOD-FOUND DEFECTS (AI-companion hunt): commands that silently no-op'd on
 // bad input — a glob matching zero files, an empty pattern/text/identifier —
 // reported success or dumped the whole graph instead of failing loudly. An AI
