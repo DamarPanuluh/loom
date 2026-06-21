@@ -789,7 +789,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<
     // Single-sourced with json `orchestration.performance` (see PERFORMANCE_GUIDANCE).
     println!("  PERFORMANCE — {}", PERFORMANCE_GUIDANCE);
     println!();
-    println!("Other modes: `loom guide --mode greenfield|brownfield|refactor|port|seed`. Start: `loom status` · `loom next`.");
+    println!("Other modes: `loom guide --mode greenfield|brownfield|refactor|port|seed|import`. Start: `loom status` · `loom next`.");
     Ok(())
 }
 

@@ -1636,6 +1636,59 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECTS (AI-companion hunt): teaching-vs-behavior drift — the
+// guide footer omitted the valid `import` mode, and the oversized_file remedy
+// emitted a `loom hypothesis add` missing the REQUIRED --predicted-outcome (a
+// copied remedy hit a hard clap error). Both are commands loom tells the AI to
+// run, so drift makes it act wrongly.
+#[test]
+fn sqlite_teaching_commands_match_behavior() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("teaching-drift");
+    let run = |args: &[&str]| {
+        String::from_utf8_lossy(
+            &std::process::Command::new(loom_bin())
+                .args(args)
+                .current_dir(&graph.root)
+                .env_remove("LOOM_GRAPH")
+                .output()
+                .expect("run loom")
+                .stdout,
+        )
+        .to_string()
+    };
+    let guide = run(&["guide"]);
+    for m in [
+        "greenfield",
+        "brownfield",
+        "refactor",
+        "port",
+        "seed",
+        "import",
+    ] {
+        assert!(
+            guide.contains(m),
+            "guide footer must list every mode ({m}): {guide}"
+        );
+    }
+    // Every RUNNABLE hypothesis-add remedy (the `--name` form) must carry the
+    // required --predicted-outcome, or a copied remedy hard-errors.
+    let smells = run(&["smells"]);
+    assert!(
+        smells.contains("oversized_file"),
+        "scratch should surface an oversized_file finding to exercise its remedy"
+    );
+    for line in smells
+        .lines()
+        .filter(|l| l.contains("loom hypothesis add --name"))
+    {
+        assert!(
+            line.contains("--predicted-outcome"),
+            "a runnable hypothesis-add remedy is missing the REQUIRED --predicted-outcome: {line}"
+        );
+    }
+}
+
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): `loom status` lumped registered-but-
 // DELETED files in with "on disk the graph doesn't account for" and pointed the
 // AI at `loom coverage` / `codefile add` / `ignore` — none of which fix a
