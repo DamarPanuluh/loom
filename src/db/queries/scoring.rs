@@ -1005,6 +1005,39 @@ pub fn unexplored_pairs_scored_from_snapshot(
                     weight: 1.0,
                 });
             }
+            // Boundary-crossing SURPRISE: a real structural coupling (imports or
+            // a shared file) between two intents the architecture keeps APART —
+            // different domains, or different layers. The code couples what the
+            // design separates, so this is the most architecturally suspicious
+            // kind of undeclared coupling (a leak / misplaced responsibility) and
+            // earns the strongest discovery bump so it surfaces FIRST. An
+            // UNcoupled cross-domain pair is just unrelated, not surprising — the
+            // structural-coupling guard is what makes this signal, not noise.
+            let cross_domain = !a.domain.is_empty()
+                && !b.domain.is_empty()
+                && a.domain != "unknown"
+                && b.domain != "unknown"
+                && a.domain != b.domain;
+            let cross_layer = !a.layer.is_empty() && !b.layer.is_empty() && a.layer != b.layer;
+            let boundary_surprise = (imports > 0 || shared > 0) && (cross_domain || cross_layer);
+            if boundary_surprise {
+                let mut crossings: Vec<String> = Vec::new();
+                if cross_domain {
+                    crossings.push(format!("domain {} ✗ {}", a.domain, b.domain));
+                }
+                if cross_layer {
+                    crossings.push(format!("layer {} ✗ {}", a.layer, b.layer));
+                }
+                let detail = crossings.join(", ");
+                why.push(format!(
+                    "coupling CROSSES an architectural boundary ({detail}) — surprising; inspect first"
+                ));
+                signals.push(DiscoverySignal {
+                    kind: "boundary_crossing".to_string(),
+                    detail,
+                    weight: 6.0,
+                });
+            }
             // Tag collisions are graded by rarity (Σ 1/freq), so a collision on
             // a near-unique term outranks the binary same_domain bump — the
             // bounded vocabulary is the same signal domain wanted to be, with a
@@ -1013,7 +1046,8 @@ pub fn unexplored_pairs_scored_from_snapshot(
                 + 3.0 * shared as f64
                 + 4.0 * sim
                 + 4.0 * tag_weight
-                + if same_domain { 1.0 } else { 0.0 };
+                + if same_domain { 1.0 } else { 0.0 }
+                + if boundary_surprise { 6.0 } else { 0.0 };
 
             let degree_a = *snapshot.degrees.get(&a.id).unwrap_or(&0);
             let degree_b = *snapshot.degrees.get(&b.id).unwrap_or(&0);

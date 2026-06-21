@@ -2551,6 +2551,82 @@ fn sqlite_impact_reports_blast_radius_for_changed_files() {
     );
 }
 
+// Discovery SURPRISE: a structural coupling (here a shared file) between two
+// intents the architecture keeps in different DOMAINS is architecturally
+// surprising — a leak/misplaced responsibility — so it earns a boundary_crossing
+// signal and outranks an equivalent same-domain coupling. `loom next --mode
+// discovery` returns the single highest-priority pair, so it must be the
+// cross-domain one.
+#[test]
+fn sqlite_discovery_ranks_boundary_crossing_coupling_first() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("surprise");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "shared.go",
+        "package shared\nfunc ParseThing() {}\nfunc StoreThing() {}\n",
+    );
+    write_scratch_file(
+        &graph.root,
+        "common.go",
+        "package common\nfunc UtilA() {}\nfunc UtilB() {}\n",
+    );
+    let b = "llm:builder";
+    for (name, domain) in [
+        ("parse path", "parsing"), // cross-domain pair, both grounded in shared.go
+        ("store path", "storage"),
+        ("util one", "util"), // same-domain control, both grounded in common.go
+        ("util two", "util"),
+    ] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "X.",
+                "--level",
+                "feature",
+                "--domain",
+                domain,
+                "--json",
+            ],
+            b,
+        );
+    }
+    run_json_as(&graph.root, &["codefile", "add", "*.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    for (name, file, loc) in [
+        ("parse path", "shared.go", "func ParseThing"),
+        ("store path", "shared.go", "func StoreThing"),
+        ("util one", "common.go", "func UtilA"),
+        ("util two", "common.go", "func UtilB"),
+    ] {
+        run_json_as(
+            &graph.root,
+            &["edge", "implement", name, file, "--locator", loc, "--json"],
+            b,
+        );
+    }
+
+    // The top discovery item is the cross-domain coupling, flagged as boundary-crossing.
+    let v = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
+    assert!(
+        v["discovery_signals"]
+            .as_array()
+            .is_some_and(|s| s.iter().any(|x| x["kind"] == "boundary_crossing")),
+        "top discovery pair must carry the boundary_crossing signal: {v}"
+    );
+    let pair = format!("{} {}", v["intent_a"]["name"], v["intent_b"]["name"]);
+    assert!(
+        pair.contains("parse path") && pair.contains("store path"),
+        "the cross-domain pair must rank first, not the same-domain control: {v}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export
