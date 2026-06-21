@@ -64,47 +64,58 @@ const ROLE_LANES: &[(&str, &str, &str)] = &[
 /// discipline into one complete, self-contained, adoptable skill. The working
 /// wisdom the lane agent files used to carry now lives IN THE BINARY, emitted on
 /// demand — no shipped/installed markdown to scavenge, and it can't drift from
-/// the gate. (role, the JIT-trigger `description`, the discipline lines).
-const ROLE_DISCIPLINE: &[(&str, &str, &[&str])] = &[
+/// the gate.
+///
+/// Crafted on the patterns proven by widely-used discipline skills (mattpocock,
+/// ponytail, gstack, karpathy): each lane LEADS with a thesis, carries a named
+/// runnable loop, elevates its honesty law to its own line, bakes refusal
+/// conditions into the procedure (do-X-NOT-Y), and ends on a single anchor
+/// motto. (role, the JIT-trigger `description`, the anchor motto, discipline lines).
+const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
     ("builder",
      "Adopt when loom routes you to the builder/build lane — seeding or decomposing intents, or REALIZING a planned intent by writing the code its criterion demands (phase=build, `loom next --mode build`).",
+     "Build to the criterion, prove it, then mark it — a leaf marked implemented with no proof is a promise, not a fact.",
      &[
-        "GRANULARITY CONTRACT when seeding: 1–3 `system`, 5–15 `component`, MANY ATOMIC `feature` leaves — one falsifiable criterion each. If a description needs an 'and', it is several intents; split it (too coarse trips the `scattered` smell later).",
-        "REALIZE a planned leaf: write the code its criterion demands → `loom codefile add` → `loom edge implement <intent> <file> --locator \"<symbol AS IT APPEARS>\"` (verified against the file NOW) → PROVE the criterion (add + run a validation) → `loom intent mark <id> --lifecycle implemented`.",
-        "A planned PARENT whose children are implemented is a ROLL-UP: verify each child meets its criterion, then mark it — never write code at that altitude.",
-        "SUPERSEDED design → `loom intent retire <id> --reason … [--replaced-by …]` (keeps history, exits computation, reports fallout). Delete is only for things that should never have existed.",
-        "You record NO criterion/evidence/verdicts on your OWN work — analyzer grounds it, validator proves it, quality grades it. That separation is what makes the graph trustworthy; `loom doctor` audits it.",
+        "THE LOOP, per planned leaf: the criterion IS the spec AND the acceptance test. Write the code it demands → `loom codefile add` → `loom edge implement <intent> <file> --locator \"<symbol AS IT APPEARS>\"` (verified against the file NOW — a typo'd symbol is rejected here) → PROVE the criterion (add + run a validation) → `loom intent mark <id> --lifecycle implemented`.",
+        "GRANULARITY when seeding: 1–3 `system`, 5–15 `component`, MANY ATOMIC `feature` leaves — ONE falsifiable criterion each. Description needs an 'and'? It is several intents — split it. (Too coarse trips the `scattered` smell later.)",
+        "A planned PARENT whose children are implemented is a ROLL-UP: verify each child meets its criterion, then mark it — NEVER write code at that altitude.",
+        "SUPERSEDED design → `loom intent retire <id> --reason … [--replaced-by …]` (keeps history, exits computation). Delete is ONLY for things that should never have existed.",
+        "REFUSE to grade your own work: you record NO criterion/evidence/verdicts on it — analyzer grounds it, validator proves it, quality grades it. That separation is what makes the graph trustworthy; `loom doctor` audits it.",
      ]),
     ("analyzer",
      "Adopt when loom routes you to the analyzer/discovery lane — grounding RELATES_TO edges or proving hypotheses (phase=discovery; `loom next --mode discovery|prove|review`).",
+     "0.5-and-true beats 0.9-and-guessed — honest confidence is the safety net; a faked 0.9 poisons the graph AND skips it.",
      &[
-        "THE SOCRATIC LOOP, per edge: read both intents → form a hypothesis (\"I expect the code to show X\") → read the ACTUAL code → record exactly ONE verdict. Never record a verdict you didn't check.",
-        "VERDICTS: `loom edge explore <a> <b> ground --criterion … --confidence <honest>` (it holds) · `… issue --criterion … --evidence …` (the code contradicts the claim) · `… independent --notes …` (they don't interact — a REAL verdict that gives closure at no centrality cost; never fake a relationship to look productive).",
-        "HONEST CONFIDENCE is the cross-tier channel: anything below 0.7 auto-surfaces in `loom next --mode review`. 0.5-and-true beats 0.9-and-guessed — a faked 0.9 poisons the graph AND skips the safety net.",
-        "BULK: `loom next --mode discovery --take 50` groups unexplored pairs with both intents + groundings inline — read each neighborhood ONCE, then apply the whole group in one `loom batch -` (JSONL). `loom cluster <intent>` lists every unresolved edge touching one node.",
-        "REVIEW sub-lane (`loom next --mode review`): low-confidence × central verdicts. Form your OWN hypothesis FIRST, THEN read the recorded evidence, then confirm or OVERTURN. When the evidence reads 'foundation/universal/not specific', the verdict is INDEPENDENT, not passing@0.6.",
-        "HYPOTHESES: prove proposals via `loom next --mode prove` → `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (proposer ≠ prover).",
+        "THE SOCRATIC LOOP is the skill; everything else is mechanical. Per edge: read both intents → form a hypothesis (\"I expect the code to show X\") → read the ACTUAL code → record exactly ONE verdict. NEVER record a verdict you didn't check — no code read, no verdict.",
+        "VERDICTS: `loom edge explore <a> <b> ground --criterion … --confidence <honest>` (it holds) · `… issue --criterion … --evidence …` (the code contradicts the claim) · `… independent --notes …` (they don't interact). Independence is a REAL verdict — it gives closure at zero centrality cost. NEVER fake a relationship to look productive: when the evidence reads 'foundation / universal / not specific', the verdict is INDEPENDENT, not passing@0.6.",
+        "CONFIDENCE is the cross-tier channel: anything <0.7 auto-surfaces in `loom next --mode review` for a stronger pass. Record the confidence you ACTUALLY have — the review queue exists so your uncertainty is SAFE to record, not something to hide behind a fake 0.9.",
+        "REVIEW sub-lane (`loom next --mode review`): re-inspect low-confidence × central verdicts. Form your OWN hypothesis FIRST, THEN read the recorded evidence, then CONFIRM or OVERTURN — never rubber-stamp.",
+        "BULK: `loom next --mode discovery --take 50` groups unexplored pairs with both intents + groundings inline — read each neighborhood ONCE, apply the whole group in one `loom batch -`. `loom cluster <intent>` lists every unresolved edge on one node.",
+        "HYPOTHESES: `loom next --mode prove` → `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (proposer ≠ prover). Out-of-lane finding → `loom note add --for <role>`.",
      ]),
     ("fixer",
      "Adopt when loom routes you to the fixer/fix lane — repairing a failing edge or a needs_change intent at root cause (`loom next --mode fix`).",
+     "Fix the root, not the symptom — then sync and let the ripple show you everything the fix touched.",
      &[
-        "REPAIR ONLY: failing RELATES_TO edges (`loom edge fix`) and `needs_change` intents. Change EXISTING code at the ROOT CAUSE — new-code construction belongs to the builder.",
-        "THE RIPPLE: end every repair with `loom sync` (it stales every claim the change touched), then re-ground/re-verify what it flagged. Expect fix → sync → re-verify → re-prove → re-green.",
+        "REPAIR ONLY: failing RELATES_TO edges (`loom edge fix`) and `needs_change` intents, at the ROOT CAUSE. New-code construction is the builder's — NOT yours.",
+        "THE RIPPLE is the discipline: end every repair with `loom sync` (it stales every claim the change touched), then re-ground/re-verify what it flagged. Expect fix → sync → re-verify → re-prove → re-green; skipping the sync leaves the graph lying about your own change.",
         "Re-ground what you repaired (`loom edge implement` with a fresh locator if a symbol moved), then `loom intent mark <id> --lifecycle implemented` to close the loop.",
      ]),
     ("validator",
      "Adopt when loom routes you to the validator/validate lane — proving intents by running their validations (`loom next --mode validate`).",
+     "Unblock before you block; never fake a pass — a proof you didn't run is not a proof.",
      &[
-        "PROVE intents: `loom validate <intent>` runs the linked proofs; `loom validate --all` re-runs every not_run proof after a sync flood. Record passed/failed honestly.",
-        "UNBLOCK FIRST: a proof needing a live dep (DB/service/queue) is NOT automatically blocked — scan the repo for how it provisions things (docker-compose, Makefile/justfile, scripts/, package.json, the README), stand it up, and pass the address in at invocation. Only when you genuinely cannot is it `loom validation mark <id> --result blocked --reason …`.",
-        "A FAILING proof means the intent is not fulfilled — flag it (`loom intent mark <id> --lifecycle needs_change --reason …`) or hand the fixer a note. Never fake a pass. Manual/async proof → `loom validation mark <id> --result passed --evidence …`; confirm meaning with `loom intent confirm`.",
+        "PROVE intents: `loom validate <intent>` runs the linked proofs; `loom validate --all` re-runs every not_run proof after a sync flood. Record passed/failed from what you ACTUALLY ran.",
+        "UNBLOCK FIRST: a proof needing a live dep (DB/service/queue) is NOT automatically blocked — scan the repo for how it provisions things (docker-compose, Makefile/justfile, scripts/, package.json, the README), stand it up, pass the address in at invocation. ONLY when you genuinely cannot is it `loom validation mark <id> --result blocked --reason …`.",
+        "A FAILING proof means the intent is NOT fulfilled — flag it (`loom intent mark <id> --lifecycle needs_change --reason …`) or hand the fixer a note. Manual/async proof → `loom validation mark <id> --result passed --evidence …`; confirm meaning with `loom intent confirm`.",
      ]),
     ("quality",
      "Adopt when loom routes you to the quality lane — holding quality rules against coded intents and recording GOVERNS verdicts (`loom next --mode quality`).",
+     "Measure at the highest honest altitude; `independent` is as valuable as `passing` — never fake either to clear the gate.",
      &[
         "THE GREEN GATE: seed the packs `loom detect` recommends (`loom rule seed iso5055|…`), then `loom next --mode quality` serves every never-measured rule×intent pair.",
-        "ONE verdict per pair, after reading the intent's grounded code ONCE: `loom rule verdict <rule> <intent> --status passing|failing|independent --criterion … --evidence … --confidence <honest>` (the verdict CREATES the edge). `independent` = measured, no surface here — as valuable as passing; never fake one.",
-        "Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite.",
+        "ONE verdict per pair, after reading the intent's grounded code ONCE: `loom rule verdict <rule> <intent> --status passing|failing|independent --criterion … --evidence … --confidence <honest>` (the verdict CREATES the edge). `independent` = measured, no surface here — record it, NEVER fake a passing.",
+        "ALTITUDE: a verdict on a component covers its descendants; drop to a leaf ONLY where the rule has specific bite.",
         "A `failing` verdict routes to the fixer; quality re-earns green after the fixer's sync. HONEST confidence: <0.7 routes to review. Bulk via `loom next --mode quality --take 50` + `loom batch -`.",
      ]),
 ];
@@ -114,12 +125,13 @@ fn role_skill_name(role: &str) -> String {
     format!("loom-{role}")
 }
 
-/// Look up a role's JIT-trigger description + discipline lines (the skill body).
-fn role_discipline(role: &str) -> Option<(&'static str, &'static [&'static str])> {
+/// A role's JIT-trigger `description`, anchor motto, and discipline lines (the
+/// skill body). `None` for a role with no authored discipline.
+fn role_discipline(role: &str) -> Option<(&'static str, &'static str, &'static [&'static str])> {
     ROLE_DISCIPLINE
         .iter()
-        .find(|(r, _, _)| *r == role)
-        .map(|(_, desc, lines)| (*desc, *lines))
+        .find(|(r, _, _, _)| *r == role)
+        .map(|(_, desc, anchor, lines)| (*desc, *anchor, *lines))
 }
 
 /// Orchestration — loom defines the CONTRACT (roles, lanes, owned fields, the
@@ -463,7 +475,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     let out_of_lane = "Acting outside the lane is a hard error naming the owner. \
         Hand off via `loom note add --for <role>`; bare `llm`/`human` = solo mode (all lanes).";
     let skill = role_skill_name(role);
-    let (description, discipline) = role_discipline(role).unwrap_or(("", &[]));
+    let (description, anchor, discipline) = role_discipline(role).unwrap_or(("", "", &[]));
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -474,6 +486,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
             "setup": setup,
             "queue": queue,
             "lane": lane,
+            "anchor": anchor,
             "discipline": discipline,
             "out_of_lane": out_of_lane,
             // The binary IS the skill server: this charge is the complete,
@@ -495,9 +508,12 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     );
     println!("(This is the complete {skill} skill, served by the binary — no install. `loom skill install` to pin it.)");
     println!();
-    println!("  MANDATE  {mandate}");
-    println!("  SETUP    {setup}");
-    println!("  QUEUE    {queue}");
+    if !anchor.is_empty() {
+        println!("  THE LAW   {anchor}");
+    }
+    println!("  MANDATE   {mandate}");
+    println!("  SETUP     {setup}");
+    println!("  QUEUE     {queue}");
     println!();
     println!("YOUR LANE (what you MAY do — everything else errors, hand it to its owner):");
     for action in &lane {
@@ -514,6 +530,9 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     println!("{out_of_lane}");
     println!("Full driving protocol: `loom guide`.");
     println!();
+    if !anchor.is_empty() {
+        println!("  ⟐ Remember: {anchor}");
+    }
     println!("  → Next: {setup} && {queue}");
     Ok(())
 }
@@ -779,22 +798,35 @@ mod tests {
                 .contains("Adopt when"),
             "the description is a JIT adoption trigger: {v}"
         );
+        // The honesty law is ELEVATED to its own anchor (the craft move), not
+        // buried in a bullet — it leads the skill and closes it.
+        assert!(
+            v["anchor"]
+                .as_str()
+                .unwrap_or("")
+                .contains("0.5-and-true beats 0.9-and-guessed"),
+            "the analyzer anchor IS its honesty law: {v}"
+        );
         let disc = serde_json::to_string(&v["discipline"]).unwrap();
         assert!(
-            disc.contains("SOCRATIC LOOP")
-                && disc.contains("0.5-and-true beats 0.9-and-guessed")
+            disc.contains("THE SOCRATIC LOOP is the skill")
+                && disc.contains("no code read, no verdict")
                 && disc.contains("independent"),
-            "the analyzer discipline carries the lane's honesty rules (the skill BODY): {disc}"
+            "the analyzer discipline leads with the thesis + bakes in the refusal: {disc}"
         );
         assert!(
             v["adopt"].as_str().unwrap_or("").contains("loom-analyzer"),
             "the charge frames itself as skill adoption: {v}"
         );
-        // EVERY role serves a complete skill (name + non-empty discipline body),
+        // EVERY role serves a complete skill (name + anchor + non-empty discipline),
         // so the binary can serve any lane JIT with no shipped/installed file.
         for role in crate::db::schema::ROLES {
             let c = charge_json(role);
             assert_eq!(c["skill"], serde_json::json!(format!("loom-{role}")));
+            assert!(
+                !c["anchor"].as_str().unwrap_or("").is_empty(),
+                "role '{role}' has an anchor motto"
+            );
             assert!(
                 c["discipline"]
                     .as_array()
