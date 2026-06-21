@@ -27,3 +27,22 @@ pub fn contains_identifier_word(haystack: &str, needle: &str) -> bool {
     }
     false
 }
+
+#[cfg(test)]
+mod identifier_word_tests {
+    use super::contains_identifier_word;
+
+    #[test]
+    fn matches_whole_identifiers_not_sub_tokens() {
+        // The exact symbol matches.
+        assert!(contains_identifier_word("fn add_tax", "add_tax"));
+        assert!(contains_identifier_word("pub fn add", "add"));
+        // A sub-token must NOT match (the sync false-positive this guards): a
+        // change to `add` must not re-open a grounding on `add_tax`.
+        assert!(!contains_identifier_word("fn add_tax", "add"));
+        assert!(!contains_identifier_word("fn tax_adder", "add"));
+        assert!(!contains_identifier_word("fn readd", "add"));
+        // `_` is part of the identifier.
+        assert!(!contains_identifier_word("fn add_tax_v2", "tax"));
+    }
+}

@@ -916,12 +916,18 @@ fn affected_intents(
         .filter(|n| !n.is_empty())
         .collect();
     // An intent is affected iff one of its IMPLEMENTS edges on THIS file is
-    // file-level (empty locator) or names a changed symbol. Substring match
-    // mirrors `locator_present`; it over-flags rather than under-flags.
+    // file-level (empty locator) or names a changed symbol. IDENTIFIER-WORD match,
+    // not raw substring: a changed `add` must NOT invalidate a grounding on
+    // `add_tax` (a bare `contains` re-opened every grounding whose locator merely
+    // contained the name as a sub-token — wasted re-verification churn).
     let mut affected = HashSet::new();
     for im in all_implements.iter().filter(|im| im.codefile_id == cf.id) {
         let loc = im.locator.trim();
-        if loc.is_empty() || changed_names.iter().any(|n| loc.contains(n)) {
+        if loc.is_empty()
+            || changed_names
+                .iter()
+                .any(|n| crate::db::queries::symbol_match::contains_identifier_word(loc, n))
+        {
             affected.insert(im.intent_id.clone());
         }
     }
