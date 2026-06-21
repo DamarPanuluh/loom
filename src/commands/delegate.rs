@@ -92,6 +92,18 @@ fn run_add_with_sqlite(
             pattern
         );
     }
+    // Confine the target the SAME way `loom sync` does (sync.rs ripple_delegations
+    // uses `confine`). Otherwise an absolute or path-escaping target passes the
+    // `root.join(..).exists()` check here (join with an absolute path replaces the
+    // base) and reads as healthy, but sync's `confine` rejects it and silently
+    // skips the delegation — a watch that never fires. Reject it loudly instead.
+    let Some(target) = crate::repo::confine(root, std::path::Path::new(&target)) else {
+        anyhow::bail!(
+            "Delegation target '{target}' is outside the repo root (absolute or path-escaping). \
+             `loom sync` can only watch a child export INSIDE the root — pass a repo-relative path \
+             to the child's committed loom.graph.json."
+        );
+    };
     let target_exists = root.join(&target).exists();
     let delegation = Delegation {
         id: Uuid::new_v4().to_string(),

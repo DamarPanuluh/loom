@@ -4784,6 +4784,47 @@ fn relates_status_to(shown: &Value, other_id: &str) -> String {
         .to_string()
 }
 
+// SWEEP #10 (federation): `delegate add` accepted an absolute or path-escaping
+// target (its `root.join(..).exists()` check is satisfied when join replaces the
+// base with an absolute path), but `loom sync`'s ripple confines the target and
+// silently skips anything outside the root — a watch that looks healthy and
+// never fires. add now confines the SAME way, rejecting out-of-root targets
+// loudly so the two can't disagree.
+#[test]
+fn sqlite_delegate_add_rejects_out_of_root_targets() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("delegate-confine");
+    let add = |target: &str| {
+        std::process::Command::new(loom_bin())
+            .args(["delegate", "add", "watch/**", "--to", target])
+            .current_dir(&graph.root)
+            .env("LOOM_AGENT", "llm:builder")
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .expect("run loom delegate add")
+    };
+    for bad in ["/etc/hosts", "../sibling/loom.graph.json"] {
+        let out = add(bad);
+        assert!(
+            !out.status.success(),
+            "an out-of-root delegation target ({bad}) must be refused: {:?}",
+            out.status
+        );
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(
+            stderr.contains("outside the repo root"),
+            "the rejection names why ({bad}): {stderr}"
+        );
+    }
+    // A repo-relative target is accepted (the federation happy path).
+    let ok = add("services/child/loom.graph.json");
+    assert!(
+        ok.status.success(),
+        "a repo-relative delegation target must be accepted: {}",
+        String::from_utf8_lossy(&ok.stderr)
+    );
+}
+
 #[test]
 fn sqlite_federation_child_export_change_ripples_to_seam_intents() {
     let _guard = sqlite_test_lock();
