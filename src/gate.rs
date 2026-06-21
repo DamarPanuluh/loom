@@ -704,6 +704,15 @@ fn parse_line_range(s: &str) -> Option<(usize, usize)> {
     }
 }
 
+/// True when a locator's `:range` is clearly meant as a numeric line / line-range
+/// (only digits and a '-' separator) rather than a symbol suffix. Lets a malformed
+/// or usize-overflowing NUMERIC range be rejected without mistaking `file:funcname`
+/// (an existence-only symbol anchor) for one.
+fn range_is_numeric_intended(range: &str) -> bool {
+    let r = range.trim();
+    !r.is_empty() && r.chars().all(|c| c.is_ascii_digit() || c == '-')
+}
+
 /// Reject an `--evidence-locator` that does not RESOLVE against the repo root:
 /// the file must exist within the root, and a numeric `:line` / `:start-end`
 /// range must fall within it. Syntax is already checked in `compose_evidence`;
@@ -730,14 +739,29 @@ pub fn require_locators_resolve(root: &Path, locators: &[String]) -> Result<()> 
             )
         })?;
         if let Some(range) = range {
-            if let Some((start, end)) = parse_line_range(range) {
-                let total = content.lines().count().max(1);
-                if start == 0 || end < start || start > total || end > total {
-                    anyhow::bail!(
-                        "--evidence-locator '{l}': line range '{range}' is outside '{path}' (1..={total}) — \
-                         the anchor does not point at real lines."
-                    );
+            match parse_line_range(range) {
+                Some((start, end)) => {
+                    let total = content.lines().count().max(1);
+                    if start == 0 || end < start || start > total || end > total {
+                        anyhow::bail!(
+                            "--evidence-locator '{l}': line range '{range}' is outside '{path}' (1..={total}) — \
+                             the anchor does not point at real lines."
+                        );
+                    }
                 }
+                // parse_line_range returned None. A NUMERIC-INTENDED range (only
+                // digits and '-') that fails to parse is a malformed/overflowing
+                // LINE anchor — e.g. `src/x.rs:99999999999999999999` used to slip
+                // through (None was treated as "no range") and launder into a
+                // verdict as green evidence. Reject it like an out-of-bounds one.
+                // A non-numeric suffix (`real.rs:funcname`) is an existence-only
+                // SYMBOL anchor and stays accepted.
+                None if range_is_numeric_intended(range) => anyhow::bail!(
+                    "--evidence-locator '{l}': '{range}' is not a valid line number or N-M range \
+                     (malformed or out of usize bounds) — a fabricated anchor cannot ground a verdict. \
+                     Cite a real file:line."
+                ),
+                None => {}
             }
         }
     }
@@ -966,6 +990,15 @@ mod tests {
         );
         // An inverted range is rejected.
         assert!(require_locators_resolve(&dir, &["real.rs:3-1".into()]).is_err());
+        // A NUMERIC-INTENDED but malformed range must be rejected, not skipped:
+        // a usize-overflowing line number used to launder in as green evidence.
+        assert!(
+            require_locators_resolve(&dir, &["real.rs:99999999999999999999".into()]).is_err(),
+            "an overflowing numeric line must be rejected, not treated as 'no range'"
+        );
+        assert!(require_locators_resolve(&dir, &["real.rs:-5".into()]).is_err());
+        // A genuine symbol suffix (non-numeric) stays accepted (existence-only).
+        assert!(require_locators_resolve(&dir, &["real.rs:funcname".into()]).is_ok());
 
         let _ = std::fs::remove_dir_all(&dir);
     }
