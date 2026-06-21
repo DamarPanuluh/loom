@@ -100,12 +100,40 @@ impl EnvRedactor {
 // Execution
 // ---------------------------------------------------------------------------
 
+/// SSRF guard: refuse a saga request aimed at the cloud-metadata endpoint — the
+/// highest-value SSRF target (it serves instance credentials on every major
+/// cloud) and never a legitimate saga proof target. Returns a refusal reason when
+/// the request must be blocked. Paired with `redirect::Policy::none()` so a public
+/// target can't 3xx-pivot here either.
+fn ssrf_refusal(url: &str) -> Option<String> {
+    let host = reqwest::Url::parse(url)
+        .ok()?
+        .host_str()?
+        .to_ascii_lowercase();
+    const METADATA_TARGETS: &[&str] = &[
+        "169.254.169.254",          // AWS / GCP / Azure / OpenStack IMDS
+        "metadata.google.internal", // GCP
+        "fd00:ec2::254",            // AWS IMDSv2 over IPv6 (host_str strips brackets)
+    ];
+    if METADATA_TARGETS.contains(&host.as_str()) {
+        return Some(format!(
+            "refused '{host}': the cloud-metadata endpoint is never a valid saga target (SSRF guard)."
+        ));
+    }
+    None
+}
+
 /// Run the saga start to finish (or to first failure). Only environment-level
 /// problems (a broken HTTP client or unresolvable `base`) return `Err`;
 /// everything observed *against the target* is an outcome.
 pub fn run_saga(spec: &SagaSpec) -> Result<SagaRunReport> {
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(spec.timeout_secs))
+        // SSRF hardening: never follow redirects. A saga spec travels in the repo
+        // (and via import/federation); without this, an attacker-influenced URL
+        // could 3xx-pivot a "public" request into the internal network / cloud
+        // metadata. Saga proofs target a known endpoint — redirects aren't needed.
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .context("Could not build the HTTP client")?;
 
@@ -196,6 +224,9 @@ fn run_step(
             ))
         }
     };
+    if let Some(reason) = ssrf_refusal(&url) {
+        return Ok(fail(url, None, reason));
+    }
     let mut req = client.request(method_parsed, &url);
     for (k, v) in &step.request.headers {
         match interpolate(v, vars) {
@@ -424,6 +455,19 @@ mod tests {
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn ssrf_guard_refuses_cloud_metadata_only() {
+        // The cloud-metadata endpoint is refused on every reachable form.
+        assert!(ssrf_refusal("http://169.254.169.254/latest/meta-data/").is_some());
+        assert!(ssrf_refusal("http://169.254.169.254:80/x").is_some());
+        assert!(ssrf_refusal("http://metadata.google.internal/computeMetadata/v1/").is_some());
+        assert!(ssrf_refusal("http://METADATA.GOOGLE.INTERNAL/x").is_some()); // case-insensitive
+                                                                              // A legitimate saga target (incl. localhost dev servers) is allowed.
+        assert!(ssrf_refusal("http://localhost:8080/health").is_none());
+        assert!(ssrf_refusal("https://api.example.com/v1/users").is_none());
+        assert!(ssrf_refusal("http://127.0.0.1:3000/api").is_none());
+    }
 
     /// Tiny scripted HTTP server: serves the canned responses in order (one
     /// connection each) and records the request line + body it saw.
