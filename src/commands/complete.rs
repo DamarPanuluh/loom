@@ -58,6 +58,28 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         fp_reasons.push("committed loom.graph.json is STALE — `loom export`".to_string());
     }
 
+    // THE HONEST MIRROR (the meta-cognitive trigger). loom is DUMB — it measures
+    // your seed, not the full vision; only YOU can tell if your model captures the
+    // whole system or a sketch. So it shows the RAW depth loudly: how much of the
+    // actual code surface a human/LLM intent directly owns. A low % next to a green
+    // badge is the tell that the SEED was thin — reflect before declaring done.
+    let total_sym = symbol_report.summary.total_symbols;
+    let grounded_sym = symbol_report.summary.grounded;
+    let modeled_pct = (grounded_sym * 100).checked_div(total_sym).unwrap_or(0);
+    // Cognitive dimensions that read "—" are UNDESIGNED, not satisfied: a code
+    // graph with zero user_visible leaves / zero happy aspects means the agent
+    // hasn't done the journey/behavioral modeling — a gap to reflect on, not a ✓.
+    let undesigned: Vec<&str> = [
+        (journey.enumerated == 0).then_some("journey (no user_visible leaf classified)"),
+        (behavioral.enumerated == 0).then_some("behavioral (no happy leaf classified)"),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    // Docs-as-realization: intents marked implemented but grounded ONLY to docs.
+    // A spec is a contract, not a built system — push the LLM to BUILD the code.
+    let doc_realizations = comp::doc_only_realizations(&snapshot);
+
     if printer.json {
         printer.print_json(&serde_json::json!({
             "comprehensiveness": {
@@ -67,9 +89,17 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
                 "journey": ledger_json(&journey),
                 "behavioral": ledger_json(&behavioral),
             },
+            "modeled_depth": {
+                "symbols_directly_owned": grounded_sym,
+                "symbols_total": total_sym,
+                "percent": modeled_pct,
+            },
+            "undesigned_dimensions": undesigned,
+            "doc_only_realizations": doc_realizations,
             "boundary_owed_files": boundary_owed,
             "fully_proven": fp_ok,
             "fully_proven_reasons": fp_reasons,
+            "self_check": "loom measures your SEED, not the full vision. If you are not certain you modeled every responsibility, you have not — the badge cannot see what you never seeded.",
             "next_step": next_step(&entrypoint, &boundary, &invariant, &journey, &behavioral, fp_ok),
         }));
     } else {
@@ -121,6 +151,42 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
                 println!("      · {r}");
             }
         }
+        println!();
+        // THE META-COGNITIVE TRIGGER. loom is DUMB — it certifies your SEED, not
+        // the full vision it can't see. It does NOT pretend to judge completeness
+        // (a coarse file-level grounding is legitimate; a symbol-precision % would
+        // false-alarm on a well-modeled graph). It surfaces the gaps it CAN see and
+        // makes YOU reflect on the ones it can't.
+        println!("  ⟲ SELF-CHECK — loom certifies your SEED, not the system you never modeled.");
+        if !doc_realizations.is_empty() {
+            let shown: Vec<&str> = doc_realizations
+                .iter()
+                .take(4)
+                .map(|s| s.as_str())
+                .collect();
+            println!(
+                "    DOC-GROUNDED: {} intent(s) marked 'implemented' are grounded ONLY to docs ({}{}).",
+                doc_realizations.len(),
+                shown.join(", "),
+                if doc_realizations.len() > 4 { ", …" } else { "" }
+            );
+            println!(
+                "      A doc is a CONTRACT, not a built system. CONFIRM each: is the document itself the"
+            );
+            println!(
+                "      deliverable? If it SPECIFIES code that should exist, you certified a spec as done —"
+            );
+            println!("      BUILD the real code + reground, or set `--lifecycle planned`.");
+        }
+        if !undesigned.is_empty() {
+            println!(
+                "    Not yet designed (reads '—'): {}.",
+                undesigned.join("; ")
+            );
+        }
+        println!(
+            "    Confirm you seeded EVERY responsibility — loom cannot flag what was never modeled."
+        );
         println!();
         println!(
             "  → {}",

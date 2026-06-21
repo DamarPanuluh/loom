@@ -25,6 +25,46 @@ use crate::db::queries::stats::CoverageAxis;
 use crate::db::queries::symbol_accountability::SymbolAccountabilityReport;
 use crate::db::queries::QuerySnapshot;
 
+/// True if a path is a DOCUMENTATION artifact (a spec/contract), not code.
+fn is_doc_file(path: &str) -> bool {
+    matches!(
+        path.rsplit('.')
+            .next()
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("md" | "markdown" | "mdx" | "rst" | "adoc" | "asciidoc" | "txt" | "org")
+    )
+}
+
+/// Intents marked `lifecycle=implemented` whose groundings are ALL documentation
+/// files — a SPEC marked as BUILT. The doc is the CONTRACT (what the system must
+/// match); the realization is real code. loom pushes the LLM to either build the
+/// code (and reground), or drop these to `lifecycle=planned`. This is the
+/// generalization of "mockup is contract, not realization" to docs/specs, and the
+/// guard against a docs-repo masquerading as an implemented system (the pulse case).
+pub fn doc_only_realizations(snapshot: &QuerySnapshot) -> Vec<String> {
+    use std::collections::HashMap;
+    // intent_id -> (has any grounding, all groundings are docs)
+    let mut g: HashMap<&str, (bool, bool)> = HashMap::new();
+    for im in &snapshot.implements {
+        let e = g.entry(im.intent_id.as_str()).or_insert((false, true));
+        e.0 = true;
+        e.1 &= is_doc_file(&im.codefile_path);
+    }
+    let mut out: Vec<String> = snapshot
+        .intents
+        .iter()
+        .filter(|i| i.lifecycle == "implemented")
+        .filter(|i| {
+            g.get(i.id.as_str())
+                .is_some_and(|(has, all_doc)| *has && *all_doc)
+        })
+        .map(|i| i.name.clone())
+        .collect();
+    out.sort();
+    out
+}
+
 /// Entrypoint coverage from an already-computed symbol-accountability report:
 /// `required` public symbols minus the still-`actionable_gaps`. Denominator-honest
 /// — a public symbol can't leave the denominator by being un-owned.

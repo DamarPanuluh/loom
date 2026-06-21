@@ -2879,6 +2879,79 @@ fn sqlite_complete_record_is_not_discharge() {
     );
 }
 
+// `loom complete` pushes on DOC-AS-REALIZATION: an intent marked implemented but
+// grounded ONLY to documentation is a spec certified as a built system. loom can't
+// judge if the doc IS the deliverable, so it surfaces it for the LLM to confront —
+// but a code-grounded intent is never flagged.
+#[test]
+fn sqlite_complete_flags_doc_only_realization() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("docreal");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "spec.md", "# Spec\nThe system shall parse.\n");
+    write_scratch_file(&graph.root, "real.go", "package x\nfunc Run() {}\n");
+    let b = "llm:builder";
+    for (name, lvl) in [("architecture spec", "system"), ("real code", "feature")] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "X.",
+                "--level",
+                lvl,
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            b,
+        );
+    }
+    run_json_as(&graph.root, &["codefile", "add", "spec.md", "--json"], b);
+    run_json_as(&graph.root, &["codefile", "add", "real.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "architecture spec",
+            "spec.md",
+            "--json",
+        ],
+        b,
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "real code",
+            "real.go",
+            "--locator",
+            "func Run",
+            "--json",
+        ],
+        b,
+    );
+
+    let v = run_json(&graph.root, &["complete", "--json"]);
+    let docs = v["doc_only_realizations"]
+        .as_array()
+        .expect("doc_only_realizations");
+    assert!(
+        docs.iter().any(|x| x == "architecture spec"),
+        "a doc-only implemented intent must be flagged: {v}"
+    );
+    assert!(
+        !docs.iter().any(|x| x == "real code"),
+        "a code-grounded intent must NOT be flagged: {v}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export
