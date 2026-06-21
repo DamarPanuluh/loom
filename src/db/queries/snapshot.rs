@@ -73,11 +73,25 @@ impl QuerySnapshot {
             .collect();
         let active_ids: HashSet<&str> = intents.iter().map(|i| i.id.as_str()).collect();
         let mut degrees: HashMap<String, i64> = HashMap::new();
+        let mut counted_pairs: HashSet<(&str, &str)> = HashSet::new();
         for edge in &relates {
             if edge.inspection_status == "independent"
                 || !active_ids.contains(edge.from_id.as_str())
                 || !active_ids.contains(edge.to_id.as_str())
             {
+                continue;
+            }
+            // RELATES_TO is semantically undirected — a reciprocal pair (a->b AND
+            // b->a, both grounded) is ONE relationship, so count the unordered
+            // pair ONCE. Counting each direction double-counted degree/centrality
+            // (betweenness already dedupes this way), inflating blast-radius and
+            // skewing `loom next` ranking.
+            let pair = if edge.from_id <= edge.to_id {
+                (edge.from_id.as_str(), edge.to_id.as_str())
+            } else {
+                (edge.to_id.as_str(), edge.from_id.as_str())
+            };
+            if !counted_pairs.insert(pair) {
                 continue;
             }
             *degrees.entry(edge.from_id.clone()).or_insert(0) += 1;

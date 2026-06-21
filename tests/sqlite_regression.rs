@@ -1683,6 +1683,99 @@ fn sqlite_bare_next_in_audit_points_at_gate_not_discovery() {
     }
 }
 
+// DOGFOOD-FOUND DEFECT (integrity hunt): a reciprocal RELATES_TO (a->b AND b->a,
+// both grounded) double-counted degree/centrality — RELATES_TO is undirected, so
+// that is ONE relationship. Inflated blast-radius skews "start here" + next ranking.
+#[test]
+fn sqlite_reciprocal_relates_to_not_double_counted() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("recip-degree");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let id = |v: Value| v["id"].as_str().unwrap().to_string();
+    let a = id(run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--description",
+            "da",
+            "--level",
+            "component",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    ));
+    let b = id(run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "bravo",
+            "--description",
+            "db",
+            "--level",
+            "feature",
+            "--domain",
+            "test",
+            "--json",
+        ],
+        "llm:builder",
+    ));
+    let degree_of = |who: &str| -> i64 {
+        let v = run_json(&graph.root, &["hotspots", "--json"]);
+        v["central_intents"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|x| x["id"].as_str() == Some(who))
+            .and_then(|x| x["degree"].as_i64())
+            .unwrap_or(0)
+    };
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "they coexist for the degree test",
+            "--confidence",
+            "0.8",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    assert_eq!(degree_of(&a), 1, "one relationship → degree 1");
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &b,
+            &a,
+            "ground",
+            "--criterion",
+            "reciprocal direction, same pair",
+            "--confidence",
+            "0.8",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        degree_of(&a),
+        1,
+        "a reciprocal pair is ONE relationship — degree must stay 1, not double to 2"
+    );
+}
+
 // DOGFOOD-FOUND DEFECT (integrity hunt): `loom import` is a TRUSTED build path
 // (federation/restore/PR-merged loom.graph.json) but bypassed the structural/value
 // invariants every interactive write enforces — it accepted a HIERARCHY cycle /
