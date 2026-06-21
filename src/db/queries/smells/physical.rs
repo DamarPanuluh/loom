@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{
-    adjudicate, behavioral_symbol_kind, command_or_public_surface, normalized_contract_string,
-    scatter_threshold, short_contract_excerpt, teaching_for, AdjudicatedSmell, Smell, SmellCtx,
-    StringContractLoc, LARGE_BEHAVIORAL_SYMBOL_LINES, OVERSIZED_FILE_LINES, TANGLE_INTENTS,
+    adjudicate, behavioral_symbol_kind, capped_join, command_or_public_surface,
+    normalized_contract_string, scatter_threshold, short_contract_excerpt, teaching_for,
+    AdjudicatedSmell, Smell, SmellCtx, StringContractLoc, LARGE_BEHAVIORAL_SYMBOL_LINES,
+    OVERSIZED_FILE_LINES, TANGLE_INTENTS,
 };
 use crate::db::queries::snapshot::QuerySnapshot;
 
@@ -68,7 +69,7 @@ fn detect_overlapping_ownership(
                         "'{}' and '{}' both claim {} file(s) but no relationship is recorded",
                         a.name, b.name, shared.len()
                     ),
-                    evidence: format!("shared: {}", names.join(", ")),
+                    evidence: format!("shared: {}", capped_join(&names, ", ")),
                     remedy: format!(
                         "loom edge explore {} {}  → who owns what? ground the contract or mark independent with why",
                         a.id, b.id
@@ -127,11 +128,9 @@ fn detect_scattered_intent(
             }
             let mut dirs: Vec<(&str, usize)> = by_dir.into_iter().collect();
             dirs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
-            let clusters = dirs
-                .iter()
-                .map(|(d, n)| format!("{d} ({n})"))
-                .collect::<Vec<_>>()
-                .join(" · ");
+            let cluster_items: Vec<String> =
+                dirs.iter().map(|(d, n)| format!("{d} ({n})")).collect();
+            let clusters = capped_join(&cluster_items, " · ");
             smells.push(Smell {
                 kind: "scattered_intent".into(),
                 score: files.len() as f64,
@@ -194,7 +193,7 @@ fn detect_tangled_file(
                 kind: "tangled_file".into(),
                 score: distinct.len() as f64,
                 summary: format!("{} serves {} distinct intents", path, distinct.len()),
-                evidence: format!("intents: {}", names.join(" · ")),
+                evidence: format!("intents: {}", capped_join(&names, " · ")),
                 remedy: format!(
                     "a code split is a redesign — propose it so it gets proven before it becomes work: `loom hypothesis add --name \"split {path}\" --claim \"{path} serves {n} unrelated intents\" --proposal \"<the split, along intent lines>\" --predicted-outcome \"each intent grounds in its own module; this finding disappears\"` with a --target per owning intent; rule the cohabitation deliberate ONLY after reading the file: `loom note add --smell \"tangled_file:{path}\" --kind decision --text \"<the shared boundary that makes these intents one home, and why splitting is wrong HERE — NOT 'cohesive: one module', which restates the finding>\"` resolves this finding (a new claim re-opens it). loom rejects a vacuous or templated ruling — audit each file on its own contents",
                     n = distinct.len(),

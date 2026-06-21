@@ -2055,6 +2055,32 @@ fn sqlite_report_uninspected_not_contradictory() {
     }
 }
 
+// DOGFOOD-FOUND DEFECT (final-sweep #14): `report --json` emitted the FULL
+// intents_without_validations + completeness_gaps lists. On a large graph those
+// run to thousands of entries and bury the headline / flood an agent's context.
+// They are now capped, with a `_total` so the consumer knows the true size.
+#[test]
+fn sqlite_report_json_caps_unbounded_lists() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("report-caps");
+    let v = run_json(&graph.root, &["report", "--json"]);
+    // The capped lists never exceed the cap…
+    const CAP: usize = 50;
+    for key in ["intents_without_validations", "completeness_gaps"] {
+        let len = v[key].as_array().map(|a| a.len()).unwrap_or(0);
+        assert!(len <= CAP, "{key} must be capped at {CAP}, got {len}: {v}");
+    }
+    // …and the true totals are always present so nothing is silently dropped.
+    assert!(
+        v.get("intents_without_validations_total").is_some(),
+        "report --json must disclose the true list total: {v}"
+    );
+    assert!(
+        v.get("completeness_gaps_total").is_some(),
+        "report --json must disclose the true gaps total: {v}"
+    );
+}
+
 #[test]
 fn sqlite_discovery_vocab_weight_prose_matches_field() {
     let _guard = sqlite_test_lock();

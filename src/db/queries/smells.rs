@@ -91,6 +91,26 @@ pub const TANGLE_INTENTS: usize = 3;
 /// identical bodies are boilerplate (trivial getters, single match arms), not
 /// a copy-paste worth flagging.
 pub const MIN_CLONE_LINES: usize = 5;
+/// How many entries a finding's evidence list shows before collapsing the rest
+/// into "… and N more". The finding's summary always states the true total, so
+/// a high-cardinality smell (a 40-copy clone, a file serving 30 intents) can't
+/// flood the reader's context with a wall of locations.
+const EVIDENCE_LIST_CAP: usize = 8;
+
+/// Join `items` with `sep`, showing at most [`EVIDENCE_LIST_CAP`] and appending
+/// "… and N more" when truncated. Shared by every list-shaped smell evidence.
+fn capped_join<S: AsRef<str>>(items: &[S], sep: &str) -> String {
+    let n = items.len();
+    let mut shown: Vec<String> = items
+        .iter()
+        .take(EVIDENCE_LIST_CAP)
+        .map(|s| s.as_ref().to_string())
+        .collect();
+    if n > EVIDENCE_LIST_CAP {
+        shown.push(format!("… and {} more", n - EVIDENCE_LIST_CAP));
+    }
+    shown.join(sep)
+}
 /// Behavioral symbols above this span are large enough to inspect for splitting.
 /// Deliberately high: this is a coarse snapshot signal, not real complexity.
 pub const LARGE_BEHAVIORAL_SYMBOL_LINES: usize = 200;
@@ -1173,13 +1193,17 @@ pub fn clone_suggestions(
         } else {
             "exact body_hash"
         };
+        // Bound the per-finding site list: a high-copy clone otherwise floods
+        // the reader with dozens of `path:lines 'label'` entries. The `count` in
+        // the summary already states the true total.
+        let sites: Vec<String> = locs
+            .iter()
+            .map(|(p, f)| format!("{}:{}-{} '{}'", p, f.line_start, f.line_end, f.label))
+            .collect();
         let evidence = format!(
             "all share one {hash_label} ({} lines): {}",
             span,
-            locs.iter()
-                .map(|(p, f)| format!("{}:{}-{} '{}'", p, f.line_start, f.line_end, f.label))
-                .collect::<Vec<_>>()
-                .join(" · ")
+            capped_join(&sites, " · ")
         );
         out.push(Smell {
             kind: "code_clone".into(),
@@ -1283,3 +1307,33 @@ include!("smells/advisory_tests.inc");
 include!("smells/source_fact_tests.inc");
 #[cfg(test)]
 include!("smells/graph_tests.inc");
+
+#[cfg(test)]
+mod evidence_cap_tests {
+    use super::{capped_join, EVIDENCE_LIST_CAP};
+
+    #[test]
+    fn capped_join_bounds_a_high_cardinality_list() {
+        // Under the cap: verbatim, no "more" tail.
+        let few = ["a".to_string(), "b".to_string()];
+        assert_eq!(capped_join(&few, " · "), "a · b");
+
+        // Exactly at the cap: still verbatim.
+        let at: Vec<String> = (0..EVIDENCE_LIST_CAP).map(|i| i.to_string()).collect();
+        let joined = capped_join(&at, ", ");
+        assert!(!joined.contains("more"), "{joined}");
+
+        // Over the cap: show EVIDENCE_LIST_CAP entries + one "… and N more".
+        let many: Vec<String> = (0..EVIDENCE_LIST_CAP + 5).map(|i| i.to_string()).collect();
+        let joined = capped_join(&many, ", ");
+        assert!(joined.ends_with("… and 5 more"), "{joined}");
+        assert_eq!(
+            joined.split(", ").count(),
+            EVIDENCE_LIST_CAP + 1,
+            "exactly the cap entries plus the tail: {joined}"
+        );
+        // Works for &str slices too (the tangled_file path passes Vec<&str>).
+        let refs = ["x", "y"];
+        assert_eq!(capped_join(&refs, "/"), "x/y");
+    }
+}

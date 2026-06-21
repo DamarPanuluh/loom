@@ -13,6 +13,11 @@ use crate::types::{
     FullReport, Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation,
 };
 
+/// Per-section list cap. On a large graph these lists run to thousands of
+/// entries; an unbounded `report` (human OR --json) buries the headline and
+/// floods an agent's context. The section header always states the true total.
+const REPORT_LIST_CAP: usize = 50;
+
 struct ReportData {
     status: StatusReport,
     deprecated_intents: i64,
@@ -95,10 +100,20 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
     } = data;
 
     if printer.json {
+        // Cap the unbounded lists, but keep the true totals so the consumer
+        // knows the list was clipped and can dig deeper (`loom next`, `loom coverage`).
+        let intents_no_val_total = intents_no_val.len();
+        let gaps_total = gaps.len();
+        let intents_no_val_capped: Vec<Intent> = intents_no_val
+            .iter()
+            .take(REPORT_LIST_CAP)
+            .cloned()
+            .collect();
+        let gaps_capped: Vec<String> = gaps.iter().take(REPORT_LIST_CAP).cloned().collect();
         let report = FullReport {
             status,
             top_intents_by_centrality: top_intents,
-            intents_without_validations: intents_no_val,
+            intents_without_validations: intents_no_val_capped,
             failing_governs,
             recent_passing: recent,
             edge_counts_by_status: by_status,
@@ -111,7 +126,15 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
             );
             obj.insert(
                 "completeness_gaps".to_string(),
-                serde_json::to_value(&gaps)?,
+                serde_json::to_value(&gaps_capped)?,
+            );
+            obj.insert(
+                "intents_without_validations_total".to_string(),
+                serde_json::json!(intents_no_val_total),
+            );
+            obj.insert(
+                "completeness_gaps_total".to_string(),
+                serde_json::json!(gaps_total),
             );
             obj.insert(
                 "vertical_completeness".to_string(),
@@ -181,8 +204,14 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
     if intents_no_val.is_empty() {
         println!("  ✓ All intents have at least one validation.");
     } else {
-        for i in &intents_no_val {
+        for i in intents_no_val.iter().take(REPORT_LIST_CAP) {
             println!("  [RISKY]  {}  ({})", i.name, i.id);
+        }
+        if intents_no_val.len() > REPORT_LIST_CAP {
+            println!(
+                "  … and {} more (`loom next --mode validate` works the queue)",
+                intents_no_val.len() - REPORT_LIST_CAP
+            );
         }
         println!();
         println!(
@@ -337,8 +366,11 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
     if gaps.is_empty() {
         println!("  ✓ No gaps — grounded, validated, and error/fallback paths covered.");
     } else {
-        for g in &gaps {
+        for g in gaps.iter().take(REPORT_LIST_CAP) {
             println!("  • {}", g);
+        }
+        if gaps.len() > REPORT_LIST_CAP {
+            println!("  … and {} more", gaps.len() - REPORT_LIST_CAP);
         }
     }
 
