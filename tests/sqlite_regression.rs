@@ -2128,6 +2128,120 @@ fn sqlite_semantic_candidate_path_still_finds_twins() {
     );
 }
 
+// PERFORMANCE REGRESSION HARNESS. The campaign's #2/#3/#12 were superlinear
+// blow-ups invisible on loom's 102-intent graph because no test built a large
+// one. This inflates the committed export with a few thousand synthetic intents
+// that share NO tokens / domain / tags — so they contribute ~zero discovery and
+// smell candidates (the fixed code stays fast) while the OLD all-pairs scan still
+// pays O(N²). An O(N²) regression took 75s/90s at this scale, so a 20s ceiling
+// catches it with a wide margin and never flakes on constant-factor variance.
+//
+// Wall-clock + a large margin is the deliberate lever: there is no deterministic
+// operation counter in-binary, but the margin (catastrophic-vs-budget) makes that
+// irrelevant. Reverting the candidate generation in scoring.rs/semantic.rs blows
+// straight past the budget.
+fn write_inflated_graph(root: &Path, extra_intents: usize, extra_edges: usize) -> Vec<String> {
+    let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("loom.graph.json");
+    let raw = fs::read_to_string(&base).expect("read committed export");
+    let mut graph: Value = serde_json::from_str(&raw).expect("parse export");
+    let mut ids = Vec::with_capacity(extra_intents);
+    {
+        let intents = graph["nodes"]["Intent"]
+            .as_array_mut()
+            .expect("Intent node array");
+        for i in 0..extra_intents {
+            let id = format!("perf-intent-{i:06}");
+            ids.push(id.clone());
+            // Unique tokens AND a unique domain → contributes zero discovery/smell
+            // candidates, isolating the all-pairs cost the fixes removed.
+            intents.push(serde_json::json!({
+                "id": id,
+                "name": format!("synthetic perf node alpha{i} beta{i} gamma{i}"),
+                "description": format!("isolated synthetic intent {i} unique vocabulary delta{i} epsilon{i} zeta{i}"),
+                "abstraction_level": "feature",
+                "domain": format!("synthdomain{i}"),
+                "layer": "",
+                "source_refs": [],
+                "status": "confirmed",
+                "aspect": "",
+                "tags": [],
+                "visibility": "internal",
+                "boundary": "",
+                "lifecycle": "implemented",
+                "criterion": "",
+                "created_at": "2026-06-21T00:00:00+00:00",
+                "updated_at": "2026-06-21T00:00:00+00:00",
+            }));
+        }
+    }
+    {
+        let relates = graph["edges"]["RELATES_TO"]
+            .as_array_mut()
+            .expect("RELATES_TO edge array");
+        for k in 0..extra_edges {
+            // Chain synthetic intents so the real-RELATES_TO graph (status's
+            // betweenness cost, #12) has edges — status must stay fast WITHOUT it.
+            let a = ids[k % ids.len()].clone();
+            let b = ids[(k + 1) % ids.len()].clone();
+            let status = if k % 7 == 0 {
+                "needs_reverification"
+            } else {
+                "uninspected"
+            };
+            relates.push(serde_json::json!({
+                "from": a, "to": b,
+                "inspection_status": status,
+                "confidence": 0.0,
+                "criterion": "", "evidence": "", "notes": "",
+                "inspected_by": "", "last_inspected": "",
+                "priority_score": 0.0, "stable": false,
+                "kinds": [],
+                "created_at": "2026-06-21T00:00:00+00:00",
+            }));
+        }
+    }
+    fs::write(
+        root.join("perf.graph.json"),
+        serde_json::to_string(&graph).expect("serialize inflated graph"),
+    )
+    .expect("write perf graph");
+    ids
+}
+
+#[test]
+fn sqlite_large_graph_read_commands_stay_under_budget() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("perf-budget");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_inflated_graph(&graph.root, 3000, 1200);
+    run_json(&graph.root, &["import", "perf.graph.json", "--json"]);
+
+    const BUDGET: std::time::Duration = std::time::Duration::from_secs(20);
+    let timed = |args: &[&str]| {
+        let start = std::time::Instant::now();
+        let out = Command::new(loom_bin())
+            .args(args)
+            .current_dir(&graph.root)
+            .env_remove("LOOM_GRAPH")
+            .output()
+            .unwrap_or_else(|e| panic!("run loom {args:?}: {e}"));
+        let elapsed = start.elapsed();
+        assert!(
+            out.status.success(),
+            "loom {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(
+            elapsed < BUDGET,
+            "loom {args:?} took {elapsed:?}, over the {BUDGET:?} budget — a superlinear regression?"
+        );
+    };
+    // The three hot read commands the campaign's perf fixes targeted.
+    timed(&["status", "--json"]);
+    timed(&["next", "--mode", "discovery", "--json"]);
+    timed(&["smells", "--json"]);
+}
+
 // SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
 // scores every O(N²) pair — it generates candidates from inverted indices, an
 // EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are
