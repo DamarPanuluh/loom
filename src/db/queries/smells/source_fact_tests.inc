@@ -36,6 +36,7 @@ mod large_behavioral_symbol_tests {
             symbols: facts.iter().map(|f| f.label.clone()).collect(),
             symbol_facts: facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 
@@ -287,6 +288,7 @@ mod source_fact_smell_tests {
             symbols: facts.iter().map(|f| f.label.clone()).collect(),
             symbol_facts: facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 

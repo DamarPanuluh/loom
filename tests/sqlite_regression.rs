@@ -2288,6 +2288,43 @@ fn sqlite_read_commands_do_not_mutate_the_graph() {
     }
 }
 
+// ENHANCEMENT #4 (extraction self-grade): end-to-end — a freshly registered file
+// is EXTRACTED and graded by its first `loom sync` (the add no longer pre-stamps
+// the content hash, which had made content-addressed sync skip it), and
+// `codefile show --json` exposes the grade so a consumer can weight the facts.
+#[test]
+fn sqlite_sync_grades_files_and_codefile_show_exposes_it() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("extractor-grade");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Go is heuristic-graded ("low") in BOTH build configs (tree-sitter doesn't
+    // cover Go), so the assertion is build-independent.
+    write_scratch_file(
+        &graph.root,
+        "svc.go",
+        "package main\nfunc Run() {}\nfunc Stop() {}\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "svc.go", "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "svc.go", "--json"]);
+    assert_eq!(
+        show["codefile"]["extractor_grade"], "low",
+        "first sync must grade the file and `codefile show --json` must expose it: {show}"
+    );
+    let syms = show["codefile"]["symbols"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert!(
+        syms.iter().any(|s| s == "func Run"),
+        "first sync must EXTRACT a freshly-registered file's symbols: {show}"
+    );
+}
+
 // SWEEP #3 (scale): the default discovery class (suspected-coupling) no longer
 // scores every O(N²) pair — it generates candidates from inverted indices, an
 // EXACT superset of the signal-bearing pairs. On a graph whose facet buckets are

@@ -155,28 +155,33 @@ fn prepare_additions(
                 abs_path.display()
             )
         })?;
-        let content_hash = std::fs::read(&abs_path)
-            .map(|b| crate::repo::content_hash(&b))
-            .map_err(|e| {
-                anyhow::anyhow!(
-                    "Cannot read bytes for {}: {} — restore the file or remove the registration \
-                     (`loom codefile remove <path>`), then `loom sync`.",
-                    abs_path.display(),
-                    e
-                )
-            })?;
+        // Validate the file is readable now (clear error) but do NOT stamp the
+        // content hash. Leaving it empty makes the first `loom sync` EXTRACT this
+        // file's symbols + grade via the legacy hash-adoption path; because
+        // last_modified IS stamped, that path does not ripple needs_reverification.
+        // Pre-stamping the hash made content-addressed sync (#9) read the new file
+        // as unchanged and SKIP extraction, leaving a freshly registered file
+        // symbol-less until it was edited.
+        std::fs::read(&abs_path).map_err(|e| {
+            anyhow::anyhow!(
+                "Cannot read bytes for {}: {} — restore the file or remove the registration \
+                 (`loom codefile remove <path>`), then `loom sync`.",
+                abs_path.display(),
+                e
+            )
+        })?;
         let codefile = CodeFile {
             id: Uuid::new_v4().to_string(),
             path: p.clone(),
             language: language.clone().unwrap_or_else(|| detect_language(&p)),
-            // Stamp the current mtime + content fingerprint so the first
-            // `loom sync` is a no-op and only genuine later edits ripple
-            // needs_reverification.
+            // mtime stamped so the first sync extracts WITHOUT rippling; content
+            // hash, symbols, facts, and grade are all filled by that sync.
             last_modified,
-            imports: Vec::new(),      // populated by `loom sync`
-            symbols: Vec::new(),      // populated by `loom sync`
-            symbol_facts: Vec::new(), // populated by `loom sync`
-            content_hash,
+            imports: Vec::new(),
+            symbols: Vec::new(),
+            symbol_facts: Vec::new(),
+            content_hash: String::new(),
+            extractor_grade: String::new(),
         };
         added.push(codefile);
     }
@@ -266,6 +271,17 @@ fn run_list_with_db(db: &dyn GraphReadRepository, limit: usize, printer: &Printe
         }
     }
     Ok(())
+}
+
+/// Human-readable trust label for a codefile's `extractor_grade`, so the reader
+/// knows how much to trust its symbol facts.
+fn grade_label(grade: &str) -> &'static str {
+    match grade {
+        "high" => "tree-sitter (high-fidelity)",
+        "low" => "heuristic (low-fidelity)",
+        "none" => "no extractor for this language",
+        _ => "ungraded — run `loom sync` to refresh",
+    }
 }
 
 fn run_show_with_db(
@@ -368,6 +384,11 @@ fn run_show_with_db(
         println!("── CodeFile ───────────────────────────────────────────────────────");
         println!("  path:      {}", cf.path);
         println!("  language:  {}", cf.language);
+        println!(
+            "  facts:     {} symbol(s) · {}",
+            cf.symbol_facts.len(),
+            grade_label(&cf.extractor_grade)
+        );
         println!(
             "  modified:  {}",
             if cf.last_modified.is_empty() {

@@ -515,6 +515,19 @@ pub(crate) struct PhysicalFacts {
     pub imports: Vec<String>,
     pub symbols: Vec<String>,
     pub symbol_facts: Vec<crate::types::SymbolFact>,
+    /// How these facts were produced, so a consumer (and the agent reading the
+    /// graph) knows how much to trust them: `high` = a tree-sitter parse,
+    /// `low` = the heuristic line-scanner, `none` = no extractor handles this
+    /// file's language (the symbols are empty by definition).
+    pub extractor_grade: String,
+}
+
+/// Languages the heuristic line-scanner understands (the only path for these in
+/// EITHER build, and the fallback path when tree-sitter is off). Mirrors the
+/// dispatch in `extract_symbol_facts_heuristic`; `extractor_grade_*` tests pin
+/// the correspondence.
+fn heuristic_supports(ext: &str) -> bool {
+    matches!(ext, "dart" | "go" | "kt" | "kts" | "swift" | "svelte")
 }
 
 pub(crate) fn extract_physical_facts(root: &Path, rel_path: &str, content: &str) -> PhysicalFacts {
@@ -524,8 +537,18 @@ pub(crate) fn extract_physical_facts(root: &Path, rel_path: &str, content: &str)
             imports: resolve_import_specifiers(root, rel_path, &facts.import_specifiers),
             symbols: facts.symbols,
             symbol_facts: facts.symbol_facts,
+            extractor_grade: "high".to_string(),
         };
     }
+    let ext = Path::new(rel_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let extractor_grade = if heuristic_supports(ext) {
+        "low"
+    } else {
+        "none"
+    };
     let mut symbol_facts = extract_symbol_facts_heuristic(rel_path, content);
     let mut symbols: Vec<String> = symbol_facts.iter().map(|fact| fact.label.clone()).collect();
     symbols.sort();
@@ -541,6 +564,7 @@ pub(crate) fn extract_physical_facts(root: &Path, rel_path: &str, content: &str)
         imports: extract_imports_heuristic(root, rel_path, content),
         symbols,
         symbol_facts,
+        extractor_grade: extractor_grade.to_string(),
     }
 }
 
@@ -1719,6 +1743,34 @@ mod tests {
         assert!(!dart.contains(&"fn void".to_string()), "{dart:?}");
         assert!(!dart.contains(&"fn load".to_string()), "{dart:?}");
         assert!(!dart.contains(&"fn helper".to_string()), "{dart:?}");
+    }
+
+    // The extraction grade must track which extractor actually ran (so a consumer
+    // knows how much to trust the facts), and stay in lockstep with the dispatch.
+    #[test]
+    fn extractor_grade_reflects_the_extractor() {
+        let base = std::env::temp_dir();
+        // Heuristic-only languages are always "low" — their only path in either build.
+        assert_eq!(
+            extract_physical_facts(&base, "x.go", "package main\n").extractor_grade,
+            "low"
+        );
+        assert_eq!(
+            extract_physical_facts(&base, "x.dart", "class A {}\n").extractor_grade,
+            "low"
+        );
+        // A language no extractor handles is "none".
+        assert_eq!(
+            extract_physical_facts(&base, "notes.md", "# title\n").extractor_grade,
+            "none"
+        );
+        // Rust is "high" under tree-sitter; "none" in the heuristic-only build
+        // (the heuristic scanner doesn't handle Rust).
+        let rs = extract_physical_facts(&base, "x.rs", "fn a() {}\n").extractor_grade;
+        #[cfg(feature = "treesitter")]
+        assert_eq!(rs, "high");
+        #[cfg(not(feature = "treesitter"))]
+        assert_eq!(rs, "none");
     }
 
     #[cfg(feature = "treesitter")]

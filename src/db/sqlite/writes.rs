@@ -595,8 +595,8 @@ impl SqliteGraphStore {
     }
     pub fn insert_codefile(&self, codefile: &CodeFile) -> Result<()> {
         self.write_one(
-            "INSERT INTO codefile(id, path, language, last_modified, imports, symbols, symbol_facts, content_hash)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO codefile(id, path, language, last_modified, imports, symbols, symbol_facts, content_hash, extractor_grade)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 codefile.id,
                 codefile.path,
@@ -605,8 +605,16 @@ impl SqliteGraphStore {
                 serde_json::to_string(&codefile.imports)?,
                 serde_json::to_string(&codefile.symbols)?,
                 serde_json::to_string(&codefile.symbol_facts)?,
-                codefile.content_hash
+                codefile.content_hash,
+                codefile.extractor_grade
             ],
+        )?;
+        Ok(())
+    }
+    pub fn update_codefile_extractor_grade(&self, id: &str, grade: &str) -> Result<()> {
+        self.write_one(
+            "UPDATE codefile SET extractor_grade = ?1 WHERE id = ?2",
+            params![grade, id],
         )?;
         Ok(())
     }

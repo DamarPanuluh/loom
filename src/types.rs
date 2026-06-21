@@ -546,6 +546,12 @@ pub struct CodeFile {
     /// Empty on never-synced/pre-upgrade graphs (sync falls back to mtime once).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub content_hash: String,
+    /// How this file's symbol facts were produced — `high` (tree-sitter),
+    /// `low` (heuristic line-scanner), `none` (no extractor for this language),
+    /// or empty (legacy/never re-synced under a grade-aware loom). Lets a
+    /// consumer weight how much to trust the facts. Set by `loom sync`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub extractor_grade: String,
 }
 
 /// A top-level syntax symbol extracted from a CodeFile.

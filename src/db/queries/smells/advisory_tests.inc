@@ -34,6 +34,7 @@ mod shotgun_surgery_tests {
             symbols: Vec::new(),
             symbol_facts: Vec::new(),
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 
@@ -302,6 +303,7 @@ mod proof_locality_tests {
             symbols: facts.iter().map(|f| f.label.clone()).collect(),
             symbol_facts: facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 
@@ -628,6 +630,7 @@ mod clone_tests {
             symbols: facts.iter().map(|f| f.label.clone()).collect(),
             symbol_facts: facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 

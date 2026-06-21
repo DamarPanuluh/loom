@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS codefile(
   imports TEXT NOT NULL CHECK(json_valid(imports)),
   symbols TEXT NOT NULL CHECK(json_valid(symbols)),
   symbol_facts TEXT NOT NULL CHECK(json_valid(symbol_facts)),
-  content_hash TEXT NOT NULL DEFAULT ''
+  content_hash TEXT NOT NULL DEFAULT '',
+  extractor_grade TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS quality_rule(
@@ -342,6 +343,7 @@ impl SqliteGraphStore {
                 "last_executed_run",
                 "TEXT NOT NULL DEFAULT ''",
             ),
+            ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;

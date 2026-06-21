@@ -108,11 +108,25 @@ pub fn run_with_db(
         return render_adjudicated_drilldown(&symbol_accountability, printer);
     }
 
+    // Extraction fidelity: how many files' symbol facts are heuristic-grade
+    // (lower trust than tree-sitter) or ungraded (legacy / never re-synced under
+    // a grade-aware loom). Lets a reader weight the symbol diagnostics below.
+    let low_fidelity = codefiles
+        .iter()
+        .filter(|c| c.extractor_grade == "low")
+        .count();
+    let ungraded = codefiles
+        .iter()
+        .filter(|c| c.extractor_grade.is_empty())
+        .count();
+
     if summary {
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "summary": true,
                 "total_files":           total,
+                "low_fidelity_extraction": low_fidelity,
+                "ungraded_extraction":   ungraded,
                 "grounded":              grounded_n,
                 "delegated":             delegated_n,
                 "excluded":              excluded_n,
@@ -154,6 +168,11 @@ pub fn run_with_db(
                 println!(
                     "  symbol accountability: {} open gaps · {} raw gaps · {} adjudicated",
                     s.actionable_gaps, s.raw_actionable_gaps, s.adjudicated
+                );
+            }
+            if low_fidelity > 0 || ungraded > 0 {
+                println!(
+                    "  extraction fidelity: {low_fidelity} heuristic-grade · {ungraded} ungraded (facts to weight accordingly; `loom sync` grades them)"
                 );
             }
             println!("  Full detail: `loom coverage --json`.");
@@ -661,6 +680,7 @@ mod tests {
             symbols: vec!["fn run".into(), "struct Worker".into(), "class User".into()],
             symbol_facts: Vec::new(),
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }];
         let implements = vec![
             Implements {

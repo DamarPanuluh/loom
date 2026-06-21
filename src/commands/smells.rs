@@ -1134,6 +1134,7 @@ mod tests {
             symbols: vec![fact.label.clone()],
             symbol_facts: vec![fact],
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 

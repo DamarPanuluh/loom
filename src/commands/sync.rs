@@ -481,6 +481,10 @@ fn update_physical_facts_and_flag_locators(
                 store.update_codefile_symbol_facts(&cf.id, &facts.symbol_facts)?;
                 state.facts_rewritten += 1;
             }
+            if facts.extractor_grade != cf.extractor_grade {
+                store.update_codefile_extractor_grade(&cf.id, &facts.extractor_grade)?;
+                state.facts_rewritten += 1;
+            }
         } else if state.non_utf8_files.contains(&cf.path) {
             for im in ctx.all_implements {
                 if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
@@ -981,6 +985,7 @@ mod tests {
             symbols: vec![],
             symbol_facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
     #[cfg(feature = "treesitter")]

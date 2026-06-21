@@ -446,6 +446,7 @@ fn sqlite_implements_regrounding_updates_locator_and_status() {
             symbols: vec!["better_anchor".into()],
             symbol_facts: Vec::new(),
             content_hash: "hash-a".into(),
+            extractor_grade: String::new(),
         })
         .unwrap();
 
@@ -524,6 +525,7 @@ fn sqlite_retire_stales_implements_and_filters_them_from_active_snapshot() {
             symbols: vec!["fn foo".into()],
             symbol_facts: Vec::new(),
             content_hash: "hash-a".into(),
+            extractor_grade: String::new(),
         })
         .unwrap();
     store

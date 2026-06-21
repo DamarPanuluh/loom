@@ -28049,6 +28049,7 @@
     "CodeFile": [
       {
         "content_hash": "4a82ae3ecce18999",
+        "extractor_grade": "",
         "id": "014324b9-30b8-4c4c-b2b5-c72a1740b80e",
         "imports": [
           "src/cli.rs",
@@ -29194,6 +29195,7 @@
       },
       {
         "content_hash": "15cd688b264cfc52",
+        "extractor_grade": "",
         "id": "042bd9aa-4a90-4c2c-bc81-24ab3147bd5b",
         "imports": [
           "src/db/mod.rs",
@@ -29876,6 +29878,7 @@
       },
       {
         "content_hash": "eedb90fbf139a14b",
+        "extractor_grade": "",
         "id": "06f150bd-4010-4ffc-a8a7-593d4381c2c7",
         "imports": [
           "src/cli.rs",
@@ -30925,6 +30928,7 @@
       },
       {
         "content_hash": "2fbc5f89da26fac9",
+        "extractor_grade": "",
         "id": "0dc19b2f-02d4-4e56-8a53-f17b4499c225",
         "imports": [
           "src/db/mod.rs",
@@ -33114,6 +33118,7 @@
       },
       {
         "content_hash": "407a6815b60abe72",
+        "extractor_grade": "",
         "id": "0e2aa2d1-be38-4229-8dc6-73d58416e0b7",
         "imports": [],
         "language": "rust",
@@ -33291,6 +33296,7 @@
       },
       {
         "content_hash": "c520e766a3ae06d9",
+        "extractor_grade": "",
         "id": "1118c655-b551-4fa8-9d65-5debeb1f1dfb",
         "imports": [
           "src/cli.rs",
@@ -34244,6 +34250,7 @@
       },
       {
         "content_hash": "0f916d16b2a862a0",
+        "extractor_grade": "",
         "id": "128cfcf2-6d51-4930-8c23-eb55db259309",
         "imports": [],
         "language": "rust",
@@ -34409,6 +34416,7 @@
       },
       {
         "content_hash": "b2a1a172e867dd27",
+        "extractor_grade": "",
         "id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
         "imports": [],
         "language": "rust",
@@ -36332,6 +36340,7 @@
       },
       {
         "content_hash": "1c8f020c03b8c64b",
+        "extractor_grade": "",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
@@ -49164,6 +49173,7 @@
       },
       {
         "content_hash": "3ccd4fd39d9f28c0",
+        "extractor_grade": "",
         "id": "1bab3f92-48cc-4a47-b47d-855eebf22658",
         "imports": [],
         "language": "unknown",
@@ -49174,6 +49184,7 @@
       },
       {
         "content_hash": "67c68bb98378b669",
+        "extractor_grade": "",
         "id": "1dd77f8a-1fe9-470a-918e-268c278e97f1",
         "imports": [],
         "language": "rust",
@@ -49575,6 +49586,7 @@
       },
       {
         "content_hash": "ad57947fed162c99",
+        "extractor_grade": "",
         "id": "20ea1bb2-c08e-405b-9659-cf9ecdd11965",
         "imports": [
           "src/cli.rs",
@@ -49973,6 +49985,7 @@
       },
       {
         "content_hash": "35fbf20b7eed6bd4",
+        "extractor_grade": "",
         "id": "23b50aad-b00c-46c3-ad8e-4bd6dc8ab137",
         "imports": [
           "src/types.rs"
@@ -50140,6 +50153,7 @@
       },
       {
         "content_hash": "84704710041b9cea",
+        "extractor_grade": "",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
           "src/db/mod.rs",
@@ -53425,6 +53439,7 @@
       },
       {
         "content_hash": "f1798854de4e04af",
+        "extractor_grade": "",
         "id": "2b2f82a7-d482-47f1-a7fc-786cdf1b37ea",
         "imports": [],
         "language": "unknown",
@@ -53435,6 +53450,7 @@
       },
       {
         "content_hash": "e2bbce22a8c9b2a3",
+        "extractor_grade": "",
         "id": "2d667bdf-f414-47f3-8f9e-ab1078f3b2b2",
         "imports": [],
         "language": "rust",
@@ -53569,6 +53585,7 @@
       },
       {
         "content_hash": "e2e7ba730258dc1c",
+        "extractor_grade": "",
         "id": "2fa22005-5a17-4c07-9887-6ad5bdb6c2d0",
         "imports": [
           "src/output.rs"
@@ -53652,6 +53669,7 @@
       },
       {
         "content_hash": "0b684a898b55285f",
+        "extractor_grade": "",
         "id": "30616f5e-e134-422d-8f9f-70f2531ef026",
         "imports": [],
         "language": "unknown",
@@ -53662,6 +53680,7 @@
       },
       {
         "content_hash": "d191485b8a266cd0",
+        "extractor_grade": "",
         "id": "36fdd28d-996e-4fa8-82f9-156902494354",
         "imports": [],
         "language": "rust",
@@ -54418,6 +54437,7 @@
       },
       {
         "content_hash": "9503fc8c90624760",
+        "extractor_grade": "",
         "id": "37581090-ca9d-48e6-95ef-eb1434b08eea",
         "imports": [
           "src/types.rs"
@@ -56286,6 +56306,7 @@
       },
       {
         "content_hash": "ca2112a604a58de8",
+        "extractor_grade": "",
         "id": "3cb4e37d-7dcd-40d4-878f-48dec5e6c5af",
         "imports": [
           "src/types.rs"
@@ -56404,6 +56425,7 @@
       },
       {
         "content_hash": "4ee11c8ddf5d7cd0",
+        "extractor_grade": "",
         "id": "3ce9a847-4eee-4a36-81a9-050f56cb1e55",
         "imports": [],
         "language": "rust",
@@ -57329,6 +57351,7 @@
       },
       {
         "content_hash": "cf0c4abca42a2667",
+        "extractor_grade": "",
         "id": "3f32cd0f-9a87-464f-b131-d74ba13b0e66",
         "imports": [],
         "language": "unknown",
@@ -57339,6 +57362,7 @@
       },
       {
         "content_hash": "57f165b6f2e896c0",
+        "extractor_grade": "",
         "id": "44dd8ed7-a21b-4bbd-b0d7-3824ff9e6961",
         "imports": [
           "src/db/queries/completeness.rs",
@@ -57364,6 +57388,7 @@
       },
       {
         "content_hash": "94f14a1584e50bba",
+        "extractor_grade": "",
         "id": "44f9cad1-8152-41ef-868d-5a75233e985e",
         "imports": [],
         "language": "rust",
@@ -57387,6 +57412,7 @@
       },
       {
         "content_hash": "979971721df36058",
+        "extractor_grade": "",
         "id": "451aecad-ca25-42a6-bb90-e2579a032953",
         "imports": [
           "src/types.rs"
@@ -57863,6 +57889,7 @@
       },
       {
         "content_hash": "ae5f770fc1bdf909",
+        "extractor_grade": "",
         "id": "4740eabd-74f5-4e1a-8671-477859fcc65b",
         "imports": [],
         "language": "rust",
@@ -58647,6 +58674,7 @@
       },
       {
         "content_hash": "78bc01dc0aa286f9",
+        "extractor_grade": "",
         "id": "529cf0ed-091e-4c30-846a-ddccbee2591d",
         "imports": [],
         "language": "rust",
@@ -59404,6 +59432,7 @@
       },
       {
         "content_hash": "145cad65bd18fb52",
+        "extractor_grade": "",
         "id": "537ef2e3-6976-42ff-aa96-80d7d60390aa",
         "imports": [
           "src/db/mod.rs",
@@ -59618,6 +59647,7 @@
       },
       {
         "content_hash": "cbabb761cd255a98",
+        "extractor_grade": "",
         "id": "568a7d89-1ccf-47a9-bb00-0e20e88f6893",
         "imports": [
           "src/db/mod.rs",
@@ -59881,6 +59911,7 @@
       },
       {
         "content_hash": "bfc31728b6dc2c7a",
+        "extractor_grade": "",
         "id": "588e010e-f87d-4e8f-94b1-8f15eff3b7a8",
         "imports": [
           "src/types.rs"
@@ -60759,6 +60790,7 @@
       },
       {
         "content_hash": "c0317fbf551d732c",
+        "extractor_grade": "",
         "id": "59586001-f497-4255-a7bc-75fd8a2f486a",
         "imports": [
           "src/cli.rs",
@@ -62181,6 +62213,7 @@
       },
       {
         "content_hash": "a17dde62988d6fe0",
+        "extractor_grade": "",
         "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
         "imports": [
           "src/db/mod.rs",
@@ -63660,6 +63693,7 @@
       },
       {
         "content_hash": "7f5b04bb6de52377",
+        "extractor_grade": "",
         "id": "5ff43321-c1a7-4443-b853-3dd03e68b1cd",
         "imports": [],
         "language": "rust",
@@ -63717,6 +63751,7 @@
       },
       {
         "content_hash": "5d4484cecbf17497",
+        "extractor_grade": "",
         "id": "61d1f5b0-4942-4ebf-8846-2815eb302286",
         "imports": [
           "src/cli.rs",
@@ -63811,6 +63846,7 @@
       },
       {
         "content_hash": "97af31725b252488",
+        "extractor_grade": "",
         "id": "62532fce-0993-4eb2-94cd-f9c069a6e502",
         "imports": [
           "src/cli.rs",
@@ -64353,6 +64389,7 @@
       },
       {
         "content_hash": "efe72f0839ec6346",
+        "extractor_grade": "",
         "id": "62ff5a32-6788-4410-933e-dd6f8c50e527",
         "imports": [],
         "language": "rust",
@@ -64946,6 +64983,7 @@
       },
       {
         "content_hash": "5ac9f17c6e68f1fb",
+        "extractor_grade": "",
         "id": "66970ecc-6db7-45d1-b3ff-642b6613a0a6",
         "imports": [
           "src/types.rs"
@@ -65235,6 +65273,7 @@
       },
       {
         "content_hash": "3a4e365c7c49f887",
+        "extractor_grade": "",
         "id": "66a3504e-1423-41b4-88cd-31b8e3835fe6",
         "imports": [
           "src/db/mod.rs",
@@ -65934,6 +65973,7 @@
       },
       {
         "content_hash": "4f4d5c454789289e",
+        "extractor_grade": "",
         "id": "67ac5d24-53d4-481c-b180-98df008d3ef5",
         "imports": [],
         "language": "markdown",
@@ -65944,6 +65984,7 @@
       },
       {
         "content_hash": "7d1bc86378c9eca5",
+        "extractor_grade": "",
         "id": "6e45d28c-4921-4452-8e9b-188f9e088169",
         "imports": [],
         "language": "unknown",
@@ -65954,6 +65995,7 @@
       },
       {
         "content_hash": "227c802e457b5012",
+        "extractor_grade": "",
         "id": "72ded8fc-11b6-4c6b-996f-9d9e40481b0a",
         "imports": [
           "src/cli.rs",
@@ -66607,6 +66649,7 @@
       },
       {
         "content_hash": "ea1135a0d4f4ed3a",
+        "extractor_grade": "",
         "id": "74c4f8e0-a226-454b-ab4d-2faf74821bd4",
         "imports": [
           "src/db/mod.rs",
@@ -66841,6 +66884,7 @@
       },
       {
         "content_hash": "ded788fe49df5e9a",
+        "extractor_grade": "",
         "id": "77298c1f-f399-4a23-a6b1-8570c301143b",
         "imports": [
           "src/db/mod.rs",
@@ -67019,6 +67063,7 @@
       },
       {
         "content_hash": "63888f368799bffe",
+        "extractor_grade": "",
         "id": "7bc067f9-79ea-4123-a3e6-571318d9f6f3",
         "imports": [
           "src/cli.rs",
@@ -67720,6 +67765,7 @@
       },
       {
         "content_hash": "20ed8652f70c95b1",
+        "extractor_grade": "",
         "id": "7be1c91f-171f-4d32-9731-3ae70c8b3ba2",
         "imports": [
           "src/db/mod.rs",
@@ -68147,6 +68193,7 @@
       },
       {
         "content_hash": "3fc356bf492a8c5c",
+        "extractor_grade": "",
         "id": "7dacbedc-436f-4f1e-97b6-cc051975982a",
         "imports": [
           "src/db/mod.rs",
@@ -68550,6 +68597,7 @@
       },
       {
         "content_hash": "be2477c4751d3ac8",
+        "extractor_grade": "",
         "id": "7ded4073-da1c-4e9a-94f8-6d8d2966746a",
         "imports": [],
         "language": "rust",
@@ -69789,6 +69837,7 @@
       },
       {
         "content_hash": "3772dbc817da7868",
+        "extractor_grade": "",
         "id": "85740e81-dfb7-4f38-ac85-dd28647eed70",
         "imports": [],
         "language": "rust",
@@ -70287,6 +70336,7 @@
       },
       {
         "content_hash": "3648c72ec7c6b3b2",
+        "extractor_grade": "",
         "id": "8f3a56f9-9b2b-4cbc-b3fa-1bad25b2abed",
         "imports": [
           "src/db/mod.rs",
@@ -70355,6 +70405,7 @@
       },
       {
         "content_hash": "4fb96d1de1512b05",
+        "extractor_grade": "",
         "id": "8fb15bee-91a6-41fb-b587-6f3870f39124",
         "imports": [],
         "language": "rust",
@@ -72148,6 +72199,7 @@
       },
       {
         "content_hash": "df976a8adbcf2baa",
+        "extractor_grade": "",
         "id": "90a34209-fe1e-46e3-874a-cffbcd47b60f",
         "imports": [],
         "language": "rust",
@@ -74045,6 +74097,7 @@
       },
       {
         "content_hash": "553fa804e05d1ce5",
+        "extractor_grade": "",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
           "src/db/mod.rs",
@@ -74734,6 +74787,7 @@
       },
       {
         "content_hash": "2545218dfc241471",
+        "extractor_grade": "",
         "id": "966a7e34-2119-4aa8-8e06-d222e9f66ed2",
         "imports": [
           "src/agent.rs",
@@ -74780,6 +74834,7 @@
       },
       {
         "content_hash": "7516bdc929417d9d",
+        "extractor_grade": "",
         "id": "9bd0cbca-4bdb-4d7c-ad32-3ba2c85323f3",
         "imports": [],
         "language": "rust",
@@ -75057,6 +75112,7 @@
       },
       {
         "content_hash": "20d5e972b7b73e34",
+        "extractor_grade": "",
         "id": "a10bec23-4f19-477e-9475-2b7382e0814c",
         "imports": [
           "src/types.rs",
@@ -76648,6 +76704,7 @@
       },
       {
         "content_hash": "edd33e24945f9791",
+        "extractor_grade": "",
         "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
         "imports": [
           "src/cli.rs",
@@ -78298,6 +78355,7 @@
       },
       {
         "content_hash": "7d98d51ec7549ad8",
+        "extractor_grade": "",
         "id": "a1a6cdb7-36e1-445b-af90-1051db78316d",
         "imports": [],
         "language": "shell",
@@ -78308,6 +78366,7 @@
       },
       {
         "content_hash": "1d3e6f08973449a3",
+        "extractor_grade": "",
         "id": "a405b71a-0c50-4a06-a838-bca1508875e3",
         "imports": [],
         "language": "unknown",
@@ -78318,6 +78377,7 @@
       },
       {
         "content_hash": "7508b01542561db6",
+        "extractor_grade": "",
         "id": "a4742512-8274-4e59-810d-1281146a7b16",
         "imports": [
           "src/db/mod.rs",
@@ -78685,6 +78745,7 @@
       },
       {
         "content_hash": "4ed103f73ff9bb54",
+        "extractor_grade": "",
         "id": "a65ac5b7-1d28-40bd-823c-b464615a19a4",
         "imports": [
           "src/cli.rs",
@@ -79199,6 +79260,7 @@
       },
       {
         "content_hash": "591e301fc0ba0609",
+        "extractor_grade": "",
         "id": "a65c51a7-639f-4354-841e-18f96853f032",
         "imports": [],
         "language": "rust",
@@ -79233,6 +79295,7 @@
       },
       {
         "content_hash": "5bc3780eb582eb53",
+        "extractor_grade": "",
         "id": "a6e88e1e-0bf9-4551-aa09-fc9e54a11125",
         "imports": [],
         "language": "python",
@@ -79367,6 +79430,7 @@
       },
       {
         "content_hash": "81fa8ff92019f4b3",
+        "extractor_grade": "",
         "id": "a6e98e00-6dc0-42bb-9eae-9fa391ce108c",
         "imports": [],
         "language": "rust",
@@ -79574,6 +79638,7 @@
       },
       {
         "content_hash": "c73815e90ca9c615",
+        "extractor_grade": "",
         "id": "a81af48d-72ad-4b70-8da4-813de7f8b7dd",
         "imports": [],
         "language": "rust",
@@ -79625,6 +79690,7 @@
       },
       {
         "content_hash": "a3d98c60df858dd5",
+        "extractor_grade": "",
         "id": "aa89c11d-0f01-4109-bd55-5deee48f25d7",
         "imports": [],
         "language": "rust",
@@ -79766,6 +79832,7 @@
       },
       {
         "content_hash": "2f8b899734f8fe60",
+        "extractor_grade": "",
         "id": "aaff5296-2082-46f5-8d48-6203c07352df",
         "imports": [
           "src/db/mod.rs",
@@ -80674,6 +80741,7 @@
       },
       {
         "content_hash": "7c2340594d89e23d",
+        "extractor_grade": "",
         "id": "ac0925d4-fc84-414b-9c3a-0d9497ba906a",
         "imports": [
           "src/db/mod.rs",
@@ -80979,6 +81047,7 @@
       },
       {
         "content_hash": "91a49058ad1c9470",
+        "extractor_grade": "",
         "id": "acf86b95-edbb-4d21-9e76-90e61c2aba72",
         "imports": [
           "src/db/mod.rs",
@@ -81723,6 +81792,7 @@
       },
       {
         "content_hash": "0d7079f2905c3369",
+        "extractor_grade": "",
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
         "imports": [
           "src/types.rs"
@@ -82635,6 +82705,7 @@
       },
       {
         "content_hash": "6a83f8b599e41d35",
+        "extractor_grade": "",
         "id": "b011e32b-effe-4d88-ac7d-5810bea8b91e",
         "imports": [],
         "language": "unknown",
@@ -82645,6 +82716,7 @@
       },
       {
         "content_hash": "17b3bcef1c2e905d",
+        "extractor_grade": "",
         "id": "b5c2b3b1-4955-4716-bc45-99b6cbfd5f0a",
         "imports": [
           "src/db/mod.rs",
@@ -85287,6 +85359,7 @@
       },
       {
         "content_hash": "d90529ae875e1e93",
+        "extractor_grade": "",
         "id": "b67c4a48-965a-47f1-9ff7-56c3c7dc3c1d",
         "imports": [],
         "language": "unknown",
@@ -85297,6 +85370,7 @@
       },
       {
         "content_hash": "67cf959d9d79973e",
+        "extractor_grade": "",
         "id": "b71a9811-845a-434e-bc20-3bd62aa2aec1",
         "imports": [
           "src/db/mod.rs",
@@ -85413,6 +85487,7 @@
       },
       {
         "content_hash": "c86671b0ab11937b",
+        "extractor_grade": "",
         "id": "b88058a0-287e-4cd1-85d0-d02caa0b996a",
         "imports": [
           "src/db/mod.rs",
@@ -85692,6 +85767,7 @@
       },
       {
         "content_hash": "a557e1708f458f03",
+        "extractor_grade": "",
         "id": "ba1d0d50-3c9f-4d80-ba1a-acae8312990c",
         "imports": [
           "src/cli.rs",
@@ -86350,6 +86426,7 @@
       },
       {
         "content_hash": "ad74c75080097082",
+        "extractor_grade": "",
         "id": "ba2d0798-cfb2-46d9-ba41-758e187faa76",
         "imports": [],
         "language": "rust",
@@ -86373,6 +86450,7 @@
       },
       {
         "content_hash": "709eab5e7478b1d6",
+        "extractor_grade": "",
         "id": "bb6a3984-4231-469f-8dcc-f0373f60b1ce",
         "imports": [
           "src/cli.rs",
@@ -86755,6 +86833,7 @@
       },
       {
         "content_hash": "6a5665e1a3cfaeee",
+        "extractor_grade": "",
         "id": "bc42a36d-0d95-4474-bbe8-59ce73c185a1",
         "imports": [
           "src/db/mod.rs",
@@ -87072,6 +87151,7 @@
       },
       {
         "content_hash": "3a3c15113fae79b5",
+        "extractor_grade": "",
         "id": "bc90d157-fc72-4c2d-80be-8baf51682e92",
         "imports": [
           "src/db/mod.rs",
@@ -87906,6 +87986,7 @@
       },
       {
         "content_hash": "2f435ad1279579f0",
+        "extractor_grade": "",
         "id": "bec5a791-c098-48e4-8444-bd7de2b7c465",
         "imports": [
           "src/db/mod.rs",
@@ -88924,6 +89005,7 @@
       },
       {
         "content_hash": "126b72cc01630244",
+        "extractor_grade": "",
         "id": "bf1292be-0df7-4a58-8f47-147227657019",
         "imports": [
           "src/cli.rs",
@@ -89572,6 +89654,7 @@
       },
       {
         "content_hash": "2400e820023e2824",
+        "extractor_grade": "",
         "id": "c2787742-63ad-45da-a82e-15fe70cd1a4e",
         "imports": [
           "src/cli.rs",
@@ -89824,6 +89907,7 @@
       },
       {
         "content_hash": "b9bd3f03a65aa9c4",
+        "extractor_grade": "",
         "id": "c3833175-2030-4105-a8c4-808d9c9b36d9",
         "imports": [],
         "language": "shell",
@@ -89834,6 +89918,7 @@
       },
       {
         "content_hash": "63e5f6fb281c8afd",
+        "extractor_grade": "",
         "id": "c729f9be-c2af-4f18-9338-d3beb7796ec2",
         "imports": [
           "src/cli.rs",
@@ -90166,6 +90251,7 @@
       },
       {
         "content_hash": "2aab49a4399b0447",
+        "extractor_grade": "",
         "id": "c9f29777-86bc-4395-808f-eea18a497cb2",
         "imports": [],
         "language": "unknown",
@@ -90176,6 +90262,7 @@
       },
       {
         "content_hash": "2e82554ae085ac2f",
+        "extractor_grade": "",
         "id": "c9fd0d80-28b5-401e-9b90-459b69f1c688",
         "imports": [
           "src/db/mod.rs",
@@ -90836,6 +90923,7 @@
       },
       {
         "content_hash": "53075b1cc1591d99",
+        "extractor_grade": "",
         "id": "ca7d5194-0399-4928-88fe-934321c015be",
         "imports": [],
         "language": "rust",
@@ -92020,6 +92108,7 @@
       },
       {
         "content_hash": "abcf68f654483d29",
+        "extractor_grade": "",
         "id": "cf0b3326-9937-4e9b-a02e-1baea7faf1a5",
         "imports": [],
         "language": "unknown",
@@ -92030,6 +92119,7 @@
       },
       {
         "content_hash": "ff881c09930bcc6c",
+        "extractor_grade": "",
         "id": "d0ac8620-0020-4508-8a45-7751825d8d75",
         "imports": [
           "src/db/mod.rs",
@@ -92461,6 +92551,7 @@
       },
       {
         "content_hash": "28e61e2cf1716786",
+        "extractor_grade": "",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": [
           "src/types.rs"
@@ -93501,6 +93592,7 @@
       },
       {
         "content_hash": "1616ddc3b9482604",
+        "extractor_grade": "",
         "id": "d1f45015-7e97-4a3e-a92c-e3fb65bcbc4a",
         "imports": [],
         "language": "rust",
@@ -94390,6 +94482,7 @@
       },
       {
         "content_hash": "2648c78445436f6e",
+        "extractor_grade": "",
         "id": "d2fcae34-c827-451b-9d8b-ffb04930db6c",
         "imports": [
           "src/cli.rs",
@@ -94660,6 +94753,7 @@
       },
       {
         "content_hash": "1d2e1cdf8290c8bd",
+        "extractor_grade": "",
         "id": "d5aaeaf7-6276-420b-8dac-12828e1eef22",
         "imports": [
           "src/db/mod.rs",
@@ -94753,6 +94847,7 @@
       },
       {
         "content_hash": "21dd055cebb69d0b",
+        "extractor_grade": "",
         "id": "d5dca5e9-d305-4a38-b455-d0089f38a6c7",
         "imports": [
           "src/db/mod.rs",
@@ -95209,6 +95304,7 @@
       },
       {
         "content_hash": "b6a400d6d6b196b8",
+        "extractor_grade": "",
         "id": "db5e0be7-7b98-4357-bf4b-c4950ae83f23",
         "imports": [
           "src/db/mod.rs"
@@ -95281,6 +95377,7 @@
       },
       {
         "content_hash": "3fc0a4401770d248",
+        "extractor_grade": "",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": [],
         "language": "rust",
@@ -96369,6 +96466,7 @@
       },
       {
         "content_hash": "78d026c3b377a66c",
+        "extractor_grade": "",
         "id": "df64c556-9304-45b7-bd23-f23e757ee613",
         "imports": [
           "src/cli.rs",
@@ -97306,6 +97404,7 @@
       },
       {
         "content_hash": "ad07b17a5e6a1ec7",
+        "extractor_grade": "",
         "id": "e4efd814-f5a8-4021-afd0-548584deb4cf",
         "imports": [
           "src/db/mod.rs",
@@ -97512,6 +97611,7 @@
       },
       {
         "content_hash": "59109a37ebe69b38",
+        "extractor_grade": "",
         "id": "ecd4abeb-80b1-4d15-bf77-c355062c451f",
         "imports": [
           "src/types.rs"
@@ -97562,6 +97662,7 @@
       },
       {
         "content_hash": "8b569bbb2b30a0e2",
+        "extractor_grade": "",
         "id": "edb505a0-f483-4f5b-96e2-ab7ba48d9117",
         "imports": [
           "src/cli.rs",
@@ -97588,6 +97689,7 @@
       },
       {
         "content_hash": "f4c28cfa329bcb8a",
+        "extractor_grade": "",
         "id": "f150becf-8127-4cf1-baad-a513fa48db7a",
         "imports": [],
         "language": "rust",
@@ -97674,6 +97776,7 @@
       },
       {
         "content_hash": "310c6354a7f2fe82",
+        "extractor_grade": "",
         "id": "f4337842-82b4-41b6-9843-fc8fe9023c93",
         "imports": [
           "src/db/mod.rs",
@@ -99261,6 +99364,7 @@
       },
       {
         "content_hash": "0d0d835fcede854e",
+        "extractor_grade": "",
         "id": "f4679c54-0f38-46c3-8b8a-a194497c42df",
         "imports": [
           "src/vec_utils.rs"
@@ -102665,6 +102769,7 @@
       },
       {
         "content_hash": "735ef3ecfc652633",
+        "extractor_grade": "",
         "id": "f5d81775-b1bb-46e9-b3fa-d3289e66fa42",
         "imports": [],
         "language": "rust",
@@ -102941,6 +103046,7 @@
       },
       {
         "content_hash": "a34407dbf5384fe0",
+        "extractor_grade": "",
         "id": "f62eec3c-420e-4cf9-9d7b-6955cf1dd672",
         "imports": [
           "src/db/queries/mod.rs",
@@ -103099,6 +103205,7 @@
       },
       {
         "content_hash": "43133506bf627ad1",
+        "extractor_grade": "",
         "id": "f764041a-598b-4de8-804c-42336c4f3bcd",
         "imports": [
           "src/db/mod.rs",
@@ -104817,6 +104924,7 @@
       },
       {
         "content_hash": "25d100dba43b8009",
+        "extractor_grade": "",
         "id": "f856fe8e-8a54-421e-a2e9-10734aabd732",
         "imports": [
           "src/db/mod.rs",
@@ -105766,6 +105874,7 @@
       },
       {
         "content_hash": "b481f013badd708e",
+        "extractor_grade": "",
         "id": "fc2ec17b-070d-4042-b5aa-752112118a4d",
         "imports": [
           "src/db/mod.rs",
@@ -106252,6 +106361,7 @@
       },
       {
         "content_hash": "f0b7830fb839ff69",
+        "extractor_grade": "",
         "id": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a",
         "imports": [
           "src/db/mod.rs",
@@ -107095,6 +107205,7 @@
       },
       {
         "content_hash": "5f957396049e3124",
+        "extractor_grade": "",
         "id": "fda0454d-3bd4-4b03-8592-47a7fded1ddf",
         "imports": [
           "src/saga/diagnose.rs",

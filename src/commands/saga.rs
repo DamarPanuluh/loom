@@ -193,6 +193,7 @@ fn add_sqlite(
             symbols: Vec::new(),
             symbol_facts: Vec::new(),
             content_hash,
+            extractor_grade: String::new(),
         })?;
         registered_spec = true;
     }

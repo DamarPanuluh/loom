@@ -253,6 +253,7 @@ mod tests {
             symbols: Vec::new(),
             symbol_facts: Vec::new(),
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 

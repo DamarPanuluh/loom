@@ -570,7 +570,7 @@ impl SqliteGraphStore {
     }
     pub fn list_codefiles(&self) -> Result<Vec<CodeFile>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, path, language, last_modified, imports, symbols, symbol_facts, content_hash
+            "SELECT id, path, language, last_modified, imports, symbols, symbol_facts, content_hash, extractor_grade
              FROM codefile
              ORDER BY path",
         )?;
@@ -586,6 +586,7 @@ impl SqliteGraphStore {
                 symbol_facts: symbol_facts(&symbol_facts_raw)
                     .map_err(|err| rusqlite::Error::ToSqlConversionFailure(err.into()))?,
                 content_hash: row.get(7)?,
+                extractor_grade: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

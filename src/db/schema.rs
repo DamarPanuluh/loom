@@ -367,6 +367,7 @@ pub mod prop {
     /// detector (mtime false-flags on checkout; content is the truth). NOT in
     /// the required-property table (additive; absent until the next sync).
     pub const CONTENT_HASH: &str = "content_hash";
+    pub const EXTRACTOR_GRADE: &str = "extractor_grade";
     // QualityRule
     pub const DETECTION_LOGIC: &str = "detection_logic";
     pub const SEVERITY: &str = "severity";

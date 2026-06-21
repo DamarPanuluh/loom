@@ -136,6 +136,7 @@ const CODEFILE_PROPS: &[&str] = &[
     prop::SYMBOLS,
     prop::SYMBOL_FACTS,
     prop::CONTENT_HASH,
+    prop::EXTRACTOR_GRADE,
 ];
 
 const QUALITY_RULE_PROPS: &[&str] = &[

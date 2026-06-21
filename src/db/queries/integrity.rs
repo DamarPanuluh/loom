@@ -1206,6 +1206,7 @@ mod epistemic_tests {
             symbols: vec![],
             symbol_facts: vec![fact],
             content_hash: String::new(),
+            extractor_grade: "high".into(),
         };
         let im = |loc: &str| Implements {
             id: format!("imp:{loc}"),
@@ -1252,6 +1253,7 @@ mod disk_reconciliation_tests {
             symbols: Vec::new(),
             symbol_facts: Vec::new(),
             content_hash: hash.to_string(),
+            extractor_grade: String::new(),
         }
     }
     fn ignore(pattern: &str) -> Ignore {

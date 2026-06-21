@@ -410,6 +410,7 @@ mod tests {
             symbols: facts.iter().map(|fact| fact.label.clone()).collect(),
             symbol_facts: facts,
             content_hash: String::new(),
+            extractor_grade: String::new(),
         }
     }
 
