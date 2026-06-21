@@ -1636,6 +1636,53 @@ fn sqlite_edge_implement_verifies_locator_at_ground_time() {
     );
 }
 
+// DOGFOOD-FOUND DEFECT: `loom layer order` with NO layers used to silently CLEAR
+// the order and print "✓ Layer order declared" — contradicting `loom smells`'s
+// "no declared order" and destructively writing on a query-shaped invocation. It
+// must refuse with guidance and leave a declared order untouched.
+#[test]
+fn sqlite_layer_order_no_args_refuses_without_clearing() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("layer-noargs");
+    // Declare a real order first.
+    run_json_as(
+        &graph.root,
+        &[
+            "layer",
+            "order",
+            "presentation",
+            "application",
+            "storage",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    // `loom layer order` with NO layers must error, not clear + lie "✓ declared".
+    let out = std::process::Command::new(loom_bin())
+        .args(["layer", "order"])
+        .current_dir(&graph.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom layer order with no args");
+    assert!(
+        !out.status.success(),
+        "no-args `layer order` must exit non-zero: {:?}",
+        out.status
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("No layers given") && stderr.contains("loom layer list"),
+        "it points to the right verb (list/clear), not a silent clear: {stderr}"
+    );
+    // CRITICAL: the previously-declared order is UNTOUCHED (no destructive write).
+    let list = run_json(&graph.root, &["layer", "list", "--json"]);
+    assert_eq!(
+        list["order"].as_array().map(|a| a.len()),
+        Some(3),
+        "the no-args command must NOT have cleared the declared order: {list}"
+    );
+}
+
 // OPT-IN INSTALL: `loom skill` emits the lane-skills as real SKILL.md files (a
 // regenerable projection of the gate's lane table) for the user who wants to PIN
 // them — never required (the binary serves them JIT). list → menu; show → one

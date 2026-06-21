@@ -198,6 +198,18 @@ fn run_order_with_sqlite(
     printer: &Printer,
     deprecated_alias: bool,
 ) -> Result<()> {
+    // `loom layer order` with NO layers is a query-shaped mistake, not a declare:
+    // it must NOT silently clear the order and report "✓ declared" (which would
+    // contradict `loom smells`'s "no declared order"). Refuse with the right verb
+    // BEFORE the lane gate, so the guidance shows regardless of role.
+    if layers.is_empty() {
+        anyhow::bail!(
+            "No layers given — `loom layer order` DECLARES an order, it does not show one.\n\
+             declare:  loom layer order <top> … <bottom>   (top layer first; REPLACES the current order)\n\
+             show:     loom layer list\n\
+             clear:    loom layer clear"
+        );
+    }
     gate::acting_in_lane(&gate::lane::SET_LAYER_ORDER, author.as_deref())?;
     validate_layer_order(&layers)?;
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
