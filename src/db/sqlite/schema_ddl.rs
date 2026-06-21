@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS validation(
   command TEXT NOT NULL DEFAULT '',
   last_run TEXT NOT NULL DEFAULT '',
   last_result TEXT NOT NULL CHECK(last_result IN ('passed','failed','not_run','blocked','')),
-  last_executed_run TEXT NOT NULL DEFAULT ''
+  last_executed_run TEXT NOT NULL DEFAULT '',
+  discrimination_status TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS note(
@@ -341,6 +342,11 @@ impl SqliteGraphStore {
             (
                 "validation",
                 "last_executed_run",
+                "TEXT NOT NULL DEFAULT ''",
+            ),
+            (
+                "validation",
+                "discrimination_status",
                 "TEXT NOT NULL DEFAULT ''",
             ),
             ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),

@@ -11,6 +11,7 @@ fn val(id: &str, result: &str) -> Validation {
         last_run: String::new(),
         last_result: result.into(),
         last_executed_run: String::new(),
+        discrimination_status: String::new(),
     }
 }
 
@@ -28,6 +29,14 @@ fn cmd_val(id: &str, result: &str, last_executed_run: &str) -> Validation {
         last_run: "2026-06-19T00:00:00Z".into(),
         last_result: result.into(),
         last_executed_run: last_executed_run.into(),
+        // Under G2, EXECUTED also requires a discriminating witness; an
+        // executor-stamped run in these fixtures stands for a real asserting
+        // run, so mirror last_executed_run: stamped ⇒ discriminating.
+        discrimination_status: if last_executed_run.is_empty() {
+            String::new()
+        } else {
+            "discriminating".into()
+        },
     }
 }
 

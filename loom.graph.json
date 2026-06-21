@@ -118844,6 +118844,7 @@
       {
         "command": "",
         "description": "Intents created via the want stage carry visibility=user_visible and those created via the logic stage carry internal; none created through the ladder are left unset",
+        "discrimination_status": "",
         "id": "0047ddab-fa29-4126-9d4c-20d705c4048f",
         "last_executed_run": "",
         "last_result": "not_run",
@@ -118854,6 +118855,7 @@
       {
         "command": "",
         "description": "hypothesis:1f673868-272c-48cf-8afd-240aa812414c\nPredicted outcome to verify after adoption: one definition of each resolver; the code_clone groups for resolve_intent_with_db and resolve_validation_with_db collapse to a single location each; ambiguity and not-found CLI messages are byte-identical to today (existing command tests stay green)",
+        "discrimination_status": "",
         "id": "00bf1f14-df02-4998-8c43-9683445e4c1c",
         "last_executed_run": "",
         "last_result": "passed",
@@ -118864,6 +118866,7 @@
       {
         "command": "cargo test db::queries 2>/dev/null",
         "description": "",
+        "discrimination_status": "",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -118874,6 +118877,7 @@
       {
         "command": "cargo test hypothesis",
         "description": "Hypothesis lifecycle command gates and state-machine tests run through the Rust hypothesis test suite.",
+        "discrimination_status": "",
         "id": "0245cfb4-eefe-42da-a7db-9f4cf2648a29",
         "last_executed_run": "",
         "last_result": "passed",
@@ -118884,6 +118888,7 @@
       {
         "command": "cargo test vocab",
         "description": "",
+        "discrimination_status": "",
         "id": "05b1ebce-8df0-4c9a-88ce-5506b81fba0d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -118894,6 +118899,7 @@
       {
         "command": "cargo test --bin loom commands::session",
         "description": "",
+        "discrimination_status": "",
         "id": "06539c1e-fc00-4337-8f02-199e1ae3c6e2",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -118904,6 +118910,7 @@
       {
         "command": "cargo test heuristic_imports_dart_go_kotlin_swift_and_svelte -- --nocapture && cargo test --no-default-features heuristic_imports_dart_go_kotlin_swift_and_svelte -- --nocapture",
         "description": "Covers Dart/Flutter package imports and declarations, Go module imports and declarations, Kotlin imports/declarations, Swift imports/declarations, Svelte component imports/symbols, and Bun/Svelte stack detection support.",
+        "discrimination_status": "",
         "id": "07085375-1b1f-49b0-9f9b-1e7fc2a267a3",
         "last_executed_run": "",
         "last_result": "passed",
@@ -118914,6 +118921,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -118924,6 +118932,7 @@
       {
         "command": "cargo test -- ui_state_populated a_loading_only behavioral_happy",
         "description": "",
+        "discrimination_status": "",
         "id": "07a74797-b808-4802-a375-a00b0889c702",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -118934,6 +118943,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -118944,6 +118954,7 @@
       {
         "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
         "description": "",
+        "discrimination_status": "",
         "id": "07e81579-bcc9-4dcc-abbe-1209e29295d8",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -118954,6 +118965,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_hypothesis_adoption_outcome_validation_confirms_then_settles_targets",
         "description": "Adopting a hypothesis writes its predicted_outcome as a not_run Validation attached to the spawned intents; passing it confirms the hypothesis. Sync stales a hypothesis's TARGETS evidence while it is in-flight (proven, not yet confirmed) — the ripple — but a CONFIRMED hypothesis is settled: sync reconciles its staled TARGETS back to passing and never re-stales them, because prove (the only re-stamper) is closed once decided and the live proof is the spawned intents' validations.",
+        "discrimination_status": "",
         "id": "0adc5141-ebd6-4d20-81dc-7fa211689530",
         "last_executed_run": "2026-06-21T02:02:07.724788+00:00",
         "last_result": "passed",
@@ -118964,6 +118976,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "0bca574a-059b-4c23-ae03-274a5cc7ebe3",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -118974,6 +118987,7 @@
       {
         "command": "cargo test retire_is_invisible",
         "description": "",
+        "discrimination_status": "",
         "id": "0d2484cc-018b-447e-b2b4-09099b97ca00",
         "last_executed_run": "",
         "last_result": "passed",
@@ -118984,6 +118998,7 @@
       {
         "command": "env -u LOOM_AGENT cargo check && env -u LOOM_AGENT cargo test",
         "description": "Proves the backend-neutral read repository facade compiles and preserves global/local plus SQLite command parity under the full test suite.",
+        "discrimination_status": "",
         "id": "0d3fb69b-1221-43c0-9ed4-ff1e92e1d2c2",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -118994,6 +119009,7 @@
       {
         "command": "cargo test user_gated_work_outranks_build",
         "description": "",
+        "discrimination_status": "",
         "id": "0e4cf0b7-7405-494f-9edb-c1fa8156a07a",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119004,6 +119020,7 @@
       {
         "command": "",
         "description": "On a fixture where intents A and B BOTH ground a RELATES_TO edge to each other (a reciprocal double-assert), loom smells emits exactly one reciprocal-dependency finding naming A and B. A directed-only chain A->B->C->A (single-direction grounded edges, a typing-order artifact) emits zero, and an acyclic fixture emits zero: directed cycles are deliberately de-noised post-SCC, so only mutually-grounded pairs count.",
+        "discrimination_status": "",
         "id": "15fcb684-abe8-4c23-81f8-7e1b77d13ca3",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119014,6 +119031,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "1662f9ca-c05d-4e00-8846-06d9063c0fad",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119024,6 +119042,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "1a2a4da6-5572-4721-971c-e0016513666b",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119034,6 +119053,7 @@
       {
         "command": "cargo test ripple",
         "description": "",
+        "discrimination_status": "",
         "id": "1f64a74c-10b6-4b2b-b634-63502225c475",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",
@@ -119044,6 +119064,7 @@
       {
         "command": "",
         "description": "Recording an edge verdict leaves the cached metric valid with no recompute; adding or removing an edge invalidates the cache and triggers exactly one recompute",
+        "discrimination_status": "",
         "id": "242860fb-6c35-4416-8771-165569c8c38e",
         "last_executed_run": "",
         "last_result": "blocked",
@@ -119054,6 +119075,7 @@
       {
         "command": "cargo test -- connected_components a_disconnected_subgraph a_fully_connected_graph island_detector_is_unarmed",
         "description": "",
+        "discrimination_status": "",
         "id": "24a6004b-8653-4797-b562-813ed3d20fd7",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119064,6 +119086,7 @@
       {
         "command": "cargo test --quiet find_ranks_by_relevance_and_skips_deprecated",
         "description": "BM25 ranking puts the most relevant intent first, deprecated intents are invisible, hits carry chain/groundings/staleness, a miss is empty not an error",
+        "discrimination_status": "",
         "id": "2653b402-4ed3-4a68-a3e8-61f53f87049e",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119074,6 +119097,7 @@
       {
         "command": "",
         "description": "A component whose only child aspect is populated trips happy_path_only; adding empty and error sibling aspects clears the finding",
+        "discrimination_status": "",
         "id": "27bc1208-43ee-4344-913d-b62ed65439fc",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119084,6 +119108,7 @@
       {
         "command": "cargo test global_local_mutation_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "29e222b5-3056-4826-ba49-00204a52653d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119094,6 +119119,7 @@
       {
         "command": "cargo test -- ui_packs_carry new_design_system",
         "description": "",
+        "discrimination_status": "",
         "id": "2bddf34a-c46b-4a86-86f8-fa9329b8b062",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119104,6 +119130,7 @@
       {
         "command": "",
         "description": "A production screen whose only artifact is a mockup remains planned and is not counted realized by vertical completeness; a prototype intent IMPLEMENTS-linked to a mockup is counted realized",
+        "discrimination_status": "",
         "id": "2cde3957-3c14-47b2-b0d6-dd7783449075",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119114,6 +119141,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "316bbfe2-48d4-48f3-be07-722625cdfd84",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119124,6 +119152,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "336a9745-854c-44ab-a81c-3f1edcb01b02",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119134,6 +119163,7 @@
       {
         "command": "sh -c 'target/debug/loom guide --mode seed | grep \"terminate on completeness\" >/dev/null'",
         "description": "",
+        "discrimination_status": "",
         "id": "33dd8b15-98a2-4c21-9a92-1a7df5fa7b10",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119144,6 +119174,7 @@
       {
         "command": "cargo test sqlite_search_parity && cargo test sqlite_find_command_parity",
         "description": "Compares SQLite typed search/door projections to the Grafeo query layer and compares the experimental LOOM_BACKEND=sqlite find/export command path to the installed global oracle on scratch graphs.",
+        "discrimination_status": "",
         "id": "343a5cc7-9110-4641-9546-61c01eb0c2f4",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119154,6 +119185,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_skill_command_emits_lane_skills",
         "description": "",
+        "discrimination_status": "",
         "id": "34622233-67f6-4575-9c2b-f3b5df58852a",
         "last_executed_run": "2026-06-21T11:40:48.106019+00:00",
         "last_result": "passed",
@@ -119164,6 +119196,7 @@
       {
         "command": "cargo test -- completeness doctor",
         "description": "",
+        "discrimination_status": "",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119174,6 +119207,7 @@
       {
         "command": "",
         "description": "hypothesis:58e226d1-82c5-4a47-9edd-3394c4473071\nPredicted outcome to verify after adoption: smells and related coupling checks reuse sync-produced adjacency data and large-graph smell latency improves without weakening findings.",
+        "discrimination_status": "",
         "id": "38ae6642-07d1-4882-991c-4f1e9375856d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119184,6 +119218,7 @@
       {
         "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
         "description": "",
+        "discrimination_status": "",
         "id": "393f6bbc-574c-4514-8b17-9d9e632e6f4c",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119194,6 +119229,7 @@
       {
         "command": "cargo test audience_and_effort",
         "description": "",
+        "discrimination_status": "",
         "id": "394b1170-765b-4abc-bbed-58fdadbaed8a",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119204,6 +119240,7 @@
       {
         "command": "",
         "description": "Running guide --mode seed on an empty graph emits the four stages in want, contract, logic, physical order with a single question per stage; a run that merges or reorders stages fails review",
+        "discrimination_status": "",
         "id": "3f881306-892c-46e0-a261-df6a95791bdf",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119214,6 +119251,7 @@
       {
         "command": "bash -c 'T=$(mktemp -d) && loom init \"$T\" >/dev/null && cd / && LOOM_GRAPH=\"$T\" loom status >/dev/null; R=$?; rm -rf \"$T\"; exit $R'",
         "description": "",
+        "discrimination_status": "",
         "id": "4034d486-8271-4d51-bfe5-cd91318c1628",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119224,6 +119262,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "42171f15-04d2-4e74-99ea-327ca2bc6f58",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119234,6 +119273,7 @@
       {
         "command": "",
         "description": "Completing the contract stage for a want creates exactly one not_run validation linked to it; skipping the stage leaves the want with no validation and flagged unproven",
+        "discrimination_status": "",
         "id": "43f92653-d4f8-40f9-a719-b52491a12e00",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119244,6 +119284,7 @@
       {
         "command": "cargo test transitive_layering",
         "description": "",
+        "discrimination_status": "",
         "id": "45a2a8a5-cd35-4ea8-afaf-74579eb9c1f9",
         "last_executed_run": "2026-06-20T17:14:40.210439+00:00",
         "last_result": "passed",
@@ -119254,6 +119295,7 @@
       {
         "command": "cargo test build_queue_defers_planned_parents_until_children_done 2>/dev/null",
         "description": "",
+        "discrimination_status": "",
         "id": "4bb6ef5a-46a2-4aac-ac17-8807468c996f",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119264,6 +119306,7 @@
       {
         "command": "sh -c 'cargo test --test sqlite_regression sqlite_interface && cargo test --test sqlite_regression sqlite_populate && cargo test sqlite_interface_surface_calls_round_trip'",
         "description": "Runnable regression proof for first-class interface surfaces, CALLS persistence, interface listing/gaps, and populate backfill behavior.",
+        "discrimination_status": "",
         "id": "4f8de0e3-3502-4757-91e2-4f5a4a97d6f1",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",
@@ -119274,6 +119317,7 @@
       {
         "command": "./target/debug/loom --help > /dev/null",
         "description": "",
+        "discrimination_status": "",
         "id": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119284,6 +119328,7 @@
       {
         "command": "",
         "description": "hypothesis:ac503cbb-0de1-496b-87e6-b0de766b0fa9\nPredicted outcome to verify after adoption: discovery commands rank unexplored pairs from precomputed inputs and large-graph discovery latency drops materially without changing ranking semantics.",
+        "discrimination_status": "",
         "id": "5d5a5d3d-6aef-4bdf-a3ff-a8ff21a38b8d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119294,6 +119339,7 @@
       {
         "command": "",
         "description": "A vague screen request yields a committed HTML mockup before any production code, and a human reaction such as move-this-up lands as a graph delta on the screen's components rather than as prose",
+        "discrimination_status": "",
         "id": "5e400a81-4beb-4871-b5e5-3be97a509321",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119304,6 +119350,7 @@
       {
         "command": "cargo test sqlite_snapshot_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "5f1a017b-d22e-4255-826f-beb7d5610a1e",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119314,6 +119361,7 @@
       {
         "command": "cargo test governs_ripple_invalidates_passing_verdicts 2>/dev/null",
         "description": "",
+        "discrimination_status": "",
         "id": "6263dc09-2cf5-4400-84da-35a7e13b14da",
         "last_executed_run": "2026-06-21T02:06:33.019034+00:00",
         "last_result": "passed",
@@ -119324,6 +119372,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "6428558b-e405-48c3-abd8-9e255da16b48",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119334,6 +119383,7 @@
       {
         "command": "cargo test --bin loom saga",
         "description": "Spec parsing/validation, interpolation, and runner semantics (capture threading, halt-on-failure, all-broken-expectations detail, connection-refused-as-outcome) against a scripted in-process HTTP server.",
+        "discrimination_status": "",
         "id": "66ff43c8-f3cb-4b4d-9936-fecc8cb694fa",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119344,6 +119394,7 @@
       {
         "command": "cargo test triage",
         "description": "triage_candidates serves only proposed hypotheses, ranks by combined target-intent centrality, unranked surface last, proven leave the queue",
+        "discrimination_status": "",
         "id": "67f86545-5d9a-4b4c-8b23-7ff804e96155",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119354,6 +119405,7 @@
       {
         "command": "cargo test sqlite_wal_concurrency_contract",
         "description": "",
+        "discrimination_status": "",
         "id": "68876e28-61b2-44c0-8fa3-e19ca42ad28d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119364,6 +119416,7 @@
       {
         "command": "cargo test saga::diagnose && cargo test sqlite_saga_diagnose_reports_missing_env_without_stamping && cargo test sqlite_saga_diagnose_reports_missing_jwt_scope",
         "description": "Saga diagnosis unit tests plus SQLite CLI regressions for missing env and missing JWT scope without graph stamping.",
+        "discrimination_status": "",
         "id": "69718802-ca1c-4c7e-8826-3c9a4e683223",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119374,6 +119427,7 @@
       {
         "command": "cargo test --test sqlite_regression interface_gaps",
         "description": "",
+        "discrimination_status": "",
         "id": "69ed0393-d8b7-4a6c-a929-b964e6e094b3",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",
@@ -119384,6 +119438,7 @@
       {
         "command": "cargo test gate::tests 2>/dev/null",
         "description": "",
+        "discrimination_status": "",
         "id": "6aa2fdc3-ad8b-4849-830c-44673c46bc22",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119394,6 +119449,7 @@
       {
         "command": "",
         "description": "An intent with no path to any system root is reported as an island; attaching it under a reachable parent clears the finding on the next smells run",
+        "discrimination_status": "",
         "id": "6b257093-1c39-4160-9cbb-7370e3b80ce0",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119404,6 +119460,7 @@
       {
         "command": "",
         "description": "Redesign-shaped smells carry loom hypothesis add in their remedy: twin_intents (merge), tangled_file (split), recurrent_trouble (redesign), scattered_intent (code-change case)",
+        "discrimination_status": "",
         "id": "6d803165-81ae-412d-bef5-0e19f52bc4f5",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119414,6 +119471,7 @@
       {
         "command": "cargo test --bin loom bridge_ranking_inverts_when_direct_cross_cluster_edge_removes_chokepoint",
         "description": "On a fixture where a low-degree bridge connects two clusters, it ranks above a high-degree non-bridge node; removing its bridging role drops its rank below that node",
+        "discrimination_status": "",
         "id": "6e57bd34-86c4-463a-bc88-29f30d33da27",
         "last_executed_run": "2026-06-20T19:18:51.277102+00:00",
         "last_result": "passed",
@@ -119424,6 +119482,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "747f2173-a6f2-4f37-8629-6bcf8999dba4",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119434,6 +119493,7 @@
       {
         "command": "cargo test && target/debug/loom status --json >/dev/null && target/debug/loom next --all --json >/dev/null",
         "description": "SQLite-backed graph persistence dogfood gate: full tests pass and the local SQLite loom binary can read status and next-all from the live graph.",
+        "discrimination_status": "",
         "id": "762a20e2-142f-4d0e-9609-7675462908fb",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119444,6 +119504,7 @@
       {
         "command": "cargo test storage_contract",
         "description": "",
+        "discrimination_status": "",
         "id": "764331d6-fc15-4f7d-8c40-08d8da051388",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119454,6 +119515,7 @@
       {
         "command": "cargo test saga::runner::tests::",
         "description": "",
+        "discrimination_status": "",
         "id": "7681789b-b894-43f7-98c2-8258088f918d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119464,6 +119526,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_imported_export_read_surface",
         "description": "",
+        "discrimination_status": "",
         "id": "7abaa5ac-604f-419d-b1df-c8d89374cc74",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119474,6 +119537,7 @@
       {
         "command": "",
         "description": "hypothesis:3bfa2d6f-8234-4316-aa81-362431bbe3a1\nPredicted outcome to verify after adoption: one definition of each helper shared by both call sites; the two code_clone groups for these symbols collapse to one file; coverage's symbol-accountability output is unchanged",
+        "discrimination_status": "",
         "id": "7cb2fd57-d57d-4167-9f1c-6428b9e08985",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119484,6 +119548,7 @@
       {
         "command": "cargo test saga::spec::tests::",
         "description": "",
+        "discrimination_status": "",
         "id": "842cd9ad-09bf-4724-9f6c-f999876d25fd",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119494,6 +119559,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "85244e24-e189-4cb8-a7e9-8745da673bb9",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119504,6 +119570,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "88fe328d-c9e1-4fa7-a931-3cde45e70bdf",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119514,6 +119581,7 @@
       {
         "command": "cargo test storage_vocabulary_coverage",
         "description": "",
+        "discrimination_status": "",
         "id": "8ada2b4a-827c-4e19-aa0f-e5f7e0f3b32b",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119524,6 +119592,7 @@
       {
         "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
         "description": "",
+        "discrimination_status": "",
         "id": "8d6665cd-45f5-4ea5-a931-f93d79a195d0",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119534,6 +119603,7 @@
       {
         "command": "",
         "description": "hypothesis:b4d474e7-4a79-4405-ba43-ebd8d1c1ee1f\nPredicted outcome to verify after adoption: status/next/report load each bulk graph slice once per command and the 2000-intent orientation benchmark improves without changing output semantics.",
+        "discrimination_status": "",
         "id": "8f660cd7-e7ef-400b-81bd-44e654e8706c",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119544,6 +119614,7 @@
       {
         "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
         "description": "",
+        "discrimination_status": "",
         "id": "917b971c-e31b-4876-91ec-070e20616b08",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119554,6 +119625,7 @@
       {
         "command": "",
         "description": "Adoption converts rather than duplicates: requires supported status, requires --spawned or --reason, writes lineage decision notes on both the hypothesis and each spawned intent (carrying the predicted outcome), and the hypothesis never appears in queues/coverage",
+        "discrimination_status": "",
         "id": "932957d3-be80-4464-ba30-e8dcf4ce7a79",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119564,6 +119636,7 @@
       {
         "command": "env -u LOOM_AGENT python3 - <<'PY'\nimport json\nimport pathlib\nimport subprocess\nimport tempfile\n\nbin_path = pathlib.Path.cwd() / \"target/debug/loom\"\nwith tempfile.TemporaryDirectory() as td:\n    root = pathlib.Path(td) / \"root\"\n    svc = root / \"services\" / \"api\"\n    svc.mkdir(parents=True)\n    (svc / \"lib.rs\").write_text(\"fn api() {}\\n\")\n\n    def run(cmd, cwd):\n        return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, check=True)\n\n    run([str(bin_path), \"init\", \".\", \"--json\"], root)\n    run([str(bin_path), \"delegate\", \"add\", \"services/api/**\", \"--to\", \"services/api/loom.graph.json\", \"--json\"], root)\n    missing = json.loads(run([str(bin_path), \"coverage\", \"--json\"], root).stdout)\n    assert missing[\"delegation_targets_missing\"] == [\"services/api/loom.graph.json\"], missing\n    run([str(bin_path), \"init\", \".\", \"--json\"], svc)\n    run([str(bin_path), \"export\", \"--json\"], svc)\n    covered = json.loads(run([str(bin_path), \"coverage\", \"--json\"], root).stdout)\n    assert covered[\"unaccounted\"] == 0, covered\n    assert covered[\"delegated\"] >= 1, covered\n    assert covered[\"delegation_targets_missing\"] == [], covered\n    print(\"delegated coverage proof passed\")\nPY",
         "description": "Temp-graph delegation smoke using this repo's local target/debug/loom binary, not the globally installed loom.",
+        "discrimination_status": "",
         "id": "9696ffae-aff5-47dd-8f6c-a8654a215b4d",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",
@@ -119574,6 +119647,7 @@
       {
         "command": "cargo test --bin loom commands::guide::tests::lifecycle_contract_is_complete",
         "description": "Ratcheted unit test that guide --json teaches active lifecycle states, retirement/status separation, port reset, and related status families.",
+        "discrimination_status": "",
         "id": "96f699bc-b8ed-445b-948b-331ef57ede11",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119584,6 +119658,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_migrate_reports_open_time_schema_contract",
         "description": "",
+        "discrimination_status": "",
         "id": "9b849e33-7950-4a43-92db-7129777e1cd9",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119594,6 +119669,7 @@
       {
         "command": "./target/debug/loom detect --json | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d[\"suggested_mode\"]'",
         "description": "",
+        "discrimination_status": "",
         "id": "9c81436c-9bbc-42fb-bf3a-e9e3f2e35553",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119604,6 +119680,7 @@
       {
         "command": "",
         "description": "rule seed web-ui creates the design-system rules and attaches GOVERNS edges to UI component intents; re-running the seed is idempotent and adds no duplicates",
+        "discrimination_status": "",
         "id": "a019dd1b-b4ca-422f-b690-2484d83bcbfd",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119614,6 +119691,7 @@
       {
         "command": "cargo test seed_mode_stages_the_ladder_and_seed_time_audience",
         "description": "",
+        "discrimination_status": "",
         "id": "a44d8394-1779-42ba-bb86-4502bf9f7220",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119624,6 +119702,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119634,6 +119713,7 @@
       {
         "command": ".claude/skills/run-loom/fuzz_import.sh",
         "description": "",
+        "discrimination_status": "",
         "id": "aa917394-15e6-4d00-8e50-6b9e29e7717a",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119644,6 +119724,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_imported_export_read_surface",
         "description": "SQLite rollback/read-surface smoke: import the committed export into a scratch SQLite graph and verify read commands/export still work.",
+        "discrimination_status": "",
         "id": "b03c6629-1101-4982-9698-6ee8e11d782e",
         "last_executed_run": "2026-06-20T11:15:35.564321+00:00",
         "last_result": "passed",
@@ -119654,6 +119735,7 @@
       {
         "command": "./target/debug/loom --json && ./target/debug/loom guide --json | python3 -m json.tool && ./target/debug/loom schema --json | python3 -m json.tool",
         "description": "",
+        "discrimination_status": "",
         "id": "b0b2d205-a258-4b34-bcf9-9b5873152463",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119664,6 +119746,7 @@
       {
         "command": "cargo test && target/debug/loom status --json >/dev/null && target/debug/loom next --all --json >/dev/null",
         "description": "The local SQLite-backed binary must pass the test suite, read the live SQLite graph, and route queues before it can replace the global installed loom. Export freshness is checked as the final closeout after validation results are recorded.",
+        "discrimination_status": "",
         "id": "b1cae681-0183-4fac-bbc6-661594dc8f61",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119674,6 +119757,7 @@
       {
         "command": "sh -c 'target/debug/loom next --mode quality --take 5 --json | python3 -c \"import json,sys; d=json.load(sys.stdin); assert d[\\\"status\\\"] in (\\\"ok\\\",\\\"empty\\\"); assert d[\\\"status\\\"]==\\\"empty\\\" or d[\\\"batch_template\\\"]\"'",
         "description": "",
+        "discrimination_status": "",
         "id": "b201c4fd-988a-4a71-96ed-dd4de6e2721e",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119684,6 +119768,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_inbox_add_normalize_mark_and_export && cargo test --test sqlite_regression sqlite_door_captures_inbox_item_before_routing",
         "description": "",
+        "discrimination_status": "",
         "id": "b2d4611d-8b1e-4fc9-afef-663d47fc076f",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119694,6 +119779,7 @@
       {
         "command": "",
         "description": "hypothesis:592c2ff5-db8c-4406-8664-93c93d5984e6\nPredicted outcome to verify after adoption: sync touches each relevant ripple edge or validation at most once per run and large multi-file syncs avoid per-intent query fan-out.",
+        "discrimination_status": "",
         "id": "b630a274-0d82-4175-a8c5-0b30d44421db",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119704,6 +119790,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119714,6 +119801,7 @@
       {
         "command": "",
         "description": "After a file change, every direct neighbor is needs_reverification and every two-hop neighbor gains a priority bump while keeping its prior inspection_status",
+        "discrimination_status": "",
         "id": "b79e556e-0f1d-4ee1-9e7c-f21aed3f3cee",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119724,6 +119812,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "b95cd4eb-b2b7-496f-9e82-0f18866a3201",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119734,6 +119823,7 @@
       {
         "command": "env -u LOOM_AGENT python3 -c 'import json, subprocess, tempfile, pathlib\nwith tempfile.TemporaryDirectory() as td:\n    root = pathlib.Path(td)\n    def run(args):\n        return subprocess.run(args, cwd=root, text=True, capture_output=True, check=True)\n    run([\"loom\", \"init\", \".\", \"--json\"])\n    intent = json.loads(run([\"loom\", \"intent\", \"add\", \"--name\", \"validate all smoke\", \"--description\", \"validate all command smoke test intent\", \"--level\", \"feature\", \"--json\"]).stdout)[\"id\"]\n    run([\"loom\", \"validation\", \"add\", \"--name\", \"pending proof\", \"--type\", \"assertion\", \"--command\", \"true\", \"--intent\", intent, \"--json\"])\n    first = json.loads(run([\"loom\", \"validate\", \"--all\", \"--json\"]).stdout)\n    assert first[\"passed\"] == 1 and first[\"failed\"] == 0, first\n    second = json.loads(run([\"loom\", \"validate\", \"--all\", \"--json\"]).stdout)\n    assert second[\"results\"] == [], second\n    print(\"validate --all drained one pending proof and left no pending rerun\")'",
         "description": "",
+        "discrimination_status": "",
         "id": "bbe00ebd-f482-4bc4-81df-0151b31e8abf",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119744,6 +119834,7 @@
       {
         "command": "cargo test db::sqlite::tests::sqlite_implements_regrounding_updates_locator_and_status",
         "description": "",
+        "discrimination_status": "",
         "id": "bc54ed70-f4a8-4082-8527-70be3ca22387",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119754,6 +119845,7 @@
       {
         "command": "python3 - <<'PY'\nfrom pathlib import Path\npaths = [\n    Path(\"README.md\"),\n    Path(\"docs/COMMANDS.md\"),\n    Path(\"docs/daemon-design.md\"),\n    Path(\"src/commands/guide.rs\"),\n    Path(\"src/commands/mod.rs\"),\n    Path(\".claude/skills/run-loom/SKILL.md\"),\n]\nneedles = [\"grafeo\", \"legacy lock\", \"legacy query\", \"must start loom serve\", \"serve daemon\"]\nhits = []\nfor path in paths:\n    text = path.read_text().lower()\n    for needle in needles:\n        if needle in text:\n            hits.append(f\"{path}: {needle}\")\nassert not hits, \"stale backend claims found: \" + \", \".join(hits)\nprint(\"sqlite docs stale backend claim check passed\")\nPY",
         "description": "Scan the public self-teaching docs for obsolete Grafeo/legacy-backend operational claims.",
+        "discrimination_status": "",
         "id": "bdbf39a1-0177-472d-97b1-b8ae7fd7a23e",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119764,6 +119856,7 @@
       {
         "command": "cargo test malformed",
         "description": "",
+        "discrimination_status": "",
         "id": "bdc93ae2-c7dc-48df-94dd-dd121e637b07",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119774,6 +119867,7 @@
       {
         "command": "cargo test sqlite_sync_ripple_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "c22d8ae3-73c8-45a8-865c-02d00ba4054a",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119784,6 +119878,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "c3dd4763-faaa-4fe7-bb3c-7ed005332ff9",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119794,6 +119889,7 @@
       {
         "command": "",
         "description": "A three-hop presentation-to-application-to-presentation chain with no single violating edge yields exactly one transitive layering finding; the same chain respecting layer order yields none",
+        "discrimination_status": "",
         "id": "c6746f90-778a-4b78-81bb-00283476d810",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119804,6 +119900,7 @@
       {
         "command": "",
         "description": "hypothesis:a098fe93-96db-470a-9592-dd0c66acf9da\nPredicted outcome to verify after adoption: read-heavy commands share one bulk graph projection per invocation family, making further performance work simpler and reducing repeated table scans across command handlers.",
+        "discrimination_status": "",
         "id": "c6b29a71-7545-4644-820f-3e2db607ea06",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119814,6 +119911,7 @@
       {
         "command": "cargo test sqlite_migration_parity_gate",
         "description": "",
+        "discrimination_status": "",
         "id": "c94156d2-0d5e-4f8b-b5fa-2e153373ed6c",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119824,6 +119922,7 @@
       {
         "command": "cargo test sqlite_schema_contract",
         "description": "",
+        "discrimination_status": "",
         "id": "ca2cf2a6-e419-4239-8073-83feed35c56e",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119834,6 +119933,7 @@
       {
         "command": "cargo test daemon_",
         "description": "Focused regression tests for automatic JSON daemon default, opt-out parsing, daemon IPC parity, and Grafeo concurrent session contract.",
+        "discrimination_status": "",
         "id": "ccd8e835-62ed-4763-b69b-24e7762bf881",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119844,6 +119944,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "cf2f39e2-3ed0-4853-9cdb-ba35b33678aa",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119854,6 +119955,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_populate_backfills_interface_calls_from_existing_sagas",
         "description": "",
+        "discrimination_status": "",
         "id": "d4940021-5843-43fc-ad4f-b3b8d7818330",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",
@@ -119864,6 +119966,7 @@
       {
         "command": "cargo test hypothesis",
         "description": "query-layer regression: hypothesis state machine writes, TARGETS endpoint matching, export/import round trip incl. older exports and --as-planned proof reset",
+        "discrimination_status": "",
         "id": "d7cb683e-456e-4b90-a453-30dbbe92b31c",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119874,6 +119977,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_migrate_reports_open_time_schema_contract",
         "description": "",
+        "discrimination_status": "",
         "id": "d802bf0c-238c-412a-a148-1f65716f3b83",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119884,6 +119988,7 @@
       {
         "command": "cargo test --bin loom shape_hash_decision_adjudicates_clone_without_lowering_total_and_shape_change_reopens",
         "description": "hypothesis:44f0e229-2a0b-4a0e-bd52-2401e3fd4ac2\nPredicted outcome to verify after adoption: loom smells reports each code_clone's disposition plus a roll-up like 'N clones — D deliberate, H tracked, O open'; a decision note anchored to a clone's shape_hash moves it out of open and re-opens when sync changes that hash; the raw code_clones_total never drops below the number of duplications physically present on disk",
+        "discrimination_status": "",
         "id": "d8625935-b9d0-4db9-b2e7-dbc03121dfb8",
         "last_executed_run": "2026-06-20T19:18:51.277102+00:00",
         "last_result": "passed",
@@ -119894,6 +119999,7 @@
       {
         "command": "cargo test import_as_planned",
         "description": "",
+        "discrimination_status": "",
         "id": "d8b77fd8-110d-4603-9291-1692db66add3",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119904,6 +120010,7 @@
       {
         "command": "cargo test --test sqlite_regression sqlite_status_surfaces_populate_gap_lane",
         "description": "",
+        "discrimination_status": "",
         "id": "d8dd4bac-0e8e-4963-805f-ba7e68e1f5eb",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119914,6 +120021,7 @@
       {
         "command": "cargo test --quiet -- redefinition_ripples_one_hop confirm_stamps_are_append_only_freshness",
         "description": "",
+        "discrimination_status": "",
         "id": "df34506c-5f6c-416d-a4dd-0beddcba668d",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119924,6 +120032,7 @@
       {
         "command": "cargo test sqlite_import_export_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "e0ef8e4f-073c-45e1-bbad-ebac5f8b7b5a",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119934,6 +120043,7 @@
       {
         "command": "cargo test sqlite_targets_status_update_records_confidence",
         "description": "Regression test proves hypothesis TARGETS verdicts preserve the prover's explicit confidence instead of leaving the default 0.0.",
+        "discrimination_status": "",
         "id": "e1c319c4-1658-4084-8591-b61f94f0e85e",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119944,6 +120054,7 @@
       {
         "command": "cargo test -- align_ranks_churned_unconfirmed_intent_first align_ignores_retired_intents align_churn_before_confirm_not_counted",
         "description": "",
+        "discrimination_status": "",
         "id": "e5fea9c3-f5fa-4e99-a1cd-67d9403901e1",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -119954,6 +120065,7 @@
       {
         "command": "./target/debug/loom status --json | python3 -c 'import sys,json; gs=json.load(sys.stdin)[\"graph_state\"]; assert gs[\"phase\"]'",
         "description": "",
+        "discrimination_status": "",
         "id": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
         "last_executed_run": "2026-06-21T04:54:04.330375+00:00",
         "last_result": "passed",
@@ -119964,6 +120076,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "ebe73777-2de9-4cf2-900b-af4ea6324128",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119974,6 +120087,7 @@
       {
         "command": "cargo test sqlite_find_command_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "eefa76b1-a35f-45fe-b459-5d5ee20a5e4c",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -119984,6 +120098,7 @@
       {
         "command": "cargo test daemon_",
         "description": "",
+        "discrimination_status": "",
         "id": "ef4a2615-8671-4a39-b859-8edef5ba1e07",
         "last_executed_run": "",
         "last_result": "passed",
@@ -119994,6 +120109,7 @@
       {
         "command": "",
         "description": "Pending visual-confirm items appear in loom session offer menu as a user-gated lane and are absent from the autonomous no-user lanes",
+        "discrimination_status": "",
         "id": "efbe2319-f643-4732-a6e5-6efbc90bd52f",
         "last_executed_run": "",
         "last_result": "passed",
@@ -120004,6 +120120,7 @@
       {
         "command": "cargo test global_local_json_parity",
         "description": "",
+        "discrimination_status": "",
         "id": "f1a0f4ca-5c55-4755-a1d1-a1eb10bc20f5",
         "last_executed_run": "",
         "last_result": "passed",
@@ -120014,6 +120131,7 @@
       {
         "command": "",
         "description": "hypothesis:fb4bdd5c-88db-4d27-9598-06e1d3af6666\nPredicted outcome to verify after adoption: either a single definition imported by both modules and the code_clone group collapses to one file, or a recorded deliberate-copies disposition that stops it reading as an open clone",
+        "discrimination_status": "",
         "id": "f1fd1b35-d6c6-4e15-b537-1748ca784a63",
         "last_executed_run": "",
         "last_result": "passed",
@@ -120024,6 +120142,7 @@
       {
         "command": "cargo test betweenness",
         "description": "",
+        "discrimination_status": "",
         "id": "f56826da-13f0-4e67-b5ba-d407c128a53f",
         "last_executed_run": "",
         "last_result": "passed",
@@ -120034,6 +120153,7 @@
       {
         "command": "bash .claude/skills/run-loom/bench.sh 500 1000 2",
         "description": "Generates a synthetic graph of 500 intents / 1000 edges, imports it, and times loom status / next / smells / next --all; exits non-zero if any command exceeds 2 seconds",
+        "discrimination_status": "",
         "id": "f6a2110b-0894-40ef-ae1d-4a0d65bb7861",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -120044,6 +120164,7 @@
       {
         "command": "cargo test -- reciprocal a_long_directed_cycle an_acyclic_chain",
         "description": "",
+        "discrimination_status": "",
         "id": "f86938b9-b328-4f59-904c-4ee39ab2cfa5",
         "last_executed_run": "2026-06-20T10:49:27.182613+00:00",
         "last_result": "passed",
@@ -120054,6 +120175,7 @@
       {
         "command": "cargo test low_confidence_verdicts_feed_the_review_queue",
         "description": "",
+        "discrimination_status": "",
         "id": "f9daf553-2d1c-4e2d-bd1a-58556b5c9ecd",
         "last_executed_run": "2026-06-21T11:36:54.384821+00:00",
         "last_result": "passed",
@@ -120064,6 +120186,7 @@
       {
         "command": "cargo test validation_saga_storage_isolation",
         "description": "",
+        "discrimination_status": "",
         "id": "fb125d64-cb03-413d-a3cd-ce525cd3590f",
         "last_executed_run": "2026-06-20T02:48:18.048699+00:00",
         "last_result": "passed",

@@ -158,6 +158,7 @@ const VALIDATION_PROPS: &[&str] = &[
     prop::LAST_RUN,
     prop::LAST_RESULT,
     prop::LAST_EXECUTED_RUN,
+    prop::DISCRIMINATION_STATUS,
 ];
 
 const NOTE_PROPS: &[&str] = &[

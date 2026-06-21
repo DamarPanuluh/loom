@@ -113,6 +113,7 @@ fn add_sqlite(
                 last_run: String::new(),
                 last_result: "not_run".to_string(),
                 last_executed_run: String::new(),
+                discrimination_status: String::new(),
             })?;
             (id, true)
         }
@@ -336,8 +337,14 @@ fn execute_sqlite(arg: &str, printer: &Printer) -> Result<()> {
         &now,
         // `loom saga run` EXECUTES the saga against the live target — machine-
         // run proof, so stamp last_executed_run (counts as EXECUTED, not
-        // ASSERTED, on the proven axis).
+        // ASSERTED, on the proven axis). A passing saga genuinely asserted each
+        // step's response, so it is `discriminating`; a failing one is inert.
         Some(&now),
+        Some(if report.passed {
+            "discriminating"
+        } else {
+            "ran_inert"
+        }),
     )?;
 
     let mut stamped_passing = 0usize;

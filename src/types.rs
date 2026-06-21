@@ -820,6 +820,16 @@ pub struct Validation {
     /// passed by hand has `last_run` set but this empty, so it reads ASSERTED.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub last_executed_run: String,
+    /// What the EXECUTOR observed the runner DO (G2 falsification-witness):
+    /// `discriminating` = captured output showed a recognized test runner that
+    /// actually asserted >=1 thing (cargo `test result: ok. N passed`,
+    /// pytest/jest `N passed`, go `--- PASS:`); `ran_inert` = exited 0 but no
+    /// assertion signal (0 tests, unknown runner, a bare `echo`/`true`); empty =
+    /// never machine-run under G2. ONLY `discriminating` feeds the EXECUTED proof
+    /// tier — exit-0 alone can no longer mint EXECUTED. Set ONLY by the executor;
+    /// a hand-mark never touches it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub discrimination_status: String,
 }
 
 // ---------------------------------------------------------------------------

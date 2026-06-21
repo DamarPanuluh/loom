@@ -296,6 +296,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                     last_run: String::new(),
                     last_result: "not_run".to_string(),
                     last_executed_run: String::new(),
+                    discrimination_status: String::new(),
                 })?;
                 for iid in &spawned_ids {
                     store.insert_validates(

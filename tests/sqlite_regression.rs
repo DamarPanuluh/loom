@@ -2627,6 +2627,126 @@ fn sqlite_discovery_ranks_boundary_crossing_coupling_first() {
     );
 }
 
+// G2 (the EXIT-0 launder fix): EXECUTED proof requires the executor to OBSERVE
+// the runner ASSERT — a passing-but-inert command (exits 0, asserts nothing) is
+// `ran_inert` and counts only as ASSERTED, never EXECUTED. Also pins that
+// `loom validate --json` no longer leaks the runner's stdout into its envelope
+// (run_json would fail to parse if it did).
+#[test]
+fn sqlite_g2_executed_requires_a_discriminating_runner() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("g2");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "x.go", "package x\nfunc F() {}\nfunc G() {}\n");
+    let b = "llm:builder";
+    for name in ["disc", "inert"] {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                name,
+                "--description",
+                "X.",
+                "--level",
+                "feature",
+                "--json",
+            ],
+            b,
+        );
+    }
+    run_json_as(&graph.root, &["codefile", "add", "x.go", "--json"], b);
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "disc",
+            "x.go",
+            "--locator",
+            "func F",
+            "--json",
+        ],
+        b,
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            "inert",
+            "x.go",
+            "--locator",
+            "func G",
+            "--json",
+        ],
+        b,
+    );
+    let disc = intent_id_by_name(&graph.root, "disc");
+    let inert = intent_id_by_name(&graph.root, "inert");
+    // A discriminating proof: output names a passing runner. An inert proof:
+    // exits 0 but asserts nothing.
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "disc-proof",
+            "--type",
+            "test",
+            "--command",
+            "echo \"test result: ok. 1 passed\"",
+            "--intent",
+            &disc,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation",
+            "add",
+            "--name",
+            "inert-proof",
+            "--type",
+            "test",
+            "--command",
+            "test 1 = 1",
+            "--intent",
+            &inert,
+            "--json",
+        ],
+        "llm:validator",
+    );
+    // run_json parsing the validate output IS the no-leak assertion.
+    run_json_as(&graph.root, &["validate", &disc, "--json"], "llm:validator");
+    run_json_as(
+        &graph.root,
+        &["validate", &inert, "--json"],
+        "llm:validator",
+    );
+
+    let cov = run_json(&graph.root, &["status", "--json"])["graph_state"]["coverage"].clone();
+    // Both passed, but only the discriminating one is EXECUTED; the inert one
+    // is demoted to ASSERTED.
+    assert_eq!(
+        cov["proven_leaves"]["covered"], 2,
+        "both proofs passed: {cov}"
+    );
+    assert_eq!(
+        cov["proven_executed_leaves"]["covered"], 1,
+        "only the discriminating proof is EXECUTED: {cov}"
+    );
+    assert_eq!(
+        cov["proven_asserted_leaves"]["covered"], 1,
+        "the inert (exit-0, no assertion) proof falls to ASSERTED: {cov}"
+    );
+}
+
 // query-shaped command that secretly mutated state (layer-order with no args,
 // glob+locator). This turns "reads don't write" into a standing, enforced
 // invariant: every read-shaped command must leave the committed export
@@ -6211,7 +6331,8 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
     // a hand-mark. This is the crux of the proven-axis honesty fix: a hand-mark
     // on a command-bearing proof is ASSERTED, not EXECUTED — you cannot buy
     // 'executed' by typing a command and marking it passed; the executor must
-    // have run it. (A trivially-passing command keeps the test hermetic.)
+    // have run it. Under G2, EXECUTED also requires the runner to actually
+    // ASSERT, so the hermetic fixture emits a recognized passing-runner summary.
     let vtest = run_json(
         &graph.root,
         &[
@@ -6222,7 +6343,7 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
             "--type",
             "test",
             "--command",
-            "test -f src/b.rs",
+            "echo \"test result: ok. 1 passed\"",
             "--json",
         ],
     );

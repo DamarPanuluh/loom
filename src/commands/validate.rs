@@ -119,7 +119,8 @@ fn execute_and_record(
 ) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     let mut results: Vec<serde_json::Value> = Vec::new();
-    let mut outcomes: Vec<(String, String, String)> = Vec::new(); // (validation_id, result, edge note)
+    // (validation_id, result, edge note, discrimination_status)
+    let mut outcomes: Vec<(String, String, String, String)> = Vec::new();
     let mut passed = 0usize;
     let mut failed = 0usize;
 
@@ -184,6 +185,7 @@ fn execute_and_record(
                     validation.id.clone(),
                     "blocked".to_string(),
                     format!("blocked: {reason}"),
+                    String::new(), // not run → no discrimination
                 ));
                 results.push(serde_json::json!({
                     "validation_id": validation.id,
@@ -199,7 +201,11 @@ fn execute_and_record(
         }
 
         // Run the command via sh -c so shell features work (e.g. cargo test --test foo)
-        let exit_status = run_validation_command(&validation.command, cwd, timeout_secs);
+        let (exit_status, output) =
+            match run_validation_command(&validation.command, cwd, timeout_secs) {
+                Ok(pair) => (Ok(pair.0), pair.1),
+                Err(e) => (Err(e), String::new()),
+            };
 
         let (result, detail) = match exit_status {
             Ok(CommandOutcome::Exited(s)) if s.success() => {
@@ -227,7 +233,20 @@ fn execute_and_record(
             }
         };
         let new_result = result.to_string();
-        outcomes.push((validation.id.clone(), new_result.clone(), String::new()));
+        // G2: only a PASSED run whose captured output shows a runner ASSERTING
+        // earns `discriminating` (→ EXECUTED tier). A passed-but-inert run
+        // (exit 0, no assertion signal) or any non-pass run is `ran_inert`.
+        let discrimination = if result == ValidationResult::Passed {
+            proof_discrimination(&output)
+        } else {
+            "ran_inert"
+        };
+        outcomes.push((
+            validation.id.clone(),
+            new_result.clone(),
+            String::new(),
+            discrimination.to_string(),
+        ));
 
         let mut entry = serde_json::json!({
             "validation_id": validation.id,
@@ -253,7 +272,7 @@ fn execute_and_record(
     }
 
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&sqlite_db_path(cwd))?;
-    for (vid, new_result, edge_note) in &outcomes {
+    for (vid, new_result, edge_note, discrimination) in &outcomes {
         store.mark_validation_result(
             vid,
             new_result,
@@ -262,8 +281,11 @@ fn execute_and_record(
             marker,
             &now,
             // The executor RAN the command — stamp last_executed_run so the
-            // proven axis counts this as EXECUTED, not merely ASSERTED.
+            // proven axis counts this as EXECUTED, not merely ASSERTED…
             Some(&now),
+            // …but only `discriminating` (the runner actually asserted) feeds
+            // the EXECUTED tier; a `ran_inert` exit-0 falls back to ASSERTED.
+            Some(discrimination),
         )?;
     }
 
@@ -302,16 +324,31 @@ enum CommandOutcome {
     TimedOut,
 }
 
+/// Run a proof command and return BOTH its outcome and its captured output.
+/// Output is captured to a temp file (not inherited) — so the runner's stdout no
+/// longer leaks into `loom validate --json`, and G2 can inspect what the runner
+/// actually printed to decide whether it asserted anything.
 fn run_validation_command(
     command: &str,
     cwd: &std::path::Path,
     timeout_secs: u64,
-) -> Result<CommandOutcome> {
+) -> Result<(CommandOutcome, String)> {
+    use std::fs::File;
+    // Unique temp path without Date/random (unavailable): pid + a process-local
+    // sequence. Captures stdout AND stderr (runners split across both).
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let log_path =
+        std::env::temp_dir().join(format!("loom-proof-{}-{seq}.log", std::process::id()));
+    let log = File::create(&log_path)?;
+    let log_err = log.try_clone()?;
+
     let mut cmd = StdCommand::new("sh");
     cmd.arg("-c").arg(command).current_dir(cwd);
     // Throwaway-graph proofs (temp-dir init/import) must not inherit a pinned
     // session — LOOM_GRAPH beats cwd and would mutate the driver's graph.
     cmd.env_remove("LOOM_GRAPH");
+    cmd.stdout(log).stderr(log_err);
     // Run the command in its OWN process group so the timeout can kill the WHOLE
     // tree. `sh -c` forks the real runner (cargo, a test, a hostile `sleep`);
     // killing only `sh` let the child outlive the deadline — the timeout read as
@@ -325,17 +362,74 @@ fn run_validation_command(
     let mut child = cmd.spawn()?;
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
-    loop {
+    let outcome = loop {
         if let Some(status) = child.try_wait()? {
-            return Ok(CommandOutcome::Exited(status));
+            break CommandOutcome::Exited(status);
         }
         if Instant::now() >= deadline {
             terminate_command_tree(&mut child);
             let _ = child.wait();
-            return Ok(CommandOutcome::TimedOut);
+            break CommandOutcome::TimedOut;
         }
         thread::sleep(Duration::from_millis(100));
+    };
+    let captured = std::fs::read_to_string(&log_path).unwrap_or_default();
+    let _ = std::fs::remove_file(&log_path);
+    Ok((outcome, captured))
+}
+
+/// G2 falsification-witness: did the captured output show a recognized test
+/// runner ACTUALLY ASSERT at least one thing? Conservative — an unrecognized or
+/// zero-assertion run is `ran_inert` (demoted to the ASSERTED tier), so exit-0
+/// alone can never mint EXECUTED. cargo is mandatory (dogfood); pytest / jest /
+/// vitest / mocha (`N passed`) and `go test -v` (`--- PASS:`) are recognized.
+pub(crate) fn proof_discrimination(output: &str) -> &'static str {
+    for raw in output.lines() {
+        let line = raw.trim();
+        // cargo: "test result: ok. 12 passed; 0 failed; …"
+        if let Some(rest) = line.strip_prefix("test result: ok.") {
+            if leading_count(rest) >= 1 {
+                return "discriminating";
+            }
+        }
+        // go test -v: at least one passing test function.
+        if line.starts_with("--- PASS:") {
+            return "discriminating";
+        }
+        // pytest / jest / vitest / mocha: "<n> passed" with n >= 1.
+        if let Some(n) = passed_count(line) {
+            if n >= 1 {
+                return "discriminating";
+            }
+        }
     }
+    "ran_inert"
+}
+
+/// First run of ASCII digits in `s`, parsed (0 if none).
+fn leading_count(s: &str) -> u64 {
+    s.chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .unwrap_or(0)
+}
+
+/// The integer immediately preceding the word `passed` in a line, if any
+/// (`"Tests: 12 passed, 3 total"` → 12).
+fn passed_count(line: &str) -> Option<u64> {
+    let idx = line.find("passed")?;
+    let digits: String = line[..idx]
+        .trim_end()
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect();
+    digits.parse().ok()
 }
 
 /// Kill a timed-out validation command AND its descendants. With `process_group(0)`
@@ -386,5 +480,40 @@ fn validation_result_edge_status(validation_result: &str) -> &'static str {
         "passed" => "passing",
         "failed" => "failing",
         _ => "uninspected",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::proof_discrimination;
+
+    #[test]
+    fn discrimination_recognizes_real_runners_and_demotes_inert() {
+        // Recognized passing runners → discriminating.
+        assert_eq!(
+            proof_discrimination("running 3 tests\ntest result: ok. 3 passed; 0 failed;"),
+            "discriminating"
+        );
+        assert_eq!(
+            proof_discrimination("=== 12 passed in 0.31s ==="),
+            "discriminating"
+        );
+        assert_eq!(
+            proof_discrimination("Tests:       5 passed, 5 total"),
+            "discriminating"
+        );
+        assert_eq!(
+            proof_discrimination("=== RUN   TestX\n--- PASS: TestX (0.00s)\nPASS\nok  pkg"),
+            "discriminating"
+        );
+        // Inert: exit-0 with no assertion signal.
+        assert_eq!(proof_discrimination(""), "ran_inert");
+        assert_eq!(proof_discrimination("hello world"), "ran_inert");
+        // Zero assertions is NOT discriminating.
+        assert_eq!(
+            proof_discrimination("test result: ok. 0 passed; 0 failed;"),
+            "ran_inert"
+        );
+        assert_eq!(proof_discrimination("0 passed"), "ran_inert");
     }
 }

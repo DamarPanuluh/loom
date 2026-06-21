@@ -963,8 +963,8 @@ impl SqliteGraphStore {
     }
     pub fn insert_validation(&self, validation: &Validation) -> Result<()> {
         self.write_one(
-            "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result, last_executed_run)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO validation(id, name, description, validation_type, command, last_run, last_result, last_executed_run, discrimination_status)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 validation.id,
                 validation.name,
@@ -973,7 +973,8 @@ impl SqliteGraphStore {
                 validation.command,
                 validation.last_run,
                 validation.last_result,
-                validation.last_executed_run
+                validation.last_executed_run,
+                validation.discrimination_status
             ],
         )?;
         Ok(())
@@ -988,19 +989,21 @@ impl SqliteGraphStore {
         marker: &str,
         now: &str,
         executed_run: Option<&str>,
+        discrimination: Option<&str>,
     ) -> Result<(String, usize)> {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;
         // The executor passes Some(timestamp) to stamp last_executed_run (the
-        // machine-run discriminator); a hand-mark passes None so it NEVER
-        // overwrites a prior machine-run timestamp — `loom validation mark` on
-        // an already-executed proof keeps its executed status, and a hand-mark
-        // on a never-run proof leaves last_executed_run empty (asserted, not
-        // executed).
+        // machine-run discriminator) AND Some(status) for discrimination (what
+        // the runner was observed to do); a hand-mark passes None for both so it
+        // NEVER overwrites a prior machine-run timestamp/witness — `loom
+        // validation mark` on an already-executed proof keeps its executed
+        // status, and a hand-mark on a never-run proof leaves last_executed_run
+        // empty (asserted, not executed).
         if let Some(ts) = executed_run {
             tx.execute(
-                "UPDATE validation SET last_result = ?1, last_run = ?2, last_executed_run = ?3 WHERE id = ?4",
-                params![last_result, now, ts, validation.id],
+                "UPDATE validation SET last_result = ?1, last_run = ?2, last_executed_run = ?3, discrimination_status = ?4 WHERE id = ?5",
+                params![last_result, now, ts, discrimination.unwrap_or(""), validation.id],
             )?;
         } else {
             tx.execute(

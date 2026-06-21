@@ -355,7 +355,7 @@ impl SqliteGraphStore {
     pub fn validations_for_intent(&self, intent_id: &str) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
             "SELECT v.id, v.name, v.description, v.validation_type, v.command,
-                    v.last_run, v.last_result, v.last_executed_run
+                    v.last_run, v.last_result, v.last_executed_run, v.discrimination_status
              FROM validates e
              JOIN validation v ON v.id = e.validation_id
              WHERE e.intent_id = ?1",
@@ -370,6 +370,7 @@ impl SqliteGraphStore {
                 last_run: row.get(5)?,
                 last_result: row.get(6)?,
                 last_executed_run: row.get(7)?,
+                discrimination_status: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -1091,7 +1092,7 @@ impl SqliteGraphStore {
     }
     pub fn list_validations(&self) -> Result<Vec<Validation>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, validation_type, command, last_run, last_result, last_executed_run
+            "SELECT id, name, description, validation_type, command, last_run, last_result, last_executed_run, discrimination_status
              FROM validation
              ORDER BY name",
         )?;
@@ -1105,6 +1106,7 @@ impl SqliteGraphStore {
                 last_run: row.get(5)?,
                 last_result: row.get(6)?,
                 last_executed_run: row.get(7)?,
+                discrimination_status: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

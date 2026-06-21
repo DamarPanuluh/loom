@@ -336,6 +336,7 @@ mod proof_locality_tests {
             last_run: String::new(),
             last_result: result.into(),
             last_executed_run: String::new(),
+            discrimination_status: String::new(),
         }
     }
 

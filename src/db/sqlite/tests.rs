@@ -817,6 +817,7 @@ fn sqlite_interface_surface_calls_round_trip() {
             last_run: "".into(),
             last_result: "not_run".into(),
             last_executed_run: "".into(),
+            discrimination_status: "".into(),
         })
         .unwrap();
 

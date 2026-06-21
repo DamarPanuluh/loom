@@ -398,6 +398,12 @@ pub mod prop {
     /// `last_executed_run` empty, so it reads ASSERTED — closing the
     /// declared-not-executed laundering hole.
     pub const LAST_EXECUTED_RUN: &str = "last_executed_run";
+    /// What the executor observed the runner do (G2 falsification-witness):
+    /// `discriminating` (the runner asserted >=1 thing) | `ran_inert` (exited 0
+    /// with no assertion signal) | "" (never machine-run under G2). Only
+    /// `discriminating` feeds the EXECUTED proof tier, so exit-0 alone can no
+    /// longer mint EXECUTED. Set ONLY by the executor.
+    pub const DISCRIMINATION_STATUS: &str = "discrimination_status";
     // edges (state + meta)
     pub const INSPECTION_STATUS: &str = "inspection_status";
     pub const CRITERION: &str = "criterion";

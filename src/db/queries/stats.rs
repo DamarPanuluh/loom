@@ -382,9 +382,14 @@ pub fn graph_state_from_snapshot_parts(
             // guards (an empty-command or manual_check proof is never executed
             // even if somehow stamped), but last_executed_run is the load-bearing
             // discriminator.
+            // G2: EXECUTED additionally requires the executor to have OBSERVED
+            // the runner ASSERT (discrimination_status == "discriminating"). An
+            // exit-0 run that asserted nothing is `ran_inert` and falls to the
+            // ASSERTED tier — exit-0 alone can no longer mint EXECUTED.
             if !v.command.is_empty()
                 && v.validation_type != "manual_check"
                 && !v.last_executed_run.is_empty()
+                && v.discrimination_status == "discriminating"
             {
                 executed_intent_ids.insert(edge.intent_id.as_str());
             }
