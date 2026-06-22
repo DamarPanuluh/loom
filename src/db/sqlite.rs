@@ -170,6 +170,7 @@ const NOTE_PROPS: &[&str] = &[
     prop::TARGET_ID,
     prop::CREATED_AT,
     prop::AUDIENCE,
+    prop::RESOLUTION,
 ];
 
 const IGNORE_PROPS: &[&str] = &[
@@ -917,7 +918,7 @@ impl SqliteGraphStore {
     }
     fn list_all_notes(&self) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution
              FROM note
              ORDER BY created_at",
         )?;
@@ -931,6 +932,7 @@ impl SqliteGraphStore {
                 target_id: row.get(5)?,
                 audience: row.get(6)?,
                 created_at: row.get(7)?,
+                resolution: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

@@ -146,6 +146,7 @@ mod large_behavioral_symbol_tests {
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "large_behavioral_symbol:src/big.rs:method parse_everything".into(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(),
         };
@@ -330,6 +331,7 @@ mod source_fact_smell_tests {
             author: "human".into(),
             target_kind: "smell".into(),
             target_id: target_id.into(),
+            resolution: String::new(),
             created_at: created_at.into(),
             audience: String::new(),
         }
@@ -443,6 +445,7 @@ mod source_fact_smell_tests {
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "panic_marker_risk:src/a.rs:fn alpha".into(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(),
         };

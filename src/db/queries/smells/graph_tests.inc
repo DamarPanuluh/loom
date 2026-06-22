@@ -217,6 +217,7 @@ mod cycle_island_tests {
             author: "llm".into(),
             target_kind: "smell".into(),
             target_id: "dependency_cycle:a".into(), // <kind>:<smaller-id anchor>
+            resolution: String::new(),
             audience: String::new(),
             created_at: "2026-06-16T00:00:00+00:00".into(), // newer than the edges
         };

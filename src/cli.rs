@@ -1950,10 +1950,32 @@ pub enum NoteCmd {
         #[arg(long = "for", value_name = "ROLE")]
         for_role: Option<String>,
 
+        /// Include RESOLVED todo notes too. By default a resolved todo is hidden
+        /// (it left the backlog when it was closed); pass this to audit history.
+        #[arg(long)]
+        resolved: bool,
+
         /// Max rows, NEWEST kept (0 = all) — note memory is append-only and
         /// grows forever; the tail is the live context.
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
+    },
+
+    /// Close an OPEN `todo` note with a reason — the resolution lifecycle. An
+    /// open todo keeps surfacing in `loom next` until you resolve it here, so a
+    /// compacted agent can't silently forget it. loom can't auto-clear a free-
+    /// form todo (it can't read the prose), so closing is a conscious act. Notes
+    /// gate nothing, so this records a disposition — it does not certify the work
+    /// done; the truth stays in the computed signals (smells/proofs/lifecycle).
+    #[command(after_help = "EXAMPLE:\n  \
+        loom note resolve <note-id> --reason \"done in 9f3a2c1; store split into store/index/query\"")]
+    Resolve {
+        /// The note id to close (from `loom note list`).
+        id: String,
+
+        /// Why it's being closed: what happened, or why it no longer applies.
+        #[arg(long)]
+        reason: String,
     },
 }
 

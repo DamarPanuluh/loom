@@ -658,6 +658,7 @@ mod clone_tests {
             author: "human".into(),
             target_kind: "smell".into(),
             target_id: target_id.into(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: "2026-01-01T00:00:00Z".into(),
         }

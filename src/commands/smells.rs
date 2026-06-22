@@ -1086,6 +1086,7 @@ mod tests {
             author: "human".into(),
             target_kind: "intent".into(),
             target_id: target_id.into(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: created_at.into(),
         }

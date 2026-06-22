@@ -5656,6 +5656,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "map_vs_territory",
         "needs_reverification",
         "open_issues",
+        "open_todos",
         "optional_autonomous",
         "other_lanes",
         "passing_edges",
@@ -5673,6 +5674,106 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
     assert_eq!(
         keys, expected,
         "status --json top-level key set changed — update the frozen set DELIBERATELY"
+    );
+}
+
+#[test]
+fn sqlite_todo_note_resolution_lifecycle_surfaces_until_resolved() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("todo-lifecycle");
+
+    let baseline = run_json(&graph.root, &["status", "--json"])["open_todos"]
+        .as_i64()
+        .expect("open_todos is an integer in status --json");
+
+    // An OPEN todo is the LLM-filled follow-up backlog.
+    let marker = "TODO-LIFECYCLE-MARKER decompose foo";
+    let added = run_json(
+        &graph.root,
+        &["note", "add", "--kind", "todo", "--text", marker, "--json"],
+    );
+    let nid = added["id"].as_str().expect("note id").to_string();
+    // Adding a todo teaches the resolve path (not a generic "keep working").
+    assert!(
+        added["next_step"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("note resolve"),
+        "adding a todo teaches how to resolve it: {added}"
+    );
+
+    // The always-run compass counts it — survives compaction, can't be forgotten.
+    let after_add = run_json(&graph.root, &["status", "--json"])["open_todos"]
+        .as_i64()
+        .unwrap();
+    assert_eq!(
+        after_add,
+        baseline + 1,
+        "an open todo raises the status count"
+    );
+    let open_list = run_json(&graph.root, &["note", "list", "--kind", "todo", "--json"]);
+    assert!(
+        open_list["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["text"] == marker),
+        "the open todo shows in the default list"
+    );
+
+    // Closing must say WHY — an empty reason is refused.
+    let refused = Command::new(loom_bin())
+        .args(["note", "resolve", &nid, "--reason", "   ", "--json"])
+        .current_dir(&graph.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run note resolve");
+    assert!(
+        !refused.status.success(),
+        "resolving with an empty reason is refused"
+    );
+
+    // Resolve closes it with a reason; the compass count drops back.
+    run_json(
+        &graph.root,
+        &[
+            "note",
+            "resolve",
+            &nid,
+            "--reason",
+            "done in test",
+            "--json",
+        ],
+    );
+    let after_resolve = run_json(&graph.root, &["status", "--json"])["open_todos"]
+        .as_i64()
+        .unwrap();
+    assert_eq!(
+        after_resolve, baseline,
+        "resolving drops the open-todo count back to baseline"
+    );
+
+    // Hidden from the default list, visible (with its reason) under --resolved.
+    let default_after = run_json(&graph.root, &["note", "list", "--kind", "todo", "--json"]);
+    assert!(
+        !default_after["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["text"] == marker),
+        "a resolved todo is hidden from the default list"
+    );
+    let resolved_list = run_json(
+        &graph.root,
+        &["note", "list", "--kind", "todo", "--resolved", "--json"],
+    );
+    assert!(
+        resolved_list["notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|n| n["text"] == marker && n["resolution"] == "done in test"),
+        "a resolved todo is visible under --resolved with its reason: {resolved_list}"
     );
 }
 

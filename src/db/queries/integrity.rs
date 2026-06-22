@@ -1217,6 +1217,7 @@ mod smell_adjudication_audit_tests {
             author: "llm".to_string(),
             target_kind: "smell".to_string(),
             target_id: target.to_string(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: created_at.to_string(),
         }

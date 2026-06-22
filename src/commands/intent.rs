@@ -679,6 +679,7 @@ fn record_update_notes_and_ripple(
             author: ctx.by.to_string(),
             target_kind: "intent".to_string(),
             target_id: ctx.id.to_string(),
+            resolution: String::new(),
             created_at: ctx.now.to_string(),
             audience: String::new(),
         })?;
@@ -705,6 +706,7 @@ fn record_update_notes_and_ripple(
             author: ctx.by.to_string(),
             target_kind: "intent".into(),
             target_id: ctx.id.to_string(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: ctx.now.to_string(),
         })?;
@@ -731,6 +733,7 @@ fn record_update_notes_and_ripple(
             author: ctx.by.to_string(),
             target_kind: "intent".into(),
             target_id: ctx.id.to_string(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: ctx.now.to_string(),
         })?;
@@ -743,6 +746,7 @@ fn record_update_notes_and_ripple(
             author: ctx.by.to_string(),
             target_kind: "intent".into(),
             target_id: ctx.id.to_string(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: ctx.now.to_string(),
         })?;
@@ -766,6 +770,7 @@ fn record_description_update(
                 author: ctx.by.to_string(),
                 target_kind: "intent".into(),
                 target_id: ctx.id.to_string(),
+                resolution: String::new(),
                 audience: String::new(),
                 created_at: ctx.now.to_string(),
             })?;
@@ -777,6 +782,7 @@ fn record_description_update(
                 author: ctx.by.to_string(),
                 target_kind: "intent".into(),
                 target_id: ctx.id.to_string(),
+                resolution: String::new(),
                 audience: String::new(),
                 created_at: ctx.now.to_string(),
             })?;
@@ -945,6 +951,7 @@ fn handle_mark(
             author: by.clone(),
             target_kind: "intent".to_string(),
             target_id: id.clone(),
+            resolution: String::new(),
             audience: String::new(),
             created_at: now.clone(),
         })?;

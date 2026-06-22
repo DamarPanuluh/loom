@@ -1157,8 +1157,8 @@ impl SqliteGraphStore {
     }
     pub fn insert_note(&self, note: &Note) -> Result<()> {
         self.write_one(
-            "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience, resolution)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 note.id,
                 note.kind,
@@ -1167,10 +1167,38 @@ impl SqliteGraphStore {
                 note.target_kind,
                 note.target_id,
                 note.created_at,
-                note.audience
+                note.audience,
+                note.resolution
             ],
         )?;
         Ok(())
+    }
+
+    /// Close an open `todo` note with a reason (the resolution lifecycle). Returns
+    /// the note's kind+text for the caller's confirmation, or None if no such id.
+    /// loom can't auto-clear a free-form todo, so closing is an explicit, conscious
+    /// act — but until it happens the open todo keeps surfacing in `loom next`.
+    pub fn resolve_note(
+        &self,
+        note_id: &str,
+        resolution: &str,
+    ) -> Result<Option<(String, String)>> {
+        let found: Option<(String, String)> = self
+            .conn
+            .query_row(
+                "SELECT kind, text FROM note WHERE id = ?1",
+                params![note_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+        let Some((kind, text)) = found else {
+            return Ok(None);
+        };
+        self.write_one(
+            "UPDATE note SET resolution = ?2 WHERE id = ?1",
+            params![note_id, resolution],
+        )?;
+        Ok(Some((kind, text)))
     }
     pub fn delete_note_by_id(&self, note_id: &str) -> Result<()> {
         self.conn

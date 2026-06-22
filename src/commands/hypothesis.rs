@@ -279,6 +279,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 author: by.clone(),
                 target_kind: "hypothesis".to_string(),
                 target_id: hid.clone(),
+                resolution: String::new(),
                 audience: String::new(),
                 created_at: now.clone(),
             })?;
@@ -318,6 +319,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                     author: by.clone(),
                     target_kind: "intent".to_string(),
                     target_id: iid.clone(),
+                    resolution: String::new(),
                     audience: String::new(),
                     created_at: now.clone(),
                 })?;
@@ -364,6 +366,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 author: by,
                 target_kind: "hypothesis".to_string(),
                 target_id: hid.clone(),
+                resolution: String::new(),
                 audience: String::new(),
                 created_at: now,
             })?;

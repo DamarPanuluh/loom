@@ -16,10 +16,17 @@ pub fn run(cmd: NoteCmd, printer: &Printer) -> Result<()> {
             file,
             kind,
             for_role,
+            resolved,
             limit,
         } => {
             let db = GraphReadHandle::open(&cwd)?;
-            run_list_with_db(&db, intent, edge, file, kind, for_role, limit, printer)
+            run_list_with_db(
+                &db, intent, edge, file, kind, for_role, resolved, limit, printer,
+            )
+        }
+        NoteCmd::Resolve { id, reason } => {
+            ensure_initialized(&cwd)?;
+            run_resolve_with_sqlite(&cwd, &id, &reason, printer)
         }
         NoteCmd::Add {
             text,
@@ -84,6 +91,43 @@ fn run_add_with_sqlite(
     store.insert_note(&note)?;
     print_add_result(&note, printer);
     Ok(())
+}
+
+/// Close an open todo with a reason (the resolution lifecycle). The disposition
+/// is recorded so the note leaves the backlog; it is NOT a claim the work is done
+/// (notes gate nothing — the truth lives in the computed signals).
+fn run_resolve_with_sqlite(
+    root: &std::path::Path,
+    id: &str,
+    reason: &str,
+    printer: &Printer,
+) -> Result<()> {
+    let reason = reason.trim();
+    if reason.is_empty() {
+        anyhow::bail!("--reason must say why the todo is being closed (what happened, or why it no longer applies).");
+    }
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    match store.resolve_note(id, reason)? {
+        None => anyhow::bail!("no note with id '{id}' — `loom note list` to find it."),
+        Some((kind, text)) => {
+            if printer.json {
+                printer.print_json(&serde_json::json!({
+                    "status": "ok",
+                    "resolved": id,
+                    "kind": kind,
+                    "resolution": reason,
+                    "note": "disposition recorded — the note left the backlog. This is NOT a claim the work is done; the truth stays in the computed signals (smells/proofs/lifecycle).",
+                }));
+            } else {
+                println!("✓ resolved {kind} note: {text}");
+                println!("  reason: {reason}");
+                if kind != "todo" {
+                    println!("  (note: only `todo` notes surface as open backlog — resolving a {kind} is a no-op for `loom next`.)");
+                }
+            }
+            Ok(())
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -189,6 +233,7 @@ fn prepare_add_note(
         author: crate::agent::acting(author.as_deref()),
         target_kind,
         target_id,
+        resolution: String::new(),
         audience,
         created_at: chrono::Utc::now().to_rfc3339(),
     })
@@ -199,7 +244,20 @@ fn print_add_result(note: &Note, printer: &Printer) {
     // anchor: the `next_step` line/field without the pulse. An addressed note
     // (`--for <role>`) routes its reader to that lane's queue; a bare note
     // points back at the orientation surface.
-    let next_step = if note.audience.is_empty() {
+    let next_step = if note.kind == "todo" {
+        // A todo is an OPEN obligation: it persists in `loom next` until closed,
+        // so a compacted agent can't forget it. loom can't read the prose to
+        // auto-clear it — close it consciously when the work is real.
+        format!(
+            "OPEN todo — it keeps surfacing in `loom next`{} until you close it: `loom note resolve {} --reason \"…\"`. loom won't forget it, so you can't.",
+            if note.audience.is_empty() {
+                String::new()
+            } else {
+                format!(" for the {} lane", note.audience)
+            },
+            note.id,
+        )
+    } else if note.audience.is_empty() {
         "`loom note list` to review, or `loom next` to keep working.".to_string()
     } else {
         // The audience is a validated ROLE; map it to its queue's `loom next`
@@ -351,6 +409,7 @@ fn run_list_with_db(
     file: Option<String>,
     kind: Option<String>,
     for_role: Option<String>,
+    resolved: bool,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
@@ -371,6 +430,11 @@ fn run_list_with_db(
     // The lane's inbox: only notes explicitly addressed to this role.
     if let Some(r) = &for_role {
         notes.retain(|n| &n.audience == r);
+    }
+    // A resolved todo has left the backlog — hide it unless --resolved asks for
+    // history. (Only todos ever carry a resolution; every other kind stays.)
+    if !resolved {
+        notes.retain(|n| n.resolution.is_empty());
     }
     // Newest LAST in `notes`; keep the tail — the live context.
     let total = notes.len();
@@ -398,8 +462,16 @@ fn run_list_with_db(
             } else {
                 format!(" → for {}", n.audience)
             };
-            println!("  [{:<13}]{} {}", n.kind, aud, n.text);
+            let open = if n.kind == "todo" && n.resolution.is_empty() {
+                "  ⬚ OPEN"
+            } else {
+                ""
+            };
+            println!("  [{:<13}]{}{} {}", n.kind, aud, open, n.text);
             println!("      ({} · {})", n.author, tgt);
+            if !n.resolution.is_empty() {
+                println!("      ✓ resolved: {}", n.resolution);
+            }
         }
         if let Some(m) =
             crate::output::more_marker(total, notes.len(), "`loom note list --limit 0`")

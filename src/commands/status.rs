@@ -192,6 +192,15 @@ pub fn run_with_db(
     let blocked = blocked_validation_summary_from_snapshot(&snapshot);
     let intake = intake_counts(db)?;
     let ignores = db.list_ignores()?;
+    // Open todos = the LLM-filled follow-up backlog. loom can't read their prose
+    // to auto-clear them, but it surfaces the COUNT here — the always-run compass
+    // that survives compaction — so an agent can't silently forget them. Advisory
+    // (gates nothing); closed via `loom note resolve`.
+    let open_todos = db
+        .notes_by_kind("todo")?
+        .into_iter()
+        .filter(|n| n.resolution.is_empty())
+        .count() as i64;
     let decision_notes = db.notes_by_kind("decision")?;
     let advisories = advisory_counts(root, &snapshot, &ignores, &decision_notes);
     // Open smells are computed once at the audit gate (phase audit|complete) and
@@ -270,6 +279,7 @@ pub fn run_with_db(
         &outside,
         &blocked,
         intake,
+        open_todos,
         advisories,
         audit,
         align_count,
@@ -540,6 +550,7 @@ fn render_status(
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
     intake: IntakeCounts,
+    open_todos: i64,
     advisories: AdvisoryCounts,
     audit: AuditPulse,
     align_count: i64,
@@ -585,6 +596,7 @@ fn render_status(
             );
             obj.insert("populate".to_string(), serde_json::to_value(populate)?);
             obj.insert("intake".to_string(), serde_json::to_value(intake)?);
+            obj.insert("open_todos".to_string(), serde_json::json!(open_todos));
             obj.insert(
                 "uninspected_outside_queues".to_string(),
                 serde_json::to_value(outside)?,
@@ -633,6 +645,7 @@ fn render_status(
             outside,
             blocked,
             intake,
+            open_todos,
             advisories,
             &audit,
             align_count,
@@ -656,6 +669,7 @@ fn render_plain_status(
     outside: &UninspectedOutsideQueues,
     blocked: &BlockedValidationSummary,
     intake: IntakeCounts,
+    open_todos: i64,
     advisories: AdvisoryCounts,
     audit: &AuditPulse,
     align_count: i64,
@@ -689,6 +703,12 @@ fn render_plain_status(
         println!(
             "  inbox intake: {} untriaged · {} triaged · {} deferred (candidates, not graph truth)",
             intake.untriaged, intake.triaged, intake.deferred
+        );
+    }
+    if open_todos > 0 {
+        println!(
+            "  ⬚ {open_todos} open todo(s) — follow-ups loom is holding so you can't forget them; \
+             `loom note list --kind todo`, close with `loom note resolve <id> --reason …` (advisory)"
         );
     }
     println!();

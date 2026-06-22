@@ -861,6 +861,15 @@ pub struct Note {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub audience: String,
     pub created_at: String,
+    /// Resolution lifecycle for `kind=todo` notes (the only obligation-shaped
+    /// kind): "" = OPEN — keeps surfacing in `loom next` until consciously
+    /// closed; non-empty = the close reason set by `loom note resolve`. loom
+    /// can't parse a free-form todo's prose, so it can't auto-clear it — but it
+    /// won't forget it either: open todos persist in the queue so a compacted
+    /// LLM can't silently drop them. Advisory only (gates nothing), so a
+    /// dishonest close can't launder green — the truth stays in computed signals.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub resolution: String,
 }
 
 // ---------------------------------------------------------------------------

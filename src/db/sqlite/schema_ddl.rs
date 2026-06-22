@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS note(
   target_kind TEXT NOT NULL,
   target_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  audience TEXT NOT NULL DEFAULT ''
+  audience TEXT NOT NULL DEFAULT '',
+  resolution TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS ignore_rule(
@@ -350,6 +351,7 @@ impl SqliteGraphStore {
                 "TEXT NOT NULL DEFAULT ''",
             ),
             ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
+            ("note", "resolution", "TEXT NOT NULL DEFAULT ''"),
         ] {
             if !table_has_column(&self.conn, table, column)? {
                 let table = checked_sql_ident(table)?;

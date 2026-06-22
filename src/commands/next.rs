@@ -336,6 +336,14 @@ pub(super) fn note_surfaces(
     notes: Vec<crate::types::Note>,
     role: &str,
 ) -> (Vec<crate::types::NoteSurface>, usize) {
+    // A RESOLVED todo has left the backlog — it no longer surfaces as work. An
+    // OPEN todo (and every non-todo note, which never carries a resolution)
+    // stays: that persistence is the point — loom holds the string so a compacted
+    // agent can't silently drop it. It leaves only when consciously resolved.
+    let notes: Vec<crate::types::Note> = notes
+        .into_iter()
+        .filter(|n| n.resolution.is_empty())
+        .collect();
     // Dedup: the first occurrence keeps the slot (input is chronological).
     let mut uniq: Vec<(crate::types::Note, u32)> = Vec::new();
     for n in notes {
@@ -401,6 +409,7 @@ mod tests {
             author: "loom".to_string(),
             target_kind: "edge".to_string(),
             target_id: "e".to_string(),
+            resolution: String::new(),
             audience: audience.to_string(),
             created_at: "t".to_string(),
         }

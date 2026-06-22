@@ -378,7 +378,7 @@ impl SqliteGraphStore {
     }
     pub fn notes_for_target(&self, target_id: &str) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution
              FROM note
              WHERE target_id = ?1
              ORDER BY created_at",
@@ -393,6 +393,7 @@ impl SqliteGraphStore {
                 target_id: row.get(5)?,
                 audience: row.get(6)?,
                 created_at: row.get(7)?,
+                resolution: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -400,7 +401,7 @@ impl SqliteGraphStore {
     }
     pub fn notes_by_kind(&self, kind: &str) -> Result<Vec<Note>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution
              FROM note
              WHERE kind = ?1
              ORDER BY created_at",
@@ -415,6 +416,7 @@ impl SqliteGraphStore {
                 target_id: row.get(5)?,
                 audience: row.get(6)?,
                 created_at: row.get(7)?,
+                resolution: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -1198,7 +1200,7 @@ impl SqliteGraphStore {
         // / idx_note_kind instead of materializing every note body and discarding
         // most (the read path carries thousands of transition notes).
         let mut sql = String::from(
-            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at FROM note",
+            "SELECT id, kind, text, author, target_kind, target_id, audience, created_at, resolution FROM note",
         );
         let mut clauses: Vec<&str> = Vec::new();
         if target_id.is_some() {
@@ -1224,6 +1226,7 @@ impl SqliteGraphStore {
                 target_id: row.get(5)?,
                 audience: row.get(6)?,
                 created_at: row.get(7)?,
+                resolution: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
