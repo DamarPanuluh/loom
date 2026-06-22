@@ -450,10 +450,7 @@ fn resolve_validation_from_list(validations: &[Validation], key: &str) -> Result
         .collect();
     match subs.len() {
         1 => Ok(subs[0].id.clone()),
-        0 => anyhow::bail!(
-            "No validation matches '{}' (by id, name, or fragment). Run `loom validation list`.",
-            key
-        ),
+        0 => anyhow::bail!("{}", crate::types::no_validation_match_message(key)),
         _ => anyhow::bail!(
             "'{}' is ambiguous — matches {} validations. Use the id (`loom validation list`).",
             key,

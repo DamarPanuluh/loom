@@ -53,10 +53,24 @@ fn run_with_sqlite(
     };
     let mut state = SyncState::default();
 
-    scan_files_and_flag_changes(store, base, &codefiles, &ctx, &mut state)?;
+    // Detect changes and re-extract physical facts FIRST, then ripple. The
+    // independent-edge coupling gate must judge against CURRENT imports (a NEW
+    // import in this sync must re-open an independent edge THIS sync, not never),
+    // so `coupled_intent_pairs` is built from the codefiles AFTER re-extraction.
+    let code_ripple_targets = scan_files_and_flag_changes(base, &codefiles, &ctx, &mut state)?;
     update_physical_facts_and_flag_locators(store, base, &codefiles, &ctx, &mut state)?;
-    flag_unverifiable_files(store, &codefiles, &ctx, &mut state)?;
-    ripple_delegations(store, base, &ctx, &mut state)?;
+    let codefiles_after = store.list_codefiles()?;
+    let coupled_intent_pairs =
+        compute_coupled_intent_pairs(&codefiles_after, &sync_data.all_implements);
+    apply_code_ripples(
+        store,
+        &ctx,
+        &mut state,
+        &code_ripple_targets,
+        &coupled_intent_pairs,
+    )?;
+    flag_unverifiable_files(store, &codefiles, &ctx, &mut state, &coupled_intent_pairs)?;
+    ripple_delegations(store, base, &ctx, &mut state, &coupled_intent_pairs)?;
     flush_pending_hash_updates(store, &state.pending_hash_updates)?;
     // Reconcile settled hypothesis lineage: confirmed hypotheses' TARGETS no longer
     // stale (the ripple skips them), and any staled before that rule existed are
@@ -192,13 +206,75 @@ fn group_intents_by_codefile(all_implements: &[Implements]) -> HashMap<&str, Vec
     intents_by_codefile
 }
 
+/// Intent pairs whose grounded code is structurally import-coupled: a file
+/// grounding intent A statically imports a file grounding intent B (either
+/// direction). Built from the SAME load-time snapshot the ripple judges edges
+/// against, mirroring `detect_undeclared_coupling` exactly (the physical plane's
+/// one coupling signal). The code-change ripple uses this to decide whether an
+/// `independent` RELATES_TO verdict — the claim "these two intents do NOT
+/// interact" — is actually undermined: a behavior-preserving edit to one side
+/// does not create an interaction, so only the appearance of an import coupling
+/// re-opens it. Keys are lexicographically-sorted (min, max) id pairs so a
+/// lookup is direction-agnostic.
+fn compute_coupled_intent_pairs(
+    codefiles: &[CodeFile],
+    all_implements: &[Implements],
+) -> HashSet<(String, String)> {
+    let mut intents_on_file: HashMap<&str, HashSet<&str>> = HashMap::new();
+    for im in all_implements {
+        intents_on_file
+            .entry(im.codefile_path.as_str())
+            .or_default()
+            .insert(im.intent_id.as_str());
+    }
+    let mut coupled: HashSet<(String, String)> = HashSet::new();
+    for cf in codefiles {
+        let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
+            continue;
+        };
+        for target in &cf.imports {
+            let Some(owners_b) = intents_on_file.get(target.as_str()) else {
+                continue;
+            };
+            for a in owners_a {
+                for b in owners_b {
+                    if a == b {
+                        continue;
+                    }
+                    coupled.insert(sorted_pair(a, b));
+                }
+            }
+        }
+    }
+    coupled
+}
+
+/// Lexicographically-ordered (min, max) id pair — the direction-agnostic key for
+/// the coupled-pair set and its lookups.
+fn sorted_pair(a: &str, b: &str) -> (String, String) {
+    if a <= b {
+        (a.to_string(), b.to_string())
+    } else {
+        (b.to_string(), a.to_string())
+    }
+}
+
+/// One changed file's deferred code ripple: the intents it affects and the
+/// human-readable cause. Collected during change detection and applied AFTER
+/// physical-fact re-extraction, so the relates ripple judges independence
+/// against CURRENT import coupling.
+struct CodeRippleTarget {
+    effective_ids: Vec<String>,
+    cause: String,
+}
+
 fn scan_files_and_flag_changes(
-    store: &mut SqliteStore,
     base: &Path,
     codefiles: &[CodeFile],
     ctx: &SyncContext<'_>,
     state: &mut SyncState,
-) -> Result<()> {
+) -> Result<Vec<CodeRippleTarget>> {
+    let mut targets = Vec::new();
     for cf in codefiles {
         let Some(scanned) = scan_codefile(base, cf, state)? else {
             continue;
@@ -255,8 +331,35 @@ fn scan_files_and_flag_changes(
                 .collect(),
         };
 
-        flag_code_ripple_for_intents(store, ctx, state, &effective_ids, &cause)?;
-        invalidate_validations(store, ctx, state, &effective_ids)?;
+        // Defer the ripple: it must judge `independent` edges against the
+        // imports re-extracted AFTER this pass (see `apply_code_ripples`).
+        targets.push(CodeRippleTarget {
+            effective_ids,
+            cause,
+        });
+    }
+    Ok(targets)
+}
+
+/// Apply each changed file's deferred ripple now that physical facts (imports)
+/// have been re-extracted and `coupled_intent_pairs` reflects current coupling.
+fn apply_code_ripples(
+    store: &mut SqliteStore,
+    ctx: &SyncContext<'_>,
+    state: &mut SyncState,
+    targets: &[CodeRippleTarget],
+    coupled: &HashSet<(String, String)>,
+) -> Result<()> {
+    for target in targets {
+        flag_code_ripple_for_intents(
+            store,
+            ctx,
+            state,
+            &target.effective_ids,
+            &target.cause,
+            coupled,
+        )?;
+        invalidate_validations(store, ctx, state, &target.effective_ids)?;
     }
     Ok(())
 }
@@ -327,12 +430,13 @@ fn flag_code_ripple_for_intents(
     state: &mut SyncState,
     intent_ids: &[String],
     cause: &str,
+    coupled: &HashSet<(String, String)>,
 ) -> Result<()> {
     for iid in intent_ids
         .iter()
         .filter(|intent_id| ctx.active.contains(*intent_id))
     {
-        flag_relates(store, ctx, state, iid, cause, true)?;
+        flag_relates(store, ctx, state, iid, cause, true, coupled)?;
         flag_governs(store, ctx, state, iid, cause)?;
         flag_targets(store, ctx, state, iid, cause)?;
         flag_serves(store, ctx, state, iid, cause)?;
@@ -347,6 +451,7 @@ fn flag_relates(
     iid: &str,
     cause: &str,
     require_code_stale_kind: bool,
+    coupled: &HashSet<(String, String)>,
 ) -> Result<()> {
     for edge in ctx
         .all_relates
@@ -357,9 +462,28 @@ fn flag_relates(
         // not this file's code — a code change must not re-open it. A
         // `stable` edge is a settled coupling the analyst exempted from
         // code-change churn (`loom edge stable`), so skip it too.
+        //
+        // Independence is durable against behavior-preserving change: an
+        // `independent` verdict is the claim "these two intents do NOT
+        // interact", and editing one side's code does not create an
+        // interaction. So the code-change ripple re-opens an independent edge
+        // ONLY when a structural import coupling now exists between the pair
+        // (the same physical-plane signal `detect_undeclared_coupling` uses) —
+        // never on every unrelated edit. This is what stops a few central
+        // files from re-staling the whole N×N grid every sync. The
+        // federation/meaning ripple (require_code_stale_kind == false) is not a
+        // code change, so it keeps the status-only flip for every status.
         .filter(|edge| {
-            !require_code_stale_kind
-                || (!edge.stable && crate::types::relates_stales_on_code_change(&edge.kinds))
+            if !require_code_stale_kind {
+                return true;
+            }
+            if edge.stable {
+                return false;
+            }
+            if edge.inspection_status == "independent" {
+                return coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
+            }
+            crate::types::relates_stales_on_code_change(&edge.kinds)
         })
     {
         if state.related_edges_flagged.insert(edge.id.clone())
@@ -516,6 +640,7 @@ fn flag_unverifiable_files(
     codefiles: &[CodeFile],
     ctx: &SyncContext<'_>,
     state: &mut SyncState,
+    coupled: &HashSet<(String, String)>,
 ) -> Result<()> {
     // Unverifiable files: a registered file that is gone (missing), outside the
     // graph root (escaped), or unreadable as text (non-UTF8) cannot prove the
@@ -547,7 +672,7 @@ fn flag_unverifiable_files(
             .filter(|intent_id| ctx.active.contains(*intent_id))
         {
             store.flag_implements_needs_reverification(iid, &cf.id)?;
-            flag_relates(store, ctx, state, iid, &cause, true)?;
+            flag_relates(store, ctx, state, iid, &cause, true, coupled)?;
             flag_governs(store, ctx, state, iid, &cause)?;
             flag_targets(store, ctx, state, iid, &cause)?;
             flag_serves(store, ctx, state, iid, &cause)?;
@@ -562,6 +687,7 @@ fn ripple_delegations(
     base: &Path,
     ctx: &SyncContext<'_>,
     state: &mut SyncState,
+    coupled: &HashSet<(String, String)>,
 ) -> Result<()> {
     // Cross-service (federation) ripple. A delegation watches a child graph's
     // committed export; when that export's content hash changes the child's
@@ -590,7 +716,7 @@ fn ripple_delegations(
                 .iter()
                 .filter(|i| ctx.active.contains(*i))
             {
-                flag_relates(store, ctx, state, iid, &cause, false)?;
+                flag_relates(store, ctx, state, iid, &cause, false, coupled)?;
                 invalidate_delegation_validations(store, ctx, state, iid)?;
             }
         }

@@ -431,6 +431,23 @@ pub fn acting_in_lane(lane: &Lane, explicit: Option<&str>) -> Result<String> {
 /// Minimum length (chars) for a substantive criterion/evidence/notes value.
 pub const MIN_SUBSTANTIVE_LEN: usize = 10;
 
+// The shared `purpose` clauses passed to `require_substantive` — one per
+// user-facing validation contract, so the message can't drift between the
+// command surfaces that all validate the same field for the same operation
+// (`loom batch`, `loom rule verdict`/`apply`, `loom edge`).
+
+/// GOVERNS criterion — what compliance looks like for a rule on an intent.
+pub const GOVERNS_CRITERION_PURPOSE: &str =
+    "what compliance looks like for this rule on this intent";
+/// GOVERNS evidence on a passing/failing verdict — what the inspection found.
+pub const VERDICT_EVIDENCE_FAILING_PURPOSE: &str =
+    "what was actually found in the code during inspection";
+/// GOVERNS evidence on an independent verdict — why the rule does not apply.
+pub const VERDICT_EVIDENCE_INDEPENDENT_PURPOSE: &str =
+    "why this rule does not apply to this intent";
+/// RELATES_TO independence notes — why two intents have no real relationship.
+pub const INDEPENDENT_NOTES_PURPOSE: &str = "why these two intents have no meaningful relationship";
+
 /// Inputs that read as "I filled the slot" rather than "I inspected the code".
 pub const PLACEHOLDERS: &[&str] = &[
     "todo",

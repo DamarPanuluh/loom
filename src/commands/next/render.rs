@@ -133,7 +133,7 @@ fn build_closeout_queues(
         queues.push(serde_json::json!({
             "queue": "inbox", "role": "builder", "gate": "autonomous", "optional": true,
             "count": inbox_untriaged + inbox_triaged,
-            "command": "loom inbox triage --take 20",
+            "command": crate::commands::INBOX_TRIAGE_COMMAND,
             "top": format!("{} untriaged, {} triaged intake card(s); candidates, not graph truth", inbox_untriaged, inbox_triaged),
         }));
     }

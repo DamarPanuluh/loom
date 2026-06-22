@@ -149,6 +149,33 @@ fn render_report(data: ReportData, printer: &Printer) -> Result<()> {
         return Ok(());
     }
 
+    render_human_report(
+        status,
+        deprecated_intents,
+        top_intents,
+        intents_no_val,
+        failing_governs,
+        recent,
+        by_status,
+        gaps,
+        vc,
+        blocked,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_human_report(
+    status: StatusReport,
+    deprecated_intents: i64,
+    top_intents: Vec<IntentCentrality>,
+    intents_no_val: Vec<Intent>,
+    failing_governs: Vec<Governs>,
+    recent: Vec<RelatesTo>,
+    by_status: std::collections::HashMap<String, i64>,
+    gaps: Vec<String>,
+    vc: VerticalCompleteness,
+    blocked: Vec<Validation>,
+) -> Result<()> {
     // ---- Human-readable report ----
     println!("══ loom report ═════════════════════════════════════════════════════");
     println!();

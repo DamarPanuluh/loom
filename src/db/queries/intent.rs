@@ -6,16 +6,21 @@ use crate::types::{Hypothesis, Intent};
 
 use super::snapshot::QuerySnapshot;
 
+/// The single "no intent matched" contract, shared by every resolver
+/// (snapshot-based and the command-layer `resolve_intent_with_db`) so the
+/// not-found message can't drift between them.
+pub fn no_intent_match_message(key: &str) -> String {
+    format!(
+        "No intent matches '{key}' (by id, exact name, or name fragment). Run `loom intent list`."
+    )
+}
+
 /// Resolve an intent key — exact id, exact name (case-insensitive), or a
 /// unique name fragment — to the intent's id. Ambiguity is an error that lists
 /// candidates, so resolution is never a guess.
 pub fn resolve_intent_from_snapshot(snapshot: &QuerySnapshot, key: &str) -> Result<String> {
-    try_resolve_intent_from_snapshot(snapshot, key)?.ok_or_else(|| {
-        anyhow::anyhow!(
-            "No intent matches '{}' (by id, exact name, or name fragment). Run `loom intent list`.",
-            key
-        )
-    })
+    try_resolve_intent_from_snapshot(snapshot, key)?
+        .ok_or_else(|| anyhow::anyhow!(no_intent_match_message(key)))
 }
 
 /// Resolution with an honest "nothing matches" channel: Ok(None) only when no
@@ -27,7 +32,7 @@ pub fn try_resolve_intent_from_snapshot(
     try_resolve_intent_from_list(&snapshot.intents, key)
 }
 
-fn try_resolve_intent_from_list(intents: &[Intent], key: &str) -> Result<Option<String>> {
+pub fn try_resolve_intent_from_list(intents: &[Intent], key: &str) -> Result<Option<String>> {
     if intents.iter().any(|i| i.id == key) {
         return Ok(Some(key.to_string()));
     }

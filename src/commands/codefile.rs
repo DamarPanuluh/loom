@@ -7,6 +7,15 @@ use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::CodeFile;
 
+/// The single user-facing "CodeFile not found" contract, shared by every
+/// lookup-by-key surface (remove, show, and note's codefile resolver) so the
+/// message can't drift between them.
+pub(crate) fn codefile_not_found(key: &str) -> String {
+    format!(
+        "CodeFile '{key}' not found (by id or path).\nRun `loom codefile list` to see what is registered."
+    )
+}
+
 pub fn run(cmd: CodefileCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     match cmd {
@@ -58,10 +67,7 @@ fn run_remove_with_sqlite(
     crate::gate::acting_in_lane(&crate::gate::lane::REMOVE_CODEFILE, None)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     let Some(cf) = store.delete_codefile(&path_or_id)? else {
-        anyhow::bail!(
-            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
-            path_or_id
-        );
+        anyhow::bail!(codefile_not_found(&path_or_id));
     };
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -296,10 +302,7 @@ fn run_show_with_db(
         .find(|codefile| codefile.id == path_or_id || codefile.path == path_or_id)
         .cloned()
     else {
-        anyhow::bail!(
-            "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
-            path_or_id
-        );
+        anyhow::bail!(codefile_not_found(&path_or_id));
     };
 
     // The ownership view: every intent claiming this file (via IMPLEMENTS),

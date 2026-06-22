@@ -488,10 +488,5 @@ fn resolve_codefile_id_with_db(db: &dyn GraphReadRepository, key: &str) -> Resul
         .into_iter()
         .find(|codefile| codefile.id == key || codefile.path == key)
         .map(|codefile| codefile.id)
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "CodeFile '{}' not found (by id or path).\nRun `loom codefile list` to see what is registered.",
-                key
-            )
-        })
+        .ok_or_else(|| anyhow::anyhow!(crate::commands::codefile::codefile_not_found(key)))
 }

@@ -706,6 +706,13 @@ impl RelationKind {
 /// True when a code-content change should stale this RELATES_TO edge: it has no
 /// kinds (unknown — conservatively stale) OR at least one kind that tracks code.
 /// Meaning-only edges (every kind is concept/docs) are left alone on code change.
+///
+/// This governs NON-independent edges only. In the sync code-change ripple,
+/// `independent` edges ("these two intents do NOT interact") are gated
+/// separately by structural import coupling: an independence verdict is
+/// falsified only by a NEW coupling appearing, not by any behavior-preserving
+/// edit, so empty-kinds independent edges are durable (see
+/// `compute_coupled_intent_pairs` in commands/sync.rs).
 pub fn relates_stales_on_code_change(kinds: &[String]) -> bool {
     kinds.is_empty()
         || kinds.iter().any(|k| {
@@ -830,6 +837,14 @@ pub struct Validation {
     /// a hand-mark never touches it.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub discrimination_status: String,
+}
+
+/// The single source of truth for the "validation not found" contract message,
+/// shared by every layer that resolves a validation by id/name/fragment (the
+/// CLI-arg resolver, the list-render resolver, and the store resolver) so the
+/// wording cannot drift between them.
+pub fn no_validation_match_message(key: &str) -> String {
+    format!("No validation matches '{key}' (by id, name, or fragment). Run `loom validation list`.")
 }
 
 // ---------------------------------------------------------------------------

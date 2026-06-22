@@ -8,6 +8,10 @@ use crate::gate;
 use crate::output::{fmt_edge_row, fmt_intent, fmt_intent_row, Printer};
 use crate::types::Intent;
 
+/// The user-facing contract for what an intent's `--criterion` must express —
+/// shared by intent creation and update so the message can't drift between them.
+const CRITERION_PURPOSE: &str = "the ONE falsifiable thing this intent is done/correct by";
+
 pub fn run(cmd: IntentCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     match cmd {
@@ -352,11 +356,7 @@ fn handle_add(
     if !criterion.trim().is_empty() {
         // First-class criterion held to the same substantive-evidence gate
         // as edge criteria (no placeholders, ≥10 chars).
-        gate::require_substantive(
-            "criterion",
-            &criterion,
-            "the ONE falsifiable thing this intent is done/correct by",
-        )?;
+        gate::require_substantive("criterion", &criterion, CRITERION_PURPOSE)?;
     }
     if lifecycle != "implemented" {
         store.ensure_owned(&format!(
@@ -476,7 +476,7 @@ fn handle_confirm(
         Some("user_visible") => "confirmed + ruled user-visible",
         _ => "confirmed",
     };
-    let next_step = "`loom next` serves the next item";
+    let next_step = crate::output::DEFAULT_NEXT_STEP;
     if printer.json {
         let mut payload = serde_json::json!({"status":"ok","id":id,"new_status":"confirmed"});
         if let Some(v) = visibility.as_deref() {
@@ -639,11 +639,7 @@ fn update_changes<'a>(
     // --criterion paired with a valid --name would persist the rename and
     // then bail, leaving an asymmetric partial write.
     if let Some(criterion) = changes.criterion {
-        gate::require_substantive(
-            "criterion",
-            criterion,
-            "the ONE falsifiable thing this intent is done/correct by",
-        )?;
+        gate::require_substantive("criterion", criterion, CRITERION_PURPOSE)?;
     }
     // Validate the new boundary BEFORE any write — same hazard as criterion:
     // set_intent_boundary bails on an invalid value, but it runs LAST in the
@@ -814,7 +810,7 @@ fn update_next_step(rippled: bool) -> &'static str {
     if rippled {
         "`loom next --mode fix` re-inspects staled claims; `loom next --mode quality` re-earns flagged quality green; `loom validate` re-runs invalidated proofs."
     } else {
-        "`loom next` serves the next item"
+        crate::output::DEFAULT_NEXT_STEP
     }
 }
 
@@ -988,7 +984,7 @@ fn handle_mark(
         "deferred" => {
             "parked: out of the build queue and never blocks a roll-up. Record WHY with `loom note add --intent <id> --kind decision`; resume with `--lifecycle planned`."
         }
-        _ => "`loom next` serves the next item",
+        _ => crate::output::DEFAULT_NEXT_STEP,
     };
     if printer.json {
         let mut body = serde_json::json!({

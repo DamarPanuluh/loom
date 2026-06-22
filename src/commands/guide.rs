@@ -36,7 +36,7 @@ const GOLDEN_RULES: &[&str] = &[
 /// not false-flag. Every flipped edge gets a transition note naming the file
 /// that caused it, so staleness explains itself in `loom edge show`/`loom next`.)
 const RIPPLE: &[&str] = &[
-    "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`; the edge's transition note names the changed file)",
+    "RELATES_TO edges of intents grounded in the changed file → needs_reverification (re-inspect via `loom next --mode fix`; the edge's transition note names the changed file) — EXCEPT an `independent` edge (\"these two intents do NOT interact\"), which re-opens ONLY when a NEW import coupling appears between the pair: a behavior-preserving edit cannot create an interaction, so independence is durable and the N×N grid does not re-stale on every unrelated edit (passing/grounded edges always re-open; meaning-only kinds never do)",
     "passing GOVERNS verdicts on those intents → needs_reverification (quality green is re-earned via `loom next --mode quality` + `loom rule verdict`)",
     "passing TARGETS evidence on hypotheses aimed at those intents → needs_reverification (hypothesis support must be re-earned against the changed target code)",
     "Validations linked to those intents → last_result = not_run (re-run via `loom validate <intent>`, or every pending proof at once: `loom validate --all`)",

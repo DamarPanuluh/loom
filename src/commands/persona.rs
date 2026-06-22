@@ -419,7 +419,7 @@ fn run_serve_with_sqlite(
                 last_inspected: now,
                 ..edge
             };
-            let next_step = "`loom next` for the next item.";
+            let next_step = crate::output::NEXT_DISCOVERY_STEP;
             if printer.json {
                 let v = with_read_anchor(serde_json::to_value(&updated)?, &store, next_step)?;
                 printer.print_json(&v);
@@ -494,7 +494,7 @@ fn run_serve_with_sqlite(
                 gate::acting_in_lane(&gate::lane::INDEPENDENT_SERVES, inspected_by.as_deref())?;
             let edge = store.get_or_create_serves(&persona_id, &intent_id, &now)?;
             store.update_serves_independent(&persona_id, &intent_id, &notes, &by, &now)?;
-            let next_step = "`loom next` for the next item.";
+            let next_step = crate::output::NEXT_DISCOVERY_STEP;
             if printer.json {
                 let v = with_read_anchor(
                     serde_json::json!({

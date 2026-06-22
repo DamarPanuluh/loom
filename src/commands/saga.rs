@@ -26,6 +26,13 @@ use crate::saga::spec::{load_spec_file, SagaSpec};
 use crate::saga::{run_saga, SagaRunReport};
 use crate::types::{CodeFile, Intent, Validation};
 
+/// The `interface_surface.description` for an HTTP endpoint a saga calls —
+/// shared by `saga add` (registration) and `populate` (backfill) so both paths
+/// stamp byte-identical metadata for the same surface.
+pub(crate) fn saga_interface_description(saga_name: &str) -> String {
+    format!("HTTP endpoint called by saga '{saga_name}'")
+}
+
 pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
     match cmd {
         SagaCmd::Add {
@@ -149,7 +156,7 @@ fn add_sqlite(
     for (idx, step) in spec.steps.iter().enumerate() {
         let method = step.request.method.trim().to_uppercase();
         let target = normalize_step_target(&step.request.url);
-        let description = format!("HTTP endpoint called by saga '{}'", spec.saga);
+        let description = saga_interface_description(&spec.saga);
         let surface = store.get_or_create_interface_surface(
             "http_endpoint",
             &method,

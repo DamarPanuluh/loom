@@ -289,10 +289,8 @@ fn populate_interfaces(
                 surfaces_created += 1;
                 known_surfaces.insert(key);
             }
-            let description = format!(
-                "HTTP endpoint called by saga '{}'",
-                expectation.validation_name
-            );
+            let description =
+                crate::commands::saga::saga_interface_description(&expectation.validation_name);
             let surface = store.get_or_create_interface_surface(
                 "http_endpoint",
                 &call.method,

@@ -18,6 +18,15 @@ pub fn intent_not_found_find(id: &str) -> String {
 
 pub const STATUS_RECHECK_NEXT_STEP: &str = "`loom status` re-checks the compass";
 
+/// The generic "what to do next" guidance after a write that doesn't dictate a
+/// specific follow-up — `loom next` re-derives the highest-priority item.
+/// Centralized so the phrasing stays identical across every write surface.
+pub const DEFAULT_NEXT_STEP: &str = "`loom next` serves the next item";
+
+/// The post-grounding/independence discovery cue shared by every edge-type
+/// workflow (RELATES_TO + SERVES) so the phrasing can't drift between them.
+pub const NEXT_DISCOVERY_STEP: &str = "`loom next` for the next item.";
+
 pub struct Printer {
     pub json: bool,
     /// When `Some`, JSON output is appended to this buffer instead of being

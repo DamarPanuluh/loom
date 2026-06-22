@@ -50,6 +50,7 @@ pub mod vocab;
 pub mod wiki;
 
 pub(crate) const POPULATE_NEXT_COMMAND: &str = "loom next --mode populate";
+pub(crate) const INBOX_TRIAGE_COMMAND: &str = "loom inbox triage --take 20";
 pub(crate) const EXPORT_STALE_WARNING: &str =
     "⚠ committed loom.graph.json is STALE — `loom export` before committing code.";
 pub(crate) const REQUIRED_HUMAN_GATED_DEBT_KEY: &str = "required_human_gated_debt";

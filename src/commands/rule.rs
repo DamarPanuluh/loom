@@ -8,6 +8,11 @@ use crate::gate;
 use crate::output::{fmt_rule_row, Printer};
 use crate::types::QualityRule;
 
+/// The hardcoded-secrets rule id — single source of truth, so the pack
+/// definition and the effort lookup can't drift on the spelling (a rename in
+/// one place silently dropping the rule to the "mid" default).
+const ISO5055_SEC_NO_HARDCODED_SECRETS: &str = "iso5055-sec-no-hardcoded-secrets";
+
 /// The ISO 5055 measuring sticks: (name, severity, description, detection_logic).
 /// Two-to-three CWE-grounded rules per quality characteristic, written so an
 /// LLM holding one against an intent's code knows exactly what to look for.
@@ -27,7 +32,7 @@ const ISO5055_PACK: &[(&str, &str, &str, &str)] = &[
     ("iso5055-sec-no-injection", "error",
      "ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.",
      "Trace untrusted inputs to every interpreter sink (exec/system calls, query strings, format/eval, HTML output) and check the escaping/parameterization at each."),
-    ("iso5055-sec-no-hardcoded-secrets", "error",
+    (ISO5055_SEC_NO_HARDCODED_SECRETS, "error",
      "ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.",
      "Scan the intent's files for key-like literals, connection strings with passwords, and tokens; check how the code obtains credentials."),
     ("iso5055-sec-least-surface", "error",
@@ -218,7 +223,7 @@ pub fn pack_names() -> Vec<&'static str> {
 fn pack_rule_effort(name: &str) -> &'static str {
     match name {
         // Near-mechanical scans.
-        "iso5055-sec-no-hardcoded-secrets" | "iso5055-main-no-dead-or-duplicate-code" => "low",
+        ISO5055_SEC_NO_HARDCODED_SECRETS | "iso5055-main-no-dead-or-duplicate-code" => "low",
         // Deep semantic reading.
         "conc-atomic-multi-step"
         | "conc-deadlock-ordering"
@@ -366,11 +371,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             let now = chrono::Utc::now().to_rfc3339();
             let crit = criterion.as_deref().unwrap_or("");
             if !crit.is_empty() {
-                gate::require_substantive(
-                    "criterion",
-                    crit,
-                    "what compliance looks like for this rule on this intent",
-                )?;
+                gate::require_substantive("criterion", crit, gate::GOVERNS_CRITERION_PURPOSE)?;
             }
             store.insert_governs(&rule_id, &intent_id, crit, &now)?;
             let edge_id =
@@ -420,9 +421,9 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 "evidence",
                 &evidence,
                 if status == "independent" {
-                    "why this rule does not apply to this intent"
+                    gate::VERDICT_EVIDENCE_INDEPENDENT_PURPOSE
                 } else {
-                    "what was actually found in the code during inspection"
+                    gate::VERDICT_EVIDENCE_FAILING_PURPOSE
                 },
             )?;
             gate::require_locators_resolve(root, &evidence_locator)?;

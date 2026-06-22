@@ -146,6 +146,58 @@ fn write_scratch_file(root: &Path, path: &str, contents: &str) {
     fs::write(file, contents).expect("write scratch file");
 }
 
+/// Manufacture an UNEXPLORED, signal-bearing intent pair on a fully-green
+/// fixture. The committed fixture is now horizontally complete (every existing
+/// intent pair explored), so discovery has no work. Adding two brand-new
+/// intents grounded in the SAME freshly-registered codefile gives a pair that
+/// is (a) unexplored — never inspected — and (b) signal-bearing via the
+/// shared_file discovery signal, so the discovery lane immediately has a
+/// suspected-coupling work item. The pair is deliberately left ungrounded
+/// (no `edge explore … ground`) so it stays unexplored. Returns the two
+/// intent names.
+fn seed_unexplored_signal_pair(root: &Path, tag: &str) -> (String, String) {
+    let file = format!("scratch/{tag}_shared.rs");
+    write_scratch_file(root, &file, "pub fn shared_helper() -> u8 { 1 }\n");
+    run_json_as(root, &["codefile", "add", &file, "--json"], "llm:builder");
+    let names = [
+        format!("{tag} discovery seed A"),
+        format!("{tag} discovery seed B"),
+    ];
+    for nm in &names {
+        run_json_as(
+            root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns the shared helper used to seed an unexplored discovery pair",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            root,
+            &[
+                "edge",
+                "implement",
+                nm,
+                &file,
+                "--locator",
+                "fn shared_helper",
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    (names[0].clone(), names[1].clone())
+}
+
 fn unsigned_jwt(claims: serde_json::Value) -> String {
     use base64::Engine as _;
     let header =
@@ -727,9 +779,10 @@ fn sqlite_fix_take_withholds_ground_template_from_failing_edges() {
 fn sqlite_take_template_confidence_placeholder_and_hints_json() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("take-tmpl-hints-json");
-    // discovery --take is a deterministic non-empty template source (the
-    // fixture carries thousands of unexplored pairs), and it routes through the
-    // same run_take emitter as the fix queue.
+    // The fixture is horizontally complete; seed one unexplored, signal-bearing
+    // pair so discovery --take is a non-empty template source. It routes through
+    // the same run_take emitter as the fix queue.
+    seed_unexplored_signal_pair(&graph.root, "take-tmpl-json");
     let take = run_json(
         &graph.root,
         &["next", "--take", "5", "--mode", "discovery", "--json"],
@@ -813,6 +866,9 @@ fn sqlite_take_template_confidence_placeholder_and_hints_json() {
 fn sqlite_take_template_human_prints_legend_and_dry_run() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("take-tmpl-hints-human");
+    // The fixture is horizontally complete; seed one unexplored, signal-bearing
+    // pair so the human discovery --take prints a template, not "nothing to discover".
+    seed_unexplored_signal_pair(&graph.root, "take-tmpl-human");
     let out = run_text_as(
         &graph.root,
         &["next", "--take", "3", "--mode", "discovery"],
@@ -885,6 +941,21 @@ fn phase_default_mode_for_test(phase: &str) -> &str {
 fn sqlite_next_default_follows_compass_phase() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("next-default-phase");
+    // The committed fixture is fully green (phase=complete), where bare `next`
+    // carries no `mode`. Invalidate one validation so the graph sits in a
+    // NON-DISCOVERY actionable phase (validate) — that is exactly the case the
+    // regression below guards (the old binary hard-coded discovery regardless of
+    // phase), so a discovery-phase fixture would not exercise it.
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE validation SET last_result='not_run' \
+             WHERE rowid=(SELECT rowid FROM validation WHERE last_result='passed' LIMIT 1)",
+            [],
+        )
+        .expect("invalidate one validation to enter the validate phase");
+    }
     let st = run_json(&graph.root, &["status", "--json"]);
     let phase = st["graph_state"]["phase"]
         .as_str()
@@ -3087,6 +3158,12 @@ fn sqlite_sync_grades_files_and_codefile_show_exposes_it() {
 fn sqlite_discovery_candidate_path_matches_full_scan() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("disc-candidates");
+    // The fixture is horizontally complete; seed one unexplored pair that shares
+    // an implemented file so there IS a signal-bearing (suspected-coupling)
+    // candidate. The shared file is owned by exactly 2 intents — far below the
+    // dense-facet BUCKET_CAP — so the candidate path stays an exact superset and
+    // the suspected==all-impact invariant this test asserts still holds.
+    seed_unexplored_signal_pair(&graph.root, "disc-candidates");
     let total = |class: &str| -> i64 {
         // `--take` yields the bulk envelope whose `queue_total` is the FULL queue
         // size for the class (not the taken count) — the number we're comparing.
@@ -3562,6 +3639,9 @@ fn sqlite_skill_command_emits_lane_skills() {
 fn sqlite_next_cues_jit_skill_adoption() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("jit-skill-cue");
+    // The fixture is horizontally complete; seed one unexplored, signal-bearing
+    // pair so `next` has discovery work to route to the analyzer lane.
+    seed_unexplored_signal_pair(&graph.root, "jit-skill-cue");
     let item = run_json(&graph.root, &["next", "--mode", "discovery", "--json"]);
     let dispatch = item["dispatch"].as_str().unwrap_or("");
     assert!(
@@ -3922,6 +4002,9 @@ fn sqlite_explain_synthesizes_by_intent_and_file() {
 fn sqlite_next_carries_next_step_and_bulk_context() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("sqlite-next-context");
+    // The fixture is horizontally complete; seed one unexplored, signal-bearing
+    // pair so the discovery lane has a work item to hand back.
+    seed_unexplored_signal_pair(&graph.root, "next-context");
 
     // The output contract: a single work item carries a runnable next_step
     // (field-driven driving, not parsing the suggested_action prose).
@@ -4015,8 +4098,13 @@ fn sqlite_doctor_flags_weak_only_grounding() {
     {
         let db = graph.root.join(".loom").join("graph.sqlite");
         let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        // Also set a non-empty criterion: a passing edge with an empty criterion
+        // is a separate doctor ISSUE that exits 1 before the weak-kinds HINT can
+        // be inspected. With a real criterion, the only thing doctor flags here
+        // is the weak-only grounding HINT — exactly what this test verifies.
         conn.execute(
-            "UPDATE relates_to SET inspection_status='passing', kinds='[\"same_domain\"]' \
+            "UPDATE relates_to SET inspection_status='passing', kinds='[\"same_domain\"]', \
+             criterion='shared concept domain' \
              WHERE rowid=(SELECT rowid FROM relates_to LIMIT 1)",
             [],
         )
@@ -5204,6 +5292,13 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     // The committed fixture now carries triaged audit cards; this test asserts
     // absolute intake counts, so start from a known-empty inbox.
     clear_inbox(&graph.root);
+    // The committed fixture is fully green (phase=complete), where `next --all`
+    // in a no-source scratch omits the `queues` envelope. Seed an unexplored
+    // discovery pair so the graph sits in an actionable phase and `next --all`
+    // returns the full `queues` array. Seeded BEFORE the debt capture so the
+    // discovery work is already counted in `initial_required_debt`; the optional
+    // inbox add must not change that total.
+    seed_unexplored_signal_pair(&graph.root, "inbox-flow");
     let initial_status = run_json(&graph.root, &["status", "--json"]);
     let initial_required_debt = initial_status["completion"]["required_autonomous_debt"]["total"]
         .as_i64()
@@ -6980,5 +7075,180 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
         exec + asserted,
         proven,
         "invariant: executed + asserted-only == proven"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Ripple: an `independent` RELATES_TO verdict ("these two intents do NOT
+// interact") is durable against behavior-preserving change. The sync
+// code-change ripple re-opens it ONLY when a NEW structural import coupling
+// appears between the pair — NOT on every unrelated edit. This is what stops a
+// few central files from re-staling the whole N×N grid every sync.
+// ---------------------------------------------------------------------------
+
+fn relates_status(root: &Path, a: &str, b: &str) -> String {
+    let db = root.join(".loom").join("graph.sqlite");
+    let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+    conn.query_row(
+        "SELECT inspection_status FROM relates_to WHERE (from_id=?1 AND to_id=?2) OR (from_id=?2 AND to_id=?1)",
+        rusqlite::params![a, b],
+        |r| r.get(0),
+    )
+    .expect("the relates_to edge exists")
+}
+
+/// A fresh scratch graph with two intents, each grounded in its OWN file via a
+/// real symbol locator, with NO import between the files (structurally
+/// uncoupled). Returns the graph and the two intent ids.
+fn setup_two_uncoupled_grounded_intents(
+    prefix: &str,
+    a_src: &str,
+    b_src: &str,
+) -> (ScratchGraph, String, String) {
+    let graph = ScratchGraph::new(prefix);
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/a.rs", a_src);
+    write_scratch_file(&graph.root, "src/b.rs", b_src);
+    for (nm, file, loc) in [
+        ("owner a", "src/a.rs", "fn a_thing"),
+        ("owner b", "src/b.rs", "fn b_thing"),
+    ] {
+        run_json_as(
+            &graph.root,
+            &["codefile", "add", file, "--json"],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &[
+                "intent",
+                "add",
+                "--name",
+                nm,
+                "--description",
+                "owns its own file for the independent-ripple regression",
+                "--level",
+                "feature",
+                "--lifecycle",
+                "implemented",
+                "--json",
+            ],
+            "llm:builder",
+        );
+        run_json_as(
+            &graph.root,
+            &["edge", "implement", nm, file, "--locator", loc, "--json"],
+            "llm:builder",
+        );
+    }
+    let a = intent_id_by_name(&graph.root, "owner a");
+    let b = intent_id_by_name(&graph.root, "owner b");
+    (graph, a, b)
+}
+
+#[test]
+fn sqlite_independent_edge_survives_unrelated_code_change() {
+    let _guard = sqlite_test_lock();
+    let (graph, a, b) = setup_two_uncoupled_grounded_intents(
+        "independent-survives",
+        "pub fn a_thing() -> u8 { 1 }\n",
+        "pub fn b_thing() -> u8 { 2 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "independent",
+            "--notes",
+            "no shared code, no import between the files, distinct concerns",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    assert_eq!(
+        relates_status(&graph.root, &a, &b),
+        "independent",
+        "sanity: the recorded verdict is independent"
+    );
+    // A behavior-preserving edit to ONE grounded file creates no interaction.
+    write_scratch_file(&graph.root, "src/a.rs", "pub fn a_thing() -> u8 { 42 }\n");
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+    assert_eq!(
+        relates_status(&graph.root, &a, &b),
+        "independent",
+        "an independent verdict must SURVIVE an unrelated code change — the N×N grid must not re-stale on every edit"
+    );
+}
+
+#[test]
+fn sqlite_independent_edge_restales_on_new_import_coupling() {
+    let _guard = sqlite_test_lock();
+    let (graph, a, b) = setup_two_uncoupled_grounded_intents(
+        "independent-restale-coupling",
+        "pub fn a_thing() -> u8 { 1 }\n",
+        "pub fn b_thing() -> u8 { 2 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "independent",
+            "--notes",
+            "currently no import between the files",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    // Introduce a REAL structural coupling: src/a.rs now imports src/b.rs.
+    write_scratch_file(
+        &graph.root,
+        "src/a.rs",
+        "use crate::b::b_thing;\npub fn a_thing() -> u8 { b_thing() }\n",
+    );
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+    assert_eq!(
+        relates_status(&graph.root, &a, &b),
+        "needs_reverification",
+        "a NEW import coupling between the pair must re-open the independent verdict (the safety net)"
+    );
+}
+
+#[test]
+fn sqlite_passing_edge_restales_on_code_change_even_when_uncoupled() {
+    let _guard = sqlite_test_lock();
+    let (graph, a, b) = setup_two_uncoupled_grounded_intents(
+        "passing-restale-guard",
+        "pub fn a_thing() -> u8 { 1 }\n",
+        "pub fn b_thing() -> u8 { 2 }\n",
+    );
+    // A PASSING (ground) verdict between two structurally-uncoupled intents.
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "explore",
+            &a,
+            &b,
+            "ground",
+            "--criterion",
+            "they are exercised together by the same caller path",
+            "--confidence",
+            "0.85",
+            "--json",
+        ],
+        "llm:analyzer",
+    );
+    write_scratch_file(&graph.root, "src/a.rs", "pub fn a_thing() -> u8 { 42 }\n");
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+    assert_eq!(
+        relates_status(&graph.root, &a, &b),
+        "needs_reverification",
+        "a passing edge must re-open on code change regardless of coupling — the independent-only gate must not leak onto passing edges"
     );
 }

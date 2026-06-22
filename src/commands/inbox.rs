@@ -526,7 +526,7 @@ fn render_show(item: &InboxItem, printer: &Printer) -> Result<()> {
 
 fn next_step_for(item: &InboxItem) -> &'static str {
     match item.status.as_str() {
-        "new" => "loom inbox triage --take 20",
+        "new" => crate::commands::INBOX_TRIAGE_COMMAND,
         "triaged" => {
             "run the route command, then `loom inbox mark <id> --status routed --reason \"…\"`"
         }

@@ -311,10 +311,22 @@ fn collect_top_level_symbol(
             // IMPL's hash — whose changed name is the *type*, not the method —
             // so `loom sync` silently false-greened the method's grounding.
             let impl_test = in_test_context || rust_symbol_is_test(node, content);
-            if let Some(symbol) =
+            if let Some(mut symbol) =
                 symbol_fact(node, lang, rel_path, content, exported, in_test_context)
             {
                 let qualifier = symbol.name.clone();
+                // Re-attribute the impl container fact's OWN physical facts: a
+                // string literal or panic marker inside a method body belongs to
+                // that method's fact, not the impl. `symbol_fact` collected over
+                // the whole impl span (methods included), so counting both
+                // double-fires `string_contract_duplicate` / `panic_marker_risk`
+                // on a literal/marker that occurs exactly once in source. Recompute
+                // excluding method subtrees — impl-direct facts (associated consts,
+                // etc.) are kept.
+                symbol.string_literals = string_literal_facts_excluding_methods(node, content);
+                let impl_hits = panic_marker_hits_excluding_methods(node, content);
+                symbol.panic_marker_count = impl_hits.len();
+                symbol.panic_markers = panic_markers_from_hits(&impl_hits);
                 push_unique_fact(out, symbol);
                 if let Some(body) = node.child_by_field_name("body") {
                     for_each_named_child(body, |m| {
@@ -622,11 +634,27 @@ fn python_symbol_fact(
 
 fn string_literal_facts(node: Node<'_>, content: &str) -> Vec<StringLiteralFact> {
     let mut out = Vec::new();
-    collect_string_literal_facts(node, content, &mut out);
+    collect_string_literal_facts(node, content, false, &mut out);
     out
 }
 
-fn collect_string_literal_facts(node: Node<'_>, content: &str, out: &mut Vec<StringLiteralFact>) {
+/// Like `string_literal_facts` but does NOT descend into nested `function_item`
+/// subtrees — used for a Rust `impl` container fact so a method body's literals
+/// are owned ONLY by that method's own fact. Without this, a literal inside a
+/// method is recorded on both the impl fact and the method fact, double-firing
+/// `string_contract_duplicate` on a string that occurs exactly once in source.
+fn string_literal_facts_excluding_methods(node: Node<'_>, content: &str) -> Vec<StringLiteralFact> {
+    let mut out = Vec::new();
+    collect_string_literal_facts(node, content, true, &mut out);
+    out
+}
+
+fn collect_string_literal_facts(
+    node: Node<'_>,
+    content: &str,
+    skip_methods: bool,
+    out: &mut Vec<StringLiteralFact>,
+) {
     if is_source_string_literal_kind(node.kind()) {
         if let Some(value) = source_string_literal_value(node, content) {
             out.push(StringLiteralFact {
@@ -638,7 +666,10 @@ fn collect_string_literal_facts(node: Node<'_>, content: &str, out: &mut Vec<Str
     }
     for idx in 0..node.child_count() {
         if let Some(child) = node.child(idx as u32) {
-            collect_string_literal_facts(child, content, out);
+            if skip_methods && child.kind() == "function_item" {
+                continue;
+            }
+            collect_string_literal_facts(child, content, skip_methods, out);
         }
     }
 }
@@ -688,7 +719,10 @@ fn panic_marker_count(node: Node<'_>, content: &str) -> usize {
 }
 
 fn panic_markers(node: Node<'_>, content: &str) -> Vec<String> {
-    let hits = panic_marker_hits(node, content);
+    panic_markers_from_hits(&panic_marker_hits(node, content))
+}
+
+fn panic_markers_from_hits(hits: &[&'static str]) -> Vec<String> {
     let mut out = Vec::new();
     for marker in ["panic", "unwrap", "expect", "todo", "unimplemented"] {
         if hits.contains(&marker) {
@@ -699,8 +733,20 @@ fn panic_markers(node: Node<'_>, content: &str) -> Vec<String> {
 }
 
 fn panic_marker_hits(node: Node<'_>, content: &str) -> Vec<&'static str> {
+    panic_marker_hits_inner(node, content, false)
+}
+
+/// Like `panic_marker_hits` but skips nested `function_item` subtrees — used for
+/// a Rust `impl` container fact so a method's `unwrap`/`expect`/`panic` is
+/// counted ONLY on that method's fact, not double-counted on the impl too
+/// (which would emit a second, phantom `panic_marker_risk` finding).
+fn panic_marker_hits_excluding_methods(node: Node<'_>, content: &str) -> Vec<&'static str> {
+    panic_marker_hits_inner(node, content, true)
+}
+
+fn panic_marker_hits_inner(node: Node<'_>, content: &str, skip_methods: bool) -> Vec<&'static str> {
     let mut tokens = Vec::new();
-    source_tokens_without_literals(node, content, &mut tokens);
+    source_tokens_without_literals(node, content, skip_methods, &mut tokens);
     let mut hits = Vec::new();
     for (idx, tok) in tokens.iter().enumerate() {
         let Some(marker) = panic_marker(tok.as_str()) else {
@@ -716,7 +762,12 @@ fn panic_marker_hits(node: Node<'_>, content: &str) -> Vec<&'static str> {
     hits
 }
 
-fn source_tokens_without_literals(node: Node<'_>, content: &str, out: &mut Vec<String>) {
+fn source_tokens_without_literals(
+    node: Node<'_>,
+    content: &str,
+    skip_methods: bool,
+    out: &mut Vec<String>,
+) {
     let kind = node.kind();
     if is_comment_kind(kind) || is_literal_kind(kind) {
         return;
@@ -729,7 +780,10 @@ fn source_tokens_without_literals(node: Node<'_>, content: &str, out: &mut Vec<S
     }
     for idx in 0..node.child_count() {
         if let Some(child) = node.child(idx as u32) {
-            source_tokens_without_literals(child, content, out);
+            if skip_methods && child.kind() == "function_item" {
+                continue;
+            }
+            source_tokens_without_literals(child, content, skip_methods, out);
         }
     }
 }
@@ -1167,6 +1221,96 @@ fn real_test() {
         assert!(
             !rust_symbol_is_test(prod, src),
             "a plain production fn must not be tagged test"
+        );
+    }
+
+    #[test]
+    fn impl_container_fact_excludes_method_literals_and_markers() {
+        // A string literal and a panic marker live ONCE in source, inside a
+        // method of an impl. The method fact owns them; the impl CONTAINER fact
+        // must NOT also claim them. Before this fix, `symbol_fact` collected over
+        // the whole impl span, so the single occurrence was recorded on BOTH the
+        // impl and the method — double-firing `string_contract_duplicate` and
+        // `panic_marker_risk` on code that occurs exactly once.
+        let src = "\
+struct Foo;
+
+impl Foo {
+    pub fn method(&self) -> u8 {
+        let _msg = \"a distinctive contract sentence that occurs exactly once here\";
+        Some(1u8).unwrap()
+    }
+}
+";
+        let facts = extract_physical_facts("src/foo.rs", src).expect("rust facts extracted");
+        let impl_fact = facts
+            .symbol_facts
+            .iter()
+            .find(|f| f.kind == "impl")
+            .expect("impl fact present");
+        let method_fact = facts
+            .symbol_facts
+            .iter()
+            .find(|f| f.kind == "fn" && f.name == "method")
+            .expect("method fact present");
+
+        // The method keeps its OWN literal and marker.
+        assert!(
+            method_fact
+                .string_literals
+                .iter()
+                .any(|l| l.value.contains("distinctive contract sentence")),
+            "the method fact must keep its own string literal"
+        );
+        assert_eq!(
+            method_fact.panic_marker_count, 1,
+            "the method fact must keep its own unwrap marker"
+        );
+
+        // The impl container must NOT double-count the method's literal/marker.
+        assert!(
+            !impl_fact
+                .string_literals
+                .iter()
+                .any(|l| l.value.contains("distinctive contract sentence")),
+            "the impl container must NOT re-claim the method's literal (double-count): {:?}",
+            impl_fact.string_literals
+        );
+        assert_eq!(
+            impl_fact.panic_marker_count, 0,
+            "the impl container must NOT re-count the method's unwrap marker"
+        );
+    }
+
+    #[test]
+    fn impl_container_fact_keeps_its_own_direct_literals() {
+        // A literal directly in the impl (an associated const), NOT inside a
+        // method, must still be attributed to the impl fact — the method-exclusion
+        // must not throw away impl-direct facts.
+        let src = "\
+struct Bar;
+
+impl Bar {
+    const LABEL: &'static str = \"an impl-direct associated const contract string\";
+
+    pub fn method(&self) -> u8 {
+        7
+    }
+}
+";
+        let facts = extract_physical_facts("src/bar.rs", src).expect("rust facts extracted");
+        let impl_fact = facts
+            .symbol_facts
+            .iter()
+            .find(|f| f.kind == "impl")
+            .expect("impl fact present");
+        assert!(
+            impl_fact
+                .string_literals
+                .iter()
+                .any(|l| l.value.contains("impl-direct associated const")),
+            "an impl-direct (non-method) literal must remain on the impl fact: {:?}",
+            impl_fact.string_literals
         );
     }
 }

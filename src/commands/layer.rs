@@ -13,6 +13,13 @@ use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::gate;
 use crate::output::Printer;
 
+/// One ranked "<n>. <layer>  <count> intent(s)" line of the declared layer
+/// order — shared by `run_list_with_db` and `print_order_result` so the column
+/// widths and wording stay identical between the two surfaces.
+fn layer_usage_line(rank: usize, layer: &str, n: usize) -> String {
+    format!("  {rank}. {layer:<24} {n:>3} intent(s)")
+}
+
 pub fn run(cmd: LayerCmd, printer: &Printer) -> Result<()> {
     run_inner(cmd, printer, false)
 }
@@ -124,7 +131,7 @@ fn run_list_with_db(
         println!("Declared layer order (top first):");
         for (rank, layer) in order.iter().enumerate() {
             let n = usage.get(layer.as_str()).copied().unwrap_or(0);
-            println!("  {rank}. {layer:<24} {n:>3} intent(s)");
+            println!("{}", layer_usage_line(rank, layer, n));
         }
         if !uncovered.is_empty() {
             println!("\n  Exempt (in use, not in the order):");
@@ -165,7 +172,7 @@ fn print_order_result(
         println!("✓ Layer order declared (top first):");
         for (rank, layer) in layers.iter().enumerate() {
             let n = usage.get(layer.as_str()).copied().unwrap_or(0);
-            println!("  {rank}. {layer:<24} {n:>3} intent(s)");
+            println!("{}", layer_usage_line(rank, layer, n));
         }
         if !previous.is_empty() && previous != layers {
             println!("  (replaced: {})", previous.join(" > "));

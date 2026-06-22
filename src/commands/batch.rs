@@ -360,11 +360,7 @@ fn apply_line_sqlite(
                 str_field(&v, op, "b")?,
             )?;
             let notes = str_field(&v, op, "notes")?;
-            gate::require_substantive(
-                "notes",
-                notes,
-                "why these two intents have no meaningful relationship",
-            )?;
+            gate::require_substantive("notes", notes, gate::INDEPENDENT_NOTES_PURPOSE)?;
             if dry_run {
                 return Ok((format!("[dry-run] would mark independent {a} × {b}"), None));
             }
@@ -395,18 +391,14 @@ fn apply_line_sqlite(
             let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
             let evidence = str_field(&v, op, "evidence")?;
             let confidence = f64_field(&v, op, "confidence")?;
-            gate::require_substantive(
-                "criterion",
-                criterion,
-                "what compliance looks like for this rule on this intent",
-            )?;
+            gate::require_substantive("criterion", criterion, gate::GOVERNS_CRITERION_PURPOSE)?;
             gate::require_substantive(
                 "evidence",
                 evidence,
                 if status == "independent" {
-                    "why this rule does not apply to this intent"
+                    gate::VERDICT_EVIDENCE_INDEPENDENT_PURPOSE
                 } else {
-                    "what was actually found in the code during inspection"
+                    gate::VERDICT_EVIDENCE_FAILING_PURPOSE
                 },
             )?;
             gate::require_confidence(confidence)?;

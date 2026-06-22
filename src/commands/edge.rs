@@ -10,6 +10,12 @@ use crate::output::{
 };
 use crate::types::{CodeFile, EdgeType, Intent, RelatesTo};
 
+/// The single "RELATES_TO edge not found" contract, shared by `edge show` and
+/// `edge fix` so the message stays identical when a lookup by id fails.
+fn relates_edge_not_found(edge_id: &str) -> String {
+    format!("RELATES_TO edge '{edge_id}' not found.")
+}
+
 /// Validate analyzer-asserted relationship kinds and merge them onto an edge:
 /// the provided JUDGMENT kinds replace the edge's judgment tier; MECHANICAL
 /// kinds (populate-derived) are preserved. Rejects a mechanical kind here —
@@ -266,7 +272,7 @@ fn run_explore_with_sqlite(
                 kinds: final_kinds,
                 ..edge
             };
-            let next_step = "`loom next` for the next item.";
+            let next_step = crate::output::NEXT_DISCOVERY_STEP;
             if printer.json {
                 let v = with_read_anchor(serde_json::to_value(&updated)?, &store, next_step)?;
                 printer.print_json(&v);
@@ -349,11 +355,7 @@ fn run_explore_with_sqlite(
             let now = chrono::Utc::now().to_rfc3339();
             let by =
                 gate::acting_in_lane(&gate::lane::INDEPENDENT_RELATES_TO, inspected_by.as_deref())?;
-            gate::require_substantive(
-                "notes",
-                &notes,
-                "why these two intents have no meaningful relationship",
-            )?;
+            gate::require_substantive("notes", &notes, gate::INDEPENDENT_NOTES_PURPOSE)?;
             let by = by.as_str();
             let edge = store.get_or_create_relates_to(&intent_a_id, &intent_b_id, &now)?;
             store.update_relates_to_independent(&edge.from_id, &edge.to_id, &notes, by, &now)?;
@@ -543,11 +545,7 @@ fn run_govern_with_sqlite(
     let now = chrono::Utc::now().to_rfc3339();
     let criterion = criterion.as_deref().unwrap_or("");
     if !criterion.is_empty() {
-        gate::require_substantive(
-            "criterion",
-            criterion,
-            "what compliance looks like for this rule on this intent",
-        )?;
+        gate::require_substantive("criterion", criterion, gate::GOVERNS_CRITERION_PURPOSE)?;
     }
     store.insert_governs(&rule_id, &intent_id, criterion, &now)?;
     let edge_id =
@@ -787,7 +785,7 @@ fn run_show_with_sqlite(root: &std::path::Path, edge_id: String, printer: &Print
         .iter()
         .find(|edge| edge.id == edge_id)
         .cloned()
-        .ok_or_else(|| anyhow::anyhow!("RELATES_TO edge '{}' not found.", edge_id))?;
+        .ok_or_else(|| anyhow::anyhow!(relates_edge_not_found(&edge_id)))?;
     let from = store
         .get_intent(&edge.from_id)?
         .unwrap_or_else(|| default_intent(&edge.from_id));
@@ -849,7 +847,7 @@ fn run_fix_with_sqlite(
         .iter()
         .find(|edge| edge.id == edge_id)
         .cloned()
-        .ok_or_else(|| anyhow::anyhow!("RELATES_TO edge '{}' not found.", edge_id))?;
+        .ok_or_else(|| anyhow::anyhow!(relates_edge_not_found(&edge_id)))?;
     anyhow::ensure!(
         matches!(
             edge.inspection_status.as_str(),
