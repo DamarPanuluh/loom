@@ -227,7 +227,7 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     };
     let stamp = fmt_role_stamp(crate::agent::session_role().as_deref());
     let base = format!(
-        "{stamp} · {}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · lane={}\n  {}",
+        "{stamp} · {}: {} intents · {} edges ({} unresolved){} · {} codefiles · {}\n  {}",
         ident,
         s.intents,
         s.total_edges,
@@ -235,7 +235,6 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
         unexplored,
         s.codefiles,
         synced,
-        s.phase,
         fmt_coverage(&s.coverage)
     );
     if s.note_hygiene.is_empty() {
@@ -828,13 +827,16 @@ mod tests {
     }
 
     #[test]
-    fn fmt_pulse_renders_lane_and_hygiene() {
+    fn fmt_pulse_renders_pulse_and_hygiene() {
         let mut gs = graph_state_fixture("pulse");
         gs.vertically_complete = false;
         gs.horizontally_explored = false;
         gs.note_hygiene = String::new();
         let p = fmt_pulse(&gs);
-        assert!(p.contains("lane="), "the pulse names the routing lane: {p}");
+        assert!(
+            !p.contains("lane="),
+            "lane is a ladder concept now, not in the pulse: {p}"
+        );
         assert!(
             p.contains("360°:"),
             "the second line is always the coverage vector: {p}"
@@ -865,10 +867,6 @@ mod tests {
         let gs = graph_state_fixture("parity");
         let human = fmt_pulse(&gs);
         let json = pulse_json(&gs);
-        assert!(
-            human.contains(&format!("lane={}", gs.phase)),
-            "human footer names the routing lane (the phase value): {human}"
-        );
         assert_eq!(
             json["phase"],
             serde_json::json!(gs.phase),

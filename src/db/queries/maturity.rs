@@ -69,6 +69,9 @@ pub struct Rung {
     pub status: RungStatus,
     pub detail: String,
     pub reasons: Vec<String>,
+    /// The work-type (lane) that climbs this rung when unmet; None when cleared.
+    /// The `(stage, lane)` wiring: the focus rung's lane is where work routes.
+    pub lane: Option<&'static str>,
 }
 
 /// The ladder: a vector of rungs + the focus (lowest unmet rung index, where
@@ -99,14 +102,20 @@ impl MaturityLadder {
             .join(" · ")
     }
 
-    /// The focus line: the lowest unmet rung + its blocking reasons, or the
-    /// production-ready line when every rung is cleared. ONE source of truth for
-    /// both `loom status` and `loom complete` — no duplicated contract string.
+    /// The focus line: the lowest unmet rung (+ its lane) and blocking reasons,
+    /// or the production-ready line when every rung is cleared. ONE source of
+    /// truth for both `loom status` and `loom complete`.
     pub fn focus_summary(&self) -> String {
         match self.focus_rung() {
             None => "✓ PRODUCTION-READY — proven, comprehensive, durable.".to_string(),
-            Some(r) if r.reasons.is_empty() => format!("focus: {} (in progress)", r.name),
-            Some(r) => format!("focus: {} — {}", r.name, r.reasons.join("; ")),
+            Some(r) => {
+                let lane = r.lane.map(|l| format!(" · lane: {l}")).unwrap_or_default();
+                if r.reasons.is_empty() {
+                    format!("focus: {}{lane} (in progress)", r.name)
+                } else {
+                    format!("focus: {}{lane} — {}", r.name, r.reasons.join("; "))
+                }
+            }
         }
     }
 }
@@ -131,7 +140,13 @@ fn axis_cleared(a: &CoverageAxis) -> bool {
     a.total == 0 || a.covered >= a.total
 }
 
-fn graded(name: &'static str, reasons: Vec<String>, detail: String, any_progress: bool) -> Rung {
+fn graded(
+    name: &'static str,
+    reasons: Vec<String>,
+    detail: String,
+    any_progress: bool,
+    lane: &'static str,
+) -> Rung {
     let status = if reasons.is_empty() {
         RungStatus::Met
     } else if any_progress {
@@ -139,11 +154,14 @@ fn graded(name: &'static str, reasons: Vec<String>, detail: String, any_progress
     } else {
         RungStatus::Unmet
     };
+    // A cleared rung has no work, hence no lane.
+    let lane = if reasons.is_empty() { None } else { Some(lane) };
     Rung {
         name,
         status,
         detail,
         reasons,
+        lane,
     }
 }
 
@@ -169,11 +187,19 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             input.inbox_untriaged
         ));
     }
+    // Seeded work is authoring/grounding the surface (build) or triaging intake.
+    let seeded_lane =
+        if input.entrypoint.total > 0 && input.entrypoint.covered < input.entrypoint.total {
+            "build"
+        } else {
+            "triage"
+        };
     let seeded = graded(
         "Seeded",
         seeded_reasons,
         String::new(),
         input.entrypoint.covered > 0,
+        seeded_lane,
     );
 
     // ---- Rung 2: Realized (DISCHARGE: unit) ----
@@ -199,11 +225,20 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             input.doc_only_realizations.len()
         ));
     }
+    // Realized work: build/ground the spine, then prove it discriminatingly.
+    let realized_lane = if !gs.vertically_complete {
+        "build"
+    } else if realized_leaves.covered > 0 && exec.covered < realized_leaves.covered {
+        "validate"
+    } else {
+        "build"
+    };
     let realized = graded(
         "Realized",
         realized_reasons,
         format!("{}/{}", exec.covered, realized_leaves.covered),
         gs.vertically_complete,
+        realized_lane,
     );
 
     // ---- Rung 3: Proven (DISCHARGE: boundary) ----
@@ -216,6 +251,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             status: RungStatus::NotApplicable,
             detail: "—".to_string(),
             reasons: Vec::new(),
+            lane: None,
         }
     } else {
         let owed = input.journey.enumerated - input.journey.discharged;
@@ -231,6 +267,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             reasons,
             format!("{}/{}", input.journey.discharged, input.journey.enumerated),
             input.journey.discharged > 0,
+            "validate",
         )
     };
 
@@ -261,11 +298,23 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             input.open_smells.len()
         ));
     }
+    // Hardened work routes to the dominant gap: fix smells, else measure, else
+    // explore the grid, else build the missing failure-path siblings.
+    let hardened_lane = if !input.open_smells.is_empty() {
+        "fix"
+    } else if measured.total > 0 && measured.covered < measured.total {
+        "quality"
+    } else if !gs.horizontally_explored {
+        "discovery"
+    } else {
+        "build"
+    };
     let hardened = graded(
         "Hardened",
         hardened_reasons,
         String::new(),
         axis_cleared(measured) || gs.horizontally_explored,
+        hardened_lane,
     );
 
     // ---- Rung 5: Production-ready (DISCHARGE complete + durable + deploy-fit) ----
@@ -290,11 +339,29 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     } else {
         RungStatus::Unmet
     };
+    let prod_lane = if prod_reasons
+        .iter()
+        .any(|r| r.contains("inbox") || r.contains("triage"))
+    {
+        Some("triage")
+    } else if prod_reasons.iter().any(|r| r.contains("boundary")) {
+        Some("build")
+    } else if prod_reasons
+        .iter()
+        .any(|r| r.contains("STALE") || r.contains("export"))
+    {
+        Some("export")
+    } else if !prod_reasons.is_empty() {
+        Some("validate")
+    } else {
+        None
+    };
     rungs.push(Rung {
         name: "Production-ready",
         status: prod_status,
         detail: String::new(),
         reasons: prod_reasons,
+        lane: prod_lane,
     });
 
     let focus = rungs.iter().position(|r| !r.status.cleared());
