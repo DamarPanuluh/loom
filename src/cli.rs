@@ -1311,6 +1311,27 @@ pub enum EdgeCmd {
     /// Show full detail of one RELATES_TO edge including both intent nodes.
     Show { edge_id: String },
 
+    /// List the intent pairs that have NO RELATES_TO edge yet — the horizontal
+    /// grid still owed for `phase=complete`. The status compass counts them; this
+    /// RETRIEVES them, ranked, each with a pre-filled `loom edge explore` command
+    /// so they can be batched (paste into `loom batch`). `--class all` (default)
+    /// lists every unexplored pair; `suspected-coupling` only the high-signal ones
+    /// `loom next --mode discovery` would surface; `impact-map` the central-but-
+    /// signal-less ones. Mark `independent` at the highest honest altitude — a
+    /// component-level verdict covers its descendants.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom edge unexplored --json\n  \
+        loom edge unexplored --class suspected-coupling --limit 20")]
+    Unexplored {
+        /// Which pairs: all | suspected-coupling | impact-map (default: all).
+        #[arg(long)]
+        class: Option<String>,
+
+        /// Max pairs (0 = all).
+        #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
+        limit: usize,
+    },
+
     /// Mark a grounded RELATES_TO edge `stable` (a settled coupling) so `loom
     /// sync` stops re-opening it every time either endpoint's file changes. Use
     /// `--off` to clear the flag. The horizontal grid is the dominant

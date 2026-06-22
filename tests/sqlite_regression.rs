@@ -5678,6 +5678,46 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
 }
 
 #[test]
+fn sqlite_edge_unexplored_enumerates_the_counted_pairs() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("unexplored");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    for n in ["alpha", "beta", "gamma"] {
+        let desc = format!("do {n} well in this system");
+        run_json_as(
+            &graph.root,
+            &[
+                "intent", "add", "--name", n, "--level", "system", "--description", &desc,
+                "--json",
+            ],
+            "llm:builder",
+        );
+    }
+    // The compass COUNTS the unexplored pairs (3 intents, no edges → C(3,2)=3) …
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let counted = status["graph_state"]["unexplored_pairs"]
+        .as_i64()
+        .expect("unexplored_pairs in graph_state");
+    assert_eq!(counted, 3, "3 intents, no edges → 3 unexplored pairs");
+    // … and `loom edge unexplored --class all` RETRIEVES exactly that many — the
+    // count and the drainable list must agree (the operator's #1/#5 friction).
+    let listed = run_json(&graph.root, &["edge", "unexplored", "--class", "all", "--json"]);
+    assert_eq!(
+        listed["total"].as_i64(),
+        Some(counted),
+        "edge unexplored total must equal the counted unexplored_pairs"
+    );
+    let pairs = listed["unexplored_pairs"].as_array().expect("pairs array");
+    assert_eq!(pairs.len(), 3, "all three pairs listed");
+    assert!(
+        pairs
+            .iter()
+            .all(|p| p["explore_command"].as_str().unwrap_or("").contains("loom edge explore")),
+        "every pair carries a runnable explore command: {listed}"
+    );
+}
+
+#[test]
 fn sqlite_failing_quality_verdict_teaches_full_disposition_path() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("dispo-path");
@@ -5685,8 +5725,15 @@ fn sqlite_failing_quality_verdict_teaches_full_disposition_path() {
     let intent = run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "alpha", "--level", "system", "--description",
-            "do alpha well", "--json",
+            "intent",
+            "add",
+            "--name",
+            "alpha",
+            "--level",
+            "system",
+            "--description",
+            "do alpha well",
+            "--json",
         ],
         "llm:builder",
     );
@@ -5694,17 +5741,32 @@ fn sqlite_failing_quality_verdict_teaches_full_disposition_path() {
     run_json_as(
         &graph.root,
         &[
-            "rule", "add", "--name", "r1", "--description",
-            "no global mutable state is used here", "--severity", "error", "--json",
+            "rule",
+            "add",
+            "--name",
+            "r1",
+            "--description",
+            "no global mutable state is used here",
+            "--severity",
+            "error",
+            "--json",
         ],
         "llm:quality",
     );
     let verdict = run_json_as(
         &graph.root,
         &[
-            "rule", "verdict", "r1", &iid, "--status", "failing", "--criterion",
-            "no global mutable state in this intent", "--evidence",
-            "found a global counter in the hot path", "--json",
+            "rule",
+            "verdict",
+            "r1",
+            &iid,
+            "--status",
+            "failing",
+            "--criterion",
+            "no global mutable state in this intent",
+            "--evidence",
+            "found a global counter in the hot path",
+            "--json",
         ],
         "llm:quality",
     );

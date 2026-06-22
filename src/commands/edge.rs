@@ -84,6 +84,9 @@ pub fn run(cmd: EdgeCmd, printer: &Printer) -> Result<()> {
             notes,
         } => run_validates_with_sqlite(&cwd, validation_id, intent_id, notes, printer),
         EdgeCmd::List { status, limit } => run_list_with_sqlite(&cwd, status, limit, printer),
+        EdgeCmd::Unexplored { class, limit } => {
+            run_unexplored_with_sqlite(&cwd, class, limit, printer)
+        }
         EdgeCmd::Show { edge_id } => run_show_with_sqlite(&cwd, edge_id, printer),
         EdgeCmd::Stable {
             intent_a_id,
@@ -689,6 +692,89 @@ fn run_list_with_sqlite(
         if let Some(marker) = more_marker(total, edges.len(), "loom edge list --limit 0") {
             println!("  {marker}");
         }
+    }
+    Ok(())
+}
+
+/// List the intent pairs that have NO RELATES_TO edge yet — the drainable form of
+/// the `unexplored_pairs` count the compass reports. Reuses the SAME candidate
+/// generation `loom next --mode discovery` uses, so the count and this list agree.
+/// Each pair carries a pre-filled `loom edge explore` command for batching.
+fn run_unexplored_with_sqlite(
+    root: &std::path::Path,
+    class: Option<String>,
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
+    use crate::db::queries::scoring::{
+        unexplored_pairs_scored_from_snapshot, DiscoveryClassFilter,
+    };
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let snapshot = store.query_snapshot()?;
+    // Default to `all`: every unexplored pair is owed for phase=complete. The
+    // narrower classes (`suspected-coupling`, `impact-map`) only prioritise.
+    let class_filter = DiscoveryClassFilter::parse(class.as_deref().or(Some("all")))?;
+    let mut pairs = unexplored_pairs_scored_from_snapshot(&snapshot, class_filter)?;
+    pairs.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| a.0.id.cmp(&b.0.id))
+    });
+    let total = pairs.len();
+    if limit > 0 && pairs.len() > limit {
+        pairs.truncate(limit);
+    }
+    let explore_cmd = |e: &crate::types::RelatesTo| {
+        format!(
+            "loom edge explore {} {} independent --notes \"<why unrelated>\"   (or `ground --criterion \"…\"` for a real coupling)",
+            e.from_id, e.to_id
+        )
+    };
+    let next = "Verdict each pair — `independent` if unrelated, `ground` if a real coupling — at the HIGHEST honest altitude (a component-level verdict covers its descendants). Batch with `loom batch`.";
+    if printer.json {
+        let items: Vec<_> = pairs
+            .iter()
+            .map(|(e, score)| {
+                serde_json::json!({
+                    "from_id": e.from_id, "from_name": e.from_name,
+                    "to_id": e.to_id, "to_name": e.to_name,
+                    "class": e.discovery_class, "why": e.notes, "score": score,
+                    "explore_command": explore_cmd(e),
+                })
+            })
+            .collect();
+        printer.print_json(&serde_json::json!({
+            "unexplored_pairs": items,
+            "total": total,
+            "shown": pairs.len(),
+            "class": class_filter.as_cli_value(),
+            "more": more_marker(total, pairs.len(), "loom edge unexplored --limit 0"),
+            "next_step": next,
+        }));
+    } else if pairs.is_empty() {
+        println!(
+            "(no unexplored pairs for class '{}')",
+            class_filter.as_cli_value()
+        );
+    } else {
+        println!(
+            "── unexplored pairs ({} class) ───────────────────────────────",
+            class_filter.as_cli_value()
+        );
+        for (e, score) in &pairs {
+            println!(
+                "  {} ✕ {}   [{} · score {:.2}]",
+                e.from_name, e.to_name, e.discovery_class, score
+            );
+            if !e.notes.is_empty() {
+                println!("      why: {}", e.notes);
+            }
+            println!("      {}", explore_cmd(e));
+        }
+        if let Some(marker) = more_marker(total, pairs.len(), "loom edge unexplored --limit 0") {
+            println!("  {marker}");
+        }
+        println!("  → {next}");
     }
     Ok(())
 }

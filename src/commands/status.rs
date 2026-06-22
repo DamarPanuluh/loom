@@ -530,9 +530,10 @@ fn completion_json(
         }),
     );
     completion.insert(
-        "optional_graph_enrichment".to_string(),
+        "horizontal_grid".to_string(),
         serde_json::json!({
             "unexplored_relationship_pairs": gs.unexplored_pairs,
+            "required_for_complete": true,
             "horizontally_explored": gs.horizontally_explored,
             "note_hygiene": gs.note_hygiene,
         }),
@@ -696,7 +697,7 @@ fn render_plain_status(
         align_count, adopt_count, totals.human_blocked
     );
     println!(
-        "  optional graph enrichment: {} relationship pair(s), not required for done",
+        "  horizontal grid: {} unexplored pair(s) — not for the vertical spine, but REQUIRED for full-green (`phase=complete`). `loom edge unexplored` lists them",
         gs.unexplored_pairs
     );
     if intake.active() > 0 || intake.deferred > 0 {

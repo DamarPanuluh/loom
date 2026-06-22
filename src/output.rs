@@ -209,7 +209,8 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     } else {
         String::new()
     };
-    // Two completeness axes: vertical is binding (the spine), horizontal optional.
+    // Two completeness axes: vertical is the binding spine (a milestone on its
+    // own); horizontal is required for full-green (phase=complete), not the spine.
     let vert = if s.vertically_complete { "✓" } else { "✗" };
     let horiz = if s.horizontally_explored {
         "✓"

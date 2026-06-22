@@ -85,8 +85,10 @@ pub struct GraphState {
     /// The binding axis: HIERARCHY is a well-formed tree, every implemented leaf
     /// is realized in code, every CodeFile is reached. `complete` requires this.
     pub vertically_complete: bool,
-    /// The optional axis: every intent pair has an inspected RELATES_TO edge
-    /// (none uninspected, stale, or unexplored). Reported, never gates `complete`.
+    /// The horizontal axis: every intent pair has an inspected RELATES_TO edge
+    /// (none uninspected, stale, or unexplored). NOT required for the vertical
+    /// spine milestone, but REQUIRED for `phase=complete` / `fully_proven` —
+    /// the cascade gates `complete` on `unexplored_pairs == 0 && rt_uninspected == 0`.
     pub horizontally_explored: bool,
     /// seed | build | fix | incomplete | ground | validate | quality |
     /// discovery | audit | complete
@@ -246,11 +248,12 @@ pub fn graph_state_from_snapshot_parts(
     let relates_to_edges = snapshot.relates.len() as i64;
     let implements_edges = snapshot.implements.len() as i64;
 
-    // Use the SAME computation `loom next` uses for discovery candidates, so the
-    // compass can never disagree with what `loom next` actually surfaces (e.g.
-    // hierarchy-linked pairs are excluded). Authoritative, not a heuristic.
-    // Arithmetic count — the full scored O(N²) enumeration lives in discovery
-    // (`unexplored_pairs_scored`) where the items are actually consumed.
+    // The AUTHORITATIVE count: every active intent pair with no RELATES_TO edge
+    // (hierarchy pairs excluded — containment is structural). This is the full
+    // grid still owed for `phase=complete`. NOTE: `loom next --mode discovery`
+    // (default `suspected-coupling`) serves only the high-signal SUBSET, so the
+    // count can exceed what the default discovery queue surfaces — `loom edge
+    // unexplored` (or `loom next --mode discovery --class all`) retrieves them ALL.
     let hierarchy = &snapshot.hierarchy;
     let unexplored_pairs = count_unexplored_pairs_from(all_intents, all_relates, hierarchy);
 
@@ -494,11 +497,13 @@ pub fn graph_state_from_snapshot_parts(
     } else if rules_count == 0 && nc.intents_with_code > 0 {
         ("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())
     } else {
-        // The audit gate — the binding gate before green. Ranks ABOVE
-        // optional stale grid upkeep and discovery: open smells (godfiles,
-        // oversized functions, undeclared coupling) are structural problems
-        // that gate phase=complete, while stale RELATES_TO is optional
-        // re-verification and discovery is optional exploration. The
+        // The audit gate — the binding structural gate, checked BEFORE the
+        // horizontal tail. Open smells (godfiles, oversized functions,
+        // undeclared coupling) are structural problems that gate phase=complete
+        // and rank ABOVE stale-grid re-verification and discovery in the cascade
+        // ORDER. But stale RELATES_TO and unexplored pairs are ALSO required for
+        // phase=complete (the horizontal grid is part of full-green) — they are
+        // simply checked after audit, not optional. The
         // false-green hole this closes: stale edges (recommended) used to
         // route to `fix` before the audit gate was reached, deferring open
         // findings indefinitely behind "audit: deferred while phase=fix
@@ -544,7 +549,7 @@ pub fn graph_state_from_snapshot_parts(
                 )
             } else if rt_uninspected > 0 || unexplored_pairs > 0 {
                 ("discovery", "recommended", format!(
-                    "Vertical spine complete ✓. Optional: close the N×N grid — {unexplored_pairs} unexplored pair(s) left: `loom next`."
+                    "Vertical spine complete ✓ — but full-green (`phase=complete`/`fully_proven`) REQUIRES the N×N grid explored: {unexplored_pairs} unexplored pair(s) + {rt_uninspected} uninspected edge(s) left. `loom edge unexplored` lists them (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. Verdict `independent` at the highest honest altitude — a component verdict covers its descendants."
                 ))
             } else {
                 // The pre-decision plane never gates green (a proposal is not

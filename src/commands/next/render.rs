@@ -314,9 +314,9 @@ fn push_review_and_human_queues(
     let discovery_backlog = discovery_uninspected + gs.unexplored_pairs;
     if discovery_backlog > 0 {
         queues.push(serde_json::json!({
-            "queue": "optional-enrichment", "role": "analyzer", "gate": "autonomous", "optional": true,
-            "count": discovery_backlog, "command": "loom next",
-            "top": "optional graph enrichment: horizontal N×N discovery, not required for done",
+            "queue": "horizontal-grid", "role": "analyzer", "gate": "autonomous", "optional": false,
+            "count": discovery_backlog, "command": "loom edge unexplored",
+            "top": "horizontal N×N grid: not for the vertical spine, but REQUIRED for full-green (`phase=complete`). `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones",
         }));
     }
 }
@@ -371,9 +371,9 @@ fn render_all(
             })
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();
-        let optional_enrichment: i64 = queues
+        let horizontal_grid: i64 = queues
             .iter()
-            .filter(|q| q["queue"].as_str() == Some("optional-enrichment"))
+            .filter(|q| q["queue"].as_str() == Some("horizontal-grid"))
             .map(|q| q["count"].as_i64().unwrap_or(0))
             .sum();
         let mut completion = serde_json::Map::new();
@@ -386,8 +386,8 @@ fn render_all(
             serde_json::json!(human_gated),
         );
         completion.insert(
-            "optional_graph_enrichment".to_string(),
-            serde_json::json!(optional_enrichment),
+            "horizontal_grid_required_for_complete".to_string(),
+            serde_json::json!(horizontal_grid),
         );
         completion.insert(
             "blocked_validations".to_string(),
