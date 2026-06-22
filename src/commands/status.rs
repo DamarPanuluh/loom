@@ -515,6 +515,47 @@ fn completion_json(
     serde_json::Value::Object(completion)
 }
 
+/// The ALARM strip — the derived union of urgent signals that PREEMPT the focus
+/// rung, surfaced at the TOP of `status` so a cold reader sees "what's on fire"
+/// before "what to climb". Derived each call (never stored): failing edges/proofs,
+/// open gating findings, disk drift, untriaged inbox — LLM-actionable ONLY
+/// (human-gated work needs the user and stays on its own line, not here).
+/// Empty ⇒ no strip. It SELECTS urgent signals from where they already live (their
+/// lane); it never relocates them, so it cannot drift from the truth.
+fn alarm_strip(
+    report: &StatusReport,
+    audit: &AuditPulse,
+    disk: &DiskPulse,
+    intake: IntakeCounts,
+) -> Vec<String> {
+    let mut a = Vec::new();
+    if report.failing_edges > 0 {
+        a.push(format!(
+            "{} edge/proof FAILING — repair at the source: `loom next --mode fix`",
+            report.failing_edges
+        ));
+    }
+    let open = audit.open_findings.unwrap_or(0);
+    if open > 0 {
+        a.push(format!(
+            "{open} open audit finding(s) — adjudicate or fix: `loom smells --summary`"
+        ));
+    }
+    if disk.total > 0 {
+        a.push(format!(
+            "{} file(s) unmapped/drifted/missing (map ≠ territory) — `loom sync`, then `loom coverage`",
+            disk.total
+        ));
+    }
+    if intake.untriaged > 0 {
+        a.push(format!(
+            "{} untriaged inbox item(s) — `loom inbox`",
+            intake.untriaged
+        ));
+    }
+    a
+}
+
 #[allow(clippy::too_many_arguments)]
 fn render_status(
     report: &StatusReport,
@@ -586,6 +627,10 @@ fn render_status(
             );
             // The maturity ladder — loom's single ordinal "done" (rung-vector).
             obj.insert("maturity".to_string(), serde_json::to_value(ladder)?);
+            obj.insert(
+                "alarms".to_string(),
+                serde_json::json!(alarm_strip(report, &audit, disk, intake)),
+            );
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
                 "align_drift_suspects": align_count,
@@ -650,6 +695,16 @@ fn render_plain_status(
     ladder: &MaturityLadder,
     totals: CompletionTotals,
 ) {
+    // The alarm strip — urgent signals that preempt the focus rung (cold readers
+    // see what's on fire before what to climb). Empty ⇒ nothing printed.
+    let alarms = alarm_strip(report, audit, disk, intake);
+    if !alarms.is_empty() {
+        println!("⚠ ALARMS — handle these before the focus rung:");
+        for line in &alarms {
+            println!("   · {line}");
+        }
+        println!();
+    }
     println!("Completion:");
     println!("  required autonomous debt: {}", totals.required_autonomous);
     println!(

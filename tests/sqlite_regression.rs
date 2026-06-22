@@ -5751,6 +5751,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
     // Changing it must be DELIBERATE: update this list in the same commit.
     let expected = [
         "advisories",
+        "alarms",
         "audit",
         "blocked_validations",
         "committed_export",
