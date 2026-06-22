@@ -67,11 +67,15 @@ mod large_behavioral_symbol_tests {
     }
 
     fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
-        r.open.iter().filter(|s| s.kind == kind).collect()
+        r.open
+            .iter()
+            .chain(r.advisory.iter())
+            .filter(|s| s.kind == kind)
+            .collect()
     }
 
     #[test]
-    fn non_test_behavioral_symbol_at_threshold_is_open() {
+    fn non_test_behavioral_symbol_at_threshold_is_flagged_advisory() {
         let r = report(
             vec![cf(
                 "src/big.rs",
@@ -88,6 +92,13 @@ mod large_behavioral_symbol_tests {
         );
         let found = of_kind(&r, "large_behavioral_symbol");
         assert_eq!(found.len(), 1, "large behavior should flag once: {found:?}");
+        // LOC/size smells are ADVISORY (a flag, never a gate): present in the
+        // surfaced advisory bucket, absent from the gating open set.
+        assert!(r
+            .advisory
+            .iter()
+            .any(|s| s.kind == "large_behavioral_symbol"));
+        assert!(!r.open.iter().any(|s| s.kind == "large_behavioral_symbol"));
         assert!(found[0].summary.contains("huge_behavior"));
         assert!(found[0].evidence.contains(&format!(
             "above the {}-line threshold",
@@ -320,7 +331,11 @@ mod source_fact_smell_tests {
     }
 
     fn of_kind<'a>(r: &'a SmellReport, kind: &str) -> Vec<&'a Smell> {
-        r.open.iter().filter(|s| s.kind == kind).collect()
+        r.open
+            .iter()
+            .chain(r.advisory.iter())
+            .filter(|s| s.kind == kind)
+            .collect()
     }
 
     fn decision_note(target_id: &str, created_at: &str) -> Note {

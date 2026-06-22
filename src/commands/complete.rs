@@ -1,11 +1,15 @@
-//! `loom complete` — the COMPREHENSIVENESS projection: does the intent graph
-//! capture everything the code should do? A pure read-only view (re-derives
-//! nothing about "done") over the five canonical rubric dimensions + the existing
-//! `fully_proven` badge. `--teach` serves the canonical rubric the LLM
-//! instantiates per repo. The crux it surfaces everywhere: RECORD ≠ DISCHARGE.
+//! `loom complete` — the MATURITY-LADDER view with comprehensiveness detail.
+//!
+//! Renders loom's single ordinal "done" (the rung-vector + focus) and, beneath
+//! it, the five comprehensiveness dimensions that feed the rungs
+//! (Seeded/Proven/Hardened). The crux it surfaces everywhere: RECORD ≠ DISCHARGE.
+//! `--teach` serves the canonical rubric the LLM instantiates per repo. The old
+//! standalone `fully_proven` QUALITY block is gone — folded into the ladder's
+//! Production-ready rung.
 
 use anyhow::Result;
 
+use crate::db::queries::build_ladder;
 use crate::db::queries::comprehensiveness as comp;
 use crate::db::queries::stats::CoverageAxis;
 use crate::db::{GraphReadHandle, GraphReadRepository};
@@ -27,21 +31,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     let gs = store.graph_state(&snapshot)?;
     let decision_notes = store.notes_by_kind("decision")?;
 
-    // The five dimensions.
-    let symbol_report =
-        crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes(
-            &snapshot.codefiles,
-            &snapshot.intents,
-            &snapshot.implements,
-            &decision_notes,
-        );
-    let entrypoint = comp::entrypoint_coverage(&symbol_report);
-    let (boundary, boundary_owed) = comp::boundary_scan_from_disk(&root, &snapshot);
-    let invariant = gs.coverage.measured_pairs.clone();
-    let journey = comp::journey_ledger_from_snapshot(&snapshot);
-    let behavioral = comp::behavioral_ledger_from_snapshot(&snapshot);
-
-    // The quality badge (same one `loom status` shows).
+    // Open smells are meaningful only at the audit gate (same rule as status).
     let open_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
         store.smell_report(&snapshot)?.open
     } else {
@@ -49,196 +39,162 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
     };
     let inbox = store.list_inbox_items(None, None)?;
     let inbox_untriaged = inbox.iter().filter(|i| i.status == "new").count();
-    let (mut fp_ok, mut fp_reasons) = crate::db::queries::stats::fully_proven_from_state(
-        &gs,
-        &snapshot,
-        &open_smells,
-        &entrypoint,
-        inbox_untriaged,
-    );
-    if store.committed_export_stale(&root)? == Some(true) {
-        fp_ok = false;
-        fp_reasons.push("committed loom.graph.json is STALE — `loom export`".to_string());
-    }
+    let export_stale = store.committed_export_stale(&root)? == Some(true);
 
-    // THE HONEST MIRROR (the meta-cognitive trigger). loom is DUMB — it measures
-    // your seed, not the full vision; only YOU can tell if your model captures the
-    // whole system or a sketch. So it shows the RAW depth loudly: how much of the
-    // actual code surface a human/LLM intent directly owns. A low % next to a green
-    // badge is the tell that the SEED was thin — reflect before declaring done.
-    let total_sym = symbol_report.summary.total_symbols;
-    let grounded_sym = symbol_report.summary.grounded;
-    let modeled_pct = (grounded_sym * 100).checked_div(total_sym).unwrap_or(0);
-    // Cognitive dimensions that read "—" are UNDESIGNED, not satisfied: a code
-    // graph with zero user_visible leaves / zero happy aspects means the agent
-    // hasn't done the journey/behavioral modeling — a gap to reflect on, not a ✓.
+    let b = build_ladder(
+        &root,
+        &snapshot,
+        &gs,
+        &decision_notes,
+        &open_smells,
+        inbox_untriaged,
+        export_stale,
+    );
+    let invariant = gs.coverage.measured_pairs.clone();
+
+    // Cognitive dimensions reading "—" are UNDESIGNED, not satisfied: a graph
+    // with zero user_visible leaves / zero happy aspects means that modeling
+    // hasn't been done — a gap to reflect on, not a ✓.
     let undesigned: Vec<&str> = [
-        (journey.enumerated == 0).then_some("journey (no user_visible leaf classified)"),
-        (behavioral.enumerated == 0).then_some("behavioral (no happy leaf classified)"),
+        (b.journey.enumerated == 0).then_some("journey (no user_visible leaf classified)"),
+        (b.behavioral.enumerated == 0).then_some("behavioral (no happy leaf classified)"),
     ]
     .into_iter()
     .flatten()
     .collect();
-    // Docs-as-realization: intents marked implemented but grounded ONLY to docs.
-    // A spec is a contract, not a built system — push the LLM to BUILD the code.
-    let doc_realizations = comp::doc_only_realizations(&snapshot);
 
     if printer.json {
         printer.print_json(&serde_json::json!({
+            "maturity": serde_json::to_value(&b.ladder)?,
             "comprehensiveness": {
-                "entrypoint": axis_json(&entrypoint),
-                "boundary": axis_json(&boundary),
+                "entrypoint": axis_json(&b.entrypoint),
+                "boundary": axis_json(&b.boundary),
                 "invariant": axis_json(&invariant),
-                "journey": ledger_json(&journey),
-                "behavioral": ledger_json(&behavioral),
+                "journey": ledger_json(&b.journey),
+                "behavioral": ledger_json(&b.behavioral),
             },
             "modeled_depth": {
-                "symbols_directly_owned": grounded_sym,
-                "symbols_total": total_sym,
-                "percent": modeled_pct,
+                "symbols_directly_owned": b.grounded_symbols,
+                "symbols_total": b.total_symbols,
+                "percent": b.modeled_pct,
             },
             "undesigned_dimensions": undesigned,
-            "doc_only_realizations": doc_realizations,
+            "doc_only_realizations": b.doc_only,
             "inbox_untriaged": inbox_untriaged,
-            "boundary_owed_files": boundary_owed,
-            "fully_proven": fp_ok,
-            "fully_proven_reasons": fp_reasons,
-            "self_check": "loom measures your SEED, not the full vision. If you are not certain you modeled every responsibility, you have not — the badge cannot see what you never seeded.",
-            "next_step": next_step(&entrypoint, &boundary, &invariant, &journey, &behavioral, fp_ok),
+            "boundary_owed_files": b.boundary_owed,
+            "self_check": "loom measures your SEED, not the full vision. If you are not certain you modeled every responsibility, you have not — the ladder cannot see what you never seeded.",
         }));
-    } else {
-        let name = root.file_name().and_then(|n| n.to_str()).unwrap_or("graph");
-        println!("── loom complete: {name} ─────────────────────────────────────────────");
-        println!("  COMPREHENSIVENESS — does the graph capture everything the code should do?");
-        println!(
-            "    entrypoint   {}   public symbols owned (mechanical, gates fully_proven)",
-            axis_str(&entrypoint)
-        );
-        println!(
-            "    boundary     {}   files with external deps have a boundary intent",
-            axis_str(&boundary)
-        );
-        println!(
-            "    invariant    {}   coded intents measured under a GOVERNS rule",
-            axis_str(&invariant)
-        );
-        println!(
-            "    journey      {}   user_visible leaves with a passing saga (RECORD≠DISCHARGE)",
-            ledger_str(&journey)
-        );
-        println!(
-            "    behavioral   {}   happy leaves with a sad/edge sibling (RECORD≠DISCHARGE)",
-            ledger_str(&behavioral)
-        );
-        // Owed names per dimension. journey/behavioral carry ids (for the
-        // runnable suggestions below); boundary is file paths.
-        let cognitive_names = |leaves: &[comp::OwedLeaf]| -> Vec<String> {
-            leaves.iter().map(|o| o.name.clone()).collect()
-        };
-        for names in [
-            cognitive_names(&journey.owed),
-            cognitive_names(&behavioral.owed),
-            boundary_owed.clone(),
-        ] {
-            if !names.is_empty() {
-                let shown: Vec<&str> = names.iter().take(5).map(|s| s.as_str()).collect();
-                let more = names.len().saturating_sub(5);
-                println!(
-                    "      owed: {}{}",
-                    shown.join(", "),
-                    if more > 0 {
-                        format!(", +{more}")
-                    } else {
-                        String::new()
-                    }
-                );
-            }
-        }
-        // Pre-filled suggestions for the BEHAVIORAL owed siblings — the LLM
-        // authors the real failure behavior (RECORD ≠ DISCHARGE), then the new
-        // `planned` intent flows into `loom next --mode build` on its own.
-        if !behavioral.owed.is_empty() {
-            println!("    → author each missing failure path (rewrite the description; it then enters `loom next --mode build`):");
-            for o in behavioral.owed.iter().take(5) {
-                println!(
-                    "      loom intent add --name \"{} — sad path\" --aspect sad --lifecycle planned --parent {} --description \"<what should happen when {} fails>\"",
-                    o.name, o.parent_id, o.name
-                );
-            }
-            if behavioral.owed.len() > 5 {
-                println!(
-                    "      (+{} more — `loom complete --json` lists every owed leaf with its parent id)",
-                    behavioral.owed.len() - 5
-                );
-            }
-        }
-        println!();
-        println!("  QUALITY — is what's in the graph proven?");
-        if fp_ok {
-            println!("    ✓ PRODUCTION READY (fully_proven) — proven AND comprehensive.");
-        } else {
-            println!("    fully_proven: NOT YET");
-            for r in &fp_reasons {
-                println!("      · {r}");
-            }
-        }
-        println!();
-        // THE META-COGNITIVE TRIGGER. loom is DUMB — it certifies your SEED, not
-        // the full vision it can't see. It does NOT pretend to judge completeness
-        // (a coarse file-level grounding is legitimate; a symbol-precision % would
-        // false-alarm on a well-modeled graph). It surfaces the gaps it CAN see and
-        // makes YOU reflect on the ones it can't.
-        println!("  ⟲ SELF-CHECK — loom certifies your SEED, not the system you never modeled.");
-        if inbox_untriaged > 0 {
+        return Ok(());
+    }
+
+    let name = root.file_name().and_then(|n| n.to_str()).unwrap_or("graph");
+    println!("── loom complete: {name} ─────────────────────────────────────────────");
+
+    // The ladder — loom's single ordinal "done" (a rung-vector + focus).
+    println!("  MATURITY LADDER — the single ordinal \"done\" (focus = the lowest unmet rung)");
+    println!("    {}", b.ladder.vector_line());
+    println!("    → {}", b.ladder.focus_summary());
+    println!();
+
+    // The comprehensiveness dimensions that feed the rungs (RECORD ≠ DISCHARGE).
+    println!("  COMPREHENSIVENESS DETAIL — does the graph capture everything the code should do?");
+    println!(
+        "    entrypoint   {}   public symbols owned (feeds Seeded/Production-ready)",
+        axis_str(&b.entrypoint)
+    );
+    println!(
+        "    boundary     {}   files with external deps have a boundary intent",
+        axis_str(&b.boundary)
+    );
+    println!(
+        "    invariant    {}   coded intents measured under a GOVERNS rule (feeds Hardened)",
+        axis_str(&invariant)
+    );
+    println!(
+        "    journey      {}   user_visible leaves with a passing boundary proof (feeds Proven)",
+        ledger_str(&b.journey)
+    );
+    println!(
+        "    behavioral   {}   happy leaves with a sad/edge sibling (feeds Hardened)",
+        ledger_str(&b.behavioral)
+    );
+    let cognitive_names = |leaves: &[comp::OwedLeaf]| -> Vec<String> {
+        leaves.iter().map(|o| o.name.clone()).collect()
+    };
+    for names in [
+        cognitive_names(&b.journey.owed),
+        cognitive_names(&b.behavioral.owed),
+        b.boundary_owed.clone(),
+    ] {
+        if !names.is_empty() {
+            let shown: Vec<&str> = names.iter().take(5).map(|s| s.as_str()).collect();
+            let more = names.len().saturating_sub(5);
             println!(
-                "    INBOX: {inbox_untriaged} un-triaged item(s) — pieces of the repo enumerated but NOT yet"
-            );
-            println!(
-                "      decomposed into intents. Not complete until processed — `loom inbox triage`."
-            );
-        }
-        if !doc_realizations.is_empty() {
-            let shown: Vec<&str> = doc_realizations
-                .iter()
-                .take(4)
-                .map(|s| s.as_str())
-                .collect();
-            println!(
-                "    DOC-GROUNDED: {} intent(s) marked 'implemented' are grounded ONLY to docs ({}{}).",
-                doc_realizations.len(),
+                "      owed: {}{}",
                 shown.join(", "),
-                if doc_realizations.len() > 4 { ", …" } else { "" }
-            );
-            println!(
-                "      A doc is a CONTRACT, not a built system. CONFIRM each: is the document itself the"
-            );
-            println!(
-                "      deliverable? If it SPECIFIES code that should exist, you certified a spec as done —"
-            );
-            println!("      BUILD the real code + reground, or set `--lifecycle planned`.");
-        }
-        if !undesigned.is_empty() {
-            println!(
-                "    Not yet designed (reads '—'): {}.",
-                undesigned.join("; ")
+                if more > 0 {
+                    format!(", +{more}")
+                } else {
+                    String::new()
+                }
             );
         }
+    }
+    if !b.behavioral.owed.is_empty() {
         println!(
-            "    Confirm you seeded EVERY responsibility — loom cannot flag what was never modeled."
+            "    → author each missing failure path (it then enters `loom next --mode build`):"
         );
-        println!();
+        for o in b.behavioral.owed.iter().take(5) {
+            println!(
+                "      loom intent add --name \"{} — sad path\" --aspect sad --lifecycle planned --parent {} --description \"<what should happen when {} fails>\"",
+                o.name, o.parent_id, o.name
+            );
+        }
+        if b.behavioral.owed.len() > 5 {
+            println!(
+                "      (+{} more — `loom complete --json` lists every owed leaf with its parent id)",
+                b.behavioral.owed.len() - 5
+            );
+        }
+    }
+    println!();
+
+    // The meta-cognitive trigger: loom certifies your SEED, not the full vision.
+    println!("  ⟲ SELF-CHECK — loom certifies your SEED, not the system you never modeled.");
+    if inbox_untriaged > 0 {
         println!(
-            "  → {}",
-            next_step(
-                &entrypoint,
-                &boundary,
-                &invariant,
-                &journey,
-                &behavioral,
-                fp_ok
-            )
+            "    INBOX: {inbox_untriaged} un-triaged item(s) — pieces of the repo enumerated but NOT yet"
+        );
+        println!(
+            "      decomposed into intents. Not complete until processed — `loom inbox triage`."
         );
     }
+    if !b.doc_only.is_empty() {
+        let shown: Vec<&str> = b.doc_only.iter().take(4).map(|s| s.as_str()).collect();
+        println!(
+            "    DOC-GROUNDED: {} intent(s) marked 'implemented' are grounded ONLY to docs ({}{}).",
+            b.doc_only.len(),
+            shown.join(", "),
+            if b.doc_only.len() > 4 { ", …" } else { "" }
+        );
+        println!("      A doc is a CONTRACT, not a built system. CONFIRM each: is the document itself the");
+        println!("      deliverable? If it SPECIFIES code that should exist, you certified a spec as done —");
+        println!("      BUILD the real code + reground, or set `--lifecycle planned`.");
+    }
+    if !undesigned.is_empty() {
+        println!(
+            "    Not yet designed (reads '—'): {}.",
+            undesigned.join("; ")
+        );
+    }
+    println!(
+        "    modeled depth: {}% ({}/{} symbols directly owned) — responsibilities, not every symbol.",
+        b.modeled_pct, b.grounded_symbols, b.total_symbols
+    );
+    println!(
+        "    Confirm you seeded EVERY responsibility — loom cannot flag what was never modeled."
+    );
+
     Ok(())
 }
 
@@ -268,35 +224,4 @@ fn ledger_str(l: &comp::Ledger) -> String {
     } else {
         format!("{:>3}/{:<3}  ", l.discharged, l.enumerated)
     }
-}
-
-fn next_step(
-    entrypoint: &CoverageAxis,
-    boundary: &CoverageAxis,
-    invariant: &CoverageAxis,
-    journey: &comp::Ledger,
-    behavioral: &comp::Ledger,
-    fp_ok: bool,
-) -> String {
-    if entrypoint.covered < entrypoint.total {
-        return "Map the unowned public symbols — `loom coverage` then `loom edge implement`."
-            .to_string();
-    }
-    if boundary.covered < boundary.total {
-        return "Declare a boundary on the intents owning external-dependency files — `loom intent update <id> --boundary outbound`.".to_string();
-    }
-    if !behavioral.owed.is_empty() {
-        return "Design the failure paths — for each happy leaf add a sad/edge sibling (`loom intent add --aspect sad …`), then ground + prove it.".to_string();
-    }
-    if !journey.owed.is_empty() {
-        return "Prove the user journeys — `loom saga add <spec>` then `loom saga run` for each user_visible leaf.".to_string();
-    }
-    if invariant.covered < invariant.total {
-        return "Measure the remaining intents — `loom next --mode quality`.".to_string();
-    }
-    if !fp_ok {
-        return "Comprehensive — now finish the QUALITY half: `loom status` for the fully_proven gaps.".to_string();
-    }
-    "Comprehensive AND proven. `loom guide` for the rubric; `loom complete --teach` to teach it."
-        .to_string()
 }

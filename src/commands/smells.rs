@@ -426,6 +426,7 @@ fn render(
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
     let mut smells = report.open;
+    let advisory = report.advisory;
     let open_by_kind = kind_counts(&smells);
     smells.truncate(limit);
     let mut adjudicated = report.adjudicated;
@@ -460,6 +461,7 @@ fn render(
                 "code_clones_deliberate": clone_deliberate,
                 "code_clones_tracked": clone_tracked,
                 "code_clones_open": clone_open,
+                "size_advisories_total": advisory.len(),
                 "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Advisory totals count open advisories after current decision-note adjudication; code_clones_total counts physical clone groups and code_clones_* reports their dispositions.",
             }));
         } else {
@@ -473,6 +475,7 @@ fn render(
             println!("  shotgun-surgery advisories: {shotgun_total}");
             println!("  proof-locality advisories: {proof_total}");
             println!("  code clones: {clone_total} — {clone_deliberate} deliberate, {clone_tracked} tracked, {clone_open} open");
+            println!("  size advisories (flag, never gate): {}", advisory.len());
             println!("  tagged coded intents: {tagged}/{coded}");
             if blind > 0 {
                 println!("  duplicate detector blind spot: {blind} untagged coded intent(s)");
@@ -513,7 +516,8 @@ fn render(
             "code_clones_deliberate": clone_deliberate,
             "code_clones_tracked": clone_tracked,
             "code_clones_open": clone_open,
-            "note": "Findings are suspicions computed from graph structure — resolve each via its remedy, ONE at a time after reading ITS code. A decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it — a ruling that restates the size/shape, or repeats one you used elsewhere, is rubber-stamping and loom rejects it (`loom note add --smell` bounces a vacuous/templated ruling; `loom doctor` flags templated clusters). OPEN findings gate green: phase=complete requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
+            "size_advisories": advisory,
+            "note": "Findings are suspicions computed from graph structure — resolve each via its remedy, ONE at a time after reading ITS code. A decision note is audit trail, not a fix: it must name the decomposition you considered and the concrete reason it is wrong for THIS finding, in terms true only of it — a ruling that restates the size/shape, or repeats one you used elsewhere, is rubber-stamping and loom rejects it (`loom note add --smell` bounces a vacuous/templated ruling; `loom doctor` flags templated clusters). OPEN findings gate the HARDENED rung: it requires zero. `adjudicated` lists suppressed findings and advisories WITH their rulings — review them; each names what re-opens it. `cochange_suggestions`, `shotgun_surgery`, `proof_locality_suggestions`, and `code_clones` are ADVISORY — they never gate green, and current decision notes move them out of the open advisory buckets into `adjudicated`.",
         }));
         return Ok(());
     }
@@ -538,6 +542,14 @@ fn render(
         println!("    inspect:  {}", s.teaching.inspect.join(" · "));
         println!("    avoid:    {}", s.teaching.avoid.join(" · "));
         println!("    done:     {}", s.teaching.done_when);
+        println!();
+    }
+    if !advisory.is_empty() {
+        println!("  ── size advisories (flag only — inspect case-by-case, NEVER gate green) ──");
+        for s in &advisory {
+            println!("  [{}]  {}", s.kind, s.summary);
+            println!("    remedy: {}", s.remedy);
+        }
         println!();
     }
     if total > smells.len() {
@@ -1159,6 +1171,7 @@ mod tests {
     fn empty_report() -> SmellReport {
         SmellReport {
             open: Vec::new(),
+            advisory: Vec::new(),
             adjudicated: Vec::new(),
             coded_intents: 0,
             tagged_coded_intents: 0,

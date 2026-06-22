@@ -306,13 +306,13 @@ pub fn boundary_scan_from_disk(
 /// DISCHARGE.
 pub fn rubric_teaching() -> &'static str {
     "\
-COMPLETENESS RUBRIC — the COVERAGE half of production-ready (fully_proven is the QUALITY half).
+COMPLETENESS RUBRIC — the comprehensiveness dimensions that FEED the maturity ladder's rungs.
 loom names the canonical dimensions; YOU instantiate them for this repo. The law that makes it
 honest: RECORD ≠ DISCHARGE — recording a planned intent or a `saga add` is BINDING DEBT, never a
 satisfaction; a dimension clears only when the placeholder becomes realized + proven graph state.
 
   1. ENTRYPOINT (mechanical, FORCED) — every public symbol is grounded/accepted/adjudicated.
-     done_when: `loom coverage` 0 actionable symbol gaps. Gates fully_proven (G7).
+     done_when: `loom coverage` 0 actionable symbol gaps. Feeds the Production-ready rung.
   2. BOUNDARY (mechanical, FORCED) — every file that imports an external service/client has an
      owning intent with `--boundary outbound` (or inbound for a served surface).
      done_when: `loom complete` boundary covered == total.

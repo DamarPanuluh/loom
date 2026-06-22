@@ -2857,15 +2857,31 @@ fn sqlite_g2_executed_requires_a_discriminating_runner() {
         "the inert (exit-0, no assertion) proof falls to ASSERTED: {cov}"
     );
 
-    // The fully_proven badge sees the asserted-only leaf and refuses (G1): the
-    // badge requires EXECUTED proofs, so an asserted leaf names the exact gap.
+    // The asserted-only leaf keeps Production-ready out of reach: the former
+    // fully_proven G1 gate is now the Realized rung's discriminating-proof
+    // requirement, rolled into the maturity ladder.
     let st = run_json(&graph.root, &["status", "--json"]);
-    assert_eq!(st["fully_proven"], false, "{st}");
+    let rungs = st["maturity"]["rungs"]
+        .as_array()
+        .expect("maturity rungs array");
+    let prod = rungs
+        .iter()
+        .find(|r| r["name"] == "Production-ready")
+        .expect("a Production-ready rung");
+    assert_ne!(
+        prod["status"].as_str(),
+        Some("met"),
+        "an asserted-only leaf must block Production-ready: {st}"
+    );
+    let realized = rungs
+        .iter()
+        .find(|r| r["name"] == "Realized")
+        .expect("a Realized rung");
     assert!(
-        st["fully_proven_reasons"].as_array().is_some_and(|rs| rs
+        realized["reasons"].as_array().is_some_and(|rs| rs
             .iter()
-            .any(|r| r.as_str().is_some_and(|s| s.contains("EXECUTED-proven")))),
-        "the asserted-only leaf must surface as a fully_proven gap: {st}"
+            .any(|r| r.as_str().is_some_and(|s| s.contains("executed-proven")))),
+        "the asserted-only leaf must surface as a Realized gap: {st}"
     );
 }
 
@@ -5741,14 +5757,13 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "committed_export",
         "completion",
         "failing_edges",
-        "fully_proven",
-        "fully_proven_reasons",
         "graph_state",
         "human_gated",
         "independent_edges",
         "intake",
         "intents_without_validations",
         "map_vs_territory",
+        "maturity",
         "needs_reverification",
         "open_issues",
         "open_todos",
@@ -5889,9 +5904,16 @@ fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
         !next_action.is_empty(),
         "cascade always names a next_action when not complete"
     );
-    let reasons = status["fully_proven_reasons"]
+    let rungs = status["maturity"]["rungs"]
         .as_array()
-        .expect("fully_proven_reasons array");
+        .expect("maturity rungs array");
+    let prod = rungs
+        .iter()
+        .find(|r| r["name"] == "Production-ready")
+        .expect("a Production-ready rung");
+    let reasons = prod["reasons"]
+        .as_array()
+        .expect("production-ready reasons array");
     let phase_reason = reasons
         .iter()
         .filter_map(|r| r.as_str())
@@ -6649,9 +6671,10 @@ fn sqlite_status_audit_open_findings_null_when_deferred() {
 // ruled away. Adjudication is keyed on <kind>:<scope>, so a ruling about one
 // symbol cannot launder the file finding; only its own oversized_file:<path>
 // ruling answers it.
+
 #[cfg(feature = "treesitter")]
-fn smell_open_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
-    value["smells"]
+fn smell_adjudicated_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
+    value["adjudicated"]
         .as_array()
         .map(|a| {
             a.iter().any(|s| {
@@ -6666,8 +6689,8 @@ fn smell_open_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
 }
 
 #[cfg(feature = "treesitter")]
-fn smell_adjudicated_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
-    value["adjudicated"]
+fn smell_advisory_for(value: &Value, kind: &str, path_prefix: &str) -> bool {
+    value["size_advisories"]
         .as_array()
         .map(|a| {
             a.iter().any(|s| {
@@ -6707,12 +6730,12 @@ fn sqlite_oversized_file_survives_per_symbol_adjudication() {
     write_scratch_file(&graph.root, path, &big);
     run_json(&graph.root, &["sync", "--json"]);
 
-    // 1. The god-file (~5960 physical lines) surfaces as an open oversized_file
-    //    finding — physical size measured as such, independent of impl/test.
+    // 1. The god-file (~5960 physical lines) surfaces as an oversized_file
+    //    ADVISORY (a flag, never gating) — size measured independent of impl/test.
     let s = smells();
     assert!(
-        smell_open_for(&s, "oversized_file", path),
-        "oversized_file must fire on the god-file {path}: {s}"
+        smell_advisory_for(&s, "oversized_file", path),
+        "oversized_file must fire as a (non-gating) advisory on the god-file {path}: {s}"
     );
 
     // 2. A PER-SYMBOL ruling (large_behavioral_symbol:<path>:<label>) must NOT
@@ -6735,9 +6758,9 @@ fn sqlite_oversized_file_survives_per_symbol_adjudication() {
     );
     let s = smells();
     assert!(
-        smell_open_for(&s, "oversized_file", path),
+        smell_advisory_for(&s, "oversized_file", path),
         "a per-symbol large_behavioral_symbol ruling must NOT launder the file-level \
-         oversized_file finding: {s}"
+         oversized_file advisory: {s}"
     );
     assert!(
         !smell_adjudicated_for(&s, "oversized_file", path),
@@ -6763,8 +6786,8 @@ fn sqlite_oversized_file_survives_per_symbol_adjudication() {
     );
     let s = smells();
     assert!(
-        !smell_open_for(&s, "oversized_file", path),
-        "the own oversized_file:<path> ruling must suppress the file finding: {s}"
+        !smell_advisory_for(&s, "oversized_file", path),
+        "the own oversized_file:<path> ruling must suppress the file advisory: {s}"
     );
     assert!(
         smell_adjudicated_for(&s, "oversized_file", path),

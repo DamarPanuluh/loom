@@ -1,11 +1,11 @@
 use anyhow::Result;
 
 use crate::db::queries::{
-    blocked_validation_summary_from_snapshot, clone_suggestions, cochange_suggestions,
-    lane_depths_from_snapshot, proof_locality_suggestions, review_candidates_from_snapshot,
-    shotgun_surgery_suggestions, status_report_from_snapshot,
+    blocked_validation_summary_from_snapshot, build_ladder, clone_suggestions,
+    cochange_suggestions, lane_depths_from_snapshot, proof_locality_suggestions,
+    review_candidates_from_snapshot, shotgun_surgery_suggestions, status_report_from_snapshot,
     uninspected_outside_queues_from_snapshot, BlockedValidationSummary, GraphState, LaneDepths,
-    QuerySnapshot, Smell, UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
+    MaturityLadder, QuerySnapshot, Smell, UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, Printer};
@@ -18,16 +18,6 @@ struct AdvisoryCounts {
     cochange_suggestions: usize,
     shotgun_surgery: usize,
     proof_locality_suggestions: usize,
-}
-
-/// The `fully_proven` terminal badge — production-ready in the only sense loom
-/// can witness (proofs ran/resolve/are-local, non-trivial denominators, zero
-/// unverified inference). `ok` is the verdict; `reasons` names every unmet gate
-/// so a not-yet-fully-proven graph is loud, never silently green.
-#[derive(Debug, Clone, serde::Serialize)]
-struct FullyProven {
-    ok: bool,
-    reasons: Vec<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -239,36 +229,20 @@ pub fn run_with_db(
     // audit gate), so a red graph can't hide files-on-disk the graph ignores.
     let disk = disk_pulse(&snapshot, db, root)?;
 
-    // Comprehensiveness axes (entrypoint + boundary) — the mechanical, FORCED
-    // half of "production ready". Computed here where the decision notes (for
-    // symbol adjudication) are in scope; they gate the badge as G7/G8.
-    let symbol_report =
-        crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes(
-            &snapshot.codefiles,
-            &snapshot.intents,
-            &snapshot.implements,
-            &decision_notes,
-        );
-    let entrypoint = crate::db::queries::comprehensiveness::entrypoint_coverage(&symbol_report);
-
-    // The fully_proven terminal badge: the snapshot-pure proof-quality gates,
-    // PLUS the disk/export freshness that only `loom status` can witness (a badge
-    // read off a stale export or unsynced tree would over-claim).
-    let (mut fully_proven, mut fp_reasons) = crate::db::queries::stats::fully_proven_from_state(
-        &gs,
+    // The maturity ladder — loom's single ordinal "done". Rolled up from the
+    // gates above (vertical spine, comprehensiveness ledgers, and the former
+    // fully_proven gate set), it REPLACES the scattered badges. The assembly is
+    // shared verbatim with `loom complete`, so the two reads cannot drift.
+    let ladder = build_ladder(
+        root,
         &snapshot,
+        &gs,
+        &decision_notes,
         &open_smells,
-        &entrypoint,
         intake.untriaged.max(0) as usize,
-    );
-    if export_freshness == "stale" {
-        fully_proven = false;
-        fp_reasons.push("committed loom.graph.json is STALE — `loom export`".to_string());
-    }
-    let badge = FullyProven {
-        ok: fully_proven,
-        reasons: fp_reasons,
-    };
+        export_freshness == "stale",
+    )
+    .ladder;
 
     render_status(
         &report,
@@ -286,7 +260,7 @@ pub fn run_with_db(
         adopt_count,
         export_freshness,
         &disk,
-        &badge,
+        &ladder,
         printer,
     )
 }
@@ -558,7 +532,7 @@ fn render_status(
     adopt_count: i64,
     export_freshness: &str,
     disk: &DiskPulse,
-    badge: &FullyProven,
+    ladder: &MaturityLadder,
     printer: &Printer,
 ) -> Result<()> {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
@@ -610,12 +584,8 @@ fn render_status(
                 "committed_export".to_string(),
                 serde_json::json!(export_freshness),
             );
-            // The terminal badge: production-ready in the sense loom can witness.
-            obj.insert("fully_proven".to_string(), serde_json::json!(badge.ok));
-            obj.insert(
-                "fully_proven_reasons".to_string(),
-                serde_json::json!(badge.reasons),
-            );
+            // The maturity ladder — loom's single ordinal "done" (rung-vector).
+            obj.insert("maturity".to_string(), serde_json::to_value(ladder)?);
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
                 "align_drift_suspects": align_count,
@@ -653,7 +623,7 @@ fn render_status(
             adopt_count,
             export_freshness,
             disk,
-            badge,
+            ladder,
             totals,
         );
     }
@@ -677,7 +647,7 @@ fn render_plain_status(
     adopt_count: i64,
     export_freshness: &str,
     disk: &DiskPulse,
-    badge: &FullyProven,
+    ladder: &MaturityLadder,
     totals: CompletionTotals,
 ) {
     println!("Completion:");
@@ -697,7 +667,7 @@ fn render_plain_status(
         align_count, adopt_count, totals.human_blocked
     );
     println!(
-        "  horizontal grid: {} unexplored pair(s) — not for the vertical spine, but REQUIRED for full-green (`phase=complete`). `loom edge unexplored` lists them",
+        "  horizontal grid: {} unexplored pair(s) — not for the vertical spine, but REQUIRED for the HARDENED rung. `loom edge unexplored` lists them",
         gs.unexplored_pairs
     );
     if intake.active() > 0 || intake.deferred > 0 {
@@ -850,17 +820,10 @@ fn render_plain_status(
     if let Some(others) = other_lanes_line(lanes, populate, &gs.phase) {
         println!("  other open lanes: {others}");
     }
-    // The terminal badge — shown at phase=complete, where the strengthening gates
-    // are meaningful. PRODUCTION READY only in the sense loom can WITNESS (proofs
-    // ran/resolve/are-local, non-trivial denominators, zero inference debt) — not
-    // a deploy-fitness claim. When unmet it names the exact remaining gap.
-    if gs.phase == "complete" {
-        if badge.ok {
-            println!("  ✓ PRODUCTION READY (fully_proven) — every realized leaf executed-proven, proofs local, no inference debt.");
-        } else {
-            println!("  ⚠ fully_proven: NOT YET — {}", badge.reasons.join("; "));
-        }
-    }
+    // The maturity ladder — loom's single ordinal "done" (rung-vector + focus),
+    // shown ALWAYS, so the read is identical at every stage (no phase gating).
+    println!("  ladder: {}", ladder.vector_line());
+    println!("    → {}", ladder.focus_summary());
     // The verb signals the compass's own confidence: a directive phase (a
     // failure or binding gap) reads as a command; a recommended phase
     // (discretionary work the agent may sequence against the lanes above)

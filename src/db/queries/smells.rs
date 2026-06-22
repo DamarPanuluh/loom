@@ -125,6 +125,13 @@ pub const LARGE_BEHAVIORAL_SYMBOL_LINES: usize = 200;
 /// it's the last symbol's end line), so the threshold sits well below the
 /// 6734-line god-file that motivated it.
 pub const OVERSIZED_FILE_LINES: usize = 2000;
+
+/// Size/LOC smells are ADVISORY, not gating: line count is a coarse proxy, and
+/// whether a large file/function should split is a case-by-case judgment. These
+/// kinds are surfaced for the LLM to inspect (`loom smells`) but partitioned out
+/// of the gating `open` set — they never block green. A genuinely-deliberate
+/// large unit needs no decision note; the flag is just a prompt to look.
+pub const SIZE_ADVISORY_KINDS: &[&str] = &["oversized_file", "large_behavioral_symbol"];
 /// Repeated string-contract detection ignores short labels and implementation
 /// tokens. These floors are intentionally conservative for the first pass.
 pub const MIN_STRING_CONTRACT_CHARS: usize = 24;
@@ -199,11 +206,15 @@ pub struct SmellTeaching {
 }
 
 /// What the instrument actually measured: open suspicions AND the suppressed
-/// ones with their rulings. Phase gating consumes `open`; the audit surface
-/// (`loom smells`) shows both.
+/// ones with their rulings. Phase/ladder gating consumes ONLY `open`; `advisory`
+/// (size/LOC flags) and `adjudicated` are surfaced by `loom smells` but gate nothing.
 #[derive(Debug, Clone, Serialize)]
 pub struct SmellReport {
     pub open: Vec<Smell>,
+    /// Size/LOC flags (oversized_file, large_behavioral_symbol): ADVISORY, never
+    /// gating — a coarse signal for the LLM to inspect case-by-case. Surfaced by
+    /// `loom smells`, excluded from `open` so phase/ladder gating ignores them.
+    pub advisory: Vec<Smell>,
     pub adjudicated: Vec<AdjudicatedSmell>,
     /// Coverage disclosure for `duplicated_responsibility`: tag collisions are
     /// the strongest signal, and untagged coded intents fall back to a weaker
@@ -578,8 +589,16 @@ pub fn compute_smells_from_parts(
         .collect::<HashSet<_>>()
         .len();
     let declared_layers = ctx.layer_order.len();
+    // LOC/size smells (oversized_file, large_behavioral_symbol) are ADVISORY: a
+    // coarse flag for the LLM to inspect case-by-case, never a green gate.
+    // Partition them out of `open` (which phase/ladder gating consumes) into
+    // `advisory` (surfaced, non-gating) — see SIZE_ADVISORY_KINDS.
+    let (advisory, open): (Vec<Smell>, Vec<Smell>) = smells
+        .into_iter()
+        .partition(|s| SIZE_ADVISORY_KINDS.contains(&s.kind.as_str()));
     Ok(SmellReport {
-        open: smells,
+        open,
+        advisory,
         adjudicated: adjudicated_out,
         coded_intents,
         tagged_coded_intents,

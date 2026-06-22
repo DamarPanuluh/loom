@@ -218,14 +218,6 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     } else {
         String::new()
     };
-    // Two completeness axes: vertical is the binding spine (a milestone on its
-    // own); horizontal is required for full-green (phase=complete), not the spine.
-    let vert = if s.vertically_complete { "✓" } else { "✗" };
-    let horiz = if s.horizontally_explored {
-        "✓"
-    } else {
-        "○"
-    };
     let ident = if s.graph_name.is_empty() {
         "graph".to_string()
     } else if s.custody == "observed" {
@@ -235,8 +227,15 @@ pub fn fmt_pulse(s: &crate::db::queries::GraphState) -> String {
     };
     let stamp = fmt_role_stamp(crate::agent::session_role().as_deref());
     let base = format!(
-        "{stamp} · {}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · vertical {} horizontal {} · phase={}\n  {}",
-        ident, s.intents, s.total_edges, s.unresolved_edges, unexplored, s.codefiles, synced, vert, horiz, s.phase,
+        "{stamp} · {}: {} intents · {} edges ({} unresolved){} · {} codefiles · {} · lane={}\n  {}",
+        ident,
+        s.intents,
+        s.total_edges,
+        s.unresolved_edges,
+        unexplored,
+        s.codefiles,
+        synced,
+        s.phase,
         fmt_coverage(&s.coverage)
     );
     if s.note_hygiene.is_empty() {
@@ -829,17 +828,13 @@ mod tests {
     }
 
     #[test]
-    fn fmt_pulse_renders_both_completeness_axes_and_hygiene() {
+    fn fmt_pulse_renders_lane_and_hygiene() {
         let mut gs = graph_state_fixture("pulse");
         gs.vertically_complete = false;
         gs.horizontally_explored = false;
         gs.note_hygiene = String::new();
         let p = fmt_pulse(&gs);
-        assert!(p.contains("vertical ✗"), "an incomplete spine shows ✗: {p}");
-        assert!(
-            p.contains("horizontal ○"),
-            "an unexplored grid shows ○: {p}"
-        );
+        assert!(p.contains("lane="), "the pulse names the routing lane: {p}");
         assert!(
             p.contains("360°:"),
             "the second line is always the coverage vector: {p}"
@@ -854,8 +849,8 @@ mod tests {
         gs.note_hygiene = "heavy note log — `loom note prune --transitions`".to_string();
         let p = fmt_pulse(&gs);
         assert!(
-            p.contains("vertical ✓") && p.contains("horizontal ✓"),
-            "closed axes show ✓: {p}"
+            !p.contains("vertical ✓") && !p.contains("horizontal"),
+            "the hard cut removed the vertical/horizontal done-glyphs from the pulse: {p}"
         );
         assert!(
             p.contains("ⓘ heavy note log"),
@@ -871,8 +866,8 @@ mod tests {
         let human = fmt_pulse(&gs);
         let json = pulse_json(&gs);
         assert!(
-            human.contains(&format!("phase={}", gs.phase)),
-            "human footer names the phase: {human}"
+            human.contains(&format!("lane={}", gs.phase)),
+            "human footer names the routing lane (the phase value): {human}"
         );
         assert_eq!(
             json["phase"],

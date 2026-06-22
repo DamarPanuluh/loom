@@ -9,7 +9,7 @@
 - **Intents:** 102 (system: 1, component: 20, feature: 81)
 - **Domains:** analysis, audit, cli, concurrency, core, db, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, runtime, test
-- **Code files mapped:** 116
+- **Code files mapped:** 119
 - **Quality rules:** 22
 
 ## Architecture
@@ -207,7 +207,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 ### health
 
-- **completeness and integrity checking** — vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes  `src/commands/complete.rs`, `src/commands/coverage.rs`, `src/commands/doctor.rs`, `src/commands/hotspots.rs`, `src/commands/impact.rs`, `src/commands/report.rs`, `src/commands/status.rs`, `src/db/queries/completeness.rs`, `src/db/queries/comprehensiveness.rs`, `src/db/queries/integrity.rs`, `src/db/queries/stats.rs`, `src/db/queries/stats/tests.rs`, `src/db/queries/symbol_accountability.rs`
+- **completeness and integrity checking** — vertical spine (tree shape + leaf realization + file reach), coverage reconciliation against disk, doctor audit of schema conformance and provenance lanes  `docs/maturity-ladder-proposal.md`, `src/commands/complete.rs`, `src/commands/coverage.rs`, `src/commands/doctor.rs`, `src/commands/hotspots.rs`, `src/commands/impact.rs`, `src/commands/report.rs`, `src/commands/status.rs`, `src/db/queries/completeness.rs`, `src/db/queries/comprehensiveness.rs`, `src/db/queries/integrity.rs`, `src/db/queries/maturity.rs`, `src/db/queries/maturity/tests.rs`, `src/db/queries/stats.rs`, `src/db/queries/stats/tests.rs`, `src/db/queries/symbol_accountability.rs`
 - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy  `src/commands/domain.rs`, `src/commands/layer.rs`, `src/commands/smells.rs`, `src/db/queries/smells.rs`, `src/db/queries/smells/normative.rs`, `src/db/queries/smells/physical.rs`, `src/db/queries/smells/semantic.rs`, `src/db/queries/smells/source_fact_tests.inc`
 - **verifiable delegated coverage** — Coverage treats files under a declared subtree as covered by a child loom.graph.json export, and reports a missing export as an explicit delegation-target gap.  `README.md`, `src/commands/delegate.rs`
 

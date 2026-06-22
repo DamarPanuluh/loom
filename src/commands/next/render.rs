@@ -316,7 +316,7 @@ fn push_review_and_human_queues(
         queues.push(serde_json::json!({
             "queue": "horizontal-grid", "role": "analyzer", "gate": "autonomous", "optional": false,
             "count": discovery_backlog, "command": "loom edge unexplored",
-            "top": "horizontal N×N grid: not for the vertical spine, but REQUIRED for full-green (`phase=complete`). `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones",
+            "top": "horizontal N×N grid: not for the vertical spine, but REQUIRED for the HARDENED rung. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones",
         }));
     }
 }
