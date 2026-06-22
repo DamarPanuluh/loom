@@ -705,6 +705,24 @@ fn render_plain_status(
         }
         println!();
     }
+    // The maturity ladder — the FRAME, surfaced FIRST: the map (all rungs), the
+    // cursor (focus rung), the directive. A cold reader gets "where am I → what
+    // to do" before the supporting detail below. Shown ALWAYS (no phase gating).
+    println!("ladder: {}", ladder.vector_line());
+    println!("  → {}", ladder.focus_summary());
+    // The verb signals the compass's confidence: a directive phase (a failure or
+    // binding gap) reads as a command; a recommended phase reads as a suggestion
+    // the agent may override with context loom lacks.
+    let anchor = if gs.next_kind == "recommended" {
+        "→ Recommended"
+    } else {
+        "→ Next"
+    };
+    println!("  {anchor}: {}", gs.next_action);
+    // JIT: status is the index; the depth (this rung's queue + skill) loads on
+    // demand, so the frame stays constant and the prompt never becomes a firehose.
+    println!("  → how: `loom guide` (this rung's skill — bare `guide` is focus-scoped, JIT)");
+    println!();
     println!("Completion:");
     println!("  required autonomous debt: {}", totals.required_autonomous);
     println!(
@@ -875,18 +893,4 @@ fn render_plain_status(
     if let Some(others) = other_lanes_line(lanes, populate, &gs.phase) {
         println!("  other open lanes: {others}");
     }
-    // The maturity ladder — loom's single ordinal "done" (rung-vector + focus),
-    // shown ALWAYS, so the read is identical at every stage (no phase gating).
-    println!("  ladder: {}", ladder.vector_line());
-    println!("    → {}", ladder.focus_summary());
-    // The verb signals the compass's own confidence: a directive phase (a
-    // failure or binding gap) reads as a command; a recommended phase
-    // (discretionary work the agent may sequence against the lanes above)
-    // reads as a suggestion the agent can override with context loom lacks.
-    let anchor = if gs.next_kind == "recommended" {
-        "→ Recommended"
-    } else {
-        "→ Next"
-    };
-    println!("  {anchor}: {}", gs.next_action);
 }

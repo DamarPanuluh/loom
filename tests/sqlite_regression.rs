@@ -3319,7 +3319,9 @@ fn sqlite_teaching_commands_match_behavior() {
         )
         .to_string()
     };
-    let guide = run(&["guide"]);
+    // Bare `loom guide` is focus-scoped (the focus rung's skill); the full
+    // manual and its mode footer now live behind `--all`.
+    let guide = run(&["guide", "--all"]);
     for m in [
         "greenfield",
         "brownfield",
@@ -3349,6 +3351,54 @@ fn sqlite_teaching_commands_match_behavior() {
             "a runnable hypothesis-add remedy is missing the REQUIRED --predicted-outcome: {line}"
         );
     }
+}
+
+// B4: bare `loom guide` is FOCUS-SCOPED — it serves the focus rung's lane-skill
+// (JIT), so the entry point answers "how do I do THIS rung" instead of dumping
+// the manual; `--all` is the opt-in firehose. This makes the status pointer
+// ("bare guide is focus-scoped") honest, and keeps `guide` and `next` agreeing
+// on the lane (both route by the maturity ladder's focus rung).
+#[test]
+fn sqlite_bare_guide_serves_the_focus_lane_skill() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("guide-focus");
+    // The authoritative focus lane — what `loom status` / `loom next` route by.
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let focus = status["maturity"]["focus"]
+        .as_u64()
+        .expect("an imported graph mid-flight has an unmet focus rung") as usize;
+    let lane = status["maturity"]["rungs"][focus]["lane"]
+        .as_str()
+        .expect("the focus rung names its lane");
+    let expected_role = match lane {
+        "build" => "builder",
+        "discovery" => "analyzer",
+        "fix" => "fixer",
+        "validate" => "validator",
+        "quality" => "quality",
+        other => panic!("focus lane {other:?} maps to no role skill — fixture changed"),
+    };
+    // Bare guide = the focus rung's role charge, NOT the manual.
+    let bare = run_json(&graph.root, &["guide", "--json"]);
+    assert_eq!(
+        bare["role"].as_str(),
+        Some(expected_role),
+        "bare `loom guide` must serve the focus lane's skill (lane={lane})"
+    );
+    assert!(
+        bare.get("done_condition").is_none(),
+        "bare guide is the lane skill, not the full manual"
+    );
+    // `--all` = the full driving protocol (the firehose), never a role charge.
+    let all = run_json(&graph.root, &["guide", "--all", "--json"]);
+    assert!(
+        all.get("done_condition").is_some(),
+        "`loom guide --all` must be the full manual"
+    );
+    assert!(
+        all.get("role").is_none(),
+        "the manual is not a role charge"
+    );
 }
 
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): `loom status` lumped registered-but-

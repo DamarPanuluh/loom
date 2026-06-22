@@ -4,6 +4,7 @@
 
 use anyhow::Result;
 
+use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
 const GOLDEN_RULES: &[&str] = &[
@@ -596,7 +597,7 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     }
     println!();
     println!("{out_of_lane}");
-    println!("Full driving protocol: `loom guide`.");
+    println!("Full driving protocol: `loom guide --all`.");
     println!();
     if !anchor.is_empty() {
         println!("  ⟐ Remember: {anchor}");
@@ -605,9 +606,72 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     Ok(())
 }
 
-pub fn run(mode: Option<&str>, role: Option<&str>, printer: &Printer) -> Result<()> {
+/// Bare `loom guide`'s JIT target: the role whose lane-skill serves the focus
+/// rung. `None` when there is no graph yet (fresh repo → manual), every rung is
+/// cleared (no focus), or the focus lane has no authored skill (triage/audit) —
+/// the caller then falls back to the full driving protocol. Builds the ladder
+/// the same way `loom next` routes, so `guide` and `next` agree on the lane.
+fn focus_lane_role() -> Option<&'static str> {
+    let root = crate::db::resolve_root().ok()?;
+    let store = GraphReadHandle::open(&root).ok()?;
+    let snap = store.query_snapshot().ok()?;
+    let gs = store.graph_state(&snap).ok()?;
+    let decision_notes = store.notes_by_kind("decision").ok()?;
+    let open_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
+        store.smell_report(&snap).ok()?.open
+    } else {
+        Vec::new()
+    };
+    let inbox_untriaged = store
+        .list_inbox_items(None, None)
+        .ok()?
+        .iter()
+        .filter(|i| i.status == "new")
+        .count();
+    let export_stale = store.committed_export_stale(&root).ok().flatten() == Some(true);
+    let lane = crate::db::queries::build_ladder(
+        &root,
+        &snap,
+        &gs,
+        &decision_notes,
+        &open_smells,
+        inbox_untriaged,
+        export_stale,
+    )
+    .ladder
+    .focus_lane()?;
+    lane_to_role(lane)
+}
+
+/// Invert the enforced lane table (its `mode` field IS the lane) → the role that
+/// owns it. Single-sourced from ROLE_LANES so it can't drift from the gate.
+fn lane_to_role(lane: &str) -> Option<&'static str> {
+    ROLE_LANES
+        .iter()
+        .find(|(_, mode, _)| *mode == lane)
+        .map(|(role, _, _)| *role)
+}
+
+pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer) -> Result<()> {
     if let Some(r) = role {
         return run_role_charge(r, printer);
+    }
+    // Bare `loom guide` is FOCUS-SCOPED (JIT): serve the skill for the focus
+    // rung's lane so the entry point answers "how do I do THIS rung" instead of
+    // the full firehose. `--all` (or an explicit `--mode`) gives the full manual.
+    // No graph (fresh repo) / all-green / a lane with no authored skill
+    // (triage/audit) → fall through to the driving protocol below.
+    if mode.is_none() && !all {
+        if let Some(role) = focus_lane_role() {
+            // Say WHY this lane (a cold reader didn't ask for it) — and how to
+            // get the map and the full manual. JSON carries `role`, so it's self-
+            // evident there; the preamble is human-only.
+            if !printer.json {
+                println!("(loom routed you here — the focus rung's lane. `loom status` for the map · `loom guide --all` for the full protocol.)");
+                println!();
+            }
+            return run_role_charge(role, printer);
+        }
     }
     let m = resolve_mode(mode)?;
     let steps = match m {
@@ -800,14 +864,14 @@ mod tests {
 
     fn guide_json(mode: &str) -> serde_json::Value {
         let p = Printer::capturing(true);
-        run(Some(mode), None, &p).expect("guide opens no graph — must never fail");
+        run(Some(mode), None, false, &p).expect("guide opens no graph — must never fail");
         serde_json::from_str(&p.captured().expect("captured json"))
             .expect("guide --json is valid json")
     }
 
     fn charge_json(role: &str) -> serde_json::Value {
         let p = Printer::capturing(true);
-        run(None, Some(role), &p).expect("charge opens no graph — must never fail");
+        run(None, Some(role), false, &p).expect("charge opens no graph — must never fail");
         serde_json::from_str(&p.captured().expect("captured json"))
             .expect("charge --json is valid json")
     }
@@ -907,7 +971,9 @@ mod tests {
     #[test]
     fn role_charge_rejects_unknown_role() {
         let p = Printer::capturing(true);
-        let err = run(None, Some("analyser"), &p).unwrap_err().to_string();
+        let err = run(None, Some("analyser"), false, &p)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("Unknown role"), "got: {err}");
         assert!(
             err.contains("analyzer"),

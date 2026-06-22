@@ -18,7 +18,7 @@ pub const LONG_VERSION: &str = concat!(
 files, where every relationship carries a verification status + evidence. An LLM drives it one relationship \
 at a time: the graph is the durable memory, the context window is just the working set.\n\
 \n\
-New here? Run `loom guide` for the full driving protocol, `loom schema` for the data model, and \
+New here? Run `loom guide --all` for the full driving protocol (bare `loom guide` = the focus rung's skill), `loom schema` for the data model, and \
 `loom status` to see where you are. Drive the work with `loom next`. Add `--json` to any command for \
 machine-readable output (including a `graph_state` pulse).",
     after_help = "QUICK START:\n  \
@@ -344,8 +344,9 @@ pub enum Command {
     /// loom import loom.graph.json` here. This command only reports the version.
     Migrate,
 
-    /// Print the driving protocol for an LLM new to loom: the mental model, the
-    /// loop, the done-condition, and a mode-specific population checklist.
+    /// Bare: adopt the FOCUS rung's lane-skill (JIT — how to do the current rung).
+    /// `--all`: the full driving protocol (mental model, loop, done-condition, mode
+    /// playbook). `--role <r>` / `--mode <m>`: a specific lane / population mode.
     Guide {
         /// greenfield (design first) | brownfield (map existing code) |
         /// refactor (change existing) | port (re-realize a mapped system in a
@@ -358,6 +359,11 @@ pub enum Command {
         /// over --mode; derived from the enforced lane table so it can't drift.
         #[arg(long)]
         role: Option<String>,
+        /// Print the FULL driving protocol (the manual) instead of the focus
+        /// rung's lane-skill. Bare `loom guide` is focus-scoped (JIT); `--all` is
+        /// the firehose, for onboarding or a full re-read.
+        #[arg(long)]
+        all: bool,
     },
 
     /// Print loom's data model — node/edge types, properties, the inspection

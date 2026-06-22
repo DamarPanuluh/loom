@@ -102,7 +102,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Batch       { file, dry_run } => batch::run(&file, dry_run, &printer),
         Command::Doctor { clean_orphans, yes } => doctor::run(clean_orphans, yes, &printer),
         Command::Migrate                    => migrate::run(&printer),
-        Command::Guide       { mode, role }  => guide::run(mode.as_deref(), role.as_deref(), &printer),
+        Command::Guide       { mode, role, all }  => guide::run(mode.as_deref(), role.as_deref(), all, &printer),
         Command::Schema                     => schema::run(&printer),
         Command::Skill       { command }    => skill::run(command, &printer),
         Command::Find        { query, limit } => find::run(&query, limit, &printer),
@@ -279,7 +279,7 @@ fn orient(printer: &Printer) -> Result<()> {
             "tool": "loom",
             "what": "Externalized, falsifiable memory for understanding and cleaning up a codebase.",
             "start_here": [
-                "loom guide      — the full driving protocol, including lifecycle transitions (read first)",
+                "loom guide --all — the full driving protocol, including lifecycle transitions (read first)",
                 "loom schema     — the data model (node/edge types, lifecycle/states, vocabularies)",
                 "loom status     — where the graph is now + the recommended next action",
                 "loom next       — get the next thing to inspect",
@@ -297,7 +297,7 @@ fn orient(printer: &Printer) -> Result<()> {
         println!("loom — externalized, falsifiable memory for understanding/cleaning a codebase.");
         println!();
         println!("Start here:");
-        println!("  loom guide       learn the loop and lifecycle transitions (read this first)");
+        println!("  loom guide --all learn the loop and lifecycle transitions (read this first)");
         println!("  loom schema      the data model, lifecycle, and states");
         println!("  loom status      where am I? what next?");
         println!("  loom next        get the next thing to inspect");
