@@ -184438,7 +184438,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.268246+00:00",
+        "updated_at": "2026-06-22T08:57:48.873650+00:00",
         "visibility": "user_visible"
       },
       {
@@ -184476,7 +184476,7 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.334843+00:00",
+        "updated_at": "2026-06-22T08:57:47.261018+00:00",
         "visibility": "user_visible"
       },
       {
@@ -184584,7 +184584,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.396407+00:00",
+        "updated_at": "2026-06-22T08:57:48.146940+00:00",
         "visibility": "user_visible"
       },
       {
@@ -184602,7 +184602,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.203802+00:00",
+        "updated_at": "2026-06-22T08:57:48.511241+00:00",
         "visibility": "user_visible"
       },
       {
@@ -184728,7 +184728,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.579347+00:00",
+        "updated_at": "2026-06-22T08:57:49.054545+00:00",
         "visibility": "user_visible"
       },
       {
@@ -184973,7 +184973,7 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.639030+00:00",
+        "updated_at": "2026-06-22T08:57:48.322749+00:00",
         "visibility": "user_visible"
       },
       {
@@ -185260,7 +185260,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.458073+00:00",
+        "updated_at": "2026-06-22T08:57:48.685428+00:00",
         "visibility": "user_visible"
       },
       {
@@ -185478,7 +185478,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.080132+00:00",
+        "updated_at": "2026-06-22T08:57:47.806455+00:00",
         "visibility": "user_visible"
       },
       {
@@ -186302,7 +186302,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:56.958500+00:00",
+        "updated_at": "2026-06-22T08:57:40.586632+00:00",
         "visibility": "user_visible"
       },
       {
@@ -186340,7 +186340,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.518531+00:00",
+        "updated_at": "2026-06-22T08:57:47.447775+00:00",
         "visibility": "user_visible"
       },
       {
@@ -186358,7 +186358,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:56.895586+00:00",
+        "updated_at": "2026-06-22T08:57:47.060241+00:00",
         "visibility": "user_visible"
       },
       {
@@ -186396,7 +186396,7 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.019868+00:00",
+        "updated_at": "2026-06-22T08:57:47.977506+00:00",
         "visibility": "user_visible"
       },
       {
@@ -186475,7 +186475,7 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-20T19:33:57.144344+00:00",
+        "updated_at": "2026-06-22T08:57:47.624466+00:00",
         "visibility": "user_visible"
       }
     ],
@@ -186502,6 +186502,17 @@
         "target_id": "large_behavioral_symbol:src/commands/hypothesis.rs:fn run_with_sqlite",
         "target_kind": "smell",
         "text": "Audited the function: a flat match over HypothesisCmd advancing one Hypothesis through the pre-decision plane — add (propose), prove (record verdict), adopt/reject (disposition + the adopt proof-spawn), target, list, show. Each arm is a short state-transition flow; the length is the number of lifecycle verbs, not branching depth. The adopt arm carries the only non-trivial step (spawning the outcome validation), which belongs with the transition that triggers it."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:48.146940+00:00",
+        "id": "004d2b93-1d19-46cf-b7eb-d926c7962295",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "23305d3a-e72e-496d-b19b-fd292a0f3e37",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -186835,6 +186846,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.806455+00:00",
+        "id": "0bcee45d-6182-4fb4-bc3b-43f7940f5f67",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "80525ab5-087c-423d-ba64-40f2e06f7726",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-22T08:38:39.054820+00:00",
         "id": "0c0d3808-9ced-488b-84a0-7e85f0aaaae2",
@@ -187011,6 +187033,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.977506+00:00",
+        "id": "104d1b36-8aea-45ab-ad6d-4e3c369099e1",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f93166ae-30d7-4708-ac50-f202c45cbbed",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T12:36:02.536419+00:00",
         "id": "10b17b97-2051-4d55-9af5-fdb5cc7bf0ab",
@@ -187052,6 +187085,17 @@
         "target_id": "string_contract_duplicate:src/output.rs",
         "target_kind": "smell",
         "text": "Printer impl string literals duplicated between print_json and the impl block. The 1 duplication is the JSON serialization format where print_json references the same serde contract."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:40.586632+00:00",
+        "id": "1150ff40-9f2d-4b47-8f85-4f635b00a4af",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -187924,6 +187968,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.624466+00:00",
+        "id": "269e2e9a-9cfa-447f-9ce0-0cea133244c8",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-15T17:01:37.351663+00:00",
         "id": "26dcedd3-3c60-4ea1-8fef-609d03baac67",
@@ -188229,6 +188284,17 @@
         "target_id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "target_kind": "codefile",
         "text": "Guide command intentionally carries seed, porting, and self-teaching protocol text together so the binary emits one coherent operator playbook; splitting prose by intent would make the user-facing guide harder to audit."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.060241+00:00",
+        "id": "305e7de4-ee2e-4ca3-8143-bd47c637e5f8",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -188760,6 +188826,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:32.345694+00:00",
+        "id": "3e7df112-e797-48ab-9776-1dd1e6da3e1c",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-17T10:34:37.794515+00:00",
         "id": "3eb65409-db9d-4c1d-9ea4-0914f4646d8d",
@@ -189156,6 +189233,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.261018+00:00",
+        "id": "4923d628-10c7-4602-8edb-1330b7c81925",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-18T05:01:31.514540+00:00",
         "id": "495f48b3-c161-4f40-8c7f-9b3adcd3a840",
@@ -189453,6 +189541,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:32.009743+00:00",
+        "id": "4ff5f3aa-2ff7-4552-a144-aec782a5e569",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "656c13fa-afce-4230-b52a-9461c6ec23a1",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-22T08:37:05.486756+00:00",
         "id": "503f7bb9-2378-4468-9d4d-aa0970a2ae60",
@@ -189483,6 +189582,17 @@
         "target_id": "tangled_file:src/commands/validate.rs",
         "target_kind": "smell",
         "text": "Audited the code: loom validate runs proofs. execute_and_record runs validation commands with the DB CLOSED on purpose — releasing the graph lock so a proof may itself invoke loom (found by loom validating itself) — then reopens to persist results + VALIDATES verdicts in one transaction; run_all drains every not_run proof after a sync flood. The three owners are validate-all, proof/bootstrap, and validation/saga storage-isolation — the last IS that close-during-exec lock discipline, not a file that could live elsewhere."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:48.873650+00:00",
+        "id": "514c63d2-6f61-4a2d-b7ae-81db5ea38a6d",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "147f04bb-f2af-4cc8-b582-de003853b41c",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -189519,6 +189629,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:31.643753+00:00",
+        "id": "531e5be7-4a39-4660-9ef5-917a85e11055",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-17T15:09:07.197292+00:00",
         "id": "531efbaa-a581-49d8-9d7b-4e7701ccefbe",
@@ -189549,6 +189670,17 @@
         "target_id": "cfcbfb63-c60e-4ff3-b9c1-0d2058d921e8",
         "target_kind": "intent",
         "text": "boundary changed: 'inbound' -> '<internal>' (resolve interface-plane gap: shared symbol matching is internal graph-analysis implementation, not an externally callable surface, so the boundary facet was misleading)"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:32.177460+00:00",
+        "id": "53759a6b-5bb7-458b-86c3-09c5b0c58f44",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "147f04bb-f2af-4cc8-b582-de003853b41c",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -189637,6 +189769,17 @@
         "target_id": "string_contract_duplicate:src/commands/intent.rs",
         "target_kind": "smell",
         "text": "Intent command string literals duplicated between handle_confirm, update_next_step, and handle_retire — all resolve intent by key. The 2 duplications are the intent resolution protocol shared by multiple subcommands."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:48.511241+00:00",
+        "id": "5684a7fb-4703-435d-ad9c-44cc0c70c3c9",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "246d039f-08d0-4b01-b194-5917bb3a3a25",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -190022,6 +190165,17 @@
         "target_id": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: next discovery/fix dispatch is hardcoded analyzer/mid and fixer/high (commands/next.rs ~208-212) despite effort being documented as structure-derived; quality already derives from rule effort"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:31.838200+00:00",
+        "id": "6391141a-6023-4b6e-93e7-fca17fd01a6b",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "246d039f-08d0-4b01-b194-5917bb3a3a25",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -190806,6 +190960,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:31.109191+00:00",
+        "id": "799d4370-2607-4c8c-ba28-6249128ac901",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "80525ab5-087c-423d-ba64-40f2e06f7726",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-22T08:38:39.159262+00:00",
         "id": "7a0f78ce-9722-4485-84e4-e9a3720a7e46",
@@ -190858,6 +191023,17 @@
         "target_id": "f93c6052-280d-40a4-996d-617647982800",
         "target_kind": "intent",
         "text": "lifecycle → implemented: fixed: inbox list and id resolution predicates are pushed into SQL WHERE clauses"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:48.685428+00:00",
+        "id": "7bdfb693-1c6e-41fc-827d-6752097284a5",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "656c13fa-afce-4230-b52a-9461c6ec23a1",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -191301,6 +191477,28 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:31.470009+00:00",
+        "id": "8bee066d-4d4b-4b90-8c2d-334d55ff11c5",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "23305d3a-e72e-496d-b19b-fd292a0f3e37",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:30.865102+00:00",
+        "id": "8bf4bc1e-4c67-468b-868d-247398f45ded",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "fe9b68f0-d9ae-4cc7-ba45-7149d71c686b",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-20T11:08:32.897960+00:00",
         "id": "8c196d23-74ad-4ba2-9fd1-ca49c989aeee",
@@ -191356,6 +191554,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:30.317383+00:00",
+        "id": "8c918992-630f-43de-8a5f-0bb6aba32a7a",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-16T13:17:27.419220+00:00",
         "id": "8ca956a6-53b7-46a3-a2d8-537578576640",
@@ -191375,6 +191584,28 @@
         "target_id": "3fe71c5a-d357-4c51-9363-e9874a755f83",
         "target_kind": "intent",
         "text": "lifecycle → needs_change: twin-intent/duplicated-responsibility iterate all intent pairs then check abstraction level (db/queries/smells.rs ~614,~657); pre-bucketing by abstraction level avoids cross-level comparisons"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:30.573994+00:00",
+        "id": "8ce8104a-36ac-44c7-b379-6734ecf17fdf",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:47.447775+00:00",
+        "id": "8d4e949e-b24e-4be3-b480-47fc213343af",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -192126,6 +192357,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:29.745634+00:00",
+        "id": "a25d86c9-544c-4cda-aef7-d35496f45c72",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "ebb7441b-bb63-4908-80bf-9c8cefe2c198",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm",
         "created_at": "2026-06-15T11:19:54.413834+00:00",
         "id": "a267a615-7840-4722-b1cb-ab4c5b5d93ed",
@@ -192618,6 +192860,17 @@
         "target_id": "large_behavioral_symbol:src/db/queries/integrity.rs:fn audit_inspectable_edges",
         "target_kind": "smell",
         "text": "Considered splitting by edge kind. Rejected because the audit applies the same inspection_status validation to all edge kinds; the size reflects the number of edge kinds, not per-kind complexity."
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:31.295333+00:00",
+        "id": "af595f6b-c578-4b8e-a3c0-bb40e25deace",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f93166ae-30d7-4708-ac50-f202c45cbbed",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -194436,6 +194689,17 @@
       },
       {
         "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:48.322749+00:00",
+        "id": "dce71383-9ede-4f73-9eae-546f01054ae6",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "4c752ad2-e332-4148-87e2-88340991e2a5",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:analyzer",
         "created_at": "2026-06-22T08:38:38.996266+00:00",
         "id": "dcf88362-01b9-40ce-84d6-0cde22bfbc00",
@@ -194829,6 +195093,17 @@
         "target_id": "cdbc43f7-0d6b-4040-95b9-2a07e9111a16",
         "target_kind": "intent",
         "text": "visibility ruled internal during alignment"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:30.008223+00:00",
+        "id": "e7a3c6ab-612c-4c61-947e-9cd8da16b47b",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -195630,6 +195905,17 @@
         "kind": "confirm",
         "resolution": "",
         "target_id": "f2995090-ba95-48d3-bb6d-21b4044c32dc",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm:validator",
+        "created_at": "2026-06-22T08:57:49.054545+00:00",
+        "id": "ff29b70b-6c54-4e6d-a800-b22d4c962f8c",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "target_kind": "intent",
         "text": "meaning re-affirmed"
       },
