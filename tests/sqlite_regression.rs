@@ -2458,6 +2458,159 @@ fn sqlite_seed_inbox_ingests_surface_idempotently() {
     assert_eq!(v2["ingested"], 0, "re-run is idempotent: {v2}");
 }
 
+#[test]
+fn sqlite_source_corpus_blocks_seeded_for_unmodeled_structured_ids() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("source-corpus-seeded");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "docs/user-stories.md",
+        "# Stories\n\n- US-101 checkout works\n- E-7 checkout epic\n",
+    );
+
+    let status = run_json(&graph.root, &["status", "--json"]);
+    assert_eq!(status["source_corpus"]["ids_total"], 2, "{status}");
+    assert_eq!(status["source_corpus"]["unresolved"], 2, "{status}");
+    let seeded = status["maturity"]["rungs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["name"] == "Seeded")
+        .unwrap();
+    assert_ne!(
+        seeded["status"], "met",
+        "unmodeled structured docs must keep Seeded honest: {status}"
+    );
+}
+
+#[test]
+fn sqlite_doc_source_intent_defaults_to_planned() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("doc-source-planned");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "docs/spec.md", "# Spec\nUS-9 parse things\n");
+
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "US-9",
+            "--description",
+            "US-9 is represented as planned work from docs",
+            "--level",
+            "feature",
+            "--source",
+            "docs/spec.md#US-9",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert_eq!(
+        intent["lifecycle"], "planned",
+        "doc-only sources default to planned unless lifecycle is explicit: {intent}"
+    );
+}
+
+#[test]
+fn sqlite_seed_requirements_imports_structured_ids_as_planned() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("seed-requirements");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let parent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "checkout",
+            "--description",
+            "checkout requirement parent",
+            "--level",
+            "system",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let parent_id = parent["id"].as_str().unwrap();
+    write_scratch_file(
+        &graph.root,
+        "docs/stories.md",
+        "# Stories\n\nUS-42 pay with card\nE-5 checkout epic\nADR-3 should not auto-seed\n",
+    );
+
+    let seeded = run_json_as(
+        &graph.root,
+        &[
+            "seed",
+            "--requirements",
+            "docs/stories.md",
+            "--under",
+            parent_id,
+            "--json",
+        ],
+        "llm:builder",
+    );
+    assert_eq!(seeded["created_count"], 2, "{seeded}");
+    let list = run_json(&graph.root, &["intent", "list", "--json"]);
+    let intents = list["intents"].as_array().unwrap();
+    assert!(
+        intents
+            .iter()
+            .any(|i| i["name"] == "US-42" && i["lifecycle"] == "planned"),
+        "US ID imported as planned feature: {list}"
+    );
+    assert!(
+        intents
+            .iter()
+            .any(|i| i["name"] == "E-5" && i["lifecycle"] == "planned"),
+        "E ID imported as planned component: {list}"
+    );
+    assert!(
+        !intents.iter().any(|i| i["name"] == "ADR-3"),
+        "ADR IDs are reported but not auto-seeded as intents: {list}"
+    );
+}
+
+#[test]
+fn sqlite_validate_serves_user_visible_journey_debt() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("validate-journey-debt");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "account signup",
+            "--description",
+            "user can sign up for an account",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--visibility",
+            "user_visible",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let next = run_json(&graph.root, &["next", "--mode", "validate", "--json"]);
+    assert_eq!(next["mode"], "validate", "{next}");
+    assert_eq!(next["intent"]["id"], intent["id"], "{next}");
+    assert!(
+        next["reason"]
+            .as_str()
+            .is_some_and(|r| r.contains("journey proof")),
+        "validate must serve Proven journey debt: {next}"
+    );
+}
+
 // `loom tour` — the guided comprehension walkthrough. Reads the graph back in
 // decomposition order (system before its features), and per stop reports what a
 // part is SUPPOSED to do, where it's grounded, and — uniquely to loom — whether
@@ -3395,10 +3548,7 @@ fn sqlite_bare_guide_serves_the_focus_lane_skill() {
         all.get("done_condition").is_some(),
         "`loom guide --all` must be the full manual"
     );
-    assert!(
-        all.get("role").is_none(),
-        "the manual is not a role charge"
-    );
+    assert!(all.get("role").is_none(), "the manual is not a role charge");
 }
 
 // DOGFOOD-FOUND DEFECT (AI-companion hunt): `loom status` lumped registered-but-
@@ -5821,6 +5971,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "other_lanes",
         "passing_edges",
         "populate",
+        "source_corpus",
         "total_codefiles",
         "total_edges",
         "total_intents",
@@ -7323,5 +7474,219 @@ fn sqlite_passing_edge_restales_on_code_change_even_when_uncoupled() {
         relates_status(&graph.root, &a, &b),
         "needs_reverification",
         "a passing edge must re-open on code change regardless of coupling — the independent-only gate must not leak onto passing edges"
+    );
+}
+
+// G2 discriminating proofs for leaf intents whose validations were asserted-only
+// (bash/sh, cargo filters matching 0 tests, or pre-G2 runs). Each test below is
+// linked via `loom validation update` to a real `cargo test …` runner.
+
+#[test]
+fn sqlite_loom_graph_pin_survives_foreign_cwd() {
+    let _guard = sqlite_test_lock();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    let pin = env::temp_dir().join(format!("loom-graph-pin-{}-{nanos}", std::process::id()));
+    fs::create_dir_all(&pin).expect("pin dir");
+    run_json(&pin, &["init", ".", "--json"]);
+    let out = Command::new(loom_bin())
+        .args(["status", "--json"])
+        .current_dir("/")
+        .env("LOOM_GRAPH", &pin)
+        .env_remove("LOOM_AGENT")
+        .output()
+        .expect("loom status from foreign cwd");
+    assert!(
+        out.status.success(),
+        "LOOM_GRAPH must win over cwd: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v: Value = serde_json::from_slice(&out.stdout).expect("status json");
+    let init = run_json(&pin, &["status", "--json"]);
+    assert_eq!(
+        v["graph_state"]["graph_id"], init["graph_state"]["graph_id"],
+        "foreign cwd must read the LOOM_GRAPH-pinned store, not cwd: {v}"
+    );
+    let _ = fs::remove_dir_all(&pin);
+}
+
+#[test]
+fn sqlite_delegated_coverage_counts_child_export() {
+    let _guard = sqlite_test_lock();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    let root = env::temp_dir().join(format!("loom-delegated-cov-{}-{nanos}", std::process::id()));
+    fs::create_dir_all(&root).expect("root dir");
+    run_json(&root, &["init", ".", "--json"]);
+    let svc = root.join("services/api");
+    fs::create_dir_all(&svc).expect("child service dir");
+    write_scratch_file(&root, "services/api/lib.rs", "fn api() {}\n");
+    run_json_as(
+        &root,
+        &[
+            "delegate",
+            "add",
+            "services/api/**",
+            "--to",
+            "services/api/loom.graph.json",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let missing = run_json(&root, &["coverage", "--json"]);
+    assert_eq!(
+        missing["delegation_targets_missing"],
+        serde_json::json!(["services/api/loom.graph.json"]),
+        "child export missing before init: {missing}"
+    );
+    run_json(&svc, &["init", ".", "--json"]);
+    run_json(&svc, &["export", "--json"]);
+    let covered = run_json(&root, &["coverage", "--json"]);
+    assert_eq!(
+        covered["unaccounted"], 0,
+        "delegated child closes gaps: {covered}"
+    );
+    assert!(
+        covered["delegated"].as_i64().unwrap_or(0) >= 1,
+        "child export counts as delegated coverage: {covered}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn sqlite_bulk_quality_take_returns_batch_template() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("bulk-quality-take");
+    let take = run_json(
+        &graph.root,
+        &["next", "--mode", "quality", "--take", "5", "--json"],
+    );
+    assert!(
+        take["status"] == "ok" || take["status"] == "empty",
+        "quality --take must answer: {take}"
+    );
+    if take["status"] == "ok" {
+        assert!(
+            take.get("batch_template").is_some(),
+            "a non-empty quality bulk read carries batch_template: {take}"
+        );
+    }
+}
+
+#[test]
+fn sqlite_serve_command_is_retired() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("serve-retired");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let out = Command::new(loom_bin())
+        .args(["serve"])
+        .current_dir(&graph.root)
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("loom serve");
+    assert!(
+        !out.status.success(),
+        "loom serve must be retired (non-zero exit)"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("retired"),
+        "retirement must be named: {stderr}"
+    );
+}
+
+#[test]
+fn sqlite_import_as_planned_resets_lifecycle_and_proofs() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("import-as-planned");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let imp = run_json(
+        &graph.root,
+        &["import", "loom.graph.json", "--as-planned", "--json"],
+    );
+    assert_eq!(imp["as_planned"], true, "flag recorded: {imp}");
+    let sample = run_json(&graph.root, &["intent", "list", "--json"]);
+    let intents = sample["intents"].as_array().expect("intents");
+    assert!(
+        intents.iter().all(|i| i["lifecycle"] == "planned"),
+        "every imported intent arrives planned: {sample}"
+    );
+    let proofs = run_json(&graph.root, &["validation", "list", "--json"]);
+    assert!(
+        proofs["validations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|v| v["last_result"] != "passed"),
+        "import --as-planned must not carry forward passed proof verdicts: {proofs}"
+    );
+}
+
+#[test]
+fn sqlite_seed_guide_routes_to_interview() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("seed-guide");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let text = run_text_as(&graph.root, &["guide", "--mode", "seed"], "llm");
+    assert!(
+        text.contains("terminate on completeness") || text.contains("interview"),
+        "seed guide must teach the user interview loop: {text}"
+    );
+}
+
+#[test]
+fn sqlite_hypothesis_prove_queue_surfaces_proposed() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("prove-queue");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let target = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "prove queue target",
+            "--description",
+            "central intent for hypothesis prove ranking",
+            "--level",
+            "feature",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let tid = target["id"].as_str().unwrap();
+    run_json_as(
+        &graph.root,
+        &[
+            "hypothesis",
+            "add",
+            "--name",
+            "prove queue hypothesis",
+            "--claim",
+            "the target has a measurable improvement opportunity",
+            "--proposal",
+            "refactor the target for clarity",
+            "--predicted-outcome",
+            "fewer lines in the hot path",
+            "--target",
+            tid,
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let prove = run_json(&graph.root, &["next", "--mode", "prove", "--json"]);
+    assert_eq!(
+        prove["mode"], "prove",
+        "proposed hypothesis is prove work: {prove}"
+    );
+    assert!(
+        prove["hypothesis"]["name"]
+            .as_str()
+            .is_some_and(|n| n.contains("prove queue")),
+        "prove queue serves the seeded hypothesis: {prove}"
     );
 }

@@ -292,7 +292,7 @@ struct AddIntentArgs {
     domain: String,
     layer: String,
     aspect: String,
-    lifecycle: String,
+    lifecycle: Option<String>,
     sources: Vec<String>,
     tags: Vec<String>,
     visibility: String,
@@ -344,6 +344,19 @@ fn handle_add(
     let level = level
         .parse::<crate::types::AbstractionLevel>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let doc_only_sources = !sources.is_empty()
+        && sources.iter().all(|source| {
+            let path = source.split_once('#').map(|(p, _)| p).unwrap_or(source);
+            crate::db::queries::comprehensiveness::is_doc_file(path)
+        });
+    let lifecycle_was_explicit = lifecycle.is_some();
+    let lifecycle = lifecycle.unwrap_or_else(|| {
+        if doc_only_sources {
+            "planned".to_string()
+        } else {
+            "implemented".to_string()
+        }
+    });
     lifecycle
         .parse::<crate::types::LifecycleState>()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -393,7 +406,7 @@ fn handle_add(
         tags,
         visibility,
         boundary,
-        lifecycle,
+        lifecycle: lifecycle.clone(),
         created_at: now.clone(),
         updated_at: now,
     };
@@ -426,6 +439,12 @@ fn handle_add(
             if let Some(g) = granularity_advisory(&name) {
                 obj.insert("granularity_advisory".to_string(), g.into());
             }
+            if lifecycle_was_explicit && lifecycle == "implemented" && doc_only_sources {
+                obj.insert(
+                    "docs_lifecycle_warning".to_string(),
+                    "This intent is implemented but only has doc sources. Docs are contracts, not code realization; it will count as doc-only realization until grounded to code.".into(),
+                );
+            }
         }
         printer.print_json(&v);
     } else {
@@ -433,6 +452,9 @@ fn handle_add(
         println!("{}", fmt_intent(&intent));
         if let Some(g) = granularity_advisory(&name) {
             println!("  ⚑ {g}");
+        }
+        if lifecycle_was_explicit && lifecycle == "implemented" && doc_only_sources {
+            println!("  ⚑ Docs are contracts, not code realization; this implemented intent has only doc sources and will count as doc-only realization until grounded to code.");
         }
         println!("  → Next: {}", tree_step);
         println!("          then ground it: `loom edge implement {} <codefile> --locator \"<symbol>\"` (symbol as written in the file).", id);
@@ -465,10 +487,22 @@ fn handle_confirm(
             anyhow::bail!("Invalid --visibility '{v}'. Valid: user_visible | internal.");
         }
     }
+    let before_target = if visibility.as_deref() == Some("user_visible") {
+        let snapshot = store.query_snapshot()?;
+        crate::db::queries::comprehensiveness::journey_ledger_from_snapshot(&snapshot).enumerated
+    } else {
+        0
+    };
     let now = chrono::Utc::now().to_rfc3339();
     if !store.confirm_intent(&id, visibility.as_deref(), &by, &now)? {
         anyhow::bail!(crate::output::intent_not_found_list(&id));
     }
+    let after_target = if visibility.as_deref() == Some("user_visible") {
+        let snapshot = store.query_snapshot()?;
+        crate::db::queries::comprehensiveness::journey_ledger_from_snapshot(&snapshot).enumerated
+    } else {
+        0
+    };
     let confirmed_msg = match visibility.as_deref() {
         Some("internal") => {
             "confirmed + ruled internal — out of the align interview until its meaning is redefined"
@@ -482,10 +516,25 @@ fn handle_confirm(
         if let Some(v) = visibility.as_deref() {
             payload["visibility"] = serde_json::json!(v);
         }
+        if visibility.as_deref() == Some("user_visible") {
+            payload["proven_target_before"] = serde_json::json!(before_target);
+            payload["proven_target_after"] = serde_json::json!(after_target);
+            payload["proven_target_delta"] =
+                serde_json::json!(after_target.saturating_sub(before_target));
+            payload["proof_obligation"] = serde_json::json!(
+                "This user-visible leaf now counts toward Proven; boundary saga proof required."
+            );
+        }
         payload["next_step"] = serde_json::json!(next_step);
         printer.print_json(&payload);
     } else {
         println!("✓ Intent {} {}", id, confirmed_msg);
+        if visibility.as_deref() == Some("user_visible") {
+            println!(
+                "  ⚑ Proven target: {} → {}. This user-visible leaf requires a boundary saga proof for Proven.",
+                before_target, after_target
+            );
+        }
         println!("  → Next: {next_step}");
     }
     Ok(())

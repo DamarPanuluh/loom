@@ -24,10 +24,11 @@ use crate::db::queries::stats::{CoverageAxis, GraphState};
 use std::path::Path;
 
 use crate::db::queries::comprehensiveness as comp;
+use crate::db::queries::corpus::{source_corpus_coverage, SourceCorpusCoverage};
 use crate::db::queries::stats::fully_proven_from_state;
 use crate::db::queries::symbol_accountability::symbol_accountability_from_parts_with_notes;
 use crate::db::queries::QuerySnapshot;
-use crate::types::Note;
+use crate::types::{InboxItem, Note};
 
 /// Per-rung state. `NotApplicable` and `Met` are both "cleared" — focus skips
 /// them; only `Partial`/`Unmet` draw the focus and route work.
@@ -137,6 +138,8 @@ pub struct LadderInputs<'a> {
     pub open_smells: &'a [Smell],
     pub doc_only_realizations: &'a [String],
     pub inbox_untriaged: usize,
+    pub source_corpus_unresolved: usize,
+    pub planned_leaf_debt: usize,
     pub fully_proven_ok: bool,
     pub fully_proven_reasons: &'a [String],
 }
@@ -193,6 +196,12 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             input.inbox_untriaged
         ));
     }
+    if input.source_corpus_unresolved > 0 {
+        seeded_reasons.push(format!(
+            "{} documented requirement ID(s) are not modeled or resolved",
+            input.source_corpus_unresolved
+        ));
+    }
     // Seeded work is authoring/grounding the surface (build) or triaging intake.
     let seeded_lane =
         if input.entrypoint.total > 0 && input.entrypoint.covered < input.entrypoint.total {
@@ -242,7 +251,17 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     let realized = graded(
         "Realized",
         realized_reasons,
-        format!("{}/{}", exec.covered, realized_leaves.covered),
+        if input.planned_leaf_debt > 0 {
+            format!(
+                "{}/{} implemented leaves · {} planned leaves not built",
+                exec.covered, realized_leaves.covered, input.planned_leaf_debt
+            )
+        } else {
+            format!(
+                "{}/{} implemented leaves",
+                exec.covered, realized_leaves.covered
+            )
+        },
         gs.vertically_complete,
         realized_lane,
     );
@@ -386,6 +405,7 @@ pub struct LadderBundle {
     pub journey: Ledger,
     pub behavioral: Ledger,
     pub doc_only: Vec<String>,
+    pub source_corpus: SourceCorpusCoverage,
     pub modeled_pct: usize,
     pub grounded_symbols: usize,
     pub total_symbols: usize,
@@ -400,6 +420,7 @@ pub fn build_ladder(
     snapshot: &QuerySnapshot,
     gs: &GraphState,
     decision_notes: &[Note],
+    inbox_items: &[InboxItem],
     open_smells: &[Smell],
     inbox_untriaged: usize,
     export_stale: bool,
@@ -415,6 +436,16 @@ pub fn build_ladder(
     let journey = comp::journey_ledger_from_snapshot(snapshot);
     let behavioral = comp::behavioral_ledger_from_snapshot(snapshot);
     let doc_only = comp::doc_only_realizations(snapshot);
+    let source_corpus = source_corpus_coverage(root, snapshot, inbox_items);
+    let parents: std::collections::HashSet<&str> =
+        snapshot.hierarchy.iter().map(|(p, _)| p.as_str()).collect();
+    let planned_leaf_debt = snapshot
+        .intents
+        .iter()
+        .filter(|intent| intent.status != "deprecated")
+        .filter(|intent| intent.lifecycle == "planned")
+        .filter(|intent| !parents.contains(intent.id.as_str()))
+        .count();
 
     let (mut fp_ok, mut fp_reasons) =
         fully_proven_from_state(gs, snapshot, open_smells, &entrypoint, inbox_untriaged);
@@ -432,6 +463,8 @@ pub fn build_ladder(
         open_smells,
         doc_only_realizations: &doc_only,
         inbox_untriaged,
+        source_corpus_unresolved: source_corpus.unresolved,
+        planned_leaf_debt,
         fully_proven_ok: fp_ok,
         fully_proven_reasons: &fp_reasons,
     });
@@ -450,6 +483,7 @@ pub fn build_ladder(
         journey,
         behavioral,
         doc_only,
+        source_corpus,
         modeled_pct,
         grounded_symbols,
         total_symbols,

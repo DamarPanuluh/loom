@@ -43,7 +43,233 @@ pub fn run(cmd: SagaCmd, printer: &Printer) -> Result<()> {
         SagaCmd::Run { saga } => execute_sqlite(&saga, printer),
         SagaCmd::Diagnose { saga } => diagnose_sqlite(&saga, printer),
         SagaCmd::List => list(printer),
+        SagaCmd::Gaps => gaps(printer),
+        SagaCmd::SuggestMapping { spec, all } => suggest_mapping(spec.as_deref(), all, printer),
     }
+}
+
+fn suggest_mapping(spec: Option<&str>, all: bool, printer: &Printer) -> Result<()> {
+    let cwd = crate::db::resolve_root()?;
+    let store = GraphReadHandle::open(&cwd)?;
+    let snapshot = store.query_snapshot()?;
+    let specs = if let Some(spec) = spec {
+        vec![relative_to_root(spec, &cwd)?]
+    } else if all {
+        registered_saga_specs(&snapshot)
+    } else {
+        anyhow::bail!("Pass --spec <file> or --all.");
+    };
+    let mut suggestions = Vec::new();
+    for rel in specs {
+        let spec = load_spec_file(&cwd.join(&rel))?;
+        for (idx, step) in spec.steps.iter().enumerate() {
+            let mut scored: Vec<_> = snapshot
+                .intents
+                .iter()
+                .filter(|intent| intent.status != "deprecated")
+                .map(|intent| {
+                    let score = mapping_score(
+                        intent,
+                        &step.intent,
+                        &step.name,
+                        &step.request.method,
+                        &step.request.url,
+                    );
+                    (score, intent)
+                })
+                .filter(|(score, _)| *score > 0)
+                .collect();
+            scored.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.name.cmp(&b.1.name)));
+            let candidates = scored
+                .into_iter()
+                .take(5)
+                .map(|(score, intent)| {
+                    serde_json::json!({
+                        "score": score,
+                        "id": intent.id,
+                        "name": intent.name,
+                        "replacement": format!("intent: {}", intent.id),
+                    })
+                })
+                .collect::<Vec<_>>();
+            suggestions.push(serde_json::json!({
+                "saga": spec.saga,
+                "step_index": idx + 1,
+                "step_name": step.name,
+                "current_intent": step.intent,
+                "method": step.request.method,
+                "url": step.request.url,
+                "candidates": candidates,
+            }));
+        }
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "suggestions": suggestions,
+            "note": "Read-only suggestions. Edit the saga YAML, then rerun `loom saga add <spec.yaml>`.",
+        }));
+    } else {
+        println!("── Saga Mapping Suggestions ───────────────────────────────────────");
+        for suggestion in &suggestions {
+            println!(
+                "  {} step {}: {} {}",
+                suggestion["saga"].as_str().unwrap_or("saga"),
+                suggestion["step_index"].as_u64().unwrap_or(0),
+                suggestion["method"].as_str().unwrap_or(""),
+                suggestion["url"].as_str().unwrap_or("")
+            );
+            for candidate in suggestion["candidates"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .take(3)
+            {
+                println!(
+                    "    score {} → {} ({})",
+                    candidate["score"].as_i64().unwrap_or(0),
+                    candidate["name"].as_str().unwrap_or(""),
+                    candidate["id"].as_str().unwrap_or("")
+                );
+            }
+        }
+        println!("→ Edit the YAML intent bindings, then rerun `loom saga add <spec.yaml>`.");
+    }
+    Ok(())
+}
+
+fn registered_saga_specs(snapshot: &crate::db::queries::QuerySnapshot) -> Vec<String> {
+    let mut specs = Vec::new();
+    for validation in &snapshot.validations {
+        if validation.validation_type != "saga" {
+            continue;
+        }
+        for line in validation.description.lines() {
+            if let Some(spec) = line.strip_prefix("spec:") {
+                specs.push(spec.trim().to_string());
+            }
+        }
+    }
+    specs.sort();
+    specs.dedup();
+    specs
+}
+
+fn mapping_score(
+    intent: &crate::types::Intent,
+    current_binding: &str,
+    step_name: &str,
+    method: &str,
+    url: &str,
+) -> i64 {
+    let haystack = format!(
+        "{} {} {} {}",
+        intent.name,
+        intent.description,
+        intent.criterion,
+        intent.source_refs.join(" ")
+    )
+    .to_ascii_lowercase();
+    let binding = current_binding.to_ascii_lowercase();
+    let mut score = 0;
+    if current_binding == intent.id || binding == intent.name.to_ascii_lowercase() {
+        score += 100;
+    }
+    for id in crate::db::queries::extract_ids(
+        current_binding,
+        crate::db::queries::DEFAULT_CORPUS_PREFIXES,
+    ) {
+        if crate::db::queries::contains_id_token(&haystack.to_ascii_uppercase(), &id) {
+            score += 90;
+        }
+    }
+    for token in mapping_tokens(&format!("{step_name} {method} {url}")) {
+        if haystack.contains(&token) {
+            score += 5;
+        }
+    }
+    score
+}
+
+fn mapping_tokens(text: &str) -> Vec<String> {
+    let mut tokens = text
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .map(|s| s.to_ascii_lowercase())
+        .filter(|s| s.len() >= 3)
+        .collect::<Vec<_>>();
+    tokens.sort();
+    tokens.dedup();
+    tokens
+}
+
+fn gaps(printer: &Printer) -> Result<()> {
+    let cwd = crate::db::resolve_root()?;
+    let store = GraphReadHandle::open(&cwd)?;
+    let snapshot = store.query_snapshot()?;
+    let ledger = crate::db::queries::comprehensiveness::journey_ledger_from_snapshot(&snapshot);
+    let mut saga_edges: std::collections::HashMap<&str, Vec<&crate::types::Validation>> =
+        std::collections::HashMap::new();
+    let validations: std::collections::HashMap<&str, &crate::types::Validation> = snapshot
+        .validations
+        .iter()
+        .filter(|v| v.validation_type == "saga")
+        .map(|v| (v.id.as_str(), v))
+        .collect();
+    for edge in &snapshot.validates {
+        if let Some(validation) = validations.get(edge.validation_id.as_str()) {
+            saga_edges
+                .entry(edge.intent_id.as_str())
+                .or_default()
+                .push(*validation);
+        }
+    }
+    let rows: Vec<_> = ledger
+        .owed
+        .iter()
+        .map(|owed| {
+            let sagas = saga_edges.get(owed.id.as_str()).cloned().unwrap_or_default();
+            let kind = if sagas.is_empty() {
+                "no_saga_step"
+            } else if sagas.iter().any(|v| v.discrimination_status != "discriminating") {
+                "saga_not_discriminating"
+            } else {
+                "saga_not_run_or_failed"
+            };
+            serde_json::json!({
+                "id": owed.id,
+                "name": owed.name,
+                "kind": kind,
+                "sagas": sagas.iter().map(|v| serde_json::json!({
+                    "id": v.id,
+                    "name": v.name,
+                    "last_result": v.last_result,
+                    "discrimination_status": v.discrimination_status,
+                })).collect::<Vec<_>>(),
+                "suggested_action": format!("Add or run a boundary saga for this intent, or correct visibility: loom intent confirm {} --visibility internal", owed.id),
+            })
+        })
+        .collect();
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "total": rows.len(),
+            "gaps": rows,
+        }));
+    } else if rows.is_empty() {
+        println!("✓ No user-visible saga proof gaps.");
+    } else {
+        println!("── Saga Proof Gaps ─────────────────────────────────────────────────");
+        for row in &rows {
+            println!(
+                "  · [{}] {} ({})",
+                row["kind"].as_str().unwrap_or("gap"),
+                row["name"].as_str().unwrap_or(""),
+                row["id"].as_str().unwrap_or("")
+            );
+        }
+        println!("→ Add/extend sagas, or correct mistaken visibility with `loom intent confirm <id> --visibility internal`.");
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

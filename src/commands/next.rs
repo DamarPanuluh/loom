@@ -176,17 +176,15 @@ pub fn run(
             } else {
                 Vec::new()
             };
-            let inbox_untriaged = store
-                .list_inbox_items(None, None)?
-                .iter()
-                .filter(|i| i.status == "new")
-                .count();
+            let inbox_items = store.list_inbox_items(None, None)?;
+            let inbox_untriaged = inbox_items.iter().filter(|i| i.status == "new").count();
             let export_stale = store.committed_export_stale(&cwd)? == Some(true);
             let focus_lane = crate::db::queries::build_ladder(
                 &cwd,
                 &snap,
                 &gs,
                 &decision_notes,
+                &inbox_items,
                 &open_smells,
                 inbox_untriaged,
                 export_stale,

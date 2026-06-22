@@ -622,18 +622,15 @@ fn focus_lane_role() -> Option<&'static str> {
     } else {
         Vec::new()
     };
-    let inbox_untriaged = store
-        .list_inbox_items(None, None)
-        .ok()?
-        .iter()
-        .filter(|i| i.status == "new")
-        .count();
+    let inbox_items = store.list_inbox_items(None, None).ok()?;
+    let inbox_untriaged = inbox_items.iter().filter(|i| i.status == "new").count();
     let export_stale = store.committed_export_stale(&root).ok().flatten() == Some(true);
     let lane = crate::db::queries::build_ladder(
         &root,
         &snap,
         &gs,
         &decision_notes,
+        &inbox_items,
         &open_smells,
         inbox_untriaged,
         export_stale,

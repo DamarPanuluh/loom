@@ -194,7 +194,18 @@ pub(super) fn run_validate(
     let c = &candidates[0];
     let mut validations = db.validations_for_intent(&c.intent.id)?;
     let (notes, notes_total) = note_surfaces(db.notes_for_target(&c.intent.id)?, "validator");
-    let action = if validations.is_empty() {
+    let action = if c.reason.contains("missing journey proof") {
+        format!(
+            "PROVE this user-visible journey boundary.\n\
+             1. Add or extend a consumer saga with a step bound to this intent:\n     \
+                loom saga add <spec.yaml>\n  \
+             2. Run the saga against the live boundary:\n     \
+                BASE_URL=<url> loom saga run <name>\n  \
+             3. If this is not actually user-visible, correct the audience ruling:\n     \
+                loom intent confirm {id} --visibility internal",
+            id = c.intent.id,
+        )
+    } else if validations.is_empty() {
         format!(
             "PROVE this intent — it has no validations:\n\
              1. Decide how it can be proven (test | assertion | benchmark | manual_check —\n     \

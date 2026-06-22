@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 
-use crate::types::{Governs, Intent, IntentCentrality, RelatesTo, StatusReport, Validation};
+use crate::types::{Governs, Intent, IntentCentrality, Note, RelatesTo, StatusReport, Validation};
 
 use super::completeness::vertical_completeness_from_snapshot;
 use super::meta::GraphMeta;
@@ -114,6 +114,56 @@ pub struct GraphStateContext {
     pub meta: Option<GraphMeta>,
     pub notes: i64,
     pub transition_cap: usize,
+    pub note_log: NoteLogStats,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct NoteLogStats {
+    pub transition_notes: i64,
+    pub transition_targets: i64,
+    pub max_transitions_per_target: i64,
+    pub prunable_transition_notes: i64,
+}
+
+impl NoteLogStats {
+    pub fn from_notes(notes: &[Note], keep_per_target: usize) -> Self {
+        let mut by_target: BTreeMap<&str, Vec<&Note>> = BTreeMap::new();
+        for note in notes.iter().filter(|note| note.kind == "transition") {
+            by_target
+                .entry(note.target_id.as_str())
+                .or_default()
+                .push(note);
+        }
+
+        let mut prunable = 0i64;
+        if keep_per_target > 0 {
+            for notes in by_target.values() {
+                let mut kept_routine = 0usize;
+                for note in notes.iter().rev() {
+                    if note.text.ends_with("→ failing") || note.text.ends_with("→ needs_change")
+                    {
+                        continue;
+                    }
+                    if kept_routine < keep_per_target {
+                        kept_routine += 1;
+                        continue;
+                    }
+                    prunable += 1;
+                }
+            }
+        }
+
+        Self {
+            transition_notes: by_target.values().map(|notes| notes.len() as i64).sum(),
+            transition_targets: by_target.len() as i64,
+            max_transitions_per_target: by_target
+                .values()
+                .map(|notes| notes.len() as i64)
+                .max()
+                .unwrap_or(0),
+            prunable_transition_notes: prunable,
+        }
+    }
 }
 
 pub fn graph_state_from_snapshot_parts(
@@ -587,9 +637,25 @@ pub fn graph_state_from_snapshot_parts(
         let cap = context.transition_cap;
         if cap == 0 {
             format!("{notes} notes — the transition log is UNCAPPED and slows every command. `loom note prune --set-cap 20` bounds it (sync then holds it there).")
+        } else if context.note_log.prunable_transition_notes > 0 {
+            let note_log = &context.note_log;
+            format!(
+                "{notes} notes on the read path, including {transitions} transition notes across {targets} targets. {prunable} routine transition note(s) exceed the cap ({cap}/target); `loom note prune --transitions` can compact them, and `loom sync` will keep future routine churn bounded.",
+                transitions = note_log.transition_notes,
+                targets = note_log.transition_targets,
+                prunable = note_log.prunable_transition_notes
+            )
+        } else if context.note_log.transition_notes > 0 {
+            let note_log = &context.note_log;
+            format!(
+                "{notes} notes on the read path, including {transitions} transition notes across {targets} targets (max {max}/target, cap {cap}/target). No transition target exceeds the cap, so `loom note prune --transitions` is expected to remove 0; this is broad audit history, not over-cap churn.",
+                transitions = note_log.transition_notes,
+                targets = note_log.transition_targets,
+                max = note_log.max_transitions_per_target
+            )
         } else {
             format!(
-                "{notes} notes on the read path. `loom note prune --transitions` compacts ONLY low-signal transition churn — confirm/decision/justification notes are real memory it leaves alone, so \"Nothing to prune\" means the bulk is legitimate (not a bug). The cap ({cap}/target) bounds future churn via sync; run `loom sync` (or `loom note prune --transitions`) only if transition churn is the bulk, else the log is just legitimately heavy."
+                "{notes} notes on the read path, but none are transition churn. `loom note prune --transitions` is expected to remove 0; this is durable operator memory rather than a pruneable transition log."
             )
         }
     } else {

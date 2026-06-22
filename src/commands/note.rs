@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::cli::NoteCmd;
 use crate::commands::resolve::resolve_intent_with_db;
+use crate::db::queries::stats::NoteLogStats;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::{Note, NoteKind};
@@ -311,6 +312,12 @@ fn run_prune_with_sqlite(
     let compact = compact_requested && (keep > 0 || keep_per_target == Some(0));
 
     let dangling = store.dangling_notes()?;
+    let transition_notes = if compact_requested {
+        store.list_notes(None, Some("transition"))?
+    } else {
+        Vec::new()
+    };
+    let transition_log = NoteLogStats::from_notes(&transition_notes, keep);
     let churn = if compact {
         store.prunable_transition_notes(keep)?
     } else {
@@ -342,6 +349,10 @@ fn run_prune_with_sqlite(
                 "target_kind": n.target_kind, "target_id": n.target_id,
             })).collect::<Vec<_>>(),
             "transitions_pruned": churn.len(),
+            "transition_notes": transition_log.transition_notes,
+            "transition_targets": transition_log.transition_targets,
+            "max_transitions_per_target": transition_log.max_transitions_per_target,
+            "prunable_transition_notes": transition_log.prunable_transition_notes,
             "keep_per_target": keep,
             "cap_set": set_cap,
             "dry_run": dry_run,
@@ -386,6 +397,14 @@ fn run_prune_with_sqlite(
             println!(
                 "✓ {verb} {} routine transition note(s), keeping {} newest per target (regression markers kept).",
                 churn.len(),
+                keep
+            );
+        } else if compact && transition_log.transition_notes > 0 {
+            println!(
+                "✓ Transition log already within cap: {} transition note(s) across {} target(s), max {}/target, cap {}/target.",
+                transition_log.transition_notes,
+                transition_log.transition_targets,
+                transition_log.max_transitions_per_target,
                 keep
             );
         } else if cap_off_noop {

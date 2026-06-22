@@ -69,12 +69,17 @@ impl SqliteGraphStore {
         let layer_order = self.layer_order()?;
         let proposed_hypotheses = self.list_hypotheses(Some("proposed"))?;
         let targets = self.list_all_targets()?;
+        let transition_cap = self.transition_cap()?;
         graph_state_from_snapshot_parts(
             snapshot,
             GraphStateContext {
                 meta: self.graph_meta()?,
                 notes: notes.len() as i64,
-                transition_cap: self.transition_cap()?,
+                transition_cap,
+                note_log: crate::db::queries::stats::NoteLogStats::from_notes(
+                    notes,
+                    transition_cap,
+                ),
             },
             |snapshot| {
                 compute_smells_from_parts(

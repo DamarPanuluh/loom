@@ -46,6 +46,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         &snapshot,
         &gs,
         &decision_notes,
+        &inbox,
         &open_smells,
         inbox_untriaged,
         export_stale,
@@ -80,6 +81,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
             },
             "undesigned_dimensions": undesigned,
             "doc_only_realizations": b.doc_only,
+            "source_corpus": b.source_corpus,
             "inbox_untriaged": inbox_untriaged,
             "boundary_owed_files": b.boundary_owed,
             "self_check": "loom measures your SEED, not the full vision. If you are not certain you modeled every responsibility, you have not — the ladder cannot see what you never seeded.",
@@ -180,6 +182,20 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         println!("      A doc is a CONTRACT, not a built system. CONFIRM each: is the document itself the");
         println!("      deliverable? If it SPECIFIES code that should exist, you certified a spec as done —");
         println!("      BUILD the real code + reground, or set `--lifecycle planned`.");
+    }
+    if b.source_corpus.has_signal() {
+        if !b.source_corpus.warning.is_empty() {
+            println!("    SOURCE CORPUS: {}", b.source_corpus.warning);
+        }
+        if b.source_corpus.ids_total > 0 {
+            println!(
+                "      structured IDs: {} total · {} modeled · {} resolved · {} unresolved.",
+                b.source_corpus.ids_total,
+                b.source_corpus.modeled,
+                b.source_corpus.resolved,
+                b.source_corpus.unresolved
+            );
+        }
     }
     if !undesigned.is_empty() {
         println!(

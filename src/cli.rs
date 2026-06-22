@@ -83,6 +83,12 @@ pub enum Command {
     /// Show graph health: intent count, edge coverage, open issues.
     Status,
 
+    /// Inspect and resolve documented source-corpus coverage.
+    Corpus {
+        #[command(subcommand)]
+        subcommand: CorpusCmd,
+    },
+
     /// Manage intent nodes.
     Intent {
         #[command(subcommand)]
@@ -516,6 +522,20 @@ pub enum Command {
         #[arg(long)]
         suggest: bool,
 
+        /// Import structured documented requirement IDs from a path/glob as
+        /// planned intents. Defaults to US/E IDs; non-conventional docs should
+        /// use `loom seed --inbox` so an LLM can triage prose.
+        #[arg(long)]
+        requirements: Option<String>,
+
+        /// Parent intent for requirements imported via --requirements.
+        #[arg(long, requires = "requirements")]
+        under: Option<String>,
+
+        /// Requirement ID prefixes to import with --requirements (repeatable).
+        #[arg(long = "prefix", num_args = 0.., requires = "requirements")]
+        prefixes: Vec<String>,
+
         /// Max candidates to show for --suggest (0 = all).
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]
         limit: usize,
@@ -881,10 +901,11 @@ pub enum IntentCmd {
         #[arg(long, default_value = "")]
         aspect: String,
 
-        /// Lifecycle: implemented (default, brownfield) | planned (greenfield,
-        /// not built yet) | needs_change (refactor / known issue).
-        #[arg(long, default_value = "implemented")]
-        lifecycle: String,
+        /// Lifecycle: implemented (brownfield) | planned (greenfield/spec, not
+        /// built yet) | needs_change (refactor / known issue). Omitted defaults
+        /// to implemented except doc-only sources, which default to planned.
+        #[arg(long)]
+        lifecycle: Option<String>,
 
         /// Source file paths (may be repeated).
         #[arg(long = "source", num_args = 0..)]
@@ -1091,6 +1112,30 @@ pub enum SourceCmd {
 
         /// The exact path to remove.
         path: String,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// Corpus subcommands
+// ---------------------------------------------------------------------------
+
+#[derive(Subcommand)]
+pub enum CorpusCmd {
+    /// Report structured documented requirement IDs vs modeled/resolved intents.
+    Coverage,
+
+    /// Mark one documented requirement ID as intentionally not modeled.
+    Ignore {
+        /// Requirement ID, e.g. US-123 or ADR-0004.
+        id: String,
+
+        /// Source doc path where the ID appears.
+        #[arg(long)]
+        source: String,
+
+        /// Why this documented item should not become an intent.
+        #[arg(long)]
+        reason: String,
     },
 }
 
@@ -1793,6 +1838,21 @@ pub enum SagaCmd {
 
     /// List registered sagas (validations of type=saga) with their last result.
     List,
+
+    /// List user-visible leaf intents that still lack a passing boundary saga.
+    Gaps,
+
+    /// Suggest likely intent bindings for saga steps. Read-only; prints edits
+    /// for a human/LLM to apply to the YAML before re-running `loom saga add`.
+    SuggestMapping {
+        /// Saga spec file to inspect.
+        #[arg(long)]
+        spec: Option<String>,
+
+        /// Inspect every registered saga spec.
+        #[arg(long, conflicts_with = "spec")]
+        all: bool,
+    },
 }
 
 // ---------------------------------------------------------------------------

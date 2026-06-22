@@ -6,6 +6,7 @@ pub mod batch;
 pub mod cluster;
 pub mod codefile;
 pub mod complete;
+pub mod corpus;
 pub mod coverage;
 pub mod delegate;
 pub mod detect;
@@ -73,6 +74,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Init        { path, name, observed, no_hook } =>
             init::run(&path, name.as_deref(), observed, no_hook, &printer),
         Command::Status                     => status::run(&printer),
+        Command::Corpus      { subcommand } => corpus::run(subcommand, &printer),
         Command::Inbox       { subcommand } => inbox::run(subcommand, &printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
@@ -117,7 +119,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
-        Command::Seed        { inbox, suggest, limit } => seed::run(inbox, suggest, limit, &printer),
+        Command::Seed        { inbox, suggest, requirements, under, prefixes, limit } =>
+            seed::run(inbox, suggest, requirements.as_deref(), under.as_deref(), &prefixes, limit, &printer),
         Command::Tour        { target, limit } => tour::run(target.as_deref(), limit, &printer),
         Command::Impact      { files, staged } => impact::run(files, staged, &printer),
         Command::Complete    { teach }        => complete::run(teach, &printer),

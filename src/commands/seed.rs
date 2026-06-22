@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::Result;
+use uuid::Uuid;
 
 use crate::output::Printer;
 
@@ -25,8 +26,20 @@ struct Candidate {
     grade: String,
 }
 
-pub fn run(inbox: bool, suggest: bool, limit: usize, printer: &Printer) -> Result<()> {
+pub fn run(
+    inbox: bool,
+    suggest: bool,
+    requirements: Option<&str>,
+    under: Option<&str>,
+    prefixes: &[String],
+    limit: usize,
+    printer: &Printer,
+) -> Result<()> {
     let root = crate::db::resolve_root()?;
+
+    if let Some(requirements) = requirements {
+        return run_requirements_import(&root, requirements, under, prefixes, printer);
+    }
 
     if inbox {
         return run_inbox_ingest(&root, printer);
@@ -64,6 +77,150 @@ pub fn run(inbox: bool, suggest: bool, limit: usize, printer: &Printer) -> Resul
         render_human(&candidates, total, shown);
     }
     Ok(())
+}
+
+fn run_requirements_import(
+    root: &Path,
+    path_or_glob: &str,
+    under: Option<&str>,
+    prefixes: &[String],
+    printer: &Printer,
+) -> Result<()> {
+    let db_file = crate::db::ensure_initialized(root)?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&db_file)?;
+    store.ensure_owned("seed documented requirements as planned intents")?;
+    let snapshot = store.query_snapshot()?;
+    let inbox = store.list_inbox_items(None, None)?;
+    let all_prefixes = crate::db::queries::DEFAULT_CORPUS_PREFIXES;
+    let report = crate::db::queries::source_corpus_coverage_with_prefixes(
+        root,
+        &snapshot,
+        &inbox,
+        all_prefixes,
+    );
+    let selected_prefixes: HashSet<String> = if prefixes.is_empty() {
+        crate::db::queries::AUTO_SEED_PREFIXES
+            .iter()
+            .map(|p| p.to_string())
+            .collect()
+    } else {
+        prefixes.iter().map(|p| p.to_ascii_uppercase()).collect()
+    };
+    let parent_id = match under {
+        Some(parent) => Some(crate::db::queries::resolve_intent_from_snapshot(
+            &snapshot, parent,
+        )?),
+        None => None,
+    };
+    let matcher = RequirementPathMatcher::new(root, path_or_glob)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut created = Vec::new();
+    let mut skipped_modeled_or_resolved = 0usize;
+    let mut skipped_prefix = 0usize;
+    for item in report.ids {
+        if !matcher.matches(&item.path) {
+            continue;
+        }
+        if item.modeled || item.resolved {
+            skipped_modeled_or_resolved += 1;
+            continue;
+        }
+        if !selected_prefixes.contains(&item.prefix) {
+            skipped_prefix += 1;
+            continue;
+        }
+        let level = if item.prefix == "E" {
+            "component"
+        } else {
+            "feature"
+        };
+        let intent = crate::types::Intent {
+            id: Uuid::new_v4().to_string(),
+            name: item.id.clone(),
+            description: format!(
+                "Requirement {} from {}:{}; refine this planned intent from the source document before building.",
+                item.id, item.path, item.line
+            ),
+            criterion: format!("Requirement {} is satisfied according to {}", item.id, item.path),
+            abstraction_level: level.to_string(),
+            domain: "unknown".to_string(),
+            layer: String::new(),
+            source_refs: vec![format!("{}#{}", item.path, item.id)],
+            status: "proposed".to_string(),
+            aspect: String::new(),
+            tags: Vec::new(),
+            visibility: "user_visible".to_string(),
+            boundary: String::new(),
+            lifecycle: "planned".to_string(),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+        };
+        store.insert_intent(&intent)?;
+        if let Some(parent_id) = &parent_id {
+            store.insert_hierarchy(parent_id, &intent.id, "seeded from source corpus", &now)?;
+        }
+        created.push(serde_json::json!({
+            "id": intent.id,
+            "name": intent.name,
+            "level": intent.abstraction_level,
+            "source_ref": intent.source_refs[0],
+        }));
+    }
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "created": created,
+            "created_count": created.len(),
+            "skipped_modeled_or_resolved": skipped_modeled_or_resolved,
+            "skipped_prefix": skipped_prefix,
+            "next_step": "Refine imported descriptions/criteria, link hierarchy if needed, then `loom next --mode build`.",
+        }));
+    } else {
+        println!("✓ Seeded {} planned requirement intent(s)", created.len());
+        if skipped_modeled_or_resolved > 0 || skipped_prefix > 0 {
+            println!(
+                "  skipped: {} modeled/resolved · {} outside selected prefixes",
+                skipped_modeled_or_resolved, skipped_prefix
+            );
+        }
+        println!("  → Next: refine imported intent wording, then `loom next --mode build`.");
+    }
+    Ok(())
+}
+
+struct RequirementPathMatcher {
+    literal: Option<String>,
+    glob: Option<glob::Pattern>,
+}
+
+impl RequirementPathMatcher {
+    fn new(root: &Path, raw: &str) -> Result<Self> {
+        if raw.contains('*') || raw.contains('?') || raw.contains('[') {
+            Ok(Self {
+                literal: None,
+                glob: Some(glob::Pattern::new(raw)?),
+            })
+        } else {
+            let path = root
+                .join(raw)
+                .strip_prefix(root)
+                .unwrap_or_else(|_| Path::new(raw))
+                .to_string_lossy()
+                .to_string();
+            Ok(Self {
+                literal: Some(path),
+                glob: None,
+            })
+        }
+    }
+
+    fn matches(&self, path: &str) -> bool {
+        self.literal.as_deref() == Some(path)
+            || self
+                .glob
+                .as_ref()
+                .is_some_and(|pattern| pattern.matches(path))
+    }
 }
 
 /// Ingest the full repo surface (every doc + unmodeled source file) into the

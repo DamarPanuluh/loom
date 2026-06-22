@@ -5,7 +5,8 @@ use crate::db::queries::{
     cochange_suggestions, lane_depths_from_snapshot, proof_locality_suggestions,
     review_candidates_from_snapshot, shotgun_surgery_suggestions, status_report_from_snapshot,
     uninspected_outside_queues_from_snapshot, BlockedValidationSummary, GraphState, LaneDepths,
-    MaturityLadder, QuerySnapshot, Smell, UninspectedOutsideQueues, GATE_REASON_MANUAL_ACCEPTANCE,
+    MaturityLadder, QuerySnapshot, Smell, SourceCorpusCoverage, UninspectedOutsideQueues,
+    GATE_REASON_MANUAL_ACCEPTANCE,
 };
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::{fmt_pulse, Printer};
@@ -233,16 +234,19 @@ pub fn run_with_db(
     // gates above (vertical spine, comprehensiveness ledgers, and the former
     // fully_proven gate set), it REPLACES the scattered badges. The assembly is
     // shared verbatim with `loom complete`, so the two reads cannot drift.
-    let ladder = build_ladder(
+    let inbox_items = db.list_inbox_items(None, None)?;
+    let ladder_bundle = build_ladder(
         root,
         &snapshot,
         &gs,
         &decision_notes,
+        &inbox_items,
         &open_smells,
         intake.untriaged.max(0) as usize,
         export_freshness == "stale",
-    )
-    .ladder;
+    );
+    let source_corpus = ladder_bundle.source_corpus.clone();
+    let ladder = ladder_bundle.ladder;
 
     render_status(
         &report,
@@ -261,6 +265,7 @@ pub fn run_with_db(
         export_freshness,
         &disk,
         &ladder,
+        &source_corpus,
         printer,
     )
 }
@@ -574,6 +579,7 @@ fn render_status(
     export_freshness: &str,
     disk: &DiskPulse,
     ladder: &MaturityLadder,
+    source_corpus: &SourceCorpusCoverage,
     printer: &Printer,
 ) -> Result<()> {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
@@ -628,6 +634,10 @@ fn render_status(
             // The maturity ladder — loom's single ordinal "done" (rung-vector).
             obj.insert("maturity".to_string(), serde_json::to_value(ladder)?);
             obj.insert(
+                "source_corpus".to_string(),
+                serde_json::to_value(source_corpus)?,
+            );
+            obj.insert(
                 "alarms".to_string(),
                 serde_json::json!(alarm_strip(report, &audit, disk, intake)),
             );
@@ -669,6 +679,7 @@ fn render_status(
             export_freshness,
             disk,
             ladder,
+            source_corpus,
             totals,
         );
     }
@@ -693,6 +704,7 @@ fn render_plain_status(
     export_freshness: &str,
     disk: &DiskPulse,
     ladder: &MaturityLadder,
+    source_corpus: &SourceCorpusCoverage,
     totals: CompletionTotals,
 ) {
     // The alarm strip — urgent signals that preempt the focus rung (cold readers
@@ -722,6 +734,25 @@ fn render_plain_status(
     // JIT: status is the index; the depth (this rung's queue + skill) loads on
     // demand, so the frame stays constant and the prompt never becomes a firehose.
     println!("  → how: `loom guide` (this rung's skill — bare `guide` is focus-scoped, JIT)");
+    if source_corpus.has_signal() {
+        if source_corpus.ids_total > 0 {
+            println!(
+                "  source corpus: {} structured doc ID(s), {} modeled, {} resolved, {} unresolved",
+                source_corpus.ids_total,
+                source_corpus.modeled,
+                source_corpus.resolved,
+                source_corpus.unresolved
+            );
+        } else {
+            println!(
+                "  source corpus: {} doc file(s), no structured IDs detected — corpus completeness unknown; use `loom seed --inbox` for LLM triage",
+                source_corpus.doc_files
+            );
+        }
+        if !source_corpus.warning.is_empty() {
+            println!("  ⚑ {}", source_corpus.warning);
+        }
+    }
     println!();
     println!("Completion:");
     println!("  required autonomous debt: {}", totals.required_autonomous);

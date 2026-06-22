@@ -53,6 +53,8 @@ fn reproduces_loom_frozen_rung_vector() {
         open_smells: &[],
         doc_only_realizations: &doc_only,
         inbox_untriaged: 0,
+        source_corpus_unresolved: 0,
+        planned_leaf_debt: 0,
         fully_proven_ok: false,
         fully_proven_reasons: &fp_reasons,
     };
@@ -63,7 +65,7 @@ fn reproduces_loom_frozen_rung_vector() {
     assert_eq!(ladder.rungs[0].status, RungStatus::Met);
     assert_eq!(ladder.rungs[1].name, "Realized");
     assert_eq!(ladder.rungs[1].status, RungStatus::Partial);
-    assert_eq!(ladder.rungs[1].detail, "46/78");
+    assert_eq!(ladder.rungs[1].detail, "46/78 implemented leaves");
     assert_eq!(ladder.rungs[2].name, "Proven");
     assert_eq!(ladder.rungs[2].status, RungStatus::Unmet);
     assert_eq!(ladder.rungs[2].detail, "0/11");
@@ -113,6 +115,8 @@ fn library_collapses_proven_to_not_applicable() {
         open_smells: &[],
         doc_only_realizations: &[],
         inbox_untriaged: 0,
+        source_corpus_unresolved: 0,
+        planned_leaf_debt: 0,
         fully_proven_ok: true,
         fully_proven_reasons: &[],
     };
@@ -151,6 +155,8 @@ fn all_green_is_production_ready() {
         open_smells: &[],
         doc_only_realizations: &[],
         inbox_untriaged: 0,
+        source_corpus_unresolved: 0,
+        planned_leaf_debt: 0,
         fully_proven_ok: true,
         fully_proven_reasons: &[],
     };
@@ -188,6 +194,8 @@ fn focus_is_lowest_unmet_despite_higher_rung_met() {
         open_smells: &[],
         doc_only_realizations: &[],
         inbox_untriaged: 0,
+        source_corpus_unresolved: 0,
+        planned_leaf_debt: 0,
         fully_proven_ok: false,
         fully_proven_reasons: &[],
     };

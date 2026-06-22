@@ -6,6 +6,7 @@
 
 pub mod completeness;
 pub mod comprehensiveness;
+pub mod corpus;
 pub mod find;
 pub mod graph_algo;
 pub mod integrity;
@@ -22,6 +23,7 @@ pub mod symbol_match;
 pub mod vocab;
 
 pub use completeness::*;
+pub use corpus::*;
 pub use find::*;
 pub use integrity::*;
 pub use intent::*;

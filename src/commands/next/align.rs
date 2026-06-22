@@ -64,6 +64,7 @@ pub(super) fn run_take_align(
                 "audience_prompt": audience,
                 "commands": {
                     "confirm": format!("loom intent confirm {id}"),
+                    "confirm_user_visible": format!("loom intent confirm {id} --visibility user_visible"),
                     "confirm_internal": format!("loom intent confirm {id} --visibility internal"),
                     "reword": format!("loom intent update {id} --description \"…\" --reword --reason \"user clarified wording during align\""),
                     "update_meaning": format!("loom intent update {id} --description \"…\" --reason \"user changed expected behavior during align\""),
@@ -72,7 +73,11 @@ pub(super) fn run_take_align(
             })
         })
         .collect();
-    let guidance = "Use this as ONE human agenda. For each item, align the concept in plain language, not implementation wording. Record exactly one outcome: confirm, confirm --visibility internal, reword, update meaning, retire, or add a newly revealed missing concept. After recording outcomes, rerun `loom next --mode align --take <N>` until it is empty.";
+    let possible_proven_target_adds = items
+        .iter()
+        .filter(|item| item["intent"]["visibility"].as_str() == Some("untriaged"))
+        .count();
+    let guidance = "Use this as ONE human agenda. For each item, align the concept in plain language, not implementation wording. Record exactly one outcome: confirm, confirm --visibility user_visible, confirm --visibility internal, reword, update meaning, retire, or add a newly revealed missing concept. Confirming a leaf as user_visible adds it to the Proven journey-proof target. After recording outcomes, rerun `loom next --mode align --take <N>` until it is empty.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -82,6 +87,7 @@ pub(super) fn run_take_align(
             "queue_total": queue_total,
             "items": items,
             "guidance": guidance,
+            "possible_proven_target_adds": possible_proven_target_adds,
             "dispatch": { "role": "validator", "effort": "mid", "gate": "human" },
             "graph_state": pulse_json(&gs),
         }));
@@ -108,6 +114,12 @@ pub(super) fn run_take_align(
             item["commands"]["confirm"].as_str().unwrap_or("")
         );
         if item["intent"]["visibility"].as_str() == Some("untriaged") {
+            println!(
+                "     user-visible: {}  (adds to Proven journey-proof target if this is a leaf)",
+                item["commands"]["confirm_user_visible"]
+                    .as_str()
+                    .unwrap_or("")
+            );
             println!(
                 "     internal: {}",
                 item["commands"]["confirm_internal"].as_str().unwrap_or("")
@@ -235,6 +247,8 @@ fn build_align_context<'a>(
          \nAsk: \"does that match what you expect this product to do here?\" \
          Record exactly ONE outcome:\n  \
          - concept still right → loom intent confirm {id}\n  \
+         - user-visible capability → loom intent confirm {id} --visibility user_visible  \
+         (adds leaf intents to Proven's boundary-proof target)\n  \
          - words confusing, concept right → loom intent update {id} --description \"…\" \
          --reword --reason \"…\"  (no ripple; the clock still resets)\n  \
          - concept evolved → translate their answer into a falsifiable description: \

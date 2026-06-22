@@ -599,6 +599,27 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
         };
         selected.push((intent.clone(), urgency, reason));
     }
+    let already_selected: std::collections::HashSet<String> = selected
+        .iter()
+        .map(|(intent, _, _)| intent.id.clone())
+        .collect();
+    let by_id: HashMap<&str, &Intent> = snapshot
+        .intents
+        .iter()
+        .map(|intent| (intent.id.as_str(), intent))
+        .collect();
+    for owed in crate::db::queries::comprehensiveness::journey_ledger_from_snapshot(snapshot).owed {
+        if already_selected.contains(&owed.id) {
+            continue;
+        }
+        if let Some(intent) = by_id.get(owed.id.as_str()) {
+            selected.push((
+                (*intent).clone(),
+                2.7,
+                "missing journey proof: user-visible leaf has no passing discriminating boundary saga".to_string(),
+            ));
+        }
+    }
     selected
 }
 
@@ -1449,5 +1470,146 @@ mod tests {
         );
         // And it actually counts the two fix-candidate edges.
         assert_eq!(relates_candidate_count_from_snapshot(&snapshot, "fix"), 2);
+    }
+
+    fn note(target: &str, kind: &str, text: &str, created_at: &str) -> Note {
+        Note {
+            id: format!("{target}-{created_at}"),
+            target_id: target.to_string(),
+            target_kind: "edge".to_string(),
+            kind: kind.to_string(),
+            text: text.to_string(),
+            author: "test".to_string(),
+            audience: String::new(),
+            created_at: created_at.to_string(),
+            resolution: String::new(),
+        }
+    }
+
+    fn align_snap(
+        intents: Vec<Intent>,
+        relates: Vec<RelatesTo>,
+        notes: Vec<Note>,
+    ) -> Vec<AlignCandidate> {
+        let snapshot = QuerySnapshot::from_parts(
+            intents,
+            Vec::new(),
+            relates,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+        align_candidates_from_snapshot_notes(&snapshot, &notes)
+    }
+
+    #[test]
+    fn align_ranks_churned_unconfirmed_intent_first() {
+        let mut hot = intent("hot");
+        hot.created_at = "2020-01-01T00:00:00Z".into();
+        let mut quiet = intent("quiet");
+        quiet.created_at = "2020-01-01T00:00:00Z".into();
+        let rel = RelatesTo {
+            id: "rel-1".into(),
+            from_id: "hot".into(),
+            to_id: "quiet".into(),
+            from_name: "hot".into(),
+            to_name: "quiet".into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.9,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: "llm:analyzer".into(),
+            priority_score: 0.0,
+            notes: String::new(),
+            kinds: Vec::new(),
+            stable: false,
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: DiscoveryCentrality::default(),
+        };
+        let notes = vec![note(
+            "rel-1",
+            "transition",
+            "stale (sync: src/x.rs changed)",
+            "2025-06-01T00:00:00Z",
+        )];
+        let ranked = align_snap(vec![hot.clone(), quiet], vec![rel], notes);
+        assert_eq!(ranked.len(), 2, "both old intents are eligible");
+        assert_eq!(
+            ranked[0].intent.id, "hot",
+            "churn outranks quiet age-only: {ranked:?}"
+        );
+        assert_eq!(ranked[0].churn_since_confirm, 1);
+    }
+
+    #[test]
+    fn align_ignores_retired_intents() {
+        let mut internal = intent("internal-only");
+        internal.visibility = "internal".into();
+        internal.created_at = "2020-01-01T00:00:00Z".into();
+        let ranked = align_snap(
+            vec![internal],
+            Vec::new(),
+            vec![note(
+                "internal-only",
+                "transition",
+                "stale (sync: anything)",
+                "2025-06-01T00:00:00Z",
+            )],
+        );
+        assert!(
+            ranked.is_empty(),
+            "internal machinery is never interview material"
+        );
+    }
+
+    #[test]
+    fn align_churn_before_confirm_not_counted() {
+        let mut fresh = intent("fresh");
+        fresh.created_at = "2026-06-01T00:00:00Z".into();
+        let rel = RelatesTo {
+            id: "rel-2".into(),
+            from_id: "fresh".into(),
+            to_id: "other".into(),
+            from_name: "fresh".into(),
+            to_name: "other".into(),
+            inspection_status: "passing".into(),
+            criterion: String::new(),
+            confidence: 0.9,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: "llm:analyzer".into(),
+            priority_score: 0.0,
+            notes: String::new(),
+            kinds: Vec::new(),
+            stable: false,
+            discovery_class: String::new(),
+            discovery_signals: Vec::new(),
+            discovery_centrality: DiscoveryCentrality::default(),
+        };
+        let notes = vec![
+            note(
+                "fresh",
+                "confirm",
+                "meaning re-affirmed",
+                "2026-06-01T12:00:00Z",
+            ),
+            note(
+                "rel-2",
+                "transition",
+                "stale (sync: src/x.rs changed)",
+                "2026-06-01T11:00:00Z",
+            ),
+        ];
+        let ranked = align_snap(vec![fresh], vec![rel], notes);
+        assert!(
+            ranked.is_empty(),
+            "sync churn at or before confirm baseline must not count: {ranked:?}"
+        );
     }
 }

@@ -1,5 +1,5 @@
 use super::*;
-use crate::types::{CodeFile, Governs, Implements, QualityRule, ValidatesEdge, Validation};
+use crate::types::{CodeFile, Governs, Implements, Note, QualityRule, ValidatesEdge, Validation};
 
 fn val(id: &str, result: &str) -> Validation {
     Validation {
@@ -37,6 +37,20 @@ fn cmd_val(id: &str, result: &str, last_executed_run: &str) -> Validation {
         } else {
             "discriminating".into()
         },
+    }
+}
+
+fn note(kind: &str, text: &str, target_id: &str) -> Note {
+    Note {
+        id: format!("note-{kind}-{target_id}-{}", text.len()),
+        kind: kind.into(),
+        text: text.into(),
+        author: "llm".into(),
+        target_kind: "edge".into(),
+        target_id: target_id.into(),
+        audience: String::new(),
+        created_at: "2026-06-19T00:00:00Z".into(),
+        resolution: String::new(),
     }
 }
 
@@ -376,6 +390,7 @@ fn gs_of(snapshot: &QuerySnapshot) -> GraphState {
             meta: None,
             notes: 0,
             transition_cap: 0,
+            note_log: NoteLogStats::default(),
         },
         |_| Ok(0),
         || Ok(0),
@@ -386,11 +401,9 @@ fn gs_of(snapshot: &QuerySnapshot) -> GraphState {
 
 #[test]
 fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy() {
-    // loom-dx #3: a heavy note log must NOT imply `loom note prune
-    // --transitions` will fix it — that command compacts ONLY transition
-    // churn, so a log of legitimate memory (confirm/decision/justification)
-    // returns "Nothing to prune". The old advisory pointed at a remedy that
-    // wasn't there and nagged forever; the reframe teaches the distinction.
+    // A heavy note log must NOT imply `loom note prune --transitions` will fix
+    // it. If the log has no transition churn, that command is expected to do
+    // nothing; status should say so directly.
     let snapshot = snap(vec![], vec![]);
     let gs = graph_state_from_snapshot_parts(
         &snapshot,
@@ -398,6 +411,7 @@ fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy() {
             meta: None,
             notes: 6000,
             transition_cap: 20,
+            note_log: NoteLogStats::default(),
         },
         |_| Ok(0),
         || Ok(0),
@@ -407,16 +421,53 @@ fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy() {
     let h = &gs.note_hygiene;
     assert!(h.contains("6000 notes"), "names the count: {h}");
     assert!(
-        h.contains("ONLY low-signal transition churn"),
-        "prune is qualified to transition churn only (not a blanket remedy): {h}"
+        h.contains("none are transition churn"),
+        "non-transition memory is not presented as pruneable churn: {h}"
     );
     assert!(
-        h.contains("Nothing to prune"),
-        "teaches that Nothing-to-prune on legitimate memory is expected, not a bug: {h}"
+        h.contains("expected to remove 0"),
+        "prevents chasing a transition prune for non-transition memory: {h}"
+    );
+}
+
+#[test]
+fn note_hygiene_names_broad_capped_transition_history_as_not_pruneable() {
+    let mut notes = Vec::new();
+    for target in 0..300 {
+        for n in 0..20 {
+            notes.push(note(
+                "transition",
+                &format!("passing → needs_reverification (sync: file-{n}.rs changed)"),
+                &format!("edge:{target}"),
+            ));
+        }
+    }
+    let snapshot = snap(vec![], vec![]);
+    let gs = graph_state_from_snapshot_parts(
+        &snapshot,
+        GraphStateContext {
+            meta: None,
+            notes: notes.len() as i64,
+            transition_cap: 20,
+            note_log: NoteLogStats::from_notes(&notes, 20),
+        },
+        |_| Ok(0),
+        || Ok(0),
+        |_| Ok(0),
+    )
+    .unwrap();
+    let h = &gs.note_hygiene;
+    assert!(
+        h.contains("6000 notes") && h.contains("6000 transition notes across 300 targets"),
+        "names broad transition shape: {h}"
     );
     assert!(
-        h.contains("legitimately heavy"),
-        "names the legitimate-memory case so the driver stops chasing a missing remedy: {h}"
+        h.contains("max 20/target, cap 20/target"),
+        "explains why the cap is already satisfied: {h}"
+    );
+    assert!(
+        h.contains("expected to remove 0"),
+        "prevents chasing prune when every target is under cap: {h}"
     );
 }
 
@@ -431,6 +482,7 @@ fn note_hygiene_uncapped_log_keeps_set_cap_remedy() {
             meta: None,
             notes: 6000,
             transition_cap: 0,
+            note_log: NoteLogStats::default(),
         },
         |_| Ok(0),
         || Ok(0),
@@ -552,6 +604,7 @@ fn gs_of_with_disk(snapshot: &QuerySnapshot, disk_issues: usize) -> GraphState {
             meta: None,
             notes: 0,
             transition_cap: 0,
+            note_log: NoteLogStats::default(),
         },
         |_| Ok(0),
         || Ok(0),
@@ -834,6 +887,7 @@ fn audit_gate_outranks_stale_edges() {
             meta: None,
             notes: 0,
             transition_cap: 0,
+            note_log: NoteLogStats::default(),
         },
         |_| Ok(84), // open findings exist
         || Ok(0),
