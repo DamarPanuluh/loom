@@ -5678,6 +5678,94 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
 }
 
 #[test]
+fn sqlite_behavioral_owed_carries_ids_for_a_runnable_suggestion() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("behavioral-owed");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "x.go", "package x\nfunc Save() {}\n");
+    let parent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "save feature",
+            "--level",
+            "component",
+            "--description",
+            "the save subsystem here",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let pid = parent["id"].as_str().expect("parent id").to_string();
+    let child = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "save happy",
+            "--level",
+            "feature",
+            "--aspect",
+            "happy",
+            "--description",
+            "save succeeds and persists",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let cid = child["id"].as_str().expect("child id").to_string();
+    run_json_as(
+        &graph.root,
+        &["edge", "hierarchy", &pid, &cid, "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "x.go", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &cid,
+            "x.go",
+            "--locator",
+            "Save",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    // A realized happy leaf with no sad sibling OWES one — and the owed entry must
+    // carry the ids (not just a prose name) so `loom complete` can emit a runnable
+    // `loom intent add --aspect sad --parent <id>` suggestion (#4).
+    let complete = run_json(&graph.root, &["complete", "--json"]);
+    let owed = complete["comprehensiveness"]["behavioral"]["owed"]
+        .as_array()
+        .expect("behavioral owed array");
+    assert_eq!(
+        owed.len(),
+        1,
+        "happy leaf with no sad sibling owes one: {complete}"
+    );
+    assert_eq!(
+        owed[0]["id"].as_str(),
+        Some(cid.as_str()),
+        "owed carries the leaf id"
+    );
+    assert_eq!(
+        owed[0]["parent_id"].as_str(),
+        Some(pid.as_str()),
+        "owed carries the parent id for the --parent suggestion"
+    );
+}
+
+#[test]
 fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("fp-blocker");
@@ -5685,8 +5773,15 @@ fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
     run_json_as(
         &graph.root,
         &[
-            "intent", "add", "--name", "a", "--level", "system", "--description",
-            "do a well here", "--json",
+            "intent",
+            "add",
+            "--name",
+            "a",
+            "--level",
+            "system",
+            "--description",
+            "do a well here",
+            "--json",
         ],
         "llm:builder",
     );
@@ -5695,7 +5790,10 @@ fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
         .as_str()
         .unwrap_or_default()
         .to_string();
-    assert!(!next_action.is_empty(), "cascade always names a next_action when not complete");
+    assert!(
+        !next_action.is_empty(),
+        "cascade always names a next_action when not complete"
+    );
     let reasons = status["fully_proven_reasons"]
         .as_array()
         .expect("fully_proven_reasons array");
@@ -5722,7 +5820,14 @@ fn sqlite_edge_unexplored_enumerates_the_counted_pairs() {
         run_json_as(
             &graph.root,
             &[
-                "intent", "add", "--name", n, "--level", "system", "--description", &desc,
+                "intent",
+                "add",
+                "--name",
+                n,
+                "--level",
+                "system",
+                "--description",
+                &desc,
                 "--json",
             ],
             "llm:builder",
@@ -5736,7 +5841,10 @@ fn sqlite_edge_unexplored_enumerates_the_counted_pairs() {
     assert_eq!(counted, 3, "3 intents, no edges → 3 unexplored pairs");
     // … and `loom edge unexplored --class all` RETRIEVES exactly that many — the
     // count and the drainable list must agree (the operator's #1/#5 friction).
-    let listed = run_json(&graph.root, &["edge", "unexplored", "--class", "all", "--json"]);
+    let listed = run_json(
+        &graph.root,
+        &["edge", "unexplored", "--class", "all", "--json"],
+    );
     assert_eq!(
         listed["total"].as_i64(),
         Some(counted),
@@ -5745,9 +5853,10 @@ fn sqlite_edge_unexplored_enumerates_the_counted_pairs() {
     let pairs = listed["unexplored_pairs"].as_array().expect("pairs array");
     assert_eq!(pairs.len(), 3, "all three pairs listed");
     assert!(
-        pairs
-            .iter()
-            .all(|p| p["explore_command"].as_str().unwrap_or("").contains("loom edge explore")),
+        pairs.iter().all(|p| p["explore_command"]
+            .as_str()
+            .unwrap_or("")
+            .contains("loom edge explore")),
         "every pair carries a runnable explore command: {listed}"
     );
 }

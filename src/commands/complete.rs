@@ -130,10 +130,19 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
             "    behavioral   {}   happy leaves with a sad/edge sibling (RECORD≠DISCHARGE)",
             ledger_str(&behavioral)
         );
-        for owed in [&journey.owed, &behavioral.owed, &boundary_owed] {
-            if !owed.is_empty() {
-                let shown: Vec<&str> = owed.iter().take(5).map(|s| s.as_str()).collect();
-                let more = owed.len().saturating_sub(5);
+        // Owed names per dimension. journey/behavioral carry ids (for the
+        // runnable suggestions below); boundary is file paths.
+        let cognitive_names = |leaves: &[comp::OwedLeaf]| -> Vec<String> {
+            leaves.iter().map(|o| o.name.clone()).collect()
+        };
+        for names in [
+            cognitive_names(&journey.owed),
+            cognitive_names(&behavioral.owed),
+            boundary_owed.clone(),
+        ] {
+            if !names.is_empty() {
+                let shown: Vec<&str> = names.iter().take(5).map(|s| s.as_str()).collect();
+                let more = names.len().saturating_sub(5);
                 println!(
                     "      owed: {}{}",
                     shown.join(", "),
@@ -142,6 +151,24 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
                     } else {
                         String::new()
                     }
+                );
+            }
+        }
+        // Pre-filled suggestions for the BEHAVIORAL owed siblings — the LLM
+        // authors the real failure behavior (RECORD ≠ DISCHARGE), then the new
+        // `planned` intent flows into `loom next --mode build` on its own.
+        if !behavioral.owed.is_empty() {
+            println!("    → author each missing failure path (rewrite the description; it then enters `loom next --mode build`):");
+            for o in behavioral.owed.iter().take(5) {
+                println!(
+                    "      loom intent add --name \"{} — sad path\" --aspect sad --lifecycle planned --parent {} --description \"<what should happen when {} fails>\"",
+                    o.name, o.parent_id, o.name
+                );
+            }
+            if behavioral.owed.len() > 5 {
+                println!(
+                    "      (+{} more — `loom complete --json` lists every owed leaf with its parent id)",
+                    behavioral.owed.len() - 5
                 );
             }
         }

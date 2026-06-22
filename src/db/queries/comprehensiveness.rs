@@ -21,6 +21,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use serde::Serialize;
+
 use crate::db::queries::stats::CoverageAxis;
 use crate::db::queries::symbol_accountability::SymbolAccountabilityReport;
 use crate::db::queries::QuerySnapshot;
@@ -81,11 +83,23 @@ pub fn entrypoint_coverage(report: &SymbolAccountabilityReport) -> CoverageAxis 
 /// The crux honesty invariant — RECORD ≠ DISCHARGE — lives here: an item is
 /// discharged only by WORKING graph state (a realized sibling, a passing saga),
 /// never by a recorded-but-unfulfilled placeholder. `owed` names the open gaps.
+/// One leaf intent that owes cognitive debt, carrying the ids the LLM needs to
+/// ACT (not just a prose name): `parent_id` lets `loom complete` emit a runnable
+/// `loom intent add --parent <id>` suggestion for the missing sad-path sibling.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct OwedLeaf {
+    pub id: String,
+    pub name: String,
+    /// The leaf's parent (the component that should own the missing sibling).
+    /// Empty for journey (the remedy is a saga, not a sibling intent).
+    pub parent_id: String,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Ledger {
     pub enumerated: usize,
     pub discharged: usize,
-    pub owed: Vec<String>,
+    pub owed: Vec<OwedLeaf>,
 }
 
 /// JOURNEY coverage (cognitive): every `user_visible` leaf intent owes an
@@ -121,7 +135,12 @@ pub fn journey_ledger_from_snapshot(snapshot: &QuerySnapshot) -> Ledger {
             if discharged_intents.contains(i.id.as_str()) {
                 ledger.discharged += 1;
             } else {
-                ledger.owed.push(i.name.clone());
+                // Journey's remedy is a saga, not a sibling intent — parent_id unused.
+                ledger.owed.push(OwedLeaf {
+                    id: i.id.clone(),
+                    name: i.name.clone(),
+                    parent_id: String::new(),
+                });
             }
         }
     }
@@ -168,7 +187,14 @@ pub fn behavioral_ledger_from_snapshot(snapshot: &QuerySnapshot) -> Ledger {
             if covered {
                 ledger.discharged += 1;
             } else {
-                ledger.owed.push(i.name.clone());
+                ledger.owed.push(OwedLeaf {
+                    id: i.id.clone(),
+                    name: i.name.clone(),
+                    parent_id: parent_of
+                        .get(i.id.as_str())
+                        .map(|p| p.to_string())
+                        .unwrap_or_default(),
+                });
             }
         }
     }

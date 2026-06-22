@@ -1247,7 +1247,10 @@ pub fn fully_proven_from_state(
         } else {
             gs.next_action.clone()
         };
-        reasons.push(format!("phase is '{}', not 'complete' — {blocker}", gs.phase));
+        reasons.push(format!(
+            "phase is '{}', not 'complete' — {blocker}",
+            gs.phase
+        ));
     }
     // G1 — EXECUTED floor with an honest denominator: every CURRENT-realized leaf
     // is proven by an EXECUTED (discriminating) proof, not merely asserted. The
