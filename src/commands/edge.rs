@@ -730,7 +730,7 @@ fn run_unexplored_with_sqlite(
             e.from_id, e.to_id
         )
     };
-    let next = "Verdict each pair — `independent` if unrelated, `ground` if a real coupling — at the HIGHEST honest altitude (a component-level verdict covers its descendants). Batch with `loom batch`.";
+    let next = "Verdict each pair — `independent` if unrelated (most are), `ground` if a real coupling. The count is per-pair (no altitude shortcut yet), so batch the verdicts: paste these commands into `loom batch`.";
     if printer.json {
         let items: Vec<_> = pairs
             .iter()

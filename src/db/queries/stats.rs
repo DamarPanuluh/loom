@@ -549,7 +549,7 @@ pub fn graph_state_from_snapshot_parts(
                 )
             } else if rt_uninspected > 0 || unexplored_pairs > 0 {
                 ("discovery", "recommended", format!(
-                    "Vertical spine complete ✓ — but full-green (`phase=complete`/`fully_proven`) REQUIRES the N×N grid explored: {unexplored_pairs} unexplored pair(s) + {rt_uninspected} uninspected edge(s) left. `loom edge unexplored` lists them (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. Verdict `independent` at the highest honest altitude — a component verdict covers its descendants."
+                    "Vertical spine complete ✓ — but full-green (`phase=complete`/`fully_proven`) REQUIRES the N×N grid explored: {unexplored_pairs} unexplored pair(s) + {rt_uninspected} uninspected edge(s) left. `loom edge unexplored` lists every pair (with pre-filled commands); `loom next --mode discovery` serves the high-signal ones. The count is per-pair — most pairs are genuinely unrelated, so batch `independent` verdicts (and `ground` the real couplings) via `loom batch`."
                 ))
             } else {
                 // The pre-decision plane never gates green (a proposal is not
