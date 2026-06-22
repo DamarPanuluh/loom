@@ -86857,7 +86857,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-22T15:44:00.710651+00:00",
+  "last_synced": "2026-06-22T16:09:34.547510+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -95656,12 +95656,12 @@
         ]
       },
       {
-        "content_hash": "5c829cc29ec757dc",
+        "content_hash": "eb566ba73d819f27",
         "extractor_grade": "none",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-22T15:11:32.382671643+00:00",
+        "last_modified": "2026-06-22T16:06:39.304622602+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [],
         "symbols": []
@@ -104802,8 +104802,8 @@
         ]
       },
       {
-        "content_hash": "427e3c9ce433659c",
-        "extractor_grade": "none",
+        "content_hash": "2f18208d984f59ac",
+        "extractor_grade": "high",
         "id": "4b4bfc41-8b95-4fd2-a132-3b04635c9c38",
         "imports": [
           "src/db/mod.rs",
@@ -104815,10 +104815,417 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T15:38:58.460880635+00:00",
+        "last_modified": "2026-06-22T15:50:14.346520667+00:00",
         "path": "src/db/queries/maturity.rs",
-        "symbol_facts": [],
-        "symbols": []
+        "symbol_facts": [
+          {
+            "body_hash": "ce7c70497682107b",
+            "kind": "fn",
+            "label": "fn axis_cleared",
+            "line_end": 147,
+            "line_start": 145,
+            "name": "axis_cleared",
+            "shape_hash": "67b0ad58b0a71036",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "406b279230b29696",
+            "kind": "fn",
+            "label": "fn graded",
+            "line_end": 172,
+            "line_start": 149,
+            "name": "graded",
+            "shape_hash": "6cb12109ab056ee7",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "39b4b8b296c5d8ec",
+            "kind": "impl",
+            "label": "impl MaturityLadder",
+            "line_end": 127,
+            "line_start": 85,
+            "name": "MaturityLadder",
+            "shape_hash": "ce780f0c5eb793e1",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "42d4a70d6da90879",
+            "kind": "impl",
+            "label": "impl RungStatus",
+            "line_end": 61,
+            "line_start": 47,
+            "name": "RungStatus",
+            "shape_hash": "bbf81693c7360e66",
+            "visibility": "private"
+          },
+          {
+            "body_hash": "75f03d5092bedb9f",
+            "kind": "enum",
+            "label": "pub enum RungStatus",
+            "line_end": 45,
+            "line_start": 36,
+            "name": "RungStatus",
+            "shape_hash": "e79c14636bee5628",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "68749580ab60c2a6",
+            "kind": "fn",
+            "label": "pub fn MaturityLadder::focus_lane",
+            "line_end": 94,
+            "line_start": 92,
+            "name": "focus_lane",
+            "shape_hash": "1ae23dd4744c8613",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "fcbc0fba4b6298fa",
+            "kind": "fn",
+            "label": "pub fn MaturityLadder::focus_rung",
+            "line_end": 88,
+            "line_start": 86,
+            "name": "focus_rung",
+            "shape_hash": "777b51ed41b1982b",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "b33184161b82ca9f",
+            "kind": "fn",
+            "label": "pub fn MaturityLadder::focus_summary",
+            "line_end": 126,
+            "line_start": 114,
+            "name": "focus_summary",
+            "shape_hash": "474fd30367501f32",
+            "string_literals": [
+              {
+                "line": 116,
+                "value": "✓ PRODUCTION-READY — proven, comprehensive, durable."
+              },
+              {
+                "line": 118,
+                "value": " · lane: {l}"
+              },
+              {
+                "line": 120,
+                "value": "focus: {}{lane} (in progress)"
+              },
+              {
+                "line": 122,
+                "value": "focus: {}{lane} — {}"
+              },
+              {
+                "line": 122,
+                "value": "; "
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "e9226974aedbbdd1",
+            "kind": "fn",
+            "label": "pub fn MaturityLadder::vector_line",
+            "line_end": 109,
+            "line_start": 97,
+            "name": "vector_line",
+            "shape_hash": "9bb800b44758ecb1",
+            "string_literals": [
+              {
+                "line": 102,
+                "value": "{} {}"
+              },
+              {
+                "line": 104,
+                "value": "{} {} {}"
+              },
+              {
+                "line": 108,
+                "value": " · "
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "0fdac7ccfb54cf15",
+            "kind": "fn",
+            "label": "pub fn RungStatus::cleared",
+            "line_end": 51,
+            "line_start": 49,
+            "name": "cleared",
+            "shape_hash": "3f082b43fe1a1e50",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "f46b2c591f423206",
+            "kind": "fn",
+            "label": "pub fn RungStatus::glyph",
+            "line_end": 60,
+            "line_start": 53,
+            "name": "glyph",
+            "shape_hash": "93f7459b28418e36",
+            "string_literals": [
+              {
+                "line": 55,
+                "value": "✓"
+              },
+              {
+                "line": 56,
+                "value": "◐"
+              },
+              {
+                "line": 57,
+                "value": "✗"
+              },
+              {
+                "line": 58,
+                "value": "—"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "12c6df5266580419",
+            "kind": "fn",
+            "label": "pub fn build_ladder",
+            "line_end": 457,
+            "line_start": 398,
+            "name": "build_ladder",
+            "shape_hash": "ee766252138dfca3",
+            "string_literals": [
+              {
+                "line": 423,
+                "value": "committed loom.graph.json is STALE — `loom export`"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "7d7d2080721eec52",
+            "kind": "fn",
+            "label": "pub fn maturity_ladder",
+            "line_end": 375,
+            "line_start": 175,
+            "name": "maturity_ladder",
+            "shape_hash": "738b92855dccd52b",
+            "string_literals": [
+              {
+                "line": 186,
+                "value": "{} public symbol(s) unowned — no claiming intent"
+              },
+              {
+                "line": 192,
+                "value": "{} inbox item(s) un-triaged — enumerated but not decomposed"
+              },
+              {
+                "line": 199,
+                "value": "build"
+              },
+              {
+                "line": 201,
+                "value": "triage"
+              },
+              {
+                "line": 204,
+                "value": "Seeded"
+              },
+              {
+                "line": 219,
+                "value": "vertical spine incomplete — an ungrounded leaf or unreached file"
+              },
+              {
+                "line": 223,
+                "value": "{} of {} leaves not executed-proven (asserted-only or unproven)"
+              },
+              {
+                "line": 230,
+                "value": "{} intent(s) marked built but grounded only to docs (spec-as-built)"
+              },
+              {
+                "line": 236,
+                "value": "build"
+              },
+              {
+                "line": 238,
+                "value": "validate"
+              },
+              {
+                "line": 240,
+                "value": "build"
+              },
+              {
+                "line": 243,
+                "value": "Realized"
+              },
+              {
+                "line": 245,
+                "value": "{}/{}"
+              },
+              {
+                "line": 256,
+                "value": "Proven"
+              },
+              {
+                "line": 258,
+                "value": "—"
+              },
+              {
+                "line": 267,
+                "value": "{owed} of {} user-visible journey(s) have no passing boundary proof"
+              },
+              {
+                "line": 272,
+                "value": "Proven"
+              },
+              {
+                "line": 274,
+                "value": "{}/{}"
+              },
+              {
+                "line": 276,
+                "value": "validate"
+              },
+              {
+                "line": 287,
+                "value": "{} rule×intent pair(s) unmeasured"
+              },
+              {
+                "line": 292,
+                "value": "RELATES_TO grid not fully explored"
+              },
+              {
+                "line": 297,
+                "value": "{} happy leaf/leaves without a realized failure sibling"
+              },
+              {
+                "line": 303,
+                "value": "{} open smell finding(s) — see `loom smells`"
+              },
+              {
+                "line": 310,
+                "value": "audit"
+              },
+              {
+                "line": 312,
+                "value": "quality"
+              },
+              {
+                "line": 314,
+                "value": "discovery"
+              },
+              {
+                "line": 316,
+                "value": "build"
+              },
+              {
+                "line": 319,
+                "value": "Hardened"
+              },
+              {
+                "line": 336,
+                "value": "{} boundary file(s) without an owning intent"
+              },
+              {
+                "line": 350,
+                "value": "inbox"
+              },
+              {
+                "line": 350,
+                "value": "triage"
+              },
+              {
+                "line": 352,
+                "value": "triage"
+              },
+              {
+                "line": 353,
+                "value": "boundary"
+              },
+              {
+                "line": 354,
+                "value": "build"
+              },
+              {
+                "line": 357,
+                "value": "STALE"
+              },
+              {
+                "line": 357,
+                "value": "export"
+              },
+              {
+                "line": 359,
+                "value": "export"
+              },
+              {
+                "line": 361,
+                "value": "validate"
+              },
+              {
+                "line": 366,
+                "value": "Production-ready"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "595ce980c71ea312",
+            "kind": "struct",
+            "label": "pub struct LadderBundle",
+            "line_end": 392,
+            "line_start": 381,
+            "name": "LadderBundle",
+            "shape_hash": "adadcf71be5a1d67",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "73c6e2840b94db58",
+            "kind": "struct",
+            "label": "pub struct LadderInputs",
+            "line_end": 142,
+            "line_start": 131,
+            "name": "LadderInputs",
+            "shape_hash": "656f6db798fb6200",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "495d1284d68e3080",
+            "kind": "struct",
+            "label": "pub struct MaturityLadder",
+            "line_end": 83,
+            "line_start": 80,
+            "name": "MaturityLadder",
+            "shape_hash": "d2e733e232920b7b",
+            "visibility": "public"
+          },
+          {
+            "body_hash": "2f24466c25f6eb00",
+            "kind": "struct",
+            "label": "pub struct Rung",
+            "line_end": 75,
+            "line_start": 67,
+            "name": "Rung",
+            "shape_hash": "39d7bc4b8d259c71",
+            "visibility": "public"
+          }
+        ],
+        "symbols": [
+          "fn axis_cleared",
+          "fn graded",
+          "impl MaturityLadder",
+          "impl RungStatus",
+          "pub enum RungStatus",
+          "pub fn MaturityLadder::focus_lane",
+          "pub fn MaturityLadder::focus_rung",
+          "pub fn MaturityLadder::focus_summary",
+          "pub fn MaturityLadder::vector_line",
+          "pub fn RungStatus::cleared",
+          "pub fn RungStatus::glyph",
+          "pub fn build_ladder",
+          "pub fn maturity_ladder",
+          "pub struct LadderBundle",
+          "pub struct LadderInputs",
+          "pub struct MaturityLadder",
+          "pub struct Rung"
+        ]
       },
       {
         "content_hash": "78bc01dc0aa286f9",
@@ -120992,8 +121399,8 @@
         ]
       },
       {
-        "content_hash": "1f04527027f58040",
-        "extractor_grade": "high",
+        "content_hash": "443fa373b2d9a258",
+        "extractor_grade": "none",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
           "src/db/mod.rs",
@@ -121002,753 +121409,10 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T05:17:59.529106424+00:00",
+        "last_modified": "2026-06-22T16:07:08.318462576+00:00",
         "path": "src/commands/next.rs",
-        "symbol_facts": [
-          {
-            "body_hash": "db7af9a720cd4bb3",
-            "kind": "const",
-            "label": "const ALIGN_EMPTY_MESSAGE",
-            "line_end": 36,
-            "line_start": 35,
-            "name": "ALIGN_EMPTY_MESSAGE",
-            "shape_hash": "65c55dfceb68f926",
-            "string_literals": [
-              {
-                "line": 36,
-                "value": "No drift suspected — nothing churned under a fresh meaning, no wording past its re-affirmation grace. The interview is done."
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "43e8cb5a786e236e",
-            "kind": "const",
-            "label": "const BATCH_TEMPLATE_HINTS",
-            "line_end": 52,
-            "line_start": 48,
-            "name": "BATCH_TEMPLATE_HINTS",
-            "shape_hash": "a87c18a34e633618",
-            "string_literals": [
-              {
-                "line": 49,
-                "value": "per-op required fields: ground→a,b,confidence(+criterion unless stored; +optional evidence) · issue→a,b,evidence,confidence(+criterion unless stored) · independent→a,b,notes · rule_verdict→rule,intent,status,evidence,confidence(+criterion unless stored)"
-              },
-              {
-                "line": 50,
-                "value": "confidence is a <placeholder> on every line below — fill a real [0,1] judgment per line; a verbatim paste is rejected (no blind re-ground)."
-              },
-              {
-                "line": 51,
-                "value": "validate before committing: paste the same lines through `loom batch - --dry-run` (nothing written)."
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "50cc6d1da1578418",
-            "kind": "const",
-            "label": "const BATCH_TEMPLATE_TITLE",
-            "line_end": 38,
-            "line_start": 37,
-            "name": "BATCH_TEMPLATE_TITLE",
-            "shape_hash": "65c55dfceb68f926",
-            "string_literals": [
-              {
-                "line": 38,
-                "value": "── Batch template (edit per finding, then paste into `loom batch - <<'EOF' … EOF`) ──"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "c5d2395733084366",
-            "kind": "const",
-            "label": "const QUALITY_EMPTY_MESSAGE",
-            "line_end": 34,
-            "line_start": 33,
-            "name": "QUALITY_EMPTY_MESSAGE",
-            "shape_hash": "65c55dfceb68f926",
-            "string_literals": [
-              {
-                "line": 34,
-                "value": "No uninspected, failing, or stale GOVERNS edges — the green gate holds."
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "9170d05c86aa2c1d",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn addressed_notes_survive_the_cap",
-            "line_end": 464,
-            "line_start": 446,
-            "name": "addressed_notes_survive_the_cap",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "2375f4ceb43a0dfe",
-            "string_literals": [
-              {
-                "line": 449,
-                "value": "commentary"
-              },
-              {
-                "line": 449,
-                "value": "ambient {i}"
-              },
-              {
-                "line": 449,
-                "value": ""
-              },
-              {
-                "line": 451,
-                "value": "decision"
-              },
-              {
-                "line": 451,
-                "value": "directed handoff"
-              },
-              {
-                "line": 451,
-                "value": "analyzer"
-              },
-              {
-                "line": 452,
-                "value": "analyzer"
-              },
-              {
-                "line": 456,
-                "value": "directed handoff"
-              },
-              {
-                "line": 457,
-                "value": "addressed-to-role notes surface first"
-              },
-              {
-                "line": 461,
-                "value": "ambient 11"
-              },
-              {
-                "line": 462,
-                "value": "remaining slots go to the newest ambient notes"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "15fe829a8c210071",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn compact_action_is_one_runnable_line",
-            "line_end": 510,
-            "line_start": 467,
-            "name": "compact_action_is_one_runnable_line",
-            "shape_hash": "db2a73337dd8a8d1",
-            "string_literals": [
-              {
-                "line": 469,
-                "value": "rt:a:b"
-              },
-              {
-                "line": 470,
-                "value": "a"
-              },
-              {
-                "line": 471,
-                "value": "b"
-              },
-              {
-                "line": 472,
-                "value": "A"
-              },
-              {
-                "line": 473,
-                "value": "B"
-              },
-              {
-                "line": 489,
-                "value": "unexplored"
-              },
-              {
-                "line": 490,
-                "value": "uninspected"
-              },
-              {
-                "line": 491,
-                "value": "failing"
-              },
-              {
-                "line": 492,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 498,
-                "value": "[{status}] compact action must be one line: {action}"
-              },
-              {
-                "line": 501,
-                "value": "loom "
-              },
-              {
-                "line": 502,
-                "value": "[{status}] must carry a runnable command: {action}"
-              },
-              {
-                "line": 505,
-                "value": "failing"
-              },
-              {
-                "line": 507,
-                "value": "rt:a:b"
-              },
-              {
-                "line": 508,
-                "value": "failing routes through `loom edge fix <id>`"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "dcc1d2439dd875cc",
-            "kind": "fn",
-            "label": "fn emit_audit_directive",
-            "line_end": 120,
-            "line_start": 99,
-            "name": "emit_audit_directive",
-            "shape_hash": "15cb88eda3320872",
-            "string_literals": [
-              {
-                "line": 102,
-                "value": "phase"
-              },
-              {
-                "line": 102,
-                "value": "audit"
-              },
-              {
-                "line": 103,
-                "value": "next_kind"
-              },
-              {
-                "line": 104,
-                "value": "next_action"
-              },
-              {
-                "line": 105,
-                "value": "note"
-              },
-              {
-                "line": 105,
-                "value": "phase=audit has no `loom next` queue — `loom smells --summary` is the audit surface; every open finding gates green until resolved (fix or a finding-specific decision note)."
-              },
-              {
-                "line": 108,
-                "value": "── Next: phase=audit (the green-blocking gate) ──────────────────────"
-              },
-              {
-                "line": 109,
-                "value": "directive"
-              },
-              {
-                "line": 110,
-                "value": "→ Next"
-              },
-              {
-                "line": 112,
-                "value": "→ Recommended"
-              },
-              {
-                "line": 114,
-                "value": "  {arrow}: {}"
-              },
-              {
-                "line": 116,
-                "value": "  (`loom next` serves no audit queue — `loom smells --summary` is the audit surface; resolve each finding to reach green.)"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "1c5ae9bc9da8c7ab",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn note",
-            "line_end": 416,
-            "line_start": 404,
-            "name": "note",
-            "shape_hash": "819cede4f7d40c77",
-            "string_literals": [
-              {
-                "line": 406,
-                "value": "{kind}:{text}"
-              },
-              {
-                "line": 409,
-                "value": "loom"
-              },
-              {
-                "line": 410,
-                "value": "edge"
-              },
-              {
-                "line": 411,
-                "value": "e"
-              },
-              {
-                "line": 414,
-                "value": "t"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "8e7201ff0347caab",
-            "kind": "fn",
-            "label": "fn phase_default_mode",
-            "line_end": 93,
-            "line_start": 84,
-            "name": "phase_default_mode",
-            "shape_hash": "885d5831859acf59",
-            "string_literals": [
-              {
-                "line": 86,
-                "value": "build"
-              },
-              {
-                "line": 86,
-                "value": "build"
-              },
-              {
-                "line": 87,
-                "value": "fix"
-              },
-              {
-                "line": 87,
-                "value": "fix"
-              },
-              {
-                "line": 88,
-                "value": "validate"
-              },
-              {
-                "line": 88,
-                "value": "validate"
-              },
-              {
-                "line": 89,
-                "value": "quality"
-              },
-              {
-                "line": 89,
-                "value": "quality"
-              },
-              {
-                "line": 90,
-                "value": "discovery"
-              },
-              {
-                "line": 90,
-                "value": "discovery"
-              },
-              {
-                "line": 91,
-                "value": "discovery"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "d98d8f95ad29787f",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
-            "line_end": 402,
-            "line_start": 387,
-            "name": "phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
-            "shape_hash": "1dbdcd0d16dc5141",
-            "string_literals": [
-              {
-                "line": 392,
-                "value": "build"
-              },
-              {
-                "line": 392,
-                "value": "fix"
-              },
-              {
-                "line": 392,
-                "value": "validate"
-              },
-              {
-                "line": 392,
-                "value": "quality"
-              },
-              {
-                "line": 392,
-                "value": "discovery"
-              },
-              {
-                "line": 395,
-                "value": "seed"
-              },
-              {
-                "line": 395,
-                "value": "incomplete"
-              },
-              {
-                "line": 395,
-                "value": "ground"
-              },
-              {
-                "line": 395,
-                "value": "audit"
-              },
-              {
-                "line": 395,
-                "value": "complete"
-              },
-              {
-                "line": 395,
-                "value": "??"
-              },
-              {
-                "line": 398,
-                "value": "discovery"
-              },
-              {
-                "line": 399,
-                "value": "{non_lane} has no next-mode lane → discovery fallback"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "44b065c225c65c00",
-            "kind": "fn",
-            "label": "fn print_batch_template_header",
-            "line_end": 59,
-            "line_start": 54,
-            "name": "print_batch_template_header",
-            "shape_hash": "86d3453a7b97f1ef",
-            "string_literals": [
-              {
-                "line": 55,
-                "value": "{BATCH_TEMPLATE_TITLE}"
-              },
-              {
-                "line": 57,
-                "value": "  # {hint}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "86b65e29789b4296",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn repeated_notes_collapse_into_a_count",
-            "line_end": 443,
-            "line_start": 419,
-            "name": "repeated_notes_collapse_into_a_count",
-            "shape_hash": "e30563a3fc167b39",
-            "string_literals": [
-              {
-                "line": 422,
-                "value": "transition"
-              },
-              {
-                "line": 423,
-                "value": "passing → needs_reverification (sync: a.rs changed)"
-              },
-              {
-                "line": 424,
-                "value": ""
-              },
-              {
-                "line": 426,
-                "value": "transition"
-              },
-              {
-                "line": 426,
-                "value": "needs_reverification → passing"
-              },
-              {
-                "line": 426,
-                "value": ""
-              },
-              {
-                "line": 428,
-                "value": "transition"
-              },
-              {
-                "line": 429,
-                "value": "passing → needs_reverification (sync: a.rs changed)"
-              },
-              {
-                "line": 430,
-                "value": ""
-              },
-              {
-                "line": 433,
-                "value": "transition"
-              },
-              {
-                "line": 434,
-                "value": "passing → needs_reverification (sync: a.rs changed)"
-              },
-              {
-                "line": 435,
-                "value": ""
-              },
-              {
-                "line": 438,
-                "value": "analyzer"
-              },
-              {
-                "line": 439,
-                "value": "total counts UNIQUE notes"
-              },
-              {
-                "line": 441,
-                "value": "the flap count is the signal"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "fdda8aa86e1e52ee",
-            "kind": "fn",
-            "label": "fn run_with_repo",
-            "line_end": 318,
-            "line_start": 210,
-            "name": "run_with_repo",
-            "shape_hash": "a03f86cf71557d29",
-            "string_literals": [
-              {
-                "line": 225,
-                "value": "triage"
-              },
-              {
-                "line": 227,
-                "value": "Mode 'triage' was renamed to 'prove' (it proves proposed hypotheses; \\\n             'triage' now belongs to Inbox — `loom door \\\"<utterance>\\\"` captures \\\n             user input, then `loom inbox triage` routes it). Run: loom next --mode prove"
-              },
-              {
-                "line": 234,
-                "value": "discovery"
-              },
-              {
-                "line": 235,
-                "value": "fix"
-              },
-              {
-                "line": 236,
-                "value": "build"
-              },
-              {
-                "line": 237,
-                "value": "populate"
-              },
-              {
-                "line": 238,
-                "value": "validate"
-              },
-              {
-                "line": 239,
-                "value": "align"
-              },
-              {
-                "line": 240,
-                "value": "quality"
-              },
-              {
-                "line": 241,
-                "value": "review"
-              },
-              {
-                "line": 242,
-                "value": "prove"
-              },
-              {
-                "line": 245,
-                "value": "Unknown mode '{}'. Valid values: discovery, fix, build, populate, validate, align, quality, review, prove\n\\\n             discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \\\n             build = realize planned/needs_change intents (builder) · \\\n             populate = backfill derived graph structure (builder) · \\\n             validate = run/repair proofs (validator) · \\\n             align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \\\n             quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \\\n             re-recording with confidence ≥ 0.7 or overturning) · \\\n             prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional)."
-              },
-              {
-                "line": 263,
-                "value": "discovery"
-              },
-              {
-                "line": 265,
-                "value": "--class only applies to generated discovery pairs. Use it with \\\n             `loom next --mode discovery --class suspected-coupling|impact-map|all`."
-              },
-              {
-                "line": 271,
-                "value": "discovery"
-              },
-              {
-                "line": 271,
-                "value": "fix"
-              },
-              {
-                "line": 273,
-                "value": "--compact projects a RELATES_TO work item down to its verdict coordinates \\\n             (intents, edge id, grounded paths, the command) — it serves the discovery/fix \\\n             queues. The other modes' items are already mode-shaped — use `loom next --mode {mode}`."
-              },
-              {
-                "line": 283,
-                "value": "  note: {note}"
-              },
-              {
-                "line": 289,
-                "value": "build"
-              },
-              {
-                "line": 290,
-                "value": "populate"
-              },
-              {
-                "line": 291,
-                "value": "validate"
-              },
-              {
-                "line": 292,
-                "value": "align"
-              },
-              {
-                "line": 299,
-                "value": "quality"
-              },
-              {
-                "line": 306,
-                "value": "review"
-              },
-              {
-                "line": 313,
-                "value": "prove"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "da159f11dce16ecb",
-            "kind": "fn",
-            "label": "pub fn run",
-            "line_end": 208,
-            "line_start": 139,
-            "name": "run",
-            "shape_hash": "6eeb036c6906e104",
-            "string_literals": [
-              {
-                "line": 152,
-                "value": "`--take 0` requests zero items — omit --take for the single top item, or pass --take N (N≥1) for a bulk read."
-              },
-              {
-                "line": 168,
-                "value": "audit"
-              },
-              {
-                "line": 179,
-                "value": "discovery"
-              },
-              {
-                "line": 179,
-                "value": "fix"
-              },
-              {
-                "line": 179,
-                "value": "quality"
-              },
-              {
-                "line": 179,
-                "value": "align"
-              },
-              {
-                "line": 179,
-                "value": "review"
-              },
-              {
-                "line": 185,
-                "value": "--take is a bulk read of the discovery/fix/quality/align/review queues; \\\n                 {mode} resolves one command per item, so serving the top 1. For the full \\\n                 queue overview: `loom next --all`."
-              },
-              {
-                "line": 188,
-                "value": "{mode}"
-              }
-            ],
-            "visibility": "public"
-          },
-          {
-            "body_hash": "20bca233686d0511",
-            "kind": "fn",
-            "label": "pub(crate) fn inject_take_note",
-            "line_end": 137,
-            "line_start": 126,
-            "name": "inject_take_note",
-            "shape_hash": "727efaa28cd3e6ee",
-            "string_literals": [
-              {
-                "line": 132,
-                "value": "take_note"
-              },
-              {
-                "line": 133,
-                "value": "take_capped_to"
-              }
-            ],
-            "visibility": "public"
-          },
-          {
-            "body_hash": "e3f08ccaac75ac17",
-            "kind": "fn",
-            "label": "pub(super) fn cap_section",
-            "line_end": 326,
-            "line_start": 322,
-            "name": "cap_section",
-            "shape_hash": "f2dcbfd4b07b1ac7",
-            "visibility": "public"
-          },
-          {
-            "body_hash": "545373814af80d1c",
-            "kind": "fn",
-            "label": "pub(super) fn note_surfaces",
-            "line_end": 379,
-            "line_start": 335,
-            "name": "note_surfaces",
-            "shape_hash": "0d05625529ffa4ea",
-            "visibility": "public"
-          },
-          {
-            "body_hash": "00cf574aaa7195ae",
-            "kind": "struct",
-            "label": "struct NextOpts",
-            "line_end": 74,
-            "line_start": 61,
-            "name": "NextOpts",
-            "shape_hash": "2d1dcfe14ba41128",
-            "visibility": "private"
-          }
-        ],
-        "symbols": [
-          "const ALIGN_EMPTY_MESSAGE",
-          "const BATCH_TEMPLATE_HINTS",
-          "const BATCH_TEMPLATE_TITLE",
-          "const QUALITY_EMPTY_MESSAGE",
-          "fn addressed_notes_survive_the_cap",
-          "fn compact_action_is_one_runnable_line",
-          "fn emit_audit_directive",
-          "fn note",
-          "fn phase_default_mode",
-          "fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
-          "fn print_batch_template_header",
-          "fn repeated_notes_collapse_into_a_count",
-          "fn run_with_repo",
-          "pub fn run",
-          "pub(crate) fn inject_take_note",
-          "pub(super) fn cap_section",
-          "pub(super) fn note_surfaces",
-          "struct NextOpts"
-        ]
+        "symbol_facts": [],
+        "symbols": []
       },
       {
         "content_hash": "2545218dfc241471",
@@ -128360,14 +128024,14 @@
         ]
       },
       {
-        "content_hash": "d906b83be7d8aec1",
+        "content_hash": "db416f503e559835",
         "extractor_grade": "high",
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T10:04:48.540007555+00:00",
+        "last_modified": "2026-06-22T15:59:54.216841497+00:00",
         "path": "src/db/queries/scoring.rs",
         "symbol_facts": [
           {
@@ -128394,8 +128058,8 @@
             "body_hash": "838b5f841383995c",
             "kind": "fn",
             "label": "fn add_intra_bucket_pairs",
-            "line_end": 1240,
-            "line_start": 1233,
+            "line_end": 1256,
+            "line_start": 1249,
             "name": "add_intra_bucket_pairs",
             "shape_hash": "5a22c88d31ed6944",
             "visibility": "private"
@@ -128404,8 +128068,8 @@
             "body_hash": "3c1d25b2bfbae4b9",
             "kind": "fn",
             "label": "fn add_inverted_bucket_pairs",
-            "line_end": 1262,
-            "line_start": 1245,
+            "line_end": 1278,
+            "line_start": 1261,
             "name": "add_inverted_bucket_pairs",
             "shape_hash": "b26682f609a1fce6",
             "visibility": "private"
@@ -128415,69 +128079,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fix_lane_count_matches_scored_len_without_betweenness",
-            "line_end": 1436,
-            "line_start": 1411,
+            "line_end": 1452,
+            "line_start": 1427,
             "name": "fix_lane_count_matches_scored_len_without_betweenness",
             "shape_hash": "a9664e6bc48b90d4",
             "string_literals": [
               {
-                "line": 1413,
+                "line": 1429,
                 "value": "a"
               },
               {
-                "line": 1413,
+                "line": 1429,
                 "value": "b"
               },
               {
-                "line": 1416,
+                "line": 1432,
                 "value": "rel-failing"
               },
               {
-                "line": 1416,
+                "line": 1432,
                 "value": "failing"
               },
               {
-                "line": 1417,
+                "line": 1433,
                 "value": "rel-needs-rev"
               },
               {
-                "line": 1417,
+                "line": 1433,
                 "value": "needs_reverification"
               },
               {
-                "line": 1418,
+                "line": 1434,
                 "value": "rel-passing"
               },
               {
-                "line": 1418,
+                "line": 1434,
                 "value": "passing"
               },
               {
-                "line": 1419,
+                "line": 1435,
                 "value": "rel-uninspected"
               },
               {
-                "line": 1419,
+                "line": 1435,
                 "value": "uninspected"
               },
               {
-                "line": 1422,
+                "line": 1438,
                 "value": "rule"
               },
               {
-                "line": 1430,
+                "line": 1446,
                 "value": "fix"
               },
               {
-                "line": 1431,
+                "line": 1447,
                 "value": "fix"
               },
               {
-                "line": 1432,
+                "line": 1448,
                 "value": "the count-only status path must select the same set as the scored ranking"
               },
               {
-                "line": 1435,
+                "line": 1451,
                 "value": "fix"
               }
             ],
@@ -128488,29 +128152,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn governs",
-            "line_end": 1363,
-            "line_start": 1348,
+            "line_end": 1379,
+            "line_start": 1364,
             "name": "governs",
             "shape_hash": "e8ace59fb3e751be",
             "string_literals": [
               {
-                "line": 1351,
+                "line": 1367,
                 "value": "rule"
               },
               {
-                "line": 1352,
+                "line": 1368,
                 "value": "a"
               },
               {
-                "line": 1353,
+                "line": 1369,
                 "value": "rule"
               },
               {
-                "line": 1354,
+                "line": 1370,
                 "value": "a"
               },
               {
-                "line": 1360,
+                "line": 1376,
                 "value": "llm:quality"
               }
             ],
@@ -128521,25 +128185,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent",
-            "line_end": 1311,
-            "line_start": 1292,
+            "line_end": 1327,
+            "line_start": 1308,
             "name": "intent",
             "shape_hash": "6d809c2de483be6f",
             "string_literals": [
               {
-                "line": 1298,
+                "line": 1314,
                 "value": "feature"
               },
               {
-                "line": 1299,
+                "line": 1315,
                 "value": "test"
               },
               {
-                "line": 1302,
+                "line": 1318,
                 "value": "implemented"
               },
               {
-                "line": 1307,
+                "line": 1323,
                 "value": "implemented"
               }
             ],
@@ -128578,29 +128242,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn relates",
-            "line_end": 1346,
-            "line_start": 1325,
+            "line_end": 1362,
+            "line_start": 1341,
             "name": "relates",
             "shape_hash": "57535ca061dd337e",
             "string_literals": [
               {
-                "line": 1328,
+                "line": 1344,
                 "value": "a"
               },
               {
-                "line": 1329,
+                "line": 1345,
                 "value": "b"
               },
               {
-                "line": 1330,
+                "line": 1346,
                 "value": "a"
               },
               {
-                "line": 1331,
+                "line": 1347,
                 "value": "b"
               },
               {
-                "line": 1337,
+                "line": 1353,
                 "value": "llm:analyzer"
               }
             ],
@@ -128611,117 +128275,117 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn review_queue_ignores_independent_verdict_confidence",
-            "line_end": 1405,
-            "line_start": 1366,
+            "line_end": 1421,
+            "line_start": 1382,
             "name": "review_queue_ignores_independent_verdict_confidence",
             "shape_hash": "0505305b32f62d32",
             "string_literals": [
               {
-                "line": 1368,
+                "line": 1384,
                 "value": "a"
               },
               {
-                "line": 1368,
+                "line": 1384,
                 "value": "b"
               },
               {
-                "line": 1371,
+                "line": 1387,
                 "value": "rel-passing-low"
               },
               {
-                "line": 1371,
+                "line": 1387,
                 "value": "passing"
               },
               {
-                "line": 1372,
+                "line": 1388,
                 "value": "rel-failing-low"
               },
               {
-                "line": 1372,
+                "line": 1388,
                 "value": "failing"
               },
               {
-                "line": 1373,
+                "line": 1389,
                 "value": "rel-independent-low"
               },
               {
-                "line": 1373,
+                "line": 1389,
                 "value": "independent"
               },
               {
-                "line": 1374,
+                "line": 1390,
                 "value": "rel-passing-high"
               },
               {
-                "line": 1374,
+                "line": 1390,
                 "value": "passing"
               },
               {
-                "line": 1375,
+                "line": 1391,
                 "value": "rel-passing-zero"
               },
               {
-                "line": 1375,
+                "line": 1391,
                 "value": "passing"
               },
               {
-                "line": 1378,
+                "line": 1394,
                 "value": "gov-passing-low"
               },
               {
-                "line": 1378,
+                "line": 1394,
                 "value": "passing"
               },
               {
-                "line": 1379,
+                "line": 1395,
                 "value": "gov-failing-low"
               },
               {
-                "line": 1379,
+                "line": 1395,
                 "value": "failing"
               },
               {
-                "line": 1380,
+                "line": 1396,
                 "value": "gov-independent-low"
               },
               {
-                "line": 1380,
+                "line": 1396,
                 "value": "independent"
               },
               {
-                "line": 1381,
+                "line": 1397,
                 "value": "gov-passing-high"
               },
               {
-                "line": 1381,
+                "line": 1397,
                 "value": "passing"
               },
               {
-                "line": 1382,
+                "line": 1398,
                 "value": "gov-passing-zero"
               },
               {
-                "line": 1382,
+                "line": 1398,
                 "value": "passing"
               },
               {
-                "line": 1384,
+                "line": 1400,
                 "value": "rule"
               },
               {
-                "line": 1403,
+                "line": 1419,
                 "value": "rel-failing-low"
               },
               {
-                "line": 1403,
+                "line": 1419,
                 "value": "rel-passing-low"
               },
               {
-                "line": 1404,
+                "line": 1420,
                 "value": "gov-failing-low"
               },
               {
-                "line": 1404,
+                "line": 1420,
                 "value": "gov-passing-low"
               }
             ],
@@ -128732,17 +128396,17 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rule",
-            "line_end": 1323,
-            "line_start": 1313,
+            "line_end": 1339,
+            "line_start": 1329,
             "name": "rule",
             "shape_hash": "758a7b5e7d85fefc",
             "string_literals": [
               {
-                "line": 1320,
+                "line": 1336,
                 "value": "medium"
               },
               {
-                "line": 1321,
+                "line": 1337,
                 "value": "mid"
               }
             ],
@@ -128752,13 +128416,13 @@
             "body_hash": "975531508ce8834b",
             "kind": "fn",
             "label": "fn suspected_coupling_candidates",
-            "line_end": 1230,
-            "line_start": 1145,
+            "line_end": 1246,
+            "line_start": 1161,
             "name": "suspected_coupling_candidates",
             "shape_hash": "7f54e42a1ffab72e",
             "string_literals": [
               {
-                "line": 1211,
+                "line": 1227,
                 "value": "unknown"
               }
             ],
@@ -128778,8 +128442,8 @@
             "body_hash": "432daf4bfea8d9c4",
             "kind": "const",
             "label": "pub const ALIGN_GRACE_DAYS",
-            "line_end": 605,
-            "line_start": 605,
+            "line_end": 621,
+            "line_start": 621,
             "name": "ALIGN_GRACE_DAYS",
             "shape_hash": "f4bd2f42b5dbb893",
             "visibility": "public"
@@ -128912,37 +128576,37 @@
             "body_hash": "4468ad458f39c00c",
             "kind": "fn",
             "label": "pub fn align_candidates_from_snapshot_notes",
-            "line_end": 749,
-            "line_start": 607,
+            "line_end": 765,
+            "line_start": 623,
             "name": "align_candidates_from_snapshot_notes",
             "shape_hash": "c0e4a028d3feff3d",
             "string_literals": [
               {
-                "line": 625,
+                "line": 641,
                 "value": "transition"
               },
               {
-                "line": 629,
+                "line": 645,
                 "value": "confirm"
               },
               {
-                "line": 637,
+                "line": 653,
                 "value": "decision"
               },
               {
-                "line": 637,
+                "line": 653,
                 "value": "redefined: "
               },
               {
-                "line": 637,
+                "line": 653,
                 "value": "reworded: "
               },
               {
-                "line": 679,
+                "line": 695,
                 "value": "internal"
               },
               {
-                "line": 709,
+                "line": 725,
                 "value": "(sync: "
               }
             ],
@@ -128988,8 +128652,8 @@
             "body_hash": "fddab17a254eba62",
             "kind": "fn",
             "label": "pub fn count_unexplored_pairs_from",
-            "line_end": 844,
-            "line_start": 817,
+            "line_end": 860,
+            "line_start": 833,
             "name": "count_unexplored_pairs_from",
             "shape_hash": "fb735b5e7fc81347",
             "visibility": "public"
@@ -128998,13 +128662,13 @@
             "body_hash": "c4d8905baf2baaba",
             "kind": "fn",
             "label": "pub fn lane_depths_from_snapshot",
-            "line_end": 1286,
-            "line_start": 1278,
+            "line_end": 1302,
+            "line_start": 1294,
             "name": "lane_depths_from_snapshot",
             "shape_hash": "cccb1486cb32f938",
             "string_literals": [
               {
-                "line": 1282,
+                "line": 1298,
                 "value": "fix"
               }
             ],
@@ -129014,13 +128678,13 @@
             "body_hash": "eeef40960605bf00",
             "kind": "fn",
             "label": "pub fn mechanical_kinds_for_pair",
-            "line_end": 895,
-            "line_start": 862,
+            "line_end": 911,
+            "line_start": 878,
             "name": "mechanical_kinds_for_pair",
             "shape_hash": "a1ad7d4f177fa8b0",
             "string_literals": [
               {
-                "line": 891,
+                "line": 907,
                 "value": "unknown"
               }
             ],
@@ -129066,21 +128730,21 @@
             "body_hash": "50ecefa9e391495a",
             "kind": "fn",
             "label": "pub fn prove_candidates_from_parts",
-            "line_end": 797,
-            "line_start": 751,
+            "line_end": 813,
+            "line_start": 767,
             "name": "prove_candidates_from_parts",
             "shape_hash": "95f16c59b5f87bee",
             "string_literals": [
               {
-                "line": 771,
+                "line": 787,
                 "value": "proposed"
               },
               {
-                "line": 772,
+                "line": 788,
                 "value": "supported"
               },
               {
-                "line": 774,
+                "line": 790,
                 "value": "needs_reverification"
               }
             ],
@@ -129182,137 +128846,137 @@
             "body_hash": "f056e78fbd2da9af",
             "kind": "fn",
             "label": "pub fn unexplored_pairs_scored_from_snapshot",
-            "line_end": 1132,
-            "line_start": 897,
+            "line_end": 1148,
+            "line_start": 913,
             "name": "unexplored_pairs_scored_from_snapshot",
             "shape_hash": "460233bbe2f13fc5",
             "string_literals": [
               {
-                "line": 931,
+                "line": 947,
                 "value": "unknown"
               },
               {
-                "line": 946,
+                "line": 962,
                 "value": "{imports} import link(s)"
               },
               {
-                "line": 947,
+                "line": 963,
                 "value": "their code imports each other ({imports} link(s))"
               },
               {
-                "line": 949,
+                "line": 965,
                 "value": "import_link"
               },
               {
-                "line": 961,
-                "value": ", "
-              },
-              {
-                "line": 964,
-                "value": "{}, +{} more"
-              },
-              {
-                "line": 965,
-                "value": ", "
-              },
-              {
-                "line": 969,
-                "value": "share {shared} implemented file(s)"
-              },
-              {
-                "line": 971,
-                "value": "shared_file"
-              },
-              {
                 "line": 977,
-                "value": "descriptions overlap ({sim:.2})"
-              },
-              {
-                "line": 979,
-                "value": "description_overlap"
+                "value": ", "
               },
               {
                 "line": 980,
-                "value": "{sim:.2}"
+                "value": "{}, +{} more"
               },
               {
-                "line": 991,
-                "value": "tagged with the same vocabulary ({}, weight {weight:.2})"
-              },
-              {
-                "line": 992,
+                "line": 981,
                 "value": ", "
+              },
+              {
+                "line": 985,
+                "value": "share {shared} implemented file(s)"
+              },
+              {
+                "line": 987,
+                "value": "shared_file"
+              },
+              {
+                "line": 993,
+                "value": "descriptions overlap ({sim:.2})"
               },
               {
                 "line": 995,
-                "value": "shared_vocab"
+                "value": "description_overlap"
               },
               {
                 "line": 996,
+                "value": "{sim:.2}"
+              },
+              {
+                "line": 1007,
+                "value": "tagged with the same vocabulary ({}, weight {weight:.2})"
+              },
+              {
+                "line": 1008,
                 "value": ", "
               },
               {
-                "line": 1001,
+                "line": 1011,
+                "value": "shared_vocab"
+              },
+              {
+                "line": 1012,
+                "value": ", "
+              },
+              {
+                "line": 1017,
                 "value": "same domain '{}'"
               },
               {
-                "line": 1003,
+                "line": 1019,
                 "value": "same_domain"
               },
               {
-                "line": 1018,
+                "line": 1034,
                 "value": "unknown"
               },
               {
-                "line": 1019,
+                "line": 1035,
                 "value": "unknown"
               },
               {
-                "line": 1026,
+                "line": 1042,
                 "value": "domain {} ✗ {}"
               },
               {
-                "line": 1029,
+                "line": 1045,
                 "value": "layer {} ✗ {}"
               },
               {
-                "line": 1031,
+                "line": 1047,
                 "value": ", "
               },
               {
-                "line": 1033,
+                "line": 1049,
                 "value": "coupling CROSSES an architectural boundary ({detail}) — surprising; inspect first"
               },
               {
-                "line": 1036,
+                "line": 1052,
                 "value": "boundary_crossing"
               },
               {
-                "line": 1056,
+                "line": 1072,
                 "value": "ranked by structural centrality only (degree {} + {})"
               },
               {
-                "line": 1059,
+                "line": 1075,
                 "value": "impact_map"
               },
               {
-                "line": 1061,
+                "line": 1077,
                 "value": "structural degree {} + {}"
               },
               {
-                "line": 1062,
+                "line": 1078,
                 "value": "suspected_coupling"
               },
               {
-                "line": 1076,
+                "line": 1092,
                 "value": "unexplored"
               },
               {
-                "line": 1083,
+                "line": 1099,
                 "value": "discovery signal: {}"
               },
               {
-                "line": 1083,
+                "line": 1099,
                 "value": "; "
               }
             ],
@@ -129322,20 +128986,20 @@
             "body_hash": "d9e4a7fa19205fd9",
             "kind": "fn",
             "label": "pub fn validate_candidates_from_snapshot",
-            "line_end": 815,
-            "line_start": 799,
+            "line_end": 831,
+            "line_start": 815,
             "name": "validate_candidates_from_snapshot",
             "shape_hash": "5a378d22b9be6131",
             "visibility": "public"
           },
           {
-            "body_hash": "165590828f9c672a",
+            "body_hash": "6e5bd92423deab66",
             "kind": "fn",
             "label": "pub fn validate_selection_from_snapshot",
-            "line_end": 587,
+            "line_end": 603,
             "line_start": 519,
             "name": "validate_selection_from_snapshot",
-            "shape_hash": "fd6680e41175e39c",
+            "shape_hash": "53e8b6e89cd9497e",
             "string_literals": [
               {
                 "line": 543,
@@ -129372,6 +129036,18 @@
               {
                 "line": 577,
                 "value": "linked validations have not been run (or were invalidated by a code change)"
+              },
+              {
+                "line": 580,
+                "value": "implemented"
+              },
+              {
+                "line": 584,
+                "value": "discriminating"
+              },
+              {
+                "line": 594,
+                "value": "asserted-only — the linked proof passes but does NOT discriminate (no runner asserted >=1 thing). Write a discriminating test (e.g. cargo `test result: ok. N passed`), link it, then re-run `loom validate <intent>` — otherwise it cannot count toward Realized."
               }
             ],
             "visibility": "public"
@@ -129380,8 +129056,8 @@
             "body_hash": "fff186e217f6f82b",
             "kind": "struct",
             "label": "pub struct AlignCandidate",
-            "line_end": 598,
-            "line_start": 592,
+            "line_end": 614,
+            "line_start": 608,
             "name": "AlignCandidate",
             "shape_hash": "2551ff9360779381",
             "visibility": "public"
@@ -129400,8 +129076,8 @@
             "body_hash": "b5c1013383a12167",
             "kind": "struct",
             "label": "pub struct LaneDepths",
-            "line_end": 1276,
-            "line_start": 1271,
+            "line_end": 1292,
+            "line_start": 1287,
             "name": "LaneDepths",
             "shape_hash": "2f2cd24c79641d60",
             "visibility": "public"
@@ -129484,8 +129160,8 @@
         "symbols": []
       },
       {
-        "content_hash": "5298fc1ccb60c6af",
-        "extractor_grade": "high",
+        "content_hash": "86be1a22e862c999",
+        "extractor_grade": "none",
         "id": "b5c2b3b1-4955-4716-bc45-99b6cbfd5f0a",
         "imports": [
           "src/db/mod.rs",
@@ -129495,2698 +129171,10 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-21T22:26:21.294453015+00:00",
+        "last_modified": "2026-06-22T16:02:21.712229093+00:00",
         "path": "src/db/queries/stats/tests.rs",
-        "symbol_facts": [
-          {
-            "body_hash": "5369856d6259a9d3",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn a_deferred_child_does_not_block_parent_rollup",
-            "line_end": 1152,
-            "line_start": 1118,
-            "name": "a_deferred_child_does_not_block_parent_rollup",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "expect"
-            ],
-            "shape_hash": "e544065f89b0d739",
-            "string_literals": [
-              {
-                "line": 1122,
-                "value": "parent"
-              },
-              {
-                "line": 1122,
-                "value": "planned"
-              },
-              {
-                "line": 1123,
-                "value": "done"
-              },
-              {
-                "line": 1123,
-                "value": "implemented"
-              },
-              {
-                "line": 1124,
-                "value": "parked"
-              },
-              {
-                "line": 1124,
-                "value": "deferred"
-              },
-              {
-                "line": 1127,
-                "value": "parent"
-              },
-              {
-                "line": 1127,
-                "value": "done"
-              },
-              {
-                "line": 1128,
-                "value": "parent"
-              },
-              {
-                "line": 1128,
-                "value": "parked"
-              },
-              {
-                "line": 1145,
-                "value": "parent"
-              },
-              {
-                "line": 1146,
-                "value": "the parent surfaces as a roll-up candidate"
-              },
-              {
-                "line": 1147,
-                "value": "a deferred child must not block the roll-up"
-              },
-              {
-                "line": 1149,
-                "value": "parked"
-              },
-              {
-                "line": 1150,
-                "value": "the deferred child itself is not queued"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "8162b3e7912a46e2",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn all_blocked_is_zero_runnable_not_a_divide_by_zero",
-            "line_end": 187,
-            "line_start": 175,
-            "name": "all_blocked_is_zero_runnable_not_a_divide_by_zero",
-            "shape_hash": "554a63d5806e6394",
-            "string_literals": [
-              {
-                "line": 177,
-                "value": "a"
-              },
-              {
-                "line": 177,
-                "value": "implemented"
-              },
-              {
-                "line": 177,
-                "value": "b"
-              },
-              {
-                "line": 177,
-                "value": "implemented"
-              },
-              {
-                "line": 178,
-                "value": "b1"
-              },
-              {
-                "line": 178,
-                "value": "blocked"
-              },
-              {
-                "line": 178,
-                "value": "b2"
-              },
-              {
-                "line": 178,
-                "value": "blocked"
-              },
-              {
-                "line": 180,
-                "value": "b1"
-              },
-              {
-                "line": 180,
-                "value": "a"
-              },
-              {
-                "line": 180,
-                "value": "uninspected"
-              },
-              {
-                "line": 181,
-                "value": "b2"
-              },
-              {
-                "line": 181,
-                "value": "b"
-              },
-              {
-                "line": 181,
-                "value": "uninspected"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "05a14d492f948754",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn audit_gate_outranks_stale_edges",
-            "line_end": 856,
-            "line_start": 820,
-            "name": "audit_gate_outranks_stale_edges",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "0591bcfc12fc372b",
-            "string_literals": [
-              {
-                "line": 825,
-                "value": "fix"
-              },
-              {
-                "line": 826,
-                "value": "stale edges with a clean audit gate route to fix"
-              },
-              {
-                "line": 844,
-                "value": "audit"
-              },
-              {
-                "line": 845,
-                "value": "open findings must route to audit even when stale edges exist: {gs:?}"
-              },
-              {
-                "line": 848,
-                "value": "recommended"
-              },
-              {
-                "line": 849,
-                "value": "open findings (not disk issues) are recommended, not directive: {gs:?}"
-              },
-              {
-                "line": 852,
-                "value": "open finding"
-              },
-              {
-                "line": 853,
-                "value": "the action should name the audit findings: {}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "b1afd3d0b063ff43",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
-            "line_end": 901,
-            "line_start": 859,
-            "name": "betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
-            "panic_marker_count": 2,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "61bfa5e0fc528d7b",
-            "string_literals": [
-              {
-                "line": 865,
-                "value": "c1"
-              },
-              {
-                "line": 865,
-                "value": "c2"
-              },
-              {
-                "line": 865,
-                "value": "c3"
-              },
-              {
-                "line": 865,
-                "value": "c4"
-              },
-              {
-                "line": 865,
-                "value": "c5"
-              },
-              {
-                "line": 865,
-                "value": "m"
-              },
-              {
-                "line": 865,
-                "value": "z"
-              },
-              {
-                "line": 866,
-                "value": "implemented"
-              },
-              {
-                "line": 868,
-                "value": "c1"
-              },
-              {
-                "line": 868,
-                "value": "c2"
-              },
-              {
-                "line": 868,
-                "value": "c3"
-              },
-              {
-                "line": 868,
-                "value": "c4"
-              },
-              {
-                "line": 868,
-                "value": "c5"
-              },
-              {
-                "line": 872,
-                "value": "uninspected"
-              },
-              {
-                "line": 875,
-                "value": "c1"
-              },
-              {
-                "line": 875,
-                "value": "m"
-              },
-              {
-                "line": 875,
-                "value": "uninspected"
-              },
-              {
-                "line": 876,
-                "value": "m"
-              },
-              {
-                "line": 876,
-                "value": "z"
-              },
-              {
-                "line": 876,
-                "value": "uninspected"
-              },
-              {
-                "line": 882,
-                "value": "c1"
-              },
-              {
-                "line": 882,
-                "value": "m"
-              },
-              {
-                "line": 883,
-                "value": "c2"
-              },
-              {
-                "line": 883,
-                "value": "c3"
-              },
-              {
-                "line": 886,
-                "value": "by degree alone the bridge edge loses: {bridge_degree} vs {clique_degree}"
-              },
-              {
-                "line": 890,
-                "value": "discovery"
-              },
-              {
-                "line": 892,
-                "value": "rt:c1:m"
-              },
-              {
-                "line": 893,
-                "value": "rt:c2:c3"
-              },
-              {
-                "line": 896,
-                "value": "betweenness must rank the low-degree chokepoint edge above the high-degree clique edge: \\\n         c1—m at {bridge_pos}, c2—c3 at {clique_pos}"
-              },
-              {
-                "line": 900,
-                "value": "rt:c1:m"
-              },
-              {
-                "line": 900,
-                "value": "rt:c2:c3"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "3a4e4b45ffa4a278",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn blocked_validation_summary_leads_with_validation_objects_not_edges",
-            "line_end": 252,
-            "line_start": 228,
-            "name": "blocked_validation_summary_leads_with_validation_objects_not_edges",
-            "shape_hash": "b5411ca2f2490770",
-            "string_literals": [
-              {
-                "line": 231,
-                "value": "a"
-              },
-              {
-                "line": 231,
-                "value": "implemented"
-              },
-              {
-                "line": 232,
-                "value": "b"
-              },
-              {
-                "line": 232,
-                "value": "implemented"
-              },
-              {
-                "line": 233,
-                "value": "future"
-              },
-              {
-                "line": 233,
-                "value": "deferred"
-              },
-              {
-                "line": 235,
-                "value": "blocked-saga"
-              },
-              {
-                "line": 235,
-                "value": "blocked"
-              },
-              {
-                "line": 237,
-                "value": "blocked-saga"
-              },
-              {
-                "line": 237,
-                "value": "a"
-              },
-              {
-                "line": 237,
-                "value": "uninspected"
-              },
-              {
-                "line": 238,
-                "value": "blocked-saga"
-              },
-              {
-                "line": 238,
-                "value": "b"
-              },
-              {
-                "line": 238,
-                "value": "uninspected"
-              },
-              {
-                "line": 239,
-                "value": "blocked-saga"
-              },
-              {
-                "line": 239,
-                "value": "future"
-              },
-              {
-                "line": 239,
-                "value": "uninspected"
-              },
-              {
-                "line": 248,
-                "value": "manual_acceptance"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "24e7e4b06deade33",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn bridge_ranking_inverts_when_direct_cross_cluster_edge_removes_chokepoint",
-            "line_end": 988,
-            "line_start": 904,
-            "name": "bridge_ranking_inverts_when_direct_cross_cluster_edge_removes_chokepoint",
-            "panic_marker_count": 2,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "74f695ec7ca96c05",
-            "string_literals": [
-              {
-                "line": 908,
-                "value": "a0"
-              },
-              {
-                "line": 908,
-                "value": "a1"
-              },
-              {
-                "line": 908,
-                "value": "a2"
-              },
-              {
-                "line": 908,
-                "value": "a3"
-              },
-              {
-                "line": 908,
-                "value": "a4"
-              },
-              {
-                "line": 908,
-                "value": "a5"
-              },
-              {
-                "line": 908,
-                "value": "a6"
-              },
-              {
-                "line": 908,
-                "value": "a7"
-              },
-              {
-                "line": 908,
-                "value": "a8"
-              },
-              {
-                "line": 908,
-                "value": "bridge"
-              },
-              {
-                "line": 908,
-                "value": "b0"
-              },
-              {
-                "line": 908,
-                "value": "b1"
-              },
-              {
-                "line": 908,
-                "value": "b2"
-              },
-              {
-                "line": 908,
-                "value": "b3"
-              },
-              {
-                "line": 909,
-                "value": "b4"
-              },
-              {
-                "line": 909,
-                "value": "b5"
-              },
-              {
-                "line": 909,
-                "value": "b6"
-              },
-              {
-                "line": 909,
-                "value": "b7"
-              },
-              {
-                "line": 911,
-                "value": "implemented"
-              },
-              {
-                "line": 915,
-                "value": "a0"
-              },
-              {
-                "line": 915,
-                "value": "a1"
-              },
-              {
-                "line": 915,
-                "value": "a2"
-              },
-              {
-                "line": 915,
-                "value": "a3"
-              },
-              {
-                "line": 915,
-                "value": "a4"
-              },
-              {
-                "line": 915,
-                "value": "a5"
-              },
-              {
-                "line": 915,
-                "value": "a6"
-              },
-              {
-                "line": 915,
-                "value": "a7"
-              },
-              {
-                "line": 915,
-                "value": "a8"
-              },
-              {
-                "line": 916,
-                "value": "b0"
-              },
-              {
-                "line": 916,
-                "value": "b1"
-              },
-              {
-                "line": 916,
-                "value": "b2"
-              },
-              {
-                "line": 916,
-                "value": "b3"
-              },
-              {
-                "line": 916,
-                "value": "b4"
-              },
-              {
-                "line": 916,
-                "value": "b5"
-              },
-              {
-                "line": 916,
-                "value": "b6"
-              },
-              {
-                "line": 916,
-                "value": "b7"
-              },
-              {
-                "line": 920,
-                "value": "uninspected"
-              },
-              {
-                "line": 924,
-                "value": "a0"
-              },
-              {
-                "line": 924,
-                "value": "bridge"
-              },
-              {
-                "line": 924,
-                "value": "uninspected"
-              },
-              {
-                "line": 925,
-                "value": "bridge"
-              },
-              {
-                "line": 925,
-                "value": "b0"
-              },
-              {
-                "line": 925,
-                "value": "uninspected"
-              },
-              {
-                "line": 927,
-                "value": "a0"
-              },
-              {
-                "line": 927,
-                "value": "b0"
-              },
-              {
-                "line": 927,
-                "value": "uninspected"
-              },
-              {
-                "line": 934,
-                "value": "discovery"
-              },
-              {
-                "line": 947,
-                "value": "bridge"
-              },
-              {
-                "line": 948,
-                "value": "the connector intent is low-degree: one edge into each dense cluster"
-              },
-              {
-                "line": 951,
-                "value": "a0"
-              },
-              {
-                "line": 951,
-                "value": "bridge"
-              },
-              {
-                "line": 952,
-                "value": "a1"
-              },
-              {
-                "line": 952,
-                "value": "a2"
-              },
-              {
-                "line": 953,
-                "value": "without bridge centrality, the a0—bridge edge loses to the high-degree clique edge"
-              },
-              {
-                "line": 956,
-                "value": "bridge"
-              },
-              {
-                "line": 957,
-                "value": "bridge routes the only path between the two clusters"
-              },
-              {
-                "line": 960,
-                "value": "a1"
-              },
-              {
-                "line": 962,
-                "value": "a1 is high-degree inside the clique, but not a bridge"
-              },
-              {
-                "line": 965,
-                "value": "rt:a0:bridge"
-              },
-              {
-                "line": 965,
-                "value": "rt:a1:a2"
-              },
-              {
-                "line": 966,
-                "value": "betweenness must lift the low-degree bridge-incident edge above the higher-degree clique edge"
-              },
-              {
-                "line": 969,
-                "value": "rt:a0:bridge"
-              },
-              {
-                "line": 969,
-                "value": "rt:a1:a2"
-              },
-              {
-                "line": 970,
-                "value": "ranking inversion must be score-driven, not insertion-order noise"
-              },
-              {
-                "line": 974,
-                "value": "discovery"
-              },
-              {
-                "line": 976,
-                "value": "bridge"
-              },
-              {
-                "line": 978,
-                "value": "the direct a0—b0 edge removes bridge's chokepoint role"
-              },
-              {
-                "line": 981,
-                "value": "rt:a0:bridge"
-              },
-              {
-                "line": 981,
-                "value": "rt:a1:a2"
-              },
-              {
-                "line": 982,
-                "value": "once bridge is no longer on cross-cluster shortest paths, the former bridge edge drops below the high-degree clique edge"
-              },
-              {
-                "line": 985,
-                "value": "rt:a0:bridge"
-              },
-              {
-                "line": 985,
-                "value": "rt:a1:a2"
-              },
-              {
-                "line": 986,
-                "value": "the scorer's sorted priority order must invert after the bridge role is removed"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "85c5846e976dd214",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn centrality_only_pairs_route_to_impact_map_not_default_discovery",
-            "line_end": 540,
-            "line_start": 519,
-            "name": "centrality_only_pairs_route_to_impact_map_not_default_discovery",
-            "panic_marker_count": 3,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "2b418f7f17f4c5bb",
-            "string_literals": [
-              {
-                "line": 521,
-                "value": "a"
-              },
-              {
-                "line": 521,
-                "value": "implemented"
-              },
-              {
-                "line": 521,
-                "value": "b"
-              },
-              {
-                "line": 521,
-                "value": "implemented"
-              },
-              {
-                "line": 534,
-                "value": "impact_map"
-              },
-              {
-                "line": 536,
-                "value": "structural centrality only"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "7f5b39abaafd4b20",
-            "kind": "fn",
-            "label": "fn cmd_val",
-            "line_end": 41,
-            "line_start": 22,
-            "name": "cmd_val",
-            "shape_hash": "842cd768001bc527",
-            "string_literals": [
-              {
-                "line": 27,
-                "value": "test"
-              },
-              {
-                "line": 28,
-                "value": "cargo test"
-              },
-              {
-                "line": 29,
-                "value": "2026-06-19T00:00:00Z"
-              },
-              {
-                "line": 38,
-                "value": "discriminating"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "c54b8f5be1173f76",
-            "kind": "fn",
-            "label": "fn codefile",
-            "line_end": 331,
-            "line_start": 319,
-            "name": "codefile",
-            "shape_hash": "746d956d01c67a22",
-            "string_literals": [
-              {
-                "line": 321,
-                "value": "cf:{path}"
-              },
-              {
-                "line": 323,
-                "value": "rust"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "2ed25e9b418b3980",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn compass_marks_directive_vs_recommended",
-            "line_end": 808,
-            "line_start": 788,
-            "name": "compass_marks_directive_vs_recommended",
-            "shape_hash": "30c402f14275319f",
-            "string_literals": [
-              {
-                "line": 791,
-                "value": "a"
-              },
-              {
-                "line": 791,
-                "value": "implemented"
-              },
-              {
-                "line": 791,
-                "value": "b"
-              },
-              {
-                "line": 791,
-                "value": "implemented"
-              },
-              {
-                "line": 792,
-                "value": "a"
-              },
-              {
-                "line": 792,
-                "value": "b"
-              },
-              {
-                "line": 792,
-                "value": "failing"
-              },
-              {
-                "line": 794,
-                "value": "directive"
-              },
-              {
-                "line": 798,
-                "value": "p"
-              },
-              {
-                "line": 798,
-                "value": "planned"
-              },
-              {
-                "line": 800,
-                "value": "build"
-              },
-              {
-                "line": 801,
-                "value": "recommended"
-              },
-              {
-                "line": 807,
-                "value": "recommended"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "e04bf7ef02f32ce2",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn compass_phase_always_has_a_nonempty_queue",
-            "line_end": 785,
-            "line_start": 743,
-            "name": "compass_phase_always_has_a_nonempty_queue",
-            "shape_hash": "f69cdc3734d36179",
-            "string_literals": [
-              {
-                "line": 748,
-                "value": "a"
-              },
-              {
-                "line": 748,
-                "value": "implemented"
-              },
-              {
-                "line": 749,
-                "value": "b"
-              },
-              {
-                "line": 749,
-                "value": "implemented"
-              },
-              {
-                "line": 750,
-                "value": "p"
-              },
-              {
-                "line": 750,
-                "value": "planned"
-              },
-              {
-                "line": 752,
-                "value": "a"
-              },
-              {
-                "line": 752,
-                "value": "b"
-              },
-              {
-                "line": 752,
-                "value": "failing"
-              },
-              {
-                "line": 754,
-                "value": "fix"
-              },
-              {
-                "line": 754,
-                "value": "a failing edge outranks build"
-              },
-              {
-                "line": 755,
-                "value": "fix"
-              },
-              {
-                "line": 764,
-                "value": "fix"
-              },
-              {
-                "line": 765,
-                "value": "fix"
-              },
-              {
-                "line": 773,
-                "value": "a"
-              },
-              {
-                "line": 773,
-                "value": "implemented"
-              },
-              {
-                "line": 774,
-                "value": "b"
-              },
-              {
-                "line": 774,
-                "value": "implemented"
-              },
-              {
-                "line": 775,
-                "value": "p"
-              },
-              {
-                "line": 775,
-                "value": "planned"
-              },
-              {
-                "line": 777,
-                "value": "a"
-              },
-              {
-                "line": 777,
-                "value": "b"
-              },
-              {
-                "line": 777,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 781,
-                "value": "build"
-              },
-              {
-                "line": 782,
-                "value": "planned build outranks optional stale re-verification"
-              },
-              {
-                "line": 784,
-                "value": "build"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "5e0dcdd5514dc738",
-            "kind": "fn",
-            "label": "fn complete_reaching_snapshot",
-            "line_end": 606,
-            "line_start": 569,
-            "name": "complete_reaching_snapshot",
-            "shape_hash": "54b5f2dad04e08f3",
-            "string_literals": [
-              {
-                "line": 570,
-                "value": "sys"
-              },
-              {
-                "line": 570,
-                "value": "implemented"
-              },
-              {
-                "line": 571,
-                "value": "system"
-              },
-              {
-                "line": 572,
-                "value": "feat"
-              },
-              {
-                "line": 572,
-                "value": "implemented"
-              },
-              {
-                "line": 575,
-                "value": "sys"
-              },
-              {
-                "line": 575,
-                "value": "feat"
-              },
-              {
-                "line": 578,
-                "value": "gov:r1:sys"
-              },
-              {
-                "line": 579,
-                "value": "r1"
-              },
-              {
-                "line": 580,
-                "value": "sys"
-              },
-              {
-                "line": 581,
-                "value": "r1"
-              },
-              {
-                "line": 582,
-                "value": "sys"
-              },
-              {
-                "line": 583,
-                "value": "passing"
-              },
-              {
-                "line": 592,
-                "value": "r1"
-              },
-              {
-                "line": 593,
-                "value": "r1"
-              },
-              {
-                "line": 596,
-                "value": "low"
-              },
-              {
-                "line": 600,
-                "value": "v1"
-              },
-              {
-                "line": 600,
-                "value": "feat"
-              },
-              {
-                "line": 600,
-                "value": "passing"
-              },
-              {
-                "line": 601,
-                "value": "v1"
-              },
-              {
-                "line": 601,
-                "value": "passed"
-              },
-              {
-                "line": 602,
-                "value": "feat"
-              },
-              {
-                "line": 602,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 603,
-                "value": "src/a.rs"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "fb1fd33e1ad1469a",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn deferred_blocked_validation_is_not_current_human_gate",
-            "line_end": 203,
-            "line_start": 190,
-            "name": "deferred_blocked_validation_is_not_current_human_gate",
-            "shape_hash": "215107a1c38ae794",
-            "string_literals": [
-              {
-                "line": 192,
-                "value": "done"
-              },
-              {
-                "line": 192,
-                "value": "implemented"
-              },
-              {
-                "line": 192,
-                "value": "future"
-              },
-              {
-                "line": 192,
-                "value": "deferred"
-              },
-              {
-                "line": 193,
-                "value": "passed"
-              },
-              {
-                "line": 193,
-                "value": "passed"
-              },
-              {
-                "line": 193,
-                "value": "future-proof"
-              },
-              {
-                "line": 193,
-                "value": "blocked"
-              },
-              {
-                "line": 194,
-                "value": "future-proof"
-              },
-              {
-                "line": 194,
-                "value": "future"
-              },
-              {
-                "line": 194,
-                "value": "uninspected"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "7d6d053a3ef8290e",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn deferred_intents_are_excluded_from_the_build_queue",
-            "line_end": 1115,
-            "line_start": 1103,
-            "name": "deferred_intents_are_excluded_from_the_build_queue",
-            "shape_hash": "89d93bf73edbbcd1",
-            "string_literals": [
-              {
-                "line": 1105,
-                "value": "p"
-              },
-              {
-                "line": 1105,
-                "value": "planned"
-              },
-              {
-                "line": 1105,
-                "value": "d"
-              },
-              {
-                "line": 1105,
-                "value": "deferred"
-              },
-              {
-                "line": 1110,
-                "value": "p"
-              },
-              {
-                "line": 1110,
-                "value": "planned work is queued"
-              },
-              {
-                "line": 1112,
-                "value": "d"
-              },
-              {
-                "line": 1113,
-                "value": "a deferred (parked) intent never enters the build queue"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "3b94116163d4e483",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn fully_proven_badge_gates_on_phase_and_executed_proof",
-            "line_end": 1230,
-            "line_start": 1155,
-            "name": "fully_proven_badge_gates_on_phase_and_executed_proof",
-            "shape_hash": "393efc14de3fcf66",
-            "string_literals": [
-              {
-                "line": 1171,
-                "value": "complete"
-              },
-              {
-                "line": 1194,
-                "value": "expected fully_proven, got: {reasons:?}"
-              },
-              {
-                "line": 1203,
-                "value": "unowned"
-              },
-              {
-                "line": 1203,
-                "value": "{reasons:?}"
-              },
-              {
-                "line": 1207,
-                "value": "validate"
-              },
-              {
-                "line": 1211,
-                "value": "not 'complete'"
-              },
-              {
-                "line": 1212,
-                "value": "{reasons:?}"
-              },
-              {
-                "line": 1219,
-                "value": "EXECUTED-proven"
-              },
-              {
-                "line": 1220,
-                "value": "{reasons:?}"
-              },
-              {
-                "line": 1227,
-                "value": "un-triaged"
-              },
-              {
-                "line": 1228,
-                "value": "{reasons:?}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "c73be12e48f69fa3",
-            "kind": "fn",
-            "label": "fn gs_of",
-            "line_end": 385,
-            "line_start": 372,
-            "name": "gs_of",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "9fcad3ae9d56a406",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "fadbd0e4b2e2f799",
-            "kind": "fn",
-            "label": "fn gs_of_with_disk",
-            "line_end": 561,
-            "line_start": 548,
-            "name": "gs_of_with_disk",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "cdd22e6d481b9874",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "c619ace9cbecbf66",
-            "kind": "fn",
-            "label": "fn implements",
-            "line_end": 350,
-            "line_start": 333,
-            "name": "implements",
-            "shape_hash": "c42747720c64c85b",
-            "string_literals": [
-              {
-                "line": 335,
-                "value": "imp:{intent_id}:{path}"
-              },
-              {
-                "line": 337,
-                "value": "cf:{path}"
-              },
-              {
-                "line": 340,
-                "value": "passing"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "6cbb090421e20b6e",
-            "kind": "fn",
-            "label": "fn intent",
-            "line_end": 279,
-            "line_start": 260,
-            "name": "intent",
-            "shape_hash": "9dec33f721631629",
-            "string_literals": [
-              {
-                "line": 266,
-                "value": "feature"
-              },
-              {
-                "line": 270,
-                "value": "confirmed"
-              },
-              {
-                "line": 276,
-                "value": "t0"
-              },
-              {
-                "line": 277,
-                "value": "t0"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "737c68ccb3d086f2",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn leaf_spine_sound_does_not_imply_no_completeness_gaps",
-            "line_end": 720,
-            "line_start": 693,
-            "name": "leaf_spine_sound_does_not_imply_no_completeness_gaps",
-            "shape_hash": "910bb9c64df34e67",
-            "string_literals": [
-              {
-                "line": 695,
-                "value": "sys"
-              },
-              {
-                "line": 695,
-                "value": "implemented"
-              },
-              {
-                "line": 696,
-                "value": "system"
-              },
-              {
-                "line": 697,
-                "value": "feat"
-              },
-              {
-                "line": 697,
-                "value": "implemented"
-              },
-              {
-                "line": 702,
-                "value": "sys"
-              },
-              {
-                "line": 702,
-                "value": "feat"
-              },
-              {
-                "line": 708,
-                "value": "feat"
-              },
-              {
-                "line": 708,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 709,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 713,
-                "value": "leaf spine is sound: {vc:?}"
-              },
-              {
-                "line": 717,
-                "value": "'sys'"
-              },
-              {
-                "line": 717,
-                "value": "not grounded"
-              },
-              {
-                "line": 718,
-                "value": "a confirmed non-leaf intent not grounded is a broader gap the leaf-spine ✓ must not bury: {gaps:?}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "c180520a65342435",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn map_vs_territory_blocks_green_when_disk_unaccounted",
-            "line_end": 682,
-            "line_start": 659,
-            "name": "map_vs_territory_blocks_green_when_disk_unaccounted",
-            "shape_hash": "d30ba1371b8c460b",
-            "string_literals": [
-              {
-                "line": 664,
-                "value": "complete"
-              },
-              {
-                "line": 665,
-                "value": "with disk reconciled the phase should be complete: {green:?}"
-              },
-              {
-                "line": 670,
-                "value": "audit"
-              },
-              {
-                "line": 671,
-                "value": "disk-unaccounted files must block green (audit, not complete): {red:?}"
-              },
-              {
-                "line": 674,
-                "value": "directive"
-              },
-              {
-                "line": 675,
-                "value": "map≠territory is a directive the agent should just act on, not a suggestion: {red:?}"
-              },
-              {
-                "line": 678,
-                "value": "map must match the territory"
-              },
-              {
-                "line": 679,
-                "value": "the action should name the gate: {}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "243fca0d1645758c",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn mixed_deferred_and_current_blocked_validation_stays_current",
-            "line_end": 225,
-            "line_start": 206,
-            "name": "mixed_deferred_and_current_blocked_validation_stays_current",
-            "shape_hash": "40133456e2142e8c",
-            "string_literals": [
-              {
-                "line": 209,
-                "value": "current"
-              },
-              {
-                "line": 209,
-                "value": "implemented"
-              },
-              {
-                "line": 210,
-                "value": "future"
-              },
-              {
-                "line": 210,
-                "value": "deferred"
-              },
-              {
-                "line": 212,
-                "value": "mixed"
-              },
-              {
-                "line": 212,
-                "value": "blocked"
-              },
-              {
-                "line": 214,
-                "value": "mixed"
-              },
-              {
-                "line": 214,
-                "value": "future"
-              },
-              {
-                "line": 214,
-                "value": "uninspected"
-              },
-              {
-                "line": 215,
-                "value": "mixed"
-              },
-              {
-                "line": 215,
-                "value": "current"
-              },
-              {
-                "line": 215,
-                "value": "uninspected"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "1d0790023c3a4d3b",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn no_bridges_leaves_scoring_on_pure_degree",
-            "line_end": 1100,
-            "line_start": 1077,
-            "name": "no_bridges_leaves_scoring_on_pure_degree",
-            "shape_hash": "2151db38bdf31593",
-            "string_literals": [
-              {
-                "line": 1081,
-                "value": "a"
-              },
-              {
-                "line": 1081,
-                "value": "implemented"
-              },
-              {
-                "line": 1082,
-                "value": "b"
-              },
-              {
-                "line": 1082,
-                "value": "implemented"
-              },
-              {
-                "line": 1083,
-                "value": "c"
-              },
-              {
-                "line": 1083,
-                "value": "implemented"
-              },
-              {
-                "line": 1086,
-                "value": "a"
-              },
-              {
-                "line": 1086,
-                "value": "b"
-              },
-              {
-                "line": 1086,
-                "value": "uninspected"
-              },
-              {
-                "line": 1087,
-                "value": "a"
-              },
-              {
-                "line": 1087,
-                "value": "c"
-              },
-              {
-                "line": 1087,
-                "value": "uninspected"
-              },
-              {
-                "line": 1088,
-                "value": "b"
-              },
-              {
-                "line": 1088,
-                "value": "c"
-              },
-              {
-                "line": 1088,
-                "value": "uninspected"
-              },
-              {
-                "line": 1093,
-                "value": "a triangle has no bridges"
-              },
-              {
-                "line": 1097,
-                "value": "discovery"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "848adb11bba2b76f",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy",
-            "line_end": 421,
-            "line_start": 388,
-            "name": "note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "037f5e3a110f8900",
-            "string_literals": [
-              {
-                "line": 408,
-                "value": "6000 notes"
-              },
-              {
-                "line": 408,
-                "value": "names the count: {h}"
-              },
-              {
-                "line": 410,
-                "value": "ONLY low-signal transition churn"
-              },
-              {
-                "line": 411,
-                "value": "prune is qualified to transition churn only (not a blanket remedy): {h}"
-              },
-              {
-                "line": 414,
-                "value": "Nothing to prune"
-              },
-              {
-                "line": 415,
-                "value": "teaches that Nothing-to-prune on legitimate memory is expected, not a bug: {h}"
-              },
-              {
-                "line": 418,
-                "value": "legitimately heavy"
-              },
-              {
-                "line": 419,
-                "value": "names the legitimate-memory case so the driver stops chasing a missing remedy: {h}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "00181ca106023041",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn note_hygiene_uncapped_log_keeps_set_cap_remedy",
-            "line_end": 445,
-            "line_start": 424,
-            "name": "note_hygiene_uncapped_log_keeps_set_cap_remedy",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "f9ec844d1acc0b3d",
-            "string_literals": [
-              {
-                "line": 442,
-                "value": "UNCAPPED"
-              },
-              {
-                "line": 442,
-                "value": "--set-cap"
-              },
-              {
-                "line": 443,
-                "value": "uncapped keeps the set-cap remedy: {h}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "b5afa84cfcb2a7bf",
-            "kind": "fn",
-            "label": "fn phase_of",
-            "line_end": 544,
-            "line_start": 542,
-            "name": "phase_of",
-            "shape_hash": "8ecc2edc2185a9f5",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "653fd1d62109c78a",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn proven_executed_requires_last_executed_run_not_just_a_command",
-            "line_end": 113,
-            "line_start": 50,
-            "name": "proven_executed_requires_last_executed_run_not_just_a_command",
-            "shape_hash": "5a4399a64e7b9c71",
-            "string_literals": [
-              {
-                "line": 51,
-                "value": "leaf"
-              },
-              {
-                "line": 51,
-                "value": "implemented"
-              },
-              {
-                "line": 52,
-                "value": "leaf"
-              },
-              {
-                "line": 52,
-                "value": "src/x.rs"
-              },
-              {
-                "line": 63,
-                "value": "vh"
-              },
-              {
-                "line": 63,
-                "value": "leaf"
-              },
-              {
-                "line": 63,
-                "value": "passing"
-              },
-              {
-                "line": 64,
-                "value": "vh"
-              },
-              {
-                "line": 64,
-                "value": "passed"
-              },
-              {
-                "line": 64,
-                "value": ""
-              },
-              {
-                "line": 72,
-                "value": "a passed validation proves the leaf"
-              },
-              {
-                "line": 76,
-                "value": "a hand-marked command-bearing proof is ASSERTED, not EXECUTED — last_executed_run empty"
-              },
-              {
-                "line": 80,
-                "value": "the hand-mark lands in the asserted-only bucket"
-              },
-              {
-                "line": 91,
-                "value": "ve"
-              },
-              {
-                "line": 91,
-                "value": "leaf"
-              },
-              {
-                "line": 91,
-                "value": "passing"
-              },
-              {
-                "line": 92,
-                "value": "ve"
-              },
-              {
-                "line": 92,
-                "value": "passed"
-              },
-              {
-                "line": 92,
-                "value": "2026-06-19T00:00:00Z"
-              },
-              {
-                "line": 100,
-                "value": "an executor-stamped last_executed_run is EXECUTED (the command ran)"
-              },
-              {
-                "line": 104,
-                "value": "an executed proof is not in the asserted-only bucket"
-              },
-              {
-                "line": 111,
-                "value": "proven decomposes into executed + asserted-only"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "432084c726b8317a",
-            "kind": "fn",
-            "label": "fn queue_nonempty_for_phase",
-            "line_end": 740,
-            "line_start": 726,
-            "name": "queue_nonempty_for_phase",
-            "shape_hash": "3bb2c97152eae8dd",
-            "string_literals": [
-              {
-                "line": 728,
-                "value": "fix"
-              },
-              {
-                "line": 728,
-                "value": "fix"
-              },
-              {
-                "line": 729,
-                "value": "build"
-              },
-              {
-                "line": 730,
-                "value": "validate"
-              },
-              {
-                "line": 731,
-                "value": "quality"
-              },
-              {
-                "line": 732,
-                "value": "discovery"
-              },
-              {
-                "line": 735,
-                "value": "uninspected"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "bf07299ad2b22aba",
-            "kind": "fn",
-            "label": "fn rel",
-            "line_end": 302,
-            "line_start": 281,
-            "name": "rel",
-            "shape_hash": "d64f4b372918d971",
-            "string_literals": [
-              {
-                "line": 283,
-                "value": "rt:{from}:{to}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "1f456b4786668dc2",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn ripple_bump_decays_with_distance_from_the_stale_frontier",
-            "line_end": 1024,
-            "line_start": 991,
-            "name": "ripple_bump_decays_with_distance_from_the_stale_frontier",
-            "shape_hash": "0fb8b3f6f7c359ee",
-            "string_literals": [
-              {
-                "line": 995,
-                "value": "a"
-              },
-              {
-                "line": 995,
-                "value": "b"
-              },
-              {
-                "line": 995,
-                "value": "c"
-              },
-              {
-                "line": 995,
-                "value": "d"
-              },
-              {
-                "line": 995,
-                "value": "e"
-              },
-              {
-                "line": 997,
-                "value": "implemented"
-              },
-              {
-                "line": 1000,
-                "value": "a"
-              },
-              {
-                "line": 1000,
-                "value": "b"
-              },
-              {
-                "line": 1000,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 1001,
-                "value": "b"
-              },
-              {
-                "line": 1001,
-                "value": "c"
-              },
-              {
-                "line": 1001,
-                "value": "uninspected"
-              },
-              {
-                "line": 1002,
-                "value": "c"
-              },
-              {
-                "line": 1002,
-                "value": "d"
-              },
-              {
-                "line": 1002,
-                "value": "uninspected"
-              },
-              {
-                "line": 1003,
-                "value": "d"
-              },
-              {
-                "line": 1003,
-                "value": "e"
-              },
-              {
-                "line": 1003,
-                "value": "uninspected"
-              },
-              {
-                "line": 1009,
-                "value": "c"
-              },
-              {
-                "line": 1011,
-                "value": "two hops from change"
-              },
-              {
-                "line": 1014,
-                "value": "d"
-              },
-              {
-                "line": 1016,
-                "value": "three hops from change"
-              },
-              {
-                "line": 1019,
-                "value": "e"
-              },
-              {
-                "line": 1020,
-                "value": "beyond the graded radius — no bump"
-              },
-              {
-                "line": 1023,
-                "value": "a"
-              },
-              {
-                "line": 1023,
-                "value": "b"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "8606721b5f6750fa",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn ripple_bump_empty_without_stale_edges",
-            "line_end": 1037,
-            "line_start": 1027,
-            "name": "ripple_bump_empty_without_stale_edges",
-            "shape_hash": "b6151bb6704da386",
-            "string_literals": [
-              {
-                "line": 1030,
-                "value": "a"
-              },
-              {
-                "line": 1030,
-                "value": "b"
-              },
-              {
-                "line": 1030,
-                "value": "c"
-              },
-              {
-                "line": 1032,
-                "value": "implemented"
-              },
-              {
-                "line": 1034,
-                "value": "a"
-              },
-              {
-                "line": 1034,
-                "value": "b"
-              },
-              {
-                "line": 1034,
-                "value": "uninspected"
-              },
-              {
-                "line": 1034,
-                "value": "b"
-              },
-              {
-                "line": 1034,
-                "value": "c"
-              },
-              {
-                "line": 1034,
-                "value": "passing"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "a63ab440b89094ff",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn ripple_elevates_an_edge_near_a_stale_region",
-            "line_end": 1074,
-            "line_start": 1040,
-            "name": "ripple_elevates_an_edge_near_a_stale_region",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "bb7c27ce18b3cb97",
-            "string_literals": [
-              {
-                "line": 1046,
-                "value": "a"
-              },
-              {
-                "line": 1046,
-                "value": "b"
-              },
-              {
-                "line": 1046,
-                "value": "c"
-              },
-              {
-                "line": 1046,
-                "value": "d"
-              },
-              {
-                "line": 1046,
-                "value": "e"
-              },
-              {
-                "line": 1046,
-                "value": "f"
-              },
-              {
-                "line": 1046,
-                "value": "x"
-              },
-              {
-                "line": 1048,
-                "value": "implemented"
-              },
-              {
-                "line": 1051,
-                "value": "a"
-              },
-              {
-                "line": 1051,
-                "value": "b"
-              },
-              {
-                "line": 1051,
-                "value": "uninspected"
-              },
-              {
-                "line": 1052,
-                "value": "a"
-              },
-              {
-                "line": 1052,
-                "value": "c"
-              },
-              {
-                "line": 1052,
-                "value": "uninspected"
-              },
-              {
-                "line": 1053,
-                "value": "b"
-              },
-              {
-                "line": 1053,
-                "value": "c"
-              },
-              {
-                "line": 1053,
-                "value": "uninspected"
-              },
-              {
-                "line": 1054,
-                "value": "d"
-              },
-              {
-                "line": 1054,
-                "value": "e"
-              },
-              {
-                "line": 1054,
-                "value": "uninspected"
-              },
-              {
-                "line": 1055,
-                "value": "d"
-              },
-              {
-                "line": 1055,
-                "value": "f"
-              },
-              {
-                "line": 1055,
-                "value": "uninspected"
-              },
-              {
-                "line": 1056,
-                "value": "e"
-              },
-              {
-                "line": 1056,
-                "value": "f"
-              },
-              {
-                "line": 1056,
-                "value": "uninspected"
-              },
-              {
-                "line": 1057,
-                "value": "a"
-              },
-              {
-                "line": 1057,
-                "value": "x"
-              },
-              {
-                "line": 1057,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 1063,
-                "value": "b"
-              },
-              {
-                "line": 1063,
-                "value": "c"
-              },
-              {
-                "line": 1064,
-                "value": "e"
-              },
-              {
-                "line": 1064,
-                "value": "f"
-              },
-              {
-                "line": 1065,
-                "value": "equal degree sums"
-              },
-              {
-                "line": 1068,
-                "value": "discovery"
-              },
-              {
-                "line": 1071,
-                "value": "rt:b:c"
-              },
-              {
-                "line": 1071,
-                "value": "rt:e:f"
-              },
-              {
-                "line": 1072,
-                "value": "the edge near the stale region must rank above the equally-shaped far edge"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "37207b5b5b4c30af",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn runnable_rate_equals_all_up_when_nothing_blocked",
-            "line_end": 172,
-            "line_start": 166,
-            "name": "runnable_rate_equals_all_up_when_nothing_blocked",
-            "shape_hash": "7831f34f0247dadd",
-            "string_literals": [
-              {
-                "line": 168,
-                "value": "p"
-              },
-              {
-                "line": 168,
-                "value": "passed"
-              },
-              {
-                "line": 168,
-                "value": "f"
-              },
-              {
-                "line": 168,
-                "value": "failed"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "5ea30acdccd9c9d9",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn runnable_rate_excludes_blocked_from_the_denominator",
-            "line_end": 163,
-            "line_start": 148,
-            "name": "runnable_rate_excludes_blocked_from_the_denominator",
-            "shape_hash": "28fd9c71adefb4d4",
-            "string_literals": [
-              {
-                "line": 152,
-                "value": "a"
-              },
-              {
-                "line": 152,
-                "value": "implemented"
-              },
-              {
-                "line": 154,
-                "value": "p1"
-              },
-              {
-                "line": 154,
-                "value": "passed"
-              },
-              {
-                "line": 155,
-                "value": "p2"
-              },
-              {
-                "line": 155,
-                "value": "passed"
-              },
-              {
-                "line": 156,
-                "value": "b"
-              },
-              {
-                "line": 156,
-                "value": "blocked"
-              },
-              {
-                "line": 158,
-                "value": "b"
-              },
-              {
-                "line": 158,
-                "value": "a"
-              },
-              {
-                "line": 158,
-                "value": "uninspected"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "ffd49055eadaa119",
-            "kind": "fn",
-            "label": "fn snap",
-            "line_end": 317,
-            "line_start": 304,
-            "name": "snap",
-            "shape_hash": "2331a407842bf5da",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "b9fbbcc6276c1391",
-            "kind": "fn",
-            "label": "fn snap_with_code",
-            "line_end": 370,
-            "line_start": 352,
-            "name": "snap_with_code",
-            "shape_hash": "deaf961259bd1d2a",
-            "visibility": "private"
-          },
-          {
-            "body_hash": "ddf50ec5ef47424f",
-            "kind": "fn",
-            "label": "fn stale_clearing_snapshot",
-            "line_end": 650,
-            "line_start": 613,
-            "name": "stale_clearing_snapshot",
-            "shape_hash": "a41052c727195988",
-            "string_literals": [
-              {
-                "line": 614,
-                "value": "sys"
-              },
-              {
-                "line": 614,
-                "value": "implemented"
-              },
-              {
-                "line": 615,
-                "value": "system"
-              },
-              {
-                "line": 616,
-                "value": "feat"
-              },
-              {
-                "line": 616,
-                "value": "implemented"
-              },
-              {
-                "line": 619,
-                "value": "sys"
-              },
-              {
-                "line": 619,
-                "value": "feat"
-              },
-              {
-                "line": 620,
-                "value": "sys"
-              },
-              {
-                "line": 620,
-                "value": "feat"
-              },
-              {
-                "line": 620,
-                "value": "needs_reverification"
-              },
-              {
-                "line": 622,
-                "value": "gov:r1:sys"
-              },
-              {
-                "line": 623,
-                "value": "r1"
-              },
-              {
-                "line": 624,
-                "value": "sys"
-              },
-              {
-                "line": 625,
-                "value": "r1"
-              },
-              {
-                "line": 626,
-                "value": "sys"
-              },
-              {
-                "line": 627,
-                "value": "passing"
-              },
-              {
-                "line": 636,
-                "value": "r1"
-              },
-              {
-                "line": 637,
-                "value": "r1"
-              },
-              {
-                "line": 640,
-                "value": "low"
-              },
-              {
-                "line": 644,
-                "value": "v1"
-              },
-              {
-                "line": 644,
-                "value": "feat"
-              },
-              {
-                "line": 644,
-                "value": "passing"
-              },
-              {
-                "line": 645,
-                "value": "v1"
-              },
-              {
-                "line": 645,
-                "value": "passed"
-              },
-              {
-                "line": 646,
-                "value": "feat"
-              },
-              {
-                "line": 646,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 647,
-                "value": "src/a.rs"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "8ff1e0e0b434a715",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn unexplored_import_pair_is_suspected_coupling",
-            "line_end": 495,
-            "line_start": 473,
-            "name": "unexplored_import_pair_is_suspected_coupling",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "c0f9cdb20952079c",
-            "string_literals": [
-              {
-                "line": 475,
-                "value": "a"
-              },
-              {
-                "line": 475,
-                "value": "implemented"
-              },
-              {
-                "line": 475,
-                "value": "b"
-              },
-              {
-                "line": 475,
-                "value": "implemented"
-              },
-              {
-                "line": 477,
-                "value": "a"
-              },
-              {
-                "line": 477,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 477,
-                "value": "b"
-              },
-              {
-                "line": 477,
-                "value": "src/b.rs"
-              },
-              {
-                "line": 479,
-                "value": "src/a.rs"
-              },
-              {
-                "line": 479,
-                "value": "src/b.rs"
-              },
-              {
-                "line": 480,
-                "value": "src/b.rs"
-              },
-              {
-                "line": 490,
-                "value": "suspected_coupling"
-              },
-              {
-                "line": 494,
-                "value": "import_link"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "a15c38c32577ee4d",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn unexplored_same_domain_pair_is_suspected_coupling",
-            "line_end": 516,
-            "line_start": 498,
-            "name": "unexplored_same_domain_pair_is_suspected_coupling",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "497c8a9e65907274",
-            "string_literals": [
-              {
-                "line": 499,
-                "value": "a"
-              },
-              {
-                "line": 499,
-                "value": "implemented"
-              },
-              {
-                "line": 500,
-                "value": "db"
-              },
-              {
-                "line": 501,
-                "value": "b"
-              },
-              {
-                "line": 501,
-                "value": "implemented"
-              },
-              {
-                "line": 502,
-                "value": "db"
-              },
-              {
-                "line": 511,
-                "value": "suspected_coupling"
-              },
-              {
-                "line": 515,
-                "value": "same_domain"
-              },
-              {
-                "line": 515,
-                "value": "db"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "d5a1efe647b32645",
-            "is_test": true,
-            "kind": "fn",
-            "label": "fn unexplored_shared_file_pair_is_suspected_coupling",
-            "line_end": 470,
-            "line_start": 448,
-            "name": "unexplored_shared_file_pair_is_suspected_coupling",
-            "panic_marker_count": 1,
-            "panic_markers": [
-              "unwrap"
-            ],
-            "shape_hash": "ece372449fc1b2b1",
-            "string_literals": [
-              {
-                "line": 450,
-                "value": "a"
-              },
-              {
-                "line": 450,
-                "value": "implemented"
-              },
-              {
-                "line": 450,
-                "value": "b"
-              },
-              {
-                "line": 450,
-                "value": "implemented"
-              },
-              {
-                "line": 453,
-                "value": "a"
-              },
-              {
-                "line": 453,
-                "value": "src/shared.rs"
-              },
-              {
-                "line": 454,
-                "value": "b"
-              },
-              {
-                "line": 454,
-                "value": "src/shared.rs"
-              },
-              {
-                "line": 456,
-                "value": "src/shared.rs"
-              },
-              {
-                "line": 465,
-                "value": "suspected_coupling"
-              },
-              {
-                "line": 469,
-                "value": "shared_file"
-              },
-              {
-                "line": 469,
-                "value": "src/shared.rs"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "79d3e23cd078b513",
-            "kind": "fn",
-            "label": "fn val",
-            "line_end": 16,
-            "line_start": 4,
-            "name": "val",
-            "shape_hash": "040eb47df1de75a3",
-            "string_literals": [
-              {
-                "line": 9,
-                "value": "manual_check"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "fd1f13cb513d3254",
-            "kind": "fn",
-            "label": "fn validates",
-            "line_end": 126,
-            "line_start": 115,
-            "name": "validates",
-            "shape_hash": "7118d3b2764cf51c",
-            "string_literals": [
-              {
-                "line": 117,
-                "value": "val:{validation_id}:{intent_id}"
-              }
-            ],
-            "visibility": "private"
-          },
-          {
-            "body_hash": "aa6b7d91908dc032",
-            "kind": "fn",
-            "label": "fn validation_snapshot",
-            "line_end": 145,
-            "line_start": 128,
-            "name": "validation_snapshot",
-            "shape_hash": "922a5ce34e394ffe",
-            "visibility": "private"
-          }
-        ],
-        "symbols": [
-          "fn a_deferred_child_does_not_block_parent_rollup",
-          "fn all_blocked_is_zero_runnable_not_a_divide_by_zero",
-          "fn audit_gate_outranks_stale_edges",
-          "fn betweenness_lets_a_low_degree_chokepoint_outrank_a_high_degree_clique",
-          "fn blocked_validation_summary_leads_with_validation_objects_not_edges",
-          "fn bridge_ranking_inverts_when_direct_cross_cluster_edge_removes_chokepoint",
-          "fn centrality_only_pairs_route_to_impact_map_not_default_discovery",
-          "fn cmd_val",
-          "fn codefile",
-          "fn compass_marks_directive_vs_recommended",
-          "fn compass_phase_always_has_a_nonempty_queue",
-          "fn complete_reaching_snapshot",
-          "fn deferred_blocked_validation_is_not_current_human_gate",
-          "fn deferred_intents_are_excluded_from_the_build_queue",
-          "fn fully_proven_badge_gates_on_phase_and_executed_proof",
-          "fn gs_of",
-          "fn gs_of_with_disk",
-          "fn implements",
-          "fn intent",
-          "fn leaf_spine_sound_does_not_imply_no_completeness_gaps",
-          "fn map_vs_territory_blocks_green_when_disk_unaccounted",
-          "fn mixed_deferred_and_current_blocked_validation_stays_current",
-          "fn no_bridges_leaves_scoring_on_pure_degree",
-          "fn note_hygiene_heavy_log_reframes_prune_as_conditional_not_a_false_remedy",
-          "fn note_hygiene_uncapped_log_keeps_set_cap_remedy",
-          "fn phase_of",
-          "fn proven_executed_requires_last_executed_run_not_just_a_command",
-          "fn queue_nonempty_for_phase",
-          "fn rel",
-          "fn ripple_bump_decays_with_distance_from_the_stale_frontier",
-          "fn ripple_bump_empty_without_stale_edges",
-          "fn ripple_elevates_an_edge_near_a_stale_region",
-          "fn runnable_rate_equals_all_up_when_nothing_blocked",
-          "fn runnable_rate_excludes_blocked_from_the_denominator",
-          "fn snap",
-          "fn snap_with_code",
-          "fn stale_clearing_snapshot",
-          "fn unexplored_import_pair_is_suspected_coupling",
-          "fn unexplored_same_domain_pair_is_suspected_coupling",
-          "fn unexplored_shared_file_pair_is_suspected_coupling",
-          "fn val",
-          "fn validates",
-          "fn validation_snapshot"
-        ]
+        "symbol_facts": [],
+        "symbols": []
       },
       {
         "content_hash": "d90529ae875e1e93",
@@ -168497,9 +165485,9 @@
         "description": "Proves completeness and integrity checking: the doctor audit and completeness tests pass, excluding the pre-existing sqlite_doctor_flags_weak_only_grounding test that fails because it sets a passing edge without a criterion (a test isolation issue, not a code defect).",
         "discrimination_status": "discriminating",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
-        "last_executed_run": "2026-06-22T15:44:01.577929+00:00",
+        "last_executed_run": "2026-06-22T16:09:35.381619+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-22T15:44:01.577929+00:00",
+        "last_run": "2026-06-22T16:09:35.381619+00:00",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },
@@ -168532,7 +165520,7 @@
         "id": "394b1170-765b-4abc-bbed-58fdadbaed8a",
         "last_executed_run": "2026-06-22T10:04:58.239588+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-22T10:04:58.239588+00:00",
+        "last_run": "",
         "name": "audience and effort round trip",
         "validation_type": "test"
       },
@@ -168849,9 +165837,9 @@
         "description": "",
         "discrimination_status": "discriminating",
         "id": "7cd8e6be-91cc-486b-bea4-acf7ddbede79",
-        "last_executed_run": "2026-06-22T15:44:01.577929+00:00",
+        "last_executed_run": "2026-06-22T16:09:35.381619+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-22T15:44:01.577929+00:00",
+        "last_run": "2026-06-22T16:09:35.381619+00:00",
         "name": "maturity ladder roll-up",
         "validation_type": "test"
       },

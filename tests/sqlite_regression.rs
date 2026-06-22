@@ -941,11 +941,11 @@ fn phase_default_mode_for_test(phase: &str) -> &str {
 fn sqlite_next_default_follows_compass_phase() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("next-default-phase");
-    // The committed fixture is fully green (phase=complete), where bare `next`
-    // carries no `mode`. Invalidate one validation so the graph sits in a
-    // NON-DISCOVERY actionable phase (validate) — that is exactly the case the
-    // regression below guards (the old binary hard-coded discovery regardless of
-    // phase), so a discovery-phase fixture would not exercise it.
+    // The committed fixture sits at phase=validate — its asserted-only leaves are
+    // discriminating-proof work (see validate_selection_from_snapshot). Bare
+    // `next` carries no `mode` and must follow that phase's lane, not a hardcoded
+    // discovery (the bug this guards). The validation invalidation below keeps a
+    // non-discovery actionable phase even if the fixture's proof mix shifts.
     {
         let db = graph.root.join(".loom").join("graph.sqlite");
         let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
@@ -5308,12 +5308,11 @@ fn sqlite_inbox_add_normalize_mark_and_export() {
     // The committed fixture now carries triaged audit cards; this test asserts
     // absolute intake counts, so start from a known-empty inbox.
     clear_inbox(&graph.root);
-    // The committed fixture is fully green (phase=complete), where `next --all`
-    // in a no-source scratch omits the `queues` envelope. Seed an unexplored
-    // discovery pair so the graph sits in an actionable phase and `next --all`
-    // returns the full `queues` array. Seeded BEFORE the debt capture so the
-    // discovery work is already counted in `initial_required_debt`; the optional
-    // inbox add must not change that total.
+    // The committed fixture is actionable (phase=validate — asserted-only leaves
+    // are proof work). Seed an unexplored discovery pair so `next --all` returns
+    // the full `queues` array (a no-source scratch otherwise omits it). Seeded
+    // BEFORE the debt capture so the discovery work is already counted in
+    // `initial_required_debt`; the optional inbox add must not change that total.
     seed_unexplored_signal_pair(&graph.root, "inbox-flow");
     let initial_status = run_json(&graph.root, &["status", "--json"]);
     let initial_required_debt = initial_status["completion"]["required_autonomous_debt"]["total"]

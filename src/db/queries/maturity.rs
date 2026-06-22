@@ -87,6 +87,12 @@ impl MaturityLadder {
         self.focus.and_then(|i| self.rungs.get(i))
     }
 
+    /// The lane (work-type) that climbs the focus rung — where `loom next` routes.
+    /// None when every rung is cleared (Production-ready / all green).
+    pub fn focus_lane(&self) -> Option<&'static str> {
+        self.focus_rung().and_then(|r| r.lane)
+    }
+
     /// One-line vector render: `Seeded ✓ · Realized ◐ 46/78 · Proven ✗ 0/11 …`.
     pub fn vector_line(&self) -> String {
         self.rungs
@@ -301,7 +307,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     // Hardened work routes to the dominant gap: fix smells, else measure, else
     // explore the grid, else build the missing failure-path siblings.
     let hardened_lane = if !input.open_smells.is_empty() {
-        "fix"
+        "audit"
     } else if measured.total > 0 && measured.covered < measured.total {
         "quality"
     } else if !gs.horizontally_explored {

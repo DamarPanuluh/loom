@@ -161,14 +161,43 @@ pub fn run(
         None => {
             let snap = store.query_snapshot()?;
             let gs = store.graph_state(&snap)?;
-            // phase=audit has open smell findings that GATE green, but there is
-            // no `next --mode audit` queue — so bare next would mis-route to
-            // OPTIONAL discovery and the AI never reaches the green-blocking work.
-            // Echo the compass's audit directive (→ `loom smells`) instead.
+            // phase=audit gates green but has no `--mode audit` queue — echo the
+            // compass's audit directive (→ `loom smells`).
             if gs.phase == "audit" {
                 return emit_audit_directive(&gs, printer);
             }
-            (phase_default_mode(&gs.phase).to_string(), true)
+            // Route by the maturity ladder's FOCUS rung — the authoritative
+            // (stage, lane) signal — when its lane is a `--mode` queue; else fall
+            // back to the cascade default. Fixes the cascade under-routing (e.g.
+            // phase=complete while the ladder focus is Realized · validate).
+            let decision_notes = store.notes_by_kind("decision")?;
+            let open_smells = if matches!(gs.phase.as_str(), "audit" | "complete") {
+                store.smell_report(&snap)?.open
+            } else {
+                Vec::new()
+            };
+            let inbox_untriaged = store
+                .list_inbox_items(None, None)?
+                .iter()
+                .filter(|i| i.status == "new")
+                .count();
+            let export_stale = store.committed_export_stale(&cwd)? == Some(true);
+            let focus_lane = crate::db::queries::build_ladder(
+                &cwd,
+                &snap,
+                &gs,
+                &decision_notes,
+                &open_smells,
+                inbox_untriaged,
+                export_stale,
+            )
+            .ladder
+            .focus_lane();
+            let mode = match focus_lane {
+                Some(l @ ("build" | "fix" | "validate" | "quality" | "discovery")) => l.to_string(),
+                _ => phase_default_mode(&gs.phase).to_string(),
+            };
+            (mode, true)
         }
     };
     // #4: --take on a one-command-per-item mode caps to 1 (those queues aren't

@@ -577,6 +577,22 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
                     "linked validations have not been run (or were invalidated by a code change)"
                         .to_string(),
                 )
+            } else if intent.lifecycle == "implemented"
+                && !is_parent.contains(&intent.id)
+                && !validations
+                    .iter()
+                    .any(|v| v.discrimination_status == "discriminating")
+            {
+                // Asserted-only: the proof PASSES but no runner discriminated
+                // (asserted >=1 thing). Realized needs an EXECUTED proof, so this
+                // leaf is real validate work — the queue must serve it, not skip
+                // it as "green". This is the discriminating-proof gap that the
+                // ladder's Realized rung counts; surfacing it here converges the
+                // cascade with the ladder (no more silent false-green).
+                (
+                    2.5,
+                    "asserted-only — the linked proof passes but does NOT discriminate (no runner asserted >=1 thing). Write a discriminating test (e.g. cargo `test result: ok. N passed`), link it, then re-run `loom validate <intent>` — otherwise it cannot count toward Realized.".to_string(),
+                )
             } else {
                 continue;
             }
