@@ -241,8 +241,9 @@ pub(super) fn run_validate(
             format!(
                 "Run this intent's validations and record the verdicts:\n\
                  \n  loom validate {id}\n\
-                 \nIf one fails, the intent is not fulfilled — flag it: \
-                 loom intent mark {id} --lifecycle needs_change --reason \"<validation failure>\"{saga_hint}",
+                 \nIf one fails the behavior is broken — never accept a red proof: FIX the code \
+                 and re-validate, fix the PROOF if the test is wrong, or DEFER as tracked work \
+                 (`loom intent mark {id} --lifecycle needs_change --reason \"<failure>\"`).{saga_hint}",
                 id = c.intent.id,
             )
         }

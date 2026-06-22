@@ -193,7 +193,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                     "next_step": if verdict == "supported" {
                         format!("Decide (builder lane): spawn planned intents, then `loom hypothesis adopt {hid} --spawned <intent>…` — or `loom hypothesis reject {hid} --reason \"…\"`.")
                     } else {
-                        format!("Close it out: `loom hypothesis reject {hid} --reason \"…\"` (refuted claims usually end here).")
+                        format!("Close it: `loom hypothesis reject {hid} --reason \"…\"` (refuted claims usually end here) — but FIRST, if proving it surfaced a DIFFERENT real issue, capture that as its own `loom hypothesis add` / `loom note add` so the finding isn't lost when this closes.")
                     },
                 }));
             } else {
@@ -201,7 +201,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: HypothesisCmd, printer: &Printer
                 if verdict == "supported" {
                     println!("  → Next: builder decides — spawn planned intents, then `loom hypothesis adopt {hid} --spawned <intent>…`, or reject with a reason.");
                 } else {
-                    println!("  → Next: `loom hypothesis reject {hid} --reason \"…\"` (refuted claims usually end here).");
+                    println!("  → Next: `loom hypothesis reject {hid} --reason \"…\"` (refuted claims usually end here) — but first capture any DIFFERENT real issue the proof surfaced (`loom hypothesis add`/`loom note add`) so it isn't lost.");
                 }
             }
         }

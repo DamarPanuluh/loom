@@ -982,7 +982,8 @@ fn handle_mark(
         None
     };
     let next_step = match lifecycle.as_str() {
-        "planned" | "needs_change" => "`loom next --mode build` will surface it.",
+        "planned" => "`loom next --mode build` will surface it.",
+        "needs_change" => "`loom next --mode build` surfaces it — record WHY it needs change so the fixer has the reason (`loom note add --intent <id> --kind decision`), or capture a deliberately-deferred refactor as `loom hypothesis add`. A bare needs_change with no reason is a dead flag.",
         "implemented" => "if this leaf is fully grounded, prove it: `loom next --mode validate`",
         "deferred" => {
             "parked: out of the build queue and never blocks a roll-up. Record WHY with `loom note add --intent <id> --kind decision`; resume with `--lifecycle planned`."

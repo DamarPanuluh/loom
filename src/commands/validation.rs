@@ -211,7 +211,7 @@ fn validation_mark_next_step(res: &ValidationResult) -> String {
     match res {
         ValidationResult::Passed => "`loom next --mode validate` for the next proof".to_string(),
         ValidationResult::Failed => {
-            "flag the owner: `loom intent mark <intent> --lifecycle needs_change --reason \"<validation failure>\"`".to_string()
+            "a failed proof = broken behavior; NEVER accept a red proof as green. Discharge it: FIX the code (`loom sync`, re-run `loom validate`); or if the PROOF is wrong (the test, not the code) fix the proof and re-run; or DEFER the repair as tracked work (`loom intent mark <intent> --lifecycle needs_change --reason \"<failure>\"`, or `loom hypothesis add` for a planned fix).".to_string()
         }
         _ => {
             "out of the validator queue until re-marked; visible in `loom validation list` / `loom report`".to_string()

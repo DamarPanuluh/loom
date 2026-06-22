@@ -47,8 +47,13 @@ pub(super) fn build_suggested_action(edge: &crate::types::RelatesTo, _score: &f6
              stale the green you just earned):\n\
              \n  1. Change the code so the criterion holds (minimal change, root cause).\
              \n  2. loom sync   (flags everything the change touched; this edge stays failing)\
-             \n  3. loom edge fix {} --description \"<what you changed>\"",
-            edge.id
+             \n  3. loom edge fix {id} --description \"<what you changed>\"\n\
+             \nNot fixing now? Discharge it honestly instead of leaving a lingering red: \
+             DEFER as tracked work (`loom hypothesis add` the violation as the claim → \
+             `loom hypothesis adopt --spawned`), or if the violation is DELIBERATE, JUSTIFY it \
+             (`loom note add --edge {id} --kind decision --text \"<why it's accepted>\"`) — the \
+             edge stays failing until the decision reopens it.",
+            id = edge.id
         ),
         "needs_reverification" => format!(
             "Re-inspect this edge — a code change invalidated the previous assessment:\n\

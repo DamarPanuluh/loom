@@ -450,7 +450,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             }
             let next_step = if status == "failing" {
                 format!(
-                    "flag the intent (`loom intent mark {} --lifecycle needs_change --reason \"…\"`) or fix and re-verdict.",
+                    "a failing gate blocks done — discharge it honestly, ONE of three ways: FIX the code then re-verdict passing; DEFER as tracked work (`loom hypothesis add` with the violation as the claim, then `loom hypothesis adopt --spawned` — a planned refactor the build lane owns, not a dead note); or if the violation is DELIBERATE, JUSTIFY it (`loom note add --intent {} --kind decision --text \"<why this is accepted>\"`, or re-verdict `independent` if the rule truly doesn't apply here). Marking needs_change alone discharges nothing.",
                     intent_id
                 )
             } else {

@@ -5678,6 +5678,55 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
 }
 
 #[test]
+fn sqlite_failing_quality_verdict_teaches_full_disposition_path() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("dispo-path");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "alpha", "--level", "system", "--description",
+            "do alpha well", "--json",
+        ],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().expect("intent id").to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "rule", "add", "--name", "r1", "--description",
+            "no global mutable state is used here", "--severity", "error", "--json",
+        ],
+        "llm:quality",
+    );
+    let verdict = run_json_as(
+        &graph.root,
+        &[
+            "rule", "verdict", "r1", &iid, "--status", "failing", "--criterion",
+            "no global mutable state in this intent", "--evidence",
+            "found a global counter in the hot path", "--json",
+        ],
+        "llm:quality",
+    );
+    // A failing gate is binding — its guidance must teach ALL THREE honest
+    // dispositions (fix / defer-as-tracked-hypothesis / justify-as-decision),
+    // not dead-end at "flag or fix". This locks the strategic path.
+    let ns = verdict["next_step"].as_str().unwrap_or_default();
+    assert!(
+        ns.contains("hypothesis adopt --spawned"),
+        "failing verdict must teach DEFER-as-tracked-work: {ns}"
+    );
+    assert!(
+        ns.contains("kind decision"),
+        "failing verdict must teach JUSTIFY-as-decision: {ns}"
+    );
+    assert!(
+        ns.to_lowercase().contains("fix"),
+        "failing verdict must teach FIX: {ns}"
+    );
+}
+
+#[test]
 fn sqlite_todo_note_resolution_lifecycle_surfaces_until_resolved() {
     let _guard = sqlite_test_lock();
     let graph = setup_imported_graph("todo-lifecycle");
