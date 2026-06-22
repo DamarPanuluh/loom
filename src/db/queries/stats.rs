@@ -1238,11 +1238,16 @@ pub fn fully_proven_from_state(
     }
 
     // G0 — base: one "done" definition; the badge is its ceiling, not a rival.
+    // Name the CONCRETE blocker (the cascade's `next_action` already says exactly
+    // what keeps the phase here — e.g. "N unexplored pairs", "N align confirmations")
+    // so the operator doesn't have to cross-reference status/complete/smells/next.
     if gs.phase != "complete" {
-        reasons.push(format!(
-            "phase is '{}', not 'complete' — drive the open lane (`loom next`)",
-            gs.phase
-        ));
+        let blocker = if gs.next_action.is_empty() {
+            "drive the open lane (`loom next`)".to_string()
+        } else {
+            gs.next_action.clone()
+        };
+        reasons.push(format!("phase is '{}', not 'complete' — {blocker}", gs.phase));
     }
     // G1 — EXECUTED floor with an honest denominator: every CURRENT-realized leaf
     // is proven by an EXECUTED (discriminating) proof, not merely asserted. The

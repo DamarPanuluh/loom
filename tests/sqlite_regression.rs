@@ -5678,6 +5678,41 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
 }
 
 #[test]
+fn sqlite_fully_proven_reason_names_the_concrete_blocker() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("fp-blocker");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "a", "--level", "system", "--description",
+            "do a well here", "--json",
+        ],
+        "llm:builder",
+    );
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let next_action = status["graph_state"]["next_action"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(!next_action.is_empty(), "cascade always names a next_action when not complete");
+    let reasons = status["fully_proven_reasons"]
+        .as_array()
+        .expect("fully_proven_reasons array");
+    let phase_reason = reasons
+        .iter()
+        .filter_map(|r| r.as_str())
+        .find(|r| r.contains("not 'complete'"))
+        .expect("a phase blocker reason");
+    // The phase blocker must carry the cascade's CONCRETE next_action — so the
+    // operator doesn't have to cross-reference status/complete/smells/next (#2).
+    assert!(
+        phase_reason.contains(&next_action),
+        "fully_proven phase blocker must name the concrete next_action:\n  reason: {phase_reason}\n  next_action: {next_action}"
+    );
+}
+
+#[test]
 fn sqlite_edge_unexplored_enumerates_the_counted_pairs() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("unexplored");
