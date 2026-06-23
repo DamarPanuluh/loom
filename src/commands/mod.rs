@@ -78,8 +78,8 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Inbox       { subcommand } => inbox::run(subcommand, &printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),
         Command::Edge        { subcommand } => edge::run(subcommand, &printer),
-        Command::Next        { mode, all, take, discovery_class, compact } =>
-            next::run(mode.as_deref(), all, take, discovery_class.as_deref(), compact, &printer),
+        Command::Next        { mode, all, take, discovery_class, kind, compact } =>
+            next::run(mode.as_deref(), all, take, discovery_class.as_deref(), kind.as_deref(), compact, &printer),
         Command::Cluster     { intent_id }  => cluster::run(&intent_id, &printer),
         Command::Rule        { subcommand } => rule::run(subcommand, &printer),
         Command::Codefile    { subcommand } => codefile::run(subcommand, &printer),
@@ -116,7 +116,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Door        { utterance, why, limit } => door::run(&utterance, &why, limit, &printer),
         Command::Session                    => session::run(&printer),
         Command::Hotspots    { limit }      => hotspots::run(limit, &printer),
-        Command::Smells      { limit, summary, stale } => smells::run(limit, summary, stale, &printer),
+        Command::Smells      { limit, take, kind, summary, stale } => smells::run(limit, if take == 0 { None } else { Some(take) }, kind.as_deref(), summary, stale, &printer),
         Command::Coverage    { summary, adjudicated } => coverage::run(summary, adjudicated, &printer),
         Command::Detect                     => detect::run(&printer),
         Command::Seed        { inbox, suggest, requirements, under, prefixes, limit } =>

@@ -234,7 +234,9 @@ pub(super) fn run_take_review(
     if printer.json {
         printer.print_json(&serde_json::json!({
             "status": "ok", "mode": "review", "taken": n, "queue_total": queue_total,
-            "items": items, "batch_template": batch_lines, "guidance": guidance,
+            "items": items, "batch_template": batch_lines,
+            "batch_template_hints": BATCH_TEMPLATE_HINTS.to_vec(),
+            "guidance": guidance,
             "dispatch": {"role": role, "effort": "high"},
             "graph_state": pulse_json(&gs),
         }));

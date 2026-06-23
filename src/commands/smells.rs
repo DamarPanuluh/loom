@@ -20,16 +20,69 @@ use crate::db::queries::{
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
-pub fn run(limit: usize, summary: bool, stale: bool, printer: &Printer) -> Result<()> {
+const SMELL_BATCH_TEMPLATE_HINTS: [&str; 3] = [
+    "filter before batching: `loom smells --json --kind <kind> --take <N>` emits one JSONL template line per shown finding.",
+    "undeclared_coupling uses `op=ground` with a,b and a <confidence> placeholder; replace it with an honest [0,1] judgment before `loom batch -`.",
+    "other smell kinds use `op=smell_decision`; replace <criterion> with a finding-specific ruling after inspecting the evidence.",
+];
+
+fn smell_json(smell: &Smell) -> serde_json::Value {
+    serde_json::json!({
+        "id": smell.id(),
+        "intent_ids": smell.intent_ids(),
+        "kind": &smell.kind,
+        "score": smell.score,
+        "summary": &smell.summary,
+        "evidence": &smell.evidence,
+        "remedy": &smell.remedy,
+        "teaching": &smell.teaching,
+    })
+}
+
+fn batch_template_line(smell: &Smell) -> String {
+    if smell.kind == "undeclared_coupling" {
+        let ids = smell.intent_ids();
+        if let [a, b] = ids.as_slice() {
+            return serde_json::json!({
+                "op": "ground",
+                "a": a,
+                "b": b,
+                "confidence": "<confidence>",
+            })
+            .to_string();
+        }
+    }
+    serde_json::json!({
+        "op": "smell_decision",
+        "smell": smell.id(),
+        "text": "<criterion>",
+    })
+    .to_string()
+}
+
+fn batch_template_lines(smells: &[Smell]) -> Vec<String> {
+    smells.iter().map(batch_template_line).collect()
+}
+
+pub fn run(
+    limit: usize,
+    take: Option<usize>,
+    kind: Option<&str>,
+    summary: bool,
+    stale: bool,
+    printer: &Printer,
+) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     let store = GraphReadHandle::open(&cwd)?;
-    run_with_db(&store, &cwd, limit, summary, stale, printer)
+    run_with_db(&store, &cwd, limit, take, kind, summary, stale, printer)
 }
 
 pub fn run_with_db(
     db: &dyn GraphReadRepository,
     root: &std::path::Path,
     limit: usize,
+    take: Option<usize>,
+    kind: Option<&str>,
     summary: bool,
     stale: bool,
     printer: &Printer,
@@ -52,10 +105,13 @@ pub fn run_with_db(
         &decision_notes,
         &hypotheses,
         limit,
+        take,
+        kind,
         summary,
         printer,
     )
 }
+
 /// `loom smells --stale`: turn the undifferentiated "N stale" wall of red into
 /// a triaged queue (card 6171c646). Staleness is binary today (sync flips
 /// `needs_reverification` when a grounding file's content_hash changes), so
@@ -360,6 +416,8 @@ fn render(
     decision_notes: &[crate::types::Note],
     hypotheses: &[crate::types::Hypothesis],
     limit: usize,
+    take: Option<usize>,
+    kind: Option<&str>,
     summary: bool,
     printer: &Printer,
 ) -> Result<()> {
@@ -369,18 +427,24 @@ fn render(
     let paths: std::collections::HashSet<String> =
         snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
     let cc = crate::repo::git_cochange(root, &paths, 800);
-    let (suggestions, mut advisory_adjudicated) = split_advisories_for_adjudication(
+    let (mut suggestions, mut advisory_adjudicated) = split_advisories_for_adjudication(
         snapshot,
         cochange_suggestions(snapshot, &cc.pairs, &cc.individual),
         decision_notes,
     );
+    if let Some(kind) = kind {
+        suggestions.retain(|s| s.kind == kind);
+    }
     let suggestions_total = suggestions.len();
     let suggestions_shown: Vec<_> = suggestions.into_iter().take(limit.max(1)).collect();
-    let (shotgun_adv, adjudicated_shotgun) = split_advisories_for_adjudication(
+    let (mut shotgun_adv, adjudicated_shotgun) = split_advisories_for_adjudication(
         snapshot,
         shotgun_surgery_suggestions(snapshot, &cc.pairs, &cc.individual),
         decision_notes,
     );
+    if let Some(kind) = kind {
+        shotgun_adv.retain(|s| s.kind == kind);
+    }
     advisory_adjudicated.extend(adjudicated_shotgun);
     let shotgun_total = shotgun_adv.len();
     let shotgun_shown: Vec<_> = shotgun_adv.into_iter().take(limit.max(1)).collect();
@@ -388,11 +452,14 @@ fn render(
     // Advisory proof-locality: STATIC (no git, no coverage run), never gates
     // green. Flags leaves the `proven` axis counts whose only `test` proof
     // resolves to other files than their grounded code.
-    let (proof_adv, adjudicated_proof) = split_advisories_for_adjudication(
+    let (mut proof_adv, adjudicated_proof) = split_advisories_for_adjudication(
         snapshot,
         proof_locality_suggestions(snapshot),
         decision_notes,
     );
+    if let Some(kind) = kind {
+        proof_adv.retain(|s| s.kind == kind);
+    }
     advisory_adjudicated.extend(adjudicated_proof);
     let proof_total = proof_adv.len();
     let proof_shown: Vec<_> = proof_adv.into_iter().take(limit.max(1)).collect();
@@ -411,26 +478,45 @@ fn render(
         decision_notes,
         hypotheses,
     );
-    let clone_total = clone_rollup.total;
-    let clone_deliberate = clone_rollup.deliberate;
-    let clone_tracked = clone_rollup.tracked;
-    let clone_open = clone_rollup.open;
+    let show_clone = kind.map_or(true, |k| k == "code_clone");
+    let clone_total = if show_clone { clone_rollup.total } else { 0 };
+    let clone_deliberate = if show_clone {
+        clone_rollup.deliberate
+    } else {
+        0
+    };
+    let clone_tracked = if show_clone { clone_rollup.tracked } else { 0 };
+    let clone_open = if show_clone { clone_rollup.open } else { 0 };
     advisory_adjudicated.extend(clone_rollup.adjudicated);
-    let clone_shown: Vec<_> = clone_rollup
-        .open_advisories
+    let mut clone_open_advisories = clone_rollup.open_advisories;
+    if !show_clone {
+        clone_open_advisories.clear();
+    }
+    let clone_shown: Vec<_> = clone_open_advisories
         .into_iter()
         .take(limit.max(1))
         .collect();
 
-    let total = report.open.len();
     let (coded, tagged) = (report.coded_intents, report.tagged_coded_intents);
     let (coded_layers, declared_layers) = (report.coded_layers, report.declared_layers);
     let mut smells = report.open;
-    let advisory = report.advisory;
+    if let Some(kind) = kind {
+        smells.retain(|s| s.kind == kind);
+    }
+    let total = smells.len();
     let open_by_kind = kind_counts(&smells);
-    smells.truncate(limit);
+    if let Some(take) = take {
+        smells.truncate(take);
+    }
+    let mut advisory = report.advisory;
+    if let Some(kind) = kind {
+        advisory.retain(|s| s.kind == kind);
+    }
     let mut adjudicated = report.adjudicated;
     adjudicated.append(&mut advisory_adjudicated);
+    if let Some(kind) = kind {
+        adjudicated.retain(|s| s.kind == kind);
+    }
     let adjudicated_by_kind = adjudicated_kind_counts(&adjudicated);
 
     if summary {
@@ -442,9 +528,9 @@ fn render(
                 "shown": smells.len(),
                 "open_by_kind": open_by_kind,
                 "top": smells.iter().map(|s| serde_json::json!({
-                    "kind": s.kind,
-                    "summary": s.summary,
-                    "remedy": s.remedy,
+                    "kind": &s.kind,
+                    "summary": &s.summary,
+                    "remedy": &s.remedy,
                 })).collect::<Vec<_>>(),
                 "adjudicated_total": adjudicated.len(),
                 "adjudicated_by_kind": adjudicated_by_kind,
@@ -494,12 +580,15 @@ fn render(
         return Ok(());
     }
     if printer.json {
+        let batch_template = batch_template_lines(&smells);
         printer.print_json(&serde_json::json!({
             "total": total,
             "shown": smells.len(),
-            "smells": smells,
+            "smells": smells.iter().map(smell_json).collect::<Vec<_>>(),
             "adjudicated_total": adjudicated.len(),
             "adjudicated": adjudicated,
+            "batch_template": batch_template,
+            "batch_template_hints": SMELL_BATCH_TEMPLATE_HINTS.to_vec(),
             "coded_intents": coded,
             "tagged_coded_intents": tagged,
             "vocab_terms": registry,
@@ -1234,6 +1323,8 @@ mod tests {
                 "dedupe src/tracked_a.rs after the release",
             )],
             10,
+            None,
+            None,
             false,
             &printer,
         )

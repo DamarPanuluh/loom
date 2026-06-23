@@ -222,6 +222,28 @@ fn evidence_opt(evidence: &str) -> Option<String> {
     }
 }
 
+trait BatchNoteLookup {
+    fn list_notes_by_kind_and_target_kind(
+        &self,
+        kind: &str,
+        target_kind: &str,
+    ) -> Result<Vec<crate::types::Note>>;
+}
+
+impl BatchNoteLookup for crate::db::sqlite::SqliteGraphStore {
+    fn list_notes_by_kind_and_target_kind(
+        &self,
+        kind: &str,
+        target_kind: &str,
+    ) -> Result<Vec<crate::types::Note>> {
+        Ok(self
+            .list_notes(None, Some(kind))?
+            .into_iter()
+            .filter(|note| note.target_kind == target_kind)
+            .collect())
+    }
+}
+
 fn apply_line_sqlite(
     store: &mut crate::db::sqlite::SqliteGraphStore,
     root: &std::path::Path,
@@ -236,7 +258,7 @@ fn apply_line_sqlite(
     let op = v.get("op").and_then(|x| x.as_str()).ok_or_else(|| {
         anyhow::anyhow!(
             "missing or non-string field 'op' — each line must be ONE JSON object: \
-             {{\"op\": \"<name>\", …}} (ground | issue | independent | rule_verdict)"
+             {{\"op\": \"<name>\", …}} (ground | issue | independent | rule_verdict | smell_decision)"
         )
     })?;
     let now = chrono::Utc::now().to_rfc3339();
@@ -418,8 +440,39 @@ fn apply_line_sqlite(
                 evidence_opt(&evidence),
             ))
         }
+        "smell_decision" => {
+            let smell_id = str_field(&v, op, "smell")?;
+            let text = str_field(&v, op, "text")?;
+            gate::require_substantive(
+                "text",
+                text,
+                "why this smell finding is accepted for this exact code shape",
+            )?;
+            let prior_notes = store.list_notes_by_kind_and_target_kind("decision", "smell")?;
+            let prior_rulings: Vec<(&str, &str)> = prior_notes
+                .iter()
+                .filter(|n| n.target_id != smell_id)
+                .map(|n| (n.target_id.as_str(), n.text.as_str()))
+                .collect();
+            gate::require_distinct_smell_ruling(text, &prior_rulings)?;
+            if dry_run {
+                return Ok((format!("[dry-run] would smell_decision {smell_id}"), None));
+            }
+            store.insert_note(&crate::types::Note {
+                id: uuid::Uuid::new_v4().to_string(),
+                kind: "decision".to_string(),
+                text: text.to_string(),
+                author: crate::agent::acting(None),
+                target_kind: "smell".to_string(),
+                target_id: smell_id.to_string(),
+                resolution: String::new(),
+                audience: String::new(),
+                created_at: now.clone(),
+            })?;
+            Ok((format!("smell_decision {smell_id}"), None))
+        }
         other => {
-            anyhow::bail!("unknown op '{other}' (ground | issue | independent | rule_verdict)")
+            anyhow::bail!("unknown op '{other}' (ground | issue | independent | rule_verdict | smell_decision)")
         }
     }
 }
@@ -432,6 +485,7 @@ fn required_fields(op: &str) -> &'static str {
         "issue" => "a, b, evidence, confidence (+ criterion unless the edge already has one; optional: evidence_locator)",
         "independent" => "a, b, notes",
         "rule_verdict" => "rule, intent, status, evidence, confidence (+ criterion unless the pair was measured before; optional: evidence_locator)",
+        "smell_decision" => "smell, text",
         _ => "op",
     }
 }

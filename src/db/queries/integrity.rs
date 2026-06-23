@@ -453,6 +453,9 @@ struct EdgeClaim {
     last_inspected: String,
     notes: String,
     inspected_by: String,
+    /// True if any endpoint intent is deprecated — retired edges should not
+    /// inflate the laundering signal (they're settled history, not live claims).
+    deprecated: bool,
 }
 
 /// A cluster of this many smell rulings sharing one template is the
@@ -557,6 +560,21 @@ fn audit_inspectable_edges(
     issues: &mut Vec<String>,
     hints: &mut Vec<String>,
 ) -> Result<()> {
+    // The snapshot's intents list is active-only (deprecated intents are
+    // excluded). An edge endpoint that is NOT in the active set is either
+    // deprecated or dangling — either way it should not inflate the laundering
+    // signal. Build the deprecated set as "edge endpoints not in active intents".
+    let active_ids: std::collections::HashSet<&str> =
+        snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+    let deprecated_intents: std::collections::HashSet<&str> = snapshot
+        .relates
+        .iter()
+        .flat_map(|e| [e.from_id.as_str(), e.to_id.as_str()])
+        .chain(snapshot.governs.iter().map(|e| e.intent_id.as_str()))
+        .chain(targets.iter().map(|e| e.intent_id.as_str()))
+        .chain(serves.iter().map(|e| e.intent_id.as_str()))
+        .filter(|id| !active_ids.contains(*id))
+        .collect();
     let mut claims: Vec<EdgeClaim> = Vec::new();
     for e in &snapshot.relates {
         claims.push(EdgeClaim {
@@ -569,6 +587,8 @@ fn audit_inspectable_edges(
             last_inspected: e.last_inspected.clone(),
             notes: e.notes.clone(),
             inspected_by: e.inspected_by.clone(),
+            deprecated: deprecated_intents.contains(e.from_id.as_str())
+                || deprecated_intents.contains(e.to_id.as_str()),
         });
     }
     for e in &snapshot.implements {
@@ -582,6 +602,7 @@ fn audit_inspectable_edges(
             last_inspected: e.last_inspected.clone(),
             notes: e.notes.clone(),
             inspected_by: e.inspected_by.clone(),
+            deprecated: false,
         });
     }
     for e in &snapshot.governs {
@@ -595,6 +616,7 @@ fn audit_inspectable_edges(
             last_inspected: e.last_inspected.clone(),
             notes: e.notes.clone(),
             inspected_by: e.inspected_by.clone(),
+            deprecated: deprecated_intents.contains(e.intent_id.as_str()),
         });
     }
     for e in targets {
@@ -608,6 +630,7 @@ fn audit_inspectable_edges(
             last_inspected: e.last_inspected.clone(),
             notes: e.notes.clone(),
             inspected_by: e.inspected_by.clone(),
+            deprecated: deprecated_intents.contains(e.intent_id.as_str()),
         });
     }
     for e in serves {
@@ -621,6 +644,7 @@ fn audit_inspectable_edges(
             last_inspected: e.last_inspected.clone(),
             notes: e.notes.clone(),
             inspected_by: e.inspected_by.clone(),
+            deprecated: deprecated_intents.contains(e.intent_id.as_str()),
         });
     }
     // VALIDATES carries only a status — audit its vocabulary too.
@@ -775,6 +799,7 @@ fn audit_inspectable_edges(
         if c.etype != schema::edge::IMPLEMENTS
             && matches!(c.status.as_str(), "passing" | "failing")
             && !c.inspected_by.trim().is_empty()
+            && !c.deprecated
         {
             conf_by_author
                 .entry((c.inspected_by.clone(), c.etype))

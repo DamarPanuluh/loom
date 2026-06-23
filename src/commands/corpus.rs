@@ -53,6 +53,9 @@ pub fn run(cmd: CorpusCmd, printer: &Printer) -> Result<()> {
         CorpusCmd::Ignore { id, source, reason } => {
             ignore_id(&root, &id, &source, &reason, printer)?
         }
+        CorpusCmd::Resolve { id, intent, reason } => {
+            resolve_id(&root, &id, &intent, &reason, printer)?
+        }
     }
     Ok(())
 }
@@ -104,6 +107,63 @@ fn ignore_id(
     } else {
         println!("✓ Corpus requirement {id} marked ignored/resolved");
         println!("  source: {source}");
+        println!("  → Next: loom corpus coverage");
+    }
+    Ok(())
+}
+
+fn resolve_id(
+    root: &std::path::Path,
+    id: &str,
+    intent: &str,
+    reason: &str,
+    printer: &Printer,
+) -> Result<()> {
+    crate::db::ensure_initialized(root)?;
+    crate::gate::require_substantive(
+        "reason",
+        reason,
+        "why this intent models this documented requirement",
+    )?;
+    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let snapshot = store.query_snapshot()?;
+    let resolved = crate::db::queries::resolve_intent_from_snapshot(&snapshot, intent)?;
+    let now = chrono::Utc::now().to_rfc3339();
+    let item = InboxItem {
+        id: Uuid::new_v4().to_string(),
+        raw_text: format!(
+            "corpus:{id}\nsource:resolve\nresolve documented requirement {id} to intent {resolved}"
+        ),
+        normalized_claim: format!(
+            "Documented requirement {id} is modeled by intent '{resolved}'."
+        ),
+        kind: "docs_gap".to_string(),
+        status: "rejected".to_string(),
+        source: "import".to_string(),
+        author: crate::agent::acting(None),
+        tags: Vec::new(),
+        links: Vec::new(),
+        route_kind: "resolve".to_string(),
+        route_command: format!(
+            "loom corpus resolve {id} --intent {resolved} --reason \"…\""
+        ),
+        route_target_kind: "intent".to_string(),
+        route_target_id: resolved.clone(),
+        resolution: reason.to_string(),
+        created_at: now.clone(),
+        updated_at: now,
+    };
+    store.insert_inbox_item(&item)?;
+    if printer.json {
+        printer.print_json(&serde_json::json!({
+            "status": "ok",
+            "resolved": id,
+            "intent": resolved,
+            "inbox_item": item,
+            "next_step": "loom corpus coverage",
+        }));
+    } else {
+        println!("✓ Corpus requirement {id} resolved to intent '{resolved}'");
         println!("  → Next: loom corpus coverage");
     }
     Ok(())

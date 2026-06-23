@@ -152,6 +152,13 @@ pub enum Command {
         #[arg(long = "class", conflicts_with = "all")]
         discovery_class: Option<String>,
 
+        /// Filter quality candidates by rule kind: security | correctness |
+        /// performance | architecture | resource_safety. Only valid with
+        /// --mode quality. Lets a tiered agent drain only its domain (e.g.
+        /// `loom next --mode quality --kind security --take 20`).
+        #[arg(long, conflicts_with = "all")]
+        kind: Option<String>,
+
         /// Serve the single item as a PROJECTION: intent ids/names, edge id,
         /// top grounded paths, and a one-line suggested command — no
         /// validations/notes/descriptions/pulse (each names its dig command
@@ -472,6 +479,12 @@ pub enum Command {
         /// How many findings to show.
         #[arg(long, default_value_t = 15)]
         limit: usize,
+        /// Bulk-template limit for open findings. 0 means all matching findings.
+        #[arg(long, default_value_t = 0)]
+        take: usize,
+        /// Only show findings of this kind (e.g. undeclared_coupling).
+        #[arg(long)]
+        kind: Option<String>,
         /// Print only counts, top summaries, and instrumentation blind spots.
         #[arg(long)]
         summary: bool,
@@ -1125,6 +1138,8 @@ pub enum CorpusCmd {
     Coverage,
 
     /// Mark one documented requirement ID as intentionally not modeled.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom corpus ignore US-123 --source docs/reqs.md --reason \"covered by the checkout intent, not a separate story\"")]
     Ignore {
         /// Requirement ID, e.g. US-123 or ADR-0004.
         id: String,
@@ -1134,6 +1149,22 @@ pub enum CorpusCmd {
         source: String,
 
         /// Why this documented item should not become an intent.
+        #[arg(long)]
+        reason: String,
+    },
+
+    /// Resolve a documented requirement ID by linking it to an existing intent.
+    #[command(after_help = "EXAMPLE:\n  \
+        loom corpus resolve US-123 --intent \"checkout flow\" --reason \"US-123 is the checkout story; the checkout intent realizes it\"")]
+    Resolve {
+        /// Requirement ID, e.g. US-123 or ADR-0004.
+        id: String,
+
+        /// The intent (id, name, or unique fragment) that models this requirement.
+        #[arg(long)]
+        intent: String,
+
+        /// Why this intent models this documented requirement.
         #[arg(long)]
         reason: String,
     },

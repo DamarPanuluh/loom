@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS inbox_item(
   tags TEXT NOT NULL CHECK(json_valid(tags)),
   links TEXT NOT NULL CHECK(json_valid(links)),
   route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (
-    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','answer','none',''
+    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','resolve','answer','none',''
   )),
   route_command TEXT NOT NULL DEFAULT '',
   route_target_kind TEXT NOT NULL DEFAULT '',
@@ -463,7 +463,8 @@ PRAGMA foreign_keys=ON;
             None => true,
             Some(sql) => schema::INBOX_KINDS
                 .iter()
-                .all(|kind| sql.contains(&sql_string_literal(kind))),
+                .all(|kind| sql.contains(&sql_string_literal(kind)))
+                && sql.contains("'resolve'"),
         } {
             return Ok(());
         }
@@ -482,7 +483,7 @@ CREATE TABLE inbox_item(
   tags TEXT NOT NULL CHECK(json_valid(tags)),
   links TEXT NOT NULL CHECK(json_valid(links)),
   route_kind TEXT NOT NULL DEFAULT '' CHECK(route_kind IN (
-    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','answer','none',''
+    'intent','hypothesis','validation','quality_rule','vocab','note','ignore','resolve','answer','none',''
   )),
   route_command TEXT NOT NULL DEFAULT '',
   route_target_kind TEXT NOT NULL DEFAULT '',

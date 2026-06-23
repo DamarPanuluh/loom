@@ -26,7 +26,7 @@
 #![allow(clippy::too_many_arguments, clippy::doc_lazy_continuation)]
 
 use anyhow::Result;
-use serde::Serialize;
+use serde::{ser::SerializeStruct, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use super::snapshot::{DiscoverySnapshot, QuerySnapshot};
@@ -153,7 +153,7 @@ pub const ASPECT_FAMILIES: &[(&str, &[&str])] = &[
 ];
 
 /// One derived finding, with the exact remedy that resolves it.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Smell {
     /// twin_intents | duplicated_responsibility | overlapping_ownership
     /// | scattered_intent | tangled_file | unmeasured_intents
@@ -175,6 +175,132 @@ pub struct Smell {
     /// LLM-facing teaching: why this smell matters, what to inspect, what to
     /// avoid, and what "done" means.
     pub teaching: SmellTeaching,
+}
+
+impl Smell {
+    /// Stable finding identity used by `loom note add --smell`.
+    ///
+    /// Most detector remedies already embed the exact `--smell` key; relationship
+    /// findings resolve through `loom edge explore`, so their key is derived from
+    /// the same ordered pair the detector printed.
+    pub fn id(&self) -> String {
+        smell_identity(&self.kind, &self.remedy)
+    }
+
+    /// Intent ids named by the finding identity/remedy, when the detector exposes
+    /// them. Pair findings return both endpoints in detector order.
+    pub fn intent_ids(&self) -> Vec<String> {
+        smell_intent_ids(&self.kind, &self.remedy)
+    }
+}
+
+impl Serialize for Smell {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Smell", 8)?;
+        state.serialize_field("id", &self.id())?;
+        state.serialize_field("intent_ids", &self.intent_ids())?;
+        state.serialize_field("kind", &self.kind)?;
+        state.serialize_field("score", &self.score)?;
+        state.serialize_field("summary", &self.summary)?;
+        state.serialize_field("evidence", &self.evidence)?;
+        state.serialize_field("remedy", &self.remedy)?;
+        state.serialize_field("teaching", &self.teaching)?;
+        state.end()
+    }
+}
+
+fn smell_identity(kind: &str, remedy: &str) -> String {
+    if let Some(id) = quoted_arg_after(remedy, "--smell") {
+        return id;
+    }
+    if let Some((a, b)) = edge_explore_ids_from_text(remedy) {
+        return format!("{kind}:{a}:{b}");
+    }
+    if let Some(intent) = arg_after(remedy, "--intent") {
+        return format!("{kind}:{intent}");
+    }
+    format!("{kind}:{}", stable_hex(remedy))
+}
+
+fn smell_intent_ids(kind: &str, remedy: &str) -> Vec<String> {
+    if matches!(
+        kind,
+        "undeclared_coupling"
+            | "cochange_coupling"
+            | "duplicated_responsibility"
+            | "twin_intents"
+            | "overlapping_ownership"
+    ) {
+        if let Some((a, b)) = edge_explore_ids_from_text(remedy) {
+            return vec![a, b];
+        }
+    }
+    arg_after(remedy, "--intent").into_iter().collect()
+}
+
+fn edge_explore_ids_from_text(text: &str) -> Option<(String, String)> {
+    let tokens = shellish_tokens(text);
+    tokens
+        .windows(5)
+        .find(|w| w[0] == "loom" && w[1] == "edge" && w[2] == "explore")
+        .map(|w| (w[3].clone(), w[4].clone()))
+        .filter(|(_, b)| !b.is_empty())
+}
+
+fn arg_after(text: &str, flag: &str) -> Option<String> {
+    let tokens = shellish_tokens(text);
+    tokens
+        .windows(2)
+        .find(|w| w[0] == flag)
+        .map(|w| w[1].clone())
+        .filter(|s| !s.is_empty())
+}
+
+fn quoted_arg_after(text: &str, flag: &str) -> Option<String> {
+    let pos = text.find(flag)?;
+    let rest = text[pos + flag.len()..].trim_start();
+    let quote = rest.chars().next()?;
+    if quote != '"' && quote != '\'' {
+        return arg_after(text, flag);
+    }
+    let body = &rest[quote.len_utf8()..];
+    let end = body.find(quote)?;
+    Some(body[..end].to_string()).filter(|s| !s.is_empty())
+}
+
+fn shellish_tokens(text: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut cur = String::new();
+    let mut quote: Option<char> = None;
+    for ch in text.chars() {
+        match quote {
+            Some(q) if ch == q => quote = None,
+            Some(_) => cur.push(ch),
+            None if ch == '"' || ch == '\'' || ch == '`' => quote = Some(ch),
+            None if ch.is_whitespace() => {
+                if !cur.is_empty() {
+                    tokens.push(std::mem::take(&mut cur));
+                }
+            }
+            None => cur.push(ch),
+        }
+    }
+    if !cur.is_empty() {
+        tokens.push(cur);
+    }
+    tokens
+}
+
+fn stable_hex(text: &str) -> String {
+    let mut hash = 0xcbf29ce484222325_u64;
+    for b in text.as_bytes() {
+        hash ^= u64::from(*b);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}")
 }
 
 /// A finding the detector WOULD raise, suppressed by a recorded ruling — the

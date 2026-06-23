@@ -4,16 +4,27 @@ use super::*;
 pub(super) fn run_take_quality(
     store: &dyn GraphReadRepository,
     take: usize,
+    kind: Option<&str>,
     printer: &Printer,
 ) -> Result<()> {
     let snapshot = store.query_snapshot()?;
-    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let mut candidates = quality_candidates_from_snapshot(&snapshot);
     let gs = store.graph_state(&snapshot)?;
+    let filtered_kind = kind;
+    if let Some(k) = filtered_kind {
+        let rule_kinds: std::collections::HashMap<&str, &str> = snapshot
+            .rules
+            .iter()
+            .map(|r| (r.id.as_str(), r.kind.as_str()))
+            .collect();
+        candidates.retain(|(g, _)| rule_kinds.get(g.rule_id.as_str()).copied() == Some(k));
+    }
 
     if candidates.is_empty() {
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "empty", "mode": "quality",
+                "filtered_kind": kind,
                 "message": QUALITY_EMPTY_MESSAGE,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
@@ -81,6 +92,7 @@ pub(super) fn run_take_quality(
             "mode": "quality",
             "taken": n,
             "queue_total": queue_total,
+            "filtered_kind": kind,
             "groups": groups
                 .iter()
                 .map(|(iid, iname, items)| serde_json::json!({
@@ -133,11 +145,22 @@ pub(super) fn run_take_quality(
 // Quality mode: the quality agent's queue — GOVERNS edges whose green is unearned
 // ---------------------------------------------------------------------------
 
-pub(super) fn run_quality(store: &dyn GraphReadRepository, printer: &Printer) -> Result<()> {
+pub(super) fn run_quality(
+    store: &dyn GraphReadRepository,
+    kind: Option<&str>,
+    printer: &Printer,
+) -> Result<()> {
     let snapshot = store.query_snapshot()?;
-    let candidates = quality_candidates_from_snapshot(&snapshot);
+    let mut candidates = quality_candidates_from_snapshot(&snapshot);
     let gs = store.graph_state(&snapshot)?;
-
+    if let Some(k) = kind {
+        let rule_kinds: std::collections::HashMap<&str, &str> = snapshot
+            .rules
+            .iter()
+            .map(|r| (r.id.as_str(), r.kind.as_str()))
+            .collect();
+        candidates.retain(|(g, _)| rule_kinds.get(g.rule_id.as_str()).copied() == Some(k));
+    }
     if candidates.is_empty() {
         if printer.json {
             printer.print_json(&serde_json::json!({
@@ -202,9 +225,9 @@ pub(super) fn run_quality(store: &dyn GraphReadRepository, printer: &Printer) ->
     if printer.json {
         printer.print_json(&serde_json::json!({
             "mode":             "quality",
+            "filtered_kind":     kind,
             "priority_score":   score,
             "governs":          g,
-            "intent":           intent.as_ref().map(IntentSurface::from),
             "implements":       implements.iter().map(GroundingSurface::from).collect::<Vec<_>>(),
             "implements_total": implements_total,
             "notes":            notes,

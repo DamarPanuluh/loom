@@ -247,6 +247,25 @@ pub fn run_with_db(
     );
     let source_corpus = ladder_bundle.source_corpus.clone();
     let ladder = ladder_bundle.ladder;
+    // Normative blind spot: coded intents with zero direct GOVERNS edges (no
+    // rule ever measured against this specific intent, even if an ancestor
+    // verdict covers it via inheritance). Only alarms when rules exist — an
+    // empty normative plane is routed by the compass, not alarmed here.
+    let unmeasured_intents = if snapshot.rules.is_empty() {
+        0
+    } else {
+        let governed: std::collections::HashSet<&str> =
+            snapshot.governs.iter().map(|g| g.intent_id.as_str()).collect();
+        snapshot
+            .intents
+            .iter()
+            .filter(|i| {
+                i.status != "deprecated"
+                    && snapshot.with_code.contains(&i.id)
+                    && !governed.contains(&i.id.as_str())
+            })
+            .count() as i64
+    };
 
     render_status(
         &report,
@@ -266,6 +285,7 @@ pub fn run_with_db(
         &disk,
         &ladder,
         &source_corpus,
+        unmeasured_intents,
         printer,
     )
 }
@@ -532,6 +552,8 @@ fn alarm_strip(
     audit: &AuditPulse,
     disk: &DiskPulse,
     intake: IntakeCounts,
+    export_freshness: &str,
+    unmeasured_intents: i64,
 ) -> Vec<String> {
     let mut a = Vec::new();
     if report.failing_edges > 0 {
@@ -558,6 +580,17 @@ fn alarm_strip(
             intake.untriaged
         ));
     }
+    if export_freshness == "stale" {
+        a.push(
+            "committed loom.graph.json is STALE — `loom export` before committing code (`loom export --check` for CI)"
+                .to_string(),
+        );
+    }
+    if unmeasured_intents > 0 {
+        a.push(format!(
+            "{unmeasured_intents} coded intent(s) with zero direct GOVERNS — rules exist but never measured against this code: `loom next --mode quality`"
+        ));
+    }
     a
 }
 
@@ -580,6 +613,7 @@ fn render_status(
     disk: &DiskPulse,
     ladder: &MaturityLadder,
     source_corpus: &SourceCorpusCoverage,
+    unmeasured_intents: i64,
     printer: &Printer,
 ) -> Result<()> {
     let totals = completion_totals(lanes, populate, align_count, adopt_count, blocked);
@@ -639,7 +673,7 @@ fn render_status(
             );
             obj.insert(
                 "alarms".to_string(),
-                serde_json::json!(alarm_strip(report, &audit, disk, intake)),
+                serde_json::json!(alarm_strip(report, &audit, disk, intake, export_freshness, unmeasured_intents)),
             );
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
@@ -653,12 +687,6 @@ fn render_status(
                     "These need the USER or external prerequisites. Drain autonomous queues now; batch true user decisions into ONE agenda (`loom next --mode align --take 50` for align)."
                 } else { "" },
             }));
-            if export_freshness == "stale" {
-                obj.insert(
-                    "committed_export_action".to_string(),
-                    serde_json::json!("loom export   (the committed loom.graph.json drifted from the live graph — refresh it before committing code)"),
-                );
-            }
         }
         printer.print_json(&v);
     } else {
@@ -680,6 +708,7 @@ fn render_status(
             disk,
             ladder,
             source_corpus,
+            unmeasured_intents,
             totals,
         );
     }
@@ -705,11 +734,11 @@ fn render_plain_status(
     disk: &DiskPulse,
     ladder: &MaturityLadder,
     source_corpus: &SourceCorpusCoverage,
+    unmeasured_intents: i64,
     totals: CompletionTotals,
 ) {
     // The alarm strip — urgent signals that preempt the focus rung (cold readers
-    // see what's on fire before what to climb). Empty ⇒ nothing printed.
-    let alarms = alarm_strip(report, audit, disk, intake);
+    let alarms = alarm_strip(report, audit, disk, intake, export_freshness, unmeasured_intents);
     if !alarms.is_empty() {
         println!("⚠ ALARMS — handle these before the focus rung:");
         for line in &alarms {
@@ -854,9 +883,6 @@ fn render_plain_status(
             "  autonomous blocker audit: {} blocked validation(s) look locally fixable or stale; inspect `loom validation list --result blocked --limit 0`.",
             totals.blocked_validation_audit
         );
-    }
-    if export_freshness == "stale" {
-        println!("  {}", crate::commands::EXPORT_STALE_WARNING);
     }
     if advisories.total > 0 {
         println!(

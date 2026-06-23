@@ -6,11 +6,11 @@
 
 ## Overview
 
-- **Intents:** 102 (system: 1, component: 20, feature: 81)
+- **Intents:** 103 (system: 1, component: 21, feature: 81)
 - **Domains:** analysis, audit, cli, concurrency, core, db, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
-- **Layers:** application, cli, graph, persistence, presentation, runtime, test
-- **Code files mapped:** 119
-- **Quality rules:** 22
+- **Layers:** application, cli, graph, persistence, presentation, queries, runtime, test
+- **Code files mapped:** 121
+- **Quality rules:** 26
 
 ## Architecture
 
@@ -69,6 +69,7 @@ The intent hierarchy — what the system is, decomposed top-down.
     - **derived problem signals** — loom smells: twins, overlapping ownership, scatter, tangles, undeclared coupling, recurrence, normative gaps — computed from graph structure, each with a remedy
       - **advisory buckets honor decision adjudication** — Advisory smell buckets move current decision-note rulings out of open advisory counts and into adjudicated output, with reopen anchors on the relevant intent or file.
       - **bounded tag vocabulary** — loom vocab maintains a small normalized tag registry for intent tags; write-time validation inlines the registry and drift remedies merge near-duplicate keys so discovery and smells get deliberate collisions.
+    - **source corpus coverage** — enumerates structured requirement-like IDs (US-, E-, REQ-, NFR-, INV-, ADR-) in documentation files and reconciles them against the intent graph, surfacing documented-but-unmodeled requirements for inbox triage
     - **verifiable delegated coverage** — Coverage treats files under a declared subtree as covered by a child loom.graph.json export, and reports a missing export as an explicit delegation-target gap.
   - **dual-mode output** — every command renders human-readable text or --json including a graph_state pulse
   - **external interface surface plane** — Represent externally callable surfaces as first-class graph nodes so ownership, journey coverage, quality rules, and implementation grounding can address an interface independently of the saga YAML that calls it.
@@ -256,6 +257,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **porting mode: import --as-planned** — loom import --as-planned adopts a source graph's intents, hierarchy, criteria, and validations-as-specs into a fresh target-repo graph, drops all groundings (IMPLEMENTS), marks every leaf planned, and loom guide gains a port mode teaching the re-realization loop; the semantic plane travels, the physical plane is rebuilt in the new language  `src/commands/guide.rs`
 - **scale: hot commands bounded on large graphs** — On a synthetic graph of >=500 intents and >=1000 edges, loom status / next / smells / next --all each complete in under 2 seconds; the O(N^2) paths (discovery pair enumeration, twin/overlap smells) are bounded or restructured; proven by a benchmark validation against the synthetic graph  `src/db/queries/stats.rs`
 - **session opener teaches the turn-zero ask** — loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command  `src/commands/door.rs`, `src/commands/session.rs`
+- **source corpus coverage** — enumerates structured requirement-like IDs (US-, E-, REQ-, NFR-, INV-, ADR-) in documentation files and reconciles them against the intent graph, surfacing documented-but-unmodeled requirements for inbox triage  `src/commands/corpus.rs`, `src/db/queries/corpus.rs`
 - **tiered review queue** — Verdicts recorded with confidence below 0.7 surface in loom next --mode review, ranked (1-confidence) x centrality; re-recording at/above the threshold or overturning resolves the item; every work item carries effort low|mid|high about the WORK (never a model); the fix queue dispatches needs_reverification to the analyzer and failing to the fixer  `src/commands/next/review.rs`, `src/commands/next/scoring.rs`
 
 ### validation
@@ -289,28 +291,44 @@ Intents grouped by domain, with where each is grounded in code.
 
 The norms loom holds the code to, by category.
 
-### (uncategorized)
+### architecture
 
-- **endpoint-matched-edges** (error) — ISO 5055 reliability: no GQL may match or filter a relationship by its own property (grafeo 0.5.x returns nondeterministic results); edges are keyed by endpoint nodes or scanned and filtered in Rust
 - **green-is-earned** (error) — trust norm: no verdict-bearing edge may default to passing; compliance/proof states start uninspected and are earned by an inspecting agent
 - **iso5055-main-no-dead-or-duplicate-code** (warning) — ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.
 - **iso5055-main-single-responsibility** (warning) — ISO 5055 Maintainability (CWE-1080/1120): each unit (file, function, intent) owns one coherent responsibility; oversized or multi-concern units are split.
+- **service-compatible-evolution** (error) — Service: contract changes are additive or versioned — removing/renaming fields or changing semantics requires a version consumers can pin; old versions get a deprecation path.
+- **service-contract-artifact** (error) — Service: every exposed interface has a committed, versioned contract artifact (schema/IDL/OpenAPI) that consumers can ground against — the seam's single shared truth.
+- **service-observable-failures** (warning) — Service: failures are logged/metric'd with enough context (ids, cause, upstream) to diagnose without reproducing.
+- **storage-backend-boundary** (error) — Persistence backends must be isolated behind typed storage/repository operations; command handlers and domain workflows must not depend on backend query language, concrete connection/session types, or backend value/result types.
+
+### correctness
+
+- **endpoint-matched-edges** (error) — ISO 5055 reliability: no GQL may match or filter a relationship by its own property (grafeo 0.5.x returns nondeterministic results); edges are keyed by endpoint nodes or scanned and filtered in Rust
+- **migration-parity-before-cutover** (error) — A storage backend migration cannot replace the global/control backend until structured read parity, mutation parity, deterministic export parity, and rollback/cutover smoke checks pass on scratch graphs built from the same loom.graph.json.
+- **service-compensation-defined** (warning) — Service (sagas): multi-step workflows define compensation or abort for partial failure — no half-completed state without a recovery path an operator or the code can take.
+- **service-idempotent-handlers** (error) — Service: handlers for retriable inputs — webhooks, queue messages, payments — are idempotent; replaying the same message yields no duplicate effect.
+
+### performance
+
 - **iso5055-perf-bounded-work** (warning) — ISO 5055 Performance Efficiency (CWE-834/1050): no unbounded loops/recursion over external-sized data; iteration and queries are bounded, paginated, or capped.
 - **iso5055-perf-no-redundant-work** (warning) — ISO 5055 Performance Efficiency (CWE-1042/1046): no repeated identical I/O, queries, or allocation in hot paths — cache or hoist invariant work out of loops.
+
+### resource_safety
+
 - **iso5055-rel-boundary-validation** (error) — ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.
 - **iso5055-rel-no-unchecked-failure** (error) — ISO 5055 Reliability (CWE-252/248/391): every fallible operation's failure path is handled or explicitly propagated — no silently ignored return value, no exception/panic escaping a boundary uncaught.
 - **iso5055-rel-resource-release** (error) — ISO 5055 Reliability (CWE-772/404): every acquired resource (file, lock, connection, handle) is released on ALL paths, including error paths.
+- **service-graceful-degradation** (warning) — Service: a dependency outage degrades the service (fallback, partial answer, fast error) — it never cascades into hangs or crash loops.
+- **service-timeout-retry-explicit** (error) — Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.
+
+### security
+
 - **iso5055-sec-least-surface** (error) — ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.
 - **iso5055-sec-no-hardcoded-secrets** (error) — ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.
 - **iso5055-sec-no-injection** (error) — ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.
-- **migration-parity-before-cutover** (error) — A storage backend migration cannot replace the global/control backend until structured read parity, mutation parity, deterministic export parity, and rollback/cutover smoke checks pass on scratch graphs built from the same loom.graph.json.
+- **sec-dependency-squatting** (error) — Security (AI hallucination): every external dependency resolves to a real, published package — AI models suggest non-existent packages (5-21% hallucination rate) that attackers can register as malware vectors (slopsquatting).
+- **sec-minimal-response** (warning) — Security (CWE-200/359): API responses return only the fields the consumer needs, not full internal objects — no sensitive fields (password hashes, internal IDs, PII) leak through serialization.
+- **sec-rate-limiting** (error) — Security (CWE-307/770): mutating and authentication endpoints carry explicit rate limits — brute-force, credential stuffing, and resource exhaustion are bounded, not unbounded.
+- **sec-upload-validated** (error) — Security (CWE-434/79): file uploads validate type (MIME + content sniff), size, and filename — uploaded files are stored outside the webroot and never executed as code.
 - **service-auth-at-boundary** (error) — Service (CWE-306/862): every externally reachable endpoint authenticates and authorizes before side effects — including 'internal' endpoints reachable from outside the trust zone.
-- **service-compatible-evolution** (error) — Service: contract changes are additive or versioned — removing/renaming fields or changing semantics requires a version consumers can pin; old versions get a deprecation path.
-- **service-compensation-defined** (warning) — Service (sagas): multi-step workflows define compensation or abort for partial failure — no half-completed state without a recovery path an operator or the code can take.
-- **service-contract-artifact** (error) — Service: every exposed interface has a committed, versioned contract artifact (schema/IDL/OpenAPI) that consumers can ground against — the seam's single shared truth.
-- **service-graceful-degradation** (warning) — Service: a dependency outage degrades the service (fallback, partial answer, fast error) — it never cascades into hangs or crash loops.
-- **service-idempotent-handlers** (error) — Service: handlers for retriable inputs — webhooks, queue messages, payments — are idempotent; replaying the same message yields no duplicate effect.
-- **service-observable-failures** (warning) — Service: failures are logged/metric'd with enough context (ids, cause, upstream) to diagnose without reproducing.
-- **service-timeout-retry-explicit** (error) — Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.
-- **storage-backend-boundary** (error) — Persistence backends must be isolated behind typed storage/repository operations; command handlers and domain workflows must not depend on backend query language, concrete connection/session types, or backend value/result types.
 

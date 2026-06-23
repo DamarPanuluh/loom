@@ -301,7 +301,11 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     // detectable), failure paths realized, and zero open smell findings.
     let measured = &cov.measured_pairs;
     let mut hardened_reasons = Vec::new();
-    if measured.total > 0 && measured.covered < measured.total {
+    if measured.total == 0 {
+        hardened_reasons.push(
+            "normative plane is EMPTY — no quality rules seeded; seed with `loom rule seed iso5055` (baseline) or `loom detect` for pack recommendations".to_string(),
+        );
+    } else if measured.covered < measured.total {
         hardened_reasons.push(format!(
             "{} rule×intent pair(s) unmeasured",
             measured.total - measured.covered
@@ -323,11 +327,9 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
             input.open_smells.len()
         ));
     }
-    // Hardened work routes to the dominant gap: fix smells, else measure, else
-    // explore the grid, else build the missing failure-path siblings.
     let hardened_lane = if !input.open_smells.is_empty() {
         "audit"
-    } else if measured.total > 0 && measured.covered < measured.total {
+    } else if measured.total == 0 || measured.covered < measured.total {
         "quality"
     } else if !gs.horizontally_explored {
         "discovery"
@@ -338,7 +340,7 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
         "Hardened",
         hardened_reasons,
         String::new(),
-        axis_cleared(measured) || gs.horizontally_explored,
+        (measured.total > 0 && axis_cleared(measured)) || gs.horizontally_explored,
         hardened_lane,
     );
 

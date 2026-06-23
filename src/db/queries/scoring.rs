@@ -362,14 +362,24 @@ pub enum ReviewCandidate {
 pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewCandidate, f64)> {
     let active: std::collections::HashSet<&str> =
         snapshot.intents.iter().map(|i| i.id.as_str()).collect();
-    let needs_review = |status: &str, confidence: f64| {
-        matches!(status, "passing" | "failing")
-            && confidence > 0.0
-            && confidence < REVIEW_CONFIDENCE
+    let needs_review = |status: &str, confidence: f64, evidence: &str| {
+        if !matches!(status, "passing" | "failing") || confidence == 0.0 {
+            return false;
+        }
+        // Low-confidence verdicts always need a second look.
+        if confidence < REVIEW_CONFIDENCE {
+            return true;
+        }
+        // A passing/failing verdict with NO evidence is a laundered claim —
+        // the doctor detects the aggregate pattern (near-uniform confidence
+        // + few evidence strings), but routing each empty-evidence verdict to
+        // the review queue makes the smell individually actionable. An honest
+        // inspection always records what it saw.
+        evidence.trim().is_empty()
     };
     let mut scored: Vec<(ReviewCandidate, f64)> = Vec::new();
     for edge in &snapshot.relates {
-        if !needs_review(&edge.inspection_status, edge.confidence)
+        if !needs_review(&edge.inspection_status, edge.confidence, &edge.evidence)
             || !active.contains(edge.from_id.as_str())
             || !active.contains(edge.to_id.as_str())
         {
@@ -381,7 +391,7 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         scored.push((ReviewCandidate::RelatesTo(edge.clone()), score));
     }
     for edge in &snapshot.governs {
-        if !needs_review(&edge.inspection_status, edge.confidence)
+        if !needs_review(&edge.inspection_status, edge.confidence, &edge.evidence)
             || !active.contains(edge.intent_id.as_str())
         {
             continue;
@@ -1382,6 +1392,13 @@ mod tests {
         }
     }
 
+    impl RelatesTo {
+        fn with_evidence(mut self, evidence: &str) -> Self {
+            self.evidence = evidence.to_string();
+            self
+        }
+    }
+
     fn governs(id: &str, status: &str, confidence: f64) -> Governs {
         Governs {
             id: id.to_string(),
@@ -1399,6 +1416,13 @@ mod tests {
         }
     }
 
+    impl Governs {
+        fn with_evidence(mut self, evidence: &str) -> Self {
+            self.evidence = evidence.to_string();
+            self
+        }
+    }
+
     #[test]
     fn review_queue_ignores_independent_verdict_confidence() {
         let snapshot = QuerySnapshot::from_parts(
@@ -1408,14 +1432,14 @@ mod tests {
                 relates("rel-passing-low", "passing", 0.6),
                 relates("rel-failing-low", "failing", 0.6),
                 relates("rel-independent-low", "independent", 0.6),
-                relates("rel-passing-high", "passing", 0.8),
+                relates("rel-passing-high", "passing", 0.8).with_evidence("inspected coupling"),
                 relates("rel-passing-zero", "passing", 0.0),
             ],
             vec![
                 governs("gov-passing-low", "passing", 0.6),
                 governs("gov-failing-low", "failing", 0.6),
                 governs("gov-independent-low", "independent", 0.6),
-                governs("gov-passing-high", "passing", 0.8),
+                governs("gov-passing-high", "passing", 0.8).with_evidence("inspected compliance"),
                 governs("gov-passing-zero", "passing", 0.0),
             ],
             vec![rule("rule")],
@@ -1439,6 +1463,43 @@ mod tests {
 
         assert_eq!(relates_ids, ["rel-failing-low", "rel-passing-low"]);
         assert_eq!(governs_ids, ["gov-failing-low", "gov-passing-low"]);
+    }
+
+    #[test]
+    fn review_queue_routes_empty_evidence_verdicts_even_at_high_confidence() {
+        // A verdict with no evidence is a laundered claim — the doctor detects
+        // the aggregate pattern, but routing each one to review makes the smell
+        // individually actionable. Confidence alone can't certify what was never
+        // inspected.
+        let snapshot = QuerySnapshot::from_parts(
+            vec![intent("a"), intent("b")],
+            Vec::new(),
+            vec![
+                relates("rel-passing-high-no-evidence", "passing", 0.9),
+                relates("rel-passing-high-with-evidence", "passing", 0.9)
+                    .with_evidence("code shows import coupling at src/a.rs:3"),
+            ],
+            vec![],
+            vec![rule("rule")],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Some(Vec::new()),
+        );
+
+        let mut ids = Vec::new();
+        for (candidate, _) in review_candidates_from_snapshot(&snapshot) {
+            if let ReviewCandidate::RelatesTo(edge) = candidate {
+                ids.push(edge.id);
+            }
+        }
+        assert_eq!(
+            ids,
+            ["rel-passing-high-no-evidence"],
+            "high-confidence verdict WITH evidence stays out of review; \
+             empty-evidence verdict enters regardless of confidence"
+        );
     }
 
     // SWEEP #12: `loom status`'s fix-lane depth must count the SAME edges the

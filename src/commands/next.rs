@@ -63,6 +63,7 @@ struct NextOpts<'a> {
     all: bool,
     take: usize,
     discovery_class: Option<&'a str>,
+    kind: Option<&'a str>,
     compact: bool,
     /// `loom-dx #4`: Some(note) when `--take` was passed on a
     /// one-command-per-item mode (build/populate/validate/prove) and capped to
@@ -141,6 +142,7 @@ pub fn run(
     all: bool,
     take: Option<usize>,
     discovery_class: Option<&str>,
+    kind: Option<&str>,
     compact: bool,
     printer: &Printer,
 ) -> Result<()> {
@@ -227,6 +229,7 @@ pub fn run(
             all,
             take,
             discovery_class,
+            kind,
             compact,
             take_note,
         },
@@ -244,6 +247,7 @@ fn run_with_repo(
     let all = opts.all;
     let take = opts.take;
     let discovery_class = opts.discovery_class;
+    let kind = opts.kind;
     let compact = opts.compact;
     let take_note = opts.take_note.as_deref();
     if all {
@@ -286,12 +290,23 @@ fn run_with_repo(
     // `loom-dx #4`: --take on a one-command-per-item mode used to hard-error.
     // It now caps to 1 (run() already clamped `take` + built `take_note`); the
     // cap is announced below, not silent. The bulk modes keep --take as-is.
-
     if discovery_class.is_some() && mode != "discovery" {
         anyhow::bail!(
             "--class only applies to generated discovery pairs. Use it with \
              `loom next --mode discovery --class suspected-coupling|impact-map|all`."
         );
+    }
+    if kind.is_some() && mode != "quality" {
+        anyhow::bail!(
+            "--kind only applies to the quality queue (filtering rule×intent pairs by norm category). \
+             Use it with `loom next --mode quality --kind security|correctness|performance|architecture|resource_safety`."
+        );
+    }
+    // Validate the kind value early so a typo fails before any queue work.
+    if let Some(k) = kind {
+        if let Err(e) = k.parse::<crate::types::GovernsKind>() {
+            anyhow::bail!("{e}");
+        }
     }
     let discovery_class = DiscoveryClassFilter::parse(discovery_class)?;
 
@@ -325,9 +340,9 @@ fn run_with_repo(
         }
         "quality" => {
             return if take > 0 {
-                run_take_quality(db, take, printer)
+                run_take_quality(db, take, kind, printer)
             } else {
-                run_quality(db, printer)
+                run_quality(db, kind, printer)
             }
         }
         "review" => {

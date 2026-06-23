@@ -7,28 +7,32 @@ use anyhow::Result;
 use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 
-const GOLDEN_RULES: &[&str] = &[
-    "Drive via `loom next` — it prioritises and tells you the exact next command.",
-    "After ANY code change: `loom sync`. It is the flag engine — see THE RIPPLE below. When a sync stales MANY claims at once, drain in bulk: `loom next --mode fix --take 20` / `--mode quality --take 20` hand back compact groups (fix groups by staling file, quality by intent — read each hot neighborhood ONCE) with a prefilled template, then `loom batch -` applies one JSONL verdict per line, and `loom validate --all` re-runs every invalidated proof in one verb (same gates as the single commands — bulk changes the ceremony, never the honesty).",
-    "Per edge, work the Socratic loop: read both intents → form a hypothesis (\"I expect the code to show X\") → inspect the actual code → confirmed = ground it, code wrong = record the issue, hypothesis wrong = revise and re-inspect. Never record a verdict you didn't check.",
-    "Batch by neighborhood: when you inspect an edge, `loom cluster <intent-id>` lists every other unresolved edge touching it — work those while the context is loaded.",
-    "ASK THE MAP: `loom find \"<what you're looking for>\"` — keyword search over intent names/descriptions when you don't know the intent's name yet. Hits carry hierarchy position, code groundings with locators, and a staleness warning (claims about since-changed code). No fuzzy matching — a miss means reformulate in the map's vocabulary, or the area isn't mapped (`loom coverage`). Once you HAVE a node, `loom explain <intent|file>` answers it whole — what it is, what it's FOR (groundings), what it's coupled to and BY WHAT KIND, what governs it, and what ripples if you change it; `loom explain <file> --impact` is the blast-radius preview (\"what breaks if I touch this\") before you edit.",
-    "Use `--json` on every command for machine-readable output (incl. a `graph_state` pulse). For high-volume audit surfaces, start with `loom smells --summary --json` and `loom coverage --summary --json`; load full `--json` only when you need per-finding evidence.",
+const CORE_RULES: &[&str] = &[
+    "`loom next` is the router — it tells you the exact next command. Don't guess.",
+    "`loom sync` after ANY code change. Bulk-drain: `loom next --mode fix --take 20` / `--mode quality --take 20` → `loom batch -` → `loom validate --all`.",
+    "The Socratic loop per edge: read both intents → hypothesize → inspect code → ONE verdict. No code read, no verdict.",
+    "HONEST confidence: 0.5-and-true beats 0.9-and-guessed. <0.7 routes to review. Empty evidence = laundered claim.",
+    "Batch by neighborhood: `loom cluster <intent>` lists every unresolved edge on one node — work those while context is loaded.",
+    "`→ Next:` is DIRECTIVE (just do it); `→ Recommended:` is DISCRETIONARY (your call — override when you hold priorities the graph can't see).",
+    "Evidence and criteria must be substantive — loom rejects placeholders, doctor audits provenance.",
+    "CLOSE OUT: `loom next --all` → `loom export` → `loom export --check`.",
+];
+
+const DEEPER_RULES: &[&str] = &[
+    "ASK THE MAP: `loom find \"<topic>\"` searches intent names/descriptions. `loom explain <intent|file>` answers it whole — groundings, coupling, governance, blast radius (`--impact`).",
+    "Use `--json` on every command for machine-readable output. For audit: `loom smells --summary --json` and `loom coverage --summary --json` first; full `--json` only for specific findings.",
     "Every command has `--help`. `loom schema` = data model; `loom status` = where you are; `loom doctor` = integrity.",
-    "READ THE COMPASS POINTER: `loom status` routes on `phase` (act on that lane), and its last line carries a confidence verb — `→ Next:` is DIRECTIVE (a failure or binding vertical gap; just do it), `→ Recommended:` is DISCRETIONARY (the pick advances quality/completeness but you may resequence it against the `other open lanes:` line right above, which lists the other non-empty autonomous queues with depths). A Recommended verb is loom telling you it's your call — override it when you hold priorities the graph can't see; in `--json` the same signal is `graph_state.next_kind` + `other_lanes`.",
     "Prescriptive intents (planned/needs_change) still need a falsifiable criterion — that's what makes the design a test.",
-    "Two structural axes that FEED the ladder. VERTICAL (the binding spine) — HIERARCHY is a tree (one parent per intent), every implemented leaf grounded in code (IMPLEMENTS), every CodeFile reached — feeds the REALIZED rung. HORIZONTAL (RELATES_TO, the N×N grid) feeds the HARDENED rung: every intent pair owes an inspected edge (ground or independent). `loom edge unexplored` lists what's still owed.",
-    "The REALIZED rung needs the vertical spine closed (`loom coverage` reports nothing unaccounted) AND every leaf proven by a discriminating test. Symbol accountability is audit pressure: close open actionable symbol gaps; raw gaps remain audit trail, not a 100% helper-coverage target. The HARDENED rung needs horizontal closure — `loom edge unexplored` lists every owed pair; batch `independent` verdicts for the unrelated ones (and `ground` the real couplings) via `loom batch` to drain it.",
-    "360° COVERAGE: the pulse footer counts every vantage point — grounded (files explained) · realized (leaves coded) · explored (the grid) · measured (rules held against coded intents) · proven (passed validations) — and the compass routes to the weakest axis. `measured` never closes by itself: seed the packs `loom detect` recommends (`loom rule seed iso5055|mobile|web-ui|service|data|concurrency`), then `loom next --mode quality` serves every never-measured rule×intent pair. ONE command resolves each — `loom rule verdict` creates the edge with the verdict; a verdict at component altitude covers descendants; `independent` = measured, doesn't apply.",
-    "Criteria and evidence must be substantive — loom rejects placeholders, and `loom doctor` audits verdicts (vacuous criterion, bad confidence, missing timestamp, out-of-lane provenance).",
-    "CLOSE OUT with `loom next --all` — every role queue, vertical gaps, and doctor health as ONE prioritized list (the answer to \"what's left?\" without reconciling five commands by hand).",
-    "FEDERATION (monorepo / cross-service): every graph has an identity (`loom init --name`, in the export). A root graph DELEGATES service subtrees (`loom delegate add 'services/x/**' --to services/x/loom.graph.json`) and links its SEAM intents to the child (`loom delegate seam '<pattern>' <intent>`) — `loom sync` watches each child's committed export and re-opens the seam intents' claims when it changes, so a cross-service contract shift ripples into the parent. Data flows UP (children export, parent observes); never write into a child's graph — emit findings and let the child's own agent record them in its lane. Map code you don't own with `loom init --observed`: understanding/measuring/proving work, build/fix lanes are off (findings, not fixes).",
-    "A proof that needs a LIVE dependency (DB, service, queue) is NOT automatically blocked — first try to UNBLOCK it yourself. loom cannot know how YOUR repo provisions things, so SCAN the working repo for how it brings them up — docker-compose.yml / compose.yaml, a Makefile/justfile/Taskfile target, scripts/, package.json scripts, a README \"getting started\"/\"running tests\" section, .env.example, testcontainers/fixtures — start the dependency that way, pass its address in at invocation (`BASE_URL=… loom saga diagnose …` while triaging, then `loom saga run …` when ready to stamp proof). Adapt to the repo in front of you; loom ships no mock. ONLY when you genuinely cannot stand it up (no provisioning exists in the repo, or a secret you don't hold) is it `loom validation mark <id> --result blocked --reason \"…\"` — honest and out of the queue, never left looking forgotten as not_run.",
-    "ADOPT THE LANE, THEN DRIVE: when the compass routes you to a lane, `loom guide --role <role>` serves that lane's SKILL just-in-time (its discipline + honesty law) to adopt in-context — no install. Every work item also carries `effort: low|mid|high`, a statement about the WORK (loom never names models). Adopt + drive in your warm context by default; for a genuinely BULK queue you MAY spawn a cheaper sub-context to flood it. Whoever drives records HONEST confidence: 0.5-and-true beats 0.9-and-guessed, because verdicts below 0.7 feed `loom next --mode review` — the strategic double-check, ranked uncertain×central — where a stronger pass independently re-inspects (own hypothesis FIRST, then the recorded evidence) and confirms or overturns. Confidence is the coordination channel; no context ever messages another.",
-    "DESIGN CHANGES MIDWAY: when an intent is superseded, `loom intent retire <id> --reason … [--replaced-by <successor>]` — never delete (delete is for mistakes), never leave it counting. Retired = invisible to computation, visible to history; the command reports the triggered work (orphaned children, files that lost their only owner, dangling proofs). Address handoffs: `loom note add --for <role>` puts a message at the top of that lane's next relevant work item.",
-    "THE HYPOTHESIS PLANE (pre-decision): an improvement idea is NOT work until it is proven. `loom hypothesis add --claim <what's wrong NOW> --proposal <the change> --predicted-outcome <measurable result> [--target <intent>]…` (any lane; the redesign-shaped smells emit this as their remedy). A DIFFERENT agent proves it: `loom next --mode prove` serves proposals ranked by target blast radius — `loom hypothesis prove <id> --verdict supported|refuted --evidence … --confidence 0.9` (analyzer lane; proposer ≠ prover; the verdict stamps the TARGETS edges). Then the builder decides: `loom hypothesis adopt <id> --spawned <planned-intent>…` converts it into ordinary build work AND writes the predicted outcome as a not_run Validation on the spawned intents — when the validator later marks that proof passed, the hypothesis derives `confirmed`: every adopted improvement is checked for whether it DELIVERED. `loom sync` stales hypothesis support when target code changes (the prove queue re-serves it as a RE-PROVE item). Speculation never counts in coverage/completeness — proving is optional, like discovery/review.",
-    "THE CONSUMER PLANE (runtime proof of composition): everything else grounds claims by READING code — a saga proves intents compose by EXECUTING them the way a real consumer will. Write a YAML spec (ordered endpoint chain; every step names the intent it proves; captures thread one response into the next request; optional `auth.requires_scopes` declares endpoint scope requirements for diagnosis), `loom saga add <spec.yaml>` to declare it (Validation type=saga + VALIDATES edges + the RELATES_TO path), `loom saga diagnose <name>` to TRIAGE without stamping graph verdicts, and `loom saga run <name>` to STAMP proof: consecutive passing steps stamp their RELATES_TO edge passing with RUNTIME evidence; the boundary into a failing step goes failing with the exact broken expectation ('expected 200, got 502'); never-reached steps stay untouched. Validator lane; exits non-zero so it runs under `loom validate`/CI; sync re-queues it when step-intent code changes. ENVIRONMENT VALUES: `{{ env.X }}` in a spec means the value arrives AT INVOCATION — `BASE_URL=http://localhost:3000 loom saga diagnose <name>` for diagnosis, then `BASE_URL=http://localhost:3000 loom saga run <name>` to record evidence — never stored in the graph (it points at a LIVE target; start the system under test first — discover how THIS repo brings it up: docker-compose, a Makefile/justfile target, scripts/, package.json scripts, the README — loom ships no mock, it drives the real composition). `loom saga add`/`list` name what's required (`run with: BASE_URL=<value> …`); a missing value refuses to run with the exact invocation to use (nothing stamped — environment-not-ready is never recorded as a failed proof: `loom validate` marks it `blocked` instead). On 401/403, `loom saga diagnose` decodes bearer JWT `scope`/`scp`/`scopes` claims when `auth.requires_scopes` is present and names the missing scope. Use sagas for any endpoint-reachable surface; deliberately not as a general HTTP test tool.",
-    "YOU keep the travel format fresh: after graph changes, run `loom export` before committing code — `loom status` and `loom next --all` warn when the committed loom.graph.json drifted, and `loom export --check` verifies (exit code; CI wiring is optional extra hardening, not the primary guard — you are). For a HUMAN-readable architecture doc, `loom wiki` renders the graph to Markdown (overview + intent tree + components-by-domain + quality bars); it's a regenerable projection like the export (`loom wiki --check` guards freshness) — humans read it, you keep driving the graph.",
+    "VERTICAL spine (HIERARCHY tree + IMPLEMENTS + CodeFile reach) feeds REALIZED. HORIZONTAL grid (RELATES_TO N×N) feeds HARDENED. `loom edge unexplored` lists owed pairs.",
+    "REALIZED needs vertical closed + every leaf proven by a discriminating test. HARDENED needs horizontal closure — batch `independent` for unrelated pairs, `ground` the real couplings.",
+    "360°: grounded · realized · explored · measured · proven. `measured` never closes alone: `loom rule seed iso5055|mobile|web-ui|service|data|concurrency` → `loom next --mode quality`.",
+    "FEDERATION: `loom init --name`, `loom delegate add`, `loom delegate seam`. Children export, parent observes. `loom init --observed` for code you don't own.",
+    "UNBLOCK proofs needing live deps: scan repo for docker-compose/Makefile/scripts/README — loom ships no mock. `blocked` only when you genuinely cannot.",
+    "ADOPT THE LANE: `loom guide --role <role>` serves the lane skill JIT. `effort: low|mid|high` is about WORK, not models. Spawn sub-contexts ONLY for genuinely bulk queues.",
+    "DESIGN CHANGES: `loom intent retire <id> --reason … [--replaced-by …]` — never delete (delete is for mistakes). `loom note add --for <role>` for handoffs.",
+    "HYPOTHESIS PLANE: `loom hypothesis add --claim … --proposal … --predicted-outcome …` → `loom next --mode prove` → `loom hypothesis adopt|reject`. Proposer ≠ prover.",
+    "CONSUMER PLANE (sagas): `loom saga add <spec.yaml>` → `loom saga diagnose` (triage) → `loom saga run` (stamp proof). Missing env = blocked, not failed.",
+    "EXPORT: `loom export` before committing. `loom export --check` verifies freshness. `loom wiki` for human-readable architecture doc.",
 ];
 
 /// What `loom sync` invalidates when a registered file's CONTENT changes — the
@@ -50,7 +54,7 @@ const RIPPLE: &[&str] = &[
 
 /// The role lanes: who does what, and which `loom next` mode serves the lane.
 /// Declared roles (LOOM_AGENT=llm:<role>) are ENFORCED — an agent acting
-/// outside its lane gets an error. Bare `llm`/`human` = solo mode (all lanes).
+/// outside its lane gets an error. Bare 'llm'/'human' = solo mode (all lanes).
 const ROLE_LANES: &[(&str, &str, &str)] = &[
     ("builder",   "build",     "constructs the graph: intents, hierarchy, codefiles, IMPLEMENTS links, lifecycle; backfills derived graph surfaces via `loom next --mode populate`; adopts/rejects proven hypotheses"),
     ("analyzer",  "discovery", "the Socratic loop: grounds RELATES_TO edges with criterion/evidence/verdict; proves hypotheses (`loom next --mode prove`)"),
@@ -82,6 +86,8 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "A planned PARENT whose children are implemented is a ROLL-UP: verify each child meets its criterion, then mark it — NEVER write code at that altitude.",
         "SUPERSEDED design → `loom intent retire <id> --reason … [--replaced-by …]` (keeps history, exits computation). Delete is ONLY for things that should never have existed.",
         "REFUSE to grade your own work: you record NO criterion/evidence/verdicts on it — analyzer grounds it, validator proves it, quality grades it. That separation is what makes the graph trustworthy; `loom doctor` audits it.",
+        "DONE WHEN: the leaf is grounded (IMPLEMS locator matches a real symbol), proven (validation passed), and marked implemented. A leaf marked implemented with no proof is a promise, not a fact.",
+        "NEVER: mark implemented before grounding · ground to a mockup or spec doc (only production code) · seed one intent for two responsibilities (split it) · delete instead of retire (delete erases history; retire preserves it).",
      ]),
     ("analyzer",
      "Adopt when loom routes you to the analyzer/discovery lane — grounding RELATES_TO edges or proving hypotheses (phase=discovery; `loom next --mode discovery|prove|review`).",
@@ -93,6 +99,8 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "REVIEW sub-lane (`loom next --mode review`): re-inspect low-confidence × central verdicts. Form your OWN hypothesis FIRST, THEN read the recorded evidence, then CONFIRM or OVERTURN — never rubber-stamp.",
         "BULK: `loom next --mode discovery --take 50` groups unexplored pairs with both intents + groundings inline — read each neighborhood ONCE, apply the whole group in one `loom batch -`. `loom cluster <intent>` lists every unresolved edge on one node.",
         "HYPOTHESES: `loom next --mode prove` → `loom hypothesis prove <id> --verdict supported|refuted --evidence …` (proposer ≠ prover). Out-of-lane finding → `loom note add --for <role>`.",
+        "DONE WHEN: every edge you picked up has a verdict (ground/issue/independent) with a substantive criterion and honest confidence. Empty evidence = laundered claim — the review queue catches it regardless of confidence.",
+        "NEVER: record a verdict without reading the code · record passing@0.9 when the evidence reads 'foundation/universal' (that's independent) · use one evidence string for many unrelated edges (that's laundering — the doctor flags it) · rubber-stamp a review (form your OWN hypothesis first).",
      ]),
     ("fixer",
      "Adopt when loom routes you to the fixer/fix lane — repairing a failing edge or a needs_change intent at root cause (`loom next --mode fix`).",
@@ -101,6 +109,8 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "REPAIR ONLY: failing RELATES_TO edges (`loom edge fix`) and `needs_change` intents, at the ROOT CAUSE. New-code construction is the builder's — NOT yours.",
         "THE RIPPLE is the discipline: end every repair with `loom sync` (it stales every claim the change touched), then re-ground/re-verify what it flagged. Expect fix → sync → re-verify → re-prove → re-green; skipping the sync leaves the graph lying about your own change.",
         "Re-ground what you repaired (`loom edge implement` with a fresh locator if a symbol moved), then `loom intent mark <id> --lifecycle implemented` to close the loop.",
+        "DONE WHEN: the failing edge is passing (re-grounded with evidence) AND `loom sync` ran AND the ripple it created is addressed (re-verify what it staled).",
+        "NEVER: patch the symptom while the root cause persists · write new features (that's builder work) · skip `loom sync` after a repair (the graph lies about your change) · mark passing without re-grounding (a moved symbol means the old locator anchors nothing).",
      ]),
     ("validator",
      "Adopt when loom routes you to the validator/validate lane — proving intents by running their validations (`loom next --mode validate`).",
@@ -109,6 +119,8 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "PROVE intents: `loom validate <intent>` runs the linked proofs; `loom validate --all` re-runs every not_run proof after a sync flood. Record passed/failed from what you ACTUALLY ran.",
         "UNBLOCK FIRST: a proof needing a live dep (DB/service/queue) is NOT automatically blocked — scan the repo for how it provisions things (docker-compose, Makefile/justfile, scripts/, package.json, the README), stand it up, pass the address in at invocation. ONLY when you genuinely cannot is it `loom validation mark <id> --result blocked --reason …`.",
         "A FAILING proof means the intent is NOT fulfilled — flag it (`loom intent mark <id> --lifecycle needs_change --reason …`) or hand the fixer a note. Manual/async proof → `loom validation mark <id> --result passed --evidence …`; confirm meaning with `loom intent confirm`.",
+        "DONE WHEN: every `not_run` validation in the queue has a result (passed/failed/blocked), recorded from what you ACTUALLY ran — not from reading the command and guessing.",
+        "NEVER: mark passed without running the proof · mark blocked before scanning the repo for how to provision the dependency · leave a failing proof silent (flag the intent needs_change or hand the fixer a note) · accept a proof that tests the wrong thing (a test that passes but doesn't exercise the intent's criterion is not a proof).",
      ]),
     ("quality",
      "Adopt when loom routes you to the quality lane — holding quality rules against coded intents and recording GOVERNS verdicts (`loom next --mode quality`).",
@@ -118,6 +130,8 @@ const ROLE_DISCIPLINE: &[(&str, &str, &str, &[&str])] = &[
         "ONE verdict per pair, after reading the intent's grounded code ONCE: `loom rule verdict <rule> <intent> --status passing|failing|independent --criterion … --evidence … --confidence <honest>` (the verdict CREATES the edge). `independent` = measured, no surface here — record it, NEVER fake a passing.",
         "ALTITUDE: a verdict on a component covers its descendants; drop to a leaf ONLY where the rule has specific bite.",
         "A `failing` verdict routes to the fixer; quality re-earns green after the fixer's sync. HONEST confidence: <0.7 routes to review. Bulk via `loom next --mode quality --take 50` + `loom batch -`.",
+        "DONE WHEN: the quality queue is empty (every rule×intent pair measured) AND each verdict has substantive evidence and honest confidence. `independent` closes a pair — it's measured, not skipped.",
+        "NEVER: fake passing to clear the gate · record independent without reading the code (independent means you checked and found no surface) · use one evidence string across many pairs (that's laundering) · leave a failing verdict without routing to the fixer.",
      ]),
 ];
 
@@ -348,7 +362,7 @@ const GUIDE_SECTIONS: &[&str] = &[
     "lifecycle",
     "steps",
     "golden_rules",
-    "ripple",
+    "deeper_rules",
     "roles",
     "orchestration",
     "consumer_plane",
@@ -419,7 +433,7 @@ fn brownfield() -> Vec<(&'static str, &'static str)> {
 fn greenfield() -> Vec<(&'static str, &'static str)> {
     vec![
         ("init", "`loom init` in the (empty/new) repo root."),
-        ("design as planned intents", "Write the spec AS intents: `loom intent add … --level system|component|feature --lifecycle planned`. Each feature's criterion IS its acceptance contract — so features must be ATOMIC (one falsifiable criterion each; a description needing 'and' is several intents). Counts: system 1–3, component 5–15, features many. Use `--aspect happy|sad|fallback` so error paths are designed in."),
+        ("design as planned intents", "INTERVIEW the user first (`loom guide --mode seed` for the full grill technique): one question at a time, always with a recommended answer, calibrating altitude — start at SYSTEM (\"what is this product?\"), descend to FEATURE only when confident. Capture each answer through the inbox (`loom door \"<their words>\"` → `loom inbox normalize`), then land it as an intent: `loom intent add … --level system|component|feature --lifecycle planned`. Each feature's criterion IS its acceptance contract — so features must be ATOMIC (one falsifiable criterion each; a description needing 'and' is several intents). Counts: system 1–3, component 5–15, features many. Use `--aspect happy|sad|fallback` so error paths are designed in. Terminate when the graph has no open gaps — not when conversation peters out."),
         ("capture architecture", "Relate intents: `loom edge hierarchy` for structure, `loom edge explore … ground` for contracts between components. If the design is layered, declare it up front: give intents `--layer` labels and `loom layer order <top> … <bottom>` — the build is then continuously audited for imports pointing up the order (layering_violation). Use `--domain` separately for product/business facets."),
         ("build", "`loom next --mode build` → for each planned LEAF intent: write the code, `loom codefile add`, `loom edge implement`, then `loom intent mark <id> --lifecycle implemented`. Parents are deferred until their children are done, then surface as a roll-up. The criterion you wrote is your test."),
         ("verify", "Once built, `loom next` (discovery) and `loom validate` confirm reality matches the design. For endpoint-exposing designs, add a consumer saga per journey (`loom saga add`, `loom saga diagnose` while triaging, `loom saga run` to stamp) — the design's composition is proven by execution, not just per-leaf tests."),
@@ -584,7 +598,9 @@ fn run_role_charge(role: &str, printer: &Printer) -> Result<()> {
     println!("  SETUP     {setup}");
     println!("  QUEUE     {queue}");
     println!();
-    println!("YOUR LANE (what you MAY do — everything else errors, hand it to its owner):");
+    println!("CORE REFLEX (every turn): `loom status` → `loom next` → do the work → `loom sync` after ANY code change.");
+    println!("  Full golden rules + ripple + playbook: `loom guide --all`.");
+    println!();
     for action in &lane {
         println!("  • {action}");
     }
@@ -704,7 +720,8 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
                 })).collect::<Vec<_>>(),
             },
             "steps": steps.iter().map(|(t, d)| serde_json::json!({"step": t, "do": d})).collect::<Vec<_>>(),
-            "golden_rules": GOLDEN_RULES,
+            "golden_rules": CORE_RULES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            "deeper_rules": DEEPER_RULES.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
             "ripple": {
                 "when": "Run `loom sync` after ANY code change — it detects mtime deltas on registered files and propagates the impact one hop. The graph structure IS the impact analysis.",
                 "what_goes_stale": RIPPLE,
@@ -776,6 +793,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
         m
     );
     println!();
+    // ── CORE: what you need to start driving right now ─────────────────────
     println!("WHAT IT IS");
     println!("  Externalized, falsifiable memory for understanding, building, and cleaning");
     println!("  up a codebase: a living graph of intents grounded in real files, where every");
@@ -785,6 +803,21 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
     println!("  semantic   Intent       — what the system is supposed to do");
     println!("  physical   CodeFile     — what actually exists on disk");
     println!("  normative  QualityRule  — what good looks like");
+    println!();
+    println!("THE LOOP (the reflex — every turn)");
+    println!("  1. `loom status`     → read the maturity ladder + focus rung + alarms");
+    println!("  2. `loom next`        → the compass names the lane + the exact next item");
+    println!("  3. do the work        → read code, record evidence, write/run the proof");
+    println!("  4. `loom sync`        → after ANY code change (the flag engine — see RIPPLE)");
+    println!("  Repeat until the maturity ladder reaches your target rung.");
+    println!();
+    println!("GOLDEN RULES");
+    for r in CORE_RULES {
+        println!("  • {}", r);
+    }
+    println!();
+    // ── DEEPER: the detail you reach for when the core isn't enough ─────────
+    println!("── DEEPER ────────────────────────────────────────────────────────────");
     println!();
     println!("LIFECYCLE");
     println!("  {}", LIFECYCLE_SUMMARY);
@@ -820,8 +853,8 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
         println!("       {}", doc);
     }
     println!();
-    println!("GOLDEN RULES");
-    for r in GOLDEN_RULES {
+    println!("DEEPER RULES (reference — when the core isn't enough)");
+    for r in DEEPER_RULES {
         println!("  • {}", r);
     }
     println!();
@@ -1208,5 +1241,31 @@ mod tests {
                 "guide lifecycle contract does not teach '{required}'"
             );
         }
+    }
+
+    /// Greenfield step 2 must tell the LLM to INTERVIEW the user before writing
+    /// intents — not jump straight to `loom intent add`. The grill technique
+    /// (calibrate altitude, one question at a time, recommended answers,
+    /// terminate on graph completeness) lives in `loom guide --mode seed`;
+    /// the greenfield playbook must reference it so a cold LLM knows it exists.
+    #[test]
+    fn greenfield_playbook_teaches_the_interview_before_intents() {
+        let blob = serde_json::to_string(&guide_json("greenfield")).unwrap();
+        assert!(
+            blob.contains("INTERVIEW"),
+            "greenfield step 2 must say INTERVIEW before landing intents"
+        );
+        assert!(
+            blob.contains("loom guide --mode seed"),
+            "greenfield must reference the seed mode for the full grill technique"
+        );
+        assert!(
+            blob.contains("one question at a time"),
+            "greenfield must teach one-question-at-a-time"
+        );
+        assert!(
+            blob.contains("calibrating altitude"),
+            "greenfield must teach altitude calibration"
+        );
     }
 }
