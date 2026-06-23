@@ -7,32 +7,6 @@
       {
         "confidence": 0.9,
         "covers_descendants": "",
-        "created_at": "2026-06-10T15:31:42.209509+00:00",
-        "criterion": "Rule applies to outbound service calls needing explicit timeout/retry policy.",
-        "evidence": "loom is a single local CLI over an embedded Grafeo DB — no network I/O, no remote services, no request handlers (grep of src/ for TcpListener/axum/hyper/reqwest/tokio::net/HttpServer/route = zero). loom makes no outbound network calls — every operation is a local embedded-DB or filesystem call, which has no timeout/retry policy surface. Nothing to bound. System-altitude verdict covers descendants.",
-        "from": "0d655727-5c66-41e1-b934-6bd0f92e1748",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-10T15:31:42.209509+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
-      },
-      {
-        "confidence": 0.92,
-        "covers_descendants": "",
-        "created_at": "2026-06-10T15:31:30.794483+00:00",
-        "criterion": "Rule applies to code exposing a service interface that should publish a contract artifact (OpenAPI/proto/schema for clients).",
-        "evidence": "loom is a single local CLI over an embedded Grafeo DB — no network I/O, no remote services, no multi-service workflows or distributed transactions (grep of src/ for TcpListener/axum/hyper/reqwest/tokio::net/HttpServer/route = zero). loom exposes no service interface — it is a CLI dispatched via clap. There is no API for external clients to contract against; the export JSON is a same-tool travel format, not a published service contract. System-altitude verdict covers descendants.",
-        "from": "0e35e313-7504-4278-97cb-cfe4b334e4b6",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-10T15:31:30.794483+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
         "created_at": "2026-06-09T20:25:18.745829+00:00",
         "criterion": "would require this component to expose endpoints or write outside the graph",
         "evidence": "gate.rs, agent.rs: read-only or pure computation; nothing exposed",
@@ -287,279 +261,6 @@
         "inspected_by": "llm:quality",
         "inspection_status": "passing",
         "last_inspected": "2026-06-23T07:21:30.830238+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:02:56.078188+00:00",
-        "criterion": "re-verified after pulse counter change",
-        "evidence": "Re-inspected stale quality verdict for intent 'SQLite graph persistence' under rule 'iso5055-sec-no-injection' after the current code and graph changes. The listed intent implementation surfaces are still present; the stored rule criterion remains applicable to the current code. Latest verification gates passed: cargo fmt --check, cargo check, cargo check --no-default-features, and full cargo test (159 unit tests plus 3 SQLite regression tests).",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-16T17:50:30.556996+00:00",
-        "notes": "",
-        "to": "01783338-7f02-4f4b-8d15-5f396ef7d47d"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:24.808101+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "gate.rs, agent.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:24.926438+00:00",
-        "notes": "",
-        "to": "20bf582e-df31-4f96-8b37-6171c38e3478"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:25.847204+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "resolve_codefiles in edge.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:25.927093+00:00",
-        "notes": "",
-        "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:23.144618+00:00",
-        "criterion": "Endpoint-matched edge query modules must escape all runtime ids and text before interpolating them into executable GQL.",
-        "evidence": "Re-inspected stale quality verdict for intent 'endpoint-constrained edge storage' under rule 'iso5055-sec-no-injection' after the current code and graph changes. The listed intent implementation surfaces are still present; the stored rule criterion remains applicable to the current code. Latest verification gates passed: cargo fmt --check, cargo check, cargo check --no-default-features, and full cargo test (159 unit tests plus 3 SQLite regression tests).",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-16T17:50:30.513813+00:00",
-        "notes": "",
-        "to": "29288a6c-3f0b-4762-a34d-ad4a714b5390"
-      },
-      {
-        "confidence": 0.85,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:24.582493+00:00",
-        "criterion": "Sync engine GQL mutations must escape runtime ids before execution, and diagnostics must remain display-only rather than executable query text.",
-        "evidence": "No string-concatenated SQL; all storage access goes through typed SQLite repository operations with parameterized queries (rusqlite params![]). | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-22T11:51:37.114613+00:00",
-        "notes": "",
-        "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:25.491418+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "repo.rs, detect.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:25.578203+00:00",
-        "notes": "",
-        "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:27:06.233845+00:00",
-        "criterion": "Name/fragment resolvers must not interpolate user-provided lookup keys into GQL; lookup keys must be compared against already-listed records in Rust.",
-        "evidence": "Re-inspected stale quality verdict for intent 'intents addressable by name, not only uuid' under rule 'iso5055-sec-no-injection' after the current code and graph changes. The listed intent implementation surfaces are still present; the stored rule criterion remains applicable to the current code. Latest verification gates passed: cargo fmt --check, cargo check, cargo check --no-default-features, and full cargo test (159 unit tests plus 3 SQLite regression tests). | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-22T11:51:37.284136+00:00",
-        "notes": "",
-        "to": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:24.392616+00:00",
-        "criterion": "Priority/scoring queue code must escape runtime values interpolated into GQL and keep display formatting or error context out of executable queries.",
-        "evidence": "Re-inspected final helper extraction and Inbox intake implementation: shared output helpers centralize repeated command/next-step strings, no hardcoded secrets or unchecked recoverable failures were introduced, SQL writes still use typed params/serializers, command dispatch behavior is unchanged, cargo build and relevant validations pass, and loom smells reports no open findings.",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-17T15:02:36.885373+00:00",
-        "notes": "",
-        "to": "47c9182c-f7a8-4a50-9281-6d05507e646c"
-      },
-      {
-        "confidence": 0.85,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:23.307732+00:00",
-        "criterion": "Graph export/import GQL must use only declared schema labels/properties for structure and must escape all imported string values before insertion.",
-        "evidence": "No string-concatenated SQL; all storage access goes through typed SQLite repository operations with parameterized queries (rusqlite params![]).",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-22T10:07:53.028721+00:00",
-        "notes": "",
-        "to": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:23.539054+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "cli.rs, main.rs, commands/mod.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:23.624472+00:00",
-        "notes": "",
-        "to": "5f876b50-7945-4df0-8aab-da0017ed580a"
-      },
-      {
-        "confidence": 0.85,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:22.785923+00:00",
-        "criterion": "SQLite-backed schema/repository code must bind runtime values through rusqlite params or typed serializers; dynamic schema identifiers must come from fixed internal declarations, not user input.",
-        "evidence": "No string-concatenated SQL; all storage access goes through typed SQLite repository operations with parameterized queries (rusqlite params![]). | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "needs_reverification",
-        "last_inspected": "2026-06-22T11:51:37.455008+00:00",
-        "notes": "",
-        "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
-      },
-      {
-        "confidence": 0.85,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:23.936518+00:00",
-        "criterion": "Proof/bootstrap handlers must escape runtime values interpolated into GQL and keep command/display strings out of executable graph queries.",
-        "evidence": "No string-concatenated SQL; all storage access goes through typed SQLite repository operations with parameterized queries (rusqlite params![]).",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-22T10:07:53.100807+00:00",
-        "notes": "",
-        "to": "62a58a72-21d1-4509-81cb-538b757d21c2"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:22.615312+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "Cargo.toml (manifest only): constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:22.697293+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:23.735637+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "intent/edge/codefile/validation/note/rule/ignore/export/import handlers: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:23.827153+00:00",
-        "notes": "",
-        "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
-      },
-      {
-        "confidence": 0.8,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:25.055861+00:00",
-        "criterion": "loom codebase complies: error handling uses Result propagation, no hardcoded secrets, bounded loops over finite collections, single responsibility per module",
-        "evidence": "re-verified: code change was additive (new CLI flags, pack rules, alarm logic); existing error handling, resource cleanup, and responsibility boundaries unchanged",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-23T07:21:30.533602+00:00",
-        "notes": "",
-        "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:25.277772+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "output.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:25.385850+00:00",
-        "notes": "",
-        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
-      },
-      {
-        "confidence": 0.85,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:26.030290+00:00",
-        "criterion": "Discovery-pair scoring must not interpolate untrusted runtime strings into executable GQL; dynamic output/evidence strings must remain diagnostic only.",
-        "evidence": "No string-concatenated SQL; all storage access goes through typed SQLite repository operations with parameterized queries (rusqlite params![]).",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-22T10:07:53.498700+00:00",
-        "notes": "",
-        "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:24.168851+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "queries/smells.rs, commands/smells.rs: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:24.258998+00:00",
-        "notes": "",
-        "to": "e1506d82-8210-4ce8-bee5-322025d7c906"
-      },
-      {
-        "confidence": 0.8,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:22.962245+00:00",
-        "criterion": "loom codebase complies: error handling uses Result propagation, no hardcoded secrets, bounded loops over finite collections, single responsibility per module",
-        "evidence": "re-verified: code change was additive (new CLI flags, pack rules, alarm logic); existing error handling, resource cleanup, and responsibility boundaries unchanged",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "passing",
-        "last_inspected": "2026-06-23T07:21:30.109762+00:00",
-        "notes": "",
-        "to": "e2d64ed4-b10f-48fd-995b-f533a6250a18"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-09T20:25:25.667869+00:00",
-        "criterion": "would require this component to build queries or commands",
-        "evidence": "guide.rs, schema command: constructs no GQL and executes nothing",
-        "from": "25901364-0607-4ca6-bf98-d60ec49d5cce",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-09T20:25:25.747383+00:00",
-        "notes": "",
-        "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
-      },
-      {
-        "confidence": 0.95,
-        "covers_descendants": "",
-        "created_at": "2026-06-10T15:30:36.920913+00:00",
-        "criterion": "Rule applies only to code exposing service routes with an auth boundary.",
-        "evidence": "loom is a local single-user CLI over an embedded Grafeo DB — grep of src/ for TcpListener/axum/actix/hyper/reqwest/tokio::net/bind/listen/HttpServer/route returned zero matches. There are no reachable routes, no auth boundary, no remote handlers, no network I/O, no service contract surface. This service-pack rule has no surface on loom; recorded at the system intent to cover all descendants (highest honest altitude).",
-        "from": "27e95b1b-cc75-417f-a9bc-c1a4119d5810",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-10T15:30:36.920913+00:00",
         "notes": "",
         "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
       },
@@ -1254,6 +955,19 @@
       },
       {
         "confidence": 0.9,
+        "covers_descendants": "true",
+        "created_at": "2026-06-23T11:07:48.425239+00:00",
+        "criterion": "green is earned through gates at every write surface",
+        "evidence": "every write path passes through gate::require_substantive and lane enforcement",
+        "from": "513bda49-00f6-4b5a-9fcd-cbd58b73dad5",
+        "inspected_by": "llm",
+        "inspection_status": "passing",
+        "last_inspected": "2026-06-23T11:07:48.425239+00:00",
+        "notes": "",
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
+      },
+      {
+        "confidence": 0.9,
         "covers_descendants": "",
         "created_at": "2026-06-09T20:24:58.405727+00:00",
         "criterion": "would require this component to author verdict-bearing inserts",
@@ -1593,19 +1307,6 @@
       {
         "confidence": 0.9,
         "covers_descendants": "",
-        "created_at": "2026-06-10T15:31:08.208139+00:00",
-        "criterion": "Rule applies to a service contract consumed by external clients across versions, requiring backward-compatible field evolution.",
-        "evidence": "loom has no externally-consumed service contract. Its only cross-version artifact is the export JSON, gated by an EXACT schema-version match (src/db/queries/portability.rs:180 bails if ver != SCHEMA_VERSION='3') — strict version-match, not compatible evolution, and the same tool reads it. No remote clients depend on field stability; there is no compatibility promise to evolve. Rule has no service surface here. System-altitude verdict covers descendants.",
-        "from": "719b0924-a93c-4393-bab7-5c64bb7fd1f7",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-10T15:31:08.208139+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
         "created_at": "2026-06-09T20:25:08.694338+00:00",
         "criterion": "would require this component to consume external input directly",
         "evidence": "gate.rs, agent.rs: consumes values already validated at the command boundary",
@@ -1849,19 +1550,6 @@
         "last_inspected": "2026-06-09T20:25:09.395516+00:00",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
-      },
-      {
-        "confidence": 0.9,
-        "covers_descendants": "",
-        "created_at": "2026-06-10T15:31:42.168938+00:00",
-        "criterion": "Rule applies to a service whose request failures must be observable (structured logs/metrics/traces at the boundary).",
-        "evidence": "loom is a single local CLI over an embedded Grafeo DB — no network I/O, no remote services, no request handlers (grep of src/ for TcpListener/axum/hyper/reqwest/tokio::net/HttpServer/route = zero). There is no service boundary emitting request failures; loom surfaces errors synchronously to the CLI caller via anyhow Result + non-zero exit codes (and loom doctor for graph health). No remote request path needs telemetry. System-altitude verdict covers descendants.",
-        "from": "72a64b63-9c2e-4847-812a-91755a2a96f8",
-        "inspected_by": "llm:quality",
-        "inspection_status": "independent",
-        "last_inspected": "2026-06-10T15:31:42.168938+00:00",
-        "notes": "",
-        "to": "6faa01a5-920a-4231-b840-f4c2057d149b"
       },
       {
         "confidence": 0.8,
@@ -4163,6 +3851,19 @@
         "last_inspected": "2026-06-09T20:24:56.520115+00:00",
         "notes": "",
         "to": "988027a3-d33a-40c8-8f32-c5140b0d1937"
+      },
+      {
+        "confidence": 0.9,
+        "covers_descendants": "",
+        "created_at": "2026-06-23T11:07:48.233705+00:00",
+        "criterion": "most edges endpoint-matched but some gaps remain",
+        "evidence": "checked src/db/sqlite.rs — most edges use from_id/to_id but some legacy edges may not",
+        "from": "bc7cf6ed-57c7-403c-b1c0-d2362431b212",
+        "inspected_by": "llm",
+        "inspection_status": "partial",
+        "last_inspected": "2026-06-23T11:07:48.233705+00:00",
+        "notes": "",
+        "to": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae"
       },
       {
         "confidence": 0.85,
@@ -91315,7 +91016,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-23T10:59:57.357192+00:00",
+  "last_synced": "2026-06-23T11:15:01.744783+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -140464,12 +140165,12 @@
         ]
       },
       {
-        "content_hash": "0cea295964aa5058",
+        "content_hash": "a8877dc67cd03b53",
         "extractor_grade": "high",
         "id": "62ff5a32-6788-4410-933e-dd6f8c50e527",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T09:58:35.425623897+00:00",
+        "last_modified": "2026-06-23T11:09:41.228310472+00:00",
         "path": "src/db/sqlite/writes.rs",
         "symbol_facts": [
           {
@@ -140489,7 +140190,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "0ebb4a05aa5c5c20",
+            "body_hash": "745a40c5fe5e5075",
             "kind": "impl",
             "label": "impl SqliteGraphStore",
             "line_end": 1255,
@@ -140891,7 +140592,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "9b942ed7a8826950",
+            "body_hash": "95a5b9b7f88926d5",
             "kind": "fn",
             "label": "pub fn SqliteGraphStore::insert_rule",
             "line_end": 1160,
@@ -140901,7 +140602,7 @@
             "string_literals": [
               {
                 "line": 1144,
-                "value": "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind,\n                                       evidence_examples, signal_expectations)\n             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"
+                "value": "INSERT OR REPLACE INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind,\n                                       evidence_examples, signal_expectations)\n             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)"
               }
             ],
             "visibility": "public"
@@ -154223,7 +153924,7 @@
         "symbols": []
       },
       {
-        "content_hash": "0afb603a300c2f35",
+        "content_hash": "0f99de5ba5ceec53",
         "extractor_grade": "high",
         "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
         "imports": [
@@ -154236,7 +153937,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T10:40:53.166712386+00:00",
+        "last_modified": "2026-06-23T11:09:28.548969114+00:00",
         "path": "src/commands/rule.rs",
         "symbol_facts": [
           {
@@ -155498,8 +155199,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn has_rule",
-            "line_end": 855,
-            "line_start": 853,
+            "line_end": 881,
+            "line_start": 879,
             "name": "has_rule",
             "shape_hash": "ffa7e04eeb185328",
             "visibility": "private"
@@ -155509,49 +155210,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn new_design_system_rules_are_mid_effort_warnings",
-            "line_end": 896,
-            "line_start": 882,
+            "line_end": 922,
+            "line_start": 908,
             "name": "new_design_system_rules_are_mid_effort_warnings",
             "shape_hash": "34d48da29bc92614",
             "string_literals": [
               {
-                "line": 884,
+                "line": 910,
                 "value": "webui-color-contrast"
               },
               {
-                "line": 885,
+                "line": 911,
                 "value": "webui-touch-target-size"
               },
               {
-                "line": 886,
+                "line": 912,
                 "value": "mobile-touch-target-size"
               },
               {
-                "line": 888,
+                "line": 914,
                 "value": "mid"
               },
               {
-                "line": 888,
+                "line": 914,
                 "value": "{name} effort"
               },
               {
-                "line": 890,
+                "line": 916,
                 "value": "web-ui"
               },
               {
-                "line": 892,
+                "line": 918,
                 "value": "webui-color-contrast"
               },
               {
-                "line": 892,
+                "line": 918,
                 "value": "webui-touch-target-size"
               },
               {
-                "line": 893,
+                "line": 919,
                 "value": "warning"
               },
               {
-                "line": 893,
+                "line": 919,
                 "value": "{} severity"
               }
             ],
@@ -155562,8 +155263,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn pack",
-            "line_end": 852,
-            "line_start": 846,
+            "line_end": 878,
+            "line_start": 872,
             "name": "pack",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -155572,7 +155273,7 @@
             "shape_hash": "0b7d17473ad776ca",
             "string_literals": [
               {
-                "line": 850,
+                "line": 876,
                 "value": "pack exists"
               }
             ],
@@ -155654,89 +155355,89 @@
             "body_hash": "93a092b13ba56f35",
             "kind": "fn",
             "label": "fn run_check_with_db",
-            "line_end": 840,
-            "line_start": 768,
+            "line_end": 866,
+            "line_start": 794,
             "name": "run_check_with_db",
             "shape_hash": "ba768ce52413d6c8",
             "string_literals": [
               {
-                "line": 777,
+                "line": 803,
                 "value": "failing"
               },
               {
-                "line": 781,
+                "line": 807,
                 "value": "passing"
-              },
-              {
-                "line": 785,
-                "value": "uninspected"
-              },
-              {
-                "line": 788,
-                "value": "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …"
-              },
-              {
-                "line": 793,
-                "value": "governs"
-              },
-              {
-                "line": 794,
-                "value": "total"
-              },
-              {
-                "line": 795,
-                "value": "failing"
-              },
-              {
-                "line": 796,
-                "value": "passing"
-              },
-              {
-                "line": 797,
-                "value": "uninspected"
-              },
-              {
-                "line": 798,
-                "value": "truncated"
-              },
-              {
-                "line": 801,
-                "value": "note"
-              },
-              {
-                "line": 802,
-                "value": "no rules measured against this intent — {measure_hint}"
-              },
-              {
-                "line": 808,
-                "value": "No GOVERNS edges for intent '{}' — no rules measured."
               },
               {
                 "line": 811,
-                "value": "  → Measure a rule against it: {measure_hint}"
+                "value": "uninspected"
               },
               {
-                "line": 812,
-                "value": "    (the verdict creates the edge and measures it in one step; independent = the rule does not apply)"
+                "line": 814,
+                "value": "loom rule verdict <rule-id> {} --status passing|failing|independent --criterion … --evidence …"
               },
               {
-                "line": 815,
-                "value": "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected"
+                "line": 819,
+                "value": "governs"
+              },
+              {
+                "line": 820,
+                "value": "total"
+              },
+              {
+                "line": 821,
+                "value": "failing"
+              },
+              {
+                "line": 822,
+                "value": "passing"
+              },
+              {
+                "line": 823,
+                "value": "uninspected"
               },
               {
                 "line": 824,
+                "value": "truncated"
+              },
+              {
+                "line": 827,
+                "value": "note"
+              },
+              {
+                "line": 828,
+                "value": "no rules measured against this intent — {measure_hint}"
+              },
+              {
+                "line": 834,
+                "value": "No GOVERNS edges for intent '{}' — no rules measured."
+              },
+              {
+                "line": 837,
+                "value": "  → Measure a rule against it: {measure_hint}"
+              },
+              {
+                "line": 838,
+                "value": "    (the verdict creates the edge and measures it in one step; independent = the rule does not apply)"
+              },
+              {
+                "line": 841,
+                "value": "GOVERNS edges for intent '{}':  {} failing, {} passing, {} uninspected"
+              },
+              {
+                "line": 850,
                 "value": "  [FAILING]  rule={rname}  criterion={crit}"
               },
               {
-                "line": 829,
+                "line": 855,
                 "value": "    evidence: {}"
               },
               {
-                "line": 833,
+                "line": 859,
                 "value": "  [uninspected]  rule={}  (edge id: {})"
               },
               {
-                "line": 836,
+                "line": 862,
                 "value": "  [passing]  rule={}"
               }
             ],
@@ -155746,37 +155447,37 @@
             "body_hash": "d8ca9ca74e1b4777",
             "kind": "fn",
             "label": "fn run_list_with_db",
-            "line_end": 693,
-            "line_start": 671,
+            "line_end": 719,
+            "line_start": 697,
             "name": "run_list_with_db",
             "shape_hash": "43a7c9f7a4c15f2f",
             "string_literals": [
               {
-                "line": 676,
+                "line": 702,
                 "value": "rules"
               },
               {
-                "line": 677,
+                "line": 703,
                 "value": "total"
               },
               {
-                "line": 678,
+                "line": 704,
                 "value": "truncated"
               },
               {
-                "line": 681,
+                "line": 707,
                 "value": "(no rules defined)"
               },
               {
-                "line": 684,
+                "line": 710,
                 "value": "{}"
               },
               {
-                "line": 687,
+                "line": 713,
                 "value": "`loom rule list --limit 0`"
               },
               {
-                "line": 689,
+                "line": 715,
                 "value": "  {m}"
               }
             ],
@@ -155786,114 +155487,114 @@
             "body_hash": "36aa2b8c85273a93",
             "kind": "fn",
             "label": "fn run_show_with_db",
-            "line_end": 766,
-            "line_start": 699,
+            "line_end": 792,
+            "line_start": 725,
             "name": "run_show_with_db",
             "shape_hash": "3fde39c502086aa9",
             "string_literals": [
               {
-                "line": 714,
+                "line": 740,
                 "value": ", "
               },
               {
-                "line": 716,
+                "line": 742,
                 "value": "no rule matches '{identifier}'. Known rule names: {sample}{}"
               },
               {
-                "line": 717,
+                "line": 743,
                 "value": " …"
               },
               {
-                "line": 717,
+                "line": 743,
                 "value": ""
               },
               {
-                "line": 723,
+                "line": 749,
                 "value": "  {}  ({})"
               },
               {
-                "line": 724,
+                "line": 750,
                 "value": "  severity:           {}"
               },
               {
-                "line": 726,
+                "line": 752,
                 "value": "  kind:               (uncategorized)"
               },
               {
-                "line": 728,
+                "line": 754,
                 "value": "  kind:               {}"
               },
               {
-                "line": 731,
+                "line": 757,
                 "value": "  inspection_effort:  {}"
               },
               {
-                "line": 733,
+                "line": 759,
                 "value": "mid (default)"
               },
               {
-                "line": 738,
+                "line": 764,
                 "value": "  description:        {}"
               },
               {
-                "line": 739,
+                "line": 765,
                 "value": "  detection_logic:    {}"
               },
               {
-                "line": 742,
+                "line": 768,
                 "value": "  evidence examples:"
               },
               {
-                "line": 743,
+                "line": 769,
                 "value": "pass"
               },
               {
-                "line": 744,
+                "line": 770,
                 "value": "    pass:                {pass}"
               },
               {
-                "line": 746,
+                "line": 772,
                 "value": "independent"
               },
               {
-                "line": 747,
+                "line": 773,
                 "value": "    independent:         {indep}"
               },
               {
-                "line": 749,
+                "line": 775,
                 "value": "common_false_positive"
               },
               {
-                "line": 750,
+                "line": 776,
                 "value": "    common false pos:    {fp}"
               },
               {
-                "line": 754,
+                "line": 780,
                 "value": "[]"
               },
               {
-                "line": 757,
+                "line": 783,
                 "value": "  signal expectations (keywords that should appear in passing evidence):"
               },
               {
-                "line": 759,
+                "line": 785,
                 "value": "    group {}: {}"
               },
               {
-                "line": 759,
+                "line": 785,
                 "value": " | "
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "91701e73deea4362",
+            "body_hash": "e1963b528d5b0678",
             "kind": "fn",
             "label": "fn run_with_sqlite",
-            "line_end": 669,
+            "line_end": 695,
             "line_start": 409,
             "name": "run_with_sqlite",
-            "shape_hash": "cf10f73ed52524d4",
+            "shape_hash": "965fc5c9de442755",
             "string_literals": [
               {
                 "line": 422,
@@ -155932,263 +155633,275 @@
                 "value": ", "
               },
               {
-                "line": 489,
+                "line": 483,
                 "value": "[]"
               },
               {
-                "line": 499,
+                "line": 510,
+                "value": "[]"
+              },
+              {
+                "line": 520,
                 "value": "status"
               },
               {
-                "line": 499,
+                "line": 520,
                 "value": "ok"
               },
               {
-                "line": 499,
+                "line": 520,
                 "value": "pack"
               },
               {
-                "line": 500,
+                "line": 521,
                 "value": "created"
               },
               {
-                "line": 500,
+                "line": 521,
                 "value": "skipped_existing"
               },
               {
-                "line": 501,
+                "line": 522,
+                "value": "updated"
+              },
+              {
+                "line": 523,
                 "value": "next"
               },
               {
-                "line": 501,
+                "line": 523,
                 "value": "loom next --mode quality now serves every coded intent these rules were never held against; one command resolves each — loom rule verdict."
               },
               {
-                "line": 505,
-                "value": "✓ Seeded pack '{}': {} rule(s) created, {} already present."
+                "line": 527,
+                "value": "✓ Seeded pack '{}': {} rule(s) created, {} already present, {} updated."
               },
               {
-                "line": 511,
+                "line": 534,
                 "value": "  + [{}] {}"
               },
               {
-                "line": 513,
-                "value": "  → `loom next --mode quality` now serves every coded intent these were never held against;"
-              },
-              {
-                "line": 514,
-                "value": "    one command resolves each: `loom rule verdict` (independent = measured, doesn't apply;"
-              },
-              {
-                "line": 515,
-                "value": "    a verdict at component altitude covers its descendants)."
-              },
-              {
-                "line": 528,
-                "value": ""
-              },
-              {
-                "line": 530,
-                "value": "criterion"
-              },
-              {
                 "line": 537,
-                "value": "status"
-              },
-              {
-                "line": 537,
-                "value": "ok"
-              },
-              {
-                "line": 538,
-                "value": "edge_id"
+                "value": "  ↻ {updated_count} rule(s) updated with v12 evidence examples/signal expectations."
               },
               {
                 "line": 539,
-                "value": "rule_id"
+                "value": "  → `loom next --mode quality` now serves every coded intent these were never held against;"
               },
               {
                 "line": 540,
-                "value": "intent_id"
+                "value": "    one command resolves each: `loom rule verdict` (independent = measured, doesn't apply;"
               },
               {
                 "line": 541,
-                "value": "message"
+                "value": "    a verdict at component altitude covers its descendants)."
               },
               {
-                "line": 541,
-                "value": "GOVERNS edge created with inspection_status=uninspected. Inspect and update via `loom rule check`."
-              },
-              {
-                "line": 542,
-                "value": "next_step"
-              },
-              {
-                "line": 542,
-                "value": "Run `loom rule check {}` to inspect."
-              },
-              {
-                "line": 545,
-                "value": "✓ GOVERNS edge created  (id: {})"
-              },
-              {
-                "line": 546,
-                "value": "  rule   → {}"
-              },
-              {
-                "line": 547,
-                "value": "  intent → {}"
-              },
-              {
-                "line": 548,
-                "value": "  Run `loom rule check {}` to inspect."
-              },
-              {
-                "line": 566,
-                "value": "passing"
-              },
-              {
-                "line": 566,
-                "value": "failing"
-              },
-              {
-                "line": 566,
-                "value": "independent"
-              },
-              {
-                "line": 566,
-                "value": "partial"
-              },
-              {
-                "line": 568,
-                "value": "Invalid --status '{}'. A verdict is passing, failing, independent, or partial."
-              },
-              {
-                "line": 573,
-                "value": "criterion"
-              },
-              {
-                "line": 575,
-                "value": "what compliance looks like for this rule on this intent (falsifiable)"
-              },
-              {
-                "line": 578,
-                "value": "evidence"
-              },
-              {
-                "line": 580,
-                "value": "independent"
-              },
-              {
-                "line": 589,
-                "value": "--covers-descendants requires evidence justifying why the same criterion applies to every child"
-              },
-              {
-                "line": 609,
-                "value": "Could not record the GOVERNS verdict between rule '{}' and intent '{}'."
-              },
-              {
-                "line": 614,
-                "value": "failing"
-              },
-              {
-                "line": 616,
-                "value": "a failing gate blocks done — discharge it honestly, ONE of three ways: FIX the code then re-verdict passing; DEFER as tracked work (`loom hypothesis add` with the violation as the claim, then `loom hypothesis adopt --spawned` — a planned refactor the build lane owns, not a dead note); or if the violation is DELIBERATE, JUSTIFY it (`loom note add --intent {} --kind decision --text \\\"<why this is accepted>\\\"`, or re-verdict `independent` if the rule truly doesn't apply here). Marking needs_change alone discharges nothing."
-              },
-              {
-                "line": 620,
-                "value": "`loom next --mode quality` for the next pair"
-              },
-              {
-                "line": 625,
-                "value": "status"
-              },
-              {
-                "line": 625,
-                "value": "ok"
-              },
-              {
-                "line": 626,
-                "value": "rule_id"
-              },
-              {
-                "line": 627,
-                "value": "intent_id"
-              },
-              {
-                "line": 628,
-                "value": "inspection_status"
-              },
-              {
-                "line": 629,
-                "value": "criterion"
-              },
-              {
-                "line": 630,
-                "value": "evidence"
-              },
-              {
-                "line": 631,
-                "value": "confidence"
-              },
-              {
-                "line": 632,
-                "value": "inspected_by"
-              },
-              {
-                "line": 633,
-                "value": "last_inspected"
-              },
-              {
-                "line": 634,
-                "value": "edge_created"
-              },
-              {
-                "line": 641,
-                "value": "passing"
-              },
-              {
-                "line": 641,
-                "value": "✓"
-              },
-              {
-                "line": 642,
-                "value": "independent"
-              },
-              {
-                "line": 642,
-                "value": "◦"
-              },
-              {
-                "line": 643,
-                "value": "✗"
-              },
-              {
-                "line": 646,
-                "value": "{} GOVERNS verdict recorded: {}{}"
-              },
-              {
-                "line": 650,
-                "value": "  (edge created — the verdict is the measurement)"
-              },
-              {
-                "line": 652,
+                "line": 554,
                 "value": ""
               },
               {
-                "line": 655,
+                "line": 556,
+                "value": "criterion"
+              },
+              {
+                "line": 563,
+                "value": "status"
+              },
+              {
+                "line": 563,
+                "value": "ok"
+              },
+              {
+                "line": 564,
+                "value": "edge_id"
+              },
+              {
+                "line": 565,
+                "value": "rule_id"
+              },
+              {
+                "line": 566,
+                "value": "intent_id"
+              },
+              {
+                "line": 567,
+                "value": "message"
+              },
+              {
+                "line": 567,
+                "value": "GOVERNS edge created with inspection_status=uninspected. Inspect and update via `loom rule check`."
+              },
+              {
+                "line": 568,
+                "value": "next_step"
+              },
+              {
+                "line": 568,
+                "value": "Run `loom rule check {}` to inspect."
+              },
+              {
+                "line": 571,
+                "value": "✓ GOVERNS edge created  (id: {})"
+              },
+              {
+                "line": 572,
                 "value": "  rule   → {}"
               },
               {
-                "line": 656,
+                "line": 573,
                 "value": "  intent → {}"
               },
               {
+                "line": 574,
+                "value": "  Run `loom rule check {}` to inspect."
+              },
+              {
+                "line": 592,
+                "value": "passing"
+              },
+              {
+                "line": 592,
+                "value": "failing"
+              },
+              {
+                "line": 592,
+                "value": "independent"
+              },
+              {
+                "line": 592,
+                "value": "partial"
+              },
+              {
+                "line": 594,
+                "value": "Invalid --status '{}'. A verdict is passing, failing, independent, or partial."
+              },
+              {
+                "line": 599,
+                "value": "criterion"
+              },
+              {
+                "line": 601,
+                "value": "what compliance looks like for this rule on this intent (falsifiable)"
+              },
+              {
+                "line": 604,
+                "value": "evidence"
+              },
+              {
+                "line": 606,
+                "value": "independent"
+              },
+              {
+                "line": 615,
+                "value": "--covers-descendants requires evidence justifying why the same criterion applies to every child"
+              },
+              {
+                "line": 635,
+                "value": "Could not record the GOVERNS verdict between rule '{}' and intent '{}'."
+              },
+              {
+                "line": 640,
+                "value": "failing"
+              },
+              {
+                "line": 642,
+                "value": "a failing gate blocks done — discharge it honestly, ONE of three ways: FIX the code then re-verdict passing; DEFER as tracked work (`loom hypothesis add` with the violation as the claim, then `loom hypothesis adopt --spawned` — a planned refactor the build lane owns, not a dead note); or if the violation is DELIBERATE, JUSTIFY it (`loom note add --intent {} --kind decision --text \\\"<why this is accepted>\\\"`, or re-verdict `independent` if the rule truly doesn't apply here). Marking needs_change alone discharges nothing."
+              },
+              {
+                "line": 646,
+                "value": "`loom next --mode quality` for the next pair"
+              },
+              {
+                "line": 651,
+                "value": "status"
+              },
+              {
+                "line": 651,
+                "value": "ok"
+              },
+              {
+                "line": 652,
+                "value": "rule_id"
+              },
+              {
+                "line": 653,
+                "value": "intent_id"
+              },
+              {
+                "line": 654,
+                "value": "inspection_status"
+              },
+              {
+                "line": 655,
+                "value": "criterion"
+              },
+              {
+                "line": 656,
+                "value": "evidence"
+              },
+              {
+                "line": 657,
+                "value": "confidence"
+              },
+              {
+                "line": 658,
+                "value": "inspected_by"
+              },
+              {
                 "line": 659,
-                "value": "  → Next: {next_step}"
+                "value": "last_inspected"
               },
               {
                 "line": 660,
+                "value": "edge_created"
+              },
+              {
+                "line": 667,
+                "value": "passing"
+              },
+              {
+                "line": 667,
+                "value": "✓"
+              },
+              {
+                "line": 668,
+                "value": "independent"
+              },
+              {
+                "line": 668,
+                "value": "◦"
+              },
+              {
+                "line": 669,
+                "value": "✗"
+              },
+              {
+                "line": 672,
+                "value": "{} GOVERNS verdict recorded: {}{}"
+              },
+              {
+                "line": 676,
+                "value": "  (edge created — the verdict is the measurement)"
+              },
+              {
+                "line": 678,
+                "value": ""
+              },
+              {
+                "line": 681,
+                "value": "  rule   → {}"
+              },
+              {
+                "line": 682,
+                "value": "  intent → {}"
+              },
+              {
+                "line": 685,
+                "value": "  → Next: {next_step}"
+              },
+              {
+                "line": 686,
                 "value": "  {}"
               }
             ],
@@ -156199,45 +155912,45 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ui_packs_carry_the_design_system_standards",
-            "line_end": 877,
-            "line_start": 862,
+            "line_end": 903,
+            "line_start": 888,
             "name": "ui_packs_carry_the_design_system_standards",
             "shape_hash": "243b404a0c8b986b",
             "string_literals": [
               {
-                "line": 863,
+                "line": 889,
                 "value": "web-ui"
               },
               {
-                "line": 865,
+                "line": 891,
                 "value": "webui-accessible-interactive"
               },
               {
-                "line": 866,
+                "line": 892,
                 "value": "webui-view-states-complete"
               },
               {
-                "line": 867,
+                "line": 893,
                 "value": "webui-responsive-declared"
               },
               {
-                "line": 868,
+                "line": 894,
                 "value": "webui-color-contrast"
               },
               {
-                "line": 869,
+                "line": 895,
                 "value": "webui-touch-target-size"
               },
               {
-                "line": 873,
+                "line": 899,
                 "value": "web-ui pack missing design-system rule '{r}'"
               },
               {
-                "line": 876,
+                "line": 902,
                 "value": "mobile"
               },
               {
-                "line": 876,
+                "line": 902,
                 "value": "mobile-touch-target-size"
               }
             ],
@@ -175808,12 +175521,12 @@
         ]
       },
       {
-        "content_hash": "f9bfddd5351c80ec",
+        "content_hash": "6ded7e192773cd63",
         "extractor_grade": "high",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T10:01:18.804704194+00:00",
+        "last_modified": "2026-06-23T11:08:20.757719122+00:00",
         "path": "src/cli.rs",
         "symbol_facts": [
           {
@@ -175821,8 +175534,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn clap_tree_is_well_formed",
-            "line_end": 2474,
-            "line_start": 2471,
+            "line_end": 2481,
+            "line_start": 2478,
             "name": "clap_tree_is_well_formed",
             "shape_hash": "1d8a651fdbd29495",
             "visibility": "private"
@@ -175842,57 +175555,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn deepest_subcommand_walk_finds_the_failing_command",
-            "line_end": 2552,
-            "line_start": 2537,
+            "line_end": 2559,
+            "line_start": 2544,
             "name": "deepest_subcommand_walk_finds_the_failing_command",
             "shape_hash": "70d40604cc8c6050",
             "string_literals": [
               {
-                "line": 2543,
+                "line": 2550,
                 "value": "intent"
               },
               {
-                "line": 2543,
+                "line": 2550,
                 "value": "update"
               },
               {
-                "line": 2543,
+                "line": 2550,
                 "value": "routing"
               },
               {
-                "line": 2544,
+                "line": 2551,
                 "value": "update"
               },
               {
-                "line": 2547,
+                "line": 2554,
                 "value": "--json"
               },
               {
-                "line": 2547,
+                "line": 2554,
                 "value": "intent"
               },
               {
-                "line": 2547,
+                "line": 2554,
                 "value": "update"
               },
               {
-                "line": 2548,
+                "line": 2555,
                 "value": "update"
               },
               {
-                "line": 2550,
+                "line": 2557,
                 "value": "export"
               },
               {
-                "line": 2550,
+                "line": 2557,
                 "value": "--check"
               },
               {
-                "line": 2550,
+                "line": 2557,
                 "value": "export"
               },
               {
-                "line": 2551,
+                "line": 2558,
                 "value": "nonsense"
               }
             ],
@@ -175903,29 +175616,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn every_flag_requiring_command_ships_an_example",
-            "line_end": 2590,
-            "line_start": 2560,
+            "line_end": 2597,
+            "line_start": 2567,
             "name": "every_flag_requiring_command_ships_an_example",
             "shape_hash": "091ad2ffa4925ced",
             "string_literals": [
               {
-                "line": 2565,
+                "line": 2572,
                 "value": "help"
               },
               {
-                "line": 2573,
+                "line": 2580,
                 "value": "loom "
               },
               {
-                "line": 2580,
+                "line": 2587,
                 "value": "{path} {}"
               },
               {
-                "line": 2585,
+                "line": 2592,
                 "value": "loom"
               },
               {
-                "line": 2588,
+                "line": 2595,
                 "value": "commands with required flags but no EXAMPLE after_help (their errors can't teach): {missing:#?}"
               }
             ],
@@ -175936,8 +175649,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent_update_positional_text_is_caught_for_teaching",
-            "line_end": 2605,
-            "line_start": 2595,
+            "line_end": 2612,
+            "line_start": 2602,
             "name": "intent_update_positional_text_is_caught_for_teaching",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -175946,35 +175659,35 @@
             "shape_hash": "2f2666a9f072f916",
             "string_literals": [
               {
-                "line": 2596,
+                "line": 2603,
                 "value": "loom"
               },
               {
-                "line": 2596,
+                "line": 2603,
                 "value": "intent"
               },
               {
-                "line": 2596,
+                "line": 2603,
                 "value": "update"
-              },
-              {
-                "line": 2596,
-                "value": "routing"
-              },
-              {
-                "line": 2596,
-                "value": "new words here"
-              },
-              {
-                "line": 2601,
-                "value": "expected intent update"
               },
               {
                 "line": 2603,
                 "value": "routing"
               },
               {
-                "line": 2604,
+                "line": 2603,
+                "value": "new words here"
+              },
+              {
+                "line": 2608,
+                "value": "expected intent update"
+              },
+              {
+                "line": 2610,
+                "value": "routing"
+              },
+              {
+                "line": 2611,
                 "value": "new words here"
               }
             ],
@@ -175985,8 +175698,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn next_discovery_class_parses_as_explicit_selector",
-            "line_end": 2497,
-            "line_start": 2477,
+            "line_end": 2504,
+            "line_start": 2484,
             "name": "next_discovery_class_parses_as_explicit_selector",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -175995,39 +175708,39 @@
             "shape_hash": "b8422434c224d362",
             "string_literals": [
               {
-                "line": 2479,
+                "line": 2486,
                 "value": "loom"
               },
               {
-                "line": 2480,
+                "line": 2487,
                 "value": "next"
               },
               {
-                "line": 2481,
+                "line": 2488,
                 "value": "--mode"
               },
               {
-                "line": 2482,
+                "line": 2489,
                 "value": "discovery"
               },
               {
-                "line": 2483,
+                "line": 2490,
                 "value": "--class"
               },
               {
-                "line": 2484,
+                "line": 2491,
                 "value": "impact-map"
               },
               {
-                "line": 2492,
+                "line": 2499,
                 "value": "discovery"
               },
               {
-                "line": 2493,
+                "line": 2500,
                 "value": "impact-map"
               },
               {
-                "line": 2495,
+                "line": 2502,
                 "value": "expected next command"
               }
             ],
@@ -176038,8 +175751,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn saga_diagnose_parses_as_consumer_plane_command",
-            "line_end": 2508,
-            "line_start": 2500,
+            "line_end": 2515,
+            "line_start": 2507,
             "name": "saga_diagnose_parses_as_consumer_plane_command",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -176048,27 +175761,27 @@
             "shape_hash": "fcf45481ff9d999c",
             "string_literals": [
               {
-                "line": 2501,
+                "line": 2508,
                 "value": "loom"
               },
               {
-                "line": 2501,
+                "line": 2508,
                 "value": "saga"
               },
               {
-                "line": 2501,
+                "line": 2508,
                 "value": "diagnose"
               },
               {
-                "line": 2501,
+                "line": 2508,
                 "value": "journeys/checkout.yaml"
               },
               {
-                "line": 2505,
+                "line": 2512,
                 "value": "journeys/checkout.yaml"
               },
               {
-                "line": 2506,
+                "line": 2513,
                 "value": "expected saga diagnose command"
               }
             ],
@@ -176079,8 +175792,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn unknown_tokens_parse_into_the_teaching_catchall",
-            "line_end": 2532,
-            "line_start": 2514,
+            "line_end": 2539,
+            "line_start": 2521,
             "name": "unknown_tokens_parse_into_the_teaching_catchall",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -176089,63 +175802,63 @@
             "shape_hash": "1214d253bb544449",
             "string_literals": [
               {
-                "line": 2516,
+                "line": 2523,
                 "value": "loom"
               },
               {
-                "line": 2516,
+                "line": 2523,
                 "value": "update"
               },
               {
-                "line": 2516,
+                "line": 2523,
                 "value": "request routing"
               },
               {
-                "line": 2516,
+                "line": 2523,
                 "value": "--description"
               },
               {
-                "line": 2516,
+                "line": 2523,
                 "value": "x"
-              },
-              {
-                "line": 2517,
-                "value": "loom"
-              },
-              {
-                "line": 2517,
-                "value": "rename"
-              },
-              {
-                "line": 2517,
-                "value": "x"
-              },
-              {
-                "line": 2518,
-                "value": "loom"
-              },
-              {
-                "line": 2518,
-                "value": "retire"
-              },
-              {
-                "line": 2519,
-                "value": "loom"
-              },
-              {
-                "line": 2519,
-                "value": "statsu"
               },
               {
                 "line": 2524,
-                "value": "expected catch-all for {verb}, got {:?}"
-              },
-              {
-                "line": 2529,
                 "value": "loom"
               },
               {
-                "line": 2529,
+                "line": 2524,
+                "value": "rename"
+              },
+              {
+                "line": 2524,
+                "value": "x"
+              },
+              {
+                "line": 2525,
+                "value": "loom"
+              },
+              {
+                "line": 2525,
+                "value": "retire"
+              },
+              {
+                "line": 2526,
+                "value": "loom"
+              },
+              {
+                "line": 2526,
+                "value": "statsu"
+              },
+              {
+                "line": 2531,
+                "value": "expected catch-all for {verb}, got {:?}"
+              },
+              {
+                "line": 2536,
+                "value": "loom"
+              },
+              {
+                "line": 2536,
                 "value": "status"
               }
             ],
@@ -176183,13 +175896,13 @@
             "body_hash": "ada73bca9c954aa7",
             "kind": "enum",
             "label": "pub enum CodefileCmd",
-            "line_end": 2281,
-            "line_start": 2245,
+            "line_end": 2288,
+            "line_start": 2252,
             "name": "CodefileCmd",
             "shape_hash": "3e56288c4bb6d777",
             "string_literals": [
               {
-                "line": 2248,
+                "line": 2255,
                 "value": "EXAMPLES:\\n  \\\n        loom codefile add src/main.rs\\n  \\\n        loom codefile add 'src/**/*.rs'        # quote globs so the shell doesn't expand them"
               }
             ],
@@ -176455,37 +176168,37 @@
             "body_hash": "84bd3ed4690c57b5",
             "kind": "enum",
             "label": "pub enum HypothesisCmd",
-            "line_end": 1805,
-            "line_start": 1669,
+            "line_end": 1812,
+            "line_start": 1676,
             "name": "HypothesisCmd",
             "shape_hash": "9909271bc8ff2016",
             "string_literals": [
               {
-                "line": 1672,
+                "line": 1679,
                 "value": "EXAMPLE:\\n  \\\n        loom hypothesis add --name \\\"split the scoring module\\\" \\\\\\n    \\\n          --claim \\\"scoring.rs serves 4 unrelated intents (660 lines) — every queue change rebuilds all of them\\\" \\\\\\n    \\\n          --proposal \\\"extract discovery-candidate ranking into its own module\\\" \\\\\\n    \\\n          --predicted-outcome \\\"scoring.rs under 300 lines and the tangled-file smell on it disappears\\\" \\\\\\n    \\\n          --target \\\"priority-scored work queues\\\""
               },
               {
-                "line": 1694,
+                "line": 1701,
                 "value": "predicted-outcome"
               },
               {
-                "line": 1700,
+                "line": 1707,
                 "value": "target"
               },
               {
-                "line": 1721,
+                "line": 1728,
                 "value": "EXAMPLE:\\n  \\\n        loom hypothesis prove split-the-scoring \\\\\\n    \\\n          --verdict supported \\\\\\n    \\\n          --evidence \\\"read scoring.rs: discovery ranking (L312-660) shares no types with priority scoring; 4 intents ground here\\\" \\\\\\n    \\\n          --confidence 0.9"
               },
               {
-                "line": 1755,
+                "line": 1762,
                 "value": "EXAMPLE:\\n  \\\n        loom intent add --name \\\"discovery ranking module\\\" --level feature --lifecycle planned …\\n  \\\n        loom hypothesis adopt split-the-scoring --spawned \\\"discovery ranking module\\\" \\\\\\n    \\\n          --reason \\\"verified split point at the type boundary; one new module\\\""
               },
               {
-                "line": 1766,
+                "line": 1773,
                 "value": "spawned"
               },
               {
-                "line": 1777,
+                "line": 1784,
                 "value": "EXAMPLE:\\n  \\\n        loom hypothesis reject \\\"split the scoring module\\\" \\\\\\n    \\\n          --reason \\\"the ranking passes share one snapshot; splitting doubles the load path for no cohesion win\\\""
               }
             ],
@@ -176511,61 +176224,61 @@
             "body_hash": "61987b2908893ea4",
             "kind": "enum",
             "label": "pub enum InboxCmd",
-            "line_end": 2238,
-            "line_start": 2119,
+            "line_end": 2245,
+            "line_start": 2126,
             "name": "InboxCmd",
             "shape_hash": "d2479060e4e2ccf6",
             "string_literals": [
               {
-                "line": 2122,
+                "line": 2129,
                 "value": "EXAMPLE:\\n  \\\n        loom inbox add \\\"status debt feels scarier than reality\\\" --source chat --tag status"
               },
               {
-                "line": 2128,
+                "line": 2135,
                 "value": "unknown"
               },
               {
-                "line": 2132,
+                "line": 2139,
                 "value": "tag"
               },
               {
-                "line": 2137,
+                "line": 2144,
                 "value": "link"
               },
               {
-                "line": 2173,
+                "line": 2180,
                 "value": "EXAMPLE:\\n  \\\n        loom inbox normalize <id> --kind missing_intent \\\\\\n    \\\n          --claim \\\"password reset is a planned user-visible capability\\\" \\\\\\n    \\\n          --route intent \\\\\\n    \\\n          --command \\\"loom intent add --name 'password reset' --description 'users can request a reset link' --level feature --lifecycle planned\\\""
               },
               {
-                "line": 2190,
+                "line": 2197,
                 "value": "route"
               },
               {
-                "line": 2198,
+                "line": 2205,
                 "value": "tag"
               },
               {
-                "line": 2202,
+                "line": 2209,
                 "value": "link"
               },
               {
-                "line": 2206,
+                "line": 2213,
                 "value": "target-kind"
               },
               {
-                "line": 2210,
+                "line": 2217,
                 "value": "target-id"
               },
               {
-                "line": 2215,
+                "line": 2222,
                 "value": "EXAMPLE:\\n  \\\n        loom inbox mark <id> --status routed \\\\\\n    \\\n          --reason \\\"created planned intent password reset with loom intent add\\\" \\\\\\n    \\\n          --target-kind intent --target-id <intent-id>"
               },
               {
-                "line": 2231,
+                "line": 2238,
                 "value": "target-kind"
               },
               {
-                "line": 2235,
+                "line": 2242,
                 "value": "target-id"
               }
             ],
@@ -176647,8 +176360,8 @@
             "body_hash": "c6b8ff967f6206d6",
             "kind": "enum",
             "label": "pub enum InterfaceCmd",
-            "line_end": 1928,
-            "line_start": 1908,
+            "line_end": 1935,
+            "line_start": 1915,
             "name": "InterfaceCmd",
             "shape_hash": "c1dd0d23e5e43f08",
             "visibility": "public"
@@ -176673,41 +176386,41 @@
             "body_hash": "59b121ec6b013044",
             "kind": "enum",
             "label": "pub enum NoteCmd",
-            "line_end": 2112,
-            "line_start": 1973,
+            "line_end": 2119,
+            "line_start": 1980,
             "name": "NoteCmd",
             "shape_hash": "0906c4b75c622ab5",
             "string_literals": [
               {
-                "line": 1980,
+                "line": 1987,
                 "value": "EXAMPLE:\\n  \\\n        loom note prune --transitions --keep-per-target 3 --dry-run"
               },
               {
-                "line": 2010,
+                "line": 2017,
                 "value": "EXAMPLE:\\n  \\\n        loom note add --kind decision --intent \\\"request routing\\\" \\\\\\n    \\\n          --text \\\"host-only routing is deliberate: path routing was descoped in the multi-tenant review\\\""
               },
               {
-                "line": 2020,
+                "line": 2027,
                 "value": "commentary"
               },
               {
-                "line": 2059,
+                "line": 2066,
                 "value": "for"
               },
               {
-                "line": 2059,
+                "line": 2066,
                 "value": "ROLE"
               },
               {
-                "line": 2082,
+                "line": 2089,
                 "value": "for"
               },
               {
-                "line": 2082,
+                "line": 2089,
                 "value": "ROLE"
               },
               {
-                "line": 2102,
+                "line": 2109,
                 "value": "EXAMPLE:\\n  \\\n        loom note resolve <note-id> --reason \\\"done in 9f3a2c1; store split into store/index/query\\\""
               }
             ],
@@ -176717,21 +176430,21 @@
             "body_hash": "fd11c71c05d3b256",
             "kind": "enum",
             "label": "pub enum PersonaCmd",
-            "line_end": 2462,
-            "line_start": 2389,
+            "line_end": 2469,
+            "line_start": 2396,
             "name": "PersonaCmd",
             "shape_hash": "33a2a057cd3802e2",
             "string_literals": [
               {
-                "line": 2391,
+                "line": 2398,
                 "value": "EXAMPLE:\\n  \\\n        loom persona add --name admin \\\\\\n    \\\n          --description \\\"system administrator who configures accounts and manages billing — NOT an end-user (that's viewer)\\\""
               },
               {
-                "line": 2427,
+                "line": 2434,
                 "value": "EXAMPLES:\\n  \\\n        loom persona serve admin \\\"user management\\\"                      # create + print context\\n  \\\n        loom persona serve admin \\\"user management\\\" ground \\\\\\n    \\\n          --criterion \\\"admin can create/suspend/delete accounts; end_user cannot\\\" --confidence 0.9\\n  \\\n        loom persona serve admin \\\"shopping cart\\\" independent \\\\\\n    \\\n          --notes \\\"cart is end_user only; admin uses bulk order API instead\\\""
               },
               {
-                "line": 2446,
+                "line": 2453,
                 "value": "EXAMPLE:\\n  \\\n        loom persona journey admin checkout-admin-flow"
               }
             ],
@@ -176741,20 +176454,20 @@
             "body_hash": "4b4c93cc29ca4118",
             "kind": "enum",
             "label": "pub enum PopulateCmd",
-            "line_end": 1966,
-            "line_start": 1935,
+            "line_end": 1973,
+            "line_start": 1942,
             "name": "PopulateCmd",
             "shape_hash": "b1db751439f10d37",
             "visibility": "public"
           },
           {
-            "body_hash": "843825e59a9bd1e9",
+            "body_hash": "109388154a35f14e",
             "kind": "enum",
             "label": "pub enum RuleCmd",
-            "line_end": 1662,
+            "line_end": 1669,
             "line_start": 1532,
             "name": "RuleCmd",
-            "shape_hash": "7a67ff5e32af7299",
+            "shape_hash": "5a3f8a61e5935dc0",
             "string_literals": [
               {
                 "line": 1534,
@@ -176765,7 +176478,7 @@
                 "value": "EXAMPLE:\\n  \\\n        loom rule show endpoint-matched-edges"
               },
               {
-                "line": 1611,
+                "line": 1618,
                 "value": "EXAMPLE:\\n  \\\n        loom rule verdict <rule-id> <intent-id> --status passing \\\\\\n    \\\n          --criterion \\\"no query matches a relationship by its own property\\\" \\\\\\n    \\\n          --evidence \\\"grep over src/db/queries: all updates are endpoint-matched\\\""
               }
             ],
@@ -176775,21 +176488,21 @@
             "body_hash": "3635bf309fbd2211",
             "kind": "enum",
             "label": "pub enum SagaCmd",
-            "line_end": 1901,
-            "line_start": 1812,
+            "line_end": 1908,
+            "line_start": 1819,
             "name": "SagaCmd",
             "shape_hash": "0f3a803442d088c4",
             "string_literals": [
               {
-                "line": 1822,
+                "line": 1829,
                 "value": "SPEC FORMAT (YAML):\\n  \\\n        saga: checkout-flow\\n  \\\n        base: \\\"{{ env.BASE_URL }}\\\"\\n  \\\n        steps:\\n    \\\n          - name: create cart\\n      \\\n            intent: cart-creation          # id, exact name, or unique fragment\\n      \\\n            request: { method: POST, url: /carts, json: { items: [] } }\\n      \\\n            expect:  { status: 201 }\\n      \\\n            capture: { cart_id: \\\"$.id\\\" }\\n    \\\n          - name: capture payment\\n      \\\n            intent: payment-capture\\n      \\\n            request: { method: POST, url: \\\"/carts/{{ cart_id }}/payment\\\" }\\n      \\\n            auth:     { requires_scopes: [payments.write] }  # optional diagnosis hint\\n      \\\n            expect:  { status: 200, body: { \\\"$.state\\\": paid } }\\n\\n  \\\n        JOURNEY-FIRST (story → intents):\\n  \\\n        loom saga add journeys/checkout.yaml --spawn-missing --under \\\"checkout component\\\""
               },
               {
-                "line": 1851,
+                "line": 1858,
                 "value": "spawn_missing"
               },
               {
-                "line": 1898,
+                "line": 1905,
                 "value": "spec"
               }
             ],
@@ -176841,25 +176554,25 @@
             "body_hash": "4b8df361c6a5c8a3",
             "kind": "enum",
             "label": "pub enum ValidationCmd",
-            "line_end": 2382,
-            "line_start": 2288,
+            "line_end": 2389,
+            "line_start": 2295,
             "name": "ValidationCmd",
             "shape_hash": "b458f84b77e5b460",
             "string_literals": [
               {
-                "line": 2290,
+                "line": 2297,
                 "value": "EXAMPLE:\\n  \\\n        loom validation add --name \\\"routing smoke\\\" --type test \\\\\\n    \\\n          --command \\\"cargo test -p server --test routing\\\" --intent \\\"request routing\\\""
               },
               {
-                "line": 2302,
+                "line": 2309,
                 "value": "type"
               },
               {
-                "line": 2318,
+                "line": 2325,
                 "value": "EXAMPLES:\\n  \\\n        loom validation mark smoke-bundle --result passed --evidence \\\"ran the bundle against staging; 200s on all 4 routes\\\"\\n  \\\n        loom validation mark smoke-bundle --result blocked --reason \\\"needs a live TARGET_URL — staging is down until the infra migration lands\\\""
               },
               {
-                "line": 2346,
+                "line": 2353,
                 "value": "EXAMPLE:\\n  \\\n        loom validation update s3-ledger-write-path --command \\\"cargo test -p grid-infra --test ledger\\\""
               }
             ],
@@ -204161,24 +203874,24 @@
       {
         "description": "Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.",
         "detection_logic": "Find each HTTP/DB/queue client call: is a timeout set (not the library's infinite default)? Is retry bounded with backoff and jitter?",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"reqwest client at src/client.rs:23 sets .timeout(Duration::from_secs(30)) and .retry(3) with backoff\",\"independent\":\"no outbound network calls — all operations are local\",\"common_false_positive\":\"a default timeout exists but is not explicitly set in code — relying on library defaults is not explicit\"}",
         "id": "0d655727-5c66-41e1-b934-6bd0f92e1748",
         "inspection_effort": "",
         "kind": "resource_safety",
         "name": "service-timeout-retry-explicit",
         "severity": "error",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"timeout\",\"retry\",\"backoff\",\"duration\",\"deadline\",\"context\"]]"
       },
       {
         "description": "Service: every exposed interface has a committed, versioned contract artifact (schema/IDL/OpenAPI) that consumers can ground against — the seam's single shared truth.",
         "detection_logic": "For each endpoint/event/queue the service exposes: where is the contract file, is it in the repo, and does the implementation actually match it?",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"OpenAPI spec at openapi.yaml defines /v1/orders; handler matches schema\",\"independent\":\"no exposed interfaces — internal CLI/library only\",\"common_false_positive\":\"a Markdown doc describing the API is NOT a contract artifact — it's prose, not a consumer-groundable single shared truth\"}",
         "id": "0e35e313-7504-4278-97cb-cfe4b334e4b6",
         "inspection_effort": "",
         "kind": "architecture",
         "name": "service-contract-artifact",
         "severity": "error",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"openapi\",\"swagger\",\"proto\",\"graphql\",\"idl\",\"avro\",\"json-schema\",\"asyncapi\"]]"
       },
       {
         "description": "ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.",
@@ -204189,6 +203902,17 @@
         "kind": "security",
         "name": "iso5055-sec-least-surface",
         "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI: layouts define behavior at small and large viewports — breakpoints are deliberate, content never becomes unreachable.",
+        "detection_logic": "Check key views at narrow widths: fixed widths, overflow without scroll, controls pushed off-canvas with no alternative.",
+        "evidence_examples": "",
+        "id": "1f6f550c-6c41-4b36-90de-2344485b3a5c",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "webui-responsive-declared",
+        "severity": "warning",
         "signal_expectations": "[]"
       },
       {
@@ -204205,24 +203929,24 @@
       {
         "description": "ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.",
         "detection_logic": "Trace untrusted inputs to every interpreter sink (exec/system calls, query strings, format/eval, HTML output) and check the escaping/parameterization at each.",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"SQL queries use parameterized binds at src/db/queries.rs:45 — no string concatenation of user input\",\"independent\":\"no interpreter sinks — no SQL, shell, or HTML generation\",\"common_false_positive\":\"escaping exists in one path but not all — check every sink, not just the obvious one\"}",
         "id": "25901364-0607-4ca6-bf98-d60ec49d5cce",
         "inspection_effort": "",
         "kind": "security",
         "name": "iso5055-sec-no-injection",
         "severity": "error",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"parameterized\",\"prepared\",\"bind\",\"escape\",\"sanitize\",\"format\",\"template\"]]"
       },
       {
         "description": "Service (CWE-306/862): every externally reachable endpoint authenticates and authorizes before side effects — including 'internal' endpoints reachable from outside the trust zone.",
         "detection_logic": "Enumerate reachable routes; for each, find the auth check and confirm it runs before any write or privileged read.",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"Auth middleware at src/auth.rs:45-60 extracts Bearer token before handler; route table confirms all mutating routes require it\",\"independent\":\"no externally reachable endpoints — CLI/library with no network surface\",\"common_false_positive\":\"auth exists in config but not enforced on the route — config is intent, not enforcement\"}",
         "id": "27e95b1b-cc75-417f-a9bc-c1a4119d5810",
         "inspection_effort": "",
         "kind": "security",
         "name": "service-auth-at-boundary",
         "severity": "error",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"auth\",\"bearer\",\"jwt\",\"session\",\"token\",\"middleware\",\"extractor\",\"apikey\",\"oauth\",\"permission\",\"rbac\"]]"
       },
       {
         "description": "ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.",
@@ -204232,6 +203956,28 @@
         "inspection_effort": "",
         "kind": "security",
         "name": "iso5055-sec-no-hardcoded-secrets",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI: every data-driven view defines loading, empty, and error states — not just the populated happy state.",
+        "detection_logic": "For each component that renders fetched data: what shows while pending, when the result is empty, and when the request fails? A missing branch is a violation.",
+        "evidence_examples": "",
+        "id": "3936db0a-a10c-4cd8-a51a-752c9c393092",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "webui-view-states-complete",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: user-visible state survives backgrounding and process death — nothing critical lives only in memory across a lifecycle boundary.",
+        "detection_logic": "Trace each screen's state to its save/restore path (saved-state handles, persisted stores). Look for in-flight work assumed to finish after the app is backgrounded without an OS-sanctioned mechanism.",
+        "evidence_examples": "",
+        "id": "3d78b4d3-5f91-401e-990f-129ea2df6f30",
+        "inspection_effort": "high",
+        "kind": "architecture",
+        "name": "mobile-lifecycle-safe-state",
         "severity": "error",
         "signal_expectations": "[]"
       },
@@ -204258,6 +204004,17 @@
         "signal_expectations": "[]"
       },
       {
+        "description": "Data: schema migrations are ordered and repeatable, with a tested rollback — or an explicitly documented point of no return.",
+        "detection_logic": "Check the migration set: do down-migrations exist and run? For irreversible ones, is the irreversibility stated where the operator will see it?",
+        "evidence_examples": "",
+        "id": "4f85fe7e-69fc-4586-b895-9eca14e4beb0",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "data-migration-reversible",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
         "description": "trust norm: no verdict-bearing edge may default to passing; compliance/proof states start uninspected and are earned by an inspecting agent",
         "detection_logic": "",
         "evidence_examples": "",
@@ -204265,6 +204022,39 @@
         "inspection_effort": "",
         "kind": "architecture",
         "name": "green-is-earned",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI (CWE-79): user-controlled content never reaches innerHTML / dangerouslySetInnerHTML / raw template interpolation without sanitization.",
+        "detection_logic": "Trace user-originated strings to every raw-HTML sink; check the sanitizer (or its absence) at each.",
+        "evidence_examples": "",
+        "id": "51e00dd4-7536-4111-8a7b-f44e4ac64338",
+        "inspection_effort": "mid",
+        "kind": "security",
+        "name": "webui-no-unescaped-render",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI (WCAG 2.5.5/2.5.8): interactive targets are large enough and spaced to hit reliably on touch and with imprecise pointers (~24px minimum, ~44px for primary actions), not tiny adjacent hit areas.",
+        "detection_logic": "Measure interactive elements' rendered hit area and inter-target spacing; flag icon-only controls, dense list affordances, and close-packed buttons below the target size with no larger alternative.",
+        "evidence_examples": "",
+        "id": "5537e4ae-375e-4943-8fb7-261cb372f295",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "webui-touch-target-size",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: no blocking I/O, parsing, or heavy compute on the UI thread — frame budget is ~16ms.",
+        "detection_logic": "Look for synchronous file/DB/network access, large JSON decoding, or image work on the main thread/dispatcher.",
+        "evidence_examples": "",
+        "id": "55ba816b-b8d0-4752-9ea7-a8f89513402d",
+        "inspection_effort": "mid",
+        "kind": "performance",
+        "name": "mobile-main-thread-clear",
         "severity": "error",
         "signal_expectations": "[]"
       },
@@ -204277,6 +204067,17 @@
         "kind": "performance",
         "name": "iso5055-perf-bounded-work",
         "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Data: pipelines account for every record — rejects go to a dead-letter/quarantine with a cause, never dropped silently; counts in vs out reconcile.",
+        "detection_logic": "Find each filter/catch/skip in the pipeline: where do the excluded records go, and is the count surfaced anywhere a human looks?",
+        "evidence_examples": "",
+        "id": "5e47ceb1-951e-409a-8572-03b994853ff8",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "data-no-silent-loss",
+        "severity": "error",
         "signal_expectations": "[]"
       },
       {
@@ -204293,13 +204094,13 @@
       {
         "description": "Service: contract changes are additive or versioned — removing/renaming fields or changing semantics requires a version consumers can pin; old versions get a deprecation path.",
         "detection_logic": "Diff the contract's history (or its change discipline): were fields ever removed/renamed in place? Is there a versioning convention at all?",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"API versioned at /v1/ and /v2/ routes; breaking changes land in /v2/ with /v1/ deprecated but still served\",\"independent\":\"no versioned contract surface — internal API only\",\"common_false_positive\":\"versioned /v1 routes alone are a PARTIAL story — not the same as compatibility tests or schema-diff enforcement; consider partial status\"}",
         "id": "719b0924-a93c-4393-bab7-5c64bb7fd1f7",
         "inspection_effort": "",
         "kind": "architecture",
         "name": "service-compatible-evolution",
         "severity": "error",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"version\",\"v1\",\"v2\",\"deprecat\",\"schema-diff\",\"compat\",\"breaking\"]]"
       },
       {
         "description": "ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.",
@@ -204315,13 +204116,13 @@
       {
         "description": "Service: failures are logged/metric'd with enough context (ids, cause, upstream) to diagnose without reproducing.",
         "detection_logic": "Pick the main failure paths: what exactly lands in logs/metrics? Catch-and-ignore blocks and bare 500s with no context are violations.",
-        "evidence_examples": "",
+        "evidence_examples": "{\"pass\":\"error handler at src/error.rs:80-95 logs request_id, error type, and stack trace via tracing::error\",\"independent\":\"no failure paths that produce observable side effects — pure computation\",\"common_false_positive\":\"a JSON error response alone is NOT observable — it returns to the caller but is not logged/metric'd for operators\"}",
         "id": "72a64b63-9c2e-4847-812a-91755a2a96f8",
         "inspection_effort": "",
         "kind": "architecture",
         "name": "service-observable-failures",
         "severity": "warning",
-        "signal_expectations": "[]"
+        "signal_expectations": "[[\"tracing\",\"log\",\"metrics\",\"telemetry\",\"request_id\",\"trace_id\",\"span\",\"sentry\",\"datadog\",\"prometheus\"]]"
       },
       {
         "description": "Security (AI hallucination): every external dependency resolves to a real, published package — AI models suggest non-existent packages (5-21% hallucination rate) that attackers can register as malware vectors (slopsquatting).",
@@ -204346,6 +204147,17 @@
         "signal_expectations": "[]"
       },
       {
+        "description": "Concurrency (CWE-400/770): spawns, queues, and in-flight work have explicit limits and backpressure — load sheds or blocks, it never grows unbounded.",
+        "detection_logic": "Find each spawn/enqueue driven by external input; name its bound (pool size, channel capacity, semaphore). An unbounded channel or per-request spawn with no cap is the violation.",
+        "evidence_examples": "",
+        "id": "865e1fca-6b4e-41cb-bcff-a6273198939e",
+        "inspection_effort": "mid",
+        "kind": "resource_safety",
+        "name": "conc-bounded-concurrency",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
         "description": "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
         "detection_logic": "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files.",
         "evidence_examples": "",
@@ -204353,6 +204165,50 @@
         "inspection_effort": "",
         "kind": "architecture",
         "name": "iso5055-main-no-dead-or-duplicate-code",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI: user actions give immediate feedback — pending/disabled/optimistic states; no silent in-flight gaps or double-submit windows.",
+        "detection_logic": "For each mutating action: what changes on screen between click and response? Look for submit buttons that stay active mid-flight.",
+        "evidence_examples": "",
+        "id": "92804911-1df2-44bc-94f1-ce00a8845b30",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "webui-feedback-on-action",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: every network-dependent feature defines its offline behavior — cached, queued, or an explicit user-facing error. Never an indefinite spinner or a crash.",
+        "detection_logic": "For each network call reachable from UI: what renders when the request can't start or times out? Look for fetches with no offline/error branch.",
+        "evidence_examples": "",
+        "id": "948bc620-4974-4b9c-8c01-f02d0649f4a9",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "mobile-offline-behavior-defined",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Measured performance: hot-path intents declare a performance budget in their criterion (e.g. 'p99 < 50ms at 10k entries') AND carry a benchmark validation proving it — fast is a claim, proven-fast is a state.",
+        "detection_logic": "Cross-check `loom hotspots`: for each high-centrality intent on a hot path, does its criterion state a number, and does a `benchmark`-type validation exist and pass? A budget without a benchmark (or vice versa) is the violation.",
+        "evidence_examples": "",
+        "id": "96fb82e4-c720-47a2-a143-a636662d5f23",
+        "inspection_effort": "mid",
+        "kind": "performance",
+        "name": "perf-budget-proven",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Data: derived datasets name their sources — a consumer can trace a value back to its origin and know when it was computed.",
+        "detection_logic": "Pick a derived table/report: can you find what produced it, from what inputs, when? Untraceable derived data is the violation.",
+        "evidence_examples": "",
+        "id": "98bf3735-a3b1-4b9f-8965-e7f788f3785f",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "data-lineage-traceable",
         "severity": "warning",
         "signal_expectations": "[]"
       },
@@ -204365,6 +204221,17 @@
         "kind": "architecture",
         "name": "iso5055-main-single-responsibility",
         "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI (CWE-602): no secrets in the client bundle, and no authorization decision enforced only in the client — the server re-checks everything the UI hides.",
+        "detection_logic": "Scan client code/env for key-like literals; for each hidden/disabled privileged control, verify the corresponding server endpoint enforces the same rule.",
+        "evidence_examples": "",
+        "id": "a0d16b52-8a28-44b8-8f8f-a09fe58f1095",
+        "inspection_effort": "mid",
+        "kind": "security",
+        "name": "webui-no-client-side-trust",
+        "severity": "error",
         "signal_expectations": "[]"
       },
       {
@@ -204390,6 +204257,61 @@
         "signal_expectations": "[]"
       },
       {
+        "description": "Mobile (HIG ~44pt / Material ~48dp): tap targets meet the platform minimum size and have adequate spacing, so controls are reliably hittable without mis-taps.",
+        "detection_logic": "Check interactive controls' rendered size + padding against the platform minimum; flag dense rows, small icon buttons, and edge-crowded or closely-stacked tap targets.",
+        "evidence_examples": "",
+        "id": "a5e8d3d6-8f12-45fd-b9cf-8a472cd6173d",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "mobile-touch-target-size",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Data (CWE-20): data entering storage is validated at the boundary, and invariants live in the schema (constraints, types, NOT NULL) — not only in application code.",
+        "detection_logic": "Trace each write path to storage: what rejects bad data? Look for app-side-only checks the schema doesn't enforce, and ingestion that bypasses the validated path.",
+        "evidence_examples": "",
+        "id": "ab12019e-756f-4d43-9817-5d57a067d6e1",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "data-validated-at-ingest",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: each platform permission is requested in the context of the feature that needs it, and denial leaves the app functional (degraded, not broken).",
+        "detection_logic": "List the manifest/Info.plist permissions; trace each to the feature using it, where it's requested, and the denial path.",
+        "evidence_examples": "",
+        "id": "afd0296b-adff-4d2c-934b-dada7fce7105",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "mobile-permission-in-context",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: no unbounded polling, wake locks, or sensor/location subscriptions without lifecycle-bound teardown.",
+        "detection_logic": "Find timers, location/sensor listeners, and sockets; check each is released when the screen/app stops.",
+        "evidence_examples": "",
+        "id": "b089a537-d414-471e-9cd2-7c0826c29c7a",
+        "inspection_effort": "mid",
+        "kind": "resource_safety",
+        "name": "mobile-battery-respect",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Concurrency: tasks/threads are cancellation-safe — interruption (timeout, shutdown, dropped future) leaves no half-written state and releases resources.",
+        "detection_logic": "For each spawned task: what happens if it's killed between its side effects? Look for multi-step writes without cleanup/transactions and resources freed only on the happy exit.",
+        "evidence_examples": "",
+        "id": "b2bb3c8a-8390-4501-b4e3-78158ec41a72",
+        "inspection_effort": "high",
+        "kind": "resource_safety",
+        "name": "conc-cancellation-safe",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
         "description": "Persistence backends must be isolated behind typed storage/repository operations; command handlers and domain workflows must not depend on backend query language, concrete connection/session types, or backend value/result types.",
         "detection_logic": "",
         "evidence_examples": "",
@@ -204398,6 +204320,17 @@
         "kind": "architecture",
         "name": "storage-backend-boundary",
         "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI: state needed to recreate a view travels in the URL — refresh, back, and shared links land where the user expects.",
+        "detection_logic": "For each stateful view: refresh it. If the result differs from what was on screen (lost filters/selection/page), the state isn't URL-recoverable.",
+        "evidence_examples": "",
+        "id": "bc17b38a-e089-4e2b-a120-5db38fec8e8a",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "webui-url-state-recoverable",
+        "severity": "warning",
         "signal_expectations": "[]"
       },
       {
@@ -204423,6 +204356,39 @@
         "signal_expectations": "[]"
       },
       {
+        "description": "Mobile (CWE-20/939): externally-triggered entry points — deep links, intents/universal links, push payloads — validate their input before navigation or action.",
+        "detection_logic": "Trace each deep-link/push handler: is the payload parsed and validated with a rejection path before it drives navigation, auth, or writes?",
+        "evidence_examples": "",
+        "id": "bf4af766-4fa0-422f-8e2a-3fef79e68dc5",
+        "inspection_effort": "mid",
+        "kind": "security",
+        "name": "mobile-external-entry-validated",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Concurrency (CWE-362/367): multi-step state transitions (check-then-act, read-modify-write, exists-then-create) are atomic — one lock/transaction span — or explicitly designed to tolerate interleaving.",
+        "detection_logic": "Find check-then-act sequences on shared state (or storage): can another actor run between the steps? If yes and nothing tolerates that, it's a TOCTOU violation.",
+        "evidence_examples": "",
+        "id": "cba604dc-d898-4ec0-a49a-c77a0fbaa109",
+        "inspection_effort": "high",
+        "kind": "correctness",
+        "name": "conc-atomic-multi-step",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI (WCAG): interactive elements are keyboard-reachable and carry accessible names — real buttons/links, not bare clickable divs; focus is managed on dialogs/route changes.",
+        "detection_logic": "Look for onClick on non-interactive elements, icon buttons without labels, custom widgets without key handlers, and focus traps/restores on modals.",
+        "evidence_examples": "",
+        "id": "d0efd63c-87f0-4a67-8c9e-eacbca477685",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "webui-accessible-interactive",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
         "description": "Security (CWE-434/79): file uploads validate type (MIME + content sniff), size, and filename — uploaded files are stored outside the webroot and never executed as code.",
         "detection_logic": "For each file upload path: what validates the type, size, and filename? Where are uploads stored? An upload with no type/size validation or stored in a web-served directory is the violation.",
         "evidence_examples": "",
@@ -204430,6 +204396,61 @@
         "inspection_effort": "high",
         "kind": "security",
         "name": "sec-upload-validated",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Concurrency (CWE-667): no lock is held across I/O, network calls, or await points — contention windows stay bounded by computation, not by external latency.",
+        "detection_logic": "Find each lock acquisition; trace what runs before release. File/DB/network access or an .await/blocking call inside the critical section is the violation.",
+        "evidence_examples": "",
+        "id": "dea34f88-8086-4693-80bb-faf4533b149d",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "conc-no-lock-across-io",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Concurrency (CWE-833): when more than one lock can be held at once, acquisition follows a single documented global order.",
+        "detection_logic": "List sites holding ≥2 locks; check the acquisition order is consistent everywhere and written down. Two sites taking A→B and B→A is the violation.",
+        "evidence_examples": "",
+        "id": "e26e85a2-a6ae-4a4e-8d21-644df9c89e42",
+        "inspection_effort": "high",
+        "kind": "correctness",
+        "name": "conc-deadlock-ordering",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Mobile: platform-specific behavior (iOS vs Android, OS-version gates) is isolated and named, not scattered through feature logic as inline conditionals.",
+        "detection_logic": "Grep platform checks (Platform.OS, Build.VERSION, #available); flag feature files mixing both platforms' branches inline.",
+        "evidence_examples": "",
+        "id": "ebbd9896-b0ae-4edf-9af3-d2dcaf301bcb",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "mobile-platform-divergence-explicit",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Data: pipeline stages re-run without duplicating or corrupting output — upsert/partition-overwrite semantics, not blind append.",
+        "detection_logic": "For each stage: run it twice on the same input (mentally or actually). Appends without keys and non-deterministic transforms are violations.",
+        "evidence_examples": "",
+        "id": "f36dff40-ae9d-4879-80f6-13924b8d42ef",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "data-idempotent-reruns",
+        "severity": "warning",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Concurrency (CWE-362/366): every piece of shared mutable state names its synchronization discipline — a lock, a single-writer thread/actor, atomics, or message passing. No ad-hoc unsynchronized access.",
+        "detection_logic": "Inventory state reachable from more than one thread/task; for each, name the discipline that guards it. State you cannot name a discipline for is the violation.",
+        "evidence_examples": "",
+        "id": "f959583c-ce0d-4c3e-97c7-74d46ba7c89c",
+        "inspection_effort": "mid",
+        "kind": "correctness",
+        "name": "conc-sync-discipline",
         "severity": "error",
         "signal_expectations": "[]"
       },
@@ -204442,6 +204463,28 @@
         "kind": "security",
         "name": "sec-rate-limiting",
         "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Data (CWE-359): personal/sensitive fields are identified, and access, retention, and deletion paths exist — a deletion request can actually be fulfilled.",
+        "detection_logic": "List fields holding personal data (and copies in logs/derived tables). For each: who can read it, how long it lives, and what a delete actually removes.",
+        "evidence_examples": "",
+        "id": "fb26b678-193f-44a4-8326-a73bf5a09bf6",
+        "inspection_effort": "high",
+        "kind": "security",
+        "name": "data-pii-handled",
+        "severity": "error",
+        "signal_expectations": "[]"
+      },
+      {
+        "description": "Web UI (WCAG 1.4.3 / 1.4.11): text and meaningful UI meet the contrast ratio against their background (≥4.5:1 body text, ≥3:1 large text and UI/graphical components), and color is never the sole carrier of meaning.",
+        "detection_logic": "Check the design tokens / computed styles for text-on-background and state indicators (error/success/disabled) against the WCAG ratio; flag low-contrast pairs and any status conveyed by color alone with no icon/label/text backup.",
+        "evidence_examples": "",
+        "id": "fe52f0e3-2208-4125-88cc-6e00b97df347",
+        "inspection_effort": "mid",
+        "kind": "architecture",
+        "name": "webui-color-contrast",
+        "severity": "warning",
         "signal_expectations": "[]"
       }
     ],

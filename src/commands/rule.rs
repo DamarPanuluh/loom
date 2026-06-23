@@ -458,7 +458,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             }
         }
 
-        RuleCmd::Seed { pack } => {
+        RuleCmd::Seed { pack, update } => {
             gate::acting_in_lane(&gate::lane::SEED_RULES, None)?;
             let Some((_, rules)) = PACKS.iter().find(|(n, _)| *n == pack) else {
                 anyhow::bail!(
@@ -467,13 +467,34 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     pack_names().join(", ")
                 );
             };
-            let existing: std::collections::HashSet<String> =
-                store.list_rules()?.into_iter().map(|r| r.name).collect();
+            let existing: std::collections::HashMap<String, QualityRule> =
+                store.list_rules()?.into_iter().map(|r| (r.name.clone(), r)).collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
+            let mut updated_count = 0usize;
             for rule_def in *rules {
-                if existing.contains(rule_def.name) {
-                    skipped += 1;
+                if let Some(existing_rule) = existing.get(rule_def.name) {
+                    // Backfill evidence_examples and signal_expectations when
+                    // --update is passed and the pack carries richer metadata.
+                    if update
+                        && (existing_rule.evidence_examples.is_empty()
+                            != rule_def.evidence_examples.is_empty()
+                            || (existing_rule.signal_expectations.is_empty()
+                                || existing_rule.signal_expectations == "[]")
+                                != rule_def.signal_expectations.is_empty())
+                    {
+                        let mut u = existing_rule.clone();
+                        if !rule_def.evidence_examples.is_empty() {
+                            u.evidence_examples = rule_def.evidence_examples.to_string();
+                        }
+                        if !rule_def.signal_expectations.is_empty() {
+                            u.signal_expectations = rule_def.signal_expectations.to_string();
+                        }
+                        store.insert_rule(&u)?;
+                        updated_count += 1;
+                    } else {
+                        skipped += 1;
+                    }
                     continue;
                 }
                 let rule = QualityRule {
@@ -498,17 +519,22 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 printer.print_json(&serde_json::json!({
                     "status": "ok", "pack": pack,
                     "created": created, "skipped_existing": skipped,
+                    "updated": updated_count,
                     "next": "loom next --mode quality now serves every coded intent these rules were never held against; one command resolves each — loom rule verdict.",
                 }));
             } else {
                 println!(
-                    "✓ Seeded pack '{}': {} rule(s) created, {} already present.",
+                    "✓ Seeded pack '{}': {} rule(s) created, {} already present, {} updated.",
                     pack,
                     created.len(),
-                    skipped
+                    skipped,
+                    updated_count
                 );
                 for r in &created {
                     println!("  + [{}] {}", r.severity, r.name);
+                }
+                if updated_count > 0 {
+                    println!("  ↻ {updated_count} rule(s) updated with v12 evidence examples/signal expectations.");
                 }
                 println!("  → `loom next --mode quality` now serves every coded intent these were never held against;");
                 println!("    one command resolves each: `loom rule verdict` (independent = measured, doesn't apply;");

@@ -1594,6 +1594,13 @@ pub enum RuleCmd {
         /// (migrations/ingest/PII/lineage), concurrency (sync discipline/
         /// lock hygiene/atomicity/proven perf budgets).
         pack: String,
+
+        /// Update existing rules with new evidence_examples and
+        /// signal_expectations from the pack definition (backfill v12
+        /// metadata on rules seeded before v12). Without this flag,
+        /// already-present rules are skipped (idempotent).
+        #[arg(long)]
+        update: bool,
     },
 
     /// Apply a rule to an intent — creates a GOVERNS edge (uninspected).
