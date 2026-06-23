@@ -663,6 +663,7 @@ pub fn required_edge_props(edge: &str) -> &'static [FieldSpec] {
             (EVIDENCE, QUALITY),
             (LAST_INSPECTED, QUALITY),
             (INSPECTED_BY, QUALITY),
+            (COVERS_DESCENDANTS, QUALITY),
             (NOTES, ANY),
             (CREATED_AT, LOOM),
         ],

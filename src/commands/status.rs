@@ -247,22 +247,50 @@ pub fn run_with_db(
     );
     let source_corpus = ladder_bundle.source_corpus.clone();
     let ladder = ladder_bundle.ladder;
-    // Normative blind spot: coded intents with zero direct GOVERNS edges (no
-    // rule ever measured against this specific intent, even if an ancestor
-    // verdict covers it via inheritance). Only alarms when rules exist — an
-    // empty normative plane is routed by the compass, not alarmed here.
+    // Normative blind spot: coded intents not covered by any inspected GOVERNS
+    // verdict — neither directly nor via an ancestor with covers_descendants.
+    // Only alarms when rules exist — an empty normative plane is routed by the
+    // compass, not alarmed here. Uses the SAME shared coverage predicate as
+    // normative_coverage_from_snapshot and the unmeasured_intents smell, so the
+    // alarm, the queue, and the smell can never disagree on what's covered.
     let unmeasured_intents = if snapshot.rules.is_empty() {
         0
     } else {
-        let governed: std::collections::HashSet<&str> =
-            snapshot.governs.iter().map(|g| g.intent_id.as_str()).collect();
+        use crate::db::queries::scoring::{covers_descendants_set, governs_covers_intent};
+        use std::collections::{HashMap, HashSet};
+        let considered: HashSet<(&str, &str)> = snapshot
+            .governs
+            .iter()
+            .filter(|g| matches!(
+                g.inspection_status.as_str(),
+                "passing" | "failing" | "independent" | "partial"
+            ))
+            .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
+            .collect();
+        let covers_set = covers_descendants_set(&snapshot.governs);
+        let parent_of: HashMap<&str, &str> = snapshot
+            .hierarchy
+            .iter()
+            .map(|(p, c)| (c.as_str(), p.as_str()))
+            .collect();
         snapshot
             .intents
             .iter()
             .filter(|i| {
-                i.status != "deprecated"
-                    && snapshot.with_code.contains(&i.id)
-                    && !governed.contains(&i.id.as_str())
+                if i.status == "deprecated" || !snapshot.with_code.contains(&i.id) {
+                    return false;
+                }
+                // An intent is measured if ANY rule covers it (directly or via
+                // a covers_descendants ancestor).
+                !snapshot.rules.iter().any(|r| {
+                    governs_covers_intent(
+                        r.id.as_str(),
+                        i.id.as_str(),
+                        &considered,
+                        &covers_set,
+                        &parent_of,
+                    )
+                })
             })
             .count() as i64
     };
@@ -558,8 +586,13 @@ fn alarm_strip(
     let mut a = Vec::new();
     if report.failing_edges > 0 {
         a.push(format!(
-            "{} edge/proof FAILING — repair at the source: `loom next --mode fix`",
+            "{} failing edge(s) — fix the code or re-verdict: `loom next --mode fix`",
             report.failing_edges
+        ));
+    }
+    if unmeasured_intents > 0 {
+        a.push(format!(
+            "{unmeasured_intents} coded intent(s) not covered by any inspected GOVERNS — rules exist but never measured against this code (directly or via a --covers-descendants ancestor): `loom next --mode quality`"
         ));
     }
     let open = audit.open_findings.unwrap_or(0);

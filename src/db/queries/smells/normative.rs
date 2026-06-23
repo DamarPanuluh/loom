@@ -73,7 +73,7 @@ fn detect_unmeasured_intents(
             ),
             evidence: format!("e.g. {}", sample.join(" · ")),
             remedy: format!(
-                "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite",
+                "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent --covers-descendants covers the component's descendants too (without --covers-descendants it covers only the component; independent = measured, rule doesn't apply); otherwise drop to a leaf where the rule has specific bite",
                 r.id
             ),
             teaching: teaching_for("unmeasured_intents"),

@@ -542,7 +542,7 @@ pub fn graph_state_from_snapshot_parts(
         ("quality", "recommended", "Quality gates applied but unchecked — `loom next --mode quality`, inspect, then earn green with `loom rule verdict`.".to_string())
     } else if unmeasured_queue > 0 {
         ("quality", "recommended", format!(
-            "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a verdict at component altitude covers descendants; independent = measured, doesn't apply)."
+            "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply)."
         ))
     } else if rules_count == 0 && nc.intents_with_code > 0 {
         ("quality", "recommended", "The normative plane is EMPTY — no measuring sticks, so 360° coverage can't be earned. `loom detect` recommends packs for this repo; seed with `loom rule seed iso5055` (baseline, applies to any code), then measure at the highest honest altitude.".to_string())

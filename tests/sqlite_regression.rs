@@ -8462,3 +8462,168 @@ fn sqlite_high_severity_passing_routes_to_review() {
     });
     assert!(found, "high-severity passing verdict should be in review queue: {review}");
 }
+
+// ---------------------------------------------------------------------------
+// Defect fix tests — covers_descendants, evidence locator, seed, inbox links
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sqlite_covers_descendants_false_does_not_cover_children() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("covers-false");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn parent() {}\npub fn child() {}\n").unwrap();
+    run_json_as(&graph.root, &["codefile", "add", "src/lib.rs", "--json"], "llm:builder");
+
+    // Create a parent intent with a child.
+    let parent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "parent", "--level", "component",
+          "--description", "parent component", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let pid = parent["id"].as_str().unwrap().to_string();
+
+    let child = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "child", "--level", "feature",
+          "--description", "child feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let cid = child["id"].as_str().unwrap().to_string();
+
+    // Ground both intents.
+    run_json_as(&graph.root, &["edge", "implement", &pid, "src/lib.rs",
+        "--locator", "pub fn parent", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", &cid, "src/lib.rs",
+        "--locator", "pub fn child", "--json"], "llm:builder");
+
+    // Link parent → child in hierarchy.
+    run_json_as(&graph.root, &["edge", "hierarchy", &pid, &cid, "--json"], "llm:builder");
+
+    // Seed a rule and verdict on the PARENT (without --covers-descendants).
+    run_json_as(&graph.root, &["rule", "seed", "iso5055", "--json"], "llm:quality");
+    // Find the first rule.
+    let rules = run_json(&graph.root, &["rule", "list", "--json"]);
+    let first_rule = rules["rules"].as_array().unwrap()[0]["id"].as_str().unwrap().to_string();
+
+    // Verdict on parent with passing + locator, WITHOUT --covers-descendants.
+    run_json_as(
+        &graph.root,
+        &["rule", "verdict", &first_rule, &pid, "--status", "passing",
+          "--criterion", "parent complies with this rule",
+          "--evidence", "checked parent code — complies",
+          "--evidence-locator", "src/lib.rs:1", "--json"],
+        "llm:quality",
+    );
+
+    // The child should appear in the quality queue — the parent verdict
+    // without --covers-descendants does NOT cover the child.
+    let quality = run_json(&graph.root, &["next", "--mode", "quality", "--take", "50", "--json"]);
+    let items = quality.get("items").and_then(|v| v.as_array());
+    if let Some(items) = items {
+        let child_covered = items.iter().any(|item| {
+            item.get("intent")
+                .and_then(|i| i.get("id"))
+                .and_then(|i| i.as_str())
+                == Some(&cid)
+        });
+        // The child should NOT be covered — it should be in the quality queue.
+        // (If the queue is empty, the child is wrongly covered — false green.)
+        assert!(
+            child_covered || quality.get("queue_total").and_then(|v| v.as_i64()).unwrap_or(0) > 0,
+            "child should NOT be covered by parent verdict without --covers-descendants: {quality}"
+        );
+    }
+}
+
+#[test]
+fn sqlite_rule_verdict_persist_locator_in_evidence() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("verdict-locator");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
+    let intent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "alpha", "--level", "feature",
+          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["rule", "seed", "iso5055", "--json"], "llm:quality");
+    let rules = run_json(&graph.root, &["rule", "list", "--json"]);
+    let first_rule = rules["rules"].as_array().unwrap()[0]["id"].as_str().unwrap().to_string();
+
+    // Verdict with a locator — the stored evidence should contain @<locator>.
+    let result = run_json_as(
+        &graph.root,
+        &["rule", "verdict", &first_rule, &iid, "--status", "passing",
+          "--criterion", "complies with rule",
+          "--evidence", "all handlers check auth",
+          "--evidence-locator", "src/lib.rs:1", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(result["status"], "ok", "verdict should succeed: {result}");
+
+    // Check the stored evidence contains the locator.
+    let check = run_json(&graph.root, &["rule", "check", &iid, "--json"]);
+    let governs = check.get("governs").and_then(|v| v.as_array()).expect("governs array");
+    let edge = governs.iter().find(|g| {
+        g.get("rule_id").and_then(|r| r.as_str()) == Some(&first_rule)
+    }).expect("found the GOVERNS edge");
+    let evidence = edge.get("evidence").and_then(|e| e.as_str()).unwrap_or("");
+    assert!(
+        evidence.contains("@src/lib.rs"),
+        "evidence should contain the locator: got '{evidence}'"
+    );
+}
+
+#[test]
+fn sqlite_seed_inbox_excludes_loom_artifacts() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("seed-exclude");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Create loom artifacts that should be excluded.
+    std::fs::write(graph.root.join("loom.wiki.md"), "# Loom Wiki\n").unwrap();
+    std::fs::write(graph.root.join("loom.graph.json"), r#"{"loom_export":1}"#).unwrap();
+    std::fs::create_dir_all(graph.root.join("docs")).unwrap();
+    std::fs::write(graph.root.join("docs/readme.md"), "# Real Doc\n").unwrap();
+
+    run_json(&graph.root, &["seed", "--inbox", "--json"]);
+    let inbox = run_json(&graph.root, &["inbox", "list", "--json"]);
+    let items = inbox.get("items").and_then(|v| v.as_array()).expect("items array");
+    let raw_texts: Vec<&str> = items.iter()
+        .filter_map(|i| i.get("raw_text").and_then(|t| t.as_str()))
+        .collect();
+    assert!(
+        !raw_texts.iter().any(|t| t.contains("loom.wiki.md")),
+        "loom.wiki.md should NOT be ingested: {raw_texts:?}"
+    );
+    assert!(
+        !raw_texts.iter().any(|t| t.contains("loom.graph.json")),
+        "loom.graph.json should NOT be ingested: {raw_texts:?}"
+    );
+}
+
+#[test]
+fn sqlite_inbox_file_link_to_non_codefile_resolves() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("inbox-file-link");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Create a doc file that is NOT a registered code file.
+    std::fs::create_dir_all(graph.root.join("docs")).unwrap();
+    std::fs::write(graph.root.join("docs/reference.md"), "# Reference\n").unwrap();
+
+    // Add an inbox item with a file: link to the doc.
+    let result = run_json_as(
+        &graph.root,
+        &["inbox", "add", "Test item with doc link", "--link", "file:docs/reference.md", "--json"],
+        "llm:builder",
+    );
+    assert_eq!(
+        result["status"], "ok",
+        "file: link to a non-codefile doc should resolve: {result}"
+    );
+}

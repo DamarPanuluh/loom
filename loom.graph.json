@@ -2300,7 +2300,7 @@
         "evidence": "leaf intent with a single falsifiable criterion and focused grounding — no multi-concern split needed",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T07:26:22.701037+00:00",
         "notes": "",
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
@@ -2859,7 +2859,7 @@
         "evidence": "leaf intent with a single falsifiable criterion and focused grounding — no multi-concern split needed",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T07:26:23.504172+00:00",
         "notes": "",
         "to": "933385b5-48eb-47c4-af6b-5312299f1914"
@@ -3964,7 +3964,7 @@
         "evidence": "@src/commands/next/relates.rs — re-verified: code change was additive (new CLI flags, pack rules, alarm logic); existing error handling, resource cleanup, and responsibility boundaries unchanged",
         "from": "b36b49a3-7bbf-4175-a08b-dae5365f5a94",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T11:39:37.188008+00:00",
         "notes": "",
         "to": "6a41dcbc-4035-4d08-8315-0d77803ca862"
@@ -8300,7 +8300,7 @@
         "evidence": "",
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -8332,7 +8332,7 @@
         "evidence": "",
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -8754,7 +8754,7 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:54.073189+00:00",
         "notes": "",
@@ -9159,7 +9159,7 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:54.121188+00:00",
         "notes": "",
@@ -9489,7 +9489,7 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.672509+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite graph persistence' ↔ 'completeness and integrity checking': foundation/substrate coupling, not behavior-specific peer interaction. The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -10144,7 +10144,7 @@
         "evidence": "",
         "from": "0401f1f2-443f-42c0-b833-b113f1633299",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -10191,7 +10191,7 @@
         "evidence": "",
         "from": "0401f1f2-443f-42c0-b833-b113f1633299",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_vocab"
@@ -10581,7 +10581,7 @@
         "evidence": "",
         "from": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:54.740514+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'visibility captured at seed time' ↔ 'SQLite query and search implementation': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -10646,7 +10646,7 @@
         "evidence": "",
         "from": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -10678,7 +10678,7 @@
         "evidence": "",
         "from": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -11071,7 +11071,7 @@
         "evidence": "",
         "from": "147f04bb-f2af-4cc8-b582-de003853b41c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -11135,7 +11135,7 @@
         "evidence": "",
         "from": "147f04bb-f2af-4cc8-b582-de003853b41c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -11514,7 +11514,7 @@
         "evidence": "",
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -11546,7 +11546,7 @@
         "evidence": "",
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -11629,7 +11629,7 @@
         "evidence": "",
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.649746+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'triage queue for hypotheses' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -11986,7 +11986,7 @@
         "evidence": "",
         "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -12048,7 +12048,7 @@
         "evidence": "",
         "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -12980,7 +12980,7 @@
         "evidence": "",
         "from": "1f24ba40-84eb-4c5b-a833-5b41cfab7d03",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -13072,7 +13072,7 @@
         "evidence": "",
         "from": "1f24ba40-84eb-4c5b-a833-5b41cfab7d03",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -14332,7 +14332,7 @@
         "evidence": "",
         "from": "205377c4-ef33-4636-866d-f344e7dc1410",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -14424,7 +14424,7 @@
         "evidence": "",
         "from": "205377c4-ef33-4636-866d-f344e7dc1410",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -14674,7 +14674,7 @@
         "evidence": "",
         "from": "205377c4-ef33-4636-866d-f344e7dc1410",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.489069+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'graded decaying sync ripple beyond one' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -15335,7 +15335,7 @@
         "evidence": "",
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -15397,7 +15397,7 @@
         "evidence": "",
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -16343,7 +16343,7 @@
         "evidence": "",
         "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -16435,7 +16435,7 @@
         "evidence": "",
         "from": "21f9f668-c79d-49e6-9702-9da8f9229b36",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:56.806355+00:00",
         "notes": "",
@@ -17241,7 +17241,7 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:57.013827+00:00",
         "notes": "",
@@ -17529,7 +17529,7 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -17624,7 +17624,7 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -17826,7 +17826,7 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:57.198993+00:00",
         "notes": "",
@@ -18430,7 +18430,7 @@
         "evidence": "",
         "from": "23305d3a-e72e-496d-b19b-fd292a0f3e37",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -18462,7 +18462,7 @@
         "evidence": "",
         "from": "23305d3a-e72e-496d-b19b-fd292a0f3e37",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -18823,7 +18823,7 @@
         "evidence": "",
         "from": "246d039f-08d0-4b01-b194-5917bb3a3a25",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -19419,7 +19419,7 @@
         "evidence": "",
         "from": "29288a6c-3f0b-4762-a34d-ad4a714b5390",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -20120,7 +20120,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:57.879897+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'sync flag engine' ↔ 'SQLite query and search implementation': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -20167,7 +20167,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20199,7 +20199,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20328,7 +20328,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.512470+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'sync flag engine' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -20439,7 +20439,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20456,7 +20456,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20503,7 +20503,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20535,7 +20535,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20567,7 +20567,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20584,7 +20584,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.185886+00:00",
         "notes": "",
@@ -20599,7 +20599,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20631,7 +20631,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.230845+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite query and search implementation' ↔ 'mockup is contract not realization': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -20646,7 +20646,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20678,7 +20678,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20725,7 +20725,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20742,7 +20742,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20759,7 +20759,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20806,7 +20806,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.370090+00:00",
         "notes": "",
@@ -20821,7 +20821,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -20856,7 +20856,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -20875,7 +20875,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20922,7 +20922,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20939,7 +20939,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -20987,7 +20987,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.510195+00:00",
         "notes": "",
@@ -21032,7 +21032,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -21052,7 +21052,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -21069,7 +21069,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -21088,7 +21088,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21120,7 +21120,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.625159+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite query and search implementation' ↔ 'reaction-driven mockup loop': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -21165,7 +21165,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -21185,7 +21185,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21202,7 +21202,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -21221,7 +21221,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.715950+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite query and search implementation' ↔ 'stale hypothesis evidence ripples on s': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -21266,7 +21266,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21283,7 +21283,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21300,7 +21300,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21317,7 +21317,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21365,7 +21365,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21383,7 +21383,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.875252+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite query and search implementation' ↔ 'auto-stub the acceptance validation at': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -21398,7 +21398,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21415,7 +21415,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -21447,7 +21447,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file",
           "shares_vocab"
@@ -21465,7 +21465,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -21514,7 +21514,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21531,7 +21531,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:59.010634+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'SQLite query and search implementation' ↔ 'staged want-to-physical seed ladder': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -21576,7 +21576,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21594,7 +21594,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21612,7 +21612,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21644,7 +21644,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:59.101630+00:00",
         "notes": "Re-inspected after the clone-disposition feature plus the betweenness/outcome regression-test additions (behavior-preserving for intent relationships; 282 default / 270 no-default tests green, clippy clean both). The flagged import remains structural infrastructure/trait usage, not an intent-level dependency introduced by the change — the independent verdict stands.",
@@ -21674,7 +21674,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21706,7 +21706,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:59.147735+00:00",
         "notes": "Re-inspected after the clone-disposition feature plus the betweenness/outcome regression-test additions (behavior-preserving for intent relationships; 282 default / 270 no-default tests green, clippy clean both). The flagged import remains structural infrastructure/trait usage, not an intent-level dependency introduced by the change — the independent verdict stands.",
@@ -21721,7 +21721,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -21769,7 +21769,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -21831,7 +21831,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21849,7 +21849,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21911,7 +21911,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -22422,7 +22422,7 @@
         "evidence": "",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -22521,7 +22521,7 @@
         "evidence": "",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -22788,7 +22788,7 @@
         "evidence": "",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -22922,7 +22922,7 @@
         "evidence": "",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -23742,7 +23742,7 @@
         "evidence": "",
         "from": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:00.051883+00:00",
         "notes": "Foundation coupling: one side consumes a universal hub (storage-boundary read trait, schema vocabulary, or shared types) — no specific call path, cohesive module, or single shared data structure beyond that foundation. Not specific peer coupling.",
@@ -24800,7 +24800,7 @@
         "evidence": "",
         "from": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -24877,7 +24877,7 @@
         "evidence": "",
         "from": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -25824,7 +25824,7 @@
         "evidence": "",
         "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -25916,7 +25916,7 @@
         "evidence": "",
         "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:00.715028+00:00",
         "notes": "Re-inspected after the clone-disposition feature plus the betweenness/outcome regression-test additions (behavior-preserving for intent relationships; 282 default / 270 no-default tests green, clippy clean both). The flagged import remains structural infrastructure/trait usage, not an intent-level dependency introduced by the change — the independent verdict stands.",
@@ -26173,7 +26173,7 @@
         "evidence": "",
         "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.419533+00:00",
         "notes": "",
@@ -26888,7 +26888,7 @@
         "evidence": "",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -26950,7 +26950,7 @@
         "evidence": "",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -27494,7 +27494,7 @@
         "evidence": "",
         "from": "388117f6-e815-4185-9692-2587c68d9b1b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -27541,7 +27541,7 @@
         "evidence": "",
         "from": "388117f6-e815-4185-9692-2587c68d9b1b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -28053,7 +28053,7 @@
         "evidence": "",
         "from": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -28781,7 +28781,7 @@
         "evidence": "",
         "from": "3d856e36-aeff-4766-9a32-770e58e24672",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:01.646832+00:00",
         "notes": "'saga runner halt-on-failure semantics' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -29413,7 +29413,7 @@
         "evidence": "",
         "from": "3fe71c5a-d357-4c51-9363-e9874a755f83",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -29505,7 +29505,7 @@
         "evidence": "",
         "from": "3fe71c5a-d357-4c51-9363-e9874a755f83",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:01.715724+00:00",
         "notes": "",
@@ -30406,7 +30406,7 @@
         "evidence": "",
         "from": "447710bb-927c-4b1d-86ee-f21aa6e09136",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -30501,7 +30501,7 @@
         "evidence": "",
         "from": "447710bb-927c-4b1d-86ee-f21aa6e09136",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -30750,7 +30750,7 @@
         "evidence": "",
         "from": "447710bb-927c-4b1d-86ee-f21aa6e09136",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.227010+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'confirmation stamps freshness for drif' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -31707,7 +31707,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -31799,7 +31799,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:02.538403+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'UI state coverage via aspect' ↔ 'backend-neutral storage boundary': universal storage substrate (&dyn GraphReadRepository / snapshot reads every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -32000,7 +32000,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:02.638896+00:00",
         "notes": "",
@@ -32107,7 +32107,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -32889,7 +32889,7 @@
         "evidence": "",
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -32966,7 +32966,7 @@
         "evidence": "",
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -33686,7 +33686,7 @@
         "evidence": "",
         "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -33750,7 +33750,7 @@
         "evidence": "",
         "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -34555,7 +34555,7 @@
         "evidence": "",
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -34650,7 +34650,7 @@
         "evidence": "",
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -35758,7 +35758,7 @@
         "evidence": "",
         "from": "4d16b78b-0ace-4827-b041-f6d5031e16f4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -35853,7 +35853,7 @@
         "evidence": "",
         "from": "4d16b78b-0ace-4827-b041-f6d5031e16f4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -37064,7 +37064,7 @@
         "evidence": "",
         "from": "51bfa653-0b3a-46db-a3a1-c52f1609ff9c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:03.895571+00:00",
         "notes": "Foundation coupling: one side consumes a universal hub (storage-boundary read trait, schema vocabulary, or shared types) — no specific call path, cohesive module, or single shared data structure beyond that foundation. Not specific peer coupling.",
@@ -37784,7 +37784,7 @@
         "evidence": "",
         "from": "5567df9f-375b-4615-9cbc-499d36ea61a0",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -37831,7 +37831,7 @@
         "evidence": "",
         "from": "5567df9f-375b-4615-9cbc-499d36ea61a0",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -38094,7 +38094,7 @@
         "evidence": "",
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -38126,7 +38126,7 @@
         "evidence": "",
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -38223,7 +38223,7 @@
         "evidence": "",
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.740980+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'tiered review queue' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -38801,7 +38801,7 @@
         "evidence": "",
         "from": "5b43002c-cb0a-48e6-9aec-123dcb967eb3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.255614+00:00",
         "notes": "'opt-in lane-skill install' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -38876,7 +38876,7 @@
         "evidence": "",
         "from": "5b43002c-cb0a-48e6-9aec-123dcb967eb3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.278377+00:00",
         "notes": "",
@@ -39843,7 +39843,7 @@
         "evidence": "",
         "from": "5de66572-bd2a-4fd6-972c-52fde80577a3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -39935,7 +39935,7 @@
         "evidence": "",
         "from": "5de66572-bd2a-4fd6-972c-52fde80577a3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -40955,7 +40955,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41053,7 +41053,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41323,7 +41323,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41458,7 +41458,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42001,7 +42001,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.514618+00:00",
         "notes": "'schema vocabulary and repository boundary' and 'structure_version cache for topology-keyed metrics' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -42016,7 +42016,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42033,7 +42033,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42050,7 +42050,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42067,7 +42067,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.610715+00:00",
         "notes": "'schema vocabulary and repository boundary' and 'storage responsibility vocabulary coverage' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -42082,7 +42082,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -42101,7 +42101,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -42119,7 +42119,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42136,7 +42136,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42153,7 +42153,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42170,7 +42170,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42187,7 +42187,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42204,7 +42204,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.799741+00:00",
         "notes": "schema-vocab and the import-analysis nonempty-string-push helper have no direct behavioral dependency; the helper is a local vector util in import-analysis modules, unrelated to schema vocabulary declarations. Incidental similarity only.",
@@ -42219,7 +42219,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -42237,7 +42237,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42254,7 +42254,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42271,7 +42271,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42288,7 +42288,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42305,7 +42305,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42322,7 +42322,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42339,7 +42339,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42356,7 +42356,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42373,7 +42373,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42390,7 +42390,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42424,7 +42424,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42441,7 +42441,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42458,7 +42458,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42475,7 +42475,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42492,7 +42492,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42509,7 +42509,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42526,7 +42526,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -42545,7 +42545,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:07.286078+00:00",
         "notes": "schema-vocab (db/schema.rs vocab decls) and saga failure diagnosis (src/saga/diagnose.rs root-cause categorization) share only foundation db/mod.rs+types.rs imports — no specific intent-level coupling; diagnosis stamps no graph verdicts and does not consume schema vocabulary. Incidental, not a relationship to preserve.",
@@ -42560,7 +42560,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42577,7 +42577,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42594,7 +42594,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42611,7 +42611,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42643,7 +42643,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42660,7 +42660,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:07.430807+00:00",
         "notes": "'schema vocabulary and repository boundary' and 'shared symbol locator matcher' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -42675,7 +42675,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42692,7 +42692,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:24.234603+00:00",
         "notes": "",
@@ -42707,7 +42707,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42724,7 +42724,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:07.501806+00:00",
         "notes": "",
@@ -42739,7 +42739,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42756,7 +42756,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -42774,7 +42774,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42791,7 +42791,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42825,7 +42825,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42842,7 +42842,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42859,7 +42859,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42876,7 +42876,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -42893,7 +42893,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -43105,7 +43105,7 @@
         "evidence": "",
         "from": "616970c1-9a3a-4a92-bbf2-50b3bae2d9fd",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -43713,7 +43713,7 @@
         "evidence": "",
         "from": "62a58a72-21d1-4509-81cb-538b757d21c2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -44424,7 +44424,7 @@
         "evidence": "",
         "from": "63b49d1c-a2fa-4598-aa3d-07ebd761ccdd",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.233861+00:00",
         "notes": "'migration cutover and rollback path' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -44862,7 +44862,7 @@
         "evidence": "",
         "from": "656c13fa-afce-4230-b52a-9461c6ec23a1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45192,7 +45192,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.364219+00:00",
         "notes": "'backend-neutral storage boundary' and 'smells propose hypotheses' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45207,7 +45207,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.386604+00:00",
         "notes": "",
@@ -45222,7 +45222,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.409113+00:00",
         "notes": "'backend-neutral storage boundary' and 'hypothesis plane' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45237,7 +45237,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.431862+00:00",
         "notes": "'backend-neutral storage boundary' and 'intents addressable by name, not only uuid' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45252,7 +45252,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.454219+00:00",
         "notes": "'backend-neutral storage boundary' and 'saga runner halt-on-failure semantics' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45267,7 +45267,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.475984+00:00",
         "notes": "'backend-neutral storage boundary' and 'hostile import rejected loudly' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45282,7 +45282,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.498298+00:00",
         "notes": "'backend-neutral storage boundary' and 'structure_version cache for topology-keyed metrics' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45297,7 +45297,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.520887+00:00",
         "notes": "",
@@ -45312,7 +45312,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.544266+00:00",
         "notes": "",
@@ -45327,7 +45327,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -45344,7 +45344,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -45363,7 +45363,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45381,7 +45381,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.638442+00:00",
         "notes": "'backend-neutral storage boundary' and 'loom: living intent graph CLI' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45396,7 +45396,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45414,7 +45414,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -45431,7 +45431,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45449,7 +45449,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.728+00:00",
         "notes": "'backend-neutral storage boundary' and 'shared nonempty string push helper' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45464,7 +45464,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -45484,7 +45484,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:08.772901+00:00",
         "notes": "",
@@ -45499,7 +45499,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -45518,7 +45518,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -45535,7 +45535,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45553,7 +45553,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45571,7 +45571,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45589,7 +45589,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45607,7 +45607,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45625,7 +45625,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45643,7 +45643,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -45680,7 +45680,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45698,7 +45698,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -45715,7 +45715,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45733,7 +45733,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45751,7 +45751,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45769,7 +45769,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.132341+00:00",
         "notes": "'backend-neutral storage boundary' and 'scale benchmark harness' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45784,7 +45784,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.155721+00:00",
         "notes": "",
@@ -45799,7 +45799,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -45818,7 +45818,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "calls"
         ],
@@ -45850,7 +45850,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.223447+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'backend-neutral storage boundary' ↔ 'scale: hot commands bounded on large g': universal storage substrate (&dyn GraphReadRepository / snapshot reads every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -45865,7 +45865,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -45882,7 +45882,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.269744+00:00",
         "notes": "'backend-neutral storage boundary' and 'multi-hop audit layer' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45897,7 +45897,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45915,7 +45915,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45933,7 +45933,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.348961+00:00",
         "notes": "Re-inspected after the clone-disposition feature plus the betweenness/outcome regression-test additions (behavior-preserving for intent relationships; 282 default / 270 no-default tests green, clippy clean both). The flagged import remains structural infrastructure/trait usage, not an intent-level dependency introduced by the change — the independent verdict stands.",
@@ -45948,7 +45948,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.373679+00:00",
         "notes": "'backend-neutral storage boundary' and 'shared symbol locator matcher' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -45963,7 +45963,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -45981,7 +45981,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:24.211555+00:00",
         "notes": "",
@@ -45996,7 +45996,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46014,7 +46014,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.453265+00:00",
         "notes": "",
@@ -46029,7 +46029,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -46046,7 +46046,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -46064,7 +46064,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46082,7 +46082,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.548310+00:00",
         "notes": "'backend-neutral storage boundary' and 'multi-language static analysis coverage' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -46097,7 +46097,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -46114,7 +46114,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -46131,7 +46131,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46166,7 +46166,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46184,7 +46184,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -46201,7 +46201,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -46218,7 +46218,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:09.755023+00:00",
         "notes": "'backend-neutral storage boundary' and 'external interface surface plane' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -46233,7 +46233,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46251,7 +46251,7 @@
         "evidence": "",
         "from": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -46729,7 +46729,7 @@
         "evidence": "",
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -47820,7 +47820,7 @@
         "evidence": "",
         "from": "6cc267b6-6052-48bd-b914-674fabe48eee",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -48876,7 +48876,7 @@
         "evidence": "",
         "from": "6cde48c7-e04f-4eae-a5c4-9b9cd519c975",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.365131+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'interface plane gap detection' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -49446,7 +49446,7 @@
         "evidence": "",
         "from": "6faa01a5-920a-4231-b840-f4c2057d149b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:11.432766+00:00",
         "notes": "'loom: living intent graph CLI' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -57651,7 +57651,7 @@
         "evidence": "",
         "from": "8f96ca18-2ad0-48f3-985e-e4025141093d",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.319196+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'align queue ranks user-intent drift su' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -58161,7 +58161,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.402438+00:00",
         "notes": "",
@@ -58268,7 +58268,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.425341+00:00",
         "notes": "",
@@ -58343,7 +58343,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.448400+00:00",
         "notes": "",
@@ -58373,7 +58373,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.470793+00:00",
         "notes": "",
@@ -58388,7 +58388,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.495539+00:00",
         "notes": "",
@@ -58433,7 +58433,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.519165+00:00",
         "notes": "",
@@ -58555,7 +58555,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.541922+00:00",
         "notes": "",
@@ -58570,7 +58570,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.567855+00:00",
         "notes": "",
@@ -58600,7 +58600,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.597951+00:00",
         "notes": "",
@@ -58663,7 +58663,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.625605+00:00",
         "notes": "",
@@ -58813,7 +58813,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -58830,7 +58830,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.388236+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'bulk quality read grouped by intent' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -58845,7 +58845,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -58940,7 +58940,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.749936+00:00",
         "notes": "",
@@ -58970,7 +58970,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "same_domain",
           "shares_file"
@@ -58988,7 +58988,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.810536+00:00",
         "notes": "",
@@ -59078,7 +59078,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.840398+00:00",
         "notes": "",
@@ -59108,7 +59108,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -59203,7 +59203,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.893083+00:00",
         "notes": "No specific code coupling between 'bulk quality read grouped by intent' and 'hypothesis prove records TARGETS confidence'. The relationship remains falsifiable through shared command, schema, storage, output-helper, or documentation surf...",
@@ -59218,7 +59218,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.916853+00:00",
         "notes": "",
@@ -59263,7 +59263,7 @@
         "evidence": "",
         "from": "933385b5-48eb-47c4-af6b-5312299f1914",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:13.942704+00:00",
         "notes": "",
@@ -60051,7 +60051,7 @@
         "evidence": "",
         "from": "936cf0e6-342e-4599-8d6c-92fb4e3901c8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.181981+00:00",
         "notes": "'advisory buckets honor decision adjudication' and 'completeness and integrity checking' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -62916,7 +62916,7 @@
         "evidence": "",
         "from": "9baf3a4e-51af-40c1-8c80-a5f745588092",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.045170+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'directed handoff notes' ↔ 'completeness and integrity checking': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -64008,7 +64008,7 @@
         "evidence": "",
         "from": "9d68003d-894b-4bab-83c0-0800395f33f2",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:16.579255+00:00",
         "notes": "",
@@ -65031,7 +65031,7 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:17.061515+00:00",
         "notes": "Foundation coupling: one side consumes a universal hub (storage-boundary read trait, schema vocabulary, or shared types) — no specific call path, cohesive module, or single shared data structure beyond that foundation. Not specific peer coupling.",
@@ -65106,7 +65106,7 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:17.087056+00:00",
         "notes": "'CLI surface and dispatch' and 'backend-neutral storage boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -65331,7 +65331,7 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:17.136017+00:00",
         "notes": "",
@@ -65421,7 +65421,7 @@
         "evidence": "",
         "from": "a1a8eb10-bc4c-43d7-a4ec-b7d1fb8d26ae",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.534919+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'CLI surface and dispatch' ↔ 'completeness and integrity checking': foundation/substrate coupling, not behavior-specific peer interaction. The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -66021,7 +66021,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.580823+00:00",
         "notes": "completeness checking is a read-path analysis; smells propose hypotheses is a smell-to-hypothesis bridge — separate analysis path",
@@ -66096,7 +66096,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -66398,7 +66398,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.626197+00:00",
         "notes": "completeness checking is read-path analysis; transitive layering detection is a separate graph-traversal analysis",
@@ -66503,7 +66503,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -66535,7 +66535,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.296789+00:00",
         "notes": "Foundation coupling: one side consumes a universal hub (storage-boundary read trait, schema vocabulary, or shared types) — no specific call path, cohesive module, or single shared data structure beyond that foundation. Not specific peer ...",
@@ -66550,7 +66550,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -66582,7 +66582,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -66629,7 +66629,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.136397+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'completeness and integrity checking' ↔ 'computed graph population lane': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -66659,7 +66659,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.465334+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'completeness and integrity checking' ↔ 'discovery queue ranks pairs by plausib': foundation/substrate coupling, not behavior-specific peer interaction. The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -66704,7 +66704,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.718657+00:00",
         "notes": "no shared code imports or domain coupling detected between these intents",
@@ -66719,7 +66719,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.558200+00:00",
         "notes": "no shared code imports or domain coupling detected between these intents",
@@ -66734,7 +66734,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.442792+00:00",
         "notes": "",
@@ -66764,7 +66764,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -66796,7 +66796,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -66873,7 +66873,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -66890,7 +66890,7 @@
         "evidence": "",
         "from": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:58:27.204319+00:00",
         "notes": "",
@@ -69260,7 +69260,7 @@
         "evidence": "",
         "from": "be2436f2-1072-454d-a4b7-bdcab2658594",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:18.348068+00:00",
         "notes": "'scale benchmark harness' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -71585,7 +71585,7 @@
         "evidence": "",
         "from": "c2f6bca0-2ccd-48b7-af47-1a74fba61441",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:18.942948+00:00",
         "notes": "",
@@ -73412,7 +73412,7 @@
         "evidence": "",
         "from": "c61f66f5-a396-4494-9b48-c00d5203bcb3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:19.212428+00:00",
         "notes": "'multi-hop audit layer' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -74284,7 +74284,7 @@
         "evidence": "",
         "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:19.344231+00:00",
         "notes": "'UI/UX visual-register seed flow' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -74359,7 +74359,7 @@
         "evidence": "",
         "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:19.368046+00:00",
         "notes": "'UI/UX visual-register seed flow' and 'backend-neutral storage boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -74524,7 +74524,7 @@
         "evidence": "",
         "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:19.396940+00:00",
         "notes": "",
@@ -82261,7 +82261,7 @@
         "evidence": "",
         "from": "e5bba339-3f44-47be-8065-9630cc482e9b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -83182,7 +83182,7 @@
         "evidence": "",
         "from": "ea9c7e3e-9f95-4d58-ade9-d771fcf50cc3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:22.351039+00:00",
         "notes": "'multi-language static analysis coverage' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -84129,7 +84129,7 @@
         "evidence": "",
         "from": "f037c295-4ef3-4dfe-8aa2-ba65195f5efb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:22.625238+00:00",
         "notes": "'saga spec with first-class intent binding' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -87375,7 +87375,7 @@
         "evidence": "",
         "from": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:23.596691+00:00",
         "notes": "'external interface surface plane' and 'schema vocabulary and repository boundary' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -91484,7 +91484,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-23T16:39:37.716886+00:00",
+  "last_synced": "2026-06-23T17:16:46.795416+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -98358,12 +98358,12 @@
         ]
       },
       {
-        "content_hash": "390af16626e061d5",
+        "content_hash": "dc6affe46f1c45de",
         "extractor_grade": "high",
         "id": "128fda40-a588-469a-ab5c-fb60a4cb1af5",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T10:04:40.404871748+00:00",
+        "last_modified": "2026-06-23T17:10:10.459318370+00:00",
         "path": "src/db/schema.rs",
         "symbol_facts": [
           {
@@ -100221,13 +100221,13 @@
             "visibility": "public"
           },
           {
-            "body_hash": "915d6eb7beacc33d",
+            "body_hash": "7ad83236bc9e0180",
             "kind": "fn",
             "label": "pub fn required_edge_props",
-            "line_end": 719,
+            "line_end": 720,
             "line_start": 630,
             "name": "required_edge_props",
-            "shape_hash": "6d73b73ee6435b67",
+            "shape_hash": "a612239a606b4b28",
             "visibility": "public"
           },
           {
@@ -100367,12 +100367,12 @@
         ]
       },
       {
-        "content_hash": "f03afb23fa66d9b9",
+        "content_hash": "e3404058bd25a629",
         "extractor_grade": "high",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T11:53:08.704938655+00:00",
+        "last_modified": "2026-06-23T16:51:33.954411430+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -104671,6 +104671,379 @@
               {
                 "line": 5329,
                 "value": "the ✓ 'no open gaps' headline must be bounded by the adjudicated-bought-green \\\n         negative instead of riding over it: {text}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "6cf189ae136380ac",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_covers_descendants_false_does_not_cover_children",
+            "line_end": 8539,
+            "line_start": 8471,
+            "name": "sqlite_covers_descendants_false_does_not_cover_children",
+            "panic_marker_count": 6,
+            "panic_markers": [
+              "unwrap"
+            ],
+            "shape_hash": "f444005681527891",
+            "string_literals": [
+              {
+                "line": 8473,
+                "value": "covers-false"
+              },
+              {
+                "line": 8474,
+                "value": "init"
+              },
+              {
+                "line": 8474,
+                "value": "."
+              },
+              {
+                "line": 8474,
+                "value": "--json"
+              },
+              {
+                "line": 8475,
+                "value": "src"
+              },
+              {
+                "line": 8476,
+                "value": "src/lib.rs"
+              },
+              {
+                "line": 8476,
+                "value": "pub fn parent() {}\\npub fn child() {}\\n"
+              },
+              {
+                "line": 8477,
+                "value": "codefile"
+              },
+              {
+                "line": 8477,
+                "value": "add"
+              },
+              {
+                "line": 8477,
+                "value": "src/lib.rs"
+              },
+              {
+                "line": 8477,
+                "value": "--json"
+              },
+              {
+                "line": 8477,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8482,
+                "value": "intent"
+              },
+              {
+                "line": 8482,
+                "value": "add"
+              },
+              {
+                "line": 8482,
+                "value": "--name"
+              },
+              {
+                "line": 8482,
+                "value": "parent"
+              },
+              {
+                "line": 8482,
+                "value": "--level"
+              },
+              {
+                "line": 8482,
+                "value": "component"
+              },
+              {
+                "line": 8483,
+                "value": "--description"
+              },
+              {
+                "line": 8483,
+                "value": "parent component"
+              },
+              {
+                "line": 8483,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 8483,
+                "value": "implemented"
+              },
+              {
+                "line": 8483,
+                "value": "--json"
+              },
+              {
+                "line": 8484,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8486,
+                "value": "id"
+              },
+              {
+                "line": 8490,
+                "value": "intent"
+              },
+              {
+                "line": 8490,
+                "value": "add"
+              },
+              {
+                "line": 8490,
+                "value": "--name"
+              },
+              {
+                "line": 8490,
+                "value": "child"
+              },
+              {
+                "line": 8490,
+                "value": "--level"
+              },
+              {
+                "line": 8490,
+                "value": "feature"
+              },
+              {
+                "line": 8491,
+                "value": "--description"
+              },
+              {
+                "line": 8491,
+                "value": "child feature"
+              },
+              {
+                "line": 8491,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 8491,
+                "value": "implemented"
+              },
+              {
+                "line": 8491,
+                "value": "--json"
+              },
+              {
+                "line": 8492,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8494,
+                "value": "id"
+              },
+              {
+                "line": 8497,
+                "value": "edge"
+              },
+              {
+                "line": 8497,
+                "value": "implement"
+              },
+              {
+                "line": 8497,
+                "value": "src/lib.rs"
+              },
+              {
+                "line": 8498,
+                "value": "--locator"
+              },
+              {
+                "line": 8498,
+                "value": "pub fn parent"
+              },
+              {
+                "line": 8498,
+                "value": "--json"
+              },
+              {
+                "line": 8498,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8499,
+                "value": "edge"
+              },
+              {
+                "line": 8499,
+                "value": "implement"
+              },
+              {
+                "line": 8499,
+                "value": "src/lib.rs"
+              },
+              {
+                "line": 8500,
+                "value": "--locator"
+              },
+              {
+                "line": 8500,
+                "value": "pub fn child"
+              },
+              {
+                "line": 8500,
+                "value": "--json"
+              },
+              {
+                "line": 8500,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8503,
+                "value": "edge"
+              },
+              {
+                "line": 8503,
+                "value": "hierarchy"
+              },
+              {
+                "line": 8503,
+                "value": "--json"
+              },
+              {
+                "line": 8503,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8506,
+                "value": "rule"
+              },
+              {
+                "line": 8506,
+                "value": "seed"
+              },
+              {
+                "line": 8506,
+                "value": "iso5055"
+              },
+              {
+                "line": 8506,
+                "value": "--json"
+              },
+              {
+                "line": 8506,
+                "value": "llm:quality"
+              },
+              {
+                "line": 8508,
+                "value": "rule"
+              },
+              {
+                "line": 8508,
+                "value": "list"
+              },
+              {
+                "line": 8508,
+                "value": "--json"
+              },
+              {
+                "line": 8509,
+                "value": "rules"
+              },
+              {
+                "line": 8509,
+                "value": "id"
+              },
+              {
+                "line": 8514,
+                "value": "rule"
+              },
+              {
+                "line": 8514,
+                "value": "verdict"
+              },
+              {
+                "line": 8514,
+                "value": "--status"
+              },
+              {
+                "line": 8514,
+                "value": "passing"
+              },
+              {
+                "line": 8515,
+                "value": "--criterion"
+              },
+              {
+                "line": 8515,
+                "value": "parent complies with this rule"
+              },
+              {
+                "line": 8516,
+                "value": "--evidence"
+              },
+              {
+                "line": 8516,
+                "value": "checked parent code — complies"
+              },
+              {
+                "line": 8517,
+                "value": "--evidence-locator"
+              },
+              {
+                "line": 8517,
+                "value": "src/lib.rs:1"
+              },
+              {
+                "line": 8517,
+                "value": "--json"
+              },
+              {
+                "line": 8518,
+                "value": "llm:quality"
+              },
+              {
+                "line": 8523,
+                "value": "next"
+              },
+              {
+                "line": 8523,
+                "value": "--mode"
+              },
+              {
+                "line": 8523,
+                "value": "quality"
+              },
+              {
+                "line": 8523,
+                "value": "--take"
+              },
+              {
+                "line": 8523,
+                "value": "50"
+              },
+              {
+                "line": 8523,
+                "value": "--json"
+              },
+              {
+                "line": 8524,
+                "value": "items"
+              },
+              {
+                "line": 8527,
+                "value": "intent"
+              },
+              {
+                "line": 8528,
+                "value": "id"
+              },
+              {
+                "line": 8535,
+                "value": "queue_total"
+              },
+              {
+                "line": 8536,
+                "value": "child should NOT be covered by parent verdict without --covers-descendants: {quality}"
               }
             ],
             "visibility": "private"
@@ -111372,6 +111745,91 @@
             "visibility": "private"
           },
           {
+            "body_hash": "b618ccb0fc81db43",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_inbox_file_link_to_non_codefile_resolves",
+            "line_end": 8629,
+            "line_start": 8611,
+            "name": "sqlite_inbox_file_link_to_non_codefile_resolves",
+            "panic_marker_count": 2,
+            "panic_markers": [
+              "unwrap"
+            ],
+            "shape_hash": "3dd9240629fab9e6",
+            "string_literals": [
+              {
+                "line": 8613,
+                "value": "inbox-file-link"
+              },
+              {
+                "line": 8614,
+                "value": "init"
+              },
+              {
+                "line": 8614,
+                "value": "."
+              },
+              {
+                "line": 8614,
+                "value": "--json"
+              },
+              {
+                "line": 8616,
+                "value": "docs"
+              },
+              {
+                "line": 8617,
+                "value": "docs/reference.md"
+              },
+              {
+                "line": 8617,
+                "value": "# Reference\\n"
+              },
+              {
+                "line": 8622,
+                "value": "inbox"
+              },
+              {
+                "line": 8622,
+                "value": "add"
+              },
+              {
+                "line": 8622,
+                "value": "Test item with doc link"
+              },
+              {
+                "line": 8622,
+                "value": "--link"
+              },
+              {
+                "line": 8622,
+                "value": "file:docs/reference.md"
+              },
+              {
+                "line": 8622,
+                "value": "--json"
+              },
+              {
+                "line": 8623,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8626,
+                "value": "status"
+              },
+              {
+                "line": 8626,
+                "value": "ok"
+              },
+              {
+                "line": 8627,
+                "value": "file: link to a non-codefile doc should resolve: {result}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
             "body_hash": "223f29a322d7326a",
             "is_test": true,
             "kind": "fn",
@@ -117899,6 +118357,248 @@
             "visibility": "private"
           },
           {
+            "body_hash": "1ed856be2e8db159",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_rule_verdict_persist_locator_in_evidence",
+            "line_end": 8581,
+            "line_start": 8542,
+            "name": "sqlite_rule_verdict_persist_locator_in_evidence",
+            "panic_marker_count": 7,
+            "panic_markers": [
+              "unwrap",
+              "expect"
+            ],
+            "shape_hash": "8f1f3ca81d529129",
+            "string_literals": [
+              {
+                "line": 8544,
+                "value": "verdict-locator"
+              },
+              {
+                "line": 8545,
+                "value": "init"
+              },
+              {
+                "line": 8545,
+                "value": "."
+              },
+              {
+                "line": 8545,
+                "value": "--json"
+              },
+              {
+                "line": 8546,
+                "value": "src"
+              },
+              {
+                "line": 8547,
+                "value": "src/lib.rs"
+              },
+              {
+                "line": 8547,
+                "value": "pub fn alpha() {}\\n"
+              },
+              {
+                "line": 8550,
+                "value": "intent"
+              },
+              {
+                "line": 8550,
+                "value": "add"
+              },
+              {
+                "line": 8550,
+                "value": "--name"
+              },
+              {
+                "line": 8550,
+                "value": "alpha"
+              },
+              {
+                "line": 8550,
+                "value": "--level"
+              },
+              {
+                "line": 8550,
+                "value": "feature"
+              },
+              {
+                "line": 8551,
+                "value": "--description"
+              },
+              {
+                "line": 8551,
+                "value": "do alpha"
+              },
+              {
+                "line": 8551,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 8551,
+                "value": "implemented"
+              },
+              {
+                "line": 8551,
+                "value": "--json"
+              },
+              {
+                "line": 8552,
+                "value": "llm:builder"
+              },
+              {
+                "line": 8554,
+                "value": "id"
+              },
+              {
+                "line": 8555,
+                "value": "rule"
+              },
+              {
+                "line": 8555,
+                "value": "seed"
+              },
+              {
+                "line": 8555,
+                "value": "iso5055"
+              },
+              {
+                "line": 8555,
+                "value": "--json"
+              },
+              {
+                "line": 8555,
+                "value": "llm:quality"
+              },
+              {
+                "line": 8556,
+                "value": "rule"
+              },
+              {
+                "line": 8556,
+                "value": "list"
+              },
+              {
+                "line": 8556,
+                "value": "--json"
+              },
+              {
+                "line": 8557,
+                "value": "rules"
+              },
+              {
+                "line": 8557,
+                "value": "id"
+              },
+              {
+                "line": 8562,
+                "value": "rule"
+              },
+              {
+                "line": 8562,
+                "value": "verdict"
+              },
+              {
+                "line": 8562,
+                "value": "--status"
+              },
+              {
+                "line": 8562,
+                "value": "passing"
+              },
+              {
+                "line": 8563,
+                "value": "--criterion"
+              },
+              {
+                "line": 8563,
+                "value": "complies with rule"
+              },
+              {
+                "line": 8564,
+                "value": "--evidence"
+              },
+              {
+                "line": 8564,
+                "value": "all handlers check auth"
+              },
+              {
+                "line": 8565,
+                "value": "--evidence-locator"
+              },
+              {
+                "line": 8565,
+                "value": "src/lib.rs:1"
+              },
+              {
+                "line": 8565,
+                "value": "--json"
+              },
+              {
+                "line": 8566,
+                "value": "llm:quality"
+              },
+              {
+                "line": 8568,
+                "value": "status"
+              },
+              {
+                "line": 8568,
+                "value": "ok"
+              },
+              {
+                "line": 8568,
+                "value": "verdict should succeed: {result}"
+              },
+              {
+                "line": 8571,
+                "value": "rule"
+              },
+              {
+                "line": 8571,
+                "value": "check"
+              },
+              {
+                "line": 8571,
+                "value": "--json"
+              },
+              {
+                "line": 8572,
+                "value": "governs"
+              },
+              {
+                "line": 8572,
+                "value": "governs array"
+              },
+              {
+                "line": 8574,
+                "value": "rule_id"
+              },
+              {
+                "line": 8575,
+                "value": "found the GOVERNS edge"
+              },
+              {
+                "line": 8576,
+                "value": "evidence"
+              },
+              {
+                "line": 8576,
+                "value": ""
+              },
+              {
+                "line": 8578,
+                "value": "@src/lib.rs"
+              },
+              {
+                "line": 8579,
+                "value": "evidence should contain the locator: got '{evidence}'"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
             "body_hash": "7c591899c5948e88",
             "is_test": true,
             "kind": "fn",
@@ -118314,6 +119014,120 @@
               {
                 "line": 8005,
                 "value": "seed guide must teach the user interview loop: {text}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "9ea95c5afec2aea1",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_seed_inbox_excludes_loom_artifacts",
+            "line_end": 8608,
+            "line_start": 8584,
+            "name": "sqlite_seed_inbox_excludes_loom_artifacts",
+            "panic_marker_count": 5,
+            "panic_markers": [
+              "unwrap",
+              "expect"
+            ],
+            "shape_hash": "62ae8b7dc21af52e",
+            "string_literals": [
+              {
+                "line": 8586,
+                "value": "seed-exclude"
+              },
+              {
+                "line": 8587,
+                "value": "init"
+              },
+              {
+                "line": 8587,
+                "value": "."
+              },
+              {
+                "line": 8587,
+                "value": "--json"
+              },
+              {
+                "line": 8589,
+                "value": "loom.wiki.md"
+              },
+              {
+                "line": 8589,
+                "value": "# Loom Wiki\\n"
+              },
+              {
+                "line": 8590,
+                "value": "loom.graph.json"
+              },
+              {
+                "line": 8590,
+                "value": "{\"loom_export\":1}"
+              },
+              {
+                "line": 8591,
+                "value": "docs"
+              },
+              {
+                "line": 8592,
+                "value": "docs/readme.md"
+              },
+              {
+                "line": 8592,
+                "value": "# Real Doc\\n"
+              },
+              {
+                "line": 8594,
+                "value": "seed"
+              },
+              {
+                "line": 8594,
+                "value": "--inbox"
+              },
+              {
+                "line": 8594,
+                "value": "--json"
+              },
+              {
+                "line": 8595,
+                "value": "inbox"
+              },
+              {
+                "line": 8595,
+                "value": "list"
+              },
+              {
+                "line": 8595,
+                "value": "--json"
+              },
+              {
+                "line": 8596,
+                "value": "items"
+              },
+              {
+                "line": 8596,
+                "value": "items array"
+              },
+              {
+                "line": 8598,
+                "value": "raw_text"
+              },
+              {
+                "line": 8601,
+                "value": "loom.wiki.md"
+              },
+              {
+                "line": 8602,
+                "value": "loom.wiki.md should NOT be ingested: {raw_texts:?}"
+              },
+              {
+                "line": 8605,
+                "value": "loom.graph.json"
+              },
+              {
+                "line": 8606,
+                "value": "loom.graph.json should NOT be ingested: {raw_texts:?}"
               }
             ],
             "visibility": "private"
@@ -123659,6 +124473,7 @@
           "fn sqlite_complete_record_is_not_discharge",
           "fn sqlite_coverage_adjudicated_drills_down_per_symbol",
           "fn sqlite_coverage_qualifies_no_gaps_with_adjudicated_green",
+          "fn sqlite_covers_descendants_false_does_not_cover_children",
           "fn sqlite_covers_descendants_requires_evidence",
           "fn sqlite_delegate_add_rejects_out_of_root_targets",
           "fn sqlite_delegated_coverage_counts_child_export",
@@ -123692,6 +124507,7 @@
           "fn sqlite_import_rejects_malformed_graphs",
           "fn sqlite_imported_export_read_surface",
           "fn sqlite_inbox_add_normalize_mark_and_export",
+          "fn sqlite_inbox_file_link_to_non_codefile_resolves",
           "fn sqlite_inbox_kind_constraint_is_widened_on_open",
           "fn sqlite_independent_edge_restales_on_new_import_coupling",
           "fn sqlite_independent_edge_survives_unrelated_code_change",
@@ -123734,10 +124550,12 @@
           "fn sqlite_review_take_json_carries_batch_template_hints",
           "fn sqlite_rule_show_by_name_and_id_and_unknown",
           "fn sqlite_rule_show_displays_evidence_examples",
+          "fn sqlite_rule_verdict_persist_locator_in_evidence",
           "fn sqlite_saga_diagnose_reports_missing_env_without_stamping",
           "fn sqlite_saga_diagnose_reports_missing_jwt_scope",
           "fn sqlite_security_deep_pack_seeds_four_rules_with_kind",
           "fn sqlite_seed_guide_routes_to_interview",
+          "fn sqlite_seed_inbox_excludes_loom_artifacts",
           "fn sqlite_seed_inbox_ingests_surface_idempotently",
           "fn sqlite_seed_requirements_imports_structured_ids_as_planned",
           "fn sqlite_seed_suggest_mines_candidate_intents",
@@ -125583,7 +126401,7 @@
         ]
       },
       {
-        "content_hash": "c177fa514766231a",
+        "content_hash": "c5e2d42b0fc87319",
         "extractor_grade": "high",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
@@ -125592,7 +126410,7 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T06:59:05.251824958+00:00",
+        "last_modified": "2026-06-23T17:09:47.684000500+00:00",
         "path": "src/commands/guide.rs",
         "symbol_facts": [
           {
@@ -126336,7 +127154,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "7b5aa9bb8ecd6243",
+            "body_hash": "cba991613747a87b",
             "kind": "const",
             "label": "const ROLE_DISCIPLINE",
             "line_end": 136,
@@ -126514,7 +127332,7 @@
               },
               {
                 "line": 131,
-                "value": "ALTITUDE: a verdict on a component covers its descendants; drop to a leaf ONLY where the rule has specific bite."
+                "value": "ALTITUDE: a verdict on a component covers its descendants ONLY with --covers-descendants; otherwise it covers the component alone — drop to a leaf wherever the rule has specific bite."
               },
               {
                 "line": 132,
@@ -126834,7 +127652,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "f64ad581c9c3085f",
+            "body_hash": "f34a5d1cfa81704a",
             "kind": "fn",
             "label": "fn greenfield",
             "line_end": 443,
@@ -126888,7 +127706,7 @@
               },
               {
                 "line": 440,
-                "value": "Set the quality bar: seed the packs `loom detect` recommends (`loom rule seed <pack>`) + `loom rule add …` for repo-specific sticks, then earn green with `loom next --mode quality` + `loom rule verdict` (the verdict creates the edge; component altitude covers descendants)."
+                "value": "Set the quality bar: seed the packs `loom detect` recommends (`loom rule seed <pack>`) + `loom rule add …` for repo-specific sticks, then earn green with `loom next --mode quality` + `loom rule verdict` (the verdict creates the edge; a component verdict covers descendants ONLY with --covers-descendants)."
               },
               {
                 "line": 441,
@@ -129079,16 +129897,16 @@
         "symbols": []
       },
       {
-        "content_hash": "4abb34ebc38f9fdd",
+        "content_hash": "0104afe7a552ac4f",
         "extractor_grade": "high",
         "id": "2d667bdf-f414-47f3-8f9e-ab1078f3b2b2",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T16:29:55.858656128+00:00",
+        "last_modified": "2026-06-23T17:10:06.376116679+00:00",
         "path": "src/db/queries/smells/normative.rs",
         "symbol_facts": [
           {
-            "body_hash": "aca2017898a4f90b",
+            "body_hash": "a92a36e7d2376be5",
             "kind": "fn",
             "label": "fn detect_unmeasured_intents",
             "line_end": 82,
@@ -129138,7 +129956,7 @@
               },
               {
                 "line": 76,
-                "value": "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent covers the component's descendants too (independent = measured, rule doesn't apply); drop to a leaf only where the rule has specific bite"
+                "value": "measure at the highest HONEST altitude: loom rule verdict {} <component> --status passing|failing|independent --covers-descendants covers the component's descendants too (without --covers-descendants it covers only the component; independent = measured, rule doesn't apply); otherwise drop to a leaf where the rule has specific bite"
               },
               {
                 "line": 79,
@@ -147153,16 +147971,16 @@
         ]
       },
       {
-        "content_hash": "a31394affa239118",
+        "content_hash": "e41851a3d5848f5e",
         "extractor_grade": "high",
         "id": "85740e81-dfb7-4f38-ac85-dd28647eed70",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T05:07:29.284081845+00:00",
+        "last_modified": "2026-06-23T17:11:37.902575751+00:00",
         "path": "src/commands/next/quality.rs",
         "symbol_facts": [
           {
-            "body_hash": "02afe194654dca85",
+            "body_hash": "8b10cd437dcfa38f",
             "kind": "fn",
             "label": "pub(super) fn run_quality",
             "line_end": 293,
@@ -147224,7 +148042,7 @@
               },
               {
                 "line": 200,
-                "value": "MEASURE: rule '{rule}' has never been held against intent '{name}' (no GOVERNS edge \\\n             here or on any ancestor). One command records the measurement — the verdict CREATES the edge:\\n\\\n             \\n  loom rule verdict {rid} {iid} --status passing --criterion \\\"<what compliance looks like>\\\" --evidence \\\"<what you found>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status failing --criterion \\\"<criterion>\\\" --evidence \\\"<the violation>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status independent --criterion \\\"<criterion>\\\" --evidence \\\"<why the rule has no surface here>\\\"\\\n             \\nPrefer the highest HONEST altitude: a verdict on a component covers its descendants \\\n             (check `loom intent show {iid}` — if this rule reads the same for the whole subtree, \\\n             verdict the parent instead)."
+                "value": "MEASURE: rule '{rule}' has never been held against intent '{name}' (no GOVERNS edge \\\n             here or on any ancestor). One command records the measurement — the verdict CREATES the edge:\\n\\\n             \\n  loom rule verdict {rid} {iid} --status passing --criterion \\\"<what compliance looks like>\\\" --evidence \\\"<what you found>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status failing --criterion \\\"<criterion>\\\" --evidence \\\"<the violation>\\\"\\\n             \\n  loom rule verdict {rid} {iid} --status independent --criterion \\\"<criterion>\\\" --evidence \\\"<why the rule has no surface here>\\\"\\\n             \\nPrefer the highest HONEST altitude: a verdict on a component covers its descendants \\\n             ONLY with --covers-descendants (check `loom intent show {iid}` — if this rule reads \\\n             the same for the whole subtree, verdict the parent with --covers-descendants instead)."
               },
               {
                 "line": 215,
@@ -147366,7 +148184,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "f23866ad3a5cc9ad",
+            "body_hash": "52470092628abc63",
             "kind": "fn",
             "label": "pub(super) fn run_take_quality",
             "line_end": 142,
@@ -147504,7 +148322,7 @@
               },
               {
                 "line": 87,
-                "value": "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines."
+                "value": "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants ONLY with --covers-descendants: if every rule reads the same for the whole subtree, verdict the parent with --covers-descendants instead; without it the verdict covers only the parent."
               },
               {
                 "line": 91,
@@ -167218,17 +168036,18 @@
         ]
       },
       {
-        "content_hash": "6de73cb48628b151",
+        "content_hash": "12a2846b87b4a091",
         "extractor_grade": "high",
         "id": "bc90d157-fc72-4c2d-80be-8baf51682e92",
         "imports": [
           "src/db/mod.rs",
           "src/db/queries/mod.rs",
+          "src/db/queries/scoring.rs",
           "src/output.rs",
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T05:42:08.606386948+00:00",
+        "last_modified": "2026-06-23T16:44:52.400979668+00:00",
         "path": "src/commands/status.rs",
         "symbol_facts": [
           {
@@ -167245,8 +168064,8 @@
             "body_hash": "22ddf0fa3baf0607",
             "kind": "fn",
             "label": "fn OptionalLanes::any",
-            "line_end": 465,
-            "line_start": 463,
+            "line_end": 493,
+            "line_start": 491,
             "name": "any",
             "shape_hash": "da5ae0246193177c",
             "visibility": "private"
@@ -167265,47 +168084,51 @@
             "body_hash": "5d787b1303586d71",
             "kind": "fn",
             "label": "fn advisory_counts",
-            "line_end": 394,
-            "line_start": 350,
+            "line_end": 422,
+            "line_start": 378,
             "name": "advisory_counts",
             "shape_hash": "0d559f7fdc6d8cab",
             "visibility": "private"
           },
           {
-            "body_hash": "38e53ee0341a5eca",
+            "body_hash": "164c5c56636fd351",
             "kind": "fn",
             "label": "fn alarm_strip",
-            "line_end": 595,
-            "line_start": 550,
+            "line_end": 628,
+            "line_start": 578,
             "name": "alarm_strip",
-            "shape_hash": "6f6c1489362124df",
+            "shape_hash": "7cfb077a4ec6de26",
             "string_literals": [
               {
-                "line": 561,
-                "value": "{} edge/proof FAILING — repair at the source: `loom next --mode fix`"
+                "line": 589,
+                "value": "{} failing edge(s) — fix the code or re-verdict: `loom next --mode fix`"
               },
               {
-                "line": 568,
+                "line": 595,
+                "value": "{unmeasured_intents} coded intent(s) not covered by any inspected GOVERNS — rules exist but never measured against this code (directly or via a --covers-descendants ancestor): `loom next --mode quality`"
+              },
+              {
+                "line": 601,
                 "value": "{open} open audit finding(s) — adjudicate or fix: `loom smells --summary`"
               },
               {
-                "line": 573,
+                "line": 606,
                 "value": "{} file(s) unmapped/drifted/missing (map ≠ territory) — `loom sync`, then `loom coverage`"
               },
               {
-                "line": 579,
+                "line": 612,
                 "value": "{} untriaged inbox item(s) — `loom inbox`"
               },
               {
-                "line": 583,
+                "line": 616,
                 "value": "stale"
               },
               {
-                "line": 585,
+                "line": 618,
                 "value": "committed loom.graph.json is STALE — `loom export` before committing code (`loom export --check` for CI)"
               },
               {
-                "line": 591,
+                "line": 624,
                 "value": "{unmeasured_intents} coded intent(s) with zero direct GOVERNS — rules exist but never measured against this code: `loom next --mode quality`"
               }
             ],
@@ -167315,13 +168138,13 @@
             "body_hash": "037ad32e23ed938a",
             "kind": "fn",
             "label": "fn audit_pulse",
-            "line_end": 348,
-            "line_start": 320,
+            "line_end": 376,
+            "line_start": 348,
             "name": "audit_pulse",
             "shape_hash": "c84b91c099c3279d",
             "string_literals": [
               {
-                "line": 345,
+                "line": 373,
                 "value": "loom smells --summary"
               }
             ],
@@ -167331,85 +168154,85 @@
             "body_hash": "875310f861a98c21",
             "kind": "fn",
             "label": "fn completion_json",
-            "line_end": 541,
-            "line_start": 498,
+            "line_end": 569,
+            "line_start": 526,
             "name": "completion_json",
             "shape_hash": "08cfe4fe32e08b41",
             "string_literals": [
               {
-                "line": 509,
+                "line": 537,
                 "value": "required_autonomous_debt"
               },
               {
-                "line": 511,
+                "line": 539,
                 "value": "total"
               },
               {
-                "line": 512,
+                "line": 540,
                 "value": "populate"
               },
               {
-                "line": 513,
+                "line": 541,
                 "value": "build"
               },
               {
-                "line": 514,
+                "line": 542,
                 "value": "fix"
               },
               {
-                "line": 515,
+                "line": 543,
                 "value": "validate"
               },
               {
-                "line": 516,
+                "line": 544,
                 "value": "quality"
               },
               {
-                "line": 517,
+                "line": 545,
                 "value": "blocked_validation_audit"
               },
               {
-                "line": 523,
+                "line": 551,
                 "value": "total"
               },
               {
-                "line": 524,
+                "line": 552,
                 "value": "align_confirmations"
               },
               {
-                "line": 525,
+                "line": 553,
                 "value": "adopt_rulings"
               },
               {
-                "line": 526,
+                "line": 554,
                 "value": "blocked_validations"
               },
               {
-                "line": 527,
+                "line": 555,
                 "value": "affected_proof_edges"
               },
               {
-                "line": 528,
+                "line": 556,
                 "value": "by_gate_reason"
               },
               {
-                "line": 532,
+                "line": 560,
                 "value": "horizontal_grid"
               },
               {
-                "line": 534,
+                "line": 562,
                 "value": "unexplored_relationship_pairs"
               },
               {
-                "line": 535,
+                "line": 563,
                 "value": "required_for_complete"
               },
               {
-                "line": 536,
+                "line": 564,
                 "value": "horizontally_explored"
               },
               {
-                "line": 537,
+                "line": 565,
                 "value": "note_hygiene"
               }
             ],
@@ -167419,8 +168242,8 @@
             "body_hash": "71942cf3406dd2e0",
             "kind": "fn",
             "label": "fn completion_totals",
-            "line_end": 496,
-            "line_start": 476,
+            "line_end": 524,
+            "line_start": 504,
             "name": "completion_totals",
             "shape_hash": "63bc0c42c5499dd3",
             "visibility": "private"
@@ -167429,17 +168252,17 @@
             "body_hash": "8d92a853963d3d19",
             "kind": "fn",
             "label": "fn deferred_audit_pulse",
-            "line_end": 318,
-            "line_start": 309,
+            "line_end": 346,
+            "line_start": 337,
             "name": "deferred_audit_pulse",
             "shape_hash": "26372d6c9c2f19e6",
             "string_literals": [
               {
-                "line": 315,
+                "line": 343,
                 "value": "loom smells --summary"
               },
               {
-                "line": 316,
+                "line": 344,
                 "value": "Audit scan deferred on non-audit phases to keep status hot; run the recommended command for current findings."
               }
             ],
@@ -167485,13 +168308,13 @@
             "body_hash": "e4b7a50311b1c434",
             "kind": "fn",
             "label": "fn gate_reason_counts",
-            "line_end": 447,
-            "line_start": 431,
+            "line_end": 475,
+            "line_start": 459,
             "name": "gate_reason_counts",
             "shape_hash": "047d6d61eb868621",
             "string_literals": [
               {
-                "line": 438,
+                "line": 466,
                 "value": "user_intent_confirmation"
               }
             ],
@@ -167501,21 +168324,21 @@
             "body_hash": "f5ed923dd142b800",
             "kind": "fn",
             "label": "fn intake_counts",
-            "line_end": 303,
-            "line_start": 293,
+            "line_end": 331,
+            "line_start": 321,
             "name": "intake_counts",
             "shape_hash": "e56e42ad46b4dfec",
             "string_literals": [
               {
-                "line": 296,
+                "line": 324,
                 "value": "new"
               },
               {
-                "line": 297,
+                "line": 325,
                 "value": "triaged"
               },
               {
-                "line": 300,
+                "line": 328,
                 "value": "deferred"
               }
             ],
@@ -167525,29 +168348,29 @@
             "body_hash": "9a654a5a50613b21",
             "kind": "fn",
             "label": "fn other_lanes_json",
-            "line_end": 429,
-            "line_start": 421,
+            "line_end": 457,
+            "line_start": 449,
             "name": "other_lanes_json",
             "shape_hash": "8157c3ec3228b89f",
             "string_literals": [
               {
-                "line": 423,
+                "line": 451,
                 "value": "populate"
               },
               {
-                "line": 424,
+                "line": 452,
                 "value": "build"
               },
               {
-                "line": 425,
+                "line": 453,
                 "value": "fix"
               },
               {
-                "line": 426,
+                "line": 454,
                 "value": "validate"
               },
               {
-                "line": 427,
+                "line": 455,
                 "value": "quality"
               }
             ],
@@ -167557,37 +168380,37 @@
             "body_hash": "1da07ec0ef56a783",
             "kind": "fn",
             "label": "fn other_lanes_line",
-            "line_end": 419,
-            "line_start": 402,
+            "line_end": 447,
+            "line_start": 430,
             "name": "other_lanes_line",
             "shape_hash": "bee7bacaf6cecf0b",
             "string_literals": [
               {
-                "line": 404,
+                "line": 432,
                 "value": "populate"
               },
               {
-                "line": 405,
+                "line": 433,
                 "value": "build"
               },
               {
-                "line": 406,
+                "line": 434,
                 "value": "fix"
               },
               {
-                "line": 407,
+                "line": 435,
                 "value": "validate"
               },
               {
-                "line": 408,
+                "line": 436,
                 "value": "quality"
               },
               {
-                "line": 412,
+                "line": 440,
                 "value": "{name} {count}"
               },
               {
-                "line": 417,
+                "line": 445,
                 "value": " · "
               }
             ],
@@ -167597,197 +168420,197 @@
             "body_hash": "e929d81913ab61ca",
             "kind": "fn",
             "label": "fn render_plain_status",
-            "line_end": 953,
-            "line_start": 719,
+            "line_end": 986,
+            "line_start": 752,
             "name": "render_plain_status",
             "shape_hash": "f17a905adde78f8a",
             "string_literals": [
               {
-                "line": 743,
+                "line": 776,
                 "value": "⚠ ALARMS — handle these before the focus rung:"
               },
               {
-                "line": 745,
+                "line": 778,
                 "value": "   · {line}"
               },
               {
-                "line": 752,
+                "line": 785,
                 "value": "ladder: {}"
               },
               {
-                "line": 753,
+                "line": 786,
                 "value": "  → {}"
               },
               {
-                "line": 757,
+                "line": 790,
                 "value": "recommended"
               },
               {
-                "line": 758,
+                "line": 791,
                 "value": "→ Recommended"
               },
               {
-                "line": 760,
+                "line": 793,
                 "value": "→ Next"
               },
               {
-                "line": 762,
+                "line": 795,
                 "value": "  {anchor}: {}"
               },
               {
-                "line": 765,
+                "line": 798,
                 "value": "  → how: `loom guide` (this rung's skill — bare `guide` is focus-scoped, JIT)"
               },
               {
-                "line": 769,
+                "line": 802,
                 "value": "  source corpus: {} structured doc ID(s), {} modeled, {} resolved, {} unresolved"
               },
               {
-                "line": 777,
+                "line": 810,
                 "value": "  source corpus: {} doc file(s), no structured IDs detected — corpus completeness unknown; use `loom seed --inbox` for LLM triage"
               },
               {
-                "line": 782,
+                "line": 815,
                 "value": "  ⚑ {}"
               },
               {
-                "line": 786,
+                "line": 819,
                 "value": "Completion:"
               },
               {
-                "line": 787,
+                "line": 820,
                 "value": "  required autonomous debt: {}"
               },
               {
-                "line": 789,
+                "line": 822,
                 "value": "    populate {} · build {} · fix {} · validate {} · quality {} · blocker audit {}"
               },
               {
-                "line": 797,
+                "line": 830,
                 "value": "  required human-gated debt: {}"
               },
               {
-                "line": 799,
+                "line": 832,
                 "value": "    align confirmations {} · adopt rulings {} · blocked validations {}"
               },
               {
-                "line": 803,
+                "line": 836,
                 "value": "  horizontal grid: {} unexplored pair(s) — not for the vertical spine, but REQUIRED for the HARDENED rung. `loom edge unexplored` lists them"
               },
               {
-                "line": 808,
+                "line": 841,
                 "value": "  inbox intake: {} untriaged · {} triaged · {} deferred (candidates, not graph truth)"
               },
               {
-                "line": 814,
+                "line": 847,
                 "value": "  ⬚ {open_todos} open todo(s) — follow-ups loom is holding so you can't forget them; \\\n             `loom note list --kind todo`, close with `loom note resolve <id> --reason …` (advisory)"
               },
               {
-                "line": 819,
+                "line": 852,
                 "value": "Validation Health:"
               },
               {
-                "line": 821,
+                "line": 854,
                 "value": "  runnable validations: {:.1}% passing"
               },
               {
-                "line": 826,
+                "line": 859,
                 "value": "  blocked validations: {} awaiting prerequisites, affecting {} proof edge(s)"
               },
               {
-                "line": 830,
+                "line": 863,
                 "value": "  blocked validations: 0"
               },
               {
-                "line": 833,
+                "line": 866,
                 "value": "  all validations: {:.1}% passing including blocked prerequisites"
               },
               {
-                "line": 837,
+                "line": 870,
                 "value": "Inventory:"
               },
               {
-                "line": 839,
+                "line": 872,
                 "value": "  nodes: {} intents · {} code files · {} validations"
               },
               {
-                "line": 843,
+                "line": 876,
                 "value": "  raw edge states: {} total · {} passing · {} independent · {} failing · {} stale · {} uninspected"
               },
               {
-                "line": 852,
+                "line": 885,
                 "value": "  proof coverage: {} intent(s) without validation"
               },
               {
-                "line": 856,
+                "line": 889,
                 "value": "  {}"
               },
               {
-                "line": 859,
+                "line": 892,
                 "value": "  🗺 {}"
               },
               {
-                "line": 862,
+                "line": 895,
                 "value": "  validations: runnable {:.0}% passing; {} blocked validation(s) await prerequisites, affecting {} proof edge(s)."
               },
               {
-                "line": 870,
+                "line": 903,
                 "value": "  ⓘ {} uninspected edge(s) sit outside the work queues: {} structural IMPLEMENTS (grounding assertions, not verdicts), {} on blocked validations (`loom validation list` shows the recorded reasons)."
               },
               {
-                "line": 877,
+                "line": 910,
                 "value": "  ⚑ {} human/prerequisite-gated item(s): {align_count} align drift suspect(s), {adopt_count} adopt ruling(s), {} blocked validation(s). Batch align with `loom next --mode align --take 50`; drain autonomous queues meanwhile."
               },
               {
-                "line": 883,
+                "line": 916,
                 "value": "  autonomous blocker audit: {} blocked validation(s) look locally fixable or stale; inspect `loom validation list --result blocked --limit 0`."
               },
               {
-                "line": 889,
+                "line": 922,
                 "value": "  advisories: {} waiting — code clones {} · co-change {} · shotgun {} · proof-locality {} (`loom smells --summary`)."
               },
               {
-                "line": 901,
+                "line": 934,
                 "value": "{} review (re-check low-confidence verdicts)"
               },
               {
-                "line": 907,
+                "line": 940,
                 "value": "{} prove (hypotheses awaiting proof)"
               },
               {
-                "line": 912,
+                "line": 945,
                 "value": "  optional autonomous: {} — an AGENT drains these (not human-gated), drainable now, not required for green: `loom next --mode review`/`--mode prove`."
               },
               {
-                "line": 913,
+                "line": 946,
                 "value": " · "
               },
               {
-                "line": 920,
+                "line": 953,
                 "value": "{} {}"
               },
               {
-                "line": 922,
+                "line": 955,
                 "value": " · "
               },
               {
-                "line": 926,
+                "line": 959,
                 "value": "; top: [{}] {}"
               },
               {
-                "line": 929,
+                "line": 962,
                 "value": "  audit: {} open finding(s) — {}{} (`{}`)."
               },
               {
-                "line": 937,
+                "line": 970,
                 "value": "  audit: deferred while phase={} keeps another lane active (`{}`)."
               },
               {
-                "line": 943,
+                "line": 976,
                 "value": "  populate: {} gap(s) waiting — interface backfill {} · interface gaps {} (`{}`)."
               },
               {
-                "line": 951,
+                "line": 984,
                 "value": "  other open lanes: {others}"
               }
             ],
@@ -167797,165 +168620,165 @@
             "body_hash": "77f02c1299668164",
             "kind": "fn",
             "label": "fn render_status",
-            "line_end": 716,
-            "line_start": 598,
+            "line_end": 749,
+            "line_start": 631,
             "name": "render_status",
             "shape_hash": "5cd856c676052ad0",
             "string_literals": [
               {
-                "line": 625,
+                "line": 658,
                 "value": "graph_state"
               },
               {
-                "line": 626,
+                "line": 659,
                 "value": "other_lanes"
               },
               {
-                "line": 630,
+                "line": 663,
                 "value": "optional_autonomous"
               },
               {
-                "line": 632,
+                "line": 665,
                 "value": "review"
               },
               {
-                "line": 633,
+                "line": 666,
                 "value": "prove"
               },
               {
-                "line": 634,
+                "line": 667,
                 "value": "gate"
               },
               {
-                "line": 634,
+                "line": 667,
                 "value": "autonomous"
               },
               {
-                "line": 635,
+                "line": 668,
                 "value": "required_for_green"
               },
               {
-                "line": 636,
+                "line": 669,
                 "value": "note"
-              },
-              {
-                "line": 636,
-                "value": "Drainable now by an agent (reviewer re-checks low-confidence verdicts; prove tests hypotheses) — not human-gated, not required for green."
-              },
-              {
-                "line": 640,
-                "value": "completion"
-              },
-              {
-                "line": 644,
-                "value": "validation_health"
-              },
-              {
-                "line": 646,
-                "value": "runnable_pass_rate"
-              },
-              {
-                "line": 647,
-                "value": "all_pass_rate"
-              },
-              {
-                "line": 648,
-                "value": "blocked_validations"
-              },
-              {
-                "line": 649,
-                "value": "affected_proof_edges"
-              },
-              {
-                "line": 650,
-                "value": "blocked_by_gate_reason"
-              },
-              {
-                "line": 653,
-                "value": "populate"
-              },
-              {
-                "line": 654,
-                "value": "intake"
-              },
-              {
-                "line": 655,
-                "value": "open_todos"
-              },
-              {
-                "line": 657,
-                "value": "uninspected_outside_queues"
-              },
-              {
-                "line": 660,
-                "value": "advisories"
-              },
-              {
-                "line": 661,
-                "value": "audit"
-              },
-              {
-                "line": 663,
-                "value": "map_vs_territory"
-              },
-              {
-                "line": 665,
-                "value": "committed_export"
               },
               {
                 "line": 669,
-                "value": "maturity"
+                "value": "Drainable now by an agent (reviewer re-checks low-confidence verdicts; prove tests hypotheses) — not human-gated, not required for green."
               },
               {
-                "line": 671,
-                "value": "source_corpus"
+                "line": 673,
+                "value": "completion"
               },
               {
-                "line": 675,
-                "value": "alarms"
-              },
-              {
-                "line": 678,
-                "value": "human_gated"
+                "line": 677,
+                "value": "validation_health"
               },
               {
                 "line": 679,
-                "value": "total"
+                "value": "runnable_pass_rate"
               },
               {
                 "line": 680,
-                "value": "align_drift_suspects"
+                "value": "all_pass_rate"
               },
               {
                 "line": 681,
-                "value": "adopt_rulings"
-              },
-              {
-                "line": 682,
                 "value": "blocked_validations"
               },
               {
-                "line": 683,
-                "value": "blocked_validation_audits"
-              },
-              {
-                "line": 684,
+                "line": 682,
                 "value": "affected_proof_edges"
               },
               {
-                "line": 685,
-                "value": "by_gate_reason"
+                "line": 683,
+                "value": "blocked_by_gate_reason"
               },
               {
                 "line": 686,
-                "value": "note"
+                "value": "populate"
               },
               {
                 "line": 687,
-                "value": "These need the USER or external prerequisites. Drain autonomous queues now; batch true user decisions into ONE agenda (`loom next --mode align --take 50` for align)."
+                "value": "intake"
               },
               {
                 "line": 688,
+                "value": "open_todos"
+              },
+              {
+                "line": 690,
+                "value": "uninspected_outside_queues"
+              },
+              {
+                "line": 693,
+                "value": "advisories"
+              },
+              {
+                "line": 694,
+                "value": "audit"
+              },
+              {
+                "line": 696,
+                "value": "map_vs_territory"
+              },
+              {
+                "line": 698,
+                "value": "committed_export"
+              },
+              {
+                "line": 702,
+                "value": "maturity"
+              },
+              {
+                "line": 704,
+                "value": "source_corpus"
+              },
+              {
+                "line": 708,
+                "value": "alarms"
+              },
+              {
+                "line": 711,
+                "value": "human_gated"
+              },
+              {
+                "line": 712,
+                "value": "total"
+              },
+              {
+                "line": 713,
+                "value": "align_drift_suspects"
+              },
+              {
+                "line": 714,
+                "value": "adopt_rulings"
+              },
+              {
+                "line": 715,
+                "value": "blocked_validations"
+              },
+              {
+                "line": 716,
+                "value": "blocked_validation_audits"
+              },
+              {
+                "line": 717,
+                "value": "affected_proof_edges"
+              },
+              {
+                "line": 718,
+                "value": "by_gate_reason"
+              },
+              {
+                "line": 719,
+                "value": "note"
+              },
+              {
+                "line": 720,
+                "value": "These need the USER or external prerequisites. Drain autonomous queues now; batch true user decisions into ONE agenda (`loom next --mode align --take 50` for align)."
+              },
+              {
+                "line": 721,
                 "value": ""
               }
             ],
@@ -167965,17 +168788,17 @@
             "body_hash": "803647cf297f2fc0",
             "kind": "fn",
             "label": "fn should_compute_audit_pulse",
-            "line_end": 307,
-            "line_start": 305,
+            "line_end": 335,
+            "line_start": 333,
             "name": "should_compute_audit_pulse",
             "shape_hash": "eb0ca3aee0bc682f",
             "string_literals": [
               {
-                "line": 306,
+                "line": 334,
                 "value": "audit"
               },
               {
-                "line": 306,
+                "line": 334,
                 "value": "complete"
               }
             ],
@@ -167995,8 +168818,8 @@
             "body_hash": "40fb0eb13b34a012",
             "kind": "impl",
             "label": "impl OptionalLanes",
-            "line_end": 466,
-            "line_start": 462,
+            "line_end": 494,
+            "line_start": 490,
             "name": "OptionalLanes",
             "shape_hash": "000ece2d62469bf9",
             "visibility": "private"
@@ -168022,13 +168845,13 @@
             "visibility": "public"
           },
           {
-            "body_hash": "71ebd82247b249f1",
+            "body_hash": "3cb3ef97ed33b39a",
             "kind": "fn",
             "label": "pub fn run_with_db",
-            "line_end": 291,
+            "line_end": 319,
             "line_start": 169,
             "name": "run_with_db",
-            "shape_hash": "f86f3794989c5a1b",
+            "shape_hash": "9f37e6faf8b3e5db",
             "string_literals": [
               {
                 "line": 191,
@@ -168059,7 +168882,23 @@
                 "value": "stale"
               },
               {
-                "line": 263,
+                "line": 266,
+                "value": "passing"
+              },
+              {
+                "line": 266,
+                "value": "failing"
+              },
+              {
+                "line": 266,
+                "value": "independent"
+              },
+              {
+                "line": 266,
+                "value": "partial"
+              },
+              {
+                "line": 280,
                 "value": "deprecated"
               }
             ],
@@ -168089,8 +168928,8 @@
             "body_hash": "2841e3a23392e7fe",
             "kind": "struct",
             "label": "struct CompletionTotals",
-            "line_end": 474,
-            "line_start": 469,
+            "line_end": 502,
+            "line_start": 497,
             "name": "CompletionTotals",
             "shape_hash": "df580c91f1692e4b",
             "visibility": "private"
@@ -168139,8 +168978,8 @@
             "body_hash": "d30c1ee7ed9f3a11",
             "kind": "struct",
             "label": "struct OptionalLanes",
-            "line_end": 460,
-            "line_start": 457,
+            "line_end": 488,
+            "line_start": 485,
             "name": "OptionalLanes",
             "shape_hash": "0185a622989dc407",
             "visibility": "private"
@@ -173048,14 +173887,14 @@
         ]
       },
       {
-        "content_hash": "826352f09be03cb0",
+        "content_hash": "2fe08411a3d0554c",
         "extractor_grade": "high",
         "id": "d1e1c4bd-8017-42e1-9da5-a467edccca38",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T19:14:02.401976454+00:00",
+        "last_modified": "2026-06-23T17:10:00.350305925+00:00",
         "path": "src/db/queries/stats.rs",
         "symbol_facts": [
           {
@@ -173631,7 +174470,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "b7f2eeb54501868e",
+            "body_hash": "3a7ef09cc76b6af0",
             "kind": "fn",
             "label": "pub fn graph_state_from_snapshot_parts",
             "line_end": 695,
@@ -173889,7 +174728,7 @@
               },
               {
                 "line": 545,
-                "value": "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a verdict at component altitude covers descendants; independent = measured, doesn't apply)."
+                "value": "{unmeasured_queue} rule×intent pair(s) never measured — `loom next --mode quality`. One command resolves each: `loom rule verdict` creates the edge with the verdict (a component verdict covers descendants ONLY with --covers-descendants; independent = measured, doesn't apply)."
               },
               {
                 "line": 548,
@@ -205455,8 +206294,8 @@
         "discrimination_status": "discriminating",
         "id": "02259817-e64a-41f7-909e-7e806f040d3d",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "query-layer regression suite",
         "validation_type": "test"
       },
@@ -205510,8 +206349,8 @@
         "discrimination_status": "discriminating",
         "id": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix compact command parity",
         "validation_type": "test"
       },
@@ -205532,8 +206371,8 @@
         "discrimination_status": "discriminating",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next all command parity",
         "validation_type": "test"
       },
@@ -205565,8 +206404,8 @@
         "discrimination_status": "discriminating",
         "id": "0bca574a-059b-4c23-ae03-274a5cc7ebe3",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next prove command parity",
         "validation_type": "test"
       },
@@ -205587,8 +206426,8 @@
         "discrimination_status": "discriminating",
         "id": "0d3fb69b-1221-43c0-9ed4-ff1e92e1d2c2",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "backend read repository boundary parity",
         "validation_type": "test"
       },
@@ -205620,8 +206459,8 @@
         "discrimination_status": "discriminating",
         "id": "1662f9ca-c05d-4e00-8846-06d9063c0fad",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery take command parity",
         "validation_type": "test"
       },
@@ -205631,8 +206470,8 @@
         "discrimination_status": "discriminating",
         "id": "1a2a4da6-5572-4721-971c-e0016513666b",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite door command parity",
         "validation_type": "test"
       },
@@ -205730,8 +206569,8 @@
         "discrimination_status": "discriminating",
         "id": "316bbfe2-48d4-48f3-be07-722625cdfd84",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix take command parity",
         "validation_type": "test"
       },
@@ -205741,8 +206580,8 @@
         "discrimination_status": "discriminating",
         "id": "336a9745-854c-44ab-a81c-3f1edcb01b02",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite smells command parity",
         "validation_type": "test"
       },
@@ -205763,8 +206602,8 @@
         "discrimination_status": "discriminating",
         "id": "343a5cc7-9110-4641-9546-61c01eb0c2f4",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite find door search parity",
         "validation_type": "test"
       },
@@ -205785,8 +206624,8 @@
         "discrimination_status": "discriminating",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },
@@ -205851,8 +206690,8 @@
         "discrimination_status": "discriminating",
         "id": "42171f15-04d2-4e74-99ea-327ca2bc6f58",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite doctor command parity",
         "validation_type": "test"
       },
@@ -205939,8 +206778,8 @@
         "discrimination_status": "discriminating",
         "id": "5f1a017b-d22e-4255-826f-beb7d5610a1e",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite snapshot parity",
         "validation_type": "test"
       },
@@ -205961,8 +206800,8 @@
         "discrimination_status": "discriminating",
         "id": "6428558b-e405-48c3-abd8-9e255da16b48",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite status command parity",
         "validation_type": "test"
       },
@@ -206071,8 +206910,8 @@
         "discrimination_status": "discriminating",
         "id": "747f2173-a6f2-4f37-8629-6bcf8999dba4",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality command parity",
         "validation_type": "test"
       },
@@ -206082,8 +206921,8 @@
         "discrimination_status": "discriminating",
         "id": "762a20e2-142f-4d0e-9609-7675462908fb",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "hypothesis outcome: sqlite-backed graph persistence",
         "validation_type": "manual_check"
       },
@@ -206137,8 +206976,8 @@
         "discrimination_status": "discriminating",
         "id": "7cd8e6be-91cc-486b-bea4-acf7ddbede79",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "maturity ladder roll-up",
         "validation_type": "test"
       },
@@ -206159,8 +206998,8 @@
         "discrimination_status": "discriminating",
         "id": "85244e24-e189-4cb8-a7e9-8745da673bb9",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next validate command parity",
         "validation_type": "test"
       },
@@ -206170,8 +207009,8 @@
         "discrimination_status": "discriminating",
         "id": "88fe328d-c9e1-4fa7-a931-3cde45e70bdf",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery command parity",
         "validation_type": "test"
       },
@@ -206258,8 +207097,8 @@
         "discrimination_status": "discriminating",
         "id": "9b849e33-7950-4a43-92db-7129777e1cd9",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "migrate reports SQLite schema contract",
         "validation_type": "test"
       },
@@ -206302,8 +207141,8 @@
         "discrimination_status": "discriminating",
         "id": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next compact command parity",
         "validation_type": "test"
       },
@@ -206346,8 +207185,8 @@
         "discrimination_status": "discriminating",
         "id": "b1cae681-0183-4fac-bbc6-661594dc8f61",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "local SQLite dogfood gate before global install",
         "validation_type": "test"
       },
@@ -206357,8 +207196,8 @@
         "discrimination_status": "discriminating",
         "id": "b201c4fd-988a-4a71-96ed-dd4de6e2721e",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "bulk drain reads are fast and complete",
         "validation_type": "assertion"
       },
@@ -206390,8 +207229,8 @@
         "discrimination_status": "discriminating",
         "id": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality take command parity",
         "validation_type": "test"
       },
@@ -206412,8 +207251,8 @@
         "discrimination_status": "discriminating",
         "id": "b95cd4eb-b2b7-496f-9e82-0f18866a3201",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next review command parity",
         "validation_type": "test"
       },
@@ -206489,8 +207328,8 @@
         "discrimination_status": "discriminating",
         "id": "c3dd4763-faaa-4fe7-bb3c-7ed005332ff9",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix command parity",
         "validation_type": "test"
       },
@@ -206555,8 +207394,8 @@
         "discrimination_status": "discriminating",
         "id": "cf2f39e2-3ed0-4853-9cdb-ba35b33678aa",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next build command parity",
         "validation_type": "test"
       },
@@ -206588,8 +207427,8 @@
         "discrimination_status": "discriminating",
         "id": "d802bf0c-238c-412a-a148-1f65716f3b83",
         "last_executed_run": "2026-06-23T11:58:32.795386+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T11:58:32.795386+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "migrate CLI schema assertion",
         "validation_type": "assertion"
       },
@@ -206687,8 +207526,8 @@
         "discrimination_status": "discriminating",
         "id": "ebe73777-2de9-4cf2-900b-af4ea6324128",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite report command parity",
         "validation_type": "test"
       },
@@ -206698,8 +207537,8 @@
         "discrimination_status": "discriminating",
         "id": "eefa76b1-a35f-45fe-b459-5d5ee20a5e4c",
         "last_executed_run": "2026-06-23T07:19:07.668421+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-23T07:19:07.668421+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next align command parity",
         "validation_type": "test"
       },

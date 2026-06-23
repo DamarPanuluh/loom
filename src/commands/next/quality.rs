@@ -84,7 +84,7 @@ pub(super) fn run_take_quality(
         (std::cmp::Reverse(a.2.len()), &a.1).cmp(&(std::cmp::Reverse(b.2.len()), &b.1))
     });
 
-    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants: if every rule reads the same for the whole subtree, verdict the parent instead and drop the children's lines.";
+    let guidance = "Per group: read the intent's grounded code ONCE (`loom intent show <id>` lists files + locators), hold each rule against it, edit its template line — keep `passing` with real evidence, `failing` with the violation, `independent` when the rule has no surface here (as valuable as passing — never fake it) — then apply the whole group in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up; a file path works for very large batches). Template lines omit `criterion` when one is recorded: `loom batch` reuses it; write a criterion only to revise it. A verdict at component altitude covers descendants ONLY with --covers-descendants: if every rule reads the same for the whole subtree, verdict the parent with --covers-descendants instead; without it the verdict covers only the parent.";
 
     if printer.json {
         printer.print_json(&serde_json::json!({
@@ -203,8 +203,8 @@ pub(super) fn run_quality(
              \n  loom rule verdict {rid} {iid} --status failing --criterion \"<criterion>\" --evidence \"<the violation>\"\
              \n  loom rule verdict {rid} {iid} --status independent --criterion \"<criterion>\" --evidence \"<why the rule has no surface here>\"\
              \nPrefer the highest HONEST altitude: a verdict on a component covers its descendants \
-             (check `loom intent show {iid}` — if this rule reads the same for the whole subtree, \
-             verdict the parent instead).",
+             ONLY with --covers-descendants (check `loom intent show {iid}` — if this rule reads \
+             the same for the whole subtree, verdict the parent with --covers-descendants instead).",
             name = g.intent_name,
             rule = g.rule_name,
             rid = g.rule_id,
