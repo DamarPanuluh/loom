@@ -421,10 +421,43 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
         )
     }) || root.join("Dockerfile").exists()
         || root.join("docker-compose.yml").exists()
+        // v12: detect service frameworks and contract files directly —
+        // a repo with Axum/Actix/Rocket/Warp routes or OpenAPI/asyncapi
+        // specs is a service even if the stack detection missed it.
+        || files.iter().any(|f| {
+            let p = f.to_ascii_lowercase();
+            p.ends_with("/cargo.toml") && {
+                // Check Cargo.toml for service framework dependencies
+                root.join(f).exists() && {
+                    let content = std::fs::read_to_string(root.join(f)).unwrap_or_default();
+                    content.contains("axum") || content.contains("actix-web")
+                        || content.contains("rocket") || content.contains("warp")
+                        || content.contains("tonic") || content.contains("tower-http")
+                }
+            }
+        })
+        || files.iter().any(|f| {
+            let p = f.to_ascii_lowercase();
+            p.ends_with("openapi.yaml") || p.ends_with("openapi.yml")
+                || p.ends_with("openapi.json") || p.ends_with("asyncapi.yaml")
+                || p.ends_with("asyncapi.yml") || p.ends_with(".proto")
+        })
+        || files.iter().any(|f| {
+            // Queue handler patterns: files mentioning message queue consumers
+            let p = f.to_ascii_lowercase();
+            (p.ends_with(".rs") || p.ends_with(".go") || p.ends_with(".py") || p.ends_with(".ts"))
+                && root.join(f).exists()
+                && {
+                    let content = std::fs::read_to_string(root.join(f)).unwrap_or_default();
+                    content.contains("async fn handle") && content.contains("Message")
+                        || content.contains("Subscribe") || content.contains("Consumer")
+                        || content.contains("worker") && content.contains("queue")
+                }
+        })
     {
         packs.push(PackHint {
             pack: "service".into(),
-            reason: "backend-capable stack detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)".into(),
+            reason: "backend-capable stack or service framework detected — applies where this code exposes or consumes service interfaces (contracts, idempotency, timeouts, sagas)".into(),
         });
         packs.push(PackHint {
             pack: "concurrency".into(),

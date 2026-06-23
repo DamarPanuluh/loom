@@ -85,9 +85,10 @@ INSERT INTO hierarchy(parent_id, child_id) VALUES('p','c');
         1,
         "hierarchy edge must survive the intent-table rebuild (no FK cascade)"
     );
-    // Version stamped only after the migration (v11 = v10's data-model
-    // expansion + Validation.last_executed_run, the proven-axis discriminator).
-    assert_eq!(store.graph_meta().unwrap().unwrap().version, "11");
+    // Version stamped only after the migration (v12 = quality evidence
+    // semantics: QualityRule.evidence_examples/signal_expectations,
+    // GOVERNS.covers_descendants + partial status).
+    assert_eq!(store.graph_meta().unwrap().unwrap().version, "12");
     // The widened CHECK now admits to_be_removed.
     let check: String = store
         .conn

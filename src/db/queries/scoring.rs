@@ -390,14 +390,44 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         let score = (1.0 - edge.confidence) * (deg + 1.0);
         scored.push((ReviewCandidate::RelatesTo(edge.clone()), score));
     }
+    // Build a rule severity lookup for GOVERNS review triggers.
+    let rule_severity: std::collections::HashMap<&str, &str> = snapshot
+        .rules
+        .iter()
+        .map(|r| (r.id.as_str(), r.severity.as_str()))
+        .collect();
+    // Build an intent altitude lookup for the high-altitude review trigger.
+    let intent_altitude: std::collections::HashMap<&str, &str> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i.abstraction_level.as_str()))
+        .collect();
     for edge in &snapshot.governs {
-        if !needs_review(&edge.inspection_status, edge.confidence, &edge.evidence)
-            || !active.contains(edge.intent_id.as_str())
-        {
+        if !active.contains(edge.intent_id.as_str()) {
+            continue;
+        }
+        // The base needs_review check (low confidence or empty evidence).
+        let base_review = needs_review(&edge.inspection_status, edge.confidence, &edge.evidence);
+        // Additional GOVERNS-specific triggers that route to review EVEN at
+        // high confidence — the verdict looks green but carries a risk pattern:
+        let severity = rule_severity.get(edge.rule_id.as_str()).copied().unwrap_or("");
+        let altitude = intent_altitude.get(edge.intent_id.as_str()).copied().unwrap_or("");
+        let is_high_severity = severity == "error";
+        let is_high_altitude = altitude == "system" || altitude == "cross_cutting";
+        // A `partial` verdict is inherently not-fully-discharged — always review.
+        let is_partial = edge.inspection_status == "partial";
+        let extra_review = (edge.inspection_status == "passing" || edge.inspection_status == "partial")
+            && (is_high_severity || is_high_altitude || is_partial)
+            && edge.confidence > 0.0;
+        if !base_review && !extra_review {
             continue;
         }
         let deg = *snapshot.degrees.get(&edge.intent_id).unwrap_or(&0) as f64;
-        let score = (1.0 - edge.confidence) * (deg + 1.0);
+        // Boost score for the extra triggers so they surface first.
+        let boost = if is_high_severity { 2.0 } else { 0.0 }
+            + if is_high_altitude { 1.0 } else { 0.0 }
+            + if is_partial { 1.0 } else { 0.0 };
+        let score = (1.0 - edge.confidence) * (deg + 1.0) + boost;
         scored.push((ReviewCandidate::Governs(edge.clone()), score));
     }
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -518,6 +548,7 @@ pub fn quality_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Govern
                 last_inspected: String::new(),
                 inspected_by: String::new(),
                 notes: format!("detection: {}", rule.detection_logic),
+                covers_descendants: String::new(),
             },
             deg as f64 + 1.0,
         ));
@@ -1358,15 +1389,13 @@ mod tests {
     }
 
     fn rule(id: &str) -> QualityRule {
-        QualityRule {
-            id: id.to_string(),
-            name: id.to_string(),
-            description: String::new(),
-            detection_logic: String::new(),
-            kind: String::new(),
-            severity: "medium".to_string(),
-            inspection_effort: "mid".to_string(),
-        }
+        QualityRule { evidence_examples: String::new(), signal_expectations: String::new(), id: id.to_string(),
+        name: id.to_string(),
+        description: String::new(),
+        detection_logic: String::new(),
+        kind: String::new(),
+        severity: "medium".to_string(),
+        inspection_effort: "mid".to_string(), }
     }
 
     fn relates(id: &str, status: &str, confidence: f64) -> RelatesTo {
@@ -1400,20 +1429,18 @@ mod tests {
     }
 
     fn governs(id: &str, status: &str, confidence: f64) -> Governs {
-        Governs {
-            id: id.to_string(),
-            rule_id: "rule".to_string(),
-            intent_id: "a".to_string(),
-            rule_name: "rule".to_string(),
-            intent_name: "a".to_string(),
-            inspection_status: status.to_string(),
-            criterion: String::new(),
-            confidence,
-            evidence: String::new(),
-            last_inspected: String::new(),
-            inspected_by: "llm:quality".to_string(),
-            notes: String::new(),
-        }
+        Governs { covers_descendants: String::new(), id: id.to_string(),
+        rule_id: "rule".to_string(),
+        intent_id: "a".to_string(),
+        rule_name: "rule".to_string(),
+        intent_name: "a".to_string(),
+        inspection_status: status.to_string(),
+        criterion: String::new(),
+        confidence,
+        evidence: String::new(),
+        last_inspected: String::new(),
+        inspected_by: "llm:quality".to_string(),
+        notes: String::new(), }
     }
 
     impl Governs {

@@ -640,6 +640,7 @@ fn complete_reaching_snapshot() -> QuerySnapshot {
             last_inspected: String::new(),
             inspected_by: String::new(),
             notes: String::new(),
+            covers_descendants: String::new(),
         }],
         vec![QualityRule {
             id: "r1".to_string(),
@@ -649,6 +650,8 @@ fn complete_reaching_snapshot() -> QuerySnapshot {
             severity: "low".to_string(),
             kind: String::new(),
             inspection_effort: String::new(),
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
         }],
         vec![validates("v1", "feat", "passing")],
         vec![cmd_val("v1", "passed", "2026-06-19T00:00:00Z")],
@@ -684,6 +687,7 @@ fn stale_clearing_snapshot() -> QuerySnapshot {
             last_inspected: String::new(),
             inspected_by: String::new(),
             notes: String::new(),
+            covers_descendants: String::new(),
         }],
         vec![QualityRule {
             id: "r1".to_string(),
@@ -693,6 +697,8 @@ fn stale_clearing_snapshot() -> QuerySnapshot {
             severity: "low".to_string(),
             kind: String::new(),
             inspection_effort: String::new(),
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
         }],
         vec![validates("v1", "feat", "passing")],
         vec![cmd_val("v1", "passed", "2026-06-19T00:00:00Z")],

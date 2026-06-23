@@ -531,6 +531,8 @@ mod transitive_layering_tests {
             kind: "architecture".into(),
             severity: "error".into(),
             inspection_effort: "mid".into(),
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
         };
         let governs = vec![crate::types::Governs {
             id: "gov:r1:a".into(),
@@ -545,6 +547,7 @@ mod transitive_layering_tests {
             last_inspected: "t".into(),
             inspected_by: "llm:quality".into(),
             notes: String::new(),
+            covers_descendants: String::new(),
         }];
         let order: Vec<String> = ["presentation", "application", "storage"]
             .iter()

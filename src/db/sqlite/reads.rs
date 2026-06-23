@@ -1121,7 +1121,8 @@ impl SqliteGraphStore {
     }
     pub fn list_rules(&self) -> Result<Vec<QualityRule>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, description, detection_logic, severity, inspection_effort, kind
+            "SELECT id, name, description, detection_logic, severity, inspection_effort, kind,
+                    evidence_examples, signal_expectations
              FROM quality_rule
              ORDER BY name",
         )?;
@@ -1134,6 +1135,8 @@ impl SqliteGraphStore {
                 severity: row.get(4)?,
                 inspection_effort: row.get(5)?,
                 kind: row.get(6)?,
+                evidence_examples: row.get(7)?,
+                signal_expectations: row.get(8)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
@@ -1172,7 +1175,8 @@ impl SqliteGraphStore {
     pub fn list_governs_for_intent(&self, intent_id: &str) -> Result<Vec<Governs>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.rule_id, e.intent_id, r.name, i.name, e.inspection_status, e.criterion,
-                    e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.notes
+                    e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.notes,
+                    e.covers_descendants
              FROM governs e
              JOIN quality_rule r ON r.id = e.rule_id
              JOIN intent i ON i.id = e.intent_id
@@ -1195,6 +1199,7 @@ impl SqliteGraphStore {
                 last_inspected: row.get(8)?,
                 inspected_by: row.get(9)?,
                 notes: row.get(10)?,
+                covers_descendants: row.get(11)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()

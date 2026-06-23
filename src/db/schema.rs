@@ -84,16 +84,16 @@
 /// `lifecycle` + removal; a new EXPOSES edge links a provider Intent to the
 /// InterfaceSurface it serves. All additive — older graphs migrate on open via
 /// the ensure_*_columns ALTERs and import normalization.
-/// v11 (proven-axis honesty): Validation gains `last_executed_run` — the
-/// machine-run discriminator. The executor (`loom validate` / `loom saga run`)
-/// stamps it ONLY when it actually ran the command; a hand-mark never does. The
-/// proven axis splits EXECUTED (last_executed_run non-empty + passed) from
-/// ASSERTED, closing the declared-not-executed laundering hole. Additive —
-/// older graphs gain the column on open via ensure_taxonomy_columns (the
-/// version bump forces the read-only path through the read-write open that runs
-/// the ALTER; without it a matching-version read-only open would skip the
-/// migration and SELECT would fail on the missing column).
-pub const SCHEMA_VERSION: &str = "11";
+/// v12 (quality evidence semantics): QualityRule gains `evidence_examples`
+/// (JSON: pass/independent/common_false_positive exemplars) and
+/// `signal_expectations` (JSON: keyword lists that should appear in evidence
+/// when the rule passes — the contradiction-check basis). GOVERNS gains
+/// `covers_descendants` (TEXT "true"/"" — a roll-up verdict that stands for
+/// its subtree) and its `inspection_status` CHECK widens to admit `partial`
+/// (measured but not fully discharged — bounded, not complete). All additive —
+/// older graphs gain columns on open via ensure_taxonomy_columns; the governs
+/// CHECK rebuild mirrors the v10 intent.lifecycle pattern.
+pub const SCHEMA_VERSION: &str = "12";
 
 pub const INBOX_KINDS: &[&str] = &[
     "observation",
@@ -376,6 +376,22 @@ pub mod prop {
     /// about the work; the harness maps it to models. NOT in the
     /// required-property table (additive; absent on rules from older packs).
     pub const INSPECTION_EFFORT: &str = "inspection_effort";
+    /// QualityRule: JSON object with exemplar evidence strings —
+    /// `pass`, `independent`, `common_false_positive`. Steers agents away from
+    /// laundering weak evidence into green verdicts. NOT in the required-property
+    /// table (additive; absent on rules from older packs reads as "").
+    pub const EVIDENCE_EXAMPLES: &str = "evidence_examples";
+    /// QualityRule: JSON array of keyword groups (each a list of strings). When
+    /// the rule passes, the evidence should reference at least one keyword from
+    /// each group — the contradiction-check basis. Empty array = no static
+    /// expectations (the rule is purely semantic). NOT in the required-property
+    /// table (additive; absent on rules from older packs reads as "[]").
+    pub const SIGNAL_EXPECTATIONS: &str = "signal_expectations";
+    /// GOVERNS: TEXT "true" when the verdict covers all descendant intents
+    /// (a roll-up at component/system altitude). The evidence must justify why
+    /// the same criterion applies to every child. NOT in the required-property
+    /// table (additive; absent on edges from older graphs reads as "").
+    pub const COVERS_DESCENDANTS: &str = "covers_descendants";
     /// RELATES_TO: relationship-kind multiset (JSON list) — how two intents are
     /// coupled. Owner: analyzer (judgment tier) + populate (mechanical tier).
     /// (The QualityRule norm category reuses [`KIND`], same column name.)

@@ -1618,7 +1618,10 @@ pub enum RuleCmd {
 
         /// The verdict: passing (complies) | failing (violates) | independent
         /// (measured — the rule does not apply to this intent; silences the
-        /// `unmeasured_intents` smell without faking compliance).
+        /// `unmeasured_intents` smell without faking compliance) | partial
+        /// (measured but not fully discharged — bounded, not complete; use when
+        /// some aspects comply but gaps remain, e.g. versioned routes exist but
+        /// no schema-diff enforcement).
         #[arg(long)]
         status: String,
 
@@ -1626,13 +1629,17 @@ pub enum RuleCmd {
         #[arg(long)]
         criterion: String,
 
-        /// What was actually found during inspection.
+        /// What was actually found during inspection. A passing verdict should
+        /// name specific code (symbols, locators) — free-text evidence is too
+        /// easy to overstate. Use --evidence-locator for file/line anchors.
         #[arg(long)]
         evidence: String,
 
         /// File/line anchor(s) the evidence points at, e.g.
         /// `src/db/queries/stats.rs:299-340` (repeatable). Folded into the
-        /// stored evidence as `@<locator>`.
+        /// stored evidence as `@<locator>`. A passing verdict requires at least
+        /// one locator; independent requires a searched-surface summary in the
+        /// evidence text instead.
         #[arg(long)]
         evidence_locator: Vec<String>,
 
@@ -1644,6 +1651,13 @@ pub enum RuleCmd {
         /// $LOOM_AGENT, else "llm".
         #[arg(long)]
         inspected_by: Option<String>,
+
+        /// Mark this verdict as covering all descendant intents (a roll-up at
+        /// component/system altitude). The evidence must justify why the same
+        /// criterion applies to every child. Suppresses direct GOVERNS gaps on
+        /// descendants for this rule.
+        #[arg(long)]
+        covers_descendants: bool,
     },
 }
 

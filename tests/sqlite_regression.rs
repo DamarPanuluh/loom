@@ -456,9 +456,9 @@ fn sqlite_migrate_reports_open_time_schema_contract() {
     assert_eq!(migrated["status"], "ok");
     assert_eq!(migrated["backend"], "sqlite");
     assert_eq!(migrated["migrated"], false);
-    assert_eq!(migrated["version"], "11");
+    assert_eq!(migrated["version"], "12");
     assert_eq!(migrated["current"], true);
-    assert_eq!(migrated["expected"], "11");
+    assert_eq!(migrated["expected"], "12");
     assert!(
         migrated["next_step"].is_null(),
         "current graph needs no rebuild: {migrated}"
@@ -4274,6 +4274,21 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
             [],
         )
         .expect("bump governs confidence and fill empty evidence");
+        // Bump rule severity to warning so the v12 high-severity review trigger
+        // (error-severity passing verdicts route to review even at high
+        // confidence) doesn't flood the queue — this test is about the
+        // low-confidence RELATES_TO path, not the high-severity GOVERNS path.
+        conn.execute(
+            "UPDATE quality_rule SET severity='warning' WHERE severity='error'",
+            [],
+        )
+        .expect("bump rule severity to warning");
+        // Also flatten altitudes so the high-altitude review trigger doesn't fire.
+        conn.execute(
+            "UPDATE intent SET abstraction_level='feature' WHERE abstraction_level IN ('system','cross_cutting')",
+            [],
+        )
+        .expect("flatten intent altitude");
     }
     let (a, b) = first_two_intent_ids(&graph.root);
     // A low-confidence passing verdict → exactly one review candidate.
@@ -5315,7 +5330,8 @@ fn sqlite_primary_mutation_surface_on_fresh_graph() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("sqlite-mutation-surface");
     run_json(&graph.root, &["init", ".", "--json"]);
-
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn checkout() {}\n").unwrap();
     let parent = run_json_as(
         &graph.root,
         &[
@@ -5483,6 +5499,8 @@ fn sqlite_primary_mutation_surface_on_fresh_graph() {
             "child checkout behavior has an attached passing validation",
             "--evidence",
             "checkout validation smoke is marked passed",
+            "--evidence-locator",
+            "src/lib.rs",
             "--json",
         ],
         "llm:quality",
@@ -8224,4 +8242,217 @@ fn sqlite_hardened_rung_unmet_when_normative_plane_empty() {
         found,
         "Hardened must name the empty normative plane: {reasons:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// v12 quality evidence semantics — gap-closing tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sqlite_partial_verdict_status_accepted() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("partial-verdict");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
+    let intent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "alpha", "--level", "feature",
+          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &["rule", "add", "--name", "r1", "--description", "rule r1",
+          "--severity", "warning", "--json"],
+        "llm:quality",
+    );
+    let result = run_json_as(
+        &graph.root,
+        &["rule", "verdict", "r1", &iid, "--status", "partial",
+          "--criterion", "partially complies — some gaps remain",
+          "--evidence", "versioned /v1 routes exist but no schema-diff enforcement",
+          "--evidence-locator", "src/lib.rs", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(result["status"], "ok", "partial verdict accepted: {result}");
+    assert_eq!(result["inspection_status"], "partial");
+}
+
+#[test]
+fn sqlite_passing_verdict_requires_evidence_locator() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("passing-locator-gate");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let intent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "alpha", "--level", "feature",
+          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &["rule", "add", "--name", "r1", "--description", "rule r1",
+          "--severity", "warning", "--json"],
+        "llm:quality",
+    );
+    // Passing without --evidence-locator should fail.
+    let result = run_json_failure_as(
+        &graph.root,
+        &["rule", "verdict", "r1", &iid, "--status", "passing",
+          "--criterion", "complies with the rule",
+          "--evidence", "all handlers check auth", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(result["status"], "error", "passing without locator rejected: {result}");
+    assert!(
+        result["error"].as_str().unwrap_or("").contains("evidence-locator"),
+        "error must name the missing locator: {result}"
+    );
+}
+
+#[test]
+fn sqlite_covers_descendants_requires_evidence() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("covers-desc-gate");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
+    let intent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "alpha", "--level", "system",
+          "--description", "system intent", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    run_json_as(
+        &graph.root,
+        &["rule", "add", "--name", "r1", "--description", "rule r1",
+          "--severity", "warning", "--json"],
+        "llm:quality",
+    );
+    // covers_descendants with empty evidence should fail.
+    let result = run_json_failure_as(
+        &graph.root,
+        &["rule", "verdict", "r1", &iid, "--status", "passing",
+          "--criterion", "applies to all children",
+          "--evidence", "", "--evidence-locator", "src/lib.rs",
+          "--covers-descendants", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(result["status"], "error", "covers_descendants without evidence rejected: {result}");
+    assert!(
+        result["error"].as_str().unwrap_or("").contains("covers-descendants")
+            || result["error"].as_str().unwrap_or("").contains("substantive"),
+        "error must name covers-descendants or evidence gate: {result}"
+    );
+}
+
+#[test]
+fn sqlite_rule_show_displays_evidence_examples() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("rule-show-evidence");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["rule", "seed", "service", "--json"],
+        "llm:quality",
+    );
+    // Show a rule that has evidence_examples.
+    let result = run_json(
+        &graph.root,
+        &["rule", "show", "service-observable-failures", "--json"],
+    );
+    assert_eq!(result["name"], "service-observable-failures");
+    assert!(
+        !result["evidence_examples"].as_str().unwrap_or("").is_empty(),
+        "evidence_examples should be populated: {result}"
+    );
+    assert!(
+        !result["signal_expectations"].as_str().unwrap_or("").is_empty(),
+        "signal_expectations should be populated: {result}"
+    );
+    // Verify the JSON structure is valid.
+    let examples: serde_json::Value = serde_json::from_str(
+        result["evidence_examples"].as_str().unwrap_or("")
+    ).expect("evidence_examples is valid JSON");
+    assert!(examples.get("pass").is_some(), "has pass example");
+    assert!(examples.get("independent").is_some(), "has independent example");
+    assert!(examples.get("common_false_positive").is_some(), "has common_false_positive example");
+    let signals: Vec<Vec<String>> = serde_json::from_str(
+        result["signal_expectations"].as_str().unwrap_or("[]")
+    ).expect("signal_expectations is valid JSON array");
+    assert!(!signals.is_empty(), "has at least one signal group");
+}
+
+#[test]
+fn sqlite_service_pack_detects_axum_framework() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("detect-axum");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    // Create a Cargo.toml with axum dependency.
+    std::fs::write(
+        graph.root.join("Cargo.toml"),
+        "[package]\nname = \"test-svc\"\nversion = \"0.1.0\"\n\n[dependencies]\naxum = \"0.7\"\n",
+    ).unwrap();
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/main.rs"), "fn main() {}\n").unwrap();
+    let result = run_json(&graph.root, &["detect", "--json"]);
+    let packs: Vec<&str> = result["recommended_packs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["pack"].as_str().unwrap_or(""))
+        .collect();
+    assert!(
+        packs.contains(&"service"),
+        "service pack should be recommended when axum is detected: {packs:?}"
+    );
+}
+
+#[test]
+fn sqlite_high_severity_passing_routes_to_review() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("review-severity");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    std::fs::write(graph.root.join("src/lib.rs"), "pub fn alpha() {}\n").unwrap();
+    let intent = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "alpha", "--level", "feature",
+          "--description", "do alpha", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    );
+    let iid = intent["id"].as_str().unwrap().to_string();
+    // Create a rule with severity = error.
+    let rule = run_json_as(
+        &graph.root,
+        &["rule", "add", "--name", "strict-rule", "--description", "strict",
+          "--severity", "error", "--kind", "security", "--json"],
+        "llm:quality",
+    );
+    let rule_id = rule["id"].as_str().unwrap().to_string();
+    // Passing verdict with high confidence + locator.
+    let result = run_json_as(
+        &graph.root,
+        &["rule", "verdict", "strict-rule", &iid, "--status", "passing",
+          "--criterion", "no injection sinks",
+          "--evidence", "all queries parameterized at src/lib.rs",
+          "--evidence-locator", "src/lib.rs", "--confidence", "0.95", "--json"],
+        "llm:quality",
+    );
+    assert_eq!(result["status"], "ok", "verdict recorded: {result}");
+    // The review queue should include this high-severity passing verdict
+    // even at high confidence.
+    let review = run_json(&graph.root, &["next", "--mode", "review", "--take", "50", "--json"]);
+    let items = review["items"].as_array().expect("items array");
+    let found = items.iter().any(|item| {
+        item.get("rule")
+            .and_then(|r| r.get("id"))
+            .and_then(|r| r.as_str())
+            == Some(&rule_id)
+    });
+    assert!(found, "high-severity passing verdict should be in review queue: {review}");
 }

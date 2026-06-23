@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS quality_rule(
   detection_logic TEXT NOT NULL,
   kind TEXT NOT NULL DEFAULT '',
   severity TEXT NOT NULL CHECK(severity IN ('warning','error')),
-  inspection_effort TEXT NOT NULL DEFAULT '' CHECK(inspection_effort IN ('low','mid','high',''))
+  inspection_effort TEXT NOT NULL DEFAULT '' CHECK(inspection_effort IN ('low','mid','high','')),
+  evidence_examples TEXT NOT NULL DEFAULT '' CHECK(evidence_examples = '' OR json_valid(evidence_examples)),
+  signal_expectations TEXT NOT NULL DEFAULT '[]' CHECK(signal_expectations = '' OR signal_expectations = '[]' OR json_valid(signal_expectations))
 );
 
 CREATE TABLE IF NOT EXISTS validation(
@@ -208,13 +210,14 @@ CREATE TABLE IF NOT EXISTS implements(
 CREATE TABLE IF NOT EXISTS governs(
   rule_id TEXT NOT NULL REFERENCES quality_rule(id) ON DELETE CASCADE,
   intent_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
-  inspection_status TEXT NOT NULL CHECK(inspection_status IN ('uninspected','passing','failing','independent','needs_reverification')),
+  inspection_status TEXT NOT NULL CHECK(inspection_status IN ('uninspected','passing','failing','independent','partial','needs_reverification')),
   criterion TEXT NOT NULL DEFAULT '',
   confidence REAL NOT NULL DEFAULT 0,
   evidence TEXT NOT NULL DEFAULT '',
   last_inspected TEXT NOT NULL DEFAULT '',
   inspected_by TEXT NOT NULL DEFAULT '',
   notes TEXT NOT NULL DEFAULT '',
+  covers_descendants TEXT NOT NULL DEFAULT '' CHECK(covers_descendants IN ('true','')),
   created_at TEXT NOT NULL DEFAULT '',
   PRIMARY KEY(rule_id, intent_id)
 );
@@ -315,6 +318,7 @@ impl SqliteGraphStore {
         self.ensure_taxonomy_columns()?;
         self.ensure_inbox_kind_vocabulary()?;
         self.ensure_intent_lifecycle_vocabulary()?;
+        self.ensure_governs_partial_status()?;
         // The migrations above bring an older graph fully to the current shape;
         // stamp the version so `doctor`/`export` agree with this binary. Opening
         // with a newer loom IS the migration — there is no separate migrate
@@ -350,6 +354,9 @@ impl SqliteGraphStore {
                 "discrimination_status",
                 "TEXT NOT NULL DEFAULT ''",
             ),
+            ("quality_rule", "evidence_examples", "TEXT NOT NULL DEFAULT ''"),
+            ("quality_rule", "signal_expectations", "TEXT NOT NULL DEFAULT '[]'"),
+            ("governs", "covers_descendants", "TEXT NOT NULL DEFAULT ''"),
             ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
             ("note", "resolution", "TEXT NOT NULL DEFAULT ''"),
         ] {
@@ -443,6 +450,63 @@ DROP TABLE intent;
 ALTER TABLE intent_v10 RENAME TO intent;
 CREATE INDEX IF NOT EXISTS idx_intent_lifecycle_status ON intent(lifecycle, status);
 CREATE INDEX IF NOT EXISTS idx_intent_name ON intent(name);
+COMMIT;
+PRAGMA foreign_keys=ON;
+"#,
+        )?;
+        Ok(())
+    }
+
+    /// v12 widened the governs.inspection_status CHECK to admit `partial`
+    /// (measured but not fully discharged). A CHECK constraint cannot be
+    /// ALTERed in place, and `CREATE TABLE IF NOT EXISTS` is a no-op on an
+    /// existing table — so a pre-v12 graph keeps the 5-value CHECK and rejects
+    /// `partial`. This rebuilds the governs table when the CHECK is stale, using
+    /// the same SQLite table-rebuild procedure as the intent lifecycle migration
+    /// (foreign_keys OFF → create-copy → DROP-RENAME → foreign_keys ON).
+    fn ensure_governs_partial_status(&self) -> Result<()> {
+        let create_sql: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'governs'",
+                [],
+                |row| row.get(0),
+            )
+            .optional()?;
+        match create_sql.as_deref() {
+            None => return Ok(()),
+            Some(sql) if sql.contains("'partial'") => return Ok(()),
+            Some(_) => {}
+        }
+        self.conn.execute_batch(
+            r#"
+PRAGMA foreign_keys=OFF;
+BEGIN;
+CREATE TABLE governs_v12(
+  rule_id TEXT NOT NULL REFERENCES quality_rule(id) ON DELETE CASCADE,
+  intent_id TEXT NOT NULL REFERENCES intent(id) ON DELETE CASCADE,
+  inspection_status TEXT NOT NULL CHECK(inspection_status IN ('uninspected','passing','failing','independent','partial','needs_reverification')),
+  criterion TEXT NOT NULL DEFAULT '',
+  confidence REAL NOT NULL DEFAULT 0,
+  evidence TEXT NOT NULL DEFAULT '',
+  last_inspected TEXT NOT NULL DEFAULT '',
+  inspected_by TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  covers_descendants TEXT NOT NULL DEFAULT '' CHECK(covers_descendants IN ('true','')),
+  created_at TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(rule_id, intent_id)
+);
+INSERT INTO governs_v12(
+  rule_id, intent_id, inspection_status, criterion, confidence, evidence,
+  last_inspected, inspected_by, notes, created_at
+)
+SELECT
+  rule_id, intent_id, inspection_status, criterion, confidence, evidence,
+  last_inspected, inspected_by, notes, created_at
+FROM governs;
+DROP TABLE governs;
+ALTER TABLE governs_v12 RENAME TO governs;
+CREATE INDEX IF NOT EXISTS idx_governs_status ON governs(inspection_status);
 COMMIT;
 PRAGMA foreign_keys=ON;
 "#,

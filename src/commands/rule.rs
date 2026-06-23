@@ -19,46 +19,49 @@ const ISO5055_SEC_NO_HARDCODED_SECRETS: &str = "iso5055-sec-no-hardcoded-secrets
 /// They are sticks, not detectors — verdicts still come from inspection.
 const ISO5055_PACK: &[PackRule] = &[
     // Reliability → resource_safety
-    ("iso5055-rel-no-unchecked-failure", "error",
+    PackRule::new("iso5055-rel-no-unchecked-failure", "error",
      "ISO 5055 Reliability (CWE-252/248/391): every fallible operation's failure path is handled or explicitly propagated — no silently ignored return value, no exception/panic escaping a boundary uncaught.",
      "Inspect the intent's error paths: ignored Results/return codes, unwrap/expect on external input, bare catch-alls, missing error branches at I/O, parse, lock, and network boundaries.",
      "resource_safety"),
-    ("iso5055-rel-resource-release", "error",
+    PackRule::new("iso5055-rel-resource-release", "error",
      "ISO 5055 Reliability (CWE-772/404): every acquired resource (file, lock, connection, handle) is released on ALL paths, including error paths.",
      "Look for acquisitions without RAII/defer/finally protection, locks held across I/O or awaits, and early returns that skip cleanup.",
      "resource_safety"),
-    ("iso5055-rel-boundary-validation", "error",
+    PackRule::new("iso5055-rel-boundary-validation", "error",
      "ISO 5055 Reliability (CWE-20): external input (CLI args, file content, env vars, network data) is validated before use; invalid input yields a typed error, never corruption or a crash.",
      "Trace each external input to its first use: is there a validation/parse step with an error path before the value reaches logic or storage?",
      "resource_safety"),
     // Security
-    ("iso5055-sec-no-injection", "error",
+    PackRule::with_evidence("iso5055-sec-no-injection", "error",
      "ISO 5055 Security (CWE-89/78/79): untrusted data is never concatenated into SQL/shell/HTML/query strings — parameterize, escape at the boundary, or reject.",
      "Trace untrusted inputs to every interpreter sink (exec/system calls, query strings, format/eval, HTML output) and check the escaping/parameterization at each.",
-     "security"),
-    (ISO5055_SEC_NO_HARDCODED_SECRETS, "error",
+     "security",
+     "{\"pass\":\"SQL queries use parameterized binds at src/db/queries.rs:45 — no string concatenation of user input\",\"independent\":\"no interpreter sinks — no SQL, shell, or HTML generation\",\"common_false_positive\":\"escaping exists in one path but not all — check every sink, not just the obvious one\"}",
+     "[[\"parameterized\",\"prepared\",\"bind\",\"escape\",\"sanitize\",\"format\",\"template\"]]"
+    ),
+    PackRule::new(ISO5055_SEC_NO_HARDCODED_SECRETS, "error",
      "ISO 5055 Security (CWE-798): no credentials, tokens, or keys in source or config committed to the repo; secrets come from the environment or a secret store.",
      "Scan the intent's files for key-like literals, connection strings with passwords, and tokens; check how the code obtains credentials.",
      "security"),
-    ("iso5055-sec-least-surface", "error",
+    PackRule::new("iso5055-sec-least-surface", "error",
      "ISO 5055 Security (CWE-284/732): expose the minimum — no debug/admin paths reachable in production flows, no overly-permissive file modes or defaults.",
      "Enumerate what the intent exposes (endpoints, files written, flags) and check each against who actually needs it.",
      "security"),
     // Performance efficiency
-    ("iso5055-perf-bounded-work", "warning",
+    PackRule::new("iso5055-perf-bounded-work", "warning",
      "ISO 5055 Performance Efficiency (CWE-834/1050): no unbounded loops/recursion over external-sized data; iteration and queries are bounded, paginated, or capped.",
      "Look for loops over unbounded collections nested in loops (N+1 patterns), recursion without a depth guard, and full scans where a limit exists.",
      "performance"),
-    ("iso5055-perf-no-redundant-work", "warning",
+    PackRule::new("iso5055-perf-no-redundant-work", "warning",
      "ISO 5055 Performance Efficiency (CWE-1042/1046): no repeated identical I/O, queries, or allocation in hot paths — cache or hoist invariant work out of loops.",
      "Find work inside loops that is invariant across iterations (reads, compiles, allocations) and repeated identical calls that could be batched.",
      "performance"),
     // Maintainability → architecture
-    ("iso5055-main-single-responsibility", "warning",
+    PackRule::new("iso5055-main-single-responsibility", "warning",
      "ISO 5055 Maintainability (CWE-1080/1120): each unit (file, function, intent) owns one coherent responsibility; oversized or multi-concern units are split.",
      "Check unit sizes and concern count; cross-check `loom smells` (tangled_file / scattered_intent) for the same intent.",
      "architecture"),
-    ("iso5055-main-no-dead-or-duplicate-code", "warning",
+    PackRule::new("iso5055-main-no-dead-or-duplicate-code", "warning",
      "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
      "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files.",
      "architecture"),
@@ -67,35 +70,35 @@ const ISO5055_PACK: &[PackRule] = &[
 /// Mobile vantage point: lifecycle, offline, permissions, the main thread,
 /// battery, platform divergence, externally-triggered entry points.
 const MOBILE_PACK: &[PackRule] = &[
-    ("mobile-lifecycle-safe-state", "error",
+    PackRule::new("mobile-lifecycle-safe-state", "error",
      "Mobile: user-visible state survives backgrounding and process death — nothing critical lives only in memory across a lifecycle boundary.",
      "Trace each screen's state to its save/restore path (saved-state handles, persisted stores). Look for in-flight work assumed to finish after the app is backgrounded without an OS-sanctioned mechanism.",
      "architecture"),
-    ("mobile-offline-behavior-defined", "error",
+    PackRule::new("mobile-offline-behavior-defined", "error",
      "Mobile: every network-dependent feature defines its offline behavior — cached, queued, or an explicit user-facing error. Never an indefinite spinner or a crash.",
      "For each network call reachable from UI: what renders when the request can't start or times out? Look for fetches with no offline/error branch.",
      "architecture"),
-    ("mobile-permission-in-context", "error",
+    PackRule::new("mobile-permission-in-context", "error",
      "Mobile: each platform permission is requested in the context of the feature that needs it, and denial leaves the app functional (degraded, not broken).",
      "List the manifest/Info.plist permissions; trace each to the feature using it, where it's requested, and the denial path.",
      "architecture"),
-    ("mobile-main-thread-clear", "error",
+    PackRule::new("mobile-main-thread-clear", "error",
      "Mobile: no blocking I/O, parsing, or heavy compute on the UI thread — frame budget is ~16ms.",
      "Look for synchronous file/DB/network access, large JSON decoding, or image work on the main thread/dispatcher.",
      "performance"),
-    ("mobile-battery-respect", "warning",
+    PackRule::new("mobile-battery-respect", "warning",
      "Mobile: no unbounded polling, wake locks, or sensor/location subscriptions without lifecycle-bound teardown.",
      "Find timers, location/sensor listeners, and sockets; check each is released when the screen/app stops.",
      "resource_safety"),
-    ("mobile-platform-divergence-explicit", "warning",
+    PackRule::new("mobile-platform-divergence-explicit", "warning",
      "Mobile: platform-specific behavior (iOS vs Android, OS-version gates) is isolated and named, not scattered through feature logic as inline conditionals.",
      "Grep platform checks (Platform.OS, Build.VERSION, #available); flag feature files mixing both platforms' branches inline.",
      "architecture"),
-    ("mobile-external-entry-validated", "error",
+    PackRule::new("mobile-external-entry-validated", "error",
      "Mobile (CWE-20/939): externally-triggered entry points — deep links, intents/universal links, push payloads — validate their input before navigation or action.",
      "Trace each deep-link/push handler: is the payload parsed and validated with a rejection path before it drives navigation, auth, or writes?",
      "security"),
-    ("mobile-touch-target-size", "warning",
+    PackRule::new("mobile-touch-target-size", "warning",
      "Mobile (HIG ~44pt / Material ~48dp): tap targets meet the platform minimum size and have adequate spacing, so controls are reliably hittable without mis-taps.",
      "Check interactive controls' rendered size + padding against the platform minimum; flag dense rows, small icon buttons, and edge-crowded or closely-stacked tap targets.",
      "architecture"),
@@ -104,39 +107,39 @@ const MOBILE_PACK: &[PackRule] = &[
 /// Web-UI vantage point: view states, accessibility, XSS, responsiveness,
 /// feedback, client-side trust, URL-recoverable state.
 const WEBUI_PACK: &[PackRule] = &[
-    ("webui-view-states-complete", "error",
+    PackRule::new("webui-view-states-complete", "error",
      "Web UI: every data-driven view defines loading, empty, and error states — not just the populated happy state.",
      "For each component that renders fetched data: what shows while pending, when the result is empty, and when the request fails? A missing branch is a violation.",
      "correctness"),
-    ("webui-accessible-interactive", "error",
+    PackRule::new("webui-accessible-interactive", "error",
      "Web UI (WCAG): interactive elements are keyboard-reachable and carry accessible names — real buttons/links, not bare clickable divs; focus is managed on dialogs/route changes.",
      "Look for onClick on non-interactive elements, icon buttons without labels, custom widgets without key handlers, and focus traps/restores on modals.",
      "architecture"),
-    ("webui-no-unescaped-render", "error",
+    PackRule::new("webui-no-unescaped-render", "error",
      "Web UI (CWE-79): user-controlled content never reaches innerHTML / dangerouslySetInnerHTML / raw template interpolation without sanitization.",
      "Trace user-originated strings to every raw-HTML sink; check the sanitizer (or its absence) at each.",
      "security"),
-    ("webui-no-client-side-trust", "error",
+    PackRule::new("webui-no-client-side-trust", "error",
      "Web UI (CWE-602): no secrets in the client bundle, and no authorization decision enforced only in the client — the server re-checks everything the UI hides.",
      "Scan client code/env for key-like literals; for each hidden/disabled privileged control, verify the corresponding server endpoint enforces the same rule.",
      "security"),
-    ("webui-feedback-on-action", "warning",
+    PackRule::new("webui-feedback-on-action", "warning",
      "Web UI: user actions give immediate feedback — pending/disabled/optimistic states; no silent in-flight gaps or double-submit windows.",
      "For each mutating action: what changes on screen between click and response? Look for submit buttons that stay active mid-flight.",
      "correctness"),
-    ("webui-responsive-declared", "warning",
+    PackRule::new("webui-responsive-declared", "warning",
      "Web UI: layouts define behavior at small and large viewports — breakpoints are deliberate, content never becomes unreachable.",
      "Check key views at narrow widths: fixed widths, overflow without scroll, controls pushed off-canvas with no alternative.",
      "architecture"),
-    ("webui-url-state-recoverable", "warning",
+    PackRule::new("webui-url-state-recoverable", "warning",
      "Web UI: state needed to recreate a view travels in the URL — refresh, back, and shared links land where the user expects.",
      "For each stateful view: refresh it. If the result differs from what was on screen (lost filters/selection/page), the state isn't URL-recoverable.",
      "correctness"),
-    ("webui-color-contrast", "warning",
+    PackRule::new("webui-color-contrast", "warning",
      "Web UI (WCAG 1.4.3 / 1.4.11): text and meaningful UI meet the contrast ratio against their background (≥4.5:1 body text, ≥3:1 large text and UI/graphical components), and color is never the sole carrier of meaning.",
      "Check the design tokens / computed styles for text-on-background and state indicators (error/success/disabled) against the WCAG ratio; flag low-contrast pairs and any status conveyed by color alone with no icon/label/text backup.",
      "architecture"),
-    ("webui-touch-target-size", "warning",
+    PackRule::new("webui-touch-target-size", "warning",
      "Web UI (WCAG 2.5.5/2.5.8): interactive targets are large enough and spaced to hit reliably on touch and with imprecise pointers (~24px minimum, ~44px for primary actions), not tiny adjacent hit areas.",
      "Measure interactive elements' rendered hit area and inter-target spacing; flag icon-only controls, dense list affordances, and close-packed buttons below the target size with no larger alternative.",
      "architecture"),
@@ -145,64 +148,81 @@ const WEBUI_PACK: &[PackRule] = &[
 /// Service/integration vantage point: contracts, idempotency, timeouts,
 /// compensation (sagas), boundary auth, observability, degradation, compat.
 const SERVICE_PACK: &[PackRule] = &[
-    ("service-contract-artifact", "error",
+    PackRule::with_evidence("service-contract-artifact", "error",
      "Service: every exposed interface has a committed, versioned contract artifact (schema/IDL/OpenAPI) that consumers can ground against — the seam's single shared truth.",
      "For each endpoint/event/queue the service exposes: where is the contract file, is it in the repo, and does the implementation actually match it?",
-     "architecture"),
-    ("service-idempotent-handlers", "error",
+     "architecture",
+     // evidence_examples:
+     "{\"pass\":\"OpenAPI spec at openapi.yaml defines /v1/orders; handler matches schema\",\"independent\":\"no exposed interfaces — internal CLI/library only\",\"common_false_positive\":\"a Markdown doc describing the API is NOT a contract artifact — it's prose, not a consumer-groundable single shared truth\"}",
+     // signal_expectations: groups where at least one keyword must appear in evidence
+     "[[\"openapi\",\"swagger\",\"proto\",\"graphql\",\"idl\",\"avro\",\"json-schema\",\"asyncapi\"]]"
+    ),
+    PackRule::new("service-idempotent-handlers", "error",
      "Service: handlers for retriable inputs — webhooks, queue messages, payments — are idempotent; replaying the same message yields no duplicate effect.",
      "For each handler: what happens on exact redelivery? Look for inserts without dedup keys, counters without idempotency tokens, side effects before the dedup check.",
      "correctness"),
-    ("service-timeout-retry-explicit", "error",
+    PackRule::with_evidence("service-timeout-retry-explicit", "error",
      "Service (CWE-1088): every outbound call carries an explicit timeout and a bounded retry policy with backoff — no infinite waits, no unbounded retry storms.",
      "Find each HTTP/DB/queue client call: is a timeout set (not the library's infinite default)? Is retry bounded with backoff and jitter?",
-     "resource_safety"),
-    ("service-compensation-defined", "warning",
+     "resource_safety",
+     "{\"pass\":\"reqwest client at src/client.rs:23 sets .timeout(Duration::from_secs(30)) and .retry(3) with backoff\",\"independent\":\"no outbound network calls — all operations are local\",\"common_false_positive\":\"a default timeout exists but is not explicitly set in code — relying on library defaults is not explicit\"}",
+     "[[\"timeout\",\"retry\",\"backoff\",\"duration\",\"deadline\",\"context\"]]"
+    ),
+    PackRule::new("service-compensation-defined", "warning",
      "Service (sagas): multi-step workflows define compensation or abort for partial failure — no half-completed state without a recovery path an operator or the code can take.",
      "For each workflow spanning >1 service or transaction: enumerate the failure point after each step and name the compensating action. A missing one is the violation.",
      "correctness"),
-    ("service-auth-at-boundary", "error",
+    PackRule::with_evidence("service-auth-at-boundary", "error",
      "Service (CWE-306/862): every externally reachable endpoint authenticates and authorizes before side effects — including 'internal' endpoints reachable from outside the trust zone.",
      "Enumerate reachable routes; for each, find the auth check and confirm it runs before any write or privileged read.",
-     "security"),
-    ("service-observable-failures", "warning",
+     "security",
+     "{\"pass\":\"Auth middleware at src/auth.rs:45-60 extracts Bearer token before handler; route table confirms all mutating routes require it\",\"independent\":\"no externally reachable endpoints — CLI/library with no network surface\",\"common_false_positive\":\"auth exists in config but not enforced on the route — config is intent, not enforcement\"}",
+     "[[\"auth\",\"bearer\",\"jwt\",\"session\",\"token\",\"middleware\",\"extractor\",\"apikey\",\"oauth\",\"permission\",\"rbac\"]]"
+    ),
+    PackRule::with_evidence("service-observable-failures", "warning",
      "Service: failures are logged/metric'd with enough context (ids, cause, upstream) to diagnose without reproducing.",
      "Pick the main failure paths: what exactly lands in logs/metrics? Catch-and-ignore blocks and bare 500s with no context are violations.",
-     "architecture"),
-    ("service-graceful-degradation", "warning",
+     "architecture",
+     "{\"pass\":\"error handler at src/error.rs:80-95 logs request_id, error type, and stack trace via tracing::error\",\"independent\":\"no failure paths that produce observable side effects — pure computation\",\"common_false_positive\":\"a JSON error response alone is NOT observable — it returns to the caller but is not logged/metric'd for operators\"}",
+     "[[\"tracing\",\"log\",\"metrics\",\"telemetry\",\"request_id\",\"trace_id\",\"span\",\"sentry\",\"datadog\",\"prometheus\"]]"
+    ),
+    PackRule::new("service-graceful-degradation", "warning",
      "Service: a dependency outage degrades the service (fallback, partial answer, fast error) — it never cascades into hangs or crash loops.",
      "For each hard dependency: trace what happens when it's down. Look for unguarded startup dependencies and synchronous calls on the hot path with no circuit/fallback.",
      "resource_safety"),
-    ("service-compatible-evolution", "error",
+    PackRule::with_evidence("service-compatible-evolution", "error",
      "Service: contract changes are additive or versioned — removing/renaming fields or changing semantics requires a version consumers can pin; old versions get a deprecation path.",
      "Diff the contract's history (or its change discipline): were fields ever removed/renamed in place? Is there a versioning convention at all?",
-     "architecture"),
+     "architecture",
+     "{\"pass\":\"API versioned at /v1/ and /v2/ routes; breaking changes land in /v2/ with /v1/ deprecated but still served\",\"independent\":\"no versioned contract surface — internal API only\",\"common_false_positive\":\"versioned /v1 routes alone are a PARTIAL story — not the same as compatibility tests or schema-diff enforcement; consider partial status\"}",
+     "[[\"version\",\"v1\",\"v2\",\"deprecat\",\"schema-diff\",\"compat\",\"breaking\"]]"
+    ),
 ];
 
 /// Data vantage point: migrations, ingest validation, loss accounting,
 /// PII handling, rerun safety, lineage.
 const DATA_PACK: &[PackRule] = &[
-    ("data-migration-reversible", "error",
+    PackRule::new("data-migration-reversible", "error",
      "Data: schema migrations are ordered and repeatable, with a tested rollback — or an explicitly documented point of no return.",
      "Check the migration set: do down-migrations exist and run? For irreversible ones, is the irreversibility stated where the operator will see it?",
      "correctness"),
-    ("data-validated-at-ingest", "error",
+    PackRule::new("data-validated-at-ingest", "error",
      "Data (CWE-20): data entering storage is validated at the boundary, and invariants live in the schema (constraints, types, NOT NULL) — not only in application code.",
      "Trace each write path to storage: what rejects bad data? Look for app-side-only checks the schema doesn't enforce, and ingestion that bypasses the validated path.",
      "correctness"),
-    ("data-no-silent-loss", "error",
+    PackRule::new("data-no-silent-loss", "error",
      "Data: pipelines account for every record — rejects go to a dead-letter/quarantine with a cause, never dropped silently; counts in vs out reconcile.",
      "Find each filter/catch/skip in the pipeline: where do the excluded records go, and is the count surfaced anywhere a human looks?",
      "correctness"),
-    ("data-pii-handled", "error",
+    PackRule::new("data-pii-handled", "error",
      "Data (CWE-359): personal/sensitive fields are identified, and access, retention, and deletion paths exist — a deletion request can actually be fulfilled.",
      "List fields holding personal data (and copies in logs/derived tables). For each: who can read it, how long it lives, and what a delete actually removes.",
      "security"),
-    ("data-idempotent-reruns", "warning",
+    PackRule::new("data-idempotent-reruns", "warning",
      "Data: pipeline stages re-run without duplicating or corrupting output — upsert/partition-overwrite semantics, not blind append.",
      "For each stage: run it twice on the same input (mentally or actually). Appends without keys and non-deterministic transforms are violations.",
      "correctness"),
-    ("data-lineage-traceable", "warning",
+    PackRule::new("data-lineage-traceable", "warning",
      "Data: derived datasets name their sources — a consumer can trace a value back to its origin and know when it was computed.",
      "Pick a derived table/report: can you find what produced it, from what inputs, when? Untraceable derived data is the violation.",
      "architecture"),
@@ -213,31 +233,31 @@ const DATA_PACK: &[PackRule] = &[
 /// backpressure — plus the bridge rule that demands hot paths carry a
 /// PROVEN budget (a benchmark validation), not a vibe.
 const CONCURRENCY_PACK: &[PackRule] = &[
-    ("conc-sync-discipline", "error",
+    PackRule::new("conc-sync-discipline", "error",
      "Concurrency (CWE-362/366): every piece of shared mutable state names its synchronization discipline — a lock, a single-writer thread/actor, atomics, or message passing. No ad-hoc unsynchronized access.",
      "Inventory state reachable from more than one thread/task; for each, name the discipline that guards it. State you cannot name a discipline for is the violation.",
      "correctness"),
-    ("conc-no-lock-across-io", "error",
+    PackRule::new("conc-no-lock-across-io", "error",
      "Concurrency (CWE-667): no lock is held across I/O, network calls, or await points — contention windows stay bounded by computation, not by external latency.",
      "Find each lock acquisition; trace what runs before release. File/DB/network access or an .await/blocking call inside the critical section is the violation.",
      "correctness"),
-    ("conc-atomic-multi-step", "error",
+    PackRule::new("conc-atomic-multi-step", "error",
      "Concurrency (CWE-362/367): multi-step state transitions (check-then-act, read-modify-write, exists-then-create) are atomic — one lock/transaction span — or explicitly designed to tolerate interleaving.",
      "Find check-then-act sequences on shared state (or storage): can another actor run between the steps? If yes and nothing tolerates that, it's a TOCTOU violation.",
      "correctness"),
-    ("conc-deadlock-ordering", "error",
+    PackRule::new("conc-deadlock-ordering", "error",
      "Concurrency (CWE-833): when more than one lock can be held at once, acquisition follows a single documented global order.",
      "List sites holding ≥2 locks; check the acquisition order is consistent everywhere and written down. Two sites taking A→B and B→A is the violation.",
      "correctness"),
-    ("conc-cancellation-safe", "warning",
+    PackRule::new("conc-cancellation-safe", "warning",
      "Concurrency: tasks/threads are cancellation-safe — interruption (timeout, shutdown, dropped future) leaves no half-written state and releases resources.",
      "For each spawned task: what happens if it's killed between its side effects? Look for multi-step writes without cleanup/transactions and resources freed only on the happy exit.",
      "resource_safety"),
-    ("conc-bounded-concurrency", "warning",
+    PackRule::new("conc-bounded-concurrency", "warning",
      "Concurrency (CWE-400/770): spawns, queues, and in-flight work have explicit limits and backpressure — load sheds or blocks, it never grows unbounded.",
      "Find each spawn/enqueue driven by external input; name its bound (pool size, channel capacity, semaphore). An unbounded channel or per-request spawn with no cap is the violation.",
      "resource_safety"),
-    ("perf-budget-proven", "error",
+    PackRule::new("perf-budget-proven", "error",
      "Measured performance: hot-path intents declare a performance budget in their criterion (e.g. 'p99 < 50ms at 10k entries') AND carry a benchmark validation proving it — fast is a claim, proven-fast is a state.",
      "Cross-check `loom hotspots`: for each high-centrality intent on a hot path, does its criterion state a number, and does a `benchmark`-type validation exist and pass? A budget without a benchmark (or vice versa) is the violation.",
      "performance"),
@@ -248,19 +268,19 @@ const CONCURRENCY_PACK: &[PackRule] = &[
 /// sec-context anti-pattern taxonomy (Arcanum, CC-BY 4.0) — the 4 novel
 /// patterns not already in iso5055/web-ui/service packs.
 const SECURITY_DEEP_PACK: &[PackRule] = &[
-    ("sec-dependency-squatting", "error",
+    PackRule::new("sec-dependency-squatting", "error",
      "Security (AI hallucination): every external dependency resolves to a real, published package — AI models suggest non-existent packages (5-21% hallucination rate) that attackers can register as malware vectors (slopsquatting).",
      "List every external dependency/import in the intent's code. For each: does it resolve to a real published package in the language's registry? A dependency that doesn't exist (typo-squat, hallucinated name, or withdrawn) is the violation.",
      "security"),
-    ("sec-rate-limiting", "error",
+    PackRule::new("sec-rate-limiting", "error",
      "Security (CWE-307/770): mutating and authentication endpoints carry explicit rate limits — brute-force, credential stuffing, and resource exhaustion are bounded, not unbounded.",
      "For each endpoint that accepts external input and causes a side effect (login, signup, password reset, write, delete): is there a rate limit? A mutating/auth endpoint with no explicit limit is the violation.",
      "security"),
-    ("sec-minimal-response", "warning",
+    PackRule::new("sec-minimal-response", "warning",
      "Security (CWE-200/359): API responses return only the fields the consumer needs, not full internal objects — no sensitive fields (password hashes, internal IDs, PII) leak through serialization.",
      "For each API response/serialization point: does it return a typed DTO/ projection or the raw internal model? Returning a full internal object that includes sensitive fields is the violation.",
      "security"),
-    ("sec-upload-validated", "error",
+    PackRule::new("sec-upload-validated", "error",
      "Security (CWE-434/79): file uploads validate type (MIME + content sniff), size, and filename — uploaded files are stored outside the webroot and never executed as code.",
      "For each file upload path: what validates the type, size, and filename? Where are uploads stored? An upload with no type/size validation or stored in a web-served directory is the violation.",
      "security"),
@@ -268,7 +288,61 @@ const SECURITY_DEEP_PACK: &[PackRule] = &[
 
 /// All seedable packs, by name. `iso5055` is the baseline (applies to any code);
 /// the rest are repo-kind vantage points — `loom detect` recommends which fit.
-type PackRule = (&'static str, &'static str, &'static str, &'static str, &'static str);
+/// One rule in a seedable pack. The 5-tuple carries the rule's identity and
+/// detection guidance; the optional `evidence_examples` and `signal_expectations`
+/// carry evidence-steering metadata (v12) — empty string means no examples/
+/// expectations (the rule predates v12 or has no static signal pattern).
+pub struct PackRule {
+    pub name: &'static str,
+    pub severity: &'static str,
+    pub description: &'static str,
+    pub detection: &'static str,
+    pub kind: &'static str,
+    pub evidence_examples: &'static str,
+    pub signal_expectations: &'static str,
+}
+
+impl PackRule {
+    /// Convenience for rules without evidence examples or signal expectations.
+    const fn new(
+        name: &'static str,
+        severity: &'static str,
+        description: &'static str,
+        detection: &'static str,
+        kind: &'static str,
+    ) -> Self {
+        Self {
+            name,
+            severity,
+            description,
+            detection,
+            kind,
+            evidence_examples: "",
+            signal_expectations: "",
+        }
+    }
+    /// Rules with evidence steering metadata.
+    const fn with_evidence(
+        name: &'static str,
+        severity: &'static str,
+        description: &'static str,
+        detection: &'static str,
+        kind: &'static str,
+        evidence_examples: &'static str,
+        signal_expectations: &'static str,
+    ) -> Self {
+        Self {
+            name,
+            severity,
+            description,
+            detection,
+            kind,
+            evidence_examples,
+            signal_expectations,
+        }
+    }
+}
+
 type Pack = (&'static str, &'static [PackRule]);
 const PACKS: &[Pack] = &[
     ("iso5055", ISO5055_PACK),
@@ -372,6 +446,8 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 kind: kind.unwrap_or_default(),
                 inspection_effort,
                 severity,
+                evidence_examples: String::new(),
+                signal_expectations: String::new(),
             };
             store.insert_rule(&rule)?;
 
@@ -395,19 +471,25 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 store.list_rules()?.into_iter().map(|r| r.name).collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
-            for (name, severity, description, detection, kind) in *rules {
-                if existing.contains(*name) {
+            for rule_def in *rules {
+                if existing.contains(rule_def.name) {
                     skipped += 1;
                     continue;
                 }
                 let rule = QualityRule {
                     id: Uuid::new_v4().to_string(),
-                    name: (*name).to_string(),
-                    description: (*description).to_string(),
-                    detection_logic: (*detection).to_string(),
-                    kind: (*kind).to_string(),
-                    inspection_effort: pack_rule_effort(name).to_string(),
-                    severity: (*severity).to_string(),
+                    name: rule_def.name.to_string(),
+                    description: rule_def.description.to_string(),
+                    detection_logic: rule_def.detection.to_string(),
+                    kind: rule_def.kind.to_string(),
+                    inspection_effort: pack_rule_effort(rule_def.name).to_string(),
+                    severity: rule_def.severity.to_string(),
+                    evidence_examples: rule_def.evidence_examples.to_string(),
+                    signal_expectations: if rule_def.signal_expectations.is_empty() {
+                        "[]".to_string()
+                    } else {
+                        rule_def.signal_expectations.to_string()
+                    },
                 };
                 store.insert_rule(&rule)?;
                 created.push(rule);
@@ -476,13 +558,14 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             evidence_locator,
             confidence,
             inspected_by,
+            covers_descendants,
         } => {
             let by = gate::acting_in_lane(&gate::lane::GOVERNS_VERDICT, inspected_by.as_deref())?;
             let rule_id = store.resolve_rule(&rule_id)?;
             let intent_id = resolve_intent_with_db(&store, &intent_id)?;
-            if status != "passing" && status != "failing" && status != "independent" {
+            if status != "passing" && status != "failing" && status != "independent" && status != "partial" {
                 anyhow::bail!(
-                    "Invalid --status '{}'. A verdict is passing, failing, or independent.",
+                    "Invalid --status '{}'. A verdict is passing, failing, independent, or partial.",
                     status
                 );
             }
@@ -500,19 +583,24 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     gate::VERDICT_EVIDENCE_FAILING_PURPOSE
                 },
             )?;
+            gate::require_passing_locator(&status, &evidence_locator)?;
             gate::require_locators_resolve(root, &evidence_locator)?;
-            let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
-            gate::require_confidence(confidence)?;
+            if covers_descendants && evidence.trim().is_empty() {
+                anyhow::bail!("--covers-descendants requires evidence justifying why the same criterion applies to every child");
+            }
+
 
             let now = chrono::Utc::now().to_rfc3339();
             let mut found = store.update_governs_verdict(
                 &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                covers_descendants,
             )?;
             let mut edge_created = false;
             if !found {
                 store.insert_governs(&rule_id, &intent_id, &criterion, &now)?;
                 found = store.update_governs_verdict(
                     &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                    covers_descendants,
                 )?;
                 edge_created = true;
             }
@@ -649,6 +737,30 @@ fn run_show_with_db(
         );
         println!("  description:        {}", rule.description);
         println!("  detection_logic:    {}", rule.detection_logic);
+        if !rule.evidence_examples.is_empty() {
+            if let Ok(examples) = serde_json::from_str::<serde_json::Value>(&rule.evidence_examples) {
+                println!("  evidence examples:");
+                if let Some(pass) = examples.get("pass").and_then(|v| v.as_str()) {
+                    println!("    pass:                {pass}");
+                }
+                if let Some(indep) = examples.get("independent").and_then(|v| v.as_str()) {
+                    println!("    independent:         {indep}");
+                }
+                if let Some(fp) = examples.get("common_false_positive").and_then(|v| v.as_str()) {
+                    println!("    common false pos:    {fp}");
+                }
+            }
+        }
+        if !rule.signal_expectations.is_empty() && rule.signal_expectations != "[]" {
+            if let Ok(signals) = serde_json::from_str::<Vec<Vec<String>>>(&rule.signal_expectations) {
+                if !signals.is_empty() {
+                    println!("  signal expectations (keywords that should appear in passing evidence):");
+                    for (i, group) in signals.iter().enumerate() {
+                        println!("    group {}: {}", i + 1, group.join(" | "));
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -739,7 +851,7 @@ mod tests {
             .1
     }
     fn has_rule(rules: &[PackRule], name: &str) -> bool {
-        rules.iter().any(|(n, ..)| *n == name)
+        rules.iter().any(|r| r.name == name)
     }
 
     /// Design-system standards (`design-system standards via QualityRule packs`):
@@ -776,9 +888,9 @@ mod tests {
             assert_eq!(pack_rule_effort(name), "mid", "{name} effort");
         }
         let webui = pack("web-ui");
-        for (n, sev, ..) in webui {
-            if *n == "webui-color-contrast" || *n == "webui-touch-target-size" {
-                assert_eq!(*sev, "warning", "{n} severity");
+        for r in webui {
+            if r.name == "webui-color-contrast" || r.name == "webui-touch-target-size" {
+                assert_eq!(r.severity, "warning", "{} severity", r.name);
             }
         }
     }

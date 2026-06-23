@@ -495,6 +495,27 @@ pub fn require_substantive(field: &str, value: &str, purpose: &str) -> Result<()
     Ok(())
 }
 
+/// Reject a passing GOVERNS verdict that carries no evidence locators. A
+/// passing verdict claims compliance — the code that complies must be
+/// identifiable. Free-text evidence ("all handlers check auth") is too easy to
+/// overstate; a locator (`src/auth.rs:45-60`) grounds the claim to specific
+/// code a reviewer can open. `independent` verdicts are exempt (the rule
+/// doesn't apply — there is no complying code to point at); `failing` verdicts
+/// already require evidence naming the violation; `partial` is treated like
+/// passing (the complying portion must be locatable).
+pub fn require_passing_locator(status: &str, locators: &[String]) -> Result<()> {
+    if (status == "passing" || status == "partial") && locators.is_empty() {
+        anyhow::bail!(
+            "A {status} GOVERNS verdict requires at least one --evidence-locator \
+             (a file/line anchor grounding the compliance claim to specific code). \
+             Free-text evidence alone is too easy to overstate — point at the code. \
+             Use `independent` if the rule does not apply here (no locator needed, \
+             but the evidence must name the searched surface)."
+        );
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Smell-adjudication gate — the anti-rubber-stamp bar
 // ---------------------------------------------------------------------------

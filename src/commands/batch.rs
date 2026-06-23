@@ -401,8 +401,8 @@ fn apply_line_sqlite(
                 str_field(&v, op, "intent")?,
             )?;
             let status = str_field(&v, op, "status")?;
-            if status != "passing" && status != "failing" && status != "independent" {
-                anyhow::bail!("invalid status '{status}' (passing | failing | independent)");
+            if status != "passing" && status != "failing" && status != "independent" && status != "partial" {
+                anyhow::bail!("invalid status '{status}' (passing | failing | independent | partial)");
             }
             let stored_criterion = store
                 .list_governs_for_intent(&intent)?
@@ -424,7 +424,14 @@ fn apply_line_sqlite(
                 },
             )?;
             gate::require_confidence(confidence)?;
+            gate::require_passing_locator(status, &locators_field(&v))?;
             gate::require_locators_resolve(root, &locators_field(&v))?;
+            let covers_descendants = v.get("covers_descendants")
+                .and_then(|x| x.as_bool())
+                .unwrap_or(false);
+            if covers_descendants && evidence.trim().is_empty() {
+                anyhow::bail!("covers_descendants=true requires evidence justifying why the same criterion applies to every child");
+            }
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
             if dry_run {
                 return Ok((
@@ -434,6 +441,7 @@ fn apply_line_sqlite(
             }
             store.upsert_governs_verdict(
                 &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
+                covers_descendants,
             )?;
             Ok((
                 format!("rule_verdict {status}: {rule} → {intent}"),

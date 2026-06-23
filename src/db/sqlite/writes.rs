@@ -1141,8 +1141,9 @@ impl SqliteGraphStore {
     }
     pub fn insert_rule(&self, rule: &QualityRule) -> Result<()> {
         self.write_one(
-            "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO quality_rule(id, name, description, detection_logic, severity, inspection_effort, kind,
+                                       evidence_examples, signal_expectations)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 rule.id,
                 rule.name,
@@ -1150,7 +1151,9 @@ impl SqliteGraphStore {
                 rule.detection_logic,
                 rule.severity,
                 rule.inspection_effort,
-                rule.kind
+                rule.kind,
+                rule.evidence_examples,
+                rule.signal_expectations,
             ],
         )?;
         Ok(())

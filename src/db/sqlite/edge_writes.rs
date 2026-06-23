@@ -922,6 +922,7 @@ impl SqliteGraphStore {
         confidence: f64,
         inspected_by: &str,
         now: &str,
+        covers_descendants: bool,
     ) -> Result<bool> {
         let previous = self
             .list_governs_for_intent(intent_id)?
@@ -938,8 +939,9 @@ impl SqliteGraphStore {
                  evidence = ?3,
                  confidence = ?4,
                  inspected_by = ?5,
-                 last_inspected = ?6
-             WHERE rule_id = ?7 AND intent_id = ?8",
+                 last_inspected = ?6,
+                 covers_descendants = ?7
+             WHERE rule_id = ?8 AND intent_id = ?9",
             params![
                 status,
                 criterion,
@@ -947,6 +949,7 @@ impl SqliteGraphStore {
                 confidence,
                 inspected_by,
                 now,
+                if covers_descendants { "true" } else { "" },
                 rule_id,
                 intent_id
             ],
@@ -974,6 +977,7 @@ impl SqliteGraphStore {
         confidence: f64,
         inspected_by: &str,
         now: &str,
+        covers_descendants: bool,
     ) -> Result<()> {
         let tx = self.write_tx()?;
         let previous_status = tx
@@ -1032,8 +1036,9 @@ impl SqliteGraphStore {
                  evidence = ?3,
                  confidence = ?4,
                  inspected_by = ?5,
-                 last_inspected = ?6
-             WHERE rule_id = ?7 AND intent_id = ?8",
+                 last_inspected = ?6,
+                 covers_descendants = ?7
+             WHERE rule_id = ?8 AND intent_id = ?9",
             params![
                 status,
                 criterion,
@@ -1041,6 +1046,7 @@ impl SqliteGraphStore {
                 confidence,
                 inspected_by,
                 now,
+                if covers_descendants { "true" } else { "" },
                 rule_id,
                 intent_id
             ],

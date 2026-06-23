@@ -624,7 +624,18 @@ pub struct QualityRule {
     /// WORK; which model answers is the harness's business.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub inspection_effort: String,
+    /// JSON object with exemplar evidence strings: `pass`, `independent`,
+    /// `common_false_positive`. Steers agents away from weak evidence. Empty
+    /// string = no examples (the rule predates v12 or was hand-added).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub evidence_examples: String,
+    /// JSON array of keyword groups (each a list of strings). When the rule
+    /// passes, evidence should reference at least one keyword from each group.
+    /// Empty array = no static expectations. The contradiction-check basis.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub signal_expectations: String,
 }
+
 
 /// The RELATES_TO relationship taxonomy. The single home for each kind's
 /// strategy: whether it's mechanically derivable, how much it should be trusted,
@@ -1230,7 +1241,12 @@ pub struct Governs {
     pub inspected_by: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub notes: String,
+    /// TEXT "true" when this verdict covers all descendant intents (a roll-up
+    /// at component/system altitude). Empty = direct verdict only.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub covers_descendants: String,
 }
+
 
 /// TARGETS: Hypothesis → Intent — which intents an improvement hypothesis
 /// would touch. Mirrors GOVERNS: full inspectable meta, so per-target

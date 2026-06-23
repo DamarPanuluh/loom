@@ -147,6 +147,8 @@ const QUALITY_RULE_PROPS: &[&str] = &[
     prop::KIND,
     prop::SEVERITY,
     prop::INSPECTION_EFFORT,
+    prop::EVIDENCE_EXAMPLES,
+    prop::SIGNAL_EXPECTATIONS,
 ];
 
 const VALIDATION_PROPS: &[&str] = &[
@@ -276,6 +278,18 @@ const INSPECTABLE_PROPS: &[&str] = &[
     prop::LAST_INSPECTED,
     prop::INSPECTED_BY,
     prop::NOTES,
+    prop::CREATED_AT,
+];
+
+const GOVERNS_PROPS: &[&str] = &[
+    prop::INSPECTION_STATUS,
+    prop::CRITERION,
+    prop::CONFIDENCE,
+    prop::EVIDENCE,
+    prop::LAST_INSPECTED,
+    prop::INSPECTED_BY,
+    prop::NOTES,
+    prop::COVERS_DESCENDANTS,
     prop::CREATED_AT,
 ];
 
@@ -415,7 +429,7 @@ const EDGE_SPECS: &[EdgeSpec] = &[
         table: "governs",
         from_col: "rule_id",
         to_col: "intent_id",
-        props: INSPECTABLE_PROPS,
+        props: GOVERNS_PROPS,
         numeric_props: CONFIDENCE_ONLY,
         list_props: EMPTY_LIST_PROPS,
     },
@@ -760,7 +774,8 @@ impl SqliteGraphStore {
     fn list_all_governs(&self) -> Result<Vec<Governs>> {
         let mut stmt = self.conn.prepare(
             "SELECT e.rule_id, e.intent_id, r.name, i.name, e.inspection_status, e.criterion,
-                    e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.notes
+                    e.confidence, e.evidence, e.last_inspected, e.inspected_by, e.notes,
+                    e.covers_descendants
              FROM governs e
              JOIN quality_rule r ON r.id = e.rule_id
              JOIN intent i ON i.id = e.intent_id
@@ -782,6 +797,7 @@ impl SqliteGraphStore {
                 last_inspected: row.get(8)?,
                 inspected_by: row.get(9)?,
                 notes: row.get(10)?,
+                covers_descendants: row.get(11)?,
             })
         })?;
         rows.collect::<rusqlite::Result<Vec<_>>>()
