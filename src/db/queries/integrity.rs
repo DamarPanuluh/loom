@@ -695,7 +695,7 @@ fn audit_inspectable_edges(
         );
         let valid_status = matches!(
             c.status.as_str(),
-            "uninspected" | "passing" | "failing" | "needs_reverification"
+            "uninspected" | "passing" | "failing" | "needs_reverification" | "partial"
         ) || (independent_ok && c.status == "independent");
         if !valid_status {
             issues.push(format!(

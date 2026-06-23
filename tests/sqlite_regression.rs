@@ -4289,6 +4289,12 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
             [],
         )
         .expect("flatten intent altitude");
+        // Clear any partial verdicts so the partial review trigger doesn't fire.
+        conn.execute(
+            "UPDATE governs SET inspection_status='passing' WHERE inspection_status='partial'",
+            [],
+        )
+        .expect("clear partial status");
     }
     let (a, b) = first_two_intent_ids(&graph.root);
     // A low-confidence passing verdict → exactly one review candidate.

@@ -444,6 +444,10 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
     let considered: std::collections::HashSet<(&str, &str)> = snapshot
         .governs
         .iter()
+        .filter(|g| matches!(
+            g.inspection_status.as_str(),
+            "passing" | "failing" | "independent" | "partial"
+        ))
         .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
     let parent_of: HashMap<&str, &str> = snapshot
