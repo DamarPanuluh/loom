@@ -249,6 +249,10 @@ fn run_inbox_ingest(root: &Path, printer: &Printer) -> Result<()> {
     let mut files: Vec<String> = crate::repo::walk_files(root)?
         .into_iter()
         .filter(|p| !crate::repo::lang_of(p).is_empty() || is_doc_file(p))
+        // Exclude loom-generated artifacts — they are projections of the graph,
+        // not source. Ingesting them creates circular intake (the graph
+        // consuming its own output).
+        .filter(|p| !is_loom_artifact(p))
         .collect();
     files.sort();
 
@@ -660,5 +664,27 @@ mod tests {
             Some("real doc")
         );
         assert_eq!(leading_doc("pub fn a() {}").as_deref(), None);
+    }
+}
+
+/// True if a path is a loom-generated artifact (a projection of the graph,
+/// not source). Excluded from `seed --inbox` to prevent circular intake.
+fn is_loom_artifact(path: &str) -> bool {
+    path == "loom.graph.json"
+        || path == "loom.wiki.md"
+        || path.starts_with(".loom/")
+        || path.starts_with(".loom\\")
+}
+
+#[cfg(test)]
+mod loom_artifact_tests {
+    use super::*;
+    #[test]
+    fn recognizes_loom_artifacts() {
+        assert!(is_loom_artifact("loom.graph.json"));
+        assert!(is_loom_artifact("loom.wiki.md"));
+        assert!(is_loom_artifact(".loom/graph.sqlite"));
+        assert!(!is_loom_artifact("src/main.rs"));
+        assert!(!is_loom_artifact("docs/reference.md"));
     }
 }

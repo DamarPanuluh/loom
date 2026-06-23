@@ -46,7 +46,7 @@ fn edge_desc(etype: &str) -> &'static str {
         "RELATES_TO" => "Intent ↔ Intent — any tracked relationship worth inspecting (the N×N grid).",
         "HIERARCHY" => "Intent → Intent — parent/child zoom (component rolls up feature). A TREE: each intent has at most one parent, no cycles (enforced).",
         "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`).",
-        "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent.",
+        "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent. A verdict at component/system altitude covers descendants ONLY when --covers-descendants is set (default: false — a direct verdict only).",
         "VALIDATES" => "Validation → Intent — a proof object attached to an intent.",
         "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
         "SERVES" => "Persona → Intent — inspectable claim that the intent serves that audience segment.",
@@ -61,6 +61,7 @@ const STATES: &[(&str, &str)] = &[
     ("passing", "inspected, criterion met"),
     ("failing", "inspected, criterion violated"),
     ("independent", "inspected, confirmed no relationship (RELATES_TO: intents unrelated; GOVERNS: rule does not apply)"),
+    ("partial", "inspected, bounded but not complete — some aspects comply but gaps remain (GOVERNS only)"),
     ("needs_reverification", "was passing/failing, adjacent code changed — stale"),
 ];
 

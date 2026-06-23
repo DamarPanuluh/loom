@@ -640,7 +640,7 @@ fn complete_reaching_snapshot() -> QuerySnapshot {
             last_inspected: String::new(),
             inspected_by: String::new(),
             notes: String::new(),
-            covers_descendants: String::new(),
+            covers_descendants: "true".to_string(),
         }],
         vec![QualityRule {
             id: "r1".to_string(),
@@ -687,7 +687,7 @@ fn stale_clearing_snapshot() -> QuerySnapshot {
             last_inspected: String::new(),
             inspected_by: String::new(),
             notes: String::new(),
-            covers_descendants: String::new(),
+            covers_descendants: "true".to_string(),
         }],
         vec![QualityRule {
             id: "r1".to_string(),

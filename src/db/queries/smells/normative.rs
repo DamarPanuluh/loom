@@ -30,25 +30,21 @@ fn detect_unmeasured_intents(
 ) {
     let considered: HashSet<(&str, &str)> = governs
         .iter()
+        .filter(|g| matches!(
+            g.inspection_status.as_str(),
+            "passing" | "failing" | "independent" | "partial"
+        ))
         .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
+    let covers_set = super::super::scoring::covers_descendants_set(governs);
     let parent_of: HashMap<&str, &str> = hierarchy
         .iter()
         .map(|(p, c)| (c.as_str(), p.as_str()))
         .collect();
     let considered_up = |rule_id: &str, intent_id: &str| -> bool {
-        let mut cur = Some(intent_id);
-        let mut visited: HashSet<&str> = HashSet::new();
-        while let Some(id) = cur {
-            if !visited.insert(id) {
-                return false;
-            }
-            if considered.contains(&(rule_id, id)) {
-                return true;
-            }
-            cur = parent_of.get(id).copied();
-        }
-        false
+        super::super::scoring::governs_covers_intent(
+            rule_id, intent_id, &considered, &covers_set, &parent_of,
+        )
     };
     for r in rules {
         let unmeasured: Vec<&crate::types::Intent> = intents

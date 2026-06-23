@@ -450,24 +450,16 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
         ))
         .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
+    let covers_set = covers_descendants_set(&snapshot.governs);
     let parent_of: HashMap<&str, &str> = snapshot
         .hierarchy
         .iter()
         .map(|(p, c)| (c.as_str(), p.as_str()))
         .collect();
+    // The shared coverage predicate: direct edge always covers; ancestor edge
+    // covers ONLY when covers_descendants=true on that ancestor's pair.
     let considered_up = |rule_id: &str, intent_id: &str| -> bool {
-        let mut cur = Some(intent_id);
-        let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
-        while let Some(id) = cur {
-            if !visited.insert(id) {
-                return false;
-            }
-            if considered.contains(&(rule_id, id)) {
-                return true;
-            }
-            cur = parent_of.get(id).copied();
-        }
-        false
+        governs_covers_intent(rule_id, intent_id, &considered, &covers_set, &parent_of)
     };
 
     let total_pairs = snapshot.rules.len() as i64 * candidates.len() as i64;
@@ -508,6 +500,57 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
         measured_pairs,
         queue,
     }
+}
+
+/// A GOVERNS edge "covers" an intent when either:
+/// - it's a DIRECT edge on that intent (any inspected status), OR
+/// - it's an ANCESTOR edge (parent, grandparent, ...) with `covers_descendants=true`.
+///
+/// This is the SINGLE coverage predicate shared by `normative_coverage_from_snapshot`,
+/// the `unmeasured_intents` smell, and the `unmeasured_intents` alarm in status.
+/// Before v12, all three treated ANY ancestor GOVERNS as covering descendants,
+/// producing a false green: a component-level verdict with `covers_descendants=false`
+/// (the default) would suppress the quality queue for its children. Now only
+/// `--covers-descendants` verdicts roll up.
+///
+/// `considered` must already filter to inspected statuses (passing/failing/
+/// independent/partial) — `uninspected` and `needs_reverification` are NOT
+/// measurements. The caller is responsible for that filter; this predicate
+/// only adds the `covers_descendants` dimension.
+pub fn governs_covers_intent(
+    rule_id: &str,
+    intent_id: &str,
+    considered: &std::collections::HashSet<(&str, &str)>,
+    covers_set: &std::collections::HashSet<(&str, &str)>,
+    parent_of: &HashMap<&str, &str>,
+) -> bool {
+    let mut cur = Some(intent_id);
+    let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    while let Some(id) = cur {
+        if !visited.insert(id) {
+            return false;
+        }
+        if considered.contains(&(rule_id, id)) {
+            // Direct edge covers always. Ancestor edge covers only when
+            // covers_descendants is set on THAT ancestor's (rule, intent) pair.
+            if id == intent_id || covers_set.contains(&(rule_id, id)) {
+                return true;
+            }
+        }
+        cur = parent_of.get(id).copied();
+    }
+    false
+}
+
+/// Build the set of (rule_id, intent_id) pairs where `covers_descendants=true`.
+pub fn covers_descendants_set(
+    governs: &[Governs],
+) -> std::collections::HashSet<(&str, &str)> {
+    governs
+        .iter()
+        .filter(|g| g.covers_descendants == "true")
+        .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
+        .collect()
 }
 
 /// An intent whose proof needs the validator's attention, with why.

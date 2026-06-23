@@ -601,12 +601,28 @@ fn validate_target_ref(
             crate::db::queries::resolve_intent_from_snapshot(&snapshot, id)?;
         }
         "file" => {
-            if !store
-                .list_codefiles()?
-                .iter()
-                .any(|file| file.id == id || file.path == id)
-            {
-                anyhow::bail!("no code file matches '{}'", id);
+            // Accept any existing repo file — docs, configs, and source are
+            // all valid link targets. The old behavior (only registered
+            // CodeFiles) rejected docs that the guide recommends linking.
+            let candidate = std::path::Path::new(id);
+            let resolved = if candidate.is_absolute() {
+                candidate.to_path_buf()
+            } else {
+                std::env::current_dir().unwrap_or_default().join(id)
+            };
+            if !resolved.exists() {
+                // Fall back to checking registered codefiles (by id or path)
+                // for backward compatibility with stored graph references.
+                if !store
+                    .list_codefiles()?
+                    .iter()
+                    .any(|file| file.id == id || file.path == id)
+                {
+                    anyhow::bail!(
+                        "no file matches '{}' — the path does not exist in the repo and is not a registered code file",
+                        id
+                    );
+                }
             }
         }
         "validation" => {

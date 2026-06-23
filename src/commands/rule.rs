@@ -615,7 +615,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 anyhow::bail!("--covers-descendants requires evidence justifying why the same criterion applies to every child");
             }
 
-
+            let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             let now = chrono::Utc::now().to_rfc3339();
             let mut found = store.update_governs_verdict(
                 &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
