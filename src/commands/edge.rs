@@ -723,12 +723,23 @@ fn run_unexplored_with_sqlite(
         pairs.truncate(limit);
     }
     let explore_cmd = |e: &crate::types::RelatesTo| {
-        format!(
-            "loom edge explore {} {} independent --notes \"<why unrelated>\"   (or `ground --criterion \"…\"` for a real coupling)",
-            e.from_id, e.to_id
-        )
+        // Signal-aware prefill: pairs with no semantic signals (impact_map)
+        // get `independent` first (the expected verdict); pairs with signals
+        // (suspected_coupling) get `ground` first (a real coupling to inspect).
+        let has_signals = !e.discovery_signals.is_empty();
+        if has_signals {
+            format!(
+                "loom edge explore {} {} ground --criterion \"<what couples them>\" --confidence 0.9   (or `independent --notes \"…\"` if unrelated)",
+                e.from_id, e.to_id
+            )
+        } else {
+            format!(
+                "loom edge explore {} {} independent --notes \"<why they don't interact — what boundary keeps them apart>\"   (or `ground --criterion \"…\"` if a real coupling exists)",
+                e.from_id, e.to_id
+            )
+        }
     };
-    let next = "Verdict each pair — `independent` if unrelated (most are), `ground` if a real coupling. The count is per-pair (no altitude shortcut yet), so batch the verdicts: paste these commands into `loom batch`.";
+    let next = "Verdict each pair. Signal-bearing pairs (suspected-coupling): read the code, `ground` if coupled, `independent` if not. Centrality-only pairs (impact-map): `independent` is expected — but name the specific boundary that keeps them apart (shared imports? no. shared vocab? no. same domain? no). Batch the verdicts: paste these commands into `loom batch`.";
     if printer.json {
         let items: Vec<_> = pairs
             .iter()

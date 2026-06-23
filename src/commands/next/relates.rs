@@ -372,15 +372,35 @@ fn run_take(
         // line OMITS it (`loom batch` reuses the stored text); a bare edge gets a
         // placeholder the gates reject unedited.
         if role != "fixer" {
-            let mut line = serde_json::json!({
-                "op": "ground",
-                "a": edge.from_id,
-                "b": edge.to_id,
-                "confidence": "<confidence>",
-            });
-            if edge.criterion.is_empty() {
-                line["criterion"] = "<criterion>".into();
-            }
+            // For UNEXPLORED pairs with no semantic signal (impact_map —
+            // centrality-only), `independent` is the expected verdict: the
+            // pair has no shared imports, vocab, domain, or files. Emit it
+            // as the template op so the agent fills WHY they're independent
+            // (the anti-laundering gate requires substantive notes), instead
+            // of forcing a coexistence criterion for a relationship that
+            // likely doesn't exist. Suspected-coupling pairs (with signals)
+            // still get `ground` — the signal means a real coupling to inspect.
+            let is_unexplored = edge.inspection_status == "unexplored";
+            let has_signals = !edge.discovery_signals.is_empty();
+            let line = if is_unexplored && !has_signals {
+                serde_json::json!({
+                    "op": "independent",
+                    "a": edge.from_id,
+                    "b": edge.to_id,
+                    "notes": "<why these intents don't interact — what specific code or domain boundary keeps them apart>",
+                })
+            } else {
+                let mut l = serde_json::json!({
+                    "op": "ground",
+                    "a": edge.from_id,
+                    "b": edge.to_id,
+                    "confidence": "<confidence>",
+                });
+                if edge.criterion.is_empty() {
+                    l["criterion"] = "<criterion>".into();
+                }
+                l
+            };
             batch_lines.push(line.to_string());
         }
         let item = serde_json::json!({

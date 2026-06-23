@@ -90986,7 +90986,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-23T07:02:24.484098+00:00",
+  "last_synced": "2026-06-23T08:20:25.013389+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -96587,7 +96587,7 @@
         ]
       },
       {
-        "content_hash": "836e0d0dfa209f7a",
+        "content_hash": "6bc2a09f63010cee",
         "extractor_grade": "high",
         "id": "1118c655-b551-4fa8-9d65-5debeb1f1dfb",
         "imports": [
@@ -96602,20 +96602,20 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T11:34:20.120533757+00:00",
+        "last_modified": "2026-06-23T08:17:10.919071580+00:00",
         "path": "src/commands/edge.rs",
         "symbol_facts": [
           {
             "body_hash": "2a8a738af09f8328",
             "kind": "fn",
             "label": "fn default_intent",
-            "line_end": 1006,
-            "line_start": 987,
+            "line_end": 1017,
+            "line_start": 998,
             "name": "default_intent",
             "shape_hash": "90882a79c0ef30d3",
             "string_literals": [
               {
-                "line": 990,
+                "line": 1001,
                 "value": "(unknown)"
               }
             ],
@@ -96641,21 +96641,21 @@
             "body_hash": "0dddeb5d83ff5bb3",
             "kind": "fn",
             "label": "fn resolve_codefiles_with_db",
-            "line_end": 938,
-            "line_start": 904,
+            "line_end": 949,
+            "line_start": 915,
             "name": "resolve_codefiles_with_db",
             "shape_hash": "8c3982a586017c2a",
             "string_literals": [
               {
-                "line": 910,
+                "line": 921,
                 "value": "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`"
               },
               {
-                "line": 921,
+                "line": 932,
                 "value": "No REGISTERED codefile matches glob '{}'. Register first: loom codefile add '{}'"
               },
               {
-                "line": 934,
+                "line": 945,
                 "value": "CodeFile '{}' not found (by id or path).\\nRegister it first: loom codefile add <path>"
               }
             ],
@@ -96665,33 +96665,33 @@
             "body_hash": "58a988c193fd21d3",
             "kind": "fn",
             "label": "fn resolve_rule_with_db",
-            "line_end": 985,
-            "line_start": 940,
+            "line_end": 996,
+            "line_start": 951,
             "name": "resolve_rule_with_db",
             "shape_hash": "df17206ef0fabde9",
             "string_literals": [
               {
-                "line": 960,
+                "line": 971,
                 "value": "No rule matches '{}' (by id, exact name, or name fragment). Run `loom rule list`."
               },
               {
-                "line": 967,
+                "line": 978,
                 "value": "'{}'"
               },
               {
-                "line": 969,
+                "line": 980,
                 "value": ", "
               },
               {
-                "line": 973,
+                "line": 984,
                 "value": "`loom rule list`"
               },
               {
-                "line": 975,
+                "line": 986,
                 "value": ", "
               },
               {
-                "line": 979,
+                "line": 990,
                 "value": "'{}' is ambiguous — it matches: {}. Narrow the fragment or use an id."
               }
             ],
@@ -96905,69 +96905,69 @@
             "body_hash": "ee2b2ffc4faae170",
             "kind": "fn",
             "label": "fn run_fix_with_sqlite",
-            "line_end": 902,
-            "line_start": 831,
+            "line_end": 913,
+            "line_start": 842,
             "name": "run_fix_with_sqlite",
             "shape_hash": "7d506f23ced4924e",
             "string_literals": [
               {
-                "line": 839,
+                "line": 850,
                 "value": "description"
               },
               {
-                "line": 841,
+                "line": 852,
                 "value": "what changed in code or design to make the failing/stale relationship true again"
               },
               {
-                "line": 854,
+                "line": 865,
                 "value": "failing"
               },
               {
-                "line": 854,
+                "line": 865,
                 "value": "needs_reverification"
               },
               {
-                "line": 856,
+                "line": 867,
                 "value": "Edge '{}' is '{}'; `loom edge fix` only applies to failing or needs_reverification edges."
               },
               {
-                "line": 862,
+                "line": 873,
                 "value": "the relationship remains valid after the repair"
               },
               {
-                "line": 866,
+                "line": 877,
                 "value": "Repair verified: {description}"
               },
               {
-                "line": 878,
+                "line": 889,
                 "value": "loom"
               },
               {
-                "line": 882,
+                "line": 893,
                 "value": "passing"
               },
               {
-                "line": 886,
+                "line": 897,
                 "value": "loom"
               },
               {
-                "line": 890,
+                "line": 901,
                 "value": "`loom next --mode fix` for the next stale or failing edge."
               },
               {
-                "line": 895,
+                "line": 906,
                 "value": "✓ Edge marked as passing after repair"
               },
               {
-                "line": 896,
+                "line": 907,
                 "value": "{}"
               },
               {
-                "line": 898,
+                "line": 909,
                 "value": "  → Next: {next_step}"
               },
               {
-                "line": 899,
+                "line": 910,
                 "value": "  {}"
               }
             ],
@@ -97273,65 +97273,65 @@
             "body_hash": "30eb120d8a8db051",
             "kind": "fn",
             "label": "fn run_show_with_sqlite",
-            "line_end": 829,
-            "line_start": 780,
+            "line_end": 840,
+            "line_start": 791,
             "name": "run_show_with_sqlite",
             "shape_hash": "815400b971f3f74d",
             "string_literals": [
               {
-                "line": 799,
+                "line": 810,
                 "value": "edge"
               },
               {
-                "line": 800,
+                "line": 811,
                 "value": "from_intent"
               },
               {
-                "line": 801,
+                "line": 812,
                 "value": "to_intent"
               },
               {
-                "line": 802,
+                "line": 813,
                 "value": "notes"
               },
               {
-                "line": 805,
+                "line": 816,
                 "value": "── From ─────────────────────────────────────────────────────────"
               },
               {
-                "line": 806,
+                "line": 817,
                 "value": "{}"
               },
               {
-                "line": 808,
+                "line": 819,
                 "value": "── To ───────────────────────────────────────────────────────────"
               },
               {
-                "line": 809,
+                "line": 820,
                 "value": "{}"
-              },
-              {
-                "line": 811,
-                "value": "── Edge ─────────────────────────────────────────────────────────"
-              },
-              {
-                "line": 812,
-                "value": "{}"
-              },
-              {
-                "line": 815,
-                "value": "── Notes ────────────────────────────────────────────────────────"
-              },
-              {
-                "line": 817,
-                "value": "  [{}] {}: {}"
               },
               {
                 "line": 822,
+                "value": "── Edge ─────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 823,
+                "value": "{}"
+              },
+              {
+                "line": 826,
+                "value": "── Notes ────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 828,
+                "value": "  [{}] {}: {}"
+              },
+              {
+                "line": 833,
                 "value": "loom note list --edge <id>"
               },
               {
-                "line": 824,
+                "line": 835,
                 "value": "  {marker}"
               }
             ],
@@ -97394,116 +97394,120 @@
             "visibility": "private"
           },
           {
-            "body_hash": "07369a3fd64b726a",
+            "body_hash": "4adb3d9fb20f5fce",
             "kind": "fn",
             "label": "fn run_unexplored_with_sqlite",
-            "line_end": 778,
+            "line_end": 789,
             "line_start": 701,
             "name": "run_unexplored_with_sqlite",
-            "shape_hash": "2b7ec23a66309c6f",
+            "shape_hash": "9a594b783e193e1d",
             "string_literals": [
               {
                 "line": 714,
                 "value": "all"
               },
               {
-                "line": 727,
-                "value": "loom edge explore {} {} independent --notes \\\"<why unrelated>\\\"   (or `ground --criterion \\\"…\\\"` for a real coupling)"
-              },
-              {
-                "line": 731,
-                "value": "Verdict each pair — `independent` if unrelated (most are), `ground` if a real coupling. The count is per-pair (no altitude shortcut yet), so batch the verdicts: paste these commands into `loom batch`."
+                "line": 732,
+                "value": "loom edge explore {} {} ground --criterion \\\"<what couples them>\\\" --confidence 0.9   (or `independent --notes \\\"…\\\"` if unrelated)"
               },
               {
                 "line": 737,
-                "value": "from_id"
+                "value": "loom edge explore {} {} independent --notes \\\"<why they don't interact — what boundary keeps them apart>\\\"   (or `ground --criterion \\\"…\\\"` if a real coupling exists)"
               },
               {
-                "line": 737,
-                "value": "from_name"
-              },
-              {
-                "line": 738,
-                "value": "to_id"
-              },
-              {
-                "line": 738,
-                "value": "to_name"
-              },
-              {
-                "line": 739,
-                "value": "class"
-              },
-              {
-                "line": 739,
-                "value": "why"
-              },
-              {
-                "line": 739,
-                "value": "score"
-              },
-              {
-                "line": 740,
-                "value": "explore_command"
-              },
-              {
-                "line": 745,
-                "value": "unexplored_pairs"
-              },
-              {
-                "line": 746,
-                "value": "total"
-              },
-              {
-                "line": 747,
-                "value": "shown"
+                "line": 742,
+                "value": "Verdict each pair. Signal-bearing pairs (suspected-coupling): read the code, `ground` if coupled, `independent` if not. Centrality-only pairs (impact-map): `independent` is expected — but name the specific boundary that keeps them apart (shared imports? no. shared vocab? no. same domain? no). Batch the verdicts: paste these commands into `loom batch`."
               },
               {
                 "line": 748,
-                "value": "class"
+                "value": "from_id"
+              },
+              {
+                "line": 748,
+                "value": "from_name"
               },
               {
                 "line": 749,
-                "value": "more"
+                "value": "to_id"
               },
               {
                 "line": 749,
-                "value": "loom edge unexplored --limit 0"
+                "value": "to_name"
               },
               {
                 "line": 750,
-                "value": "next_step"
+                "value": "class"
               },
               {
-                "line": 754,
-                "value": "(no unexplored pairs for class '{}')"
+                "line": 750,
+                "value": "why"
+              },
+              {
+                "line": 750,
+                "value": "score"
+              },
+              {
+                "line": 751,
+                "value": "explore_command"
+              },
+              {
+                "line": 756,
+                "value": "unexplored_pairs"
+              },
+              {
+                "line": 757,
+                "value": "total"
+              },
+              {
+                "line": 758,
+                "value": "shown"
               },
               {
                 "line": 759,
-                "value": "── unexplored pairs ({} class) ───────────────────────────────"
+                "value": "class"
               },
               {
-                "line": 764,
-                "value": "  {} ✕ {}   [{} · score {:.2}]"
+                "line": 760,
+                "value": "more"
               },
               {
-                "line": 768,
-                "value": "      why: {}"
-              },
-              {
-                "line": 770,
-                "value": "      {}"
-              },
-              {
-                "line": 772,
+                "line": 760,
                 "value": "loom edge unexplored --limit 0"
               },
               {
-                "line": 773,
-                "value": "  {marker}"
+                "line": 761,
+                "value": "next_step"
+              },
+              {
+                "line": 765,
+                "value": "(no unexplored pairs for class '{}')"
+              },
+              {
+                "line": 770,
+                "value": "── unexplored pairs ({} class) ───────────────────────────────"
               },
               {
                 "line": 775,
+                "value": "  {} ✕ {}   [{} · score {:.2}]"
+              },
+              {
+                "line": 779,
+                "value": "      why: {}"
+              },
+              {
+                "line": 781,
+                "value": "      {}"
+              },
+              {
+                "line": 783,
+                "value": "loom edge unexplored --limit 0"
+              },
+              {
+                "line": 784,
+                "value": "  {marker}"
+              },
+              {
+                "line": 786,
                 "value": "  → {next}"
               }
             ],
@@ -134233,12 +134237,12 @@
         ]
       },
       {
-        "content_hash": "78bc01dc0aa286f9",
+        "content_hash": "2a78e1a7a388efdc",
         "extractor_grade": "high",
         "id": "529cf0ed-091e-4c30-846a-ddccbee2591d",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-20T10:02:22.358362863+00:00",
+        "last_modified": "2026-06-23T08:17:26.490513189+00:00",
         "path": "src/commands/next/relates.rs",
         "symbol_facts": [
           {
@@ -134389,121 +134393,121 @@
             "body_hash": "2f5ecb9ab8230e26",
             "kind": "fn",
             "label": "fn render_take_human",
-            "line_end": 523,
-            "line_start": 465,
+            "line_end": 543,
+            "line_start": 485,
             "name": "render_take_human",
             "shape_hash": "5d6b6f5cd9251d2d",
             "string_literals": [
               {
-                "line": 477,
+                "line": 497,
                 "value": "── Next: {n} of {queue_total}  [mode={mode}] — bulk read, grouped by staling file ────"
               },
               {
-                "line": 482,
+                "line": 502,
                 "value": "  (no sync cause on record)"
               },
               {
-                "line": 484,
+                "line": 504,
                 "value": "  {} ({} claim(s) staled by this file)"
               },
               {
-                "line": 488,
+                "line": 508,
                 "value": "discovery_class"
               },
               {
-                "line": 492,
+                "line": 512,
                 "value": " — class: {class}"
               },
               {
-                "line": 494,
+                "line": 514,
                 "value": "notes"
               },
               {
-                "line": 495,
+                "line": 515,
                 "value": " — {notes}"
               },
               {
-                "line": 498,
+                "line": 518,
                 "value": "    [{:<21} {:>8} {:>5.2}]  {} × {}  ({}){}"
               },
               {
-                "line": 499,
+                "line": 519,
                 "value": "inspection_status"
               },
               {
-                "line": 499,
+                "line": 519,
                 "value": ""
               },
               {
-                "line": 500,
+                "line": 520,
                 "value": "owner_role"
               },
               {
-                "line": 500,
+                "line": 520,
                 "value": ""
-              },
-              {
-                "line": 501,
-                "value": "priority_score"
-              },
-              {
-                "line": 502,
-                "value": "a"
-              },
-              {
-                "line": 502,
-                "value": "name"
-              },
-              {
-                "line": 502,
-                "value": ""
-              },
-              {
-                "line": 503,
-                "value": "b"
-              },
-              {
-                "line": 503,
-                "value": "name"
-              },
-              {
-                "line": 503,
-                "value": ""
-              },
-              {
-                "line": 504,
-                "value": "edge_id"
-              },
-              {
-                "line": 504,
-                "value": ""
-              },
-              {
-                "line": 505,
-                "value": "no edge yet"
-              },
-              {
-                "line": 507,
-                "value": "edge_id"
-              },
-              {
-                "line": 507,
-                "value": ""
-              },
-              {
-                "line": 516,
-                "value": "  {l}"
-              },
-              {
-                "line": 519,
-                "value": "  {guidance}"
               },
               {
                 "line": 521,
-                "value": "  Dispatch — {batch_role}  [effort: {max_effort}]   (per-item owner_role above is authoritative)"
+                "value": "priority_score"
               },
               {
                 "line": 522,
+                "value": "a"
+              },
+              {
+                "line": 522,
+                "value": "name"
+              },
+              {
+                "line": 522,
+                "value": ""
+              },
+              {
+                "line": 523,
+                "value": "b"
+              },
+              {
+                "line": 523,
+                "value": "name"
+              },
+              {
+                "line": 523,
+                "value": ""
+              },
+              {
+                "line": 524,
+                "value": "edge_id"
+              },
+              {
+                "line": 524,
+                "value": ""
+              },
+              {
+                "line": 525,
+                "value": "no edge yet"
+              },
+              {
+                "line": 527,
+                "value": "edge_id"
+              },
+              {
+                "line": 527,
+                "value": ""
+              },
+              {
+                "line": 536,
+                "value": "  {l}"
+              },
+              {
+                "line": 539,
+                "value": "  {guidance}"
+              },
+              {
+                "line": 541,
+                "value": "  Dispatch — {batch_role}  [effort: {max_effort}]   (per-item owner_role above is authoritative)"
+              },
+              {
+                "line": 542,
                 "value": "  {}"
               }
             ],
@@ -134513,150 +134517,150 @@
             "body_hash": "c8bc53d1d42a2ff3",
             "kind": "fn",
             "label": "fn run_compact",
-            "line_end": 629,
-            "line_start": 537,
+            "line_end": 649,
+            "line_start": 557,
             "name": "run_compact",
             "shape_hash": "9e75965c51b81081",
             "string_literals": [
               {
-                "line": 553,
+                "line": 573,
                 "value": "{} @ {}"
               },
               {
-                "line": 564,
+                "line": 584,
                 "value": "loom next --mode {mode} (full item) · loom intent show {}"
               },
               {
-                "line": 569,
+                "line": 589,
                 "value": "loom next --mode {mode} (full item) · loom edge show {}"
               },
               {
-                "line": 576,
+                "line": 596,
                 "value": "mode"
               },
               {
-                "line": 577,
+                "line": 597,
                 "value": "edge_id"
               },
               {
-                "line": 578,
+                "line": 598,
                 "value": "inspection_status"
               },
               {
-                "line": 579,
+                "line": 599,
                 "value": "priority_score"
               },
               {
-                "line": 580,
+                "line": 600,
                 "value": "discovery_class"
               },
               {
-                "line": 581,
+                "line": 601,
                 "value": "discovery_signals"
               },
               {
-                "line": 582,
+                "line": 602,
                 "value": "discovery_centrality"
               },
               {
-                "line": 583,
+                "line": 603,
                 "value": "a"
               },
               {
-                "line": 583,
+                "line": 603,
                 "value": "id"
               },
               {
-                "line": 583,
+                "line": 603,
                 "value": "name"
-              },
-              {
-                "line": 584,
-                "value": "b"
-              },
-              {
-                "line": 584,
-                "value": "id"
-              },
-              {
-                "line": 584,
-                "value": "name"
-              },
-              {
-                "line": 585,
-                "value": "implements"
-              },
-              {
-                "line": 586,
-                "value": "implements_total"
-              },
-              {
-                "line": 587,
-                "value": "suggested_action"
-              },
-              {
-                "line": 588,
-                "value": "owner_role"
-              },
-              {
-                "line": 589,
-                "value": "effort"
-              },
-              {
-                "line": 590,
-                "value": "dig"
-              },
-              {
-                "line": 595,
-                "value": "── Next (compact)  [mode={mode}  priority={score:.2}] ───────────────────────"
-              },
-              {
-                "line": 597,
-                "value": "  '{}' × '{}'  [{}]{}"
               },
               {
                 "line": 604,
-                "value": "  edge: {}"
+                "value": "b"
+              },
+              {
+                "line": 604,
+                "value": "id"
+              },
+              {
+                "line": 604,
+                "value": "name"
+              },
+              {
+                "line": 605,
+                "value": "implements"
+              },
+              {
+                "line": 606,
+                "value": "implements_total"
+              },
+              {
+                "line": 607,
+                "value": "suggested_action"
+              },
+              {
+                "line": 608,
+                "value": "owner_role"
               },
               {
                 "line": 609,
-                "value": "  (+{} more)"
+                "value": "effort"
               },
               {
-                "line": 613,
-                "value": "  code: {}{}"
+                "line": 610,
+                "value": "dig"
               },
               {
-                "line": 613,
-                "value": " · "
+                "line": 615,
+                "value": "── Next (compact)  [mode={mode}  priority={score:.2}] ───────────────────────"
               },
               {
                 "line": 617,
+                "value": "  '{}' × '{}'  [{}]{}"
+              },
+              {
+                "line": 624,
+                "value": "  edge: {}"
+              },
+              {
+                "line": 629,
+                "value": "  (+{} more)"
+              },
+              {
+                "line": 633,
+                "value": "  code: {}{}"
+              },
+              {
+                "line": 633,
+                "value": " · "
+              },
+              {
+                "line": 637,
                 "value": "  discovery: {}{}"
               },
               {
-                "line": 622,
+                "line": 642,
                 "value": " — {}"
               },
               {
-                "line": 626,
+                "line": 646,
                 "value": "  → {suggested_action}"
               },
               {
-                "line": 627,
+                "line": 647,
                 "value": "  Dispatch — {role}  [effort: {effort}]   dig: {dig}"
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "ea50300d13b6b225",
+            "body_hash": "2cb2eeafeaf1694e",
             "kind": "fn",
             "label": "fn run_take",
-            "line_end": 462,
+            "line_end": 482,
             "line_start": 269,
             "name": "run_take",
-            "shape_hash": "73d2413c2fdf70a6",
+            "shape_hash": "00e40566ba027dcd",
             "string_literals": [
               {
                 "line": 295,
@@ -134711,40 +134715,16 @@
                 "value": "fixer"
               },
               {
-                "line": 376,
-                "value": "op"
-              },
-              {
-                "line": 376,
-                "value": "ground"
-              },
-              {
-                "line": 377,
-                "value": "a"
-              },
-              {
-                "line": 378,
-                "value": "b"
-              },
-              {
-                "line": 379,
-                "value": "confidence"
-              },
-              {
-                "line": 379,
-                "value": "<confidence>"
-              },
-              {
-                "line": 382,
-                "value": "criterion"
-              },
-              {
-                "line": 382,
-                "value": "<criterion>"
+                "line": 383,
+                "value": "unexplored"
               },
               {
                 "line": 387,
-                "value": "edge_id"
+                "value": "op"
+              },
+              {
+                "line": 387,
+                "value": "independent"
               },
               {
                 "line": 388,
@@ -134756,122 +134736,174 @@
               },
               {
                 "line": 390,
-                "value": "inspection_status"
-              },
-              {
-                "line": 391,
-                "value": "owner_role"
-              },
-              {
-                "line": 392,
-                "value": "effort"
-              },
-              {
-                "line": 393,
-                "value": "criterion"
-              },
-              {
-                "line": 394,
                 "value": "notes"
               },
               {
+                "line": 390,
+                "value": "<why these intents don't interact — what specific code or domain boundary keeps them apart>"
+              },
+              {
+                "line": 394,
+                "value": "op"
+              },
+              {
+                "line": 394,
+                "value": "ground"
+              },
+              {
                 "line": 395,
-                "value": "discovery_class"
+                "value": "a"
               },
               {
                 "line": 396,
-                "value": "discovery_signals"
+                "value": "b"
               },
               {
                 "line": 397,
-                "value": "discovery_centrality"
+                "value": "confidence"
               },
               {
-                "line": 398,
-                "value": "priority_score"
+                "line": 397,
+                "value": "<confidence>"
+              },
+              {
+                "line": 400,
+                "value": "criterion"
+              },
+              {
+                "line": 400,
+                "value": "<criterion>"
               },
               {
                 "line": 407,
-                "value": "mixed"
+                "value": "edge_id"
               },
               {
                 "line": 408,
-                "value": "fixer"
+                "value": "a"
               },
               {
                 "line": 409,
-                "value": "analyzer"
+                "value": "b"
               },
               {
-                "line": 425,
-                "value": "discovery"
+                "line": 410,
+                "value": "inspection_status"
               },
               {
-                "line": 426,
-                "value": "Per item: these are UNEXPLORED pairs (no relationship recorded yet). Each carries both intents' `description`, `sources`, and code `groundings` (path + locator + status) inline above — read those (open the grounded code at the locators if you need more) and judge whether the two actually interact. Then fill EACH `<criterion>` slot with a falsifiable coexistence criterion you wrote from the code — these are NOT re-verifications, so every line needs a real criterion (the gate rejects the `<criterion>` placeholder) — or change `op` to `issue` (+`evidence`) / `independent` (+`notes`). Apply all lines in ONE call: paste them into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up). You have everything here; you should not need a per-pair `loom intent show`."
+                "line": 411,
+                "value": "owner_role"
               },
               {
-                "line": 428,
-                "value": "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix)."
-              },
-              {
-                "line": 433,
-                "value": "status"
-              },
-              {
-                "line": 433,
-                "value": "ok"
-              },
-              {
-                "line": 434,
-                "value": "mode"
-              },
-              {
-                "line": 435,
-                "value": "taken"
-              },
-              {
-                "line": 436,
-                "value": "queue_total"
-              },
-              {
-                "line": 437,
-                "value": "groups"
-              },
-              {
-                "line": 439,
-                "value": "staled_by"
-              },
-              {
-                "line": 439,
-                "value": "items"
-              },
-              {
-                "line": 441,
-                "value": "batch_template"
-              },
-              {
-                "line": 442,
-                "value": "batch_template_hints"
-              },
-              {
-                "line": 443,
-                "value": "guidance"
-              },
-              {
-                "line": 444,
-                "value": "dispatch"
-              },
-              {
-                "line": 444,
-                "value": "role"
-              },
-              {
-                "line": 444,
+                "line": 412,
                 "value": "effort"
               },
               {
+                "line": 413,
+                "value": "criterion"
+              },
+              {
+                "line": 414,
+                "value": "notes"
+              },
+              {
+                "line": 415,
+                "value": "discovery_class"
+              },
+              {
+                "line": 416,
+                "value": "discovery_signals"
+              },
+              {
+                "line": 417,
+                "value": "discovery_centrality"
+              },
+              {
+                "line": 418,
+                "value": "priority_score"
+              },
+              {
+                "line": 427,
+                "value": "mixed"
+              },
+              {
+                "line": 428,
+                "value": "fixer"
+              },
+              {
+                "line": 429,
+                "value": "analyzer"
+              },
+              {
                 "line": 445,
+                "value": "discovery"
+              },
+              {
+                "line": 446,
+                "value": "Per item: these are UNEXPLORED pairs (no relationship recorded yet). Each carries both intents' `description`, `sources`, and code `groundings` (path + locator + status) inline above — read those (open the grounded code at the locators if you need more) and judge whether the two actually interact. Then fill EACH `<criterion>` slot with a falsifiable coexistence criterion you wrote from the code — these are NOT re-verifications, so every line needs a real criterion (the gate rejects the `<criterion>` placeholder) — or change `op` to `issue` (+`evidence`) / `independent` (+`notes`). Apply all lines in ONE call: paste them into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up). You have everything here; you should not need a per-pair `loom intent show`."
+              },
+              {
+                "line": 448,
+                "value": "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix)."
+              },
+              {
+                "line": 453,
+                "value": "status"
+              },
+              {
+                "line": 453,
+                "value": "ok"
+              },
+              {
+                "line": 454,
+                "value": "mode"
+              },
+              {
+                "line": 455,
+                "value": "taken"
+              },
+              {
+                "line": 456,
+                "value": "queue_total"
+              },
+              {
+                "line": 457,
+                "value": "groups"
+              },
+              {
+                "line": 459,
+                "value": "staled_by"
+              },
+              {
+                "line": 459,
+                "value": "items"
+              },
+              {
+                "line": 461,
+                "value": "batch_template"
+              },
+              {
+                "line": 462,
+                "value": "batch_template_hints"
+              },
+              {
+                "line": 463,
+                "value": "guidance"
+              },
+              {
+                "line": 464,
+                "value": "dispatch"
+              },
+              {
+                "line": 464,
+                "value": "role"
+              },
+              {
+                "line": 464,
+                "value": "effort"
+              },
+              {
+                "line": 465,
                 "value": "graph_state"
               }
             ],
