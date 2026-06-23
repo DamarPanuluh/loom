@@ -538,7 +538,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                 }
                 println!("  → `loom next --mode quality` now serves every coded intent these were never held against;");
                 println!("    one command resolves each: `loom rule verdict` (independent = measured, doesn't apply;");
-                println!("    a verdict at component altitude covers its descendants).");
+                println!("    a verdict at component altitude covers its descendants ONLY with --covers-descendants).");
             }
         }
 

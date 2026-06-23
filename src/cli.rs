@@ -1400,7 +1400,7 @@ pub enum EdgeCmd {
     /// lists every unexplored pair; `suspected-coupling` only the high-signal ones
     /// `loom next --mode discovery` would surface; `impact-map` the central-but-
     /// signal-less ones. Mark `independent` at the highest honest altitude — a
-    /// component-level verdict covers its descendants.
+    /// component-level verdict covers its descendants ONLY with --covers-descendants.
     #[command(after_help = "EXAMPLE:\n  \
         loom edge unexplored --json\n  \
         loom edge unexplored --class suspected-coupling --limit 20")]

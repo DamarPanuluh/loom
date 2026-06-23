@@ -323,14 +323,14 @@ pub fn build_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<BuildCand
     });
     scored
 }
-/// a verdict on a component covers its descendants (measuring at the highest
-/// honest altitude is the encouraged strategy, never punished).
+/// a verdict on a component covers its descendants ONLY with --covers-descendants
+/// (measuring at the highest honest altitude is the encouraged strategy, never punished).
 pub struct NormativeCoverage {
     /// Non-deprecated intents that have real code (≥1 IMPLEMENTS).
     pub intents_with_code: i64,
     /// rules × intents_with_code — the full measuring grid.
     pub total_pairs: i64,
-    /// Pairs considered: a GOVERNS edge of ANY state, directly or on an ancestor.
+    /// Pairs considered: a GOVERNS edge with an inspected status (passing|failing|independent|partial), directly or on an ancestor (ancestor covers descendants only when covers_descendants=true).
     pub measured_pairs: i64,
     /// Unmeasured pairs at the HIGHEST altitude only — the actual work queue.
     /// (An unmeasured intent whose ancestor is also unmeasured is omitted: one

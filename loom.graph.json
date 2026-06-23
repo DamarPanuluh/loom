@@ -8283,7 +8283,7 @@
         "evidence": "",
         "from": "0071f786-c3da-438e-ac50-0c12aaec9f84",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -9054,7 +9054,7 @@
         "evidence": "",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:54.095851+00:00",
         "notes": "'SQLite graph persistence' and 'command definitions and dispatch' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -10127,7 +10127,7 @@
         "evidence": "",
         "from": "0401f1f2-443f-42c0-b833-b113f1633299",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -10628,7 +10628,7 @@
         "evidence": "",
         "from": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -11054,7 +11054,7 @@
         "evidence": "",
         "from": "147f04bb-f2af-4cc8-b582-de003853b41c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -11497,7 +11497,7 @@
         "evidence": "",
         "from": "151f0f87-49df-4b2a-b63d-edc6cde649e3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -11969,7 +11969,7 @@
         "evidence": "",
         "from": "1adf640a-6a66-452c-8e22-ab4c2e3a98bb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -12963,7 +12963,7 @@
         "evidence": "",
         "from": "1f24ba40-84eb-4c5b-a833-5b41cfab7d03",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -14315,7 +14315,7 @@
         "evidence": "",
         "from": "205377c4-ef33-4636-866d-f344e7dc1410",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -15318,7 +15318,7 @@
         "evidence": "",
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -17511,7 +17511,7 @@
         "evidence": "",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -18412,7 +18412,7 @@
         "evidence": "",
         "from": "23305d3a-e72e-496d-b19b-fd292a0f3e37",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -20150,7 +20150,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -22405,7 +22405,7 @@
         "evidence": "",
         "from": "3080764f-7486-409e-87f7-75d5b6c08f31",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -23727,7 +23727,7 @@
         "evidence": "",
         "from": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:00.029791+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'hypothesis plane' ↔ 'command definitions and dispatch': universal dispatch routing (Command::X => handler::run, like every subcommand). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -24782,7 +24782,7 @@
         "evidence": "",
         "from": "35525e22-88cc-4125-8a41-1f7a2fc071e5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -25809,7 +25809,7 @@
         "evidence": "",
         "from": "376864cc-37d5-4a40-bd4a-ad9af5992acb",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:00.670049+00:00",
         "notes": "'betweenness centrality in priority scoring' and 'command definitions and dispatch' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -26871,7 +26871,7 @@
         "evidence": "",
         "from": "382c288a-4846-46f6-93be-eb9e1f40faf3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -27476,7 +27476,7 @@
         "evidence": "",
         "from": "388117f6-e815-4185-9692-2587c68d9b1b",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -30388,7 +30388,7 @@
         "evidence": "",
         "from": "447710bb-927c-4b1d-86ee-f21aa6e09136",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -31692,7 +31692,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:02.423442+00:00",
         "notes": "",
@@ -32872,7 +32872,7 @@
         "evidence": "",
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -33669,7 +33669,7 @@
         "evidence": "",
         "from": "4c752ad2-e332-4148-87e2-88340991e2a5",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -34538,7 +34538,7 @@
         "evidence": "",
         "from": "4cbd6b69-9bdf-4edb-8567-9e3a6c561363",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -35741,7 +35741,7 @@
         "evidence": "",
         "from": "4d16b78b-0ace-4827-b041-f6d5031e16f4",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -38077,7 +38077,7 @@
         "evidence": "",
         "from": "578fa082-38fd-4021-ae5f-62cc5016ebf8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -38786,7 +38786,7 @@
         "evidence": "",
         "from": "5b43002c-cb0a-48e6-9aec-123dcb967eb3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.233129+00:00",
         "notes": "",
@@ -39826,7 +39826,7 @@
         "evidence": "",
         "from": "5de66572-bd2a-4fd6-972c-52fde80577a3",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -40820,7 +40820,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.865712+00:00",
         "notes": "'command definitions and dispatch' and 'dependency-cycle smell over RELATES_TO' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40835,7 +40835,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.888592+00:00",
         "notes": "'command definitions and dispatch' and 'smells propose hypotheses' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40850,7 +40850,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.915945+00:00",
         "notes": "'command definitions and dispatch' and 'endpoint-constrained edge storage' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40865,7 +40865,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.940873+00:00",
         "notes": "",
@@ -40880,7 +40880,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.965279+00:00",
         "notes": "'command definitions and dispatch' and 'saga runner halt-on-failure semantics' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40895,7 +40895,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:04.988721+00:00",
         "notes": "'command definitions and dispatch' and 'intent-island reachability finding' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40910,7 +40910,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.011728+00:00",
         "notes": "'command definitions and dispatch' and 'hostile import rejected loudly' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40925,7 +40925,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.034731+00:00",
         "notes": "'command definitions and dispatch' and 'storage contract regression suite' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40940,7 +40940,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.059218+00:00",
         "notes": "'command definitions and dispatch' and 'structure_version cache for topology-keyed metrics' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -40972,7 +40972,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:45:51.975815+00:00",
         "notes": "no shared code imports or domain coupling detected between these intents",
@@ -40987,7 +40987,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41005,7 +41005,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.130235+00:00",
         "notes": "'command definitions and dispatch' and 'migration cutover and rollback path' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41020,7 +41020,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41038,7 +41038,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.177411+00:00",
         "notes": "'command definitions and dispatch' and 'storage responsibility vocabulary coverage' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41070,7 +41070,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41087,7 +41087,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -41105,7 +41105,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41123,7 +41123,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.296771+00:00",
         "notes": "'command definitions and dispatch' and 'loom: living intent graph CLI' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41138,7 +41138,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41155,7 +41155,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41173,7 +41173,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41190,7 +41190,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41207,7 +41207,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.426701+00:00",
         "notes": "'command definitions and dispatch' and 'typed SQLite graph schema' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41222,7 +41222,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.451293+00:00",
         "notes": "'command definitions and dispatch' and 'transitive layering-violation detection' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41237,7 +41237,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41254,7 +41254,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41271,7 +41271,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41288,7 +41288,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41305,7 +41305,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41341,7 +41341,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41358,7 +41358,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.640941+00:00",
         "notes": "'command definitions and dispatch' and 'no silent fallbacks in the query layer' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41373,7 +41373,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41408,7 +41408,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41425,7 +41425,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41475,7 +41475,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41492,7 +41492,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41510,7 +41510,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.831930+00:00",
         "notes": "'command definitions and dispatch' and 'scale benchmark harness' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41525,7 +41525,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.854614+00:00",
         "notes": "'command definitions and dispatch' and 'shared graph query snapshot layer' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41540,7 +41540,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41557,7 +41557,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.903449+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'command definitions and dispatch' ↔ 'saga failure diagnosis': universal dispatch routing (Command::X => handler::run, like every subcommand). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -41572,7 +41572,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.926687+00:00",
         "notes": "'command definitions and dispatch' and 'scale: hot commands bounded on large graphs' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41587,7 +41587,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41605,7 +41605,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:05.980738+00:00",
         "notes": "'command definitions and dispatch' and 'multi-hop audit layer' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41620,7 +41620,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41638,7 +41638,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41671,7 +41671,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.058334+00:00",
         "notes": "'command definitions and dispatch' and 'discovery queue ranks pairs by plausibility' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41686,7 +41686,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.082854+00:00",
         "notes": "'command definitions and dispatch' and 'shared symbol locator matcher' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41701,7 +41701,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -41719,7 +41719,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:24.280018+00:00",
         "notes": "",
@@ -41734,7 +41734,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41751,7 +41751,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.155578+00:00",
         "notes": "",
@@ -41766,7 +41766,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41783,7 +41783,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.202323+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'command definitions and dispatch' ↔ 'snapshot analysis and annotation helpe': universal dispatch routing (Command::X => handler::run, like every subcommand). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -41798,7 +41798,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41815,7 +41815,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.255563+00:00",
         "notes": "'command definitions and dispatch' and 'multi-language static analysis coverage' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41830,7 +41830,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -41849,7 +41849,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.303006+00:00",
         "notes": "'command definitions and dispatch' and 'saga spec with first-class intent binding' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41864,7 +41864,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41898,7 +41898,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -41916,7 +41916,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41934,7 +41934,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -41951,7 +41951,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:06.444581+00:00",
         "notes": "'command definitions and dispatch' and 'external interface surface plane' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -41966,7 +41966,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -41984,7 +41984,7 @@
         "evidence": "",
         "from": "5f876b50-7945-4df0-8aab-da0017ed580a",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -71570,7 +71570,7 @@
         "evidence": "",
         "from": "c2f6bca0-2ccd-48b7-af47-1a74fba61441",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:18.920437+00:00",
         "notes": "'SQLite-backed graph persistence migration' and 'command definitions and dispatch' have no shared code, no import coupling, no shared vocabulary, and no co-change signal — they serve different architectural concerns and do not interact.",
@@ -74269,7 +74269,7 @@
         "evidence": "",
         "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:19.315850+00:00",
         "notes": "",
@@ -91484,7 +91484,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-23T17:16:46.795416+00:00",
+  "last_synced": "2026-06-23T19:36:16.919881+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -126401,7 +126401,7 @@
         ]
       },
       {
-        "content_hash": "c5e2d42b0fc87319",
+        "content_hash": "75f90b3a2f31a05e",
         "extractor_grade": "high",
         "id": "2a7de86b-f47f-4f76-9d0c-7c78b0035bf1",
         "imports": [
@@ -126410,7 +126410,7 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T17:09:47.684000500+00:00",
+        "last_modified": "2026-06-23T19:33:05.853249898+00:00",
         "path": "src/commands/guide.rs",
         "symbol_facts": [
           {
@@ -127422,7 +127422,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "f63cb80e20f06b17",
+            "body_hash": "e24b981dd5cb5c9e",
             "kind": "fn",
             "label": "fn brownfield",
             "line_end": 431,
@@ -127524,7 +127524,7 @@
               },
               {
                 "line": 427,
-                "value": "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants; drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry architecture layers, `loom layer order <top> … <bottom>` arms the layering audit."
+                "value": "Encode the codebase's norms: seed the packs `loom detect` recommends (`loom rule seed iso5055` baseline; `mobile`/`web-ui`/`service`/`data`/`concurrency` per repo kind) plus `loom rule add …` for repo-specific sticks. Then `loom next --mode quality` serves every never-measured rule×intent pair — ONE command resolves each: `loom rule verdict … --status passing|failing|independent --criterion … --evidence …` (the verdict CREATES the edge; independent = measured, doesn't apply). Measure at the highest HONEST altitude: a verdict on a component covers its descendants ONLY with --covers-descendants; otherwise it covers the component alone — drop to a leaf only where the rule has specific bite. The layer order is a norm too: if intents carry architecture layers, `loom layer order <top> … <bottom>` arms the layering audit."
               },
               {
                 "line": 428,
@@ -155297,7 +155297,7 @@
         "symbols": []
       },
       {
-        "content_hash": "0bfd034f691c2341",
+        "content_hash": "3c1f96139e08a4a6",
         "extractor_grade": "high",
         "id": "a12abcff-1325-4014-b5b6-0b56b6f543c1",
         "imports": [
@@ -155310,7 +155310,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T16:30:06.553655573+00:00",
+        "last_modified": "2026-06-23T19:32:11.829068720+00:00",
         "path": "src/commands/rule.rs",
         "symbol_facts": [
           {
@@ -156961,7 +156961,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "8c1351e574a4e748",
+            "body_hash": "7c65cc23535f25c1",
             "kind": "fn",
             "label": "fn run_with_sqlite",
             "line_end": 695,
@@ -157067,7 +157067,7 @@
               },
               {
                 "line": 541,
-                "value": "    a verdict at component altitude covers its descendants)."
+                "value": "    a verdict at component altitude covers its descendants ONLY with --covers-descendants)."
               },
               {
                 "line": 554,
@@ -161508,14 +161508,14 @@
         ]
       },
       {
-        "content_hash": "851ca63fdfc58675",
+        "content_hash": "61c5fb0cb04159a3",
         "extractor_grade": "high",
         "id": "adbe2fbd-0766-497f-b877-90e8b30c975f",
         "imports": [
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T16:34:17.182388656+00:00",
+        "last_modified": "2026-06-23T19:32:21.438689991+00:00",
         "path": "src/db/queries/scoring.rs",
         "symbol_facts": [
           {
@@ -163001,7 +163001,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "4900cf22ecda441a",
+            "body_hash": "9dcfe62d70b166fb",
             "kind": "struct",
             "label": "pub struct NormativeCoverage",
             "line_end": 339,
@@ -176971,12 +176971,12 @@
         ]
       },
       {
-        "content_hash": "6ded7e192773cd63",
+        "content_hash": "adaf8eca1689aa8e",
         "extractor_grade": "high",
         "id": "db9d0090-a0bd-4179-9a02-f6523379e99a",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-23T11:08:20.757719122+00:00",
+        "last_modified": "2026-06-23T19:32:14.818155698+00:00",
         "path": "src/cli.rs",
         "symbol_facts": [
           {
@@ -177543,7 +177543,7 @@
             "visibility": "public"
           },
           {
-            "body_hash": "00bd3779e65124ef",
+            "body_hash": "0732e1917186e22e",
             "kind": "enum",
             "label": "pub enum EdgeCmd",
             "line_end": 1445,
