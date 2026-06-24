@@ -45,7 +45,16 @@ pub(crate) fn is_doc_file(path: &str) -> bool {
 /// generalization of "mockup is contract, not realization" to docs/specs, and the
 /// guard against a docs-repo masquerading as an implemented system (the pulse case).
 pub fn doc_only_realizations(snapshot: &QuerySnapshot) -> Vec<String> {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
+    // A planning UMBRELLA realizes THROUGH its children (which carry the code
+    // groundings); the umbrella grounded only to its plan/spec doc is that plan's
+    // home, not a spec-as-built smell. Exempt any intent that has children — only a
+    // LEAF grounded solely to docs is the real "spec marked built" risk.
+    let parents: HashSet<&str> = snapshot
+        .hierarchy
+        .iter()
+        .map(|(p, _)| p.as_str())
+        .collect();
     // intent_id -> (has any grounding, all groundings are docs)
     let mut g: HashMap<&str, (bool, bool)> = HashMap::new();
     for im in &snapshot.implements {
@@ -57,6 +66,7 @@ pub fn doc_only_realizations(snapshot: &QuerySnapshot) -> Vec<String> {
         .intents
         .iter()
         .filter(|i| i.lifecycle == "implemented")
+        .filter(|i| !parents.contains(i.id.as_str()))
         .filter(|i| {
             g.get(i.id.as_str())
                 .is_some_and(|(has, all_doc)| *has && *all_doc)
