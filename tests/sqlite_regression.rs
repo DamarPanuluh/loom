@@ -9183,3 +9183,120 @@ fn sqlite_build_recipe_hands_off_proving_to_validator() {
         "build recipe must hand off proving to the validator lane, not inline a builder `loom validate`: {out}"
     );
 }
+
+/// REGRESSION: `loom sync` must invalidate a proof when the body of a CLASS
+/// METHOD it is grounded to changes. tree-sitter extracts only top-level symbols
+/// (`class JobStore` = 1 fact, not its methods), so a `--locator "def set_state"`
+/// grounding named no tracked symbol and the symbol-precise ripple skipped it —
+/// a gutted method body kept its proof green (stale-green false-pass). A grounding
+/// whose locator names no tracked symbol now rides the file-level ripple.
+#[test]
+fn sqlite_sync_invalidates_method_grounded_proof_on_body_change() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("sync-method-ripple");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "store.py",
+        "class JobStore:\n    def set_state(self, k, v):\n        return True\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "store.py", "--json"], "llm:builder");
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "set state", "--description", "stores a job state value",
+            "--level", "feature", "--lifecycle", "implemented", "--json",
+        ],
+        "llm:builder",
+    );
+    let id = intent["id"].as_str().expect("id");
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", id, "store.py", "--locator", "def set_state", "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "ss proof", "--type", "test", "--command",
+            "python3 -c \"print(1)\"", "--intent", id, "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(&graph.root, &["validate", id, "--json"], "llm:validator");
+
+    // Gut the METHOD body; the locator string `def set_state` still occurs, so the
+    // pre-fix symbol-precise diff (which only tracked top-level `JobStore`) missed it.
+    write_scratch_file(
+        &graph.root,
+        "store.py",
+        "class JobStore:\n    def set_state(self, k, v):\n        raise RuntimeError(\"gutted\")\n",
+    );
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(sync["files_changed"], serde_json::json!(1), "file must register changed: {sync}");
+    assert!(
+        sync["validations_invalidated"].as_i64().unwrap_or(0) >= 1,
+        "a class-method body change must invalidate its method-grounded proof: {sync}"
+    );
+}
+
+/// REGRESSION (the precision guard for the fix above): changing ONE top-level
+/// function must NOT invalidate an UNCHANGED top-level sibling's proof. The
+/// nested-locator fallback must apply ONLY to locators that name no tracked
+/// symbol — top-level groundings stay symbol-precise.
+#[test]
+fn sqlite_sync_precise_for_unchanged_top_level_sibling() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("sync-precise");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "m.py", "def alpha():\n    return 1\n\ndef beta():\n    return 2\n");
+    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
+    let a = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "alpha", "--description", "alpha behavior", "--level",
+            "feature", "--lifecycle", "implemented", "--json",
+        ],
+        "llm:builder",
+    );
+    let b = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "beta", "--description", "beta behavior", "--level",
+            "feature", "--lifecycle", "implemented", "--json",
+        ],
+        "llm:builder",
+    );
+    let aid = a["id"].as_str().expect("a");
+    let bid = b["id"].as_str().expect("b");
+    run_json_as(&graph.root, &["edge", "implement", aid, "m.py", "--locator", "def alpha", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", bid, "m.py", "--locator", "def beta", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "ap", "--type", "test", "--command",
+            "python3 -c \"print(1)\"", "--intent", aid, "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "bp", "--type", "test", "--command",
+            "python3 -c \"print(1)\"", "--intent", bid, "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(&graph.root, &["validate", "--all", "--json"], "llm:validator");
+
+    // Change ONLY alpha's body; beta is a top-level symbol left untouched.
+    write_scratch_file(&graph.root, "m.py", "def alpha():\n    return 99\n\ndef beta():\n    return 2\n");
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        sync["validations_invalidated"],
+        serde_json::json!(1),
+        "exactly ONE proof (alpha's) must flip — beta's untouched top-level grounding stays precise: {sync}"
+    );
+}

@@ -1075,19 +1075,35 @@ fn affected_intents(
         .filter_map(|lbl| name_of.get(lbl).copied())
         .filter(|n| !n.is_empty())
         .collect();
+    // Every symbol name tracked in THIS file (old ∪ new facts). A locator that
+    // matches NONE of them names a symbol tree-sitter does not extract — a method
+    // or other NESTED symbol (e.g. `def set_state` inside `class JobStore`, where
+    // only `JobStore` is a fact). Such a grounding can't be symbol-attributed, so
+    // a precise diff would silently skip it on every change and leave a gutted
+    // method body's proof green (stale-green false-pass). Treat it as affected
+    // whenever the file content changed — the same file-level attribution
+    // `loom impact` already predicts, so the two reads now agree.
+    let tracked_names: Vec<&str> = name_of
+        .values()
+        .copied()
+        .filter(|n| !n.is_empty())
+        .collect();
     // An intent is affected iff one of its IMPLEMENTS edges on THIS file is
-    // file-level (empty locator) or names a changed symbol. IDENTIFIER-WORD match,
-    // not raw substring: a changed `add` must NOT invalidate a grounding on
-    // `add_tax` (a bare `contains` re-opened every grounding whose locator merely
-    // contained the name as a sub-token — wasted re-verification churn).
+    // file-level (empty locator), names a changed symbol, or names NO tracked
+    // symbol (nested). IDENTIFIER-WORD match, not raw substring: a changed `add`
+    // must NOT invalidate a grounding on `add_tax` (a bare `contains` re-opened
+    // every grounding whose locator merely contained the name as a sub-token —
+    // wasted re-verification churn).
     let mut affected = HashSet::new();
     for im in all_implements.iter().filter(|im| im.codefile_id == cf.id) {
         let loc = im.locator.trim();
-        if loc.is_empty()
-            || changed_names
-                .iter()
-                .any(|n| crate::db::queries::symbol_match::contains_identifier_word(loc, n))
-        {
+        let names_changed = changed_names
+            .iter()
+            .any(|n| crate::db::queries::symbol_match::contains_identifier_word(loc, n));
+        let names_tracked = tracked_names
+            .iter()
+            .any(|n| crate::db::queries::symbol_match::contains_identifier_word(loc, n));
+        if loc.is_empty() || names_changed || !names_tracked {
             affected.insert(im.intent_id.clone());
         }
     }

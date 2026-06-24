@@ -376,7 +376,7 @@
         "evidence": "@src/commands/sync.rs — No credentials, tokens, API keys, or secrets in the grounded source files; grep for password/secret/token/api_key returns empty. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "288b1e0a-3875-46e3-b12c-217ed570f0a7",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T11:39:37.004437+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -662,7 +662,7 @@
         "evidence": "@src/commands/sync.rs — SQLite connections and file handles are managed by GraphReadHandle/GraphReadRepository with Drop semantics; no manual resource leaks in the grounded code. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "40432472-8004-405c-95b9-428c5087179f",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T11:39:36.581823+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -1234,7 +1234,7 @@
         "evidence": "All loops iterate over finite collections (snapshots, intent lists); no unbounded recursion or open-ended iteration in the grounded code. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "59d5a9d7-0007-4e73-a429-2082a2ec6eb2",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-22T11:51:39.296129+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -1520,7 +1520,7 @@
         "evidence": "@src/commands/sync.rs — External input (CLI args, file paths) validated via anyhow::Result error propagation and crate::repo::confine; no unvalidated external input reaches storage. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "71da2fcd-16f9-4325-bf00-3be8a2d10cda",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T11:39:36.097603+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -1845,7 +1845,7 @@
         "evidence": "No unreachable code or copy-paste duplication found in the grounded files; module re-exports are structural, not duplicate logic. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "8f79a769-f6e4-4fc8-87b1-326bb8472451",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-22T11:51:40.482481+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -2287,7 +2287,7 @@
         "evidence": "Each grounded file owns one responsibility: mod.rs aggregates pure analysis modules, meta.rs defines metadata types, explain.rs renders the explain command. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "9e3a1396-d05f-4c34-9d61-8d977a37e6fc",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-22T11:51:41.671406+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -3431,7 +3431,7 @@
         "evidence": "@src/commands/sync.rs — All fallible operations use Result<()> with ? propagation; no unwrap()/expect() on fallible ops in the grounded files. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "a2aa3a6e-eeb5-4686-aaf1-b5a42eb402b1",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-23T11:39:36.462730+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -3691,7 +3691,7 @@
         "evidence": "Read-heavy analysis runs over a single shared QuerySnapshot per invocation (snapshot.rs); no repeated identical queries or I/O in the grounded code. | Re-confirmed after the sync-ripple refactor (deferred code ripple + import-coupling gate) and the extraction double-count fix: changes are behavior-preserving, add no panic/unwrap/secret/SQL-concat and no dead code. | Re-confirmed after the audit-finding cleanup (string-contract dedup to shared consts/helpers, report.rs split): behavior-preserving, adds no panic/secret/SQL-concat and no dead code.",
         "from": "a3acb075-bf35-4985-8c48-d519f39c0c31",
         "inspected_by": "llm:quality",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "last_inspected": "2026-06-22T11:51:43.858942+00:00",
         "notes": "",
         "to": "29799603-3704-4dfa-9ba4-387a7c1942f8"
@@ -8797,7 +8797,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; SQLite graph persistence and sync flag engine remain related when current code s",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:46:33.140836+00:00",
         "notes": "Re-inspected after the confirmed-hypothesis TARGETS-staling fix (scoped edge-write/sync change + test; 284/272 tests green, clippy clean): the flagged import is unchanged in nature, structural infra/trait usage, not a new intent-level dependency. Independent verdict stands.",
@@ -14114,7 +14114,7 @@
         "evidence": "Shared-file coupling confirmed via loom's file-ownership detection; criterion: These intents deliberately share at least one owned file und",
         "from": "205377c4-ef33-4636-866d-f344e7dc1410",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -18761,7 +18761,7 @@
         "evidence": "",
         "from": "246d039f-08d0-4b01-b194-5917bb3a3a25",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:57.612289+00:00",
         "notes": "",
@@ -20148,7 +20148,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'sync flag engine' and 'triage queue for hypotheses' share coupling signals (sam",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:52:16.321785+00:00",
         "notes": "",
@@ -20225,7 +20225,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20274,7 +20274,7 @@
         "evidence": "Import coupling confirmed via loom's mechanical import detection; criterion: Related by code-level dependency: code of 'sync flag engine'",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -20292,7 +20292,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20354,7 +20354,7 @@
         "evidence": "Shared-file coupling confirmed via loom's file-ownership detection; criterion: These intents deliberately share at least one owned file und",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20418,7 +20418,7 @@
         "evidence": "Import coupling confirmed via loom's mechanical import detection; criterion: Existing source-level imports couple these owned behaviors;",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -20450,7 +20450,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:36:58.018265+00:00",
         "notes": "Re-inspected after the confirmed-hypothesis TARGETS-staling fix (scoped edge-write/sync change + test; 284/272 tests green, clippy clean): the flagged import is unchanged in nature, structural infra/trait usage, not a new intent-level dependency. Independent verdict stands.",
@@ -20465,7 +20465,7 @@
         "evidence": "",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -23590,7 +23590,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'hypothesis plane' and 'sync flag engine' share coupling signals (same_domain(wo",
         "from": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:52:22.307193+00:00",
         "notes": "",
@@ -32810,7 +32810,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'priority-scored work queues' and 'sync flag engine' share coupling signals (sam",
         "from": "47c9182c-f7a8-4a50-9281-6d05507e646c",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:52:34.649925+00:00",
         "notes": "",
@@ -53917,7 +53917,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'adoption spawns outcome proof' and 'sync flag engine' share coupling signals (s",
         "from": "809761fa-9de9-4b00-b3e4-eda65efb65ab",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:52:49.978325+00:00",
         "notes": "",
@@ -56093,7 +56093,7 @@
         "evidence": "Shared-file coupling confirmed via loom's file-ownership detection; criterion: Related by shared implementation ownership: 'stale hypothesi",
         "from": "888d9dcd-b8eb-4278-b493-5fdf16bf4f4c",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "same_domain",
           "shares_file"
@@ -70788,7 +70788,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'scale benchmark harness' and 'sync flag engine' share coupling signals (same_do",
         "from": "be2436f2-1072-454d-a4b7-bdcab2658594",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:58:05.635256+00:00",
         "notes": "",
@@ -71223,7 +71223,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'shared graph query snapshot layer' and 'sync flag engine' share coupling signal",
         "from": "be7990bd-7f82-40d9-8064-c72c52c0a04c",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:58:06.186731+00:00",
         "notes": "",
@@ -78797,7 +78797,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'discovery queue ranks pairs by plausibility' and 'sync flag engine' share coupl",
         "from": "cf0d57d3-60d5-4c28-ad85-91bb448dd945",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:58:14.636851+00:00",
         "notes": "",
@@ -80018,7 +80018,7 @@
         "evidence": "",
         "from": "d7d485d7-c342-4c44-a57f-d08f7cf31941",
         "inspected_by": "llm",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-23T11:37:20.809254+00:00",
         "notes": "",
@@ -83609,7 +83609,7 @@
         "evidence": "Re-confirmed: the stored criterion describes the coupling; 'bounded tag vocabulary' and 'sync flag engine' share coupling signals (same_dom",
         "from": "e5bba339-3f44-47be-8065-9630cc482e9b",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-22T22:58:16.007388+00:00",
         "notes": "",
@@ -93319,7 +93319,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-24T16:58:33.657570+00:00",
+  "last_synced": "2026-06-24T17:43:59.084394+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -102268,12 +102268,12 @@
         ]
       },
       {
-        "content_hash": "537d45452827a9a2",
+        "content_hash": "beb8331f31479a22",
         "extractor_grade": "high",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-24T16:36:02.988839454+00:00",
+        "last_modified": "2026-06-24T17:33:56.244792751+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -125591,6 +125591,612 @@
             "visibility": "private"
           },
           {
+            "body_hash": "a93cdf6704ee56d9",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_sync_invalidates_method_grounded_proof_on_body_change",
+            "line_end": 9242,
+            "line_start": 9194,
+            "name": "sqlite_sync_invalidates_method_grounded_proof_on_body_change",
+            "panic_marker_count": 1,
+            "panic_markers": [
+              "expect"
+            ],
+            "shape_hash": "e07da5f1b7d4df9b",
+            "string_literals": [
+              {
+                "line": 9196,
+                "value": "sync-method-ripple"
+              },
+              {
+                "line": 9197,
+                "value": "init"
+              },
+              {
+                "line": 9197,
+                "value": "."
+              },
+              {
+                "line": 9197,
+                "value": "--json"
+              },
+              {
+                "line": 9200,
+                "value": "store.py"
+              },
+              {
+                "line": 9201,
+                "value": "class JobStore:\\n    def set_state(self, k, v):\\n        return True\\n"
+              },
+              {
+                "line": 9203,
+                "value": "codefile"
+              },
+              {
+                "line": 9203,
+                "value": "add"
+              },
+              {
+                "line": 9203,
+                "value": "store.py"
+              },
+              {
+                "line": 9203,
+                "value": "--json"
+              },
+              {
+                "line": 9203,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9207,
+                "value": "intent"
+              },
+              {
+                "line": 9207,
+                "value": "add"
+              },
+              {
+                "line": 9207,
+                "value": "--name"
+              },
+              {
+                "line": 9207,
+                "value": "set state"
+              },
+              {
+                "line": 9207,
+                "value": "--description"
+              },
+              {
+                "line": 9207,
+                "value": "stores a job state value"
+              },
+              {
+                "line": 9208,
+                "value": "--level"
+              },
+              {
+                "line": 9208,
+                "value": "feature"
+              },
+              {
+                "line": 9208,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9208,
+                "value": "implemented"
+              },
+              {
+                "line": 9208,
+                "value": "--json"
+              },
+              {
+                "line": 9210,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9212,
+                "value": "id"
+              },
+              {
+                "line": 9212,
+                "value": "id"
+              },
+              {
+                "line": 9215,
+                "value": "edge"
+              },
+              {
+                "line": 9215,
+                "value": "implement"
+              },
+              {
+                "line": 9215,
+                "value": "store.py"
+              },
+              {
+                "line": 9215,
+                "value": "--locator"
+              },
+              {
+                "line": 9215,
+                "value": "def set_state"
+              },
+              {
+                "line": 9215,
+                "value": "--json"
+              },
+              {
+                "line": 9216,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9218,
+                "value": "sync"
+              },
+              {
+                "line": 9218,
+                "value": "--json"
+              },
+              {
+                "line": 9222,
+                "value": "validation"
+              },
+              {
+                "line": 9222,
+                "value": "add"
+              },
+              {
+                "line": 9222,
+                "value": "--name"
+              },
+              {
+                "line": 9222,
+                "value": "ss proof"
+              },
+              {
+                "line": 9222,
+                "value": "--type"
+              },
+              {
+                "line": 9222,
+                "value": "test"
+              },
+              {
+                "line": 9222,
+                "value": "--command"
+              },
+              {
+                "line": 9223,
+                "value": "python3 -c \\\"print(1)\\\""
+              },
+              {
+                "line": 9223,
+                "value": "--intent"
+              },
+              {
+                "line": 9223,
+                "value": "--json"
+              },
+              {
+                "line": 9225,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9227,
+                "value": "validate"
+              },
+              {
+                "line": 9227,
+                "value": "--json"
+              },
+              {
+                "line": 9227,
+                "value": "llm:validator"
+              },
+              {
+                "line": 9233,
+                "value": "store.py"
+              },
+              {
+                "line": 9234,
+                "value": "class JobStore:\\n    def set_state(self, k, v):\\n        raise RuntimeError(\\\"gutted\\\")\\n"
+              },
+              {
+                "line": 9236,
+                "value": "sync"
+              },
+              {
+                "line": 9236,
+                "value": "--json"
+              },
+              {
+                "line": 9237,
+                "value": "files_changed"
+              },
+              {
+                "line": 9237,
+                "value": "file must register changed: {sync}"
+              },
+              {
+                "line": 9239,
+                "value": "validations_invalidated"
+              },
+              {
+                "line": 9240,
+                "value": "a class-method body change must invalidate its method-grounded proof: {sync}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "ac530d0294adee84",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_sync_precise_for_unchanged_top_level_sibling",
+            "line_end": 9302,
+            "line_start": 9249,
+            "name": "sqlite_sync_precise_for_unchanged_top_level_sibling",
+            "panic_marker_count": 2,
+            "panic_markers": [
+              "expect"
+            ],
+            "shape_hash": "bb8b53f692529f1a",
+            "string_literals": [
+              {
+                "line": 9251,
+                "value": "sync-precise"
+              },
+              {
+                "line": 9252,
+                "value": "init"
+              },
+              {
+                "line": 9252,
+                "value": "."
+              },
+              {
+                "line": 9252,
+                "value": "--json"
+              },
+              {
+                "line": 9253,
+                "value": "m.py"
+              },
+              {
+                "line": 9253,
+                "value": "def alpha():\\n    return 1\\n\\ndef beta():\\n    return 2\\n"
+              },
+              {
+                "line": 9254,
+                "value": "codefile"
+              },
+              {
+                "line": 9254,
+                "value": "add"
+              },
+              {
+                "line": 9254,
+                "value": "m.py"
+              },
+              {
+                "line": 9254,
+                "value": "--json"
+              },
+              {
+                "line": 9254,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9258,
+                "value": "intent"
+              },
+              {
+                "line": 9258,
+                "value": "add"
+              },
+              {
+                "line": 9258,
+                "value": "--name"
+              },
+              {
+                "line": 9258,
+                "value": "alpha"
+              },
+              {
+                "line": 9258,
+                "value": "--description"
+              },
+              {
+                "line": 9258,
+                "value": "alpha behavior"
+              },
+              {
+                "line": 9258,
+                "value": "--level"
+              },
+              {
+                "line": 9259,
+                "value": "feature"
+              },
+              {
+                "line": 9259,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9259,
+                "value": "implemented"
+              },
+              {
+                "line": 9259,
+                "value": "--json"
+              },
+              {
+                "line": 9261,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9266,
+                "value": "intent"
+              },
+              {
+                "line": 9266,
+                "value": "add"
+              },
+              {
+                "line": 9266,
+                "value": "--name"
+              },
+              {
+                "line": 9266,
+                "value": "beta"
+              },
+              {
+                "line": 9266,
+                "value": "--description"
+              },
+              {
+                "line": 9266,
+                "value": "beta behavior"
+              },
+              {
+                "line": 9266,
+                "value": "--level"
+              },
+              {
+                "line": 9267,
+                "value": "feature"
+              },
+              {
+                "line": 9267,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9267,
+                "value": "implemented"
+              },
+              {
+                "line": 9267,
+                "value": "--json"
+              },
+              {
+                "line": 9269,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9271,
+                "value": "id"
+              },
+              {
+                "line": 9271,
+                "value": "a"
+              },
+              {
+                "line": 9272,
+                "value": "id"
+              },
+              {
+                "line": 9272,
+                "value": "b"
+              },
+              {
+                "line": 9273,
+                "value": "edge"
+              },
+              {
+                "line": 9273,
+                "value": "implement"
+              },
+              {
+                "line": 9273,
+                "value": "m.py"
+              },
+              {
+                "line": 9273,
+                "value": "--locator"
+              },
+              {
+                "line": 9273,
+                "value": "def alpha"
+              },
+              {
+                "line": 9273,
+                "value": "--json"
+              },
+              {
+                "line": 9273,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9274,
+                "value": "edge"
+              },
+              {
+                "line": 9274,
+                "value": "implement"
+              },
+              {
+                "line": 9274,
+                "value": "m.py"
+              },
+              {
+                "line": 9274,
+                "value": "--locator"
+              },
+              {
+                "line": 9274,
+                "value": "def beta"
+              },
+              {
+                "line": 9274,
+                "value": "--json"
+              },
+              {
+                "line": 9274,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9275,
+                "value": "sync"
+              },
+              {
+                "line": 9275,
+                "value": "--json"
+              },
+              {
+                "line": 9279,
+                "value": "validation"
+              },
+              {
+                "line": 9279,
+                "value": "add"
+              },
+              {
+                "line": 9279,
+                "value": "--name"
+              },
+              {
+                "line": 9279,
+                "value": "ap"
+              },
+              {
+                "line": 9279,
+                "value": "--type"
+              },
+              {
+                "line": 9279,
+                "value": "test"
+              },
+              {
+                "line": 9279,
+                "value": "--command"
+              },
+              {
+                "line": 9280,
+                "value": "python3 -c \\\"print(1)\\\""
+              },
+              {
+                "line": 9280,
+                "value": "--intent"
+              },
+              {
+                "line": 9280,
+                "value": "--json"
+              },
+              {
+                "line": 9282,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9287,
+                "value": "validation"
+              },
+              {
+                "line": 9287,
+                "value": "add"
+              },
+              {
+                "line": 9287,
+                "value": "--name"
+              },
+              {
+                "line": 9287,
+                "value": "bp"
+              },
+              {
+                "line": 9287,
+                "value": "--type"
+              },
+              {
+                "line": 9287,
+                "value": "test"
+              },
+              {
+                "line": 9287,
+                "value": "--command"
+              },
+              {
+                "line": 9288,
+                "value": "python3 -c \\\"print(1)\\\""
+              },
+              {
+                "line": 9288,
+                "value": "--intent"
+              },
+              {
+                "line": 9288,
+                "value": "--json"
+              },
+              {
+                "line": 9290,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9292,
+                "value": "validate"
+              },
+              {
+                "line": 9292,
+                "value": "--all"
+              },
+              {
+                "line": 9292,
+                "value": "--json"
+              },
+              {
+                "line": 9292,
+                "value": "llm:validator"
+              },
+              {
+                "line": 9295,
+                "value": "m.py"
+              },
+              {
+                "line": 9295,
+                "value": "def alpha():\\n    return 99\\n\\ndef beta():\\n    return 2\\n"
+              },
+              {
+                "line": 9296,
+                "value": "sync"
+              },
+              {
+                "line": 9296,
+                "value": "--json"
+              },
+              {
+                "line": 9298,
+                "value": "validations_invalidated"
+              },
+              {
+                "line": 9300,
+                "value": "exactly ONE proof (alpha's) must flip — beta's untouched top-level grounding stays precise: {sync}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
             "body_hash": "e843e210be94a128",
             "is_test": true,
             "kind": "fn",
@@ -128306,6 +128912,8 @@
           "fn sqlite_sync_flags_edges_of_missing_files",
           "fn sqlite_sync_grades_files_and_codefile_show_exposes_it",
           "fn sqlite_sync_ignores_mtime_only_change",
+          "fn sqlite_sync_invalidates_method_grounded_proof_on_body_change",
+          "fn sqlite_sync_precise_for_unchanged_top_level_sibling",
           "fn sqlite_sync_skips_meaning_only_edges_on_code_change",
           "fn sqlite_take_template_confidence_placeholder_and_hints_json",
           "fn sqlite_take_template_human_prints_legend_and_dry_run",
@@ -154096,7 +154704,7 @@
         ]
       },
       {
-        "content_hash": "936dc92cba5726c0",
+        "content_hash": "abec649357dcd0a8",
         "extractor_grade": "high",
         "id": "86771b7c-6bd2-4c00-8266-b57cf45003ab",
         "imports": [
@@ -154105,7 +154713,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-21T19:03:58.911888667+00:00",
+        "last_modified": "2026-06-24T17:31:09.566049306+00:00",
         "path": "src/commands/impact.rs",
         "symbol_facts": [
           {
@@ -154169,10 +154777,10 @@
             "visibility": "private"
           },
           {
-            "body_hash": "841cf3daa02c8c72",
+            "body_hash": "33ba18da70fbe7f0",
             "kind": "fn",
             "label": "fn render_human",
-            "line_end": 210,
+            "line_end": 212,
             "line_start": 159,
             "name": "render_human",
             "shape_hash": "384ba6f93dd09db1",
@@ -154223,79 +154831,79 @@
               },
               {
                 "line": 207,
-                "value": "  → `loom sync` will flag exactly these after the change; re-verify with \\\n         `loom next --mode fix` / `--mode validate`."
+                "value": "  → this is the UPPER BOUND (pre-change, file-level). After the edit, `loom sync` flags \\\n         those whose grounded code ACTUALLY changed — symbol-precise: an untouched top-level \\\n         symbol's grounding stays green, while file-level and nested-method groundings always \\\n         re-open. Re-verify with `loom next --mode fix` / `--mode validate`."
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "bc9673be98f2d2f6",
+            "body_hash": "a7a9e63ff7e04998",
             "kind": "fn",
             "label": "fn render_json",
-            "line_end": 237,
-            "line_start": 213,
+            "line_end": 239,
+            "line_start": 215,
             "name": "render_json",
             "shape_hash": "c54158474a9d3d0e",
             "string_literals": [
               {
-                "line": 222,
+                "line": 224,
                 "value": "changed_files"
               },
               {
-                "line": 223,
+                "line": 225,
                 "value": "directly_affected"
               },
               {
-                "line": 224,
+                "line": 226,
                 "value": "intent_id"
               },
               {
-                "line": 225,
+                "line": 227,
                 "value": "intent"
-              },
-              {
-                "line": 226,
-                "value": "files"
               },
               {
                 "line": 228,
+                "value": "files"
+              },
+              {
+                "line": 230,
                 "value": "proofs_to_rerun"
               },
               {
-                "line": 229,
+                "line": 231,
                 "value": "validation"
               },
               {
-                "line": 229,
+                "line": 231,
                 "value": "intent"
               },
               {
-                "line": 231,
+                "line": 233,
                 "value": "downstream"
               },
               {
-                "line": 232,
+                "line": 234,
                 "value": "ripples_to"
               },
               {
-                "line": 232,
+                "line": 234,
                 "value": "via"
               },
               {
-                "line": 232,
+                "line": 234,
                 "value": "kind"
               },
               {
-                "line": 234,
+                "line": 236,
                 "value": "unregistered_changed_source"
               },
               {
-                "line": 235,
+                "line": 237,
                 "value": "next_step"
               },
               {
-                "line": 235,
-                "value": "`loom sync` flags exactly these after the change; re-verify via `loom next --mode fix` / `--mode validate`."
+                "line": 237,
+                "value": "this is the upper bound (pre-change, file-level); after the edit `loom sync` flags those whose grounded code actually changed (symbol-precise — an untouched top-level symbol stays green; file-level + nested-method groundings always re-open). Re-verify via `loom next --mode fix` / `--mode validate`."
               }
             ],
             "visibility": "private"
@@ -176723,7 +177331,7 @@
         ]
       },
       {
-        "content_hash": "885c3becda74b98a",
+        "content_hash": "db0426f3508f1d62",
         "extractor_grade": "high",
         "id": "bec5a791-c098-48e4-8444-bd7de2b7c465",
         "imports": [
@@ -176734,7 +177342,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T11:24:40.509223188+00:00",
+        "last_modified": "2026-06-24T17:32:36.820016891+00:00",
         "path": "src/db/queries/integrity.rs",
         "symbol_facts": [
           {
@@ -176752,13 +177360,13 @@
             "is_test": true,
             "kind": "const",
             "label": "const TEMPLATE",
-            "line_end": 1271,
-            "line_start": 1270,
+            "line_end": 1276,
+            "line_start": 1275,
             "name": "TEMPLATE",
             "shape_hash": "65c55dfceb68f926",
             "string_literals": [
               {
-                "line": 1271,
+                "line": 1276,
                 "value": "Deliberate: this file serves several subcommand intents in one cohesive command module surface."
               }
             ],
@@ -176973,37 +177581,37 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn audits_active_adjudication_not_superseded_history",
-            "line_end": 1308,
-            "line_start": 1287,
+            "line_end": 1313,
+            "line_start": 1292,
             "name": "audits_active_adjudication_not_superseded_history",
             "shape_hash": "6fd2ce415050b01a",
             "string_literals": [
               {
-                "line": 1289,
+                "line": 1294,
                 "value": "tangled_file:a.rs"
               },
               {
-                "line": 1290,
+                "line": 1295,
                 "value": "tangled_file:b.rs"
               },
               {
-                "line": 1291,
+                "line": 1296,
                 "value": "tangled_file:c.rs"
               },
               {
-                "line": 1295,
+                "line": 1300,
                 "value": "2026-01-01T00:00:00Z"
               },
               {
-                "line": 1296,
+                "line": 1301,
                 "value": "2026-02-01T00:00:00Z"
               },
               {
-                "line": 1302,
+                "line": 1307,
                 "value": "genuine active rulings are not vacuous: {issues:?}"
               },
               {
-                "line": 1306,
+                "line": 1311,
                 "value": "superseded templated history must NOT cluster — only active distinct rulings count: {hints:?}"
               }
             ],
@@ -177014,17 +177622,17 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 1173,
-            "line_start": 1161,
+            "line_end": 1178,
+            "line_start": 1166,
             "name": "cf",
             "shape_hash": "b072527940a504c0",
             "string_literals": [
               {
-                "line": 1163,
+                "line": 1168,
                 "value": "cf:{path}"
               },
               {
-                "line": 1165,
+                "line": 1170,
                 "value": "rust"
               }
             ],
@@ -177034,13 +177642,13 @@
             "body_hash": "90a85aed702dc64f",
             "kind": "fn",
             "label": "fn confidence_concentration_hints",
-            "line_end": 1005,
-            "line_start": 947,
+            "line_end": 1007,
+            "line_start": 949,
             "name": "confidence_concentration_hints",
             "shape_hash": "d695cbce7214084d",
             "string_literals": [
               {
-                "line": 998,
+                "line": 1000,
                 "value": "epistemic: '{author}' recorded {n} {etype} passing/failing verdict(s) at \\\n                 near-uniform confidence (~{conf:.2}, {distinct} distinct value(s)) backed by only \\\n                 {evidence} distinct evidence string(s) — a lane that rates everything the same with \\\n                 copied evidence is the laundering smell; sample it with `loom next --mode review`"
               }
             ],
@@ -177051,25 +177659,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn delegation",
-            "line_end": 1193,
-            "line_start": 1183,
+            "line_end": 1198,
+            "line_start": 1188,
             "name": "delegation",
             "shape_hash": "e3eb04072ab33324",
             "string_literals": [
               {
-                "line": 1185,
+                "line": 1190,
                 "value": "dg:{pattern}"
               },
               {
-                "line": 1187,
+                "line": 1192,
                 "value": "child/loom.graph.json"
               },
               {
-                "line": 1190,
+                "line": 1195,
                 "value": "test"
               },
               {
-                "line": 1191,
+                "line": 1196,
                 "value": "t"
               }
             ],
@@ -177080,8 +177688,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn empty_disk_and_empty_codefiles_is_clean",
-            "line_end": 1248,
-            "line_start": 1244,
+            "line_end": 1253,
+            "line_start": 1249,
             "name": "empty_disk_and_empty_codefiles_is_clean",
             "shape_hash": "561e8e4fef6a9601",
             "visibility": "private"
@@ -177091,37 +177699,37 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_copied_evidence_even_with_spread_confidence",
-            "line_end": 1072,
-            "line_start": 1050,
+            "line_end": 1074,
+            "line_start": 1052,
             "name": "flags_copied_evidence_even_with_spread_confidence",
             "shape_hash": "a00d736397a9f794",
             "string_literals": [
               {
-                "line": 1055,
+                "line": 1057,
                 "value": "llm:scout"
               },
               {
-                "line": 1055,
+                "line": 1057,
                 "value": "GOVERNS"
               },
               {
-                "line": 1060,
+                "line": 1062,
                 "value": "A"
               },
               {
-                "line": 1060,
+                "line": 1062,
                 "value": "B"
               },
               {
-                "line": 1069,
+                "line": 1071,
                 "value": "copied evidence should flag even with spread confidence: {hints:?}"
               },
               {
-                "line": 1071,
+                "line": 1073,
                 "value": "distinct evidence"
               },
               {
-                "line": 1071,
+                "line": 1073,
                 "value": "got: {hints:?}"
               }
             ],
@@ -177132,33 +177740,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_templated_active_rulings",
-            "line_end": 1331,
-            "line_start": 1313,
+            "line_end": 1336,
+            "line_start": 1318,
             "name": "flags_templated_active_rulings",
             "shape_hash": "31ca82a01f7c5dc5",
             "string_literals": [
               {
-                "line": 1315,
+                "line": 1320,
                 "value": "tangled_file:a.rs"
               },
               {
-                "line": 1316,
+                "line": 1321,
                 "value": "tangled_file:b.rs"
               },
               {
-                "line": 1317,
+                "line": 1322,
                 "value": "tangled_file:c.rs"
               },
               {
-                "line": 1321,
+                "line": 1326,
                 "value": "2026-01-01T00:00:00Z"
               },
               {
-                "line": 1322,
+                "line": 1327,
                 "value": "2026-02-01T00:00:00Z"
               },
               {
-                "line": 1329,
+                "line": 1334,
                 "value": "3 templated active rulings must cluster into one hint: {hints:?}"
               }
             ],
@@ -177169,65 +177777,65 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_uniform_confidence_lane_but_spares_spread",
-            "line_end": 1047,
-            "line_start": 1015,
+            "line_end": 1049,
+            "line_start": 1017,
             "name": "flags_uniform_confidence_lane_but_spares_spread",
             "shape_hash": "65c94eb75220e900",
             "string_literals": [
               {
-                "line": 1020,
+                "line": 1022,
                 "value": "llm:scout"
               },
               {
-                "line": 1020,
+                "line": 1022,
                 "value": "GOVERNS"
               },
               {
-                "line": 1021,
+                "line": 1023,
                 "value": "evidence {i}"
-              },
-              {
-                "line": 1025,
-                "value": "llm:analyzer"
-              },
-              {
-                "line": 1025,
-                "value": "RELATES_TO"
               },
               {
                 "line": 1027,
-                "value": "evidence {i}"
+                "value": "llm:analyzer"
               },
               {
-                "line": 1032,
-                "value": "llm:fixer"
-              },
-              {
-                "line": 1032,
+                "line": 1027,
                 "value": "RELATES_TO"
               },
               {
-                "line": 1033,
+                "line": 1029,
                 "value": "evidence {i}"
               },
               {
-                "line": 1040,
+                "line": 1034,
+                "value": "llm:fixer"
+              },
+              {
+                "line": 1034,
+                "value": "RELATES_TO"
+              },
+              {
+                "line": 1035,
+                "value": "evidence {i}"
+              },
+              {
+                "line": 1042,
                 "value": "only the uniform lane should flag: {hints:?}"
               },
               {
-                "line": 1042,
+                "line": 1044,
                 "value": "llm:scout"
               },
               {
-                "line": 1042,
+                "line": 1044,
                 "value": "got: {hints:?}"
               },
               {
-                "line": 1044,
+                "line": 1046,
                 "value": "GOVERNS"
               },
               {
-                "line": 1045,
+                "line": 1047,
                 "value": "names the edge type: {hints:?}"
               }
             ],
@@ -177238,21 +177846,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn genuine",
-            "line_end": 1279,
-            "line_start": 1273,
+            "line_end": 1284,
+            "line_start": 1278,
             "name": "genuine",
             "shape_hash": "77e6951bdd71dded",
             "string_literals": [
               {
-                "line": 1275,
+                "line": 1280,
                 "value": "Audited intent.rs: a flat match over eight Intent lifecycle verbs, each a linear resolve-mutate-render arm."
               },
               {
-                "line": 1276,
+                "line": 1281,
                 "value": "Audited rule.rs: dispatch add/seed/verdict/list/detect/show, expanding const pack tables into governable rules."
               },
               {
-                "line": 1277,
+                "line": 1282,
                 "value": "Audited saga.rs: add/run/diagnose/list/show over consumer-plane proofs; the runner invokes diagnose on failure."
               }
             ],
@@ -177263,25 +177871,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ignore",
-            "line_end": 1182,
-            "line_start": 1174,
+            "line_end": 1187,
+            "line_start": 1179,
             "name": "ignore",
             "shape_hash": "1561112312cd035c",
             "string_literals": [
               {
-                "line": 1176,
+                "line": 1181,
                 "value": "ig:{pattern}"
               },
               {
-                "line": 1178,
+                "line": 1183,
                 "value": "test"
               },
               {
-                "line": 1179,
+                "line": 1184,
                 "value": "test"
               },
               {
-                "line": 1180,
+                "line": 1185,
                 "value": "t"
               }
             ],
@@ -177386,121 +177994,121 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn reconciles_unmapped_drifted_missing_without_over_firing",
-            "line_end": 1241,
-            "line_start": 1201,
+            "line_end": 1246,
+            "line_start": 1206,
             "name": "reconciles_unmapped_drifted_missing_without_over_firing",
             "shape_hash": "8961fde72607039a",
             "string_literals": [
               {
-                "line": 1203,
-                "value": "src/mapped.rs"
-              },
-              {
-                "line": 1204,
-                "value": "src/drifted.rs"
-              },
-              {
-                "line": 1205,
-                "value": "src/legacy.rs"
-              },
-              {
-                "line": 1206,
-                "value": "src/ignored.rs"
-              },
-              {
-                "line": 1207,
-                "value": "sub/child.rs"
-              },
-              {
                 "line": 1208,
-                "value": "src/phantom.rs"
+                "value": "src/mapped.rs"
               },
               {
                 "line": 1209,
-                "value": "src/unmapped.rs"
-              },
-              {
-                "line": 1212,
-                "value": "src/mapped.rs"
-              },
-              {
-                "line": 1212,
-                "value": "h-mapped"
-              },
-              {
-                "line": 1213,
                 "value": "src/drifted.rs"
               },
               {
-                "line": 1213,
-                "value": "h-old"
-              },
-              {
-                "line": 1214,
+                "line": 1210,
                 "value": "src/legacy.rs"
               },
               {
-                "line": 1214,
-                "value": ""
-              },
-              {
-                "line": 1215,
-                "value": "src/phantom.rs"
-              },
-              {
-                "line": 1215,
-                "value": "h-phantom"
-              },
-              {
-                "line": 1217,
+                "line": 1211,
                 "value": "src/ignored.rs"
               },
               {
-                "line": 1218,
-                "value": "sub/**"
+                "line": 1212,
+                "value": "sub/child.rs"
               },
               {
-                "line": 1224,
+                "line": 1213,
                 "value": "src/phantom.rs"
               },
               {
-                "line": 1225,
-                "value": "src/mapped.rs"
-              },
-              {
-                "line": 1225,
-                "value": "h-mapped"
-              },
-              {
-                "line": 1226,
-                "value": "src/drifted.rs"
-              },
-              {
-                "line": 1226,
-                "value": "h-new"
-              },
-              {
-                "line": 1227,
-                "value": "h-disk"
-              },
-              {
-                "line": 1232,
+                "line": 1214,
                 "value": "src/unmapped.rs"
               },
               {
-                "line": 1233,
+                "line": 1217,
+                "value": "src/mapped.rs"
+              },
+              {
+                "line": 1217,
+                "value": "h-mapped"
+              },
+              {
+                "line": 1218,
                 "value": "src/drifted.rs"
               },
               {
-                "line": 1235,
+                "line": 1218,
+                "value": "h-old"
+              },
+              {
+                "line": 1219,
                 "value": "src/legacy.rs"
               },
               {
-                "line": 1236,
+                "line": 1219,
+                "value": ""
+              },
+              {
+                "line": 1220,
+                "value": "src/phantom.rs"
+              },
+              {
+                "line": 1220,
+                "value": "h-phantom"
+              },
+              {
+                "line": 1222,
+                "value": "src/ignored.rs"
+              },
+              {
+                "line": 1223,
+                "value": "sub/**"
+              },
+              {
+                "line": 1229,
+                "value": "src/phantom.rs"
+              },
+              {
+                "line": 1230,
+                "value": "src/mapped.rs"
+              },
+              {
+                "line": 1230,
+                "value": "h-mapped"
+              },
+              {
+                "line": 1231,
+                "value": "src/drifted.rs"
+              },
+              {
+                "line": 1231,
+                "value": "h-new"
+              },
+              {
+                "line": 1232,
+                "value": "h-disk"
+              },
+              {
+                "line": 1237,
+                "value": "src/unmapped.rs"
+              },
+              {
+                "line": 1238,
+                "value": "src/drifted.rs"
+              },
+              {
+                "line": 1240,
+                "value": "src/legacy.rs"
+              },
+              {
+                "line": 1241,
                 "value": "an EMPTY recorded hash is grandfathered, not drifted: {:?}"
               },
               {
-                "line": 1239,
+                "line": 1244,
                 "value": "src/phantom.rs"
               }
             ],
@@ -177511,156 +178119,160 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn smell_note",
-            "line_end": 1268,
-            "line_start": 1256,
+            "line_end": 1273,
+            "line_start": 1261,
             "name": "smell_note",
             "shape_hash": "b221695e3c036e28",
             "string_literals": [
               {
-                "line": 1258,
+                "line": 1263,
                 "value": "n:{target}:{created_at}"
               },
               {
-                "line": 1259,
+                "line": 1264,
                 "value": "decision"
               },
               {
-                "line": 1261,
+                "line": 1266,
                 "value": "llm"
               },
               {
-                "line": 1262,
+                "line": 1267,
                 "value": "smell"
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "25a3ef4ad3be6742",
+            "body_hash": "2a0d48a3fcfad6a2",
             "is_test": true,
             "kind": "fn",
             "label": "fn unresolved_locator_flags_fabricated_symbol",
-            "line_end": 1153,
-            "line_start": 1080,
+            "line_end": 1158,
+            "line_start": 1082,
             "name": "unresolved_locator_flags_fabricated_symbol",
-            "shape_hash": "513ad8e7e2daa09f",
+            "shape_hash": "e07700b09aa6a672",
             "string_literals": [
               {
-                "line": 1083,
-                "value": "fn real_sym"
-              },
-              {
-                "line": 1084,
-                "value": "real_sym"
-              },
-              {
                 "line": 1085,
-                "value": "fn"
+                "value": "fn real_sym"
               },
               {
                 "line": 1086,
+                "value": "real_sym"
+              },
+              {
+                "line": 1087,
+                "value": "fn"
+              },
+              {
+                "line": 1088,
                 "value": "public"
               },
               {
-                "line": 1097,
+                "line": 1099,
                 "value": "cf1"
               },
               {
-                "line": 1098,
+                "line": 1100,
                 "value": "src/a.rs"
               },
               {
-                "line": 1099,
+                "line": 1101,
                 "value": "rust"
               },
               {
-                "line": 1105,
+                "line": 1107,
                 "value": "high"
               },
               {
-                "line": 1108,
+                "line": 1110,
                 "value": "imp:{loc}"
               },
               {
-                "line": 1109,
+                "line": 1111,
                 "value": "i"
               },
               {
-                "line": 1110,
+                "line": 1112,
                 "value": "cf1"
               },
               {
-                "line": 1111,
+                "line": 1113,
                 "value": "intent"
               },
               {
-                "line": 1112,
+                "line": 1114,
                 "value": "src/a.rs"
               },
               {
-                "line": 1113,
+                "line": 1115,
                 "value": "passing"
               },
               {
-                "line": 1121,
+                "line": 1123,
                 "value": "t"
               },
               {
-                "line": 1125,
+                "line": 1127,
                 "value": "fn ghost_sym"
               },
               {
-                "line": 1126,
+                "line": 1128,
                 "value": "{flagged:?}"
               },
               {
-                "line": 1127,
-                "value": "anchors nothing"
+                "line": 1130,
+                "value": "FILE granularity"
               },
               {
-                "line": 1127,
+                "line": 1130,
+                "value": "NESTED symbol"
+              },
+              {
+                "line": 1131,
                 "value": "{flagged:?}"
               },
               {
-                "line": 1133,
+                "line": 1138,
                 "value": "fn real_sym"
               },
               {
-                "line": 1134,
+                "line": 1139,
                 "value": ""
               },
               {
-                "line": 1135,
+                "line": 1140,
                 "value": "42-50"
               },
               {
-                "line": 1136,
+                "line": 1141,
                 "value": "mockup is contract, not realization"
               },
               {
-                "line": 1140,
+                "line": 1145,
                 "value": "{clean:?}"
               },
               {
-                "line": 1145,
+                "line": 1150,
                 "value": "low"
               },
               {
-                "line": 1149,
+                "line": 1154,
                 "value": "fn ghost_sym"
               },
               {
-                "line": 1151,
+                "line": 1156,
                 "value": "a low/ungraded file must not be judged"
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "0edadab2dffd5aaf",
+            "body_hash": "6521ca93cc6470a3",
             "kind": "fn",
             "label": "fn unresolved_locator_hints",
-            "line_end": 938,
+            "line_end": 940,
             "line_start": 886,
             "name": "unresolved_locator_hints",
             "shape_hash": "a43e7e91e90e823f",
@@ -177687,10 +178299,10 @@
               },
               {
                 "line": 928,
-                "value": "epistemic: {} passing/failing IMPLEMENTS locator(s) name a symbol NOT in the \\\n         (tree-sitter-extracted) file's facts — a grounding that reads green but anchors nothing \\\n         (symbol renamed/moved — re-ground or `loom sync`). Sample: {shown}{}"
+                "value": "epistemic: {} passing/failing IMPLEMENTS locator(s) name a symbol NOT in the \\\n         (tree-sitter-extracted) file's facts — a NESTED symbol (e.g. a class method, which \\\n         tree-sitter does not extract) or a typo'd/renamed locator. These ground at FILE \\\n         granularity: `loom sync` re-opens them on ANY change to the file (coarser than \\\n         symbol-precise, but NOT stale-green). Confirm each locator is a real symbol. Sample: {shown}{}"
               },
               {
-                "line": 933,
+                "line": 935,
                 "value": "; … +{more} more"
               }
             ],
@@ -177995,8 +178607,8 @@
             "is_test": true,
             "kind": "type",
             "label": "type ConfMap",
-            "line_end": 1012,
-            "line_start": 1012,
+            "line_end": 1014,
+            "line_start": 1014,
             "name": "ConfMap",
             "shape_hash": "39f6c0cfc411c732",
             "visibility": "private"
@@ -198127,7 +198739,7 @@
         ]
       },
       {
-        "content_hash": "b00314e0588c5bd1",
+        "content_hash": "2e21809ac5496206",
         "extractor_grade": "high",
         "id": "fd1b1720-3bdc-4c9a-9eb2-02f0710a115a",
         "imports": [
@@ -198136,7 +198748,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-22T11:36:08.849483421+00:00",
+        "last_modified": "2026-06-24T17:29:31.375980848+00:00",
         "path": "src/commands/sync.rs",
         "symbol_facts": [
           {
@@ -198154,33 +198766,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_when_change_is_outside_symbols",
-            "line_end": 1227,
-            "line_start": 1216,
+            "line_end": 1243,
+            "line_start": 1232,
             "name": "affected_falls_back_when_change_is_outside_symbols",
             "shape_hash": "669c9ac56cd7a343",
             "string_literals": [
               {
-                "line": 1218,
+                "line": 1234,
                 "value": "fn a() {\\n    1\\n}\\n"
               },
               {
-                "line": 1219,
+                "line": 1235,
                 "value": "// added comment\\nfn a() {\\n    1\\n}\\n"
               },
               {
-                "line": 1220,
+                "line": 1236,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1222,
+                "line": 1238,
                 "value": "ia"
               },
               {
-                "line": 1222,
+                "line": 1238,
                 "value": "fn a"
               },
               {
-                "line": 1225,
+                "line": 1241,
                 "value": "no symbol body changed → fall back to whole-file (conservative)"
               }
             ],
@@ -198191,8 +198803,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_without_content",
-            "line_end": 1149,
-            "line_start": 1147,
+            "line_end": 1165,
+            "line_start": 1163,
             "name": "affected_falls_back_without_content",
             "shape_hash": "33323f3dd8985bac",
             "visibility": "private"
@@ -198202,13 +198814,13 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_falls_back_without_prior_facts",
-            "line_end": 1145,
-            "line_start": 1141,
+            "line_end": 1161,
+            "line_start": 1157,
             "name": "affected_falls_back_without_prior_facts",
             "shape_hash": "40eccc0927bcc0bc",
             "string_literals": [
               {
-                "line": 1143,
+                "line": 1159,
                 "value": "fn a() {}\\n"
               }
             ],
@@ -198219,8 +198831,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_flips_only_the_changed_impl_method",
-            "line_end": 1210,
-            "line_start": 1185,
+            "line_end": 1226,
+            "line_start": 1201,
             "name": "affected_flips_only_the_changed_impl_method",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -198229,72 +198841,72 @@
             "shape_hash": "48eca9915359282a",
             "string_literals": [
               {
-                "line": 1187,
+                "line": 1203,
                 "value": "struct Calc;\\n\\\n                   impl Calc {\\n    fn add(&self) -> i32 {\\n        1 + 1\\n    }\\n\\\n                   \\n    fn sub(&self) -> i32 {\\n        2 - 1\\n    }\\n}\\n"
               },
               {
-                "line": 1190,
+                "line": 1206,
                 "value": "struct Calc;\\n\\\n                   impl Calc {\\n    fn add(&self) -> i32 {\\n        1 + 999\\n    }\\n\\\n                   \\n    fn sub(&self) -> i32 {\\n        2 - 1\\n    }\\n}\\n"
               },
               {
-                "line": 1193,
+                "line": 1209,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1195,
+                "line": 1211,
                 "value": "add"
               },
               {
-                "line": 1196,
+                "line": 1212,
                 "value": "the method is its own fact: {old_facts:?}"
               },
               {
-                "line": 1199,
+                "line": 1215,
                 "value": "iadd"
               },
               {
-                "line": 1199,
+                "line": 1215,
                 "value": "fn add"
               },
               {
-                "line": 1199,
+                "line": 1215,
                 "value": "isub"
               },
               {
-                "line": 1199,
+                "line": 1215,
                 "value": "fn sub"
               },
               {
-                "line": 1201,
+                "line": 1217,
                 "value": "symbol-level diff, not the whole-file fallback"
               },
               {
-                "line": 1203,
+                "line": 1219,
                 "value": "iadd"
               },
               {
-                "line": 1204,
+                "line": 1220,
                 "value": "the grounding on the CHANGED method flips (no longer a silent false-green): {affected:?}"
               },
               {
-                "line": 1207,
+                "line": 1223,
                 "value": "isub"
               },
               {
-                "line": 1208,
+                "line": 1224,
                 "value": "the grounding on the UNCHANGED sibling method must NOT flip: {affected:?}"
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "0c03a11e63d6da16",
+            "body_hash": "1683529d7af8cab7",
             "kind": "fn",
             "label": "fn affected_intents",
-            "line_end": 1095,
+            "line_end": 1111,
             "line_start": 1009,
             "name": "affected_intents",
-            "shape_hash": "7fc1eb69cce326d5",
+            "shape_hash": "5c4e4d4aab091445",
             "visibility": "private"
           },
           {
@@ -198302,8 +198914,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn affected_narrows_to_the_changed_symbol_only",
-            "line_end": 1176,
-            "line_start": 1154,
+            "line_end": 1192,
+            "line_start": 1170,
             "name": "affected_narrows_to_the_changed_symbol_only",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -198312,71 +198924,71 @@
             "shape_hash": "646fc026c19c3f14",
             "string_literals": [
               {
-                "line": 1156,
+                "line": 1172,
                 "value": "fn a() {\\n    1\\n}\\nfn b() {\\n    2\\n}\\n"
               },
               {
-                "line": 1157,
+                "line": 1173,
                 "value": "fn a() {\\n    999\\n}\\nfn b() {\\n    2\\n}\\n"
               },
               {
-                "line": 1158,
+                "line": 1174,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1159,
+                "line": 1175,
                 "value": "tree-sitter extracted symbols"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": "ia"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": "fn a"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": "ib"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": "fn b"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": "ifile"
               },
               {
-                "line": 1161,
+                "line": 1177,
                 "value": ""
               },
               {
-                "line": 1163,
+                "line": 1179,
                 "value": "symbol-level diff, not the whole-file fallback"
               },
               {
-                "line": 1165,
+                "line": 1181,
                 "value": "ia"
               },
               {
-                "line": 1166,
+                "line": 1182,
                 "value": "intent on the changed symbol flips"
               },
               {
-                "line": 1169,
+                "line": 1185,
                 "value": "ifile"
               },
               {
-                "line": 1170,
+                "line": 1186,
                 "value": "file-level grounding always flips"
               },
               {
-                "line": 1173,
+                "line": 1189,
                 "value": "ib"
               },
               {
-                "line": 1174,
+                "line": 1190,
                 "value": "intent on the UNCHANGED symbol must NOT flip — this is the win"
               }
             ],
@@ -198407,21 +199019,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 1116,
-            "line_start": 1104,
+            "line_end": 1132,
+            "line_start": 1120,
             "name": "cf",
             "shape_hash": "5f7dc1deb656d9f1",
             "string_literals": [
               {
-                "line": 1106,
+                "line": 1122,
                 "value": "cf1"
               },
               {
-                "line": 1107,
+                "line": 1123,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1108,
+                "line": 1124,
                 "value": "rust"
               }
             ],
@@ -198554,25 +199166,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn imp",
-            "line_end": 1135,
-            "line_start": 1118,
+            "line_end": 1151,
+            "line_start": 1134,
             "name": "imp",
             "shape_hash": "c1d5cac48227a7fb",
             "string_literals": [
               {
-                "line": 1120,
+                "line": 1136,
                 "value": "imp:{intent}"
               },
               {
-                "line": 1122,
+                "line": 1138,
                 "value": "cf1"
               },
               {
-                "line": 1124,
+                "line": 1140,
                 "value": "src/foo.rs"
               },
               {
-                "line": 1125,
+                "line": 1141,
                 "value": "passing"
               }
             ],
@@ -215439,8 +216051,8 @@
         "discrimination_status": "discriminating",
         "id": "6263dc09-2cf5-4400-84da-35a7e13b14da",
         "last_executed_run": "2026-06-22T11:51:44.575746+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-22T11:51:44.575746+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "governs ripple test",
         "validation_type": "test"
       },

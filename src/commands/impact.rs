@@ -204,8 +204,10 @@ fn render_human(
     }
     println!();
     println!(
-        "  → `loom sync` will flag exactly these after the change; re-verify with \
-         `loom next --mode fix` / `--mode validate`."
+        "  → this is the UPPER BOUND (pre-change, file-level). After the edit, `loom sync` flags \
+         those whose grounded code ACTUALLY changed — symbol-precise: an untouched top-level \
+         symbol's grounding stays green, while file-level and nested-method groundings always \
+         re-open. Re-verify with `loom next --mode fix` / `--mode validate`."
     );
 }
 
@@ -232,6 +234,6 @@ fn render_json(
             "ripples_to": neighbor, "via": via, "kind": kind,
         })).collect::<Vec<_>>(),
         "unregistered_changed_source": unregistered.iter().collect::<Vec<_>>(),
-        "next_step": "`loom sync` flags exactly these after the change; re-verify via `loom next --mode fix` / `--mode validate`.",
+        "next_step": "this is the upper bound (pre-change, file-level); after the edit `loom sync` flags those whose grounded code actually changed (symbol-precise — an untouched top-level symbol stays green; file-level + nested-method groundings always re-open). Re-verify via `loom next --mode fix` / `--mode validate`.",
     }));
 }

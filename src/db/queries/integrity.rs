@@ -926,8 +926,10 @@ fn unresolved_locator_hints(
     let more = unresolved.len().saturating_sub(5);
     vec![format!(
         "epistemic: {} passing/failing IMPLEMENTS locator(s) name a symbol NOT in the \
-         (tree-sitter-extracted) file's facts — a grounding that reads green but anchors nothing \
-         (symbol renamed/moved — re-ground or `loom sync`). Sample: {shown}{}",
+         (tree-sitter-extracted) file's facts — a NESTED symbol (e.g. a class method, which \
+         tree-sitter does not extract) or a typo'd/renamed locator. These ground at FILE \
+         granularity: `loom sync` re-opens them on ANY change to the file (coarser than \
+         symbol-precise, but NOT stale-green). Confirm each locator is a real symbol. Sample: {shown}{}",
         unresolved.len(),
         if more > 0 {
             format!("; … +{more} more")
@@ -1124,7 +1126,10 @@ mod epistemic_tests {
         let flagged =
             super::unresolved_locator_hints(&[im("fn ghost_sym")], std::slice::from_ref(&cf));
         assert_eq!(flagged.len(), 1, "{flagged:?}");
-        assert!(flagged[0].contains("anchors nothing"), "{flagged:?}");
+        assert!(
+            flagged[0].contains("FILE granularity") && flagged[0].contains("NESTED symbol"),
+            "{flagged:?}"
+        );
 
         // Exempt: real symbol, file-level (empty), line anchor, AND a prose anchor
         // (it never named a symbol — a real loom pattern that was false-flagged).
