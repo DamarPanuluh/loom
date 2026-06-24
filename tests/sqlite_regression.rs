@@ -2763,6 +2763,27 @@ fn sqlite_seed_suggest_mines_candidate_intents() {
     let _ = fs::remove_dir_all(&dir);
 }
 
+// The SAD path of source-corpus coverage: docs with NO structured requirement IDs
+// must report completeness UNKNOWN and route to `seed --inbox`, never silently claim
+// full coverage from zero IDs.
+#[test]
+fn sqlite_corpus_coverage_reports_unknown_without_structured_ids() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("corpus-unknown");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "docs/notes.md",
+        "# Notes\nThe system should be reliable and fast.\n",
+    );
+    let text = run_text_as(&graph.root, &["corpus", "coverage"], "llm");
+    assert!(
+        text.contains("completeness is unknown") && text.contains("seed --inbox"),
+        "corpus coverage's sad path: docs with no structured IDs must report completeness \
+         UNKNOWN and route to seed --inbox, not a silent full-coverage claim: {text}"
+    );
+}
+
 // `loom seed --inbox` — the disciplined full-coverage seed: ingest every doc +
 // source file into the inbox as triage items (the anti-gaming anchor — the LLM
 // must process the whole surface). Idempotent on re-run; an empty repo seeds a
