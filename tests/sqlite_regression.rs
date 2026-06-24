@@ -8998,6 +8998,9 @@ fn sqlite_lazy_recreated_db_degrades_gracefully_and_alarms() {
 /// `loom next` used to print "✓ No planned/needs_change intents — nothing to
 /// build." while `loom coverage` was the ONLY place the gap appeared. It must now
 /// SERVE that symbol-accountability gap (with the per-gap fix command) directly.
+// Requires tree-sitter symbol extraction — the heuristic build extracts no
+// Python symbols, so there is no symbol-accountability gap to serve.
+#[cfg(feature = "treesitter")]
 #[test]
 fn sqlite_bare_next_serves_symbol_gap_not_deadend() {
     let _g = sqlite_test_lock();
@@ -9245,6 +9248,9 @@ fn sqlite_sync_invalidates_method_grounded_proof_on_body_change() {
 /// function must NOT invalidate an UNCHANGED top-level sibling's proof. The
 /// nested-locator fallback must apply ONLY to locators that name no tracked
 /// symbol — top-level groundings stay symbol-precise.
+// Requires tree-sitter: symbol precision needs per-symbol extraction, which the
+// heuristic build does not provide for Python (both proofs flip on whole-file).
+#[cfg(feature = "treesitter")]
 #[test]
 fn sqlite_sync_precise_for_unchanged_top_level_sibling() {
     let _g = sqlite_test_lock();
@@ -9548,4 +9554,166 @@ fn sqlite_sync_keeps_intact_import_coupling_stales_when_import_removed() {
         removed["relates_to_edges_flagged"].as_i64().unwrap_or(0) >= 1,
         "removing the import must stale the now-baseless coupling: {removed}"
     );
+}
+
+// ── QA wave 2: per-language extraction correctness ────────────────────────────
+// A symbol fact's visibility + presence drive coverage/seed/sync, so a
+// per-language extraction miss silently corrupts the whole loop on that language.
+
+/// Go visibility is the first rune's CASE (uppercase = exported). Heuristic path,
+/// so this asserts in BOTH build configs.
+#[test]
+fn sqlite_go_visibility_follows_first_rune_case() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("go-visibility");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(
+        &graph.root,
+        "store.go",
+        "package store\nfunc Exported() int { return helper() }\nfunc helper() int { return 1 }\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "store.go", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "store.go", "--json"]);
+    let vis = |name: &str| -> String {
+        show["codefile"]["symbol_facts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["name"] == name)
+            .and_then(|s| s["visibility"].as_str())
+            .unwrap_or("MISSING")
+            .to_string()
+    };
+    assert_eq!(vis("Exported"), "public", "uppercase Go identifier is exported: {show}");
+    assert_eq!(
+        vis("helper"),
+        "private",
+        "lowercase Go identifier is package-private, not a public symbol: {show}"
+    );
+}
+
+/// A freshly-registered repo with an unowned public surface must NOT read as
+/// "100% / no gaps": coverage discloses the unowned public count. Go heuristic →
+/// both build configs.
+#[test]
+fn sqlite_coverage_discloses_unowned_public_surface() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("unowned-public");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(&graph.root, "api.go", "package api\nfunc PublicOne() {}\nfunc PublicTwo() {}\n");
+    run_json_as(&graph.root, &["codefile", "add", "api.go", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let cov = run_json(&graph.root, &["coverage", "--json"]);
+    let unowned = cov["symbol_accountability"]["unowned_public"].as_u64().unwrap_or(0);
+    assert!(
+        unowned >= 2,
+        "ungrounded public symbols must be reported as unowned_public, not hidden behind a vacuous 100%: {cov}"
+    );
+}
+
+/// A decorated top-level def/class (`@dataclass`, …) must be extracted exactly
+/// like an undecorated one — otherwise whole public classes are invisible.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_python_decorated_definition_is_extracted() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("py-decorated");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "m.py",
+        "from dataclasses import dataclass\n\n@dataclass\nclass Product:\n    sku: str\n\nclass Plain:\n    pass\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "m.py", "--json"]);
+    let names: Vec<String> = show["codefile"]["symbol_facts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|s| s["name"].as_str().map(str::to_string))
+        .collect();
+    assert!(
+        names.iter().any(|n| n == "Product"),
+        "a @dataclass class must be extracted like an undecorated one: {names:?}"
+    );
+    assert!(names.iter().any(|n| n == "Plain"), "{names:?}");
+}
+
+/// CommonJS `module.exports` names are public; a TS `import './a.js'` resolves to
+/// the on-disk `a.ts`.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_js_commonjs_public_and_ts_import_extension_swap() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("js-extract");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "cjs.js",
+        "function pubFn(){return 1;}\nconst _priv = 2;\nmodule.exports = { pubFn };\n",
+    );
+    write_scratch_file(&graph.root, "a.ts", "export interface A {}\n");
+    write_scratch_file(
+        &graph.root,
+        "b.ts",
+        "import { A } from \"./a.js\";\nexport class B implements A {}\n",
+    );
+    for f in ["cjs.js", "a.ts", "b.ts"] {
+        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+    }
+    run_json(&graph.root, &["sync", "--json"]);
+    let cjs = run_json(&graph.root, &["codefile", "show", "cjs.js", "--json"]);
+    let pub_vis = cjs["codefile"]["symbol_facts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "pubFn")
+        .and_then(|s| s["visibility"].as_str())
+        .unwrap_or("MISSING");
+    assert_eq!(pub_vis, "public", "a CommonJS module.exports name must be public: {cjs}");
+    let b = run_json(&graph.root, &["codefile", "show", "b.ts", "--json"]);
+    let imports: Vec<String> = b["codefile"]["imports"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|i| i.as_str().map(str::to_string))
+        .collect();
+    assert!(
+        imports.iter().any(|i| i.ends_with("a.ts")),
+        "TS import './a.js' must resolve to the on-disk a.ts: {imports:?}"
+    );
+}
+
+/// `#[macro_export]` makes a macro a public symbol; a plain macro is private.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_rust_macro_export_is_public() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("rust-macro");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "macros.rs",
+        "#[macro_export]\nmacro_rules! pub_macro { () => {}; }\nmacro_rules! priv_macro { () => {}; }\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "macros.rs", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "macros.rs", "--json"]);
+    let vis = |name: &str| -> String {
+        show["codefile"]["symbol_facts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["name"] == name)
+            .and_then(|s| s["visibility"].as_str())
+            .unwrap_or("MISSING")
+            .to_string()
+    };
+    assert_eq!(vis("pub_macro"), "public", "#[macro_export] makes a macro public: {show}");
+    assert_eq!(vis("priv_macro"), "private", "a macro without #[macro_export] is private: {show}");
 }

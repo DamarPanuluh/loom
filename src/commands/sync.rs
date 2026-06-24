@@ -400,7 +400,17 @@ fn scan_codefile(
         Ok(content) => {
             state.text_contents.insert(cf.path.clone(), content);
         }
-        Err(_) => {
+        Err(e) => {
+            // A non-UTF-8 source (a latin-1 byte in a string/comment, a stray
+            // 0xff) must NOT leave the file ungraded forever with the misleading
+            // "run `loom sync` to refresh" (sync can't change the file's
+            // encoding). Decode LOSSILY: identifiers are ASCII, so tree-sitter
+            // still extracts every symbol — only the offending bytes become
+            // U+FFFD. content_hash is computed on the RAW bytes above, so change
+            // detection is unaffected. Track it for a soft advisory, but it is
+            // NOT unverifiable: its symbols and locators resolve normally.
+            let content = String::from_utf8_lossy(&e.into_bytes()).into_owned();
+            state.text_contents.insert(cf.path.clone(), content);
             state.non_utf8_files.insert(cf.path.clone());
         }
     }
@@ -624,15 +634,6 @@ fn update_physical_facts_and_flag_locators(
                 store.update_codefile_extractor_grade(&cf.id, &facts.extractor_grade)?;
                 state.facts_rewritten += 1;
             }
-        } else if state.non_utf8_files.contains(&cf.path) {
-            for im in ctx.all_implements {
-                if im.codefile_path == cf.path && !im.locator.trim().is_empty() {
-                    state.locators_stale.push(format!(
-                        "{} @ '{}' (intent '{}') — file is not readable as text; locator unverifiable",
-                        im.codefile_path, im.locator, im.intent_name
-                    ));
-                }
-            }
         }
     }
     for im in ctx.all_implements {
@@ -665,11 +666,12 @@ fn flag_unverifiable_files(
     // ripple one hop (relates/governs/targets/serves), and invalidate linked
     // validations — mirroring the changed-file path above. Without this, an
     // intent reads fully realized/proven while its code is missing.
+    // Non-UTF-8 files are decoded lossily and extract normally, so they are NOT
+    // unverifiable — only genuinely missing/escaped files ripple-invalidate here.
     let unverifiable: HashSet<String> = state
         .missing_files
         .iter()
         .chain(state.escaped_files.iter())
-        .chain(state.non_utf8_files.iter())
         .cloned()
         .collect();
     for cf in codefiles {
@@ -817,6 +819,11 @@ fn build_sync_report(
         locators_stale: state.locators_stale,
         changes: state.changes,
         transitions_compacted,
+        non_utf8_lossy: {
+            let mut v: Vec<String> = state.non_utf8_files.into_iter().collect();
+            v.sort();
+            v
+        },
     }
 }
 
@@ -939,6 +946,16 @@ fn print_sync_text(
     print_missing_files(&report.missing_files);
     print_escaped_files(&report.escaped_files);
     print_stale_locators(&report.locators_stale);
+    if !report.non_utf8_lossy.is_empty() {
+        println!();
+        println!(
+            "  ⓘ {} file(s) not valid UTF-8 — decoded lossily (symbols still extracted; fix the encoding when convenient):",
+            report.non_utf8_lossy.len()
+        );
+        for p in report.non_utf8_lossy.iter().take(REPORT_CAP) {
+            println!("    {p}");
+        }
+    }
     println!();
     if report.files_changed == 0
         && report.missing_files.is_empty()

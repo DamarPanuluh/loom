@@ -46,6 +46,21 @@ pub fn extract_physical_facts(rel_path: &str, content: &str) -> Option<PhysicalF
         content,
         &mut facts.symbol_facts,
     );
+    // CommonJS exports are a plain declaration PLUS a separate `module.exports`
+    // assignment, so tree-sitter's ESM-`export`-keyword visibility marks them
+    // private — leaving every CommonJS public API invisible to coverage/seed.
+    // Reconcile: a local symbol named in `module.exports`/`exports` is public.
+    if matches!(lang, Lang::JavaScript | Lang::TypeScript | Lang::Tsx) {
+        let mut exported = std::collections::HashSet::new();
+        collect_commonjs_export_names(tree.root_node(), content, &mut exported);
+        if !exported.is_empty() {
+            for fact in &mut facts.symbol_facts {
+                if fact.visibility != "public" && exported.contains(&fact.name) {
+                    fact.visibility = "public".into();
+                }
+            }
+        }
+    }
     facts.symbols = facts
         .symbol_facts
         .iter()
@@ -226,6 +241,69 @@ fn js_ts_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
     visit_children(node, content, out, js_ts_specs);
 }
 
+/// Local symbol names made public by CommonJS exports: `module.exports = { a, b }`
+/// (object shorthands + pair values), `module.exports = Name` (bare identifier),
+/// and `module.exports.x = local` / `exports.x = local` (RHS identifier).
+fn collect_commonjs_export_names(
+    node: Node<'_>,
+    content: &str,
+    out: &mut std::collections::HashSet<String>,
+) {
+    if node.kind() == "assignment_expression" {
+        if let (Some(left), Some(right)) = (
+            node.child_by_field_name("left"),
+            node.child_by_field_name("right"),
+        ) {
+            let left_txt = text(left, content).unwrap_or("").trim();
+            if left_txt == "module.exports" || left_txt == "exports" {
+                collect_exported_locals(right, content, out);
+            } else if (left_txt.starts_with("module.exports.") || left_txt.starts_with("exports."))
+                && right.kind() == "identifier"
+            {
+                if let Some(t) = text(right, content) {
+                    out.insert(t.to_string());
+                }
+            }
+        }
+    }
+    for_each_named_child(node, |child| {
+        collect_commonjs_export_names(child, content, out)
+    });
+}
+
+/// The local names a `module.exports = <expr>` makes public.
+fn collect_exported_locals(
+    node: Node<'_>,
+    content: &str,
+    out: &mut std::collections::HashSet<String>,
+) {
+    match node.kind() {
+        "identifier" => {
+            if let Some(t) = text(node, content) {
+                out.insert(t.to_string());
+            }
+        }
+        "object" => for_each_named_child(node, |child| match child.kind() {
+            "shorthand_property_identifier" => {
+                if let Some(t) = text(child, content) {
+                    out.insert(t.to_string());
+                }
+            }
+            "pair" => {
+                if let Some(val) = child.child_by_field_name("value") {
+                    if val.kind() == "identifier" {
+                        if let Some(t) = text(val, content) {
+                            out.insert(t.to_string());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }),
+        _ => {}
+    }
+}
+
 fn python_specs(node: Node<'_>, content: &str, out: &mut Vec<String>) {
     match node.kind() {
         "import_statement" => {
@@ -302,6 +380,26 @@ fn collect_top_level_symbol(
             if matches!(lang, Lang::TypeScript | Lang::Tsx | Lang::JavaScript) =>
         {
             collect_js_ts_binding_facts(node, rel_path, content, exported, in_test_context, out);
+        }
+        "decorated_definition" if matches!(lang, Lang::Python) => {
+            // A decorated top-level def/class (`@dataclass`, `@property`,
+            // `@app.route`, `@pytest.fixture`, `@abc.abstractmethod`, …) is nested
+            // under `decorated_definition`; tree-sitter does not expose the inner
+            // def at top level. Descend to it so the symbol is extracted exactly
+            // like an undecorated one — otherwise whole public classes (every
+            // dataclass / pydantic model / Flask route) are silently invisible to
+            // coverage and symbol accountability.
+            if let Some(inner) = node.child_by_field_name("definition") {
+                collect_top_level_symbol(
+                    inner,
+                    lang,
+                    rel_path,
+                    content,
+                    exported,
+                    in_test_context,
+                    out,
+                );
+            }
         }
         "impl_item" if matches!(lang, Lang::Rust) => {
             // The impl is one fact spanning the whole block, but its methods
@@ -424,6 +522,14 @@ fn rust_symbol_fact(
         _ => return None,
     };
     let visibility_prefix = rust_visibility_prefix(node, content);
+    // A `macro_rules!` carries no `pub`; its public-ness is the `#[macro_export]`
+    // attribute on the line(s) above it. Without this a #[macro_export] macro —
+    // a genuinely public symbol — was classified private and never flagged as an
+    // unowned public symbol by coverage.
+    let macro_exported = kind == "macro"
+        && preceding_attribute_lines(content, node.start_position().row)
+            .iter()
+            .any(|line| line.contains("#[macro_export]"));
     let label = visibility_prefix
         .as_ref()
         .map(|v| format!("{v} {base_label}"))
@@ -432,7 +538,7 @@ fn rust_symbol_fact(
         label,
         name,
         kind: kind.into(),
-        visibility: if visibility_prefix.is_some() {
+        visibility: if visibility_prefix.is_some() || macro_exported {
             "public".into()
         } else {
             "private".into()

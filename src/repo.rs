@@ -835,6 +835,22 @@ fn resolve_js_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &m
     ] {
         push_if_file(root, rel_path, found, format!("{base}{e}"));
     }
+    // TS/ESM convention: a TypeScript file imports `./x.js` (or .jsx/.mjs/.cjs)
+    // but the source ON DISK is `./x.ts` (or .tsx) — `tsc` rewrites the extension
+    // at compile time. Without swapping it here, EVERY such import resolved to
+    // nothing, so a whole TS codebase reported imports:[] and layering/coupling
+    // smells were silently blind. Re-resolve with the JS extension swapped out.
+    if let Some(stem) = spec
+        .strip_suffix(".js")
+        .or_else(|| spec.strip_suffix(".jsx"))
+        .or_else(|| spec.strip_suffix(".mjs"))
+        .or_else(|| spec.strip_suffix(".cjs"))
+    {
+        let swapped = format!("{dir}/{stem}");
+        for e in [".ts", ".tsx", ".js", ".jsx", ".mjs", ".svelte"] {
+            push_if_file(root, rel_path, found, format!("{swapped}{e}"));
+        }
+    }
 }
 
 fn resolve_python_spec(
@@ -1237,6 +1253,33 @@ fn symbol_name_after(line: &str, prefix: &str) -> Option<String> {
     (!name.is_empty()).then_some(name)
 }
 
+/// Visibility for a heuristic-extracted symbol, by language rule. Go exports by
+/// the first rune's CASE (uppercase = exported), so the old blanket "public" was
+/// inverted — every lowercase helper was wrongly reported as an unowned public
+/// symbol. Dart is library-private by leading underscore. Kotlin/Swift/Svelte
+/// gate on modifier keywords the heuristic strips before naming, so they stay
+/// "public" (conservative: better to over-surface for ownership than hide one).
+fn heuristic_visibility(rel_path: &str, name: &str) -> &'static str {
+    let ext = Path::new(rel_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let public = match ext {
+        // Go: exported iff the identifier's first rune is uppercase.
+        "go" => name.chars().next().is_some_and(char::is_uppercase),
+        // Dart: a leading underscore is library-private.
+        "dart" => !name.starts_with('_'),
+        // Kotlin/Swift/Svelte gate on modifier keywords the heuristic strips
+        // before naming → default public (over-surface for ownership, don't hide).
+        _ => true,
+    };
+    if public {
+        "public"
+    } else {
+        "private"
+    }
+}
+
 fn push_heuristic_symbol(
     out: &mut Vec<crate::types::SymbolFact>,
     rel_path: &str,
@@ -1254,7 +1297,7 @@ fn push_heuristic_symbol(
         label,
         name: name.to_string(),
         kind: kind.to_string(),
-        visibility: "public".to_string(),
+        visibility: heuristic_visibility(rel_path, name).to_string(),
         line_start: idx + 1,
         line_end: idx + 1,
         is_test: path_is_test_like(rel_path),

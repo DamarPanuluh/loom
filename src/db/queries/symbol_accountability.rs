@@ -24,6 +24,12 @@ pub struct SymbolAccountabilitySummary {
     pub support: usize,
     pub test_support: usize,
     pub debris_candidates: usize,
+    /// Public, non-test symbols in files NO intent grounds — the unowned public
+    /// SURFACE (a subset of `debris_candidates`). Distinguished so coverage does
+    /// not report "100% resolved / no gaps" on a freshly-registered repo whose
+    /// public API simply isn't grounded yet: required==0 then is "nothing claimed
+    /// these yet", not "all accounted for".
+    pub unowned_public: usize,
     pub raw_actionable_gaps: usize,
     pub actionable_gaps: usize,
     pub resolved_pct: f64,
@@ -170,6 +176,9 @@ pub fn symbol_accountability_from_parts_with_notes(
             }
             if owners.is_empty() {
                 summary.debris_candidates += 1;
+                if fact.visibility != "private" {
+                    summary.unowned_public += 1;
+                }
                 continue;
             }
             if !required_symbol(&cf.path, fact, risky) {

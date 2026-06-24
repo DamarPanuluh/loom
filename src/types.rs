@@ -1658,4 +1658,10 @@ pub struct SyncReport {
     /// per-target `transition_cap` (regression markers + authored notes are
     /// never touched). `0` when the cap is disabled or nothing exceeded it.
     pub transitions_compacted: usize,
+    /// Registered files that were not valid UTF-8 and so were decoded LOSSILY for
+    /// extraction (invalid bytes → U+FFFD). Their symbols/locators still resolve;
+    /// this is a soft advisory so the driver can fix the file's encoding, not the
+    /// old "ungraded forever / unverifiable" dead-end.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub non_utf8_lossy: Vec<String>,
 }

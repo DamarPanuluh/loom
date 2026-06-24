@@ -314,6 +314,16 @@ pub fn run_with_db(
             s.test_support,
             s.debris_candidates
         );
+        // A freshly-registered repo has required==0 (nothing is grounded, so no
+        // symbol is yet REQUIRED to carry a precise locator) → resolved_pct is a
+        // vacuous 100%. Don't let that read as "all accounted for" when there is
+        // an unowned public surface waiting to be claimed.
+        if s.required == 0 && s.unowned_public > 0 {
+            println!(
+                "  ⓘ the 100% is vacuous — no intent grounds this code yet; {} public symbol(s) are unowned. Seed/ground them (`loom seed --suggest`) or exclude (`loom ignore add <glob> --reason …`).",
+                s.unowned_public
+            );
+        }
         if symbol_accountability.actionable_symbol_gaps.is_empty() {
             // Qualify the ✓ by co-located negatives so it doesn't ride over
             // adjudication-bought green (symbols resolved by a decision note,
@@ -332,6 +342,12 @@ pub fn run_with_db(
                 qualifiers.push(format!(
                     "{} raw gap(s) not yet actionable",
                     s.raw_actionable_gaps
+                ));
+            }
+            if s.unowned_public > 0 {
+                qualifiers.push(format!(
+                    "{} public symbol(s) unowned — no intent grounds them yet",
+                    s.unowned_public
                 ));
             }
             if qualifiers.is_empty() {
