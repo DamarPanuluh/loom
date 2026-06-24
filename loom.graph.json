@@ -194032,7 +194032,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-22T11:56:52.600129+00:00",
+        "updated_at": "2026-06-24T04:51:22.288470+00:00",
         "visibility": "user_visible"
       },
       {
@@ -194164,8 +194164,8 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-22T11:56:52.550125+00:00",
-        "visibility": ""
+        "updated_at": "2026-06-24T04:51:22.261655+00:00",
+        "visibility": "internal"
       },
       {
         "abstraction_level": "feature",
@@ -194746,7 +194746,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-22T11:57:08.910530+00:00",
+        "updated_at": "2026-06-24T04:51:22.313129+00:00",
         "visibility": "user_visible"
       },
       {
@@ -195195,8 +195195,8 @@
         ],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-22T11:56:52.647976+00:00",
-        "visibility": ""
+        "updated_at": "2026-06-24T04:51:22.276473+00:00",
+        "visibility": "internal"
       },
       {
         "abstraction_level": "feature",
@@ -195763,7 +195763,7 @@
         "source_refs": [],
         "status": "confirmed",
         "tags": [],
-        "updated_at": "2026-06-22T11:56:52.659535+00:00",
+        "updated_at": "2026-06-24T04:51:22.300983+00:00",
         "visibility": "user_visible"
       },
       {
@@ -196966,6 +196966,17 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-24T04:51:22.300983+00:00",
+        "id": "1db4e7d6-74b2-4269-a22d-8591f2eb55a6",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "fcf2f089-6dbe-46f0-8296-d50512420ff8",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-22T11:20:05.284630+00:00",
         "id": "1df958d6-f100-4c4a-af72-122817816fde",
         "kind": "confirm",
@@ -197204,6 +197215,17 @@
         "target_id": "string_contract_duplicate:src/commands/init.rs",
         "target_kind": "smell",
         "text": "Init string literals duplicated between ensure_gitignored and install_pre_commit_hook. The 1 duplication is the .loom directory path shared by both init helpers."
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-24T04:51:22.261655+00:00",
+        "id": "23080d02-d109-466d-9258-da89b6af8c12",
+        "kind": "decision",
+        "resolution": "",
+        "target_id": "3d856e36-aeff-4766-9a32-770e58e24672",
+        "target_kind": "intent",
+        "text": "visibility ruled internal during alignment"
       },
       {
         "audience": "",
@@ -199528,6 +199550,17 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-24T04:51:22.276473+00:00",
+        "id": "5a074643-2a24-4bf1-a964-a7b6e0de8fc0",
+        "kind": "decision",
+        "resolution": "",
+        "target_id": "be2436f2-1072-454d-a4b7-bdcab2658594",
+        "target_kind": "intent",
+        "text": "visibility ruled internal during alignment"
+      },
+      {
+        "audience": "",
         "author": "loom",
         "created_at": "2026-06-15T10:20:51.011817+00:00",
         "id": "5a3019c5-a237-4399-be74-fe62f488daf6",
@@ -200728,6 +200761,17 @@
       {
         "audience": "",
         "author": "llm",
+        "created_at": "2026-06-24T04:51:22.261655+00:00",
+        "id": "7b55137e-1ffa-4706-a524-637dc190a266",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "3d856e36-aeff-4766-9a32-770e58e24672",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
+        "author": "llm",
         "created_at": "2026-06-13T09:56:05.163370+00:00",
         "id": "7b68f5dc-9940-4c1f-bae7-c0048cbfdf33",
         "kind": "decision",
@@ -201882,6 +201926,17 @@
       },
       {
         "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-24T04:51:22.288470+00:00",
+        "id": "99b624f9-8a5e-4e1b-a5d9-2202dc28bc42",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "32b42fd0-6b6c-46a6-a9a8-97be595bddf3",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
+      },
+      {
+        "audience": "",
         "author": "llm:quality",
         "created_at": "2026-06-23T12:03:41.968703+00:00",
         "id": "99ebce2e-3dac-4acf-b8cc-31968ddbb98c",
@@ -202957,6 +203012,17 @@
         "target_id": "2bd1db29-7898-4800-a450-3dc084409197",
         "target_kind": "intent",
         "text": "SQLite query and search implementation intentionally spans command entry points plus shared snapshot/query helpers for this audit. The responsibility is coherent as the read-surface cutover contract; finer child intents are useful taxonomy debt, not a blocker for replacing the storage backend."
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-24T04:51:22.313129+00:00",
+        "id": "b6daa933-5401-4b4c-b64b-6a43ac658b93",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "6faa01a5-920a-4231-b840-f4c2057d149b",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
@@ -204981,6 +205047,17 @@
         "target_id": "6a41dcbc-4035-4d08-8315-0d77803ca862",
         "target_kind": "intent",
         "text": "The backend-neutral storage boundary is intentionally broad during the SQLite spike because it tracks one cross-command migration contract: commands and query consumers should move behind typed repository operations while Grafeo remains the control backend. Split this into read-command, write-command, storage-schema, and daemon-cutover child intents only when the default backend cutover is approved; until then the wide grounding is a planning umbrella, not a code ownership claim that each file must be moved now."
+      },
+      {
+        "audience": "",
+        "author": "llm",
+        "created_at": "2026-06-24T04:51:22.276473+00:00",
+        "id": "e7278517-53ed-4724-9e05-d7d11c934f2d",
+        "kind": "confirm",
+        "resolution": "",
+        "target_id": "be2436f2-1072-454d-a4b7-bdcab2658594",
+        "target_kind": "intent",
+        "text": "meaning re-affirmed"
       },
       {
         "audience": "",
