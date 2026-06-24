@@ -33,14 +33,14 @@ impl SqliteGraphStore {
             let intent_exists = self
                 .conn
                 .query_row(
-                    "SELECT 1 FROM intent WHERE id = ?1",
+                    SQL_INTENT_EXISTS,
                     params![intent_id],
                     |_| Ok(()),
                 )
                 .optional()?
                 .is_some();
             if !intent_exists {
-                anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+                anyhow::bail!(err_intent_not_found(intent_id));
             }
             let codefile_exists = self
                 .conn
@@ -190,14 +190,7 @@ impl SqliteGraphStore {
         let tx = self.write_tx()?;
         let edge = super::get_or_create_relates_to_conn(&tx, from_id, to_id, now)?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'passing',
-                 criterion = ?1,
-                 evidence = ?2,
-                 confidence = ?3,
-                 inspected_by = ?4,
-                 last_inspected = ?5
-             WHERE from_id = ?6 AND to_id = ?7",
+            SQL_UPDATE_RELATES_PASSING,
             params![
                 criterion,
                 evidence,
@@ -234,14 +227,7 @@ impl SqliteGraphStore {
         let tx = self.write_tx()?;
         let edge = super::get_or_create_relates_to_conn(&tx, from_id, to_id, now)?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'failing',
-                 criterion = ?1,
-                 evidence = ?2,
-                 confidence = ?3,
-                 inspected_by = ?4,
-                 last_inspected = ?5
-             WHERE from_id = ?6 AND to_id = ?7",
+            SQL_UPDATE_RELATES_FAILING,
             params![
                 criterion,
                 evidence,
@@ -275,12 +261,7 @@ impl SqliteGraphStore {
         let tx = self.write_tx()?;
         let edge = super::get_or_create_relates_to_conn(&tx, from_id, to_id, now)?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'independent',
-                 notes = ?1,
-                 inspected_by = ?2,
-                 last_inspected = ?3
-             WHERE from_id = ?4 AND to_id = ?5",
+            SQL_UPDATE_RELATES_INDEPENDENT,
             params![notes, inspected_by, now, from_id, to_id],
         )?;
         insert_transition_note_tx(
@@ -311,14 +292,7 @@ impl SqliteGraphStore {
         };
         let tx = self.write_tx()?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'passing',
-                 criterion = ?1,
-                 evidence = ?2,
-                 confidence = ?3,
-                 inspected_by = ?4,
-                 last_inspected = ?5
-             WHERE from_id = ?6 AND to_id = ?7",
+            SQL_UPDATE_RELATES_PASSING,
             params![
                 criterion,
                 evidence,
@@ -357,14 +331,7 @@ impl SqliteGraphStore {
         };
         let tx = self.write_tx()?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'failing',
-                 criterion = ?1,
-                 evidence = ?2,
-                 confidence = ?3,
-                 inspected_by = ?4,
-                 last_inspected = ?5
-             WHERE from_id = ?6 AND to_id = ?7",
+            SQL_UPDATE_RELATES_FAILING,
             params![
                 criterion,
                 evidence,
@@ -400,12 +367,7 @@ impl SqliteGraphStore {
         };
         let tx = self.write_tx()?;
         tx.execute(
-            "UPDATE relates_to
-             SET inspection_status = 'independent',
-                 notes = ?1,
-                 inspected_by = ?2,
-                 last_inspected = ?3
-             WHERE from_id = ?4 AND to_id = ?5",
+            SQL_UPDATE_RELATES_INDEPENDENT,
             params![notes, inspected_by, now, from_id, to_id],
         )?;
         insert_transition_note_tx(
@@ -478,14 +440,14 @@ impl SqliteGraphStore {
             let intent_exists = self
                 .conn
                 .query_row(
-                    "SELECT 1 FROM intent WHERE id = ?1",
+                    SQL_INTENT_EXISTS,
                     params![intent_id],
                     |_| Ok(()),
                 )
                 .optional()?
                 .is_some();
             if !intent_exists {
-                anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+                anyhow::bail!(err_intent_not_found(intent_id));
             }
         }
         Ok(())
@@ -871,20 +833,14 @@ impl SqliteGraphStore {
         now: &str,
     ) -> Result<()> {
         let changed = self.write_one(
-            "INSERT OR IGNORE INTO governs(
-                rule_id, intent_id, inspection_status, criterion, confidence, evidence,
-                last_inspected, inspected_by, notes, created_at
-             )
-             SELECT ?1, ?2, 'uninspected', ?3, 0, '', '', '', '', ?4
-             WHERE EXISTS(SELECT 1 FROM quality_rule WHERE id = ?1)
-               AND EXISTS(SELECT 1 FROM intent WHERE id = ?2)",
+            SQL_INSERT_GOVERNS_IF_MISSING,
             params![rule_id, intent_id, criterion, now],
         )?;
         if changed == 0 {
             let rule_exists = self
                 .conn
                 .query_row(
-                    "SELECT 1 FROM quality_rule WHERE id = ?1",
+                    SQL_RULE_EXISTS,
                     params![rule_id],
                     |_| Ok(()),
                 )
@@ -892,21 +848,20 @@ impl SqliteGraphStore {
                 .is_some();
             if !rule_exists {
                 anyhow::bail!(
-                    "QualityRule '{}' not found — `loom rule list` shows registered rules.",
-                    rule_id
+                    err_rule_not_found(rule_id)
                 );
             }
             let intent_exists = self
                 .conn
                 .query_row(
-                    "SELECT 1 FROM intent WHERE id = ?1",
+                    SQL_INTENT_EXISTS,
                     params![intent_id],
                     |_| Ok(()),
                 )
                 .optional()?
                 .is_some();
             if !intent_exists {
-                anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+                anyhow::bail!(err_intent_not_found(intent_id));
             }
         }
         Ok(())
@@ -933,15 +888,7 @@ impl SqliteGraphStore {
         };
         let tx = self.write_tx()?;
         tx.execute(
-            "UPDATE governs
-             SET inspection_status = ?1,
-                 criterion = ?2,
-                 evidence = ?3,
-                 confidence = ?4,
-                 inspected_by = ?5,
-                 last_inspected = ?6,
-                 covers_descendants = ?7
-             WHERE rule_id = ?8 AND intent_id = ?9",
+            SQL_UPDATE_GOVERNS,
             params![
                 status,
                 criterion,
@@ -991,19 +938,13 @@ impl SqliteGraphStore {
             previous_status
         } else {
             let changed = tx.execute(
-                "INSERT OR IGNORE INTO governs(
-                    rule_id, intent_id, inspection_status, criterion, confidence, evidence,
-                    last_inspected, inspected_by, notes, created_at
-                 )
-                 SELECT ?1, ?2, 'uninspected', ?3, 0, '', '', '', '', ?4
-                 WHERE EXISTS(SELECT 1 FROM quality_rule WHERE id = ?1)
-                   AND EXISTS(SELECT 1 FROM intent WHERE id = ?2)",
+                SQL_INSERT_GOVERNS_IF_MISSING,
                 params![rule_id, intent_id, criterion, now],
             )?;
             if changed == 0 {
                 let rule_exists = tx
                     .query_row(
-                        "SELECT 1 FROM quality_rule WHERE id = ?1",
+                        SQL_RULE_EXISTS,
                         params![rule_id],
                         |_| Ok(()),
                     )
@@ -1011,34 +952,25 @@ impl SqliteGraphStore {
                     .is_some();
                 if !rule_exists {
                     anyhow::bail!(
-                        "QualityRule '{}' not found — `loom rule list` shows registered rules.",
-                        rule_id
+                        err_rule_not_found(rule_id)
                     );
                 }
                 let intent_exists = tx
                     .query_row(
-                        "SELECT 1 FROM intent WHERE id = ?1",
+                        SQL_INTENT_EXISTS,
                         params![intent_id],
                         |_| Ok(()),
                     )
                     .optional()?
                     .is_some();
                 if !intent_exists {
-                    anyhow::bail!("Intent '{}' not found — `loom intent list`.", intent_id);
+                    anyhow::bail!(err_intent_not_found(intent_id));
                 }
             }
             "uninspected".to_string()
         };
         tx.execute(
-            "UPDATE governs
-             SET inspection_status = ?1,
-                 criterion = ?2,
-                 evidence = ?3,
-                 confidence = ?4,
-                 inspected_by = ?5,
-                 last_inspected = ?6,
-                 covers_descendants = ?7
-             WHERE rule_id = ?8 AND intent_id = ?9",
+            SQL_UPDATE_GOVERNS,
             params![
                 status,
                 criterion,

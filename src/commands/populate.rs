@@ -239,7 +239,7 @@ fn populate_interfaces(
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
-    store.ensure_owned("populate derived graph structure")?;
+    store.ensure_owned(crate::gate::lane::POPULATE_GRAPH.action)?;
 
     if dry_run {
         let plan = plan_with_repo(&store, &cwd)?;
@@ -678,6 +678,13 @@ fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<
     let p = &plan.interface_from_sagas;
     let gaps = &plan.interface_gaps;
     if printer.json {
+        let mut interface_gaps_value = interface_gaps_json(gaps);
+        if let Some(o) = interface_gaps_value.as_object_mut() {
+            o.insert(
+                "command".to_string(),
+                serde_json::json!("loom interface gaps"),
+            );
+        }
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "dry_run": dry_run,
@@ -694,15 +701,7 @@ fn render_plan(plan: &PopulatePlan, dry_run: bool, printer: &Printer) -> Result<
                     "sagas_needing_repopulate": p.sagas_needing_repopulate,
                     "command": POPULATE_INTERFACES_FROM_SAGAS_CMD,
                 },
-                "interface_gaps": {
-                    "pending": gaps.is_pending(),
-                    "total": gaps.total(),
-                    "surface_without_calls": gaps.surface_without_calls,
-                    "boundary_intent_without_calls": gaps.boundary_intent_without_calls,
-                    "call_without_validates": gaps.call_without_validates,
-                    "examples": interface_gap_examples_json(&gaps.examples),
-                    "command": "loom interface gaps",
-                }
+                "interface_gaps": interface_gaps_value
             }
         }));
         return Ok(());
@@ -758,14 +757,26 @@ fn skipped_json(skipped: &[SkippedSaga]) -> Vec<serde_json::Value> {
 }
 
 pub(crate) fn interface_gaps_json(gaps: &InterfaceGapPlan) -> serde_json::Value {
-    serde_json::json!({
-        "pending": gaps.is_pending(),
-        "total": gaps.total(),
-        "surface_without_calls": gaps.surface_without_calls,
-        "boundary_intent_without_calls": gaps.boundary_intent_without_calls,
-        "call_without_validates": gaps.call_without_validates,
-        "examples": interface_gap_examples_json(&gaps.examples),
-    })
+    let mut m = serde_json::Map::new();
+    m.insert("pending".to_string(), serde_json::json!(gaps.is_pending()));
+    m.insert("total".to_string(), serde_json::json!(gaps.total()));
+    m.insert(
+        "surface_without_calls".to_string(),
+        serde_json::json!(gaps.surface_without_calls),
+    );
+    m.insert(
+        BOUNDARY_INTENT_WITHOUT_CALLS.to_string(),
+        serde_json::json!(gaps.boundary_intent_without_calls),
+    );
+    m.insert(
+        "call_without_validates".to_string(),
+        serde_json::json!(gaps.call_without_validates),
+    );
+    m.insert(
+        "examples".to_string(),
+        serde_json::json!(interface_gap_examples_json(&gaps.examples)),
+    );
+    serde_json::Value::Object(m)
 }
 
 pub(crate) fn interface_gap_totals_line(gaps: &InterfaceGapPlan) -> String {

@@ -135,7 +135,7 @@ fn render(report: DoctorReport, export_stale: Option<bool>, printer: &Printer) -
                 "ok":       report.version_ok,
             },
             "next_step": if report.version_ok { serde_json::Value::Null } else {
-                serde_json::json!("re-export from the loom that wrote this graph, then `loom init . && loom import loom.graph.json` here")
+                serde_json::json!(crate::output::REBUILD_FROM_EXPORT_HINT)
             },
             "node_counts": report.node_counts,
             "edge_counts": report.edge_counts,

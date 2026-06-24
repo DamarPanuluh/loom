@@ -9,6 +9,10 @@ use std::collections::HashMap;
 use super::symbol_match::{contains_identifier_word, symbol_identifier};
 use crate::types::{CodeFile, Implements, Intent, Note, SymbolFact};
 
+pub(crate) const ANTI_CREATE_INTENTS_PER_HELPER: &str = "do not create intents for every private helper";
+pub(crate) const ANTI_BULK_GROUND_SYMBOLS: &str =
+    "do not bulk-ground symbols without checking intent meaning";
+
 #[derive(Debug, Clone, Serialize, Default, PartialEq)]
 pub struct SymbolAccountabilitySummary {
     pub total_symbols: usize,
@@ -366,8 +370,8 @@ pub fn symbol_teaching() -> SymbolTeaching {
             "public/exported symbols and risky multi-owner/broad-locator files deserve precise locators".into(),
         ],
         avoid: vec![
-            "do not create intents for every private helper".into(),
-            "do not bulk-ground symbols without checking intent meaning".into(),
+            ANTI_CREATE_INTENTS_PER_HELPER.into(),
+            ANTI_BULK_GROUND_SYMBOLS.into(),
             "do not treat 100% raw symbol coverage as the goal".into(),
         ],
         done_when: "stale locators are fixed and actionable symbol gaps are grounded, intentionally accepted with a decision note, or turned into real intent split/build work".into(),

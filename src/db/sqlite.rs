@@ -39,6 +39,70 @@ mod schema_ddl;
 mod search;
 mod writes;
 
+// Shared SQL/message contracts — one source so a schema or wording change lands once.
+// (visible to the sub-modules via `use super::*`).
+pub(crate) const SQL_INTENT_EXISTS: &str = "SELECT 1 FROM intent WHERE id = ?1";
+pub(crate) fn err_intent_not_found(id: &str) -> String {
+    format!("Intent '{id}' not found — `loom intent list`.")
+}
+pub(crate) const SQL_DELETE_EDGE_NOTES: &str = "DELETE FROM note
+             WHERE target_kind = 'edge'
+               AND instr(target_id, ?1) > 0";
+pub(crate) const SQL_UPDATE_INTENT_TAGS: &str = "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_FLAG_IMPLEMENTS_STALE: &str =
+    "UPDATE implements SET inspection_status = 'needs_reverification' WHERE intent_id = ?1 AND codefile_id = ?2";
+pub(crate) const SQL_UPDATE_INTENT_SOURCE_REFS: &str = "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_UPDATE_INTENT_VISIBILITY: &str = "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_SELECT_VALIDATION_LAST_RESULT: &str = "SELECT last_result FROM validation WHERE id = ?1";
+pub(crate) const SQL_VOCAB_TERM_EXISTS: &str = "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)";
+pub(crate) const SQL_COUNT_VALIDATES: &str = "SELECT count(*) FROM validates WHERE validation_id = ?1";
+pub(crate) const SQL_RESET_VALIDATION: &str = "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1";
+pub(crate) const SQL_UPDATE_RELATES_PASSING: &str = "UPDATE relates_to
+             SET inspection_status = 'passing',
+                 criterion = ?1,
+                 evidence = ?2,
+                 confidence = ?3,
+                 inspected_by = ?4,
+                 last_inspected = ?5
+             WHERE from_id = ?6 AND to_id = ?7";
+pub(crate) const SQL_UPDATE_RELATES_FAILING: &str = "UPDATE relates_to
+             SET inspection_status = 'failing',
+                 criterion = ?1,
+                 evidence = ?2,
+                 confidence = ?3,
+                 inspected_by = ?4,
+                 last_inspected = ?5
+             WHERE from_id = ?6 AND to_id = ?7";
+pub(crate) const SQL_UPDATE_RELATES_INDEPENDENT: &str = "UPDATE relates_to
+             SET inspection_status = 'independent',
+                 notes = ?1,
+                 inspected_by = ?2,
+                 last_inspected = ?3
+             WHERE from_id = ?4 AND to_id = ?5";
+pub(crate) const SQL_RULE_EXISTS: &str = "SELECT 1 FROM quality_rule WHERE id = ?1";
+pub(crate) fn err_rule_not_found(id: &str) -> String {
+    format!("QualityRule '{id}' not found — `loom rule list` shows registered rules.")
+}
+pub(crate) const SQL_UPDATE_GOVERNS: &str = "UPDATE governs
+             SET inspection_status = ?1,
+                 criterion = ?2,
+                 evidence = ?3,
+                 confidence = ?4,
+                 inspected_by = ?5,
+                 last_inspected = ?6,
+                 covers_descendants = ?7
+             WHERE rule_id = ?8 AND intent_id = ?9";
+pub(crate) const SQL_INSERT_GOVERNS_IF_MISSING: &str = "INSERT OR IGNORE INTO governs(
+                rule_id, intent_id, inspection_status, criterion, confidence, evidence,
+                last_inspected, inspected_by, notes, created_at
+             )
+             SELECT ?1, ?2, 'uninspected', ?3, 0, '', '', '', '', ?4
+             WHERE EXISTS(SELECT 1 FROM quality_rule WHERE id = ?1)
+               AND EXISTS(SELECT 1 FROM intent WHERE id = ?2)";
+pub(crate) fn pragma_table_info_sql(table: impl std::fmt::Display) -> String {
+    format!("PRAGMA table_info({table})")
+}
+
 pub struct SqliteGraphStore {
     conn: Connection,
     /// Sibling lock file (`.loom/graph.lock`) backing the cross-process
@@ -1297,7 +1361,7 @@ fn count_table(conn: &Connection, table: &str) -> Result<usize> {
 fn table_has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
     let table = checked_sql_ident(table)?;
     let column = checked_sql_ident(column)?;
-    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let mut stmt = conn.prepare(&pragma_table_info_sql(table))?;
     let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
     for name in rows {
         if name? == column {

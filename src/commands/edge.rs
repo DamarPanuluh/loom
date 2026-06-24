@@ -234,13 +234,13 @@ fn run_explore_with_sqlite(
             gate::require_substantive(
                 "criterion",
                 &criterion,
-                "the falsifiable coexistence criterion this edge was checked against",
+                gate::RELATES_TO_CRITERION_PURPOSE,
             )?;
             if !evidence.trim().is_empty() {
                 gate::require_substantive(
                     "evidence",
                     &evidence,
-                    "what the inspection actually found (file/symbol + the observation)",
+                    gate::RELATES_TO_EVIDENCE_PURPOSE,
                 )?;
             }
             gate::require_locators_resolve(root, &evidence_locator)?;
@@ -564,7 +564,7 @@ fn run_govern_with_sqlite(
             "next_step": next_step,
         }));
     } else {
-        println!("✓ GOVERNS edge created  (id: {})", edge_id);
+        println!("{}", crate::output::governs_edge_created_line(&edge_id));
         println!("  rule   → {}", rule_id);
         println!("  intent → {}", intent_id);
         println!("  → Next: {}", next_step);
@@ -917,11 +917,7 @@ fn resolve_codefiles_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<
     let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
     if is_glob {
         let pat = glob::Pattern::new(key).map_err(|e| {
-            anyhow::anyhow!(
-                "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
-                key,
-                e
-            )
+            anyhow::anyhow!(crate::output::invalid_glob_msg(key, &e))
         })?;
         let matched: Vec<_> = codefiles
             .into_iter()

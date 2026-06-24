@@ -6,6 +6,9 @@ use crate::db::{GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
 use crate::types::InboxItem;
 
+/// One source for the post-corpus-mutation next-step hint.
+const NEXT_CORPUS_COVERAGE_HINT: &str = "  → Next: loom corpus coverage";
+
 pub fn run(cmd: CorpusCmd, printer: &Printer) -> Result<()> {
     let root = crate::db::resolve_root()?;
     match cmd {
@@ -107,7 +110,7 @@ fn ignore_id(
     } else {
         println!("✓ Corpus requirement {id} marked ignored/resolved");
         println!("  source: {source}");
-        println!("  → Next: loom corpus coverage");
+        println!("{}", NEXT_CORPUS_COVERAGE_HINT);
     }
     Ok(())
 }
@@ -164,7 +167,7 @@ fn resolve_id(
         }));
     } else {
         println!("✓ Corpus requirement {id} resolved to intent '{resolved}'");
-        println!("  → Next: loom corpus coverage");
+        println!("{}", NEXT_CORPUS_COVERAGE_HINT);
     }
     Ok(())
 }

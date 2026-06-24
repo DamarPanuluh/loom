@@ -447,6 +447,12 @@ pub const VERDICT_EVIDENCE_INDEPENDENT_PURPOSE: &str =
     "why this rule does not apply to this intent";
 /// RELATES_TO independence notes — why two intents have no real relationship.
 pub const INDEPENDENT_NOTES_PURPOSE: &str = "why these two intents have no meaningful relationship";
+/// RELATES_TO criterion — the falsifiable claim a coexistence edge is checked against.
+pub const RELATES_TO_CRITERION_PURPOSE: &str =
+    "the falsifiable coexistence criterion this edge was checked against";
+/// RELATES_TO evidence — what the inspection found grounding a coexistence edge.
+pub const RELATES_TO_EVIDENCE_PURPOSE: &str =
+    "what the inspection actually found (file/symbol + the observation)";
 
 /// Inputs that read as "I filled the slot" rather than "I inspected the code".
 pub const PLACEHOLDERS: &[&str] = &[

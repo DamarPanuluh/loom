@@ -45,7 +45,7 @@ fn emit(root: &Path, out: &str, check: bool, md: &str, printer: &Printer) -> Res
                 "next_step": if fresh { format!("commit {out}") } else { format!("run `loom wiki` and commit {out}") },
             }));
         } else if fresh {
-            println!("✓ {out} is up to date with the graph.");
+            println!("{}", crate::output::up_to_date_line(&out));
         } else if on_disk.is_none() {
             println!("✗ {out} does not exist — run `loom wiki` and commit it.");
         } else {

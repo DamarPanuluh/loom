@@ -106,11 +106,7 @@ fn prepare_additions(
         let pattern = rooted.to_string_lossy();
         for p in glob::glob(&pattern)
             .map_err(|e| {
-                anyhow::anyhow!(
-                    "Invalid glob '{}': {} — quote it: `loom codefile add 'src/**/*.rs'`",
-                    path,
-                    e
-                )
+                anyhow::anyhow!(crate::output::invalid_glob_msg(&path, &e))
             })?
             .flatten()
         {

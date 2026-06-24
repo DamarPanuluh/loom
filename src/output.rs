@@ -1,5 +1,24 @@
 use serde::Serialize;
 
+/// One source for the "GOVERNS edge created" success line (loom edge + loom rule).
+pub fn governs_edge_created_line(edge_id: impl std::fmt::Display) -> String {
+    format!("✓ GOVERNS edge created  (id: {edge_id})")
+}
+
+/// One source for the unquoted-glob rejection (loom codefile add + loom edge implement).
+pub fn invalid_glob_msg(pattern: impl std::fmt::Display, err: impl std::fmt::Display) -> String {
+    format!("Invalid glob '{pattern}': {err} — quote it: `loom codefile add 'src/**/*.rs'`")
+}
+
+/// One source for the rebuild-from-export hint (doctor + migrate both point at it).
+pub const REBUILD_FROM_EXPORT_HINT: &str =
+    "re-export from the loom that wrote this graph, then `loom init . && loom import loom.graph.json` here";
+
+/// One source for the "<file> is up to date with the graph" line (export + wiki --check).
+pub fn up_to_date_line(out: impl std::fmt::Display) -> String {
+    format!("✓ {out} is up to date with the graph.")
+}
+
 pub fn note_list_intent_command(id: &str) -> String {
     format!("loom note list --intent {id}")
 }

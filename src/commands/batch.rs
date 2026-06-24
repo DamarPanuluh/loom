@@ -285,14 +285,14 @@ fn apply_line_sqlite(
             gate::require_substantive(
                 "criterion",
                 criterion,
-                "the falsifiable coexistence criterion this edge was checked against",
+                gate::RELATES_TO_CRITERION_PURPOSE,
             )?;
             let evidence = v.get("evidence").and_then(|x| x.as_str()).unwrap_or("");
             if !evidence.trim().is_empty() {
                 gate::require_substantive(
                     "evidence",
                     evidence,
-                    "what the inspection actually found (file/symbol + the observation)",
+                    gate::RELATES_TO_EVIDENCE_PURPOSE,
                 )?;
             }
             gate::require_locators_resolve(root, &locators_field(&v))?;

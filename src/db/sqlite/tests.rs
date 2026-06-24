@@ -3,7 +3,7 @@ use serde::Serialize;
 
 fn table_columns(conn: &Connection, table: &str) -> Vec<String> {
     let mut stmt = conn
-        .prepare(&format!("PRAGMA table_info({table})"))
+        .prepare(&pragma_table_info_sql(table))
         .expect("table_info");
     let cols = stmt
         .query_map([], |row| row.get::<_, String>(1))

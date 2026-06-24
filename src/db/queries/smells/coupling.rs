@@ -215,7 +215,7 @@ fn detect_layering_violation(
         });
         if arch_passes {
             smells.push(Smell {
-                kind: "architecture_verdict_contradicts_layering".into(),
+                kind: super::KIND_ARCH_VERDICT_CONTRADICTS.into(),
                 score: 9.0,
                 summary: format!(
                     "'{na}' carries a PASSING architecture rule but its dependencies violate the declared layer order"
@@ -227,7 +227,7 @@ fn detect_layering_violation(
                 remedy: format!(
                     "reconcile the two: re-inspect the architecture rule on '{na}' (`loom rule verdict` — the verdict may be wrong), or fix the layer order (`loom layer order …`); a passing architecture verdict must not coexist with an open layering violation"
                 ),
-                teaching: teaching_for("architecture_verdict_contradicts_layering"),
+                teaching: teaching_for(super::KIND_ARCH_VERDICT_CONTRADICTS),
             });
         }
     }

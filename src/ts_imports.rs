@@ -960,6 +960,14 @@ fn path_is_test(rel_path: &str) -> bool {
         || p.contains(".test.")
         || p.contains(".spec.")
         || p.ends_with("_test.py")
+        // Rust's separate-file test module convention: `#[cfg(test)] mod tests;`
+        // points at a `tests.rs` (or `*_test(s).rs`) whose helpers carry no
+        // `#[test]` attr and sit outside any in-file `#[cfg(test)]` block, so
+        // neither rust_symbol_is_test nor in_test_context catches them.
+        || p.ends_with("/tests.rs")
+        || p == "tests.rs"
+        || p.ends_with("_test.rs")
+        || p.ends_with("_tests.rs")
 }
 
 fn js_ts_name_is_test(name: &str) -> bool {

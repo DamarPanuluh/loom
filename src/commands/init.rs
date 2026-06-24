@@ -3,6 +3,8 @@ use std::fs;
 use std::path::Path;
 
 use crate::db::schema::SCHEMA_VERSION;
+
+const SKIPPED_NOT_GIT: &str = "skipped (not a git repo)";
 use crate::db::{db_path, loom_dir};
 use crate::output::Printer;
 
@@ -152,7 +154,7 @@ pub fn run(
 /// finds it already there is a no-op; never fails init). Only acts in a git repo.
 fn ensure_gitignored(target: &Path) -> String {
     if !target.join(".git").exists() {
-        return "skipped (not a git repo)".to_string();
+        return SKIPPED_NOT_GIT.to_string();
     }
     let gitignore = target.join(".gitignore");
     let existing = fs::read_to_string(&gitignore).unwrap_or_default();
@@ -184,7 +186,7 @@ const HOOK_MARKER: &str = "# loom-managed pre-commit hook";
 fn install_pre_commit_hook(target: &Path) -> Result<String> {
     let git_dir = target.join(".git");
     if !git_dir.exists() {
-        return Ok("skipped (not a git repo)".to_string());
+        return Ok(SKIPPED_NOT_GIT.to_string());
     }
     if !git_dir.is_dir() {
         // Worktrees/submodules use a `.git` FILE pointing at the real gitdir;
@@ -284,7 +286,7 @@ mod tests {
             std::env::temp_dir().join(format!("loom-gi-nogit-{}-{}", std::process::id(), line!()));
         let _ = fs::remove_dir_all(&nogit);
         fs::create_dir_all(&nogit).unwrap();
-        assert_eq!(ensure_gitignored(&nogit), "skipped (not a git repo)");
+        assert_eq!(ensure_gitignored(&nogit), SKIPPED_NOT_GIT);
 
         let _ = fs::remove_dir_all(&dir);
         let _ = fs::remove_dir_all(&nogit);

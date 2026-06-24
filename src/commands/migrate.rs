@@ -21,7 +21,7 @@ pub fn run(printer: &Printer) -> Result<()> {
         .map(|meta| meta.version)
         .unwrap_or_else(|| SCHEMA_VERSION.to_string());
     let current = version == SCHEMA_VERSION;
-    let rebuild = "re-export from the loom that wrote this graph, then `loom init . && loom import loom.graph.json` here";
+    let rebuild = crate::output::REBUILD_FROM_EXPORT_HINT;
 
     if printer.json {
         printer.print_json(&serde_json::json!({

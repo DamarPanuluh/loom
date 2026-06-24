@@ -5,7 +5,7 @@ impl SqliteGraphStore {
     pub fn set_intent_tags(&self, id: &str, tags: Vec<String>, updated_at: &str) -> Result<bool> {
         let encoded = crate::db::queries::vocab::encode_tags(tags)?;
         let changed = self.write_one(
-            "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3",
+            SQL_UPDATE_INTENT_TAGS,
             params![serde_json::to_string(&encoded)?, updated_at, id],
         )?;
         Ok(changed > 0)
@@ -28,7 +28,7 @@ impl SqliteGraphStore {
         if !refs.iter().any(|source_ref| source_ref == path) {
             refs.push(path.to_string());
             tx.execute(
-                "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3",
+                SQL_UPDATE_INTENT_SOURCE_REFS,
                 params![serde_json::to_string(&refs)?, updated_at, id],
             )?;
         }
@@ -52,7 +52,7 @@ impl SqliteGraphStore {
             return Ok(Some(false));
         }
         tx.execute(
-            "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3",
+            SQL_UPDATE_INTENT_SOURCE_REFS,
             params![serde_json::to_string(&refs)?, updated_at, id],
         )?;
         tx.commit()?;
@@ -139,7 +139,7 @@ impl SqliteGraphStore {
         )?;
         if let Some(visibility) = visibility {
             tx.execute(
-                "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3",
+                SQL_UPDATE_INTENT_VISIBILITY,
                 params![visibility, now, id],
             )?;
             tx.execute(
@@ -188,7 +188,7 @@ impl SqliteGraphStore {
             );
         }
         let changed = self.write_one(
-            "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3",
+            SQL_UPDATE_INTENT_VISIBILITY,
             params![visibility, updated_at, id],
         )?;
         Ok(changed > 0)
@@ -329,9 +329,7 @@ impl SqliteGraphStore {
         for edge in implements {
             if edge.inspection_status == "passing" {
                 tx.execute(
-                    "UPDATE implements
-                     SET inspection_status = 'needs_reverification'
-                     WHERE intent_id = ?1 AND codefile_id = ?2",
+                    SQL_FLAG_IMPLEMENTS_STALE,
                     params![edge.intent_id, edge.codefile_id],
                 )?;
                 insert_sync_flip_note_tx(
@@ -353,7 +351,7 @@ impl SqliteGraphStore {
             }
             let result: Option<String> = tx
                 .query_row(
-                    "SELECT last_result FROM validation WHERE id = ?1",
+                    SQL_SELECT_VALIDATION_LAST_RESULT,
                     params![edge.validation_id],
                     |row| row.get(0),
                 )
@@ -476,8 +474,7 @@ impl SqliteGraphStore {
         }
         for edge in &implements_edges {
             tx.execute(
-                "UPDATE implements SET inspection_status = 'needs_reverification'
-                 WHERE intent_id = ?1 AND codefile_id = ?2",
+                SQL_FLAG_IMPLEMENTS_STALE,
                 params![edge.intent_id, edge.codefile_id],
             )?;
             insert_sync_flip_note_tx(
@@ -510,9 +507,7 @@ impl SqliteGraphStore {
         let tx = self.write_tx()?;
         tx.execute("DELETE FROM note WHERE target_id = ?1", params![id])?;
         tx.execute(
-            "DELETE FROM note
-             WHERE target_kind = 'edge'
-               AND instr(target_id, ?1) > 0",
+            SQL_DELETE_EDGE_NOTES,
             params![id],
         )?;
         tx.execute("DELETE FROM intent WHERE id = ?1", params![id])?;
@@ -628,9 +623,7 @@ impl SqliteGraphStore {
         };
         let tx = self.write_tx()?;
         tx.execute(
-            "DELETE FROM note
-             WHERE target_kind = 'edge'
-               AND instr(target_id, ?1) > 0",
+            SQL_DELETE_EDGE_NOTES,
             params![codefile.id],
         )?;
         tx.execute("DELETE FROM codefile WHERE id = ?1", params![codefile.id])?;
@@ -915,7 +908,7 @@ impl SqliteGraphStore {
     pub fn merge_vocab_terms(&mut self, from: &str, to: &str, now: &str) -> Result<usize> {
         let tx = self.write_tx()?;
         let from_exists: bool = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)",
+            SQL_VOCAB_TERM_EXISTS,
             params![from],
             |row| row.get(0),
         )?;
@@ -925,7 +918,7 @@ impl SqliteGraphStore {
             );
         }
         let to_exists: bool = tx.query_row(
-            "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)",
+            SQL_VOCAB_TERM_EXISTS,
             params![to],
             |row| row.get(0),
         )?;
@@ -952,7 +945,7 @@ impl SqliteGraphStore {
                 .collect();
             let encoded = crate::db::queries::vocab::encode_tags(new_tags)?;
             tx.execute(
-                "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3",
+                SQL_UPDATE_INTENT_TAGS,
                 params![serde_json::to_string(&encoded)?, now, intent_id],
             )?;
             retagged += 1;
@@ -1012,7 +1005,7 @@ impl SqliteGraphStore {
             )?;
         }
         let intents_updated: i64 = tx.query_row(
-            "SELECT count(*) FROM validates WHERE validation_id = ?1",
+            SQL_COUNT_VALIDATES,
             params![validation.id],
             |row| row.get(0),
         )?;
@@ -1076,11 +1069,11 @@ impl SqliteGraphStore {
         let mut reset_edges = 0usize;
         if command_changed {
             tx.execute(
-                "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1",
+                SQL_RESET_VALIDATION,
                 params![validation.id],
             )?;
             let count: i64 = tx.query_row(
-                "SELECT count(*) FROM validates WHERE validation_id = ?1",
+                SQL_COUNT_VALIDATES,
                 params![validation.id],
                 |row| row.get(0),
             )?;
@@ -1104,7 +1097,7 @@ impl SqliteGraphStore {
         // too (the id is embedded in the edge id, e.g. call:<validation>:<id>),
         // mirroring delete_validation, so no orphan notes survive in listings.
         tx.execute(
-            "DELETE FROM note WHERE target_kind = 'edge' AND instr(target_id, ?1) > 0",
+            SQL_DELETE_EDGE_NOTES,
             params![id],
         )?;
         let changed = tx.execute("DELETE FROM interface_surface WHERE id = ?1", params![id])?;
@@ -1116,7 +1109,7 @@ impl SqliteGraphStore {
         let tx = self.write_tx()?;
         // Drop orphan edge notes (srv:<id>:… / jrn:<id>:…) the FK cascade leaves.
         tx.execute(
-            "DELETE FROM note WHERE target_kind = 'edge' AND instr(target_id, ?1) > 0",
+            SQL_DELETE_EDGE_NOTES,
             params![id],
         )?;
         let changed = tx.execute("DELETE FROM persona WHERE id = ?1", params![id])?;
@@ -1127,9 +1120,7 @@ impl SqliteGraphStore {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;
         tx.execute(
-            "DELETE FROM note
-             WHERE target_kind = 'edge'
-               AND instr(target_id, ?1) > 0",
+            SQL_DELETE_EDGE_NOTES,
             params![validation.id],
         )?;
         tx.execute(
@@ -1212,7 +1203,7 @@ impl SqliteGraphStore {
         let last_result: Option<String> = self
             .conn
             .query_row(
-                "SELECT last_result FROM validation WHERE id = ?1",
+                SQL_SELECT_VALIDATION_LAST_RESULT,
                 params![validation_id],
                 |row| row.get(0),
             )
@@ -1224,7 +1215,7 @@ impl SqliteGraphStore {
             return Ok(false);
         }
         self.write_one(
-            "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1",
+            SQL_RESET_VALIDATION,
             params![validation_id],
         )?;
         Ok(true)

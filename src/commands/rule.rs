@@ -12,6 +12,8 @@ use crate::types::QualityRule;
 /// definition and the effort lookup can't drift on the spelling (a rename in
 /// one place silently dropping the rule to the "mid" default).
 const ISO5055_SEC_NO_HARDCODED_SECRETS: &str = "iso5055-sec-no-hardcoded-secrets";
+const ISO5055_MAIN_NO_DEAD_OR_DUPLICATE: &str = "iso5055-main-no-dead-or-duplicate-code";
+const MOBILE_LIFECYCLE_SAFE_STATE: &str = "mobile-lifecycle-safe-state";
 
 /// The ISO 5055 measuring sticks: (name, severity, description, detection_logic).
 /// Two-to-three CWE-grounded rules per quality characteristic, written so an
@@ -61,7 +63,7 @@ const ISO5055_PACK: &[PackRule] = &[
      "ISO 5055 Maintainability (CWE-1080/1120): each unit (file, function, intent) owns one coherent responsibility; oversized or multi-concern units are split.",
      "Check unit sizes and concern count; cross-check `loom smells` (tangled_file / scattered_intent) for the same intent.",
      "architecture"),
-    PackRule::new("iso5055-main-no-dead-or-duplicate-code", "warning",
+    PackRule::new(ISO5055_MAIN_NO_DEAD_OR_DUPLICATE, "warning",
      "ISO 5055 Maintainability (CWE-561/1041): no unreachable or unused code; no copy-pasted logic where one definition should exist.",
      "Look for unused functions/exports, commented-out blocks kept 'just in case', and near-identical logic in sibling files.",
      "architecture"),
@@ -70,7 +72,7 @@ const ISO5055_PACK: &[PackRule] = &[
 /// Mobile vantage point: lifecycle, offline, permissions, the main thread,
 /// battery, platform divergence, externally-triggered entry points.
 const MOBILE_PACK: &[PackRule] = &[
-    PackRule::new("mobile-lifecycle-safe-state", "error",
+    PackRule::new(MOBILE_LIFECYCLE_SAFE_STATE, "error",
      "Mobile: user-visible state survives backgrounding and process death — nothing critical lives only in memory across a lifecycle boundary.",
      "Trace each screen's state to its save/restore path (saved-state handles, persisted stores). Look for in-flight work assumed to finish after the app is backgrounded without an OS-sanctioned mechanism.",
      "architecture"),
@@ -368,14 +370,14 @@ pub fn pack_names() -> Vec<&'static str> {
 fn pack_rule_effort(name: &str) -> &'static str {
     match name {
         // Near-mechanical scans.
-        ISO5055_SEC_NO_HARDCODED_SECRETS | "iso5055-main-no-dead-or-duplicate-code" | "sec-dependency-squatting" => "low",
+        ISO5055_SEC_NO_HARDCODED_SECRETS | ISO5055_MAIN_NO_DEAD_OR_DUPLICATE | "sec-dependency-squatting" => "low",
         // Deep semantic reading.
         "conc-atomic-multi-step"
         | "conc-deadlock-ordering"
         | "conc-cancellation-safe"
         | "service-compensation-defined"
         | "service-idempotent-handlers"
-        | "mobile-lifecycle-safe-state"
+        | MOBILE_LIFECYCLE_SAFE_STATE
         | "data-pii-handled"
         | "sec-rate-limiting"
         | "sec-minimal-response"
@@ -568,7 +570,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     "next_step": format!("Run `loom rule check {}` to inspect.", intent_id),
                 }));
             } else {
-                println!("✓ GOVERNS edge created  (id: {})", edge_id);
+                println!("{}", crate::output::governs_edge_created_line(&edge_id));
                 println!("  rule   → {}", rule_id);
                 println!("  intent → {}", intent_id);
                 println!("  Run `loom rule check {}` to inspect.", intent_id);
