@@ -6254,6 +6254,32 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-24T04:54:34.260754+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "63b49d1c-a2fa-4598-aa3d-07ebd761ccdd",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "74c4f8e0-a226-454b-ab4d-2faf74821bd4"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-24T04:54:34.075459+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "63b49d1c-a2fa-4598-aa3d-07ebd761ccdd",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "77298c1f-f399-4a23-a6b1-8570c301143b"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-22T20:30:43.332549+00:00",
         "criterion": "",
         "evidence": "",
@@ -6277,6 +6303,19 @@
         "locator": "**Scope:** the storage substrate",
         "notes": "proposal defines storage migration vocabulary and SQLite responsibility boundaries",
         "to": "1bab3f92-48cc-4a47-b47d-855eebf22658"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-24T04:54:10.634070+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "667e3b6c-cea2-4ab1-83cb-e0911c80efa9",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "ba1d0d50-3c9f-4d80-ba1a-acae8312990c"
       },
       {
         "confidence": 0.0,
@@ -7593,6 +7632,19 @@
       },
       {
         "confidence": 0.0,
+        "created_at": "2026-06-24T04:54:10.419948+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c2f6bca0-2ccd-48b7-af47-1a74fba61441",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "f4337842-82b4-41b6-9843-fc8fe9023c93"
+      },
+      {
+        "confidence": 0.0,
         "created_at": "2026-06-10T16:48:14.904176+00:00",
         "criterion": "",
         "evidence": "",
@@ -7629,6 +7681,19 @@
         "locator": "",
         "notes": "",
         "to": "128cfcf2-6d51-4930-8c23-eb55db259309"
+      },
+      {
+        "confidence": 0.0,
+        "created_at": "2026-06-24T04:54:34.371976+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "c6b2b5d9-387a-4fa3-936d-e4e780021067",
+        "inspected_by": "",
+        "inspection_status": "passing",
+        "last_inspected": "",
+        "locator": "",
+        "notes": "",
+        "to": "66a3504e-1423-41b4-88cd-31b8e3835fe6"
       },
       {
         "confidence": 0.0,
@@ -90480,6 +90545,13 @@
         "to": "b3e21549-8c6b-4e52-a3a3-7935e92cdd11"
       },
       {
+        "created_at": "2026-06-24T04:57:36.722999+00:00",
+        "from": "0751d7c3-f1fc-469f-a040-062895c72094",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "933385b5-48eb-47c4-af6b-5312299f1914"
+      },
+      {
         "created_at": "2026-06-14T19:55:38.069130+00:00",
         "from": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
         "inspection_status": "passing",
@@ -90849,6 +90921,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
+      },
+      {
+        "created_at": "2026-06-24T05:01:30.557797+00:00",
+        "from": "52ff3c52-f56d-44c5-9509-cfed10366a29",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "21fcfe4c-1e8c-47c0-840a-434a5903aa75"
       },
       {
         "created_at": "2026-06-24T04:41:44.833530+00:00",
@@ -91278,6 +91357,13 @@
         "to": "09c382ea-6c0d-4ed6-89d5-433d1be40ac1"
       },
       {
+        "created_at": "2026-06-24T04:59:37.738501+00:00",
+        "from": "a4c4e8a5-9636-47f7-9013-c0739c5c5f03",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "be7990bd-7f82-40d9-8064-c72c52c0a04c"
+      },
+      {
         "created_at": "2026-06-14T19:55:38.037087+00:00",
         "from": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
         "inspection_status": "passing",
@@ -91495,6 +91581,13 @@
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
       },
       {
+        "created_at": "2026-06-24T04:56:23.679284+00:00",
+        "from": "d154f2ba-8522-4341-898a-659c994e32da",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "809761fa-9de9-4b00-b3e4-eda65efb65ab"
+      },
+      {
         "created_at": "2026-06-17T08:53:42.839804+00:00",
         "from": "d4940021-5843-43fc-ad4f-b3b8d7818330",
         "inspection_status": "passing",
@@ -91579,6 +91672,13 @@
         "to": "8f96ca18-2ad0-48f3-985e-e4025141093d"
       },
       {
+        "created_at": "2026-06-24T05:04:46.273825+00:00",
+        "from": "e61dff4c-5b15-459b-8cd4-ea1eec054d6f",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "d7d485d7-c342-4c44-a57f-d08f7cf31941"
+      },
+      {
         "created_at": "2026-06-09T19:09:11.843109+00:00",
         "from": "eb3e43cc-8850-41ea-82f4-1bde1604936b",
         "inspection_status": "passing",
@@ -91591,6 +91691,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
+      },
+      {
+        "created_at": "2026-06-24T04:56:23.817913+00:00",
+        "from": "ec687e17-7fe4-4dec-afb5-7921e3632e08",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "cfcbfb63-c60e-4ff3-b9c1-0d2058d921e8"
       },
       {
         "created_at": "2026-06-24T04:41:44.721530+00:00",
@@ -206803,6 +206910,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_bulk_quality_take_returns_batch_template",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "0751d7c3-f1fc-469f-a040-062895c72094",
+        "last_executed_run": "2026-06-24T04:57:36.742037+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:57:36.742037+00:00",
+        "name": "test: bulk quality take batch template",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_fix_take_withholds_ground_template_from_failing_edges",
         "description": "Proves next fix compact command parity: the SQLite-backed next --mode fix with take withholds ground templates from failing edges.",
         "discrimination_status": "discriminating",
@@ -207263,6 +207381,17 @@
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_glob_grounding_grounds_every_matched_file",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "52ff3c52-f56d-44c5-9509-cfed10366a29",
+        "last_executed_run": "2026-06-24T05:01:30.575942+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T05:01:30.575942+00:00",
+        "name": "test: glob bulk-grounds every matched file",
+        "validation_type": "test"
       },
       {
         "command": "cargo test output::tests::anchor_json_carries_next_step_and_graph_state",
@@ -207749,6 +207878,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_discovery_candidate_path_matches_full_scan",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "a4c4e8a5-9636-47f7-9013-c0739c5c5f03",
+        "last_executed_run": "2026-06-24T04:59:37.754322+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:59:37.754322+00:00",
+        "name": "test: shared snapshot reused consistently",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_next_take_caps_to_one_on_non_bulk_mode",
         "description": "Proves next compact command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
@@ -208090,6 +208230,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_hypothesis_adoption_outcome_validation_confirms_then_settles_targets",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "d154f2ba-8522-4341-898a-659c994e32da",
+        "last_executed_run": "2026-06-24T04:56:56.084999+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:56:56.084999+00:00",
+        "name": "test: adoption outcome validation",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_populate_backfills_interface_calls_from_existing_sagas",
         "description": "",
         "discrimination_status": "discriminating",
@@ -208211,6 +208362,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_hypothesis_prove_requires_prover_differs_from_proposer",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "e61dff4c-5b15-459b-8cd4-ea1eec054d6f",
+        "last_executed_run": "2026-06-24T05:04:46.288571+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T05:04:46.288571+00:00",
+        "name": "test: hypothesis prover-differs lifecycle gate",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_status_json_top_level_keys_are_frozen",
         "description": "Proves status --json carries the graph_state pulse with frozen top-level keys.",
         "discrimination_status": "discriminating",
@@ -208230,6 +208392,17 @@
         "last_result": "passed",
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "sqlite report command parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_edge_implement_verifies_locator_at_ground_time",
+        "description": "",
+        "discrimination_status": "discriminating",
+        "id": "ec687e17-7fe4-4dec-afb5-7921e3632e08",
+        "last_executed_run": "2026-06-24T04:56:56.084999+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:56:56.084999+00:00",
+        "name": "test: locator verified at ground time",
         "validation_type": "test"
       },
       {
