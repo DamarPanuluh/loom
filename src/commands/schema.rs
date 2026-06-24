@@ -45,7 +45,7 @@ fn edge_desc(etype: &str) -> &'static str {
     match etype {
         "RELATES_TO" => "Intent ↔ Intent — any tracked relationship worth inspecting (the N×N grid).",
         "HIERARCHY" => "Intent → Intent — parent/child zoom (component rolls up feature). A TREE: each intent has at most one parent, no cycles (enforced).",
-        "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`). A fresh grounding is LOCATED (the locator is verified present — `loom explain` shows `[located]`), a structural anchor; it becomes a full `passing` verdict only when an analyzer records a criterion. So IMPLEMENTS `passing` without a criterion means 'symbol present', not RELATES_TO's semantic 'criterion met'.",
+        "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`). STRUCTURAL: `loom explain` shows `[located]` — the locator is verified present at ground time and kept present by sync (sync flags it only when the symbol VANISHES). Whether the code FULFILS the intent is proven elsewhere — a VALIDATES proof (RE-RUN it to catch behavioral drift; sync flags it automatically when a TOP-LEVEL grounded symbol's file changes, but a nested method's body change rides only the proof you re-run) and RELATES_TO couplings — NOT by the grounding. So IMPLEMENTS `passing`/located means 'symbol present', not RELATES_TO's semantic 'criterion met'.",
         "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent. A verdict at component/system altitude covers descendants ONLY when --covers-descendants is set (default: false — a direct verdict only).",
         "VALIDATES" => "Validation → Intent — a proof object attached to an intent.",
         "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
@@ -58,7 +58,7 @@ fn edge_desc(etype: &str) -> &'static str {
 
 const STATES: &[(&str, &str)] = &[
     ("uninspected", "declared but never verified against actual code"),
-    ("passing", "inspected, criterion met (on a criterion-less IMPLEMENTS = LOCATED: locator verified present, not yet criterion-judged)"),
+    ("passing", "inspected, criterion met (on IMPLEMENTS = LOCATED: locator verified present — fulfilment is proven by VALIDATES, not the grounding)"),
     ("failing", "inspected, criterion violated"),
     ("independent", "inspected, confirmed no relationship (RELATES_TO: intents unrelated; GOVERNS: rule does not apply)"),
     ("partial", "inspected, bounded but not complete — some aspects comply but gaps remain (GOVERNS only)"),
@@ -103,18 +103,22 @@ pub fn run(printer: &Printer) -> Result<()> {
             "values": ["feature", "component", "system", "cross_cutting"],
             "granularity": "system: 1–3 per repo (the product's purpose) · component: 5–15 (cohesive subsystems) · feature: many, ATOMIC — independently verifiable · cross_cutting: spans everything. Test: one falsifiable criterion per intent; a description needing 'and' is several intents.",
         },
-        "lifecycle": ["planned", "implemented", "needs_change", "deferred"],
+        "lifecycle": ["planned", "implemented", "needs_change", "deferred", "to_be_removed"],
         "lifecycle_model": {
             "active_states": {
                 "planned": "designed promise, not expected to be grounded in current code yet",
                 "implemented": "current code is meant to realize this intent",
                 "needs_change": "known issue or refactor target; work remains",
+                "deferred": "consciously PARKED — design valid and still wanted, just not built now; out of the build queue, never blocks a roll-up",
+                "to_be_removed": "cleanup as a tracked verb — this code is SUPPOSED TO GO AWAY; criterion falsifiable by ABSENCE, gates green only once the code is gone",
             },
             "transitions": [
                 "new behavior -> planned via intent add, saga spawn, or hypothesis adoption",
                 "planned -> implemented via build, codefile add, edge implement, and intent mark",
                 "implemented -> needs_change -> implemented for admitted repairs",
-                "superseded active intent -> status=deprecated via intent retire",
+                "any active state -> deferred (park) and deferred -> planned (resume) via intent mark --lifecycle",
+                "implemented -> to_be_removed (mark for deletion); done by ABSENCE once the code is gone",
+                "superseded active intent -> status=deprecated via intent retire (distinct from to_be_removed)",
                 "import --as-planned resets incoming implemented work to planned design",
             ],
             "distinct_from": {
@@ -205,7 +209,9 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  abstraction_level: feature | component | system | cross_cutting");
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
-    println!("  lifecycle:         planned | implemented | needs_change | deferred | to_be_removed");
+    println!(
+        "  lifecycle:         planned | implemented | needs_change | deferred | to_be_removed"
+    );
     println!("                     to_be_removed = cleanup as a tracked verb (criterion falsifiable by ABSENCE — gates green only once the code is gone); deferred PARKS valid-but-not-now work (out of the build queue, never blocks a roll-up). Both are distinct from retire (status=deprecated via `loom intent retire`), which is for SUPERSEDED/out-of-scope design — a dead meaning kept for history.");
     println!("                     porting with `import --as-planned` resets incoming work to planned design");
     println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");

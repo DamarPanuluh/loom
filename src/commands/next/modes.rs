@@ -19,6 +19,71 @@ pub(super) fn run_build(
     let gs = db.graph_state(&snapshot)?;
 
     if candidates.is_empty() {
+        // The build INTENT queue is empty — but the Seeded rung's named blocker,
+        // "N public symbol(s) unowned", is grounding work no planned/needs_change
+        // intent represents. Serve those symbol-accountability gaps here (with the
+        // per-gap fix command coverage already computes) so the compass's own
+        // blocker is ACTIONABLE from `loom next`, not only visible in
+        // `loom coverage --json`.
+        let decision_notes = db.notes_by_kind("decision")?;
+        let report = crate::db::queries::symbol_accountability_from_parts_with_notes(
+            &snapshot.codefiles,
+            &snapshot.intents,
+            &snapshot.implements,
+            &decision_notes,
+        );
+        let gaps = report.actionable_symbol_gaps;
+        if !gaps.is_empty() {
+            let shown = gaps.len().min(crate::output::SECTION_CAP);
+            if printer.json {
+                printer.print_json(&inject_take_note(
+                    serde_json::json!({
+                        "status": "ok",
+                        "mode": "build",
+                        "work_kind": "symbol_accountability",
+                        "message": format!(
+                            "{} public symbol(s) have no claiming intent — claim each with an intent or exclude it.",
+                            gaps.len()
+                        ),
+                        "symbol_gaps": gaps.iter().take(shown).map(|g| serde_json::json!({
+                            "path": g.path, "symbol": g.name, "kind": g.kind,
+                            "line": g.line_start, "reason": g.reason,
+                            "suggested_action": g.suggested_action,
+                        })).collect::<Vec<_>>(),
+                        "symbol_gaps_total": gaps.len(),
+                        "next_step": gaps[0].suggested_action,
+                        "graph_state": pulse_json(&gs),
+                    }),
+                    take_note,
+                ));
+            } else {
+                println!(
+                    "── Next Build Item  [symbol accountability — {} unowned] ────────────",
+                    gaps.len()
+                );
+                println!();
+                println!(
+                    "  {} public symbol(s) have no claiming intent — claim each with an intent (or `loom ignore` the file). Top {}:",
+                    gaps.len(),
+                    shown
+                );
+                for g in gaps.iter().take(shown) {
+                    println!(
+                        "  • {}:{}  {} [{}] — {}",
+                        g.path, g.line_start, g.name, g.kind, g.reason
+                    );
+                    println!("      → {}", g.suggested_action);
+                }
+                if let Some(m) =
+                    crate::output::more_marker(gaps.len(), shown, "loom coverage --json")
+                {
+                    println!("  {m}");
+                }
+                println!();
+                println!("  {}", fmt_pulse(&gs));
+            }
+            return Ok(());
+        }
         if printer.json {
             printer.print_json(&inject_take_note(
                 serde_json::json!({
@@ -373,12 +438,9 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
              2. Register it: loom codefile add <path>\n  \
              3. Ground it: loom edge implement {id} <codefile> --locator \"<symbol>\"\n     \
                 (the locator is verified against the file NOW — a typo'd or renamed symbol is rejected here, not silently staled at the next sync).\n  \
-             4. PROVE the criterion — don't just assert it. Encode the criterion as a check and run it:\n       \
-                loom validation add --name \"<criterion, as a check>\" --type test --command \"<cmd>\" --intent {id}\n       \
-                loom validate {id}\n     \
-                (no runnable proof? record the manual verdict: loom validation mark <id> --result passed --evidence \"…\"; an endpoint-reachable criterion proves best as a consumer saga: loom saga add <spec.yaml>).\n  \
-             5. Mark done: loom intent mark {id} --lifecycle implemented   (a leaf marked implemented with NO validation is flagged implemented-but-unproven).\n  \
-             6. Baseline it: loom sync   (stamps the new files; future edits ripple correctly).\n  \
+             4. Mark built: loom intent mark {id} --lifecycle implemented   (a leaf marked implemented with NO proof is flagged implemented-but-unproven until step 6 lands).\n  \
+             5. Baseline it: loom sync   (stamps the new files; future edits ripple correctly).\n  \
+             6. PROVE the criterion — this is VALIDATOR work, so HAND OFF rather than run it from the build lane: `loom next --mode validate` serves this leaf next. Encode the criterion as a real check (loom validation add --name \"<criterion, as a check>\" --type test --command \"<cmd>\" --intent {id}), then a validator runs `loom validate {id}` (no runnable proof? record a manual verdict: loom validation mark <id> --result passed --evidence \"…\"; an endpoint-reachable criterion proves best as a consumer saga: loom saga add <spec.yaml>).\n  \
              Noticed a relationship while coding (this calls or depends on another intent)? Capture it now so discovery need not re-find it: loom note add --intent {id} --for analyzer --text \"relates to <other intent>: <how>\".",
             id = intent.id,
         ),

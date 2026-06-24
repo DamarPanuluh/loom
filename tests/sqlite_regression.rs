@@ -8992,15 +8992,14 @@ fn sqlite_lazy_recreated_db_degrades_gracefully_and_alarms() {
     );
 }
 
-/// REGRESSION: bare `loom next` must not dead-end on an empty FOCUS lane while
-/// another lane holds drainable work. Engineered state: a public symbol is
-/// unowned (so the focus rung is Seeded · lane=build) but there are no
-/// planned/needs_change intents (build queue EMPTY), while the implemented leaf
-/// has no proof (validate queue NON-EMPTY). Bare `loom next` used to print
-/// "✓ No planned/needs_change intents — nothing to build."; it must now fall
-/// through to the validate lane.
+/// REGRESSION: bare `loom next` must not dead-end on the Seeded blocker. A
+/// public symbol is unowned (focus rung Seeded · lane=build) but there are no
+/// planned/needs_change intents, so the build INTENT queue is empty. Bare
+/// `loom next` used to print "✓ No planned/needs_change intents — nothing to
+/// build." while `loom coverage` was the ONLY place the gap appeared. It must now
+/// SERVE that symbol-accountability gap (with the per-gap fix command) directly.
 #[test]
-fn sqlite_bare_next_falls_through_empty_focus_lane_to_real_work() {
+fn sqlite_bare_next_serves_symbol_gap_not_deadend() {
     let _g = sqlite_test_lock();
     let graph = ScratchGraph::new("next-fallthrough");
     run_json(&graph.root, &["init", ".", "--json"]);
@@ -9042,16 +9041,145 @@ fn sqlite_bare_next_falls_through_empty_focus_lane_to_real_work() {
         "test precondition: focus must be Seeded · build with an unowned symbol: {status}"
     );
 
-    // Bare `next` must fall through the empty build lane to validate, NOT dead-end.
+    // Bare `next` must SERVE the unowned-symbol gap, not dead-end on "nothing to
+    // build". The build lane now counts symbol-accountability gaps as work.
     let next = run_json(&graph.root, &["next", "--json"]);
     assert_ne!(
         next["status"],
         serde_json::json!("empty"),
-        "bare next dead-ended on the empty focus lane instead of falling through: {next}"
+        "bare next dead-ended on the Seeded blocker instead of serving it: {next}"
     );
     assert_eq!(
         next["mode"],
-        serde_json::json!("validate"),
-        "bare next should fall through the empty build lane to the validate lane: {next}"
+        serde_json::json!("build"),
+        "bare next should serve the build lane's symbol gap: {next}"
+    );
+    assert_eq!(
+        next["work_kind"],
+        serde_json::json!("symbol_accountability"),
+        "the served build item must be the unowned-symbol gap: {next}"
+    );
+    assert!(
+        next["symbol_gaps"][0]["suggested_action"]
+            .as_str()
+            .is_some_and(|s| s.contains("loom edge implement")),
+        "the gap must carry a runnable fix command: {next}"
+    );
+}
+
+/// REGRESSION: `loom ignore add` reconciles the registry — a CodeFile that is
+/// both registered and (now) ignored is the contradiction where `loom status`
+/// counted it "reached by no intent" while `loom coverage` excluded it. ignore
+/// add de-registers the UNGROUNDED match so both surfaces agree.
+#[test]
+fn sqlite_ignore_add_deregisters_ungrounded_match() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("ignore-dereg");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/app.py", "def f():\n    return 1\n");
+    write_scratch_file(&graph.root, "src/__init__.py", "");
+    run_json_as(&graph.root, &["codefile", "add", "src/*.py", "--json"], "llm:builder");
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "app", "--description", "the app", "--level", "system",
+            "--lifecycle", "implemented", "--json",
+        ],
+        "llm:builder",
+    );
+    let id = intent["id"].as_str().expect("id");
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", id, "src/app.py", "--locator", "def f", "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+
+    let ig = run_json_as(
+        &graph.root,
+        &["ignore", "add", "src/__init__.py", "--reason", "package marker", "--json"],
+        "llm:builder",
+    );
+    let dereg = ig["deregistered_codefiles"]
+        .as_array()
+        .expect("deregistered list");
+    assert!(
+        dereg.iter().any(|p| p.as_str() == Some("src/__init__.py")),
+        "ignore add must de-register the ungrounded match: {ig}"
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+    let status = run_text_as(&graph.root, &["status"], "llm");
+    assert!(
+        !status.contains("reached by no intent"),
+        "status must not count the now-excluded file as unreached: {status}"
+    );
+}
+
+/// REGRESSION: `loom validate` warns AT pass-time when a command exits 0 but
+/// asserts nothing loom recognizes — it counts as ASSERTED-only (not executed-
+/// proven) and won't advance Realized, so a driver must learn it here.
+#[test]
+fn sqlite_validate_warns_on_non_discriminating_pass() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("validate-inert");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "a.py", "def f():\n    return 1\n");
+    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "leaf", "--description", "a leaf", "--level", "feature",
+            "--lifecycle", "implemented", "--json",
+        ],
+        "llm:builder",
+    );
+    let id = intent["id"].as_str().expect("id");
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", id, "a.py", "--locator", "def f", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "inert", "--type", "test", "--command",
+            "python3 -c \"pass\"", "--intent", id, "--json",
+        ],
+        "llm:builder",
+    );
+    let out = run_text_as(&graph.root, &["validate", id], "llm:validator");
+    assert!(out.contains("passed"), "the inert command should still pass: {out}");
+    assert!(
+        out.contains("NON-DISCRIMINATING"),
+        "validate must warn a non-discriminating pass won't advance Realized: {out}"
+    );
+    let j = run_json_as(&graph.root, &["validate", id, "--json"], "llm:validator");
+    assert_eq!(
+        j["results"][0]["discrimination"],
+        serde_json::json!("ran_inert"),
+        "validate --json must expose the discrimination tier: {j}"
+    );
+}
+
+/// REGRESSION: the BUILD-lane recipe must hand off proving to the validator lane
+/// rather than inline `loom validate` — a builder following the steps literally
+/// used to hit a lane-violation on that step.
+#[test]
+fn sqlite_build_recipe_hands_off_proving_to_validator() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("build-handoff");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "intent", "add", "--name", "planned thing", "--description", "to build", "--level",
+            "feature", "--lifecycle", "planned", "--json",
+        ],
+        "llm:builder",
+    );
+    let out = run_text_as(&graph.root, &["next", "--mode", "build"], "llm:builder");
+    assert!(
+        out.contains("loom next --mode validate") && out.contains("HAND OFF"),
+        "build recipe must hand off proving to the validator lane, not inline a builder `loom validate`: {out}"
     );
 }

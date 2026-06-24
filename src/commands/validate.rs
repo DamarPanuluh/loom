@@ -254,6 +254,7 @@ fn execute_and_record(
             "type":          validation.validation_type,
             "command":       validation.command,
             "result":        &new_result,
+            "discrimination": discrimination,
             "run_at":        &now,
         });
         if let Some(detail) = &detail {
@@ -267,6 +268,21 @@ fn execute_and_record(
             println!("    cmd: {}", validation.command);
             if let Some(detail) = &detail {
                 println!("    detail: {detail}");
+            }
+            // Surface the discrimination gate AT pass time, not three reads later.
+            // A command that exits 0 but asserts nothing loom recognizes is
+            // ASSERTED-only, not EXECUTED — it never advances the Realized rung,
+            // and a driver who isn't told here only discovers it via `loom status`.
+            if new_result == "passed"
+                && discrimination == "ran_inert"
+                && !validation.command.trim().is_empty()
+            {
+                println!(
+                    "    ⚠ passed but NON-DISCRIMINATING: exit 0 with no recognized assertion signal \
+                     (e.g. `test result: ok. N passed`, `N passing`, `--- PASS:`) — counts as \
+                     ASSERTED-only, NOT executed-proven, so it will NOT advance the Realized rung. \
+                     Make the test ASSERT ≥1 thing."
+                );
             }
         }
     }

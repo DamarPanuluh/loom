@@ -95,19 +95,34 @@ fn phase_default_mode(phase: &str) -> &'static str {
 
 /// Whether `lane`'s `loom next` queue holds a drainable item, computed from the
 /// SAME snapshot the dispatch already has (no re-query). The bare-`loom next`
-/// dead-end guard uses this: a focus rung can name a lane whose queue is empty
-/// (e.g. Seeded blocked by unowned public symbols — no build item grounds them),
-/// and dead-ending on "nothing to <lane>" while another lane holds work is the
-/// friction this closes.
-fn lane_has_work(snap: &QuerySnapshot, lane: &str) -> Result<bool> {
+/// dead-end guard uses this. The build lane counts BOTH planned/needs_change
+/// intents AND unowned-public-symbol gaps (run_build serves those too), so bare
+/// `next` serves the Seeded blocker instead of falling past it; only a build lane
+/// with neither falls through to the next non-empty lane.
+fn lane_has_work(
+    snap: &QuerySnapshot,
+    decision_notes: &[crate::types::Note],
+    lane: &str,
+) -> Result<bool> {
     Ok(match lane {
-        "build" => !build_candidates_from_snapshot(snap).is_empty(),
+        "build" => {
+            !build_candidates_from_snapshot(snap).is_empty()
+                || !crate::db::queries::symbol_accountability_from_parts_with_notes(
+                    &snap.codefiles,
+                    &snap.intents,
+                    &snap.implements,
+                    decision_notes,
+                )
+                .actionable_symbol_gaps
+                .is_empty()
+        }
         "fix" => !scored_candidates_from_snapshot(snap, "fix").is_empty(),
         "validate" => !validate_candidates_from_snapshot(snap).is_empty(),
         "quality" => !quality_candidates_from_snapshot(snap).is_empty(),
         "discovery" => {
             !scored_candidates_from_snapshot(snap, "discovery").is_empty()
-                || !unexplored_pairs_scored_from_snapshot(snap, DiscoveryClassFilter::All)?.is_empty()
+                || !unexplored_pairs_scored_from_snapshot(snap, DiscoveryClassFilter::All)?
+                    .is_empty()
         }
         _ => false,
     })
@@ -116,9 +131,12 @@ fn lane_has_work(snap: &QuerySnapshot, lane: &str) -> Result<bool> {
 /// The highest-priority lane with drainable work, scanned in vertical-spine
 /// order (build → fix → validate → quality → discovery). `None` only when EVERY
 /// lane is empty — the honest "nothing drainable anywhere" terminus.
-fn first_lane_with_work(snap: &QuerySnapshot) -> Result<Option<&'static str>> {
+fn first_lane_with_work(
+    snap: &QuerySnapshot,
+    decision_notes: &[crate::types::Note],
+) -> Result<Option<&'static str>> {
     for lane in ["build", "fix", "validate", "quality", "discovery"] {
-        if lane_has_work(snap, lane)? {
+        if lane_has_work(snap, decision_notes, lane)? {
             return Ok(Some(lane));
         }
     }
@@ -236,10 +254,10 @@ pub fn run(
             // actually has drainable work; the compass's next_action footer still
             // names the real blocker. The focus mode survives only when EVERY lane
             // is empty (the honest terminus).
-            let mode = if lane_has_work(&snap, &mode)? {
+            let mode = if lane_has_work(&snap, &decision_notes, &mode)? {
                 mode
             } else {
-                first_lane_with_work(&snap)?
+                first_lane_with_work(&snap, &decision_notes)?
                     .map(str::to_string)
                     .unwrap_or(mode)
             };

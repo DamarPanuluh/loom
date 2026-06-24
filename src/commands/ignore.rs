@@ -45,13 +45,55 @@ fn run_add_with_sqlite(
         author: crate::agent::acting(author.as_deref()),
         created_at: chrono::Utc::now().to_rfc3339(),
     };
-    let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
+    let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(root))?;
     store.insert_ignore(&ig)?;
+
+    // Reconcile the registry with the exclusion: a CodeFile that is BOTH
+    // registered and ignored is the contradiction `loom coverage` (which excludes
+    // it) and `loom status` (which counts it as "reached by no intent") used to
+    // disagree on. De-register the UNGROUNDED matches now so every surface honors
+    // the exclusion the same way. Grounded matches are left intact (dropping them
+    // would silently discard groundings) and reported, so the operator can
+    // `loom codefile remove` deliberately if that's the intent.
+    let mut deregistered: Vec<String> = Vec::new();
+    let mut grounded_left: Vec<String> = Vec::new();
+    if let Ok(pat) = glob::Pattern::new(&ig.pattern) {
+        let snapshot = store.query_snapshot()?;
+        let grounded: std::collections::HashSet<&str> = snapshot
+            .implements
+            .iter()
+            .map(|im| im.codefile_path.as_str())
+            .collect();
+        let matching: Vec<(String, bool)> = snapshot
+            .codefiles
+            .iter()
+            .filter(|cf| pat.matches(&cf.path))
+            .map(|cf| (cf.path.clone(), grounded.contains(cf.path.as_str())))
+            .collect();
+        for (path, is_grounded) in matching {
+            if is_grounded {
+                grounded_left.push(path);
+            } else if store.delete_codefile(&path)?.is_some() {
+                deregistered.push(path);
+            }
+        }
+        deregistered.sort();
+        grounded_left.sort();
+    }
+
     let next_step =
         "`loom coverage` — files matching this pattern now count as excluded, not unaccounted.";
     if printer.json {
         let mut payload = serde_json::to_value(&ig).unwrap_or(serde_json::Value::Null);
         if let Some(obj) = payload.as_object_mut() {
+            obj.insert(
+                "deregistered_codefiles".to_string(),
+                serde_json::json!(deregistered),
+            );
+            obj.insert(
+                "grounded_matches_kept".to_string(),
+                serde_json::json!(grounded_left),
+            );
             obj.insert(
                 "next_step".to_string(),
                 serde_json::Value::String(next_step.to_string()),
@@ -61,6 +103,20 @@ fn run_add_with_sqlite(
     } else {
         println!("✓ Ignore pattern added: {}", ig.pattern);
         println!("  reason: {}", ig.reason);
+        if !deregistered.is_empty() {
+            println!(
+                "  de-registered {} now-excluded CodeFile(s) (were ungrounded): {}",
+                deregistered.len(),
+                deregistered.join(", ")
+            );
+        }
+        if !grounded_left.is_empty() {
+            println!(
+                "  ⚠ {} matching CodeFile(s) are GROUNDED and kept: {} — `loom codefile remove <path>` to drop one (and its groundings) deliberately.",
+                grounded_left.len(),
+                grounded_left.join(", ")
+            );
+        }
         println!("  → Next: {next_step}");
     }
     Ok(())
