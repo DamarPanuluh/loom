@@ -389,11 +389,21 @@ fn run_explore_with_sqlite(
     Ok(())
 }
 
+/// The trailing run of identifier characters in a locator — the symbol name at
+/// its tail (`"func (s *Store) Get"` → `"Get"`, `"fn Shape for Circle::area"` →
+/// `"area"`, `"export default async function main"` → `"main"`). Empty when the
+/// locator does not end in an identifier (e.g. a full signature with `)`).
+fn last_identifier(s: &str) -> String {
+    let is_ident = |c: char| c.is_alphanumeric() || c == '_';
+    let tail: String = s.chars().rev().take_while(|&c| is_ident(c)).collect();
+    tail.chars().rev().collect()
+}
+
 fn run_implement_with_sqlite(
     root: &std::path::Path,
     intent_key: String,
     codefile_key: String,
-    locator: String,
+    mut locator: String,
     notes: String,
     printer: &Printer,
 ) -> Result<()> {
@@ -449,18 +459,63 @@ fn run_implement_with_sqlite(
         // separate condition that codefile registration / sync already report.
         if !locator.trim().is_empty() {
             if let Ok(content) = std::fs::read_to_string(root.join(&cf.path)) {
-                if !crate::repo::locator_present(&content, &locator) {
-                    anyhow::bail!(
+                let loc = locator.trim().to_string();
+                // Resolve the locator against the file's extracted top-level
+                // symbols so loom's OWN display label round-trips. The label
+                // normalizes/qualifies away from raw source — `func Get` for
+                // `func (s *Store) Get`, `export function main` for `export
+                // default async function main`, `fn Shape for Circle::area` for a
+                // trait-impl method — so passing it verbatim used to fail the
+                // substring gate even though coverage/next/seed SUGGESTED it.
+                // Match on the locator's trailing identifier (the symbol name).
+                let facts = crate::repo::extract_physical_facts(root, &cf.path, &content);
+                let last = last_identifier(&loc);
+                let named_symbol = (!last.is_empty())
+                    .then(|| facts.symbol_facts.iter().find(|s| s.name == last))
+                    .flatten();
+                let present = crate::repo::locator_present(&content, &loc);
+                match (named_symbol, present) {
+                    // Names an extracted symbol AND is a raw substring → ideal,
+                    // store verbatim (covers `fn run`, `def make_slug`, a bare name).
+                    (Some(_), true) => {}
+                    // Names an extracted symbol but is NOT a raw substring (loom's
+                    // normalized label) → rewrite to the bare name, which IS a
+                    // substring and is what sync's symbol-precision keys on.
+                    (Some(sym), false) => {
+                        if !printer.json {
+                            println!(
+                                "  ℹ locator \"{}\" normalized to its extracted symbol \"{}\" so it round-trips on sync",
+                                loc, sym.name
+                            );
+                        }
+                        locator = sym.name.clone();
+                    }
+                    // A real substring, but NOT an extracted top-level symbol: a
+                    // nested method / decorated def tree-sitter does not surface.
+                    // Accept, but warn INLINE that it grounds at file granularity —
+                    // don't make the driver discover it later via `loom doctor`.
+                    (None, true) => {
+                        if !printer.json {
+                            println!(
+                                "  ⚠ \"{}\" is not an extracted top-level symbol (likely a nested method, or a form the extractor doesn't surface) — this IMPLEMENTS grounds at FILE granularity, so `loom sync` re-checks it on ANY change to {}.",
+                                loc, cf.path
+                            );
+                        }
+                    }
+                    // Neither a substring nor a known symbol → born stale; refuse.
+                    (None, false) => anyhow::bail!(
                         "Locator '{}' does not occur in {} — the grounding would be stale on arrival.\n\
-                         Use the symbol AS IT APPEARS in the file (e.g. `fn run`, `def shorten`, `class Link`).\n\
+                         Use the symbol AS IT APPEARS in the file (e.g. `fn run`, `def shorten`, `class Link`) \
+                         or its bare name; `loom codefile show {}` lists the extracted symbols.\n\
                          `loom explain {}` shows how related intents are grounded; re-run with the real symbol:\n  \
                          loom edge implement {} {} --locator \"<symbol>\"",
-                        locator.trim(),
+                        loc,
+                        cf.path,
                         cf.path,
                         intent_id,
                         intent_key,
                         cf.path,
-                    );
+                    ),
                 }
             }
         }

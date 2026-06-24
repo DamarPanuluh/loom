@@ -679,7 +679,7 @@ pub fn validate_selection_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(Intent
                 // cascade with the ladder (no more silent false-green).
                 (
                     2.5,
-                    "asserted-only — the linked proof passes but does NOT discriminate (no runner asserted >=1 thing). Write a discriminating test (e.g. cargo `test result: ok. N passed`), link it, then re-run `loom validate <intent>` — otherwise it cannot count toward Realized.".to_string(),
+                    "asserted-only — the linked proof passes but does NOT discriminate (no runner asserted >=1 thing). Write a discriminating test whose output a runner reports (cargo `test result: ok. N passed`, pytest/jest `N passed`, mocha `N passing`, node --test `# pass N`, go `--- PASS:`, unittest `Ran N tests` + `OK`), link it, then re-run `loom validate <intent>` — otherwise it cannot count toward Realized.".to_string(),
                 )
             } else {
                 continue;

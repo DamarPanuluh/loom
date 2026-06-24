@@ -277,14 +277,15 @@ fn gap_reason(fact: &SymbolFact, risky: bool) -> &'static str {
 }
 
 fn suggested_action(path: &str, fact: &SymbolFact, owners: &[Owner]) -> String {
+    let qpath = crate::output::shell_quote(path);
     if owners.len() == 1 {
         format!(
             "refine the grounding: `loom edge implement {} {} --locator \"{}\"`",
-            owners[0].id, path, fact.label
+            owners[0].id, qpath, fact.label
         )
     } else {
         format!(
-            "`loom codefile show {path}`; decide which owner claims `{}` and refine that IMPLEMENTS locator, split the intent, or record a decision note if broad file ownership is deliberate",
+            "`loom codefile show {qpath}`; decide which owner claims `{}` and refine that IMPLEMENTS locator, split the intent, or record a decision note if broad file ownership is deliberate",
             fact.label
         )
     }

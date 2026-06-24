@@ -949,6 +949,14 @@ pub enum IntentCmd {
         /// that don't cross the boundary.
         #[arg(long, default_value = "")]
         boundary: String,
+
+        /// Optional parent intent (id or name). When given, loom creates the
+        /// HIERARCHY edge (parent → this) in the SAME step, so a decomposition
+        /// suggestion (e.g. from `loom complete`) is one copy-pasteable command.
+        /// Without it the new intent is a root until linked with
+        /// `loom edge hierarchy <parent> <this>`.
+        #[arg(long)]
+        parent: Option<String>,
     },
 
     /// Confirm an intent (status = confirmed) AND stamp a freshness note —

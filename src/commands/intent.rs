@@ -189,6 +189,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             tags,
             visibility,
             boundary,
+            parent,
         } => handle_add(
             &mut store,
             AddIntentArgs {
@@ -204,6 +205,7 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                 tags,
                 visibility,
                 boundary,
+                parent,
             },
             printer,
         )?,
@@ -301,6 +303,7 @@ struct AddIntentArgs {
     tags: Vec<String>,
     visibility: String,
     boundary: String,
+    parent: Option<String>,
 }
 
 /// Soft granularity check for intake: a name that joins independent
@@ -343,6 +346,7 @@ fn handle_add(
         tags,
         visibility,
         boundary,
+        parent,
     } = args;
     gate::acting_in_lane(&gate::lane::ADD_INTENT, None)?;
     let level = level
@@ -412,15 +416,35 @@ fn handle_add(
         boundary,
         lifecycle: lifecycle.clone(),
         created_at: now.clone(),
-        updated_at: now,
+        updated_at: now.clone(),
     };
     store.insert_intent(&intent)?;
 
+    // --parent: link the new intent under its parent in the SAME step, so a
+    // decomposition suggestion (e.g. from `loom complete`) is one copy-pasteable
+    // command instead of add-then-`loom edge hierarchy`. Resolved AFTER insert so
+    // the new id exists; a bad --parent errors loudly (the intent is still added).
+    let parented = match parent.as_ref().map(|p| p.trim()).filter(|p| !p.is_empty()) {
+        Some(parent_key) => {
+            let parent_id = crate::commands::resolve::resolve_intent_with_db(store, parent_key)?;
+            if parent_id == id {
+                anyhow::bail!(
+                    "--parent '{parent_key}' resolves to this same intent — an intent cannot be its own parent."
+                );
+            }
+            store.insert_hierarchy(&parent_id, &id, "", &now)?;
+            Some(parent_id)
+        }
+        None => None,
+    };
+
     let is_root = intent.abstraction_level == "system";
-    let tree_step = if is_root {
+    let tree_step = if let Some(parent_id) = &parented {
+        format!("Linked under parent {parent_id} (HIERARCHY edge created). Ground it to code next if it is a leaf.")
+    } else if is_root {
         format!("Decompose it: add child intents, then link with `loom edge hierarchy {} <child-id>` (this is the tree's root).", id)
     } else {
-        format!("Attach it to the tree: `loom edge hierarchy <parent-id> {}` (every non-system intent needs exactly one parent).", id)
+        format!("Attach it to the tree: `loom edge hierarchy <parent-id> {}` (every non-system intent needs exactly one parent), or pass --parent on `loom intent add` next time.", id)
     };
     let registry_size = terms.len();
     let tag_step = (!has_tags && registry_size > 0).then(|| format!(

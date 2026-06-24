@@ -5,6 +5,20 @@ pub fn governs_edge_created_line(edge_id: impl std::fmt::Display) -> String {
     format!("✓ GOVERNS edge created  (id: {edge_id})")
 }
 
+/// Shell-quote a path/arg for a copy-pasteable suggested command: wrap in single
+/// quotes (escaping any embedded single quote) when it contains whitespace or a
+/// shell metacharacter, so a path like `a b/c.py` pastes as ONE argument instead
+/// of splitting. Plain paths pass through unchanged so common output stays clean.
+pub fn shell_quote(s: &str) -> String {
+    let needs = s.is_empty()
+        || s.chars()
+            .any(|c| c.is_whitespace() || "\"'\\$`&|;<>()*?![]{}#~".contains(c));
+    if !needs {
+        return s.to_string();
+    }
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
 /// One source for the unquoted-glob rejection (loom codefile add + loom edge implement).
 pub fn invalid_glob_msg(pattern: impl std::fmt::Display, err: impl std::fmt::Display) -> String {
     format!("Invalid glob '{pattern}': {err} — quote it: `loom codefile add 'src/**/*.rs'`")

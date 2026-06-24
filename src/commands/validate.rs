@@ -278,10 +278,13 @@ fn execute_and_record(
                 && !validation.command.trim().is_empty()
             {
                 println!(
-                    "    ⚠ passed but NON-DISCRIMINATING: exit 0 with no recognized assertion signal \
-                     (e.g. `test result: ok. N passed`, `N passing`, `--- PASS:`) — counts as \
-                     ASSERTED-only, NOT executed-proven, so it will NOT advance the Realized rung. \
-                     Make the test ASSERT ≥1 thing."
+                    "    ⚠ passed but NON-DISCRIMINATING: exit 0 but no recognized test-runner \
+                     pass-signal in the output — counts as ASSERTED-only, NOT executed-proven, so it \
+                     will NOT advance the Realized rung. Emit (or run a runner that emits) one of: \
+                     `test result: ok. N passed` (cargo), `N passed` (pytest/jest/vitest), \
+                     `N passing` (mocha), `# pass N` / `ℹ pass N` (node --test), `--- PASS:` (go), \
+                     `Ran N tests` + `OK` (python unittest). Or make the test ASSERT ≥1 thing so a \
+                     real runner reports it."
                 );
             }
         }
@@ -400,6 +403,9 @@ fn run_validation_command(
 /// alone can never mint EXECUTED. cargo is mandatory (dogfood); pytest / jest /
 /// vitest / mocha (`N passed`) and `go test -v` (`--- PASS:`) are recognized.
 pub(crate) fn proof_discrimination(output: &str) -> &'static str {
+    // python stdlib unittest prints "Ran <n> test(s) ..." then a terminal "OK";
+    // neither line alone is unambiguous, so require BOTH (n >= 1).
+    let mut unittest_ran = false;
     for raw in output.lines() {
         let line = raw.trim();
         // cargo: "test result: ok. 12 passed; 0 failed; …"
@@ -412,14 +418,55 @@ pub(crate) fn proof_discrimination(output: &str) -> &'static str {
         if line.starts_with("--- PASS:") {
             return "discriminating";
         }
-        // pytest / jest / vitest / mocha: "<n> passed" with n >= 1.
-        if let Some(n) = passed_count(line) {
-            if n >= 1 {
-                return "discriminating";
-            }
+        // pytest / jest / vitest: "<n> passed" with n >= 1.
+        if passed_count(line).is_some_and(|n| n >= 1) {
+            return "discriminating";
+        }
+        // mocha: "<n> passing" with n >= 1 (NOT "passed" — distinct token).
+        if count_before(line, "passing").is_some_and(|n| n >= 1) {
+            return "discriminating";
+        }
+        // node:test / TAP summary: "# pass <n>" or "ℹ pass <n>" with n >= 1.
+        if tap_pass_count(line).is_some_and(|n| n >= 1) {
+            return "discriminating";
+        }
+        // python unittest: "Ran <n> test(s)" (n >= 1) ... then "OK" / "OK (…)".
+        if line
+            .strip_prefix("Ran ")
+            .is_some_and(|rest| leading_count(rest) >= 1)
+        {
+            unittest_ran = true;
+        }
+        if unittest_ran && (line == "OK" || line.starts_with("OK ") || line.starts_with("OK(")) {
+            return "discriminating";
         }
     }
     "ran_inert"
+}
+
+/// The integer immediately preceding `word` in `line`, if any
+/// (`count_before("2 passing (4ms)", "passing")` → 2).
+fn count_before(line: &str, word: &str) -> Option<u64> {
+    let idx = line.find(word)?;
+    line[..idx]
+        .trim_end()
+        .chars()
+        .rev()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>()
+        .parse()
+        .ok()
+}
+
+/// node:test / TAP pass summary: a line like `# pass 2` or `ℹ pass 2` → 2.
+fn tap_pass_count(line: &str) -> Option<u64> {
+    let rest = line
+        .trim_start_matches(['#', 'ℹ', ' '])
+        .strip_prefix("pass ")?;
+    Some(leading_count(rest))
 }
 
 /// First run of ASCII digits in `s`, parsed (0 if none).
@@ -435,17 +482,7 @@ fn leading_count(s: &str) -> u64 {
 /// The integer immediately preceding the word `passed` in a line, if any
 /// (`"Tests: 12 passed, 3 total"` → 12).
 fn passed_count(line: &str) -> Option<u64> {
-    let idx = line.find("passed")?;
-    let digits: String = line[..idx]
-        .trim_end()
-        .chars()
-        .rev()
-        .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect();
-    digits.parse().ok()
+    count_before(line, "passed")
 }
 
 /// Kill a timed-out validation command AND its descendants. With `process_group(0)`

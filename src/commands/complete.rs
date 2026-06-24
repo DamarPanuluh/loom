@@ -148,7 +148,7 @@ pub fn run(teach: bool, printer: &Printer) -> Result<()> {
         );
         for o in b.behavioral.owed.iter().take(5) {
             println!(
-                "      loom intent add --name \"{} — sad path\" --aspect sad --lifecycle planned --parent {} --description \"<what should happen when {} fails>\"",
+                "      loom intent add --name \"{} — sad path\" --level feature --aspect sad --lifecycle planned --parent {} --description \"<what should happen when {} fails>\"",
                 o.name, o.parent_id, o.name
             );
         }
