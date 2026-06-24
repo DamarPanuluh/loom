@@ -389,16 +389,6 @@ fn run_explore_with_sqlite(
     Ok(())
 }
 
-/// The trailing run of identifier characters in a locator — the symbol name at
-/// its tail (`"func (s *Store) Get"` → `"Get"`, `"fn Shape for Circle::area"` →
-/// `"area"`, `"export default async function main"` → `"main"`). Empty when the
-/// locator does not end in an identifier (e.g. a full signature with `)`).
-fn last_identifier(s: &str) -> String {
-    let is_ident = |c: char| c.is_alphanumeric() || c == '_';
-    let tail: String = s.chars().rev().take_while(|&c| is_ident(c)).collect();
-    tail.chars().rev().collect()
-}
-
 fn run_implement_with_sqlite(
     root: &std::path::Path,
     intent_key: String,
@@ -469,7 +459,7 @@ fn run_implement_with_sqlite(
                 // substring gate even though coverage/next/seed SUGGESTED it.
                 // Match on the locator's trailing identifier (the symbol name).
                 let facts = crate::repo::extract_physical_facts(root, &cf.path, &content);
-                let last = last_identifier(&loc);
+                let last = crate::repo::last_identifier(&loc);
                 let named_symbol = (!last.is_empty())
                     .then(|| facts.symbol_facts.iter().find(|s| s.name == last))
                     .flatten();

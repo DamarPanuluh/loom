@@ -487,6 +487,45 @@ fn recommend_packs(root: &Path, stacks: &[String], files: &[String]) -> Vec<Pack
 /// Matching is word-boundary aware, not bare substring: a locator that begins or
 /// ends in an identifier char must not be flanked by another identifier char, so
 /// `"ghost"` does NOT match `ghost_house` and `"run"` does NOT match `rerun`.
+/// The trailing run of identifier characters in a locator — the symbol name at
+/// its tail (`"func (s *Store) Get"` → `"Get"`, `"def r_match"` → `"r_match"`,
+/// `"export default async function main"` → `"main"`). Empty when the locator
+/// does not end in an identifier. Shared by `loom edge implement` (to resolve a
+/// locator to an extracted symbol) and `loom sync` (symbol-aware staleness).
+pub fn last_identifier(s: &str) -> String {
+    let is_ident = |c: char| c.is_alphanumeric() || c == '_';
+    let tail: String = s.chars().rev().take_while(|&c| is_ident(c)).collect();
+    tail.chars().rev().collect()
+}
+
+/// Whether an IMPLEMENTS `locator` is still satisfied by `content`, GIVEN the
+/// file's current extracted symbol names. Symbol-aware so it agrees with what
+/// `loom codefile show` reports:
+///   1. The locator's trailing identifier names a still-extracted symbol → fresh,
+///      even when the raw/lossy text is not a contiguous substring (a non-UTF-8
+///      file whose symbol name straddles a U+FFFD: extracted `r_match`, but the
+///      bytes read `pa�r_match`).
+///   2. The file HAS extracted symbols and the locator is a BARE identifier that
+///      names none of them → stale: the symbol it named is gone, even if the bare
+///      name survives as a substring (e.g. a renamed `Get` left in a doc comment).
+///   3. Otherwise (a multi-word/file-granular locator like `def shorten` for a
+///      nested method, or a file with no extracted symbols) → raw substring.
+pub fn locator_fresh(content: &str, locator: &str, symbol_names: &[String]) -> bool {
+    let loc = locator.trim();
+    if loc.is_empty() {
+        return true; // file-level grounding
+    }
+    let last = last_identifier(loc);
+    if !last.is_empty() && symbol_names.iter().any(|n| n == &last) {
+        return true;
+    }
+    let is_bare_ident = loc.chars().all(|c| c.is_alphanumeric() || c == '_');
+    if is_bare_ident && !symbol_names.is_empty() {
+        return false;
+    }
+    locator_present(content, loc)
+}
+
 /// This keeps a sub-token from masquerading as the symbol it names (the same
 /// matcher serves `loom edge implement`'s ground-time check and `loom sync`).
 /// It is deliberately lexical, not syntactic: a locator that genuinely appears
@@ -640,7 +679,7 @@ pub(crate) fn extract_imports_heuristic(root: &Path, rel_path: &str, content: &s
                 }
             }
         }
-        "ts" | "tsx" | "js" | "jsx" | "mjs" | "svelte" => {
+        "ts" | "tsx" | "mts" | "cts" | "js" | "jsx" | "mjs" | "cjs" | "svelte" => {
             for line in content.lines() {
                 for marker in [
                     "from '",
@@ -778,7 +817,7 @@ fn resolve_import_specifiers(root: &Path, rel_path: &str, specs: &[String]) -> V
     for spec in specs {
         match ext {
             "rs" => resolve_rust_spec(root, rel_path, &dir, spec, &mut found),
-            "ts" | "tsx" | "js" | "jsx" | "mjs" | "svelte" => {
+            "ts" | "tsx" | "mts" | "cts" | "js" | "jsx" | "mjs" | "cjs" | "svelte" => {
                 resolve_js_spec(root, rel_path, &dir, spec, &mut found)
             }
             "py" => resolve_python_spec(root, rel_path, &dir, spec, &mut found),
@@ -823,7 +862,9 @@ fn resolve_js_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &m
     }
     let base = format!("{dir}/{spec}");
     push_if_file(root, rel_path, found, base.clone());
-    for e in [".ts", ".tsx", ".js", ".jsx", ".mjs", ".svelte"] {
+    for e in [
+        ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".svelte",
+    ] {
         push_if_file(root, rel_path, found, format!("{base}{e}"));
     }
     for e in [
@@ -890,6 +931,22 @@ fn resolve_python_spec(
         found,
         format!("{base}/{as_path}/__init__.py"),
     );
+    // ABSOLUTE import (`from config import x`, no leading dot) under a src-style
+    // layout: Python puts the source root (e.g. `src/`) on sys.path, so `config`
+    // resolves to the SIBLING `src/config.py`, not a repo-root `./config.py`.
+    // Root-relative resolution alone misses this — the dominant real-world layout —
+    // leaving imports:[] and silently disabling the import-coupling staling
+    // exception. Also try the importer's own directory (only adds a path that
+    // EXISTS, so it stays conservative).
+    if !spec.starts_with('.') && !dir.is_empty() && dir != "." {
+        push_if_file(root, rel_path, found, format!("{dir}/{as_path}.py"));
+        push_if_file(
+            root,
+            rel_path,
+            found,
+            format!("{dir}/{as_path}/__init__.py"),
+        );
+    }
 }
 
 fn resolve_dart_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &mut Vec<String>) {
@@ -1356,8 +1413,8 @@ pub(crate) fn lang_of(path: &str) -> &'static str {
         .unwrap_or("");
     match ext {
         "rs" => "rust",
-        "ts" | "tsx" => "typescript",
-        "js" | "jsx" | "mjs" => "javascript",
+        "ts" | "tsx" | "mts" | "cts" => "typescript",
+        "js" | "jsx" | "mjs" | "cjs" => "javascript",
         "py" => "python",
         "dart" => "dart",
         "go" => "go",

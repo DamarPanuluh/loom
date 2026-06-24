@@ -24,9 +24,9 @@ pub fn extract_physical_facts(rel_path: &str, content: &str) -> Option<PhysicalF
         .unwrap_or("");
     let lang = match ext {
         "rs" => Lang::Rust,
-        "ts" => Lang::TypeScript,
+        "ts" | "mts" | "cts" => Lang::TypeScript,
         "tsx" => Lang::Tsx,
-        "js" | "jsx" | "mjs" => Lang::JavaScript,
+        "js" | "jsx" | "mjs" | "cjs" => Lang::JavaScript,
         "py" => Lang::Python,
         _ => return None,
     };

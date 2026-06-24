@@ -288,16 +288,29 @@ fn gap_reason(fact: &SymbolFact, risky: bool) -> &'static str {
 fn suggested_action(path: &str, fact: &SymbolFact, owners: &[Owner]) -> String {
     let qpath = crate::output::shell_quote(path);
     if owners.len() == 1 {
-        format!(
-            "refine the grounding: `loom edge implement {} {} --locator \"{}\"`",
-            owners[0].id, qpath, fact.label
-        )
-    } else {
-        format!(
-            "`loom codefile show {qpath}`; decide which owner claims `{}` and refine that IMPLEMENTS locator, split the intent, or record a decision note if broad file ownership is deliberate",
-            fact.label
-        )
+        let owner = &owners[0];
+        // IMPLEMENTS is keyed on (intent, file): a second `edge implement` on the
+        // same pair REPLACES the locator. If the sole owner already grounds the
+        // file at a DIFFERENT precise symbol, prescribing it to implement THIS
+        // symbol would silently CLOBBER that grounding (moving its locator off the
+        // symbol it describes). Only suggest a same-intent refine when the owner is
+        // file-level (no precise locator yet) — otherwise this symbol needs its OWN
+        // owner.
+        if owner.locator.trim().is_empty() {
+            return format!(
+                "refine the grounding: `loom edge implement {} {} --locator \"{}\"`",
+                owner.id, qpath, fact.label
+            );
+        }
+        return format!(
+            "`{}` is an unclaimed public symbol, but '{}' already grounds {} at a different symbol (`{}`) — do NOT re-`implement` it onto this one (that REPLACES the existing locator). Give `{}` its own owner: add an intent for it (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), or record a decision note if the existing intent deliberately covers the whole file.",
+            fact.label, owner.name, qpath, owner.locator.trim(), fact.label, qpath, fact.label
+        );
     }
+    format!(
+        "`loom codefile show {qpath}`; decide which owner claims `{}` and refine that IMPLEMENTS locator, split the intent, or record a decision note if broad file ownership is deliberate",
+        fact.label
+    )
 }
 
 pub fn fact_is_grounded(fact: &SymbolFact, locators: &[String]) -> bool {

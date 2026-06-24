@@ -491,8 +491,8 @@ fn detect_language(path: &str) -> String {
         .unwrap_or("");
     match ext {
         "rs" => "rust",
-        "ts" | "tsx" => "typescript",
-        "js" | "jsx" | "mjs" => "javascript",
+        "ts" | "tsx" | "mts" | "cts" => "typescript",
+        "js" | "jsx" | "mjs" | "cjs" => "javascript",
         "py" => "python",
         "dart" => "dart",
         "go" => "go",

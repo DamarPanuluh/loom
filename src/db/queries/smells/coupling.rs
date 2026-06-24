@@ -55,7 +55,11 @@ fn detect_undeclared_coupling(
     name_of: &HashMap<&str, &str>,
     smells: &mut Vec<Smell>,
 ) {
-    let mut pair_files: HashMap<(String, String), Vec<String>> = HashMap::new();
+    // Key on the id-sorted pair for DEDUP, but remember the actual import
+    // DIRECTION (importer, imported) so the summary matches the evidence line —
+    // ordering by intent id reported the coupling backwards ("Low imports High"
+    // while the evidence said High → Low).
+    let mut pair_files: HashMap<(String, String), (String, String, Vec<String>)> = HashMap::new();
     for cf in &snapshot.codefiles {
         let Some(owners_a) = intents_on_file.get(cf.path.as_str()) else {
             continue;
@@ -67,6 +71,7 @@ fn detect_undeclared_coupling(
             let example = format!("{} → {}", cf.path, target);
             let mut seen_pairs: HashSet<(String, String)> = HashSet::new();
             for a in owners_a {
+                // `a` owns cf (the IMPORTER); `b` owns target (the IMPORTED).
                 for b in owners_b {
                     if a == b || linked.contains(&(*a, *b)) {
                         continue;
@@ -77,28 +82,38 @@ fn detect_undeclared_coupling(
                         (b.to_string(), a.to_string())
                     };
                     if seen_pairs.insert(key.clone()) {
-                        pair_files.entry(key).or_default().push(example.clone());
+                        pair_files
+                            .entry(key)
+                            .or_insert_with(|| (a.to_string(), b.to_string(), Vec::new()))
+                            .2
+                            .push(example.clone());
                     }
                 }
             }
         }
     }
-    for ((a, b), examples) in pair_files {
-        let (na, nb) = (
-            name_of.get(a.as_str()).copied().unwrap_or(&a),
-            name_of.get(b.as_str()).copied().unwrap_or(&b),
+    for (_key, (importer, imported, examples)) in pair_files {
+        let (n_importer, n_imported) = (
+            name_of
+                .get(importer.as_str())
+                .copied()
+                .unwrap_or(importer.as_str()),
+            name_of
+                .get(imported.as_str())
+                .copied()
+                .unwrap_or(imported.as_str()),
         );
         smells.push(Smell {
             kind: "undeclared_coupling".into(),
             score: 4.0 + examples.len() as f64,
             summary: format!(
                 "code of '{}' imports code of '{}' but no relationship is recorded",
-                na, nb
+                n_importer, n_imported
             ),
             evidence: format!("imports: {}", examples.join(", ")),
             remedy: format!(
                 "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
-                a, b
+                importer, imported
             ),
             teaching: teaching_for("undeclared_coupling"),
         });

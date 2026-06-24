@@ -9717,3 +9717,160 @@ fn sqlite_rust_macro_export_is_public() {
     assert_eq!(vis("pub_macro"), "public", "#[macro_export] makes a macro public: {show}");
     assert_eq!(vis("priv_macro"), "private", "a macro without #[macro_export] is private: {show}");
 }
+
+// ── QA wave 3: staleness + import-resolution correctness ──────────────────────
+
+/// Symbol-aware locator staleness: a renamed symbol must flag stale EVEN when its
+/// bare name survives as a substring (e.g. in a doc comment) — the regression the
+/// Fix-2 bare-name normalization introduced. Go heuristic → both build configs.
+#[test]
+fn sqlite_sync_stales_renamed_symbol_despite_comment_survival() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("stale-rename");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(
+        &graph.root,
+        "s.go",
+        "package s\ntype Store struct{ m map[string]int }\nfunc (s *Store) Get(k string) int { return s.m[k] }\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "s.go", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "g", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json(&graph.root, &["sync", "--json"]);
+    // loom suggests --locator "func Get"; Fix 2 normalizes it to the bare name "Get".
+    run_json_as(&graph.root, &["edge", "implement", &id, "s.go", "--locator", "func Get", "--json"], "llm:builder");
+    // Rename Get -> Fetch but leave "Get" in a comment: the bare name survives as a
+    // substring, yet the SYMBOL is gone → must be flagged stale.
+    write_scratch_file(
+        &graph.root,
+        "s.go",
+        "package s\ntype Store struct{ m map[string]int }\n// Get returns the value (renamed to Fetch)\nfunc (s *Store) Fetch(k string) int { return s.m[k] }\n",
+    );
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        sync["locators_stale_total"].as_u64(),
+        Some(1),
+        "a renamed symbol must flag stale even though its name survives in a comment: {sync}"
+    );
+}
+
+/// A non-UTF-8 file whose symbol name straddles an invalid byte decodes lossily to
+/// e.g. `pa<U+FFFD>r_match`; tree-sitter extracts `r_match`, so a grounding to
+/// `def r_match` must read FRESH (symbol exists), not permanently stale.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_sync_lossy_decoded_symbol_grounding_stays_fresh() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("lossy-fresh");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    std::fs::create_dir_all(graph.root.join("src")).unwrap();
+    // 0xef is a lone Latin-1 byte inside the function name (`païr_match`).
+    std::fs::write(
+        graph.root.join("src/m.py"),
+        b"def pa\xefr_match(a, b):\n    return a == b\n".as_slice(),
+    )
+    .unwrap();
+    run_json_as(&graph.root, &["codefile", "add", "src/m.py", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "p", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // The extractor surfaces `r_match`; ground that exact extracted symbol.
+    run_json_as(&graph.root, &["edge", "implement", &id, "src/m.py", "--locator", "def r_match", "--json"], "llm:builder");
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        sync["locators_stale_total"].as_u64(),
+        Some(0),
+        "a grounding to a lossy-decoded extracted symbol must NOT be stale: {sync}"
+    );
+}
+
+/// An ABSOLUTE python import under a src-style layout (`from config import x`,
+/// both modules under src/) must resolve to the sibling `src/config.py`, so the
+/// import-coupling staling exception actually applies.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_python_absolute_import_resolves_under_src_layout() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("py-src-layout");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/config.py", "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n");
+    write_scratch_file(&graph.root, "src/http_client.py", "from config import get_timeout\ndef fetch():\n    return get_timeout()\n");
+    for f in ["src/config.py", "src/http_client.py"] {
+        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+    }
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "src/http_client.py", "--json"]);
+    let imports: Vec<String> = show["codefile"]["imports"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|i| i.as_str().map(str::to_string))
+        .collect();
+    assert!(
+        imports.iter().any(|i| i.ends_with("src/config.py")),
+        "bare `from config import` under src/ must resolve to the sibling src/config.py: {imports:?}"
+    );
+}
+
+/// The `undeclared_coupling` smell SUMMARY must state the import direction the way
+/// its own evidence line does (importer → imported), not id-sorted/backwards.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_undeclared_coupling_summary_states_import_direction() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("coupling-dir");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/low.ts", "export function lowLevel() { return 42; }\n");
+    write_scratch_file(&graph.root, "src/high.ts", "import { lowLevel } from \"./low.js\";\nexport function highLevel() { return lowLevel() + 1; }\n");
+    for f in ["src/low.ts", "src/high.ts"] {
+        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+    }
+    let low = run_json_as(&graph.root, &["intent", "add", "--name", "Low module", "--level", "component", "--description", "low", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    let high = run_json_as(&graph.root, &["intent", "add", "--name", "High module", "--level", "component", "--description", "high", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &low, "src/low.ts", "--locator", "lowLevel", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", &high, "src/high.ts", "--locator", "highLevel", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let smells = run_json(&graph.root, &["smells", "--json"]);
+    let uc = smells["smells"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["kind"] == "undeclared_coupling")
+        .expect("an undeclared_coupling smell");
+    let summary = uc["summary"].as_str().unwrap();
+    assert!(
+        summary.contains("'High module' imports code of 'Low module'"),
+        "summary must state importer→imported (High imports Low), matching the evidence: {summary}"
+    );
+}
+
+/// `.cjs` (and `.mts`/`.cts`) are first-class JS/TS — recognized by language
+/// inference in both build configs.
+#[test]
+fn sqlite_cjs_recognized_as_javascript() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("cjs-lang");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "util.cjs", "function alpha() { return 1; }\nmodule.exports = { alpha };\n");
+    run_json_as(&graph.root, &["codefile", "add", "util.cjs", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let show = run_json(&graph.root, &["codefile", "show", "util.cjs", "--json"]);
+    assert_eq!(
+        show["codefile"]["language"], "javascript",
+        "a .cjs file must be inferred as javascript, not unknown: {show}"
+    );
+}

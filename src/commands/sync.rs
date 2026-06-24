@@ -636,11 +636,27 @@ fn update_physical_facts_and_flag_locators(
             }
         }
     }
+    // Symbol-aware staleness: a locator is fresh if it names a still-extracted
+    // symbol (agreeing with `loom codefile show`), even when the raw/lossy bytes
+    // are not a contiguous substring; a bare identifier matching no symbol is
+    // stale even if it survives in a comment. Cache the per-file symbol names so
+    // multiple groundings on one file re-extract it once.
+    let mut symbols_by_path: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
     for im in ctx.all_implements {
         let Some(content) = state.text_contents.get(&im.codefile_path) else {
             continue;
         };
-        if !crate::repo::locator_present(content, &im.locator) {
+        let symbol_names = symbols_by_path
+            .entry(im.codefile_path.clone())
+            .or_insert_with(|| {
+                crate::repo::extract_physical_facts(base, &im.codefile_path, content)
+                    .symbol_facts
+                    .into_iter()
+                    .map(|f| f.name)
+                    .collect()
+            });
+        if !crate::repo::locator_fresh(content, &im.locator, symbol_names) {
             state.locators_stale.push(format!(
                 "{} @ '{}' (intent '{}')",
                 im.codefile_path, im.locator, im.intent_name
