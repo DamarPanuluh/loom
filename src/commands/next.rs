@@ -93,6 +93,38 @@ fn phase_default_mode(phase: &str) -> &'static str {
     }
 }
 
+/// Whether `lane`'s `loom next` queue holds a drainable item, computed from the
+/// SAME snapshot the dispatch already has (no re-query). The bare-`loom next`
+/// dead-end guard uses this: a focus rung can name a lane whose queue is empty
+/// (e.g. Seeded blocked by unowned public symbols — no build item grounds them),
+/// and dead-ending on "nothing to <lane>" while another lane holds work is the
+/// friction this closes.
+fn lane_has_work(snap: &QuerySnapshot, lane: &str) -> Result<bool> {
+    Ok(match lane {
+        "build" => !build_candidates_from_snapshot(snap).is_empty(),
+        "fix" => !scored_candidates_from_snapshot(snap, "fix").is_empty(),
+        "validate" => !validate_candidates_from_snapshot(snap).is_empty(),
+        "quality" => !quality_candidates_from_snapshot(snap).is_empty(),
+        "discovery" => {
+            !scored_candidates_from_snapshot(snap, "discovery").is_empty()
+                || !unexplored_pairs_scored_from_snapshot(snap, DiscoveryClassFilter::All)?.is_empty()
+        }
+        _ => false,
+    })
+}
+
+/// The highest-priority lane with drainable work, scanned in vertical-spine
+/// order (build → fix → validate → quality → discovery). `None` only when EVERY
+/// lane is empty — the honest "nothing drainable anywhere" terminus.
+fn first_lane_with_work(snap: &QuerySnapshot) -> Result<Option<&'static str>> {
+    for lane in ["build", "fix", "validate", "quality", "discovery"] {
+        if lane_has_work(snap, lane)? {
+            return Ok(Some(lane));
+        }
+    }
+    Ok(None)
+}
+
 /// Bare `loom next` in phase=audit: there is no `--mode audit` queue, so echo the
 /// compass's own audit directive (which points at `loom smells`) rather than
 /// mis-routing the driver to OPTIONAL discovery while green-blocking findings sit
@@ -196,6 +228,20 @@ pub fn run(
             let mode = match focus_lane {
                 Some(l @ ("build" | "fix" | "validate" | "quality" | "discovery")) => l.to_string(),
                 _ => phase_default_mode(&gs.phase).to_string(),
+            };
+            // Dead-end guard: the focus rung's lane can be EMPTY when the rung is
+            // blocked by work that lane doesn't serve (Seeded blocked by unowned
+            // public symbols — no build item grounds them). Rather than dead-end on
+            // "nothing to <lane>", fall through to the highest-priority lane that
+            // actually has drainable work; the compass's next_action footer still
+            // names the real blocker. The focus mode survives only when EVERY lane
+            // is empty (the honest terminus).
+            let mode = if lane_has_work(&snap, &mode)? {
+                mode
+            } else {
+                first_lane_with_work(&snap)?
+                    .map(str::to_string)
+                    .unwrap_or(mode)
             };
             (mode, true)
         }

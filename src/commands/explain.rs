@@ -218,11 +218,9 @@ fn build_explanation(
         .iter()
         .filter(|im| im.intent_id == id)
         .map(|im| {
-            (
-                im.codefile_path.clone(),
-                im.locator.clone(),
-                im.inspection_status.clone(),
-            )
+            let display_status =
+                crate::output::grounding_status_label(&im.inspection_status, &im.criterion);
+            (im.codefile_path.clone(), im.locator.clone(), display_status)
         })
         .collect();
 

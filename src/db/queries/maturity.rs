@@ -266,14 +266,19 @@ pub fn maturity_ladder(input: &LadderInputs) -> MaturityLadder {
     let realized = graded(
         "Realized",
         realized_reasons,
+        // Detail names what the rung actually MEASURES (executed-proven leaves
+        // out of built leaves) so it can't be misread against the 360° `realized`
+        // axis, which counts grounded+proven leaves with a different numerator.
+        // "Realized ◐ 75/80 leaves executed-proven" next to "realized 80/80 ✓"
+        // now reads as two distinct measures, not a 75-vs-80 contradiction.
         if input.planned_leaf_debt > 0 {
             format!(
-                "{}/{} implemented leaves · {} planned leaves not built",
+                "{}/{} leaves executed-proven · {} planned leaves not built",
                 exec.covered, realized_leaves.covered, input.planned_leaf_debt
             )
         } else {
             format!(
-                "{}/{} implemented leaves",
+                "{}/{} leaves executed-proven",
                 exec.covered, realized_leaves.covered
             )
         },

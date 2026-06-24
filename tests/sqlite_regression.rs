@@ -8991,3 +8991,67 @@ fn sqlite_lazy_recreated_db_degrades_gracefully_and_alarms() {
         "migrate must agree the schema is current: {migrate}"
     );
 }
+
+/// REGRESSION: bare `loom next` must not dead-end on an empty FOCUS lane while
+/// another lane holds drainable work. Engineered state: a public symbol is
+/// unowned (so the focus rung is Seeded · lane=build) but there are no
+/// planned/needs_change intents (build queue EMPTY), while the implemented leaf
+/// has no proof (validate queue NON-EMPTY). Bare `loom next` used to print
+/// "✓ No planned/needs_change intents — nothing to build."; it must now fall
+/// through to the validate lane.
+#[test]
+fn sqlite_bare_next_falls_through_empty_focus_lane_to_real_work() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("next-fallthrough");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(
+        &graph.root,
+        "app.py",
+        "def handle():\n    return helper()\n\ndef helper():\n    return 1\n",
+    );
+    run_json_as(&graph.root, &["codefile", "add", "app.py", "--json"], "llm:builder");
+    let intent = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "request handler",
+            "--description",
+            "handles the request",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let id = intent["id"].as_str().expect("intent id");
+    run_json_as(
+        &graph.root,
+        &["edge", "implement", id, "app.py", "--locator", "def handle", "--json"],
+        "llm:builder",
+    );
+    run_json(&graph.root, &["sync", "--json"]);
+
+    // Precondition: the focus rung is Seeded · lane=build (helper() is unowned).
+    let status = run_text_as(&graph.root, &["status"], "llm");
+    assert!(
+        status.contains("lane: build") && status.contains("unowned"),
+        "test precondition: focus must be Seeded · build with an unowned symbol: {status}"
+    );
+
+    // Bare `next` must fall through the empty build lane to validate, NOT dead-end.
+    let next = run_json(&graph.root, &["next", "--json"]);
+    assert_ne!(
+        next["status"],
+        serde_json::json!("empty"),
+        "bare next dead-ended on the empty focus lane instead of falling through: {next}"
+    );
+    assert_eq!(
+        next["mode"],
+        serde_json::json!("validate"),
+        "bare next should fall through the empty build lane to the validate lane: {next}"
+    );
+}

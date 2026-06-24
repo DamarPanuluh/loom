@@ -8812,7 +8812,7 @@
         "evidence": "imports QuerySnapshot @src/db/sqlite.rs:24 - concrete direct import of the anchor's core type used in doctor_node_counts and doctor_edge_counts methods",
         "from": "01783338-7f02-4f4b-8d15-5f396ef7d47d",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T11:29:42.006255+00:00",
         "notes": "",
@@ -15628,7 +15628,7 @@
         "evidence": "",
         "from": "20bf582e-df31-4f96-8b37-6171c38e3478",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -17299,7 +17299,7 @@
         "evidence": "imports from crate::db::queries::scoring @src/commands/edge.rs:707-708 - uses unexplored_pairs_scored_from_snapshot for edge coupling discovery",
         "from": "21fcfe4c-1e8c-47c0-840a-434a5903aa75",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T11:29:42.209244+00:00",
         "notes": "",
@@ -20178,7 +20178,7 @@
         "evidence": "uses query_snapshot() and QuerySnapshot type @src/commands/sync.rs:102,180,811,884 - sync reads post-query state and snapshot directly to propagate stale flags",
         "from": "29799603-3704-4dfa-9ba4-387a7c1942f8",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "passing",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T11:29:42.308895+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'sync flag engine' ↔ 'SQLite query and search implementation': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
@@ -20561,7 +20561,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20593,7 +20593,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20704,7 +20704,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20736,7 +20736,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20783,7 +20783,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20800,7 +20800,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -20914,7 +20914,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -20997,7 +20997,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -21110,7 +21110,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -21127,7 +21127,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file",
@@ -21243,7 +21243,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21324,7 +21324,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21408,7 +21408,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T11:29:44.020604+00:00",
         "notes": "searched src/commands/; write handlers operate through command dispatch, not direct anchor query coupling",
@@ -21423,7 +21423,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "shares_file"
@@ -21523,7 +21523,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain",
@@ -21670,7 +21670,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21732,7 +21732,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "shares_file"
         ],
@@ -21779,7 +21779,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -21827,7 +21827,7 @@
         "evidence": "",
         "from": "2bd1db29-7898-4800-a450-3dc084409197",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -32120,7 +32120,7 @@
         "evidence": "",
         "from": "45b8b4eb-048e-4beb-b8e0-e54566bc7dda",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T09:57:39.685864+00:00",
         "notes": "same_domain(cli) signal only; both ground in cli.rs dispatch surface but no code-level coupling in handler implementations",
@@ -44010,7 +44010,7 @@
         "evidence": "",
         "from": "5f884be7-3515-4499-a6bb-857ae7eb1db7",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -44849,7 +44849,7 @@
         "evidence": "",
         "from": "616970c1-9a3a-4a92-bbf2-50b3bae2d9fd",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -48281,7 +48281,7 @@
         "evidence": "",
         "from": "6c08d2dc-ecca-4359-b0a4-e33a8c2bb3cd",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -49371,7 +49371,7 @@
         "evidence": "",
         "from": "6cc267b6-6052-48bd-b914-674fabe48eee",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -63609,7 +63609,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -63626,7 +63626,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T09:57:46.655348+00:00",
         "notes": "saga failure diagnosis (src/saga/diagnose.rs, src/commands/saga.rs) is read-only HTTP-failure classification; graph-write handlers are mutations — no data read/write interaction",
@@ -63641,7 +63641,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T09:57:46.755244+00:00",
         "notes": "scale: hot commands bounded on large graphs is a performance optimization concern; graph-write handlers are the write path — no interaction",
@@ -63716,7 +63716,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -63778,7 +63778,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T09:57:46.955965+00:00",
         "notes": "no mechanical signal (kinds=[]) — generic RELATES_TO; no import, call path, or shared structure between snapshot analysis helpers and write handlers",
@@ -63808,7 +63808,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports",
           "same_domain"
@@ -63871,7 +63871,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [
           "imports"
         ],
@@ -63888,7 +63888,7 @@
         "evidence": "",
         "from": "988027a3-d33a-40c8-8f32-c5140b0d1937",
         "inspected_by": "llm:analyzer",
-        "inspection_status": "independent",
+        "inspection_status": "needs_reverification",
         "kinds": [],
         "last_inspected": "2026-06-24T09:57:47.267305+00:00",
         "notes": "same_domain(cli); seed guide teaches the user interview is guidance/teaching concern, write handlers are enforcement — distinct lanes",
@@ -93319,13 +93319,13 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-24T13:28:57.741561+00:00",
+  "last_synced": "2026-06-24T15:19:40.610868+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
     "CodeFile": [
       {
-        "content_hash": "e74cb197e54e30c1",
+        "content_hash": "f15ea1757d7598f5",
         "extractor_grade": "high",
         "id": "01042e2a-b6d1-4af9-9cd9-fb8fcd116c99",
         "imports": [
@@ -93335,7 +93335,7 @@
           "src/db/queries/stats.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T12:58:28.440189666+00:00",
+        "last_modified": "2026-06-24T14:54:04.391813843+00:00",
         "path": "src/db/queries/maturity/tests.rs",
         "symbol_facts": [
           {
@@ -93434,7 +93434,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "324fcfd112624920",
+            "body_hash": "164959954cb04f04",
             "is_test": true,
             "kind": "fn",
             "label": "fn reproduces_loom_frozen_rung_vector",
@@ -93477,7 +93477,7 @@
               },
               {
                 "line": 68,
-                "value": "46/78 implemented leaves"
+                "value": "46/78 leaves executed-proven"
               },
               {
                 "line": 69,
@@ -102268,12 +102268,12 @@
         ]
       },
       {
-        "content_hash": "49c04fecd28b42fd",
+        "content_hash": "1a263bb89016ba01",
         "extractor_grade": "high",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-24T12:59:14.792677722+00:00",
+        "last_modified": "2026-06-24T14:59:28.139118910+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -104269,6 +104269,211 @@
               {
                 "line": 3922,
                 "value": "the manual is not a role charge"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "8e174266012cf198",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_bare_next_falls_through_empty_focus_lane_to_real_work",
+            "line_end": 9057,
+            "line_start": 9003,
+            "name": "sqlite_bare_next_falls_through_empty_focus_lane_to_real_work",
+            "panic_marker_count": 1,
+            "panic_markers": [
+              "expect"
+            ],
+            "shape_hash": "3f74a3e4dde711a9",
+            "string_literals": [
+              {
+                "line": 9005,
+                "value": "next-fallthrough"
+              },
+              {
+                "line": 9006,
+                "value": "init"
+              },
+              {
+                "line": 9006,
+                "value": "."
+              },
+              {
+                "line": 9006,
+                "value": "--json"
+              },
+              {
+                "line": 9009,
+                "value": "app.py"
+              },
+              {
+                "line": 9010,
+                "value": "def handle():\\n    return helper()\\n\\ndef helper():\\n    return 1\\n"
+              },
+              {
+                "line": 9012,
+                "value": "codefile"
+              },
+              {
+                "line": 9012,
+                "value": "add"
+              },
+              {
+                "line": 9012,
+                "value": "app.py"
+              },
+              {
+                "line": 9012,
+                "value": "--json"
+              },
+              {
+                "line": 9012,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9016,
+                "value": "intent"
+              },
+              {
+                "line": 9017,
+                "value": "add"
+              },
+              {
+                "line": 9018,
+                "value": "--name"
+              },
+              {
+                "line": 9019,
+                "value": "request handler"
+              },
+              {
+                "line": 9020,
+                "value": "--description"
+              },
+              {
+                "line": 9021,
+                "value": "handles the request"
+              },
+              {
+                "line": 9022,
+                "value": "--level"
+              },
+              {
+                "line": 9023,
+                "value": "feature"
+              },
+              {
+                "line": 9024,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9025,
+                "value": "implemented"
+              },
+              {
+                "line": 9026,
+                "value": "--json"
+              },
+              {
+                "line": 9028,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9030,
+                "value": "id"
+              },
+              {
+                "line": 9030,
+                "value": "intent id"
+              },
+              {
+                "line": 9033,
+                "value": "edge"
+              },
+              {
+                "line": 9033,
+                "value": "implement"
+              },
+              {
+                "line": 9033,
+                "value": "app.py"
+              },
+              {
+                "line": 9033,
+                "value": "--locator"
+              },
+              {
+                "line": 9033,
+                "value": "def handle"
+              },
+              {
+                "line": 9033,
+                "value": "--json"
+              },
+              {
+                "line": 9034,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9036,
+                "value": "sync"
+              },
+              {
+                "line": 9036,
+                "value": "--json"
+              },
+              {
+                "line": 9039,
+                "value": "status"
+              },
+              {
+                "line": 9039,
+                "value": "llm"
+              },
+              {
+                "line": 9041,
+                "value": "lane: build"
+              },
+              {
+                "line": 9041,
+                "value": "unowned"
+              },
+              {
+                "line": 9042,
+                "value": "test precondition: focus must be Seeded · build with an unowned symbol: {status}"
+              },
+              {
+                "line": 9046,
+                "value": "next"
+              },
+              {
+                "line": 9046,
+                "value": "--json"
+              },
+              {
+                "line": 9048,
+                "value": "status"
+              },
+              {
+                "line": 9049,
+                "value": "empty"
+              },
+              {
+                "line": 9050,
+                "value": "bare next dead-ended on the empty focus lane instead of falling through: {next}"
+              },
+              {
+                "line": 9053,
+                "value": "mode"
+              },
+              {
+                "line": 9054,
+                "value": "validate"
+              },
+              {
+                "line": 9055,
+                "value": "bare next should fall through the empty build lane to the validate lane: {next}"
               }
             ],
             "visibility": "private"
@@ -127367,6 +127572,7 @@
           "fn sqlite_audit_summary_surfaces_stay_bounded",
           "fn sqlite_bad_input_guards_refuse_silent_noops",
           "fn sqlite_bare_guide_serves_the_focus_lane_skill",
+          "fn sqlite_bare_next_falls_through_empty_focus_lane_to_real_work",
           "fn sqlite_bare_next_in_audit_points_at_gate_not_discovery",
           "fn sqlite_batch_dry_run_validates_without_writing",
           "fn sqlite_batch_flags_copied_evidence",
@@ -139314,7 +139520,7 @@
         ]
       },
       {
-        "content_hash": "5ed981dcd9c4120e",
+        "content_hash": "0173c217ebf03065",
         "extractor_grade": "high",
         "id": "4b4bfc41-8b95-4fd2-a132-3b04635c9c38",
         "imports": [
@@ -139328,7 +139534,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T12:57:01.441649159+00:00",
+        "last_modified": "2026-06-24T14:53:58.453278229+00:00",
         "path": "src/db/queries/maturity.rs",
         "symbol_facts": [
           {
@@ -139507,31 +139713,31 @@
             "body_hash": "9e56e4af2a2112ad",
             "kind": "fn",
             "label": "pub fn build_ladder",
-            "line_end": 508,
-            "line_start": 435,
+            "line_end": 513,
+            "line_start": 440,
             "name": "build_ladder",
             "shape_hash": "24ee92bb6b17b0ed",
             "string_literals": [
               {
-                "line": 462,
+                "line": 467,
                 "value": "deprecated"
               },
               {
-                "line": 463,
+                "line": 468,
                 "value": "planned"
               },
               {
-                "line": 471,
+                "line": 476,
                 "value": "committed loom.graph.json is STALE — `loom export`"
               }
             ],
             "visibility": "public"
           },
           {
-            "body_hash": "d3fae2336bbe3098",
+            "body_hash": "8df47de63603762d",
             "kind": "fn",
             "label": "pub fn maturity_ladder",
-            "line_end": 411,
+            "line_end": 416,
             "line_start": 193,
             "name": "maturity_ladder",
             "shape_hash": "fece4a82dfa4826d",
@@ -139589,119 +139795,119 @@
                 "value": "Realized"
               },
               {
-                "line": 271,
-                "value": "{}/{} implemented leaves · {} planned leaves not built"
-              },
-              {
                 "line": 276,
-                "value": "{}/{} implemented leaves"
+                "value": "{}/{} leaves executed-proven · {} planned leaves not built"
               },
               {
-                "line": 290,
+                "line": 281,
+                "value": "{}/{} leaves executed-proven"
+              },
+              {
+                "line": 295,
                 "value": "Proven"
               },
               {
-                "line": 292,
+                "line": 297,
                 "value": "—"
               },
               {
-                "line": 301,
+                "line": 306,
                 "value": "{owed} of {} user-visible journey(s) have no passing boundary proof"
               },
               {
-                "line": 306,
+                "line": 311,
                 "value": "Proven"
               },
               {
-                "line": 308,
+                "line": 313,
                 "value": "{}/{}"
               },
               {
-                "line": 310,
+                "line": 315,
                 "value": "validate"
               },
               {
-                "line": 321,
+                "line": 326,
                 "value": "normative plane is EMPTY — no quality rules seeded; seed with `loom rule seed iso5055` (baseline) or `loom detect` for pack recommendations"
               },
               {
-                "line": 325,
+                "line": 330,
                 "value": "{} rule×intent pair(s) unmeasured"
               },
               {
-                "line": 330,
+                "line": 335,
                 "value": "RELATES_TO grid not fully explored"
               },
               {
-                "line": 335,
+                "line": 340,
                 "value": "{} happy leaf/leaves without a realized failure sibling"
               },
               {
-                "line": 341,
+                "line": 346,
                 "value": "{} open smell finding(s) — see `loom smells`"
               },
               {
-                "line": 346,
+                "line": 351,
                 "value": "audit"
               },
               {
-                "line": 348,
+                "line": 353,
                 "value": "quality"
               },
               {
-                "line": 350,
+                "line": 355,
                 "value": "discovery"
               },
               {
-                "line": 352,
+                "line": 357,
                 "value": "build"
               },
               {
-                "line": 355,
+                "line": 360,
                 "value": "Hardened"
               },
               {
-                "line": 372,
+                "line": 377,
                 "value": "{} boundary file(s) without an owning intent"
               },
               {
-                "line": 386,
+                "line": 391,
                 "value": "inbox"
               },
               {
-                "line": 386,
+                "line": 391,
                 "value": "triage"
               },
               {
-                "line": 388,
+                "line": 393,
                 "value": "triage"
               },
               {
-                "line": 389,
+                "line": 394,
                 "value": "boundary"
               },
               {
-                "line": 390,
+                "line": 395,
                 "value": "build"
               },
               {
-                "line": 393,
+                "line": 398,
                 "value": "STALE"
               },
               {
-                "line": 393,
+                "line": 398,
                 "value": "export"
               },
               {
-                "line": 395,
+                "line": 400,
                 "value": "export"
-              },
-              {
-                "line": 397,
-                "value": "validate"
               },
               {
                 "line": 402,
+                "value": "validate"
+              },
+              {
+                "line": 407,
                 "value": "Production-ready"
               }
             ],
@@ -139711,8 +139917,8 @@
             "body_hash": "7dba354aa2cc03f0",
             "kind": "struct",
             "label": "pub struct LadderBundle",
-            "line_end": 429,
-            "line_start": 417,
+            "line_end": 434,
+            "line_start": 422,
             "name": "LadderBundle",
             "shape_hash": "87003a6608473f34",
             "visibility": "public"
@@ -141959,7 +142165,7 @@
         ]
       },
       {
-        "content_hash": "fdcac7b4c85c1ee5",
+        "content_hash": "7422622e3153b32c",
         "extractor_grade": "high",
         "id": "59586001-f497-4255-a7bc-75fd8a2f486a",
         "imports": [
@@ -141972,7 +142178,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T09:47:20.461667840+00:00",
+        "last_modified": "2026-06-24T15:06:21.049113801+00:00",
         "path": "src/commands/intent.rs",
         "symbol_facts": [
           {
@@ -142992,13 +143198,13 @@
             "visibility": "private"
           },
           {
-            "body_hash": "5c7e4bee6239014c",
+            "body_hash": "303da83d332e6379",
             "kind": "fn",
             "label": "fn run_show_with_db",
-            "line_end": 1395,
+            "line_end": 1400,
             "line_start": 1268,
             "name": "run_show_with_db",
-            "shape_hash": "9155ce255dba8a94",
+            "shape_hash": "f85807a8dc6643a4",
             "string_literals": [
               {
                 "line": 1290,
@@ -143105,27 +143311,27 @@
                 "value": "  → {}{}  [{}]"
               },
               {
-                "line": 1367,
+                "line": 1372,
                 "value": "loom cluster {id}"
               },
               {
-                "line": 1369,
+                "line": 1374,
                 "value": "  {m}"
               },
               {
-                "line": 1374,
+                "line": 1379,
                 "value": "── Notes ({}) ───────────────────────────────────────────────────────"
               },
               {
-                "line": 1378,
+                "line": 1383,
                 "value": "  (none)"
               },
               {
-                "line": 1381,
+                "line": 1386,
                 "value": "  [{}] {}  ({})"
               },
               {
-                "line": 1388,
+                "line": 1393,
                 "value": "  {m}"
               }
             ],
@@ -143785,7 +143991,7 @@
         ]
       },
       {
-        "content_hash": "bc92386249d82e49",
+        "content_hash": "235400a0ec9f7642",
         "extractor_grade": "high",
         "id": "5d911bc7-ec5d-4dc6-adbf-25c53abfe429",
         "imports": [
@@ -143793,7 +143999,7 @@
           "src/db/queries/mod.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T12:56:46.602016977+00:00",
+        "last_modified": "2026-06-24T15:07:06.816093619+00:00",
         "path": "src/output.rs",
         "symbol_facts": [
           {
@@ -143817,8 +144023,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn anchor_json_carries_next_step_and_graph_state",
-            "line_end": 754,
-            "line_start": 734,
+            "line_end": 788,
+            "line_start": 768,
             "name": "anchor_json_carries_next_step_and_graph_state",
             "panic_marker_count": 4,
             "panic_markers": [
@@ -143827,67 +144033,67 @@
             "shape_hash": "a266946349db544e",
             "string_literals": [
               {
-                "line": 738,
+                "line": 772,
                 "value": "t"
               },
               {
-                "line": 739,
+                "line": 773,
                 "value": "anchor"
               },
               {
-                "line": 740,
+                "line": 774,
                 "value": "owned"
               },
               {
-                "line": 741,
+                "line": 775,
                 "value": "t"
               },
               {
-                "line": 744,
+                "line": 778,
                 "value": "status"
               },
               {
-                "line": 744,
+                "line": 778,
                 "value": "ok"
               },
               {
-                "line": 744,
+                "line": 778,
                 "value": "`loom next`"
               },
               {
-                "line": 745,
+                "line": 779,
                 "value": "status"
               },
               {
-                "line": 745,
+                "line": 779,
                 "value": "ok"
               },
               {
-                "line": 745,
+                "line": 779,
                 "value": "existing fields preserved"
               },
               {
-                "line": 746,
+                "line": 780,
                 "value": "next_step"
               },
               {
-                "line": 746,
+                "line": 780,
                 "value": "`loom next`"
               },
               {
-                "line": 748,
+                "line": 782,
                 "value": "graph_state"
               },
               {
-                "line": 748,
+                "line": 782,
                 "value": "phase"
               },
               {
-                "line": 749,
+                "line": 783,
                 "value": "the pulse travels in json: {v}"
               },
               {
-                "line": 752,
+                "line": 786,
                 "value": "x"
               }
             ],
@@ -143898,25 +144104,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn apply_limit_honors_zero_as_unlimited",
-            "line_end": 731,
-            "line_start": 724,
+            "line_end": 765,
+            "line_start": 758,
             "name": "apply_limit_honors_zero_as_unlimited",
             "shape_hash": "faf3536e9840ae34",
             "string_literals": [
               {
-                "line": 727,
+                "line": 761,
                 "value": "0 = all"
               },
               {
-                "line": 728,
+                "line": 762,
                 "value": "returns pre-truncation total"
               },
               {
-                "line": 729,
+                "line": 763,
                 "value": "keeps the head"
               },
               {
-                "line": 730,
+                "line": 764,
                 "value": "under the cap stays untouched"
               }
             ],
@@ -143927,41 +144133,41 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn coverage_line_never_shows_a_vacuous_full",
-            "line_end": 853,
-            "line_start": 805,
+            "line_end": 887,
+            "line_start": 839,
             "name": "coverage_line_never_shows_a_vacuous_full",
             "shape_hash": "8eda05c21417fb0a",
             "string_literals": [
               {
-                "line": 838,
+                "line": 872,
                 "value": "grounded 5/5 ✓"
               },
               {
-                "line": 839,
+                "line": 873,
                 "value": "closed axis gets a check: {line}"
               },
               {
-                "line": 842,
+                "line": 876,
                 "value": "realized 2/4"
               },
               {
-                "line": 843,
+                "line": 877,
                 "value": "partial axis shows the fraction: {line}"
               },
               {
-                "line": 846,
+                "line": 880,
                 "value": "explored —"
               },
               {
-                "line": 847,
+                "line": 881,
                 "value": "an axis with no surface is —, never a vacuous 100%: {line}"
               },
               {
-                "line": 850,
+                "line": 884,
                 "value": "0/0"
               },
               {
-                "line": 851,
+                "line": 885,
                 "value": "0/0 must never render as a number: {line}"
               }
             ],
@@ -143996,85 +144202,85 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_intent_renders_refs_and_tags",
-            "line_end": 701,
-            "line_start": 676,
+            "line_end": 735,
+            "line_start": 710,
             "name": "fmt_intent_renders_refs_and_tags",
             "shape_hash": "912d200cad960051",
             "string_literals": [
               {
-                "line": 678,
+                "line": 712,
                 "value": "i"
               },
               {
-                "line": 679,
+                "line": 713,
                 "value": "intent"
               },
               {
-                "line": 680,
+                "line": 714,
                 "value": "description"
               },
               {
-                "line": 682,
+                "line": 716,
                 "value": "feature"
               },
               {
-                "line": 683,
+                "line": 717,
                 "value": "test"
               },
               {
-                "line": 685,
+                "line": 719,
                 "value": "src/a.rs"
               },
               {
-                "line": 685,
+                "line": 719,
                 "value": "docs/SPEC.md"
               },
               {
-                "line": 686,
+                "line": 720,
                 "value": "proposed"
               },
               {
-                "line": 688,
+                "line": 722,
                 "value": "enforcement"
               },
               {
-                "line": 690,
+                "line": 724,
                 "value": "inbound"
               },
               {
-                "line": 691,
+                "line": 725,
                 "value": "implemented"
               },
               {
-                "line": 692,
+                "line": 726,
                 "value": "t0"
               },
               {
-                "line": 693,
+                "line": 727,
                 "value": "t0"
               },
               {
-                "line": 697,
+                "line": 731,
                 "value": "src/a.rs, docs/SPEC.md"
               },
               {
-                "line": 697,
+                "line": 731,
                 "value": "{rendered}"
               },
               {
-                "line": 698,
+                "line": 732,
                 "value": "tags:        enforcement"
               },
               {
-                "line": 698,
+                "line": 732,
                 "value": "{rendered}"
               },
               {
-                "line": 700,
+                "line": 734,
                 "value": "boundary:    inbound"
               },
               {
-                "line": 700,
+                "line": 734,
                 "value": "{rendered}"
               }
             ],
@@ -144085,61 +144291,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_pulse_renders_pulse_and_hygiene",
-            "line_end": 887,
-            "line_start": 856,
+            "line_end": 921,
+            "line_start": 890,
             "name": "fmt_pulse_renders_pulse_and_hygiene",
             "shape_hash": "f32fb479b34a4a41",
             "string_literals": [
               {
-                "line": 857,
+                "line": 891,
                 "value": "pulse"
               },
               {
-                "line": 863,
+                "line": 897,
                 "value": "lane="
               },
               {
-                "line": 864,
+                "line": 898,
                 "value": "lane is a ladder concept now, not in the pulse: {p}"
               },
               {
-                "line": 867,
+                "line": 901,
                 "value": "360°:"
               },
               {
-                "line": 868,
+                "line": 902,
                 "value": "the second line is always the coverage vector: {p}"
               },
               {
-                "line": 871,
+                "line": 905,
                 "value": "\\n  ⓘ"
               },
               {
-                "line": 872,
+                "line": 906,
                 "value": "no hygiene line when note_hygiene is empty: {p}"
               },
               {
-                "line": 877,
+                "line": 911,
                 "value": "heavy note log — `loom note prune --transitions`"
               },
               {
-                "line": 880,
+                "line": 914,
                 "value": "vertical ✓"
               },
               {
-                "line": 880,
+                "line": 914,
                 "value": "horizontal"
               },
               {
-                "line": 881,
+                "line": 915,
                 "value": "the hard cut removed the vertical/horizontal done-glyphs from the pulse: {p}"
               },
               {
-                "line": 884,
+                "line": 918,
                 "value": "ⓘ heavy note log"
               },
               {
-                "line": 885,
+                "line": 919,
                 "value": "the hygiene nudge surfaces only when set: {p}"
               }
             ],
@@ -144150,25 +144356,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_role_stamp_marks_role_or_solo",
-            "line_end": 934,
-            "line_start": 927,
+            "line_end": 968,
+            "line_start": 961,
             "name": "fmt_role_stamp_marks_role_or_solo",
             "shape_hash": "9862017c6177ab78",
             "string_literals": [
               {
-                "line": 928,
+                "line": 962,
                 "value": "fixer"
               },
               {
-                "line": 928,
+                "line": 962,
                 "value": "as fixer"
               },
               {
-                "line": 931,
+                "line": 965,
                 "value": "solo"
               },
               {
-                "line": 932,
+                "line": 966,
                 "value": "no declared role reads as solo"
               }
             ],
@@ -144179,33 +144385,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn fmt_status_surfaces_blocked_proofs",
-            "line_end": 980,
-            "line_start": 949,
+            "line_end": 1014,
+            "line_start": 983,
             "name": "fmt_status_surfaces_blocked_proofs",
             "shape_hash": "e05aee13dbd33e6f",
             "string_literals": [
               {
-                "line": 967,
+                "line": 1001,
                 "value": "blocked"
               },
               {
-                "line": 968,
+                "line": 1002,
                 "value": "no blocked note when the count is 0"
               },
               {
-                "line": 973,
+                "line": 1007,
                 "value": "2 blocked"
               },
               {
-                "line": 974,
+                "line": 1008,
                 "value": "the blocked count surfaces: {out}"
               },
               {
-                "line": 977,
+                "line": 1011,
                 "value": "of runnable: 100.0%"
               },
               {
-                "line": 978,
+                "line": 1012,
                 "value": "the undiluted runnable rate sits next to it: {out}"
               }
             ],
@@ -144216,26 +144422,111 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn graph_state_fixture",
-            "line_end": 673,
-            "line_start": 620,
+            "line_end": 707,
+            "line_start": 654,
             "name": "graph_state_fixture",
             "shape_hash": "7d4818e6bf2c6274",
             "string_literals": [
               {
-                "line": 623,
+                "line": 657,
                 "value": "test-graph"
               },
               {
-                "line": 625,
+                "line": 659,
                 "value": "owned"
               },
               {
-                "line": 638,
+                "line": 672,
                 "value": "seed"
               },
               {
-                "line": 640,
+                "line": 674,
                 "value": "directive"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "8defe4037e862b1b",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn grounding_label_distinguishes_located_from_verdict",
+            "line_end": 652,
+            "line_start": 636,
+            "name": "grounding_label_distinguishes_located_from_verdict",
+            "shape_hash": "d626eff5db706f97",
+            "string_literals": [
+              {
+                "line": 638,
+                "value": "passing"
+              },
+              {
+                "line": 638,
+                "value": ""
+              },
+              {
+                "line": 638,
+                "value": "located"
+              },
+              {
+                "line": 639,
+                "value": "passing"
+              },
+              {
+                "line": 639,
+                "value": "   "
+              },
+              {
+                "line": 639,
+                "value": "located"
+              },
+              {
+                "line": 642,
+                "value": "passing"
+              },
+              {
+                "line": 642,
+                "value": "fulfils the shorten contract"
+              },
+              {
+                "line": 643,
+                "value": "passing"
+              },
+              {
+                "line": 647,
+                "value": "needs_reverification"
+              },
+              {
+                "line": 647,
+                "value": ""
+              },
+              {
+                "line": 648,
+                "value": "needs_reverification"
+              },
+              {
+                "line": 650,
+                "value": "failing"
+              },
+              {
+                "line": 650,
+                "value": ""
+              },
+              {
+                "line": 650,
+                "value": "failing"
+              },
+              {
+                "line": 651,
+                "value": "uninspected"
+              },
+              {
+                "line": 651,
+                "value": ""
+              },
+              {
+                "line": 651,
+                "value": "uninspected"
               }
             ],
             "visibility": "private"
@@ -144245,49 +144536,49 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn human_pulse_and_json_pulse_agree",
-            "line_end": 924,
-            "line_start": 890,
+            "line_end": 958,
+            "line_start": 924,
             "name": "human_pulse_and_json_pulse_agree",
             "shape_hash": "5c2c04bf6f5dcbf5",
             "string_literals": [
               {
-                "line": 893,
+                "line": 927,
                 "value": "parity"
               },
               {
-                "line": 897,
+                "line": 931,
                 "value": "phase"
               },
               {
-                "line": 899,
+                "line": 933,
                 "value": "json carries the same phase"
               },
               {
-                "line": 904,
+                "line": 938,
                 "value": "human footer embeds the coverage line: {human}"
               },
               {
-                "line": 907,
+                "line": 941,
                 "value": "coverage"
               },
               {
-                "line": 909,
+                "line": 943,
                 "value": "json carries the byte-identical coverage line"
               },
               {
-                "line": 914,
+                "line": 948,
                 "value": "solo"
               },
               {
-                "line": 917,
+                "line": 951,
                 "value": "human footer carries the role stamp: {human}"
               },
               {
-                "line": 920,
+                "line": 954,
                 "value": "role"
               },
               {
-                "line": 922,
+                "line": 956,
                 "value": "json carries the same role"
               }
             ],
@@ -144298,57 +144589,57 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn intent_surface_carries_boundary_to_the_driver",
-            "line_end": 1008,
-            "line_start": 983,
+            "line_end": 1042,
+            "line_start": 1017,
             "name": "intent_surface_carries_boundary_to_the_driver",
             "shape_hash": "31a5c03572a88267",
             "string_literals": [
               {
-                "line": 985,
+                "line": 1019,
                 "value": "i"
               },
               {
-                "line": 986,
+                "line": 1020,
                 "value": "n"
               },
               {
-                "line": 987,
+                "line": 1021,
                 "value": "d"
               },
               {
-                "line": 989,
+                "line": 1023,
                 "value": "feature"
               },
               {
-                "line": 990,
+                "line": 1024,
                 "value": "unknown"
               },
               {
-                "line": 992,
+                "line": 1026,
                 "value": "proposed"
               },
               {
-                "line": 993,
+                "line": 1027,
                 "value": "implemented"
               },
               {
-                "line": 1000,
+                "line": 1034,
                 "value": "boundary"
               },
               {
-                "line": 1001,
+                "line": 1035,
                 "value": "an unset boundary stays off the work-item card"
               },
               {
-                "line": 1003,
+                "line": 1037,
                 "value": "outbound"
               },
               {
-                "line": 1005,
+                "line": 1039,
                 "value": "boundary:    outbound"
               },
               {
-                "line": 1006,
+                "line": 1040,
                 "value": "a set boundary surfaces in the work item the driver reads"
               }
             ],
@@ -144359,8 +144650,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn more_marker_is_an_affordance_not_an_apology",
-            "line_end": 721,
-            "line_start": 704,
+            "line_end": 755,
+            "line_start": 738,
             "name": "more_marker_is_an_affordance_not_an_apology",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -144369,39 +144660,39 @@
             "shape_hash": "6527a0539339eb42",
             "string_literals": [
               {
-                "line": 706,
+                "line": 740,
                 "value": "loom x"
               },
               {
-                "line": 708,
+                "line": 742,
                 "value": "nothing elided, no marker"
               },
               {
-                "line": 711,
+                "line": 745,
                 "value": "loom x"
               },
               {
-                "line": 713,
+                "line": 747,
                 "value": "shown >= total, no marker"
               },
               {
-                "line": 715,
+                "line": 749,
                 "value": "loom note list --edge e1"
               },
               {
-                "line": 716,
+                "line": 750,
                 "value": "+2 more"
               },
               {
-                "line": 716,
+                "line": 750,
                 "value": "{m}"
               },
               {
-                "line": 718,
+                "line": 752,
                 "value": "loom note list --edge e1"
               },
               {
-                "line": 719,
+                "line": 753,
                 "value": "the marker must carry the runnable fetch: {m}"
               }
             ],
@@ -144412,129 +144703,129 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn pulse_is_a_surface_not_the_full_state",
-            "line_end": 802,
-            "line_start": 757,
+            "line_end": 836,
+            "line_start": 791,
             "name": "pulse_is_a_surface_not_the_full_state",
             "shape_hash": "f9e4d18dcaa8535b",
             "string_literals": [
               {
-                "line": 758,
+                "line": 792,
                 "value": "pulse"
               },
               {
-                "line": 762,
+                "line": 796,
                 "value": "phase"
               },
               {
-                "line": 763,
+                "line": 797,
                 "value": "role"
               },
               {
-                "line": 764,
+                "line": 798,
                 "value": "vertical"
               },
               {
-                "line": 765,
+                "line": 799,
                 "value": "horizontal"
               },
               {
-                "line": 766,
+                "line": 800,
                 "value": "intents"
               },
               {
-                "line": 767,
+                "line": 801,
                 "value": "codefiles"
               },
               {
-                "line": 768,
+                "line": 802,
                 "value": "edges"
               },
               {
-                "line": 769,
+                "line": 803,
                 "value": "unresolved"
               },
               {
-                "line": 770,
+                "line": 804,
                 "value": "synced"
               },
               {
-                "line": 771,
+                "line": 805,
                 "value": "coverage"
               },
               {
-                "line": 773,
+                "line": 807,
                 "value": "pulse must carry '{k}': {p}"
               },
               {
-                "line": 775,
+                "line": 809,
                 "value": "graph"
               },
               {
-                "line": 775,
+                "line": 809,
                 "value": "pulse"
               },
               {
-                "line": 775,
+                "line": 809,
                 "value": "identity is the human-form name"
               },
               {
-                "line": 777,
+                "line": 811,
                 "value": "coverage"
               },
               {
-                "line": 778,
+                "line": 812,
                 "value": "coverage is the compact axis vector: {p}"
               },
               {
-                "line": 784,
+                "line": 818,
                 "value": "version"
               },
               {
-                "line": 785,
+                "line": 819,
                 "value": "graph_id"
               },
               {
-                "line": 786,
+                "line": 820,
                 "value": "graph_name"
               },
               {
-                "line": 787,
+                "line": 821,
                 "value": "custody"
               },
               {
-                "line": 788,
+                "line": 822,
                 "value": "notes"
               },
               {
-                "line": 789,
+                "line": 823,
                 "value": "next_action"
               },
               {
-                "line": 790,
+                "line": 824,
                 "value": "validations"
               },
               {
-                "line": 791,
+                "line": 825,
                 "value": "relates_to_edges"
               },
               {
-                "line": 792,
+                "line": 826,
                 "value": "implements_edges"
               },
               {
-                "line": 793,
+                "line": 827,
                 "value": "last_synced"
               },
               {
-                "line": 797,
+                "line": 831,
                 "value": "'{k}' is tier-2 — dig via `loom status --json`: {p}"
               },
               {
-                "line": 801,
+                "line": 835,
                 "value": "synced"
               },
               {
-                "line": 801,
+                "line": 835,
                 "value": "never"
               }
             ],
@@ -144573,21 +144864,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn rel_time_is_relative_and_falls_back_to_raw",
-            "line_end": 946,
-            "line_start": 937,
+            "line_end": 980,
+            "line_start": 971,
             "name": "rel_time_is_relative_and_falls_back_to_raw",
             "shape_hash": "831f62dbea7cfa00",
             "string_literals": [
               {
-                "line": 939,
+                "line": 973,
                 "value": "2h ago"
               },
               {
-                "line": 940,
+                "line": 974,
                 "value": "not-a-timestamp"
               },
               {
-                "line": 944,
+                "line": 978,
                 "value": "an unparseable stamp echoes back, never panics"
               }
             ],
@@ -144623,8 +144914,8 @@
             "body_hash": "479a9bf28d2689be",
             "kind": "const",
             "label": "pub const LIST_LIMIT",
-            "line_end": 355,
-            "line_start": 355,
+            "line_end": 370,
+            "line_start": 370,
             "name": "LIST_LIMIT",
             "shape_hash": "f4bd2f42b5dbb893",
             "visibility": "public"
@@ -144665,8 +144956,8 @@
             "body_hash": "5bccecc651be39ac",
             "kind": "const",
             "label": "pub const SECTION_CAP",
-            "line_end": 352,
-            "line_start": 352,
+            "line_end": 367,
+            "line_start": 367,
             "name": "SECTION_CAP",
             "shape_hash": "f4bd2f42b5dbb893",
             "visibility": "public"
@@ -144779,8 +145070,8 @@
             "body_hash": "92406631ca303190",
             "kind": "fn",
             "label": "pub fn apply_limit",
-            "line_end": 372,
-            "line_start": 366,
+            "line_end": 387,
+            "line_start": 381,
             "name": "apply_limit",
             "shape_hash": "1e7cd79266a2da61",
             "visibility": "public"
@@ -144825,37 +145116,37 @@
             "body_hash": "6a50379f79c03266",
             "kind": "fn",
             "label": "pub fn fmt_edge_detail",
-            "line_end": 559,
-            "line_start": 507,
+            "line_end": 574,
+            "line_start": 522,
             "name": "fmt_edge_detail",
             "shape_hash": "ebeb826a06a5a5ba",
             "string_literals": [
               {
-                "line": 509,
-                "value": "(never)"
-              },
-              {
-                "line": 514,
-                "value": "(none)"
-              },
-              {
-                "line": 519,
-                "value": "(none)"
-              },
-              {
                 "line": 524,
-                "value": "(none)"
+                "value": "(never)"
               },
               {
                 "line": 529,
                 "value": "(none)"
               },
               {
-                "line": 536,
+                "line": 534,
+                "value": "(none)"
+              },
+              {
+                "line": 539,
+                "value": "(none)"
+              },
+              {
+                "line": 544,
+                "value": "(none)"
+              },
+              {
+                "line": 551,
                 "value": "(not yet created — `loom edge explore` records it)"
               },
               {
-                "line": 541,
+                "line": 556,
                 "value": "  id:                {}\\n  from:              {} ({})\\n  to:                {} ({})\\n\\\n         \\n  inspection_status: {}\\n  criterion:         {}\\n  evidence:          {}\\\n         \\n  confidence:        {:.2}\\n  priority:          {:.2}\\\n         \\n  last_inspected:    {}\\n  inspected_by:      {}\\n  notes:             {}"
               }
             ],
@@ -144865,13 +145156,13 @@
             "body_hash": "008e9bd28b1f8cbf",
             "kind": "fn",
             "label": "pub fn fmt_edge_row",
-            "line_end": 505,
-            "line_start": 495,
+            "line_end": 520,
+            "line_start": 510,
             "name": "fmt_edge_row",
             "shape_hash": "edea87eca6ed8180",
             "string_literals": [
               {
-                "line": 497,
+                "line": 512,
                 "value": "  [{status:<22}]  pri={pri:.2}  conf={conf:.2}  {from} → {to}  id={id}"
               }
             ],
@@ -144881,49 +145172,49 @@
             "body_hash": "7d4310d376898f12",
             "kind": "fn",
             "label": "pub fn fmt_intent",
-            "line_end": 442,
-            "line_start": 398,
+            "line_end": 457,
+            "line_start": 413,
             "name": "fmt_intent",
             "shape_hash": "230cc23bc33d038f",
             "string_literals": [
               {
-                "line": 400,
+                "line": 415,
                 "value": "(none)"
               },
               {
-                "line": 402,
+                "line": 417,
                 "value": ", "
               },
               {
-                "line": 407,
+                "line": 422,
                 "value": "\\n  aspect:      {}"
               },
               {
-                "line": 413,
+                "line": 428,
                 "value": "\\n  tags:        {}"
               },
               {
-                "line": 413,
+                "line": 428,
                 "value": ", "
               },
               {
-                "line": 419,
+                "line": 434,
                 "value": "\\n  visibility:  {}"
               },
               {
-                "line": 425,
+                "line": 440,
                 "value": "\\n  boundary:    {}"
               },
               {
-                "line": 428,
+                "line": 443,
                 "value": "implemented"
               },
               {
-                "line": 435,
+                "line": 450,
                 "value": "\\n  layer:       {}"
               },
               {
-                "line": 438,
+                "line": 453,
                 "value": "  id:          {}\\n  name:        {}\\n  level:       {}\\n  domain:      {}{}\\n  status:      {}\\n  lifecycle:   {}{}{}{}{}\\n  description: {}\\n  sources:     {}\\n  created:     {}\\n  updated:     {}"
               }
             ],
@@ -144933,13 +145224,13 @@
             "body_hash": "2624df30a9faa237",
             "kind": "fn",
             "label": "pub fn fmt_intent_row",
-            "line_end": 493,
-            "line_start": 485,
+            "line_end": 508,
+            "line_start": 500,
             "name": "fmt_intent_row",
             "shape_hash": "ff7ffa81c77ca70c",
             "string_literals": [
               {
-                "line": 487,
+                "line": 502,
                 "value": "  [{status:>20}]  {level:<15}  {name:<40}  {id}"
               }
             ],
@@ -144949,61 +145240,61 @@
             "body_hash": "f3a7b54eed694599",
             "kind": "fn",
             "label": "pub fn fmt_intent_surface",
-            "line_end": 483,
-            "line_start": 447,
+            "line_end": 498,
+            "line_start": 462,
             "name": "fmt_intent_surface",
             "shape_hash": "87978544be9cca54",
             "string_literals": [
               {
-                "line": 449,
+                "line": 464,
                 "value": "  id:          {}\\n  name:        {}\\n  level:       {}"
               },
               {
-                "line": 452,
+                "line": 467,
                 "value": "unknown"
               },
               {
-                "line": 453,
+                "line": 468,
                 "value": "\\n  domain:      {}"
               },
               {
-                "line": 456,
+                "line": 471,
                 "value": "\\n  layer:       {}"
               },
               {
-                "line": 459,
+                "line": 474,
                 "value": "\\n  status:      {}\\n  lifecycle:   {}"
               },
               {
-                "line": 463,
+                "line": 478,
                 "value": "\\n  aspect:      {}"
               },
               {
-                "line": 468,
+                "line": 483,
                 "value": "\\n  boundary:    {}"
               },
               {
-                "line": 471,
+                "line": 486,
                 "value": "\\n  tags:        {}"
               },
               {
-                "line": 471,
+                "line": 486,
                 "value": ", "
               },
               {
-                "line": 473,
+                "line": 488,
                 "value": "\\n  description: {}"
               },
               {
-                "line": 477,
+                "line": 492,
                 "value": "\\n  criterion:   {}"
               },
               {
-                "line": 480,
+                "line": 495,
                 "value": "\\n  sources:     {}"
               },
               {
-                "line": 480,
+                "line": 495,
                 "value": ", "
               }
             ],
@@ -145081,13 +145372,13 @@
             "body_hash": "0b6de2496058da34",
             "kind": "fn",
             "label": "pub fn fmt_rule_row",
-            "line_end": 568,
-            "line_start": 561,
+            "line_end": 583,
+            "line_start": 576,
             "name": "fmt_rule_row",
             "shape_hash": "4cf9af3e7330136a",
             "string_literals": [
               {
-                "line": 563,
+                "line": 578,
                 "value": "  [{sev:<8}]  {name:<40}  {id}"
               }
             ],
@@ -145097,17 +145388,17 @@
             "body_hash": "48c851c35e2f121e",
             "kind": "fn",
             "label": "pub fn fmt_status",
-            "line_end": 613,
-            "line_start": 570,
+            "line_end": 628,
+            "line_start": 585,
             "name": "fmt_status",
             "shape_hash": "b857efb12e8c2b15",
             "string_literals": [
               {
-                "line": 577,
+                "line": 592,
                 "value": "  ({} blocked — environment not ready; of runnable: {:.1}%)"
               },
               {
-                "line": 585,
+                "line": 600,
                 "value": "Nodes:\\n\\\n         \\n  intents:                    {intents}\\\n         \\n  code files:                 {codefiles}\\\n         \\n  validations:                {validations}\\\n         \\n\\nEdges (all types combined):   {total_edges}\\\n         \\n  uninspected:                {uninspected}\\\n         \\n  passing:                    {passing}\\\n         \\n  failing:                    {failing}\\\n         \\n  independent:                {independent}\\\n         \\n  needs_reverification:       {nrv}\\\n         \\n\\nQuality:\\n\\\n         \\n  open issues (failing):      {issues}\\\n         \\n  intents without validation: {no_val}\\\n         \\n  validation pass rate:       {pass:.1}%{blocked_note}"
               }
             ],
@@ -145125,6 +145416,26 @@
               {
                 "line": 5,
                 "value": "✓ GOVERNS edge created  (id: {edge_id})"
+              }
+            ],
+            "visibility": "public"
+          },
+          {
+            "body_hash": "809d00247e59e2a0",
+            "kind": "fn",
+            "label": "pub fn grounding_status_label",
+            "line_end": 363,
+            "line_start": 357,
+            "name": "grounding_status_label",
+            "shape_hash": "ddce1c12ee3a2c3d",
+            "string_literals": [
+              {
+                "line": 358,
+                "value": "passing"
+              },
+              {
+                "line": 359,
+                "value": "located"
               }
             ],
             "visibility": "public"
@@ -145197,13 +145508,13 @@
             "body_hash": "bb318926c965155d",
             "kind": "fn",
             "label": "pub fn more_marker",
-            "line_end": 362,
-            "line_start": 360,
+            "line_end": 377,
+            "line_start": 375,
             "name": "more_marker",
             "shape_hash": "47f1f3a9e537c4e1",
             "string_literals": [
               {
-                "line": 361,
+                "line": 376,
                 "value": "… +{} more — {}"
               }
             ],
@@ -145325,17 +145636,17 @@
             "body_hash": "2ec6ff6a4fcb6b4b",
             "kind": "fn",
             "label": "pub fn with_read_anchor",
-            "line_end": 392,
-            "line_start": 375,
+            "line_end": 407,
+            "line_start": 390,
             "name": "with_read_anchor",
             "shape_hash": "d50de806243a425a",
             "string_literals": [
               {
-                "line": 383,
+                "line": 398,
                 "value": "next_step"
               },
               {
-                "line": 387,
+                "line": 402,
                 "value": "graph_state"
               }
             ],
@@ -145363,6 +145674,7 @@
           "fn fmt_role_stamp_marks_role_or_solo",
           "fn fmt_status_surfaces_blocked_proofs",
           "fn graph_state_fixture",
+          "fn grounding_label_distinguishes_located_from_verdict",
           "fn human_pulse_and_json_pulse_agree",
           "fn intent_surface_carries_boundary_to_the_driver",
           "fn more_marker_is_an_affordance_not_an_apology",
@@ -145394,6 +145706,7 @@
           "pub fn fmt_rule_row",
           "pub fn fmt_status",
           "pub fn governs_edge_created_line",
+          "pub fn grounding_status_label",
           "pub fn intent_not_found_find",
           "pub fn intent_not_found_list",
           "pub fn intent_show_command",
@@ -158028,7 +158341,7 @@
         ]
       },
       {
-        "content_hash": "424d0242bfffe5c9",
+        "content_hash": "cc38af0cedeb27dc",
         "extractor_grade": "high",
         "id": "94b1873b-7573-41c7-9963-4bb0201a9b55",
         "imports": [
@@ -158038,7 +158351,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T05:08:52.794163603+00:00",
+        "last_modified": "2026-06-24T14:57:05.837639489+00:00",
         "path": "src/commands/next.rs",
         "symbol_facts": [
           {
@@ -158118,8 +158431,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn addressed_notes_survive_the_cap",
-            "line_end": 506,
-            "line_start": 488,
+            "line_end": 552,
+            "line_start": 534,
             "name": "addressed_notes_survive_the_cap",
             "panic_marker_count": 1,
             "panic_markers": [
@@ -158128,47 +158441,47 @@
             "shape_hash": "2375f4ceb43a0dfe",
             "string_literals": [
               {
-                "line": 491,
+                "line": 537,
                 "value": "commentary"
               },
               {
-                "line": 491,
+                "line": 537,
                 "value": "ambient {i}"
               },
               {
-                "line": 491,
+                "line": 537,
                 "value": ""
               },
               {
-                "line": 493,
+                "line": 539,
                 "value": "decision"
               },
               {
-                "line": 493,
+                "line": 539,
                 "value": "directed handoff"
               },
               {
-                "line": 493,
+                "line": 539,
                 "value": "analyzer"
               },
               {
-                "line": 494,
+                "line": 540,
                 "value": "analyzer"
               },
               {
-                "line": 498,
+                "line": 544,
                 "value": "directed handoff"
               },
               {
-                "line": 499,
+                "line": 545,
                 "value": "addressed-to-role notes surface first"
               },
               {
-                "line": 503,
+                "line": 549,
                 "value": "ambient 11"
               },
               {
-                "line": 504,
+                "line": 550,
                 "value": "remaining slots go to the newest ambient notes"
               }
             ],
@@ -158179,69 +158492,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn compact_action_is_one_runnable_line",
-            "line_end": 552,
-            "line_start": 509,
+            "line_end": 598,
+            "line_start": 555,
             "name": "compact_action_is_one_runnable_line",
             "shape_hash": "db2a73337dd8a8d1",
             "string_literals": [
               {
-                "line": 511,
+                "line": 557,
                 "value": "rt:a:b"
               },
               {
-                "line": 512,
+                "line": 558,
                 "value": "a"
               },
               {
-                "line": 513,
+                "line": 559,
                 "value": "b"
               },
               {
-                "line": 514,
+                "line": 560,
                 "value": "A"
               },
               {
-                "line": 515,
+                "line": 561,
                 "value": "B"
               },
               {
-                "line": 531,
+                "line": 577,
                 "value": "unexplored"
               },
               {
-                "line": 532,
+                "line": 578,
                 "value": "uninspected"
               },
               {
-                "line": 533,
+                "line": 579,
                 "value": "failing"
               },
               {
-                "line": 534,
+                "line": 580,
                 "value": "needs_reverification"
               },
               {
-                "line": 540,
+                "line": 586,
                 "value": "[{status}] compact action must be one line: {action}"
               },
               {
-                "line": 543,
+                "line": 589,
                 "value": "loom "
               },
               {
-                "line": 544,
+                "line": 590,
                 "value": "[{status}] must carry a runnable command: {action}"
               },
               {
-                "line": 547,
+                "line": 593,
                 "value": "failing"
               },
               {
-                "line": 549,
+                "line": 595,
                 "value": "rt:a:b"
               },
               {
-                "line": 550,
+                "line": 596,
                 "value": "failing routes through `loom edge fix <id>`"
               }
             ],
@@ -158251,58 +158564,130 @@
             "body_hash": "dcc1d2439dd875cc",
             "kind": "fn",
             "label": "fn emit_audit_directive",
-            "line_end": 121,
-            "line_start": 100,
+            "line_end": 153,
+            "line_start": 132,
             "name": "emit_audit_directive",
             "shape_hash": "15cb88eda3320872",
             "string_literals": [
               {
-                "line": 103,
+                "line": 135,
                 "value": "phase"
               },
               {
-                "line": 103,
+                "line": 135,
                 "value": "audit"
               },
               {
-                "line": 104,
+                "line": 136,
                 "value": "next_kind"
               },
               {
-                "line": 105,
+                "line": 137,
                 "value": "next_action"
               },
               {
-                "line": 106,
+                "line": 138,
                 "value": "note"
               },
               {
-                "line": 106,
+                "line": 138,
                 "value": "phase=audit has no `loom next` queue — `loom smells --summary` is the audit surface; every open finding gates green until resolved (fix or a finding-specific decision note)."
               },
               {
-                "line": 109,
+                "line": 141,
                 "value": "── Next: phase=audit (the green-blocking gate) ──────────────────────"
               },
               {
-                "line": 110,
+                "line": 142,
                 "value": "directive"
               },
               {
-                "line": 111,
+                "line": 143,
                 "value": "→ Next"
               },
               {
-                "line": 113,
+                "line": 145,
                 "value": "→ Recommended"
               },
               {
-                "line": 115,
+                "line": 147,
                 "value": "  {arrow}: {}"
               },
               {
-                "line": 117,
+                "line": 149,
                 "value": "  (`loom next` serves no audit queue — `loom smells --summary` is the audit surface; resolve each finding to reach green.)"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "b271390069874933",
+            "kind": "fn",
+            "label": "fn first_lane_with_work",
+            "line_end": 126,
+            "line_start": 119,
+            "name": "first_lane_with_work",
+            "shape_hash": "520c4da0cdf60195",
+            "string_literals": [
+              {
+                "line": 120,
+                "value": "build"
+              },
+              {
+                "line": 120,
+                "value": "fix"
+              },
+              {
+                "line": 120,
+                "value": "validate"
+              },
+              {
+                "line": 120,
+                "value": "quality"
+              },
+              {
+                "line": 120,
+                "value": "discovery"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "2c2b0def201c3826",
+            "kind": "fn",
+            "label": "fn lane_has_work",
+            "line_end": 114,
+            "line_start": 102,
+            "name": "lane_has_work",
+            "shape_hash": "107dc1dade66fba1",
+            "string_literals": [
+              {
+                "line": 104,
+                "value": "build"
+              },
+              {
+                "line": 105,
+                "value": "fix"
+              },
+              {
+                "line": 105,
+                "value": "fix"
+              },
+              {
+                "line": 106,
+                "value": "validate"
+              },
+              {
+                "line": 107,
+                "value": "quality"
+              },
+              {
+                "line": 108,
+                "value": "discovery"
+              },
+              {
+                "line": 109,
+                "value": "discovery"
               }
             ],
             "visibility": "private"
@@ -158312,29 +158697,29 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn note",
-            "line_end": 458,
-            "line_start": 446,
+            "line_end": 504,
+            "line_start": 492,
             "name": "note",
             "shape_hash": "819cede4f7d40c77",
             "string_literals": [
               {
-                "line": 448,
+                "line": 494,
                 "value": "{kind}:{text}"
               },
               {
-                "line": 451,
+                "line": 497,
                 "value": "loom"
               },
               {
-                "line": 452,
+                "line": 498,
                 "value": "edge"
               },
               {
-                "line": 453,
+                "line": 499,
                 "value": "e"
               },
               {
-                "line": 456,
+                "line": 502,
                 "value": "t"
               }
             ],
@@ -158401,61 +158786,61 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
-            "line_end": 444,
-            "line_start": 429,
+            "line_end": 490,
+            "line_start": 475,
             "name": "phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
             "shape_hash": "1dbdcd0d16dc5141",
             "string_literals": [
               {
-                "line": 434,
+                "line": 480,
                 "value": "build"
               },
               {
-                "line": 434,
+                "line": 480,
                 "value": "fix"
               },
               {
-                "line": 434,
+                "line": 480,
                 "value": "validate"
               },
               {
-                "line": 434,
+                "line": 480,
                 "value": "quality"
               },
               {
-                "line": 434,
+                "line": 480,
                 "value": "discovery"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "seed"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "incomplete"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "ground"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "audit"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "complete"
               },
               {
-                "line": 437,
+                "line": 483,
                 "value": "??"
               },
               {
-                "line": 440,
+                "line": 486,
                 "value": "discovery"
               },
               {
-                "line": 441,
+                "line": 487,
                 "value": "{non_lane} has no next-mode lane → discovery fallback"
               }
             ],
@@ -158486,69 +158871,69 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn repeated_notes_collapse_into_a_count",
-            "line_end": 485,
-            "line_start": 461,
+            "line_end": 531,
+            "line_start": 507,
             "name": "repeated_notes_collapse_into_a_count",
             "shape_hash": "e30563a3fc167b39",
             "string_literals": [
               {
-                "line": 464,
+                "line": 510,
                 "value": "transition"
               },
               {
-                "line": 465,
+                "line": 511,
                 "value": "passing → needs_reverification (sync: a.rs changed)"
               },
               {
-                "line": 466,
+                "line": 512,
                 "value": ""
               },
               {
-                "line": 468,
+                "line": 514,
                 "value": "transition"
               },
               {
-                "line": 468,
+                "line": 514,
                 "value": "needs_reverification → passing"
               },
               {
-                "line": 468,
+                "line": 514,
                 "value": ""
               },
               {
-                "line": 470,
+                "line": 516,
                 "value": "transition"
               },
               {
-                "line": 471,
+                "line": 517,
                 "value": "passing → needs_reverification (sync: a.rs changed)"
               },
               {
-                "line": 472,
+                "line": 518,
                 "value": ""
               },
               {
-                "line": 475,
+                "line": 521,
                 "value": "transition"
               },
               {
-                "line": 476,
+                "line": 522,
                 "value": "passing → needs_reverification (sync: a.rs changed)"
               },
               {
-                "line": 477,
+                "line": 523,
                 "value": ""
               },
               {
-                "line": 480,
+                "line": 526,
                 "value": "analyzer"
               },
               {
-                "line": 481,
+                "line": 527,
                 "value": "total counts UNIQUE notes"
               },
               {
-                "line": 483,
+                "line": 529,
                 "value": "the flap count is the signal"
               }
             ],
@@ -158558,205 +158943,205 @@
             "body_hash": "39c39e175e335611",
             "kind": "fn",
             "label": "fn run_with_repo",
-            "line_end": 360,
-            "line_start": 240,
+            "line_end": 406,
+            "line_start": 286,
             "name": "run_with_repo",
             "shape_hash": "ad167c2a5a88e9ce",
             "string_literals": [
               {
-                "line": 256,
+                "line": 302,
                 "value": "triage"
               },
               {
-                "line": 258,
+                "line": 304,
                 "value": "Mode 'triage' was renamed to 'prove' (it proves proposed hypotheses; \\\n             'triage' now belongs to Inbox — `loom door \\\"<utterance>\\\"` captures \\\n             user input, then `loom inbox triage` routes it). Run: loom next --mode prove"
               },
               {
-                "line": 265,
+                "line": 311,
                 "value": "discovery"
               },
               {
-                "line": 266,
+                "line": 312,
                 "value": "fix"
               },
               {
-                "line": 267,
+                "line": 313,
                 "value": "build"
               },
               {
-                "line": 268,
+                "line": 314,
                 "value": "populate"
-              },
-              {
-                "line": 269,
-                "value": "validate"
-              },
-              {
-                "line": 270,
-                "value": "align"
-              },
-              {
-                "line": 271,
-                "value": "quality"
-              },
-              {
-                "line": 272,
-                "value": "review"
-              },
-              {
-                "line": 273,
-                "value": "prove"
-              },
-              {
-                "line": 276,
-                "value": "Unknown mode '{}'. Valid values: discovery, fix, build, populate, validate, align, quality, review, prove\n\\\n             discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \\\n             build = realize planned/needs_change intents (builder) · \\\n             populate = backfill derived graph structure (builder) · \\\n             validate = run/repair proofs (validator) · \\\n             align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \\\n             quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \\\n             re-recording with confidence ≥ 0.7 or overturning) · \\\n             prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional)."
-              },
-              {
-                "line": 293,
-                "value": "discovery"
-              },
-              {
-                "line": 295,
-                "value": "--class only applies to generated discovery pairs. Use it with \\\n             `loom next --mode discovery --class suspected-coupling|impact-map|all`."
-              },
-              {
-                "line": 299,
-                "value": "quality"
-              },
-              {
-                "line": 301,
-                "value": "--kind only applies to the quality queue (filtering rule×intent pairs by norm category). \\\n             Use it with `loom next --mode quality --kind security|correctness|performance|architecture|resource_safety`."
-              },
-              {
-                "line": 308,
-                "value": "{e}"
-              },
-              {
-                "line": 313,
-                "value": "discovery"
-              },
-              {
-                "line": 313,
-                "value": "fix"
               },
               {
                 "line": 315,
-                "value": "--compact projects a RELATES_TO work item down to its verdict coordinates \\\n             (intents, edge id, grounded paths, the command) — it serves the discovery/fix \\\n             queues. The other modes' items are already mode-shaped — use `loom next --mode {mode}`."
-              },
-              {
-                "line": 325,
-                "value": "  note: {note}"
-              },
-              {
-                "line": 331,
-                "value": "build"
-              },
-              {
-                "line": 332,
-                "value": "populate"
-              },
-              {
-                "line": 333,
                 "value": "validate"
               },
               {
-                "line": 334,
+                "line": 316,
                 "value": "align"
               },
               {
-                "line": 341,
+                "line": 317,
                 "value": "quality"
               },
               {
-                "line": 348,
+                "line": 318,
                 "value": "review"
               },
               {
-                "line": 355,
+                "line": 319,
+                "value": "prove"
+              },
+              {
+                "line": 322,
+                "value": "Unknown mode '{}'. Valid values: discovery, fix, build, populate, validate, align, quality, review, prove\n\\\n             discovery = inspect relationships (analyzer) · fix = resolve failures/stale · \\\n             build = realize planned/needs_change intents (builder) · \\\n             populate = backfill derived graph structure (builder) · \\\n             validate = run/repair proofs (validator) · \\\n             align = re-affirm intent meaning against the USER (validator; serves intents whose code churned since the user last confirmed their meaning — the user↔intent drift check) · \\\n             quality = earn GOVERNS green (quality) · review = re-inspect LOW-CONFIDENCE verdicts (the tiered double-check; resolves by \\\n             re-recording with confidence ≥ 0.7 or overturning) · \\\n             prove = prove PROPOSED hypotheses (analyzer; the pre-decision plane — optional)."
+              },
+              {
+                "line": 339,
+                "value": "discovery"
+              },
+              {
+                "line": 341,
+                "value": "--class only applies to generated discovery pairs. Use it with \\\n             `loom next --mode discovery --class suspected-coupling|impact-map|all`."
+              },
+              {
+                "line": 345,
+                "value": "quality"
+              },
+              {
+                "line": 347,
+                "value": "--kind only applies to the quality queue (filtering rule×intent pairs by norm category). \\\n             Use it with `loom next --mode quality --kind security|correctness|performance|architecture|resource_safety`."
+              },
+              {
+                "line": 354,
+                "value": "{e}"
+              },
+              {
+                "line": 359,
+                "value": "discovery"
+              },
+              {
+                "line": 359,
+                "value": "fix"
+              },
+              {
+                "line": 361,
+                "value": "--compact projects a RELATES_TO work item down to its verdict coordinates \\\n             (intents, edge id, grounded paths, the command) — it serves the discovery/fix \\\n             queues. The other modes' items are already mode-shaped — use `loom next --mode {mode}`."
+              },
+              {
+                "line": 371,
+                "value": "  note: {note}"
+              },
+              {
+                "line": 377,
+                "value": "build"
+              },
+              {
+                "line": 378,
+                "value": "populate"
+              },
+              {
+                "line": 379,
+                "value": "validate"
+              },
+              {
+                "line": 380,
+                "value": "align"
+              },
+              {
+                "line": 387,
+                "value": "quality"
+              },
+              {
+                "line": 394,
+                "value": "review"
+              },
+              {
+                "line": 401,
                 "value": "prove"
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "1efbe4cb8fecd6b7",
+            "body_hash": "68288a5c8c0ca01c",
             "kind": "fn",
             "label": "pub fn run",
-            "line_end": 238,
-            "line_start": 140,
+            "line_end": 284,
+            "line_start": 172,
             "name": "run",
-            "shape_hash": "cf1a06dff057e173",
+            "shape_hash": "4eb01aa2ff9838f1",
             "string_literals": [
               {
-                "line": 154,
+                "line": 186,
                 "value": "`--take 0` requests zero items — omit --take for the single top item, or pass --take N (N≥1) for a bulk read."
               },
               {
-                "line": 168,
+                "line": 200,
                 "value": "audit"
               },
               {
-                "line": 175,
+                "line": 207,
                 "value": "decision"
               },
               {
-                "line": 176,
+                "line": 208,
                 "value": "audit"
               },
               {
-                "line": 176,
+                "line": 208,
                 "value": "complete"
               },
               {
-                "line": 182,
+                "line": 214,
                 "value": "new"
               },
               {
-                "line": 197,
+                "line": 229,
                 "value": "build"
               },
               {
-                "line": 197,
+                "line": 229,
                 "value": "fix"
               },
               {
-                "line": 197,
+                "line": 229,
                 "value": "validate"
               },
               {
-                "line": 197,
+                "line": 229,
                 "value": "quality"
               },
               {
-                "line": 197,
+                "line": 229,
                 "value": "discovery"
               },
               {
-                "line": 208,
+                "line": 254,
                 "value": "discovery"
               },
               {
-                "line": 208,
+                "line": 254,
                 "value": "fix"
               },
               {
-                "line": 208,
+                "line": 254,
                 "value": "quality"
               },
               {
-                "line": 208,
+                "line": 254,
                 "value": "align"
               },
               {
-                "line": 208,
+                "line": 254,
                 "value": "review"
               },
               {
-                "line": 214,
+                "line": 260,
                 "value": "--take is a bulk read of the discovery/fix/quality/align/review queues; \\\n                 {mode} resolves one command per item, so serving the top 1. For the full \\\n                 queue overview: `loom next --all`."
               },
               {
-                "line": 217,
+                "line": 263,
                 "value": "{mode}"
               }
             ],
@@ -158766,17 +159151,17 @@
             "body_hash": "20bca233686d0511",
             "kind": "fn",
             "label": "pub(crate) fn inject_take_note",
-            "line_end": 138,
-            "line_start": 127,
+            "line_end": 170,
+            "line_start": 159,
             "name": "inject_take_note",
             "shape_hash": "727efaa28cd3e6ee",
             "string_literals": [
               {
-                "line": 133,
+                "line": 165,
                 "value": "take_note"
               },
               {
-                "line": 134,
+                "line": 166,
                 "value": "take_capped_to"
               }
             ],
@@ -158786,8 +159171,8 @@
             "body_hash": "e3f08ccaac75ac17",
             "kind": "fn",
             "label": "pub(super) fn cap_section",
-            "line_end": 368,
-            "line_start": 364,
+            "line_end": 414,
+            "line_start": 410,
             "name": "cap_section",
             "shape_hash": "f2dcbfd4b07b1ac7",
             "visibility": "public"
@@ -158796,8 +159181,8 @@
             "body_hash": "545373814af80d1c",
             "kind": "fn",
             "label": "pub(super) fn note_surfaces",
-            "line_end": 421,
-            "line_start": 377,
+            "line_end": 467,
+            "line_start": 423,
             "name": "note_surfaces",
             "shape_hash": "0d05625529ffa4ea",
             "visibility": "public"
@@ -158821,6 +159206,8 @@
           "fn addressed_notes_survive_the_cap",
           "fn compact_action_is_one_runnable_line",
           "fn emit_audit_directive",
+          "fn first_lane_with_work",
+          "fn lane_has_work",
           "fn note",
           "fn phase_default_mode",
           "fn phase_default_mode_maps_each_lane_and_falls_back_to_discovery",
@@ -178166,7 +178553,7 @@
         "symbols": []
       },
       {
-        "content_hash": "2e82554ae085ac2f",
+        "content_hash": "421258d10222bc7b",
         "extractor_grade": "high",
         "id": "c9fd0d80-28b5-401e-9b90-459b69f1c688",
         "imports": [
@@ -178176,7 +178563,7 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-19T02:17:35.332152436+00:00",
+        "last_modified": "2026-06-24T15:06:12.762437909+00:00",
         "path": "src/commands/explain.rs",
         "symbol_facts": [
           {
@@ -178190,32 +178577,32 @@
             "visibility": "private"
           },
           {
-            "body_hash": "0a2fc6fbba3f8a4d",
+            "body_hash": "3995820922c1c2f1",
             "kind": "fn",
             "label": "fn build_explanation",
-            "line_end": 326,
+            "line_end": 324,
             "line_start": 209,
             "name": "build_explanation",
-            "shape_hash": "576c303447bd34b4",
+            "shape_hash": "e17a2986bc3e33cf",
             "string_literals": [
               {
-                "line": 246,
+                "line": 244,
                 "value": "passing"
               },
               {
-                "line": 246,
+                "line": 244,
                 "value": "failing"
               },
               {
-                "line": 246,
+                "line": 244,
                 "value": "needs_reverification"
               },
               {
-                "line": 304,
+                "line": 302,
                 "value": "not_run"
               },
               {
-                "line": 318,
+                "line": 316,
                 "value": "deprecated"
               }
             ],
@@ -178225,21 +178612,21 @@
             "body_hash": "2b3fb6b2fab25c96",
             "kind": "fn",
             "label": "fn coupling_tag",
-            "line_end": 343,
-            "line_start": 332,
+            "line_end": 341,
+            "line_start": 330,
             "name": "coupling_tag",
             "shape_hash": "8cc5d05928735768",
             "string_literals": [
               {
-                "line": 337,
+                "line": 335,
                 "value": "not an asserted relationship — won't re-open"
               },
               {
-                "line": 339,
+                "line": 337,
                 "value": "ripples on code change"
               },
               {
-                "line": 341,
+                "line": 339,
                 "value": "meaning-only — won't ripple"
               }
             ],
@@ -178249,145 +178636,145 @@
             "body_hash": "15c51406653b7301",
             "kind": "fn",
             "label": "fn render_human",
-            "line_end": 546,
-            "line_start": 395,
+            "line_end": 544,
+            "line_start": 393,
             "name": "render_human",
             "shape_hash": "aa242dd6a57bcb4e",
             "string_literals": [
               {
-                "line": 398,
+                "line": 396,
                 "value": "══ explain: {f}  (file → {} grounding intent(s)) ══"
               },
               {
-                "line": 405,
+                "line": 403,
                 "value": "  [DEPRECATED]"
               },
               {
-                "line": 405,
+                "line": 403,
                 "value": ""
               },
               {
-                "line": 407,
+                "line": 405,
                 "value": "══ {}  [{} · {}]{dep} ══"
               },
               {
-                "line": 409,
+                "line": 407,
                 "value": "  {}"
               },
               {
-                "line": 413,
+                "line": 411,
                 "value": "domain: {}"
               },
               {
-                "line": 416,
+                "line": 414,
                 "value": "layer: {}"
               },
               {
-                "line": 419,
+                "line": 417,
                 "value": "visibility: {}"
               },
               {
-                "line": 422,
+                "line": 420,
                 "value": "  {}"
               },
               {
-                "line": 422,
+                "line": 420,
                 "value": " · "
               },
               {
-                "line": 427,
+                "line": 425,
                 "value": "  Grounded in ({} file(s)):"
               },
               {
-                "line": 432,
+                "line": 430,
                 "value": ":{l}"
               },
               {
-                "line": 434,
+                "line": 432,
                 "value": "    {p}{loc}  [{s}]"
               },
               {
-                "line": 443,
+                "line": 441,
                 "value": "  Coupled to ({} total · {active} asserted, real relationships first):"
               },
               {
-                "line": 448,
+                "line": 446,
                 "value": "(un-kinded)"
               },
               {
-                "line": 450,
+                "line": 448,
                 "value": "[{}]"
               },
               {
-                "line": 450,
+                "line": 448,
                 "value": ", "
               },
               {
-                "line": 453,
+                "line": 451,
                 "value": "    {:<40} {:<22} {}  · {}"
               },
               {
-                "line": 462,
+                "line": 460,
                 "value": "    … +{} more (mostly mechanical/independent links — use --json for all)"
               },
               {
-                "line": 470,
+                "line": 468,
                 "value": "  Governed by:"
               },
               {
-                "line": 475,
+                "line": 473,
                 "value": " ({k})"
               },
               {
-                "line": 477,
+                "line": 475,
                 "value": "    {n}{kind}  {s}"
               },
               {
-                "line": 483,
+                "line": 481,
                 "value": "  Hierarchy:"
               },
               {
-                "line": 485,
+                "line": 483,
                 "value": "    parent: {p}"
               },
               {
-                "line": 488,
+                "line": 486,
                 "value": "    children: {}"
               },
               {
-                "line": 488,
+                "line": 486,
                 "value": ", "
               },
               {
-                "line": 494,
+                "line": 492,
                 "value": "  Proven by:"
               },
               {
-                "line": 496,
+                "line": 494,
                 "value": "    {n}  {r}"
               },
               {
-                "line": 513,
+                "line": 511,
                 "value": "  Impact — no asserted code-coupled relationships; a change here ripples to nothing tracked."
               },
               {
-                "line": 520,
+                "line": 518,
                 "value": ", "
               },
               {
-                "line": 523,
+                "line": 521,
                 "value": "  Impact — changing this ripples to {} relationship(s): {}{}{}"
               },
               {
-                "line": 527,
+                "line": 525,
                 "value": " … +{more}"
               },
               {
-                "line": 532,
+                "line": 530,
                 "value": "  ({meaning_only} meaning-only link(s) won't re-open)"
               },
               {
-                "line": 543,
+                "line": 541,
                 "value": "  → Next: `loom intent show {last_id}` (raw node) · `loom explain <coupled intent>` to follow a link · `loom explain <file> --impact` before editing."
               }
             ],
@@ -178397,125 +178784,125 @@
             "body_hash": "167fc1380fd962cd",
             "kind": "fn",
             "label": "fn render_impact",
-            "line_end": 636,
-            "line_start": 548,
+            "line_end": 634,
+            "line_start": 546,
             "name": "render_impact",
             "shape_hash": "4ac48ab738e10916",
             "string_literals": [
               {
-                "line": 574,
+                "line": 572,
                 "value": "target"
               },
               {
-                "line": 575,
+                "line": 573,
                 "value": "directly_affected"
               },
               {
-                "line": 576,
+                "line": 574,
                 "value": "reopens_relationships"
               },
               {
-                "line": 577,
+                "line": 575,
                 "value": "intent"
               },
               {
-                "line": 577,
+                "line": 575,
                 "value": "kinds"
               },
               {
-                "line": 579,
+                "line": 577,
                 "value": "rerun_validations"
               },
               {
-                "line": 580,
+                "line": 578,
                 "value": "validation"
               },
               {
-                "line": 580,
+                "line": 578,
                 "value": "last_result"
               },
               {
-                "line": 582,
+                "line": 580,
                 "value": "summary"
               },
               {
-                "line": 583,
+                "line": 581,
                 "value": "directly_affected"
               },
               {
-                "line": 584,
+                "line": 582,
                 "value": "relationships_reopened"
               },
               {
-                "line": 585,
+                "line": 583,
                 "value": "validations_to_rerun"
               },
               {
-                "line": 587,
+                "line": 585,
                 "value": "next_step"
               },
               {
-                "line": 587,
+                "line": 585,
                 "value": "after the change: `loom sync`, then `loom next --mode fix` / `--mode validate`"
               },
               {
-                "line": 592,
+                "line": 590,
                 "value": "══ Blast radius: {label} ══"
               },
               {
-                "line": 594,
+                "line": 592,
                 "value": "  Directly affected ({} intent(s)): {}"
               },
               {
-                "line": 597,
+                "line": 595,
                 "value": "(none)"
               },
               {
-                "line": 599,
+                "line": 597,
                 "value": ", "
               },
               {
-                "line": 604,
+                "line": 602,
                 "value": "  Re-opens 0 relationships — no asserted code-coupling ripples from here."
               },
               {
-                "line": 607,
+                "line": 605,
                 "value": "  Re-opens {} relationship(s) (re-verify after the change):"
               },
               {
-                "line": 612,
+                "line": 610,
                 "value": "(un-kinded)"
               },
               {
-                "line": 614,
+                "line": 612,
                 "value": "[{}]"
               },
               {
-                "line": 614,
+                "line": 612,
                 "value": ", "
               },
               {
-                "line": 616,
+                "line": 614,
                 "value": "    {n:<44} {kinds}"
               },
               {
-                "line": 619,
+                "line": 617,
                 "value": "    … +{} more (use --json for all)"
               },
               {
-                "line": 624,
+                "line": 622,
                 "value": "  Re-run {} validation(s):"
               },
               {
-                "line": 626,
+                "line": 624,
                 "value": "    {n}  (last: {r})"
               },
               {
-                "line": 629,
+                "line": 627,
                 "value": "    … +{} more (use --json for all)"
               },
               {
-                "line": 634,
+                "line": 632,
                 "value": "  → After changing this: `loom sync`, then `loom next --mode fix` / `--mode validate`."
               }
             ],
@@ -178525,149 +178912,149 @@
             "body_hash": "f0aa52c3ba19cc50",
             "kind": "fn",
             "label": "fn render_json",
-            "line_end": 393,
-            "line_start": 345,
+            "line_end": 391,
+            "line_start": 343,
             "name": "render_json",
             "shape_hash": "c9ad5ec10415a272",
             "string_literals": [
               {
-                "line": 356,
+                "line": 354,
                 "value": "id"
               },
               {
-                "line": 357,
+                "line": 355,
                 "value": "name"
               },
               {
-                "line": 358,
+                "line": 356,
                 "value": "description"
               },
               {
-                "line": 359,
+                "line": 357,
                 "value": "level"
               },
               {
-                "line": 360,
+                "line": 358,
                 "value": "lifecycle"
               },
               {
-                "line": 361,
+                "line": 359,
                 "value": "deprecated"
               },
               {
-                "line": 362,
+                "line": 360,
                 "value": "domain"
               },
               {
-                "line": 363,
+                "line": 361,
                 "value": "layer"
               },
               {
-                "line": 364,
+                "line": 362,
                 "value": "visibility"
               },
               {
-                "line": 365,
+                "line": 363,
                 "value": "grounded_in"
               },
               {
-                "line": 366,
+                "line": 364,
                 "value": "path"
               },
               {
-                "line": 366,
+                "line": 364,
                 "value": "locator"
               },
               {
+                "line": 364,
+                "value": "status"
+              },
+              {
                 "line": 366,
+                "value": "coupled_to"
+              },
+              {
+                "line": 367,
+                "value": "intent"
+              },
+              {
+                "line": 367,
+                "value": "kinds"
+              },
+              {
+                "line": 367,
                 "value": "status"
               },
               {
                 "line": 368,
-                "value": "coupled_to"
-              },
-              {
-                "line": 369,
-                "value": "intent"
-              },
-              {
-                "line": 369,
-                "value": "kinds"
-              },
-              {
-                "line": 369,
-                "value": "status"
-              },
-              {
-                "line": 370,
                 "value": "asserted"
               },
               {
-                "line": 371,
+                "line": 369,
                 "value": "ripples_on_code_change"
               },
               {
-                "line": 373,
+                "line": 371,
                 "value": "governed_by"
               },
               {
-                "line": 374,
+                "line": 372,
                 "value": "rule"
               },
               {
-                "line": 374,
+                "line": 372,
                 "value": "kind"
               },
               {
-                "line": 374,
+                "line": 372,
                 "value": "status"
               },
               {
-                "line": 376,
+                "line": 374,
                 "value": "parent"
               },
               {
-                "line": 377,
+                "line": 375,
                 "value": "children"
               },
               {
-                "line": 378,
+                "line": 376,
                 "value": "proven_by"
               },
               {
-                "line": 379,
+                "line": 377,
                 "value": "validation"
               },
               {
-                "line": 379,
+                "line": 377,
                 "value": "last_result"
               },
               {
-                "line": 381,
+                "line": 379,
                 "value": "impact"
               },
               {
-                "line": 382,
+                "line": 380,
                 "value": "ripples_to"
               },
               {
-                "line": 383,
+                "line": 381,
                 "value": "meaning_only_links"
               },
               {
-                "line": 389,
+                "line": 387,
                 "value": "target_file"
               },
               {
-                "line": 390,
+                "line": 388,
                 "value": "intents"
               },
               {
-                "line": 391,
+                "line": 389,
                 "value": "next_step"
               },
               {
-                "line": 391,
+                "line": 389,
                 "value": "loom intent show <id>  (raw node)  ·  loom explain <coupled intent>  (follow a link)  ·  loom explain <file> --impact  (before editing)"
               }
             ],
@@ -178677,45 +179064,45 @@
             "body_hash": "70bb7ff1bb3afa2b",
             "kind": "fn",
             "label": "fn render_uncovered_file",
-            "line_end": 652,
-            "line_start": 638,
+            "line_end": 650,
+            "line_start": 636,
             "name": "render_uncovered_file",
             "shape_hash": "47eed5735e72605e",
             "string_literals": [
               {
-                "line": 641,
+                "line": 639,
                 "value": "target_file"
               },
               {
-                "line": 642,
+                "line": 640,
                 "value": "intents"
               },
               {
-                "line": 643,
+                "line": 641,
                 "value": "message"
               },
               {
-                "line": 643,
+                "line": 641,
                 "value": "This file is registered but no intent grounds it (no IMPLEMENTS edge)."
               },
               {
-                "line": 644,
+                "line": 642,
                 "value": "next_step"
               },
               {
-                "line": 644,
+                "line": 642,
                 "value": "loom edge implement <intent> {path} --locator <symbol>  (ground it), or `loom coverage` to see the gap"
               },
               {
-                "line": 647,
+                "line": 645,
                 "value": "══ explain: {path} ══"
               },
               {
-                "line": 648,
+                "line": 646,
                 "value": "  Registered, but NO intent grounds this file (no IMPLEMENTS edge)."
               },
               {
-                "line": 649,
+                "line": 647,
                 "value": "  → It's uncovered: `loom edge implement <intent> {path} --locator <symbol>`, or `loom coverage`."
               }
             ],
@@ -195517,7 +195904,7 @@
         ]
       },
       {
-        "content_hash": "6e01d0707965e575",
+        "content_hash": "b74b5404a8056d7e",
         "extractor_grade": "high",
         "id": "f856fe8e-8a54-421e-a2e9-10734aabd732",
         "imports": [
@@ -195526,11 +195913,11 @@
           "src/output.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-24T12:55:54.072184843+00:00",
+        "last_modified": "2026-06-24T15:04:22.551707007+00:00",
         "path": "src/commands/schema.rs",
         "symbol_facts": [
           {
-            "body_hash": "a3903e0496f92302",
+            "body_hash": "2952ec190f0eb522",
             "kind": "const",
             "label": "const STATES",
             "line_end": 66,
@@ -195552,7 +195939,7 @@
               },
               {
                 "line": 61,
-                "value": "inspected, criterion met"
+                "value": "inspected, criterion met (on a criterion-less IMPLEMENTS = LOCATED: locator verified present, not yet criterion-judged)"
               },
               {
                 "line": 62,
@@ -195590,7 +195977,7 @@
             "visibility": "private"
           },
           {
-            "body_hash": "6b5608c2ad26d7e4",
+            "body_hash": "a2cae4abdeb6e1fd",
             "kind": "fn",
             "label": "fn edge_desc",
             "line_end": 57,
@@ -195620,7 +196007,7 @@
               },
               {
                 "line": 48,
-                "value": "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`)."
+                "value": "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`). A fresh grounding is LOCATED (the locator is verified present — `loom explain` shows `[located]`), a structural anchor; it becomes a full `passing` verdict only when an analyzer records a criterion. So IMPLEMENTS `passing` without a criterion means 'symbol present', not RELATES_TO's semantic 'criterion met'."
               },
               {
                 "line": 49,
@@ -213735,8 +214122,8 @@
         "discrimination_status": "discriminating",
         "id": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix compact command parity",
         "validation_type": "test"
       },
@@ -213757,8 +214144,8 @@
         "discrimination_status": "discriminating",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next all command parity",
         "validation_type": "test"
       },
@@ -213790,8 +214177,8 @@
         "discrimination_status": "discriminating",
         "id": "0bca574a-059b-4c23-ae03-274a5cc7ebe3",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next prove command parity",
         "validation_type": "test"
       },
@@ -213845,8 +214232,8 @@
         "discrimination_status": "discriminating",
         "id": "1662f9ca-c05d-4e00-8846-06d9063c0fad",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery take command parity",
         "validation_type": "test"
       },
@@ -213856,8 +214243,8 @@
         "discrimination_status": "discriminating",
         "id": "1a2a4da6-5572-4721-971c-e0016513666b",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite door command parity",
         "validation_type": "test"
       },
@@ -213977,8 +214364,8 @@
         "discrimination_status": "discriminating",
         "id": "316bbfe2-48d4-48f3-be07-722625cdfd84",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix take command parity",
         "validation_type": "test"
       },
@@ -213988,8 +214375,8 @@
         "discrimination_status": "discriminating",
         "id": "336a9745-854c-44ab-a81c-3f1edcb01b02",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite smells command parity",
         "validation_type": "test"
       },
@@ -214010,8 +214397,8 @@
         "discrimination_status": "discriminating",
         "id": "343a5cc7-9110-4641-9546-61c01eb0c2f4",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite find door search parity",
         "validation_type": "test"
       },
@@ -214120,8 +214507,8 @@
         "discrimination_status": "discriminating",
         "id": "42171f15-04d2-4e74-99ea-327ca2bc6f58",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite doctor command parity",
         "validation_type": "test"
       },
@@ -214252,8 +214639,8 @@
         "discrimination_status": "discriminating",
         "id": "5f1a017b-d22e-4255-826f-beb7d5610a1e",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite snapshot parity",
         "validation_type": "test"
       },
@@ -214285,8 +214672,8 @@
         "discrimination_status": "discriminating",
         "id": "6428558b-e405-48c3-abd8-9e255da16b48",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite status command parity",
         "validation_type": "test"
       },
@@ -214406,8 +214793,8 @@
         "discrimination_status": "discriminating",
         "id": "747f2173-a6f2-4f37-8629-6bcf8999dba4",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality command parity",
         "validation_type": "test"
       },
@@ -214516,8 +214903,8 @@
         "discrimination_status": "discriminating",
         "id": "85244e24-e189-4cb8-a7e9-8745da673bb9",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next validate command parity",
         "validation_type": "test"
       },
@@ -214527,8 +214914,8 @@
         "discrimination_status": "discriminating",
         "id": "88fe328d-c9e1-4fa7-a931-3cde45e70bdf",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next discovery command parity",
         "validation_type": "test"
       },
@@ -214703,8 +215090,8 @@
         "discrimination_status": "discriminating",
         "id": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next compact command parity",
         "validation_type": "test"
       },
@@ -214835,8 +215222,8 @@
         "discrimination_status": "discriminating",
         "id": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next quality take command parity",
         "validation_type": "test"
       },
@@ -214857,8 +215244,8 @@
         "discrimination_status": "discriminating",
         "id": "b95cd4eb-b2b7-496f-9e82-0f18866a3201",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next review command parity",
         "validation_type": "test"
       },
@@ -214945,8 +215332,8 @@
         "discrimination_status": "discriminating",
         "id": "c3dd4763-faaa-4fe7-bb3c-7ed005332ff9",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next fix command parity",
         "validation_type": "test"
       },
@@ -215033,8 +215420,8 @@
         "discrimination_status": "discriminating",
         "id": "cf2f39e2-3ed0-4853-9cdb-ba35b33678aa",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next build command parity",
         "validation_type": "test"
       },
@@ -215209,8 +215596,8 @@
         "discrimination_status": "discriminating",
         "id": "ebe73777-2de9-4cf2-900b-af4ea6324128",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite report command parity",
         "validation_type": "test"
       },
@@ -215253,8 +215640,8 @@
         "discrimination_status": "discriminating",
         "id": "eefa76b1-a35f-45fe-b459-5d5ee20a5e4c",
         "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
-        "last_result": "passed",
-        "last_run": "2026-06-24T11:29:48.618599+00:00",
+        "last_result": "not_run",
+        "last_run": "",
         "name": "sqlite next align command parity",
         "validation_type": "test"
       },

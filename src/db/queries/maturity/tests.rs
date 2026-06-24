@@ -65,7 +65,7 @@ fn reproduces_loom_frozen_rung_vector() {
     assert_eq!(ladder.rungs[0].status, RungStatus::Met);
     assert_eq!(ladder.rungs[1].name, "Realized");
     assert_eq!(ladder.rungs[1].status, RungStatus::Partial);
-    assert_eq!(ladder.rungs[1].detail, "46/78 implemented leaves");
+    assert_eq!(ladder.rungs[1].detail, "46/78 leaves executed-proven");
     assert_eq!(ladder.rungs[2].name, "Proven");
     assert_eq!(ladder.rungs[2].status, RungStatus::Unmet);
     assert_eq!(ladder.rungs[2].detail, "0/11");

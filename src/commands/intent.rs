@@ -1358,7 +1358,12 @@ fn run_show_with_db(db: &dyn GraphReadRepository, id: String, printer: &Printer)
                         };
                         println!(
                             "  → {}{}  [{}]",
-                            im.codefile_path, loc, im.inspection_status
+                            im.codefile_path,
+                            loc,
+                            crate::output::grounding_status_label(
+                                &im.inspection_status,
+                                &im.criterion
+                            )
                         );
                     }
                     if let Some(m) = crate::output::more_marker(

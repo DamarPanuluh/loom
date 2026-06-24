@@ -347,6 +347,21 @@ pub fn pulse_json(s: &crate::db::queries::GraphState) -> serde_json::Value {
 //      `loom status --json`). Token spend is part of the contract.
 // ---------------------------------------------------------------------------
 
+/// Display label for an IMPLEMENTS grounding's status. A `passing` grounding with
+/// NO criterion was only LOCATED (the locator was verified present) — a structural
+/// anchor, not the semantic "criterion met" a RELATES_TO `passing` asserts. Render
+/// it `located` so a reader never mistakes an anchor for an analyzed claim. Every
+/// other status (and a criterion-bearing passing) renders verbatim. Shared by the
+/// human grounding views (`explain`, `intent show`) so they can't drift; JSON keeps
+/// the raw `inspection_status` for machine consumers.
+pub fn grounding_status_label(inspection_status: &str, criterion: &str) -> String {
+    if inspection_status == "passing" && criterion.trim().is_empty() {
+        "located".to_string()
+    } else {
+        inspection_status.to_string()
+    }
+}
+
 /// Default cap for a variable-length section rendered inside another
 /// command's output (notes on a work item, groundings on a show view, …).
 pub const SECTION_CAP: usize = 10;
@@ -616,6 +631,25 @@ pub fn fmt_status(s: &crate::types::StatusReport) -> String {
 mod tests {
     use super::*;
     use crate::db::queries::{Coverage360, CoverageAxis, GraphState};
+
+    #[test]
+    fn grounding_label_distinguishes_located_from_verdict() {
+        // A criterion-less passing grounding was only LOCATED.
+        assert_eq!(grounding_status_label("passing", ""), "located");
+        assert_eq!(grounding_status_label("passing", "   "), "located");
+        // A criterion-bearing passing is a real verdict — keep it.
+        assert_eq!(
+            grounding_status_label("passing", "fulfils the shorten contract"),
+            "passing"
+        );
+        // Non-passing states are never relabelled (stale/failing/uninspected).
+        assert_eq!(
+            grounding_status_label("needs_reverification", ""),
+            "needs_reverification"
+        );
+        assert_eq!(grounding_status_label("failing", ""), "failing");
+        assert_eq!(grounding_status_label("uninspected", ""), "uninspected");
+    }
 
     fn graph_state_fixture(name: &str) -> GraphState {
         GraphState {

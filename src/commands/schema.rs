@@ -45,7 +45,7 @@ fn edge_desc(etype: &str) -> &'static str {
     match etype {
         "RELATES_TO" => "Intent ↔ Intent — any tracked relationship worth inspecting (the N×N grid).",
         "HIERARCHY" => "Intent → Intent — parent/child zoom (component rolls up feature). A TREE: each intent has at most one parent, no cycles (enforced).",
-        "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`).",
+        "IMPLEMENTS" => "Intent → CodeFile — grounds a semantic intent in real code (carries a `locator`). A fresh grounding is LOCATED (the locator is verified present — `loom explain` shows `[located]`), a structural anchor; it becomes a full `passing` verdict only when an analyzer records a criterion. So IMPLEMENTS `passing` without a criterion means 'symbol present', not RELATES_TO's semantic 'criterion met'.",
         "GOVERNS" => "QualityRule → Intent — a norm that applies to an intent. A verdict at component/system altitude covers descendants ONLY when --covers-descendants is set (default: false — a direct verdict only).",
         "VALIDATES" => "Validation → Intent — a proof object attached to an intent.",
         "TARGETS" => "Hypothesis → Intent — which intents an improvement hypothesis would touch (full inspectable meta).",
@@ -58,7 +58,7 @@ fn edge_desc(etype: &str) -> &'static str {
 
 const STATES: &[(&str, &str)] = &[
     ("uninspected", "declared but never verified against actual code"),
-    ("passing", "inspected, criterion met"),
+    ("passing", "inspected, criterion met (on a criterion-less IMPLEMENTS = LOCATED: locator verified present, not yet criterion-judged)"),
     ("failing", "inspected, criterion violated"),
     ("independent", "inspected, confirmed no relationship (RELATES_TO: intents unrelated; GOVERNS: rule does not apply)"),
     ("partial", "inspected, bounded but not complete — some aspects comply but gaps remain (GOVERNS only)"),
