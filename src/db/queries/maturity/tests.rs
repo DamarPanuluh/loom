@@ -126,6 +126,18 @@ fn library_collapses_proven_to_not_applicable() {
     // N/A counts as cleared, so a fully-proven library is Production-ready.
     assert_eq!(ladder.rungs[4].status, RungStatus::Met);
     assert_eq!(ladder.focus, None);
+    // Honesty: the tagline must NOT assert "proven" when the Proven rung
+    // collapsed to N/A (no journeys were boundary-proven).
+    let tagline = ladder.focus_summary();
+    assert!(tagline.contains("PRODUCTION-READY"), "{tagline}");
+    assert!(
+        !tagline.contains("— proven,"),
+        "N/A Proven must not be advertised as 'proven': {tagline}"
+    );
+    assert!(
+        tagline.contains("N/A") || tagline.contains("no user-visible journeys"),
+        "the tagline should disclose the Proven rung collapsed: {tagline}"
+    );
 }
 
 /// Everything discharged ⇒ Production-ready Met, focus None.
@@ -164,6 +176,12 @@ fn all_green_is_production_ready() {
     assert!(ladder.rungs.iter().all(|r| r.status.cleared()));
     assert_eq!(ladder.rungs[4].status, RungStatus::Met);
     assert_eq!(ladder.focus, None);
+    // When the Proven rung is genuinely MET (journeys boundary-proven), the
+    // tagline legitimately keeps its "proven" claim.
+    assert_eq!(
+        ladder.focus_summary(),
+        "✓ PRODUCTION-READY — proven, comprehensive, durable."
+    );
 }
 
 /// The rung-vector property: focus is the LOWEST unmet rung even when a HIGHER

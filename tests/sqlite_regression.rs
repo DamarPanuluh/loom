@@ -7534,9 +7534,12 @@ fn sqlite_proven_axis_invariant_executed_plus_asserted_equals_proven() {
         "executed leaves are a subset of proven: exec={exec} proven={proven} assert={asserted}"
     );
     // The compass discloses the split inline whenever there is proven to inspect.
+    // The labels are spelled out (`executed` / `asserted-only`) so the polarity is
+    // unmistakable — the old `exec`/`assert` shorthand read backwards to cold
+    // drivers ("assert 0" looked like "nothing checked").
     let human = run_text_as(&graph.root, &["status"], "llm:validator");
     assert!(
-        human.contains("exec ") && human.contains("assert "),
+        human.contains("executed ") && human.contains("asserted-only "),
         "the compass must disclose executed-vs-asserted inline: {human}"
     );
 }
@@ -8916,5 +8919,75 @@ fn sqlite_doctor_surfaces_domain_unknown_as_hint_not_issue() {
         !in_issues,
         "domain debt must be a hint, not an integrity issue: {}",
         out["issues"]
+    );
+}
+
+/// REGRESSION: a lazily-(re)created store — `loom status` after the SQLite DB
+/// was deleted out from under loom — must degrade gracefully, not crash. Three
+/// guarantees in one drive:
+///   (1) status does NOT die with "parse stored JSON list field" reading an
+///       unstamped JSON-list column on the freshly-recreated empty DB;
+///   (2) status ALARMS that the live graph is empty while a committed
+///       loom.graph.json exists (the restore path), instead of presenting
+///       empty-as-normal;
+///   (3) `doctor` reads the unstamped-but-current schema as v12 and AGREES with
+///       `loom migrate` — no false "blank vs 12" version mismatch.
+#[test]
+fn sqlite_lazy_recreated_db_degrades_gracefully_and_alarms() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("lazy-recreate");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "real intent",
+            "--description",
+            "does a real thing",
+            "--level",
+            "system",
+            "--lifecycle",
+            "implemented",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    // Commit the (1-intent) graph so a loom.graph.json sits beside the repo.
+    run_json(&graph.root, &["export", "--json"]);
+
+    // Simulate a LOST store: delete the live SQLite DB and its WAL/SHM sidecars.
+    let loom_dir = graph.root.join(".loom");
+    for f in ["graph.sqlite", "graph.sqlite-wal", "graph.sqlite-shm"] {
+        let _ = fs::remove_file(loom_dir.join(f));
+    }
+
+    // (1)+(2): status must SUCCEED (run_json panics on a non-zero exit, so a
+    // crash here fails the test) and surface the restore alarm.
+    let status = run_json(&graph.root, &["status", "--json"]);
+    let alarms = status["alarms"]
+        .as_array()
+        .expect("status carries an alarms array");
+    assert!(
+        alarms
+            .iter()
+            .any(|a| a.as_str().is_some_and(|s| s.contains("loom import loom.graph.json"))),
+        "a lazily-recreated empty graph beside a committed export must alarm with the restore hint: {alarms:?}"
+    );
+
+    // (3): doctor reads the current schema, and migrate agrees — no false mismatch.
+    let doctor = run_json(&graph.root, &["doctor", "--json"]);
+    assert_eq!(
+        doctor["schema_version"]["ok"],
+        serde_json::json!(true),
+        "doctor must read the lazily-recreated DB as the current schema version, not a false mismatch: {}",
+        doctor["schema_version"]
+    );
+    let migrate = run_json(&graph.root, &["migrate", "--json"]);
+    assert_eq!(
+        migrate["current"],
+        serde_json::json!(true),
+        "migrate must agree the schema is current: {migrate}"
     );
 }

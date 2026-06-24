@@ -205,8 +205,8 @@ pub fn run(printer: &Printer) -> Result<()> {
     println!("  abstraction_level: feature | component | system | cross_cutting");
     println!("                     system: 1–3 per repo · component: 5–15 · feature: many, ATOMIC");
     println!("                     (one falsifiable criterion each; an 'and' in the description = split it)");
-    println!("  lifecycle:         planned | implemented | needs_change | deferred");
-    println!("                     retired/superseded intents use status=deprecated via `loom intent retire`, not a fourth active lifecycle state");
+    println!("  lifecycle:         planned | implemented | needs_change | deferred | to_be_removed");
+    println!("                     to_be_removed = cleanup as a tracked verb (criterion falsifiable by ABSENCE — gates green only once the code is gone); deferred PARKS valid-but-not-now work (out of the build queue, never blocks a roll-up). Both are distinct from retire (status=deprecated via `loom intent retire`), which is for SUPERSEDED/out-of-scope design — a dead meaning kept for history.");
     println!("                     porting with `import --as-planned` resets incoming work to planned design");
     println!("  visibility:        user_visible | internal | (unset = untriaged — the align interview triages it; internal leaves the interview until redefined)");
     println!("  boundary:          inbound (exposes a surface the outside world calls — provider contract) | outbound (calls an external system — consumer dependency) | (unset = internal, no crossing)");

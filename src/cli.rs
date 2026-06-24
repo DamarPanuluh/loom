@@ -915,8 +915,9 @@ pub enum IntentCmd {
         aspect: String,
 
         /// Lifecycle: implemented (brownfield) | planned (greenfield/spec, not
-        /// built yet) | needs_change (refactor / known issue). Omitted defaults
-        /// to implemented except doc-only sources, which default to planned.
+        /// built yet) | needs_change (refactor / known issue) | deferred (parked,
+        /// valid-but-not-now) | to_be_removed (cleanup, done by absence). Omitted
+        /// defaults to implemented except doc-only sources, which default to planned.
         #[arg(long)]
         lifecycle: Option<String>,
 

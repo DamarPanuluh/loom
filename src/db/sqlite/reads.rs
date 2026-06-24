@@ -155,10 +155,15 @@ impl SqliteGraphStore {
     pub fn doctor_report(&self, snapshot: &QuerySnapshot) -> Result<DoctorReport> {
         let notes = snapshot.notes_or_load(|| self.list_all_notes())?;
         let meta = self.graph_meta()?;
+        // A MISSING meta row means the DB was lazily (re)created by `create_schema`
+        // — which always builds/migrates to the CURRENT shape — so its version IS
+        // current; it simply was never stamped (only init/import write the row).
+        // Default to the current version exactly as `loom migrate` does, so the
+        // two reads agree instead of doctor crying a false "blank vs 12" mismatch.
         let found_version = meta
             .as_ref()
             .map(|meta| meta.version.clone())
-            .unwrap_or_default();
+            .unwrap_or_else(|| crate::db::schema::SCHEMA_VERSION.to_string());
         check_graph_from_parts(
             snapshot,
             DoctorInputs {

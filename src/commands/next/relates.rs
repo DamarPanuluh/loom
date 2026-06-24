@@ -21,20 +21,55 @@ pub(super) fn run_relates_with_repo(
 
     if candidates.is_empty() {
         let gs = store.graph_state(&snapshot)?;
+        // Honesty for the fix lane: `failing`/`needs_reverification` edges that
+        // touch a DEPRECATED intent are dropped from the queue (scoring excludes
+        // any edge whose endpoint left the active intent set) — there is nothing
+        // to re-verify once the intent is gone. But `loom edge list --status
+        // needs_reverification` still counts them, so a bald "✓ No … needs_
+        // reverification edges" reads as a contradiction to a driver hunting
+        // stale evidence. Disclose the excluded count + the real reason.
+        let fix_excluded = if mode == "fix" {
+            let active: std::collections::HashSet<&str> =
+                snapshot.intents.iter().map(|i| i.id.as_str()).collect();
+            snapshot
+                .relates
+                .iter()
+                .filter(|e| {
+                    matches!(
+                        e.inspection_status.as_str(),
+                        "failing" | "needs_reverification"
+                    )
+                })
+                .filter(|e| {
+                    !(active.contains(e.from_id.as_str()) && active.contains(e.to_id.as_str()))
+                })
+                .count()
+        } else {
+            0
+        };
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status":  "empty",
                 "mode":    mode,
                 "discovery_class": discovery_class.as_cli_value(),
                 "message": "No work items found for this mode.",
+                "excluded_on_inactive_intents": fix_excluded,
                 "next_step": gs.next_action,
                 "graph_state": pulse_json(&gs),
             }));
         } else {
             match mode {
                 "discovery" => println!("✓ No uninspected edges — nothing left to discover."),
+                "fix" if fix_excluded > 0 => {
+                    println!("✓ No ACTIONABLE failing or needs_reverification edges.")
+                }
                 "fix" => println!("✓ No failing or needs_reverification edges."),
                 _ => println!("✓ No work items found."),
+            }
+            if fix_excluded > 0 {
+                println!(
+                    "  ⓘ {fix_excluded} failing/stale edge(s) exist but touch deprecated intents (status=deprecated, retired with `loom intent retire`) — excluded from the fix lane (the intent is gone, nothing to re-verify). `loom edge list --status needs_reverification` lists them."
+                );
             }
             println!();
             println!("  {}", fmt_pulse(&gs));

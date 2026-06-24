@@ -15,9 +15,38 @@ pub fn run(
     no_hook: bool,
     printer: &Printer,
 ) -> Result<()> {
-    let target = Path::new(path_str)
+    // init honors the same graph pin every other command does (`--graph` >
+    // `$LOOM_GRAPH`), with the positional PATH as the cwd-default fallback.
+    // Without this a mutating command ignored the very pin built to stop
+    // cwd-fallback from hitting the wrong graph: `loom init --graph /elsewhere`
+    // silently initialised the CURRENT directory's `.loom/` instead.
+    let target_str: String = match crate::db::explicit_pin()? {
+        Some(pin) => {
+            // Ambiguous only when BOTH a differing explicit positional PATH and a
+            // pin are given — there is then no single directory to honor.
+            if path_str != "." {
+                let pin_canon = pin.canonicalize().unwrap_or_else(|_| pin.clone());
+                let pos_canon = Path::new(path_str)
+                    .canonicalize()
+                    .unwrap_or_else(|_| Path::new(path_str).to_path_buf());
+                if pin_canon != pos_canon {
+                    anyhow::bail!(
+                        "init target is ambiguous: --graph/$LOOM_GRAPH points at '{}' but the positional \
+                         PATH is '{}'. Pass one, not both: `loom init {}` OR `loom init --graph {}`.",
+                        pin.display(),
+                        path_str,
+                        path_str,
+                        pin.display(),
+                    );
+                }
+            }
+            pin.to_string_lossy().into_owned()
+        }
+        None => path_str.to_string(),
+    };
+    let target = Path::new(&target_str)
         .canonicalize()
-        .unwrap_or_else(|_| Path::new(path_str).to_path_buf());
+        .unwrap_or_else(|_| Path::new(&target_str).to_path_buf());
 
     let loom = loom_dir(&target);
     let db_file = db_path(&target);

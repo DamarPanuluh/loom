@@ -187,8 +187,15 @@ pub fn coverage_line(c: &crate::db::queries::Coverage360) -> String {
     // Shown only when there is proven to inspect (covered > 0); a 0 axis stays
     // a bare "—" so the compass never renders a vacuous "0/0".
     let proven = if c.proven_leaves.total > 0 && c.proven_leaves.covered > 0 {
+        // Disclose the quality split, but label it so the POLARITY is
+        // unmistakable: `executed` is the strong tier (the executor RAN a
+        // discriminating test), `asserted-only` is the weak tier (proven without
+        // a passing executed test — hand-marked or ran-inert). The old
+        // `exec/assert` shorthand read backwards to cold drivers — "assert 0"
+        // looks like "nothing checked" when it actually means "0 leaves rest on
+        // a hand-mark; all are machine-executed." Spell both tiers out.
         format!(
-            "{} (exec {}·assert {})",
+            "{} (executed {} · asserted-only {})",
             fmt_axis(&c.proven_leaves),
             c.proven_executed_leaves.covered,
             c.proven_asserted_leaves.covered,

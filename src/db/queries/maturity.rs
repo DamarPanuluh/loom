@@ -114,7 +114,22 @@ impl MaturityLadder {
     /// truth for both `loom status` and `loom complete`.
     pub fn focus_summary(&self) -> String {
         match self.focus_rung() {
-            None => "✓ PRODUCTION-READY — proven, comprehensive, durable.".to_string(),
+            None => {
+                // Honesty: the top-rung tagline must not claim "proven" when the
+                // Proven rung COLLAPSED to N/A (no user-visible journeys to
+                // boundary-prove). Leaves are still proven at Realized; the
+                // boundary/journey proof simply never applied — say so rather than
+                // assert a boundary proof that was never earned.
+                let proven_na = self
+                    .rungs
+                    .iter()
+                    .any(|r| r.name == "Proven" && r.status == RungStatus::NotApplicable);
+                if proven_na {
+                    "✓ PRODUCTION-READY — comprehensive, durable; leaves proven at Realized, no user-visible journeys to boundary-prove (Proven rung N/A).".to_string()
+                } else {
+                    "✓ PRODUCTION-READY — proven, comprehensive, durable.".to_string()
+                }
+            }
             Some(r) => {
                 let lane = r.lane.map(|l| format!(" · lane: {l}")).unwrap_or_default();
                 if r.reasons.is_empty() {

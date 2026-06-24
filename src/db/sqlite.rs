@@ -1592,6 +1592,14 @@ fn compact_json(value: &JsonValue) -> Result<String> {
 }
 
 fn parse_json_array(raw: &str) -> Result<JsonValue> {
+    // An empty (or whitespace-only) stored field is an ABSENT list, not a parse
+    // error. A lazily-(re)created DB — e.g. `loom status` after the SQLite store
+    // was deleted — can hold a row whose JSON-list column was never stamped with
+    // its '[]' default; reading it must degrade to the empty array, not crash the
+    // whole command with an opaque "EOF while parsing a value at line 1 column 0".
+    if raw.trim().is_empty() {
+        return Ok(JsonValue::Array(Vec::new()));
+    }
     let value: JsonValue = serde_json::from_str(raw).context("parse stored JSON list field")?;
     match value {
         JsonValue::Array(_) => Ok(value),

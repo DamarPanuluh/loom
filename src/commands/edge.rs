@@ -464,6 +464,26 @@ fn run_implement_with_sqlite(
                 }
             }
         }
+        // The IMPLEMENTS edge id is DERIVED from (intent, file), so a second
+        // `edge implement` on the same pair is an UPDATE, not a create:
+        // insert_implements upserts and resets criterion/evidence. Re-printing
+        // "✓ created" would hide that the prior locator (and any analyzer
+        // verdict) was discarded — exactly the silent overwrite a multi-symbol
+        // file walks into. Read the prior edge first so the output can be honest.
+        let prior = store
+            .list_implements_for_intent(&intent_id)?
+            .into_iter()
+            .find(|e| e.codefile_id == cf.id);
+        let updated = prior.is_some();
+        let locator_replaced = match &prior {
+            Some(p) if p.locator != locator => Some(p.locator.clone()),
+            _ => None,
+        };
+        let verdict_discarded = prior
+            .as_ref()
+            .map(|p| !p.criterion.trim().is_empty())
+            .unwrap_or(false);
+
         store.insert_implements(&intent_id, &cf.id, &locator, &notes, &now)?;
         let edge_id =
             crate::db::schema::edge_key(crate::db::schema::edge::IMPLEMENTS, &intent_id, &cf.id);
@@ -475,10 +495,17 @@ fn run_implement_with_sqlite(
                 "intent_id": intent_id,
                 "codefile_id": cf.id,
                 "locator": locator,
+                "updated": updated,
+                "replaced_locator": locator_replaced,
+                "discarded_verdict": verdict_discarded,
                 "next_step": next_step,
             }));
         } else {
-            println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
+            if updated {
+                println!("↻ IMPLEMENTS edge updated  (id: {})", edge_id);
+            } else {
+                println!("✓ IMPLEMENTS edge created  (id: {})", edge_id);
+            }
             println!("  intent   → {}", intent_id);
             println!(
                 "  codefile → {}{}",
@@ -489,6 +516,27 @@ fn run_implement_with_sqlite(
                     format!("  @ {}", locator)
                 }
             );
+            if let Some(old) = &locator_replaced {
+                let old_disp = if old.is_empty() {
+                    "(file-level, no locator)".to_string()
+                } else {
+                    format!("'{old}'")
+                };
+                let new_disp = if locator.is_empty() {
+                    "(file-level)".to_string()
+                } else {
+                    format!("'{locator}'")
+                };
+                println!(
+                    "  ⚠ replaced locator {old_disp} → {new_disp} — one intent→file edge holds ONE \
+                     locator. To own a second symbol in this file, create a separate intent and ground that."
+                );
+            }
+            if verdict_discarded {
+                println!(
+                    "  ⚠ prior grounding verdict discarded (criterion/evidence reset) — re-verify this edge."
+                );
+            }
             println!("  → Next: {}", next_step);
         }
     }

@@ -582,8 +582,19 @@ fn alarm_strip(
     intake: IntakeCounts,
     export_freshness: &str,
     unmeasured_intents: i64,
+    intents: i64,
 ) -> Vec<String> {
     let mut a = Vec::new();
+    // Possible data loss FIRST: an empty live graph next to a committed
+    // loom.graph.json means the durable graph wasn't loaded — the `.loom/`
+    // SQLite store was deleted/lost (loom silently recreates it empty), or this
+    // is a fresh checkout that never imported. Either way the committed export is
+    // the recovery path; say so loudly instead of presenting empty-as-normal.
+    if intents == 0 && export_freshness != "absent" {
+        a.push(
+            "live graph is EMPTY but a committed loom.graph.json exists — the durable graph isn't loaded (deleted `.loom/graph.sqlite`, or a fresh checkout). Restore it: `loom import loom.graph.json`".to_string(),
+        );
+    }
     if report.failing_edges > 0 {
         a.push(format!(
             "{} failing edge(s) — fix the code or re-verdict: `loom next --mode fix`",
@@ -712,7 +723,7 @@ fn render_status(
             );
             obj.insert(
                 "alarms".to_string(),
-                serde_json::json!(alarm_strip(report, &audit, disk, intake, export_freshness, unmeasured_intents)),
+                serde_json::json!(alarm_strip(report, &audit, disk, intake, export_freshness, unmeasured_intents, gs.intents)),
             );
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
@@ -777,7 +788,7 @@ fn render_plain_status(
     totals: CompletionTotals,
 ) {
     // The alarm strip — urgent signals that preempt the focus rung (cold readers
-    let alarms = alarm_strip(report, audit, disk, intake, export_freshness, unmeasured_intents);
+    let alarms = alarm_strip(report, audit, disk, intake, export_freshness, unmeasured_intents, gs.intents);
     if !alarms.is_empty() {
         println!("⚠ ALARMS — handle these before the focus rung:");
         for line in &alarms {

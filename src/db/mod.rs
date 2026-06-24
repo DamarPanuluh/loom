@@ -150,13 +150,27 @@ pub fn set_explicit_graph(path: &str) {
 /// pinned graph no matter what `cd` does. Interactive driving keeps the
 /// zero-ceremony cwd default.
 pub fn resolve_root() -> Result<PathBuf> {
+    match explicit_pin()? {
+        Some(p) => Ok(p),
+        None => Ok(std::env::current_dir()?),
+    }
+}
+
+/// The explicitly pinned graph directory (`--graph` > `$LOOM_GRAPH`), validated
+/// to exist, or `None` when neither is set. This is the shared core of
+/// [`resolve_root`] (which falls back to cwd) and `init` (which falls back to
+/// its positional `PATH`). Centralizing it is what lets `init` honor the SAME
+/// pin every other command does — without it, `loom init --graph /elsewhere`
+/// silently initialised the current directory's graph, the exact cwd-fallback
+/// hazard this pin exists to prevent.
+pub fn explicit_pin() -> Result<Option<PathBuf>> {
     if let Some(p) = EXPLICIT_GRAPH.get() {
         anyhow::ensure!(
             p.is_dir(),
             "--graph points at '{}', which is not a directory — point it at the repo root that contains `.loom/` (the directory, not a file).",
             p.display()
         );
-        return Ok(p.clone());
+        return Ok(Some(p.clone()));
     }
     if let Ok(p) = std::env::var("LOOM_GRAPH") {
         if !p.trim().is_empty() {
@@ -165,8 +179,8 @@ pub fn resolve_root() -> Result<PathBuf> {
                 pb.is_dir(),
                 "LOOM_GRAPH points at '{p}', which is not a directory — point it at the repo root that contains `.loom/` (the directory, not a file)."
             );
-            return Ok(pb);
+            return Ok(Some(pb));
         }
     }
-    Ok(std::env::current_dir()?)
+    Ok(None)
 }
