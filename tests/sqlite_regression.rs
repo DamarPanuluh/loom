@@ -8800,3 +8800,36 @@ fn sqlite_smells_flags_under_reporting_when_facts_drift() {
         "the drifted file must be named in stale_facts.drifted_codefiles: {drifted:?}"
     );
 }
+
+/// Debt-vs-defect: `duplicate_detection_unarmed` (the tag detector is under-armed
+/// because coded intents are untagged) is dischargeable METADATA DEBT, not a code
+/// defect. Hard-gating it pressures the driver to launder it away with a
+/// `--kind decision` ruling instead of discharging it (tagging). So it is surfaced
+/// in the `debt` bucket but kept OUT of the gating `smells`/open set. loom's own
+/// graph has 81/98 untagged coded intents, so the finding fires here.
+#[test]
+fn sqlite_smells_routes_metadata_debt_out_of_gating_open() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("smells-debt");
+    let out = run_json(&graph.root, &["smells", "--json"]);
+    let in_open = out["smells"]
+        .as_array()
+        .expect("smells array")
+        .iter()
+        .any(|s| s["kind"] == "duplicate_detection_unarmed");
+    let in_debt = out["debt"]
+        .as_array()
+        .expect("debt array")
+        .iter()
+        .any(|s| s["kind"] == "duplicate_detection_unarmed");
+    assert!(
+        !in_open,
+        "metadata debt must NOT be in the gating open set (it would pressure laundering): {}",
+        out["smells"]
+    );
+    assert!(
+        in_debt,
+        "metadata debt must be surfaced in the dischargeable `debt` bucket: {}",
+        out["debt"]
+    );
+}

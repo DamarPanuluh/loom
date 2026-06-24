@@ -134,6 +134,13 @@ pub const OVERSIZED_FILE_LINES: usize = 2000;
 /// of the gating `open` set — they never block green. A genuinely-deliberate
 /// large unit needs no decision note; the flag is just a prompt to look.
 pub const SIZE_ADVISORY_KINDS: &[&str] = &["oversized_file", "large_behavioral_symbol"];
+/// Dischargeable metadata-completeness DEBT — "the detector is under-armed because
+/// metadata is incomplete", NOT a code defect. Surfaced by `loom smells` so the gap
+/// stays visible, but partitioned out of the gating `open` set: a hard gate here
+/// pressures the driver to launder it away with a `--kind decision` ruling rather
+/// than discharge it honestly (tag the intents / enrich the vocab). Debt is paid
+/// down over time; it must never force a green-or-launder choice on the maturity ladder.
+pub const DEBT_KINDS: &[&str] = &["duplicate_detection_unarmed"];
 /// Repeated string-contract detection ignores short labels and implementation
 /// tokens. These floors are intentionally conservative for the first pass.
 pub const MIN_STRING_CONTRACT_CHARS: usize = 24;
@@ -339,6 +346,10 @@ pub struct SmellTeaching {
 #[derive(Debug, Clone, Serialize)]
 pub struct SmellReport {
     pub open: Vec<Smell>,
+    /// Dischargeable metadata-completeness debt (see DEBT_KINDS): surfaced by
+    /// `loom smells` but excluded from `open`, so it never gates the ladder — a
+    /// hard gate here would only pressure laundering it away with a ruling.
+    pub debt: Vec<Smell>,
     /// Size/LOC flags (oversized_file, large_behavioral_symbol): ADVISORY, never
     /// gating — a coarse signal for the LLM to inspect case-by-case. Surfaced by
     /// `loom smells`, excluded from `open` so phase/ladder gating ignores them.
@@ -721,11 +732,25 @@ pub fn compute_smells_from_parts(
     // coarse flag for the LLM to inspect case-by-case, never a green gate.
     // Partition them out of `open` (which phase/ladder gating consumes) into
     // `advisory` (surfaced, non-gating) — see SIZE_ADVISORY_KINDS.
-    let (advisory, open): (Vec<Smell>, Vec<Smell>) = smells
-        .into_iter()
-        .partition(|s| SIZE_ADVISORY_KINDS.contains(&s.kind.as_str()));
+    // Three-way split: dischargeable metadata DEBT and size ADVISORIES are both
+    // surfaced but kept OUT of `open` (the set phase/ladder gating consumes), so
+    // neither blocks green — debt because hard-gating it pressures laundering,
+    // advisories because they are coarse case-by-case prompts.
+    let mut debt = Vec::new();
+    let mut advisory = Vec::new();
+    let mut open = Vec::new();
+    for s in smells {
+        if DEBT_KINDS.contains(&s.kind.as_str()) {
+            debt.push(s);
+        } else if SIZE_ADVISORY_KINDS.contains(&s.kind.as_str()) {
+            advisory.push(s);
+        } else {
+            open.push(s);
+        }
+    }
     Ok(SmellReport {
         open,
+        debt,
         advisory,
         adjudicated: adjudicated_out,
         coded_intents,

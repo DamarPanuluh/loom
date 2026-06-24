@@ -571,6 +571,12 @@ fn render(
     if let Some(kind) = kind {
         advisory.retain(|s| s.kind == kind);
     }
+    // Dischargeable metadata-completeness debt — surfaced, NEVER counted in the
+    // gating `total`/`open_by_kind` (it lives outside `open` by construction).
+    let mut debt = report.debt;
+    if let Some(kind) = kind {
+        debt.retain(|s| s.kind == kind);
+    }
     let mut adjudicated = report.adjudicated;
     adjudicated.append(&mut advisory_adjudicated);
     if let Some(kind) = kind {
@@ -588,6 +594,12 @@ fn render(
                 "shown": smells.len(),
                 "open_by_kind": open_by_kind,
                 "top": smells.iter().map(|s| serde_json::json!({
+                    "kind": &s.kind,
+                    "summary": &s.summary,
+                    "remedy": &s.remedy,
+                })).collect::<Vec<_>>(),
+                "debt_total": debt.len(),
+                "debt": debt.iter().map(|s| serde_json::json!({
                     "kind": &s.kind,
                     "summary": &s.summary,
                     "remedy": &s.remedy,
@@ -616,6 +628,15 @@ fn render(
             println!("  open findings: {total}");
             for (kind, count) in &open_by_kind {
                 println!("    {kind}: {count}");
+            }
+            if !debt.is_empty() {
+                println!(
+                    "  metadata debt (dischargeable — surfaced, does NOT gate Hardened): {}",
+                    debt.len()
+                );
+                for s in &debt {
+                    println!("    - [{}] {}", s.kind, s.summary);
+                }
             }
             println!("  adjudicated findings: {}", adjudicated.len());
             println!("  co-change advisories: {suggestions_total}");
@@ -647,6 +668,7 @@ fn render(
             "total": total,
             "shown": smells.len(),
             "smells": smells.iter().map(smell_json).collect::<Vec<_>>(),
+            "debt": debt.iter().map(smell_json).collect::<Vec<_>>(),
             "adjudicated_total": adjudicated.len(),
             "adjudicated": adjudicated,
             "batch_template": batch_template,
@@ -694,6 +716,16 @@ fn render(
         println!("    inspect:  {}", s.teaching.inspect.join(" · "));
         println!("    avoid:    {}", s.teaching.avoid.join(" · "));
         println!("    done:     {}", s.teaching.done_when);
+        println!();
+    }
+    if !debt.is_empty() {
+        println!("  ── metadata debt (dischargeable — surfaced, NEVER gates Hardened) ──");
+        println!("    Discharge by supplying the missing metadata (tag intents / enrich vocab),");
+        println!("    or leave it visible — debt is paid down over time, never a green-or-launder gate.");
+        for s in &debt {
+            println!("  [{}]  {}", s.kind, s.summary);
+            println!("    remedy: {}", s.remedy);
+        }
         println!();
     }
     if !advisory.is_empty() {
@@ -1322,6 +1354,7 @@ mod tests {
 
     fn empty_report() -> SmellReport {
         SmellReport {
+            debt: Vec::new(),
             open: Vec::new(),
             advisory: Vec::new(),
             adjudicated: Vec::new(),
