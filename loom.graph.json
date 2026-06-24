@@ -90040,6 +90040,18 @@
         "to": "c3cc2a54-cf7f-4b47-9f19-677839166343"
       },
       {
+        "confidence": 0.0,
+        "created_at": "2026-06-24T04:47:24.506528+00:00",
+        "criterion": "",
+        "evidence": "",
+        "from": "77ba78be-bd9b-4044-a422-4b16ee0bf2d8",
+        "inspected_by": "",
+        "inspection_status": "uninspected",
+        "last_inspected": "",
+        "notes": "",
+        "to": "c2f6bca0-2ccd-48b7-af47-1a74fba61441"
+      },
+      {
         "confidence": 0.9,
         "created_at": "2026-06-14T09:16:33.908374+00:00",
         "criterion": "hypothesis proof establishes whether this target is affected",
@@ -191655,6 +191667,20 @@
         "proposal": "precompute sync-time indexes for ripple edges and validations, then flag from the bulk maps with deterministic cause ordering.",
         "status": "confirmed",
         "updated_at": "2026-06-11T07:24:47.782303+00:00"
+      },
+      {
+        "author": "llm",
+        "claim": "The Realized self-check flags 'implemented intents grounded ONLY to docs' uniformly, but 2 of loom's 4 flagged intents are planning UMBRELLAS (SQLite-backed graph persistence migration: 12 HIERARCHY children; UI/UX visual-register seed flow: 5 children) whose CHILDREN carry the code groundings. An umbrella realizes THROUGH its children, so grounding the umbrella itself to its plan/proposal doc is correct, not a spec-as-built smell.",
+        "created_at": "2026-06-24T04:47:24.506528+00:00",
+        "evidence": "",
+        "id": "77ba78be-bd9b-4044-a422-4b16ee0bf2d8",
+        "inspected_by": "",
+        "last_inspected": "",
+        "name": "doc-grounded self-check false-positives on planning umbrellas",
+        "predicted_outcome": "The doc-grounded warning drops from 4 to ~2 (the true leaf cases), so a driver isn't pushed to redundantly ground umbrellas to code their children already own — and Realized stops being blocked by a false-positive.",
+        "proposal": "Exempt intents that have realized HIERARCHY children from the doc-grounded self-check (or downgrade to advisory): an umbrella whose children are code-grounded is realized; only LEAF intents grounded only to docs are the real spec-as-built risk.",
+        "status": "proposed",
+        "updated_at": "2026-06-24T04:47:24.506528+00:00"
       },
       {
         "author": "llm",
