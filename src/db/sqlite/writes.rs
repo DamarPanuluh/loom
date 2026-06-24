@@ -224,6 +224,29 @@ impl SqliteGraphStore {
         )?;
         Ok(changed > 0)
     }
+    /// Set the intent's product/business domain facet (auth, billing, …). Metadata
+    /// only — domains are not the architecture layer order, so this never ripples.
+    pub fn set_intent_domain(&self, id: &str, domain: &str, updated_at: &str) -> Result<bool> {
+        let changed = self.write_one(
+            "UPDATE intent SET domain = ?1, updated_at = ?2 WHERE id = ?3",
+            params![domain, updated_at, id],
+        )?;
+        Ok(changed > 0)
+    }
+    /// Set the intent's behavioural aspect (happy/sad/fallback/edge_case, or "" to
+    /// clear). Metadata only — the happy_path_only audit reads it but no edge ripples.
+    pub fn set_intent_aspect(&self, id: &str, aspect: &str, updated_at: &str) -> Result<bool> {
+        if !matches!(aspect, "" | "happy" | "sad" | "fallback" | "edge_case") {
+            anyhow::bail!(
+                "Invalid aspect '{aspect}'. Valid: happy | sad | fallback | edge_case | \"\"."
+            );
+        }
+        let changed = self.write_one(
+            "UPDATE intent SET aspect = ?1, updated_at = ?2 WHERE id = ?3",
+            params![aspect, updated_at, id],
+        )?;
+        Ok(changed > 0)
+    }
     pub fn update_intent_meaning(
         &self,
         id: &str,

@@ -988,6 +988,18 @@ pub enum IntentCmd {
         #[arg(long)]
         boundary: Option<String>,
 
+        /// Set/clear the product/business domain facet (auth, billing, onboarding,
+        /// … or "" to clear). Metadata — no ripple, like --layer. Records a
+        /// decision note. NOT the architecture layer order (that is `loom layer`).
+        #[arg(long)]
+        domain: Option<String>,
+
+        /// Set/clear the behavioural aspect (happy | sad | fallback | edge_case |
+        /// "" to clear). Metadata — no ripple. The happy_path_only completeness
+        /// audit reads it; correcting a mislabeled aspect clears a false finding.
+        #[arg(long)]
+        aspect: Option<String>,
+
         /// New meaning statement (REDEFINITION — ripples staleness one hop,
         /// and clears the visibility ruling: the new meaning's audience is
         /// unknown again). With --reword: same concept in clearer words —

@@ -7,7 +7,7 @@
 ## Overview
 
 - **Intents:** 104 (system: 1, component: 21, feature: 82)
-- **Domains:** analysis, audit, cli, concurrency, core, db, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
+- **Domains:** analysis, audit, cli, concurrency, core, db, developer-experience, docs, graph-integrity, health, navigation, operations, repo, static-analysis, sync, teaching, testing, trust, unknown, validation, workflow
 - **Layers:** application, cli, graph, persistence, presentation, queries, runtime, test
 - **Code files mapped:** 121
 - **Quality rules:** 56
@@ -199,6 +199,10 @@ Intents grouped by domain, with where each is grounded in code.
 - **snapshot analysis and annotation helpers** — pure Rust analysis helpers over typed QuerySnapshot data plus annotation-oriented note/vocabulary/meta helpers; SQLite owns storage and mutation while this layer derives queues, integrity, stats, search, smells, and coverage signals  `src/commands/explain.rs`, `src/db/queries/meta.rs`, `src/db/queries/mod.rs`
 - **typed SQLite graph schema** — The SQLite store models Loom's graph as typed node and edge tables with foreign keys, unique endpoint constraints, status CHECKs, queue indexes, JSON-list columns for list facts, and FTS indexes where search uses them.  `src/db/sqlite/schema_ddl.rs`
 
+### developer-experience
+
+- **source corpus coverage** — enumerates structured requirement-like IDs (US-, E-, REQ-, NFR-, INV-, ADR-) in documentation files and reconciles them against the intent graph, surfacing documented-but-unmodeled requirements for inbox triage  `src/commands/corpus.rs`, `src/db/queries/corpus.rs`
+
 ### docs
 
 - **storage documentation and guide refresh** — README, guide, command docs, retired serve notice, and build/install guidance describe SQLite storage accurately and omit obsolete legacy lock/query caveats.  `README.md`, `docs/COMMANDS.md`, `docs/CONTRIBUTING.md`, `docs/daemon-design.md`, `src/commands/guide.rs`
@@ -258,7 +262,6 @@ Intents grouped by domain, with where each is grounded in code.
 - **porting mode: import --as-planned** — loom import --as-planned adopts a source graph's intents, hierarchy, criteria, and validations-as-specs into a fresh target-repo graph, drops all groundings (IMPLEMENTS), marks every leaf planned, and loom guide gains a port mode teaching the re-realization loop; the semantic plane travels, the physical plane is rebuilt in the new language  `src/commands/guide.rs`
 - **scale: hot commands bounded on large graphs** — On a synthetic graph of >=500 intents and >=1000 edges, loom status / next / smells / next --all each complete in under 2 seconds; the O(N^2) paths (discovery pair enumeration, twin/overlap smells) are bounded or restructured; proven by a benchmark validation against the synthetic graph  `src/db/queries/stats.rs`
 - **session opener teaches the turn-zero ask** — loom session serves turn zero (the user invoked loom with no stated goal): a directive to ask ONE question in the user's language plus a state-aware offer menu where each offer is backed by a live queue and its count and exactly one is recommended; user-gated queues (align drift, hypothesis rulings, blocked proofs) outrank everything an agent can drain alone; works before loom init (import > map > interview) and on an empty graph (interview vs map by source on disk); synonym verbs (start/begin/hello/mode/talk/chat/interview) teach the command  `src/commands/door.rs`, `src/commands/session.rs`
-- **source corpus coverage** — enumerates structured requirement-like IDs (US-, E-, REQ-, NFR-, INV-, ADR-) in documentation files and reconciles them against the intent graph, surfacing documented-but-unmodeled requirements for inbox triage  `src/commands/corpus.rs`, `src/db/queries/corpus.rs`
 - **source corpus coverage sad path** — When source docs carry no structured requirement IDs, corpus coverage reports completeness as UNKNOWN and routes to loom seed --inbox for LLM triage, never silently claiming full coverage from zero IDs.  `src/commands/corpus.rs`, `src/db/queries/corpus.rs`
 - **tiered review queue** — Verdicts recorded with confidence below 0.7 surface in loom next --mode review, ranked (1-confidence) x centrality; re-recording at/above the threshold or overturning resolves the item; every work item carries effort low|mid|high about the WORK (never a model); the fix queue dispatches needs_reverification to the analyzer and failing to the fixer  `src/commands/next/review.rs`, `src/commands/next/scoring.rs`
 

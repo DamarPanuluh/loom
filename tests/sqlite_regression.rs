@@ -8833,3 +8833,54 @@ fn sqlite_smells_routes_metadata_debt_out_of_gating_open() {
         out["debt"]
     );
 }
+
+/// Proposal #1: `intent update --domain/--aspect` (metadata-only, like --layer).
+/// Before this, 100+ unknown-domain intents had NO fix path short of delete+re-add
+/// (which destroys every attached edge/validation/note). Pins that domain and
+/// aspect are settable on an existing intent, and that aspect is validated.
+#[test]
+fn sqlite_intent_update_sets_domain_and_aspect() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("intent-update-meta");
+    let (id, _) = first_two_intent_ids(&graph.root);
+    run_text_as(
+        &graph.root,
+        &[
+            "intent", "update", &id, "--domain", "billing", "--reason",
+            "reclassify under the billing facet",
+        ],
+        "llm:builder",
+    );
+    run_text_as(
+        &graph.root,
+        &[
+            "intent", "update", &id, "--aspect", "sad", "--reason",
+            "mark the failure-path facet",
+        ],
+        "llm:builder",
+    );
+    let show = run_json(&graph.root, &["intent", "show", &id, "--json"]);
+    assert_eq!(
+        show["intent"]["domain"],
+        serde_json::json!("billing"),
+        "domain must be settable on an existing intent (proposal #1 — no more delete+re-add): {show}"
+    );
+    assert_eq!(
+        show["intent"]["aspect"],
+        serde_json::json!("sad"),
+        "aspect must be settable on an existing intent: {show}"
+    );
+    // Invalid aspect is rejected (vocabulary-checked like --boundary).
+    let bad = run_json_failure_as(
+        &graph.root,
+        &[
+            "intent", "update", &id, "--aspect", "bogus", "--reason",
+            "attempting an out-of-vocabulary aspect to check validation", "--json",
+        ],
+        "llm:builder",
+    );
+    assert!(
+        bad.to_string().contains("Invalid --aspect"),
+        "an out-of-vocabulary aspect must be rejected: {bad}"
+    );
+}

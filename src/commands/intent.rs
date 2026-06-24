@@ -215,6 +215,8 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
             name,
             layer,
             boundary,
+            domain,
+            aspect,
             description,
             reword,
             reason,
@@ -227,6 +229,8 @@ fn run_with_sqlite(root: &std::path::Path, cmd: IntentCmd, printer: &Printer) ->
                 name,
                 layer,
                 boundary,
+                domain,
+                aspect,
                 description,
                 reword,
                 reason,
@@ -545,6 +549,8 @@ struct UpdateIntentArgs {
     name: Option<String>,
     layer: Option<String>,
     boundary: Option<String>,
+    domain: Option<String>,
+    aspect: Option<String>,
     description: Option<String>,
     reword: bool,
     reason: String,
@@ -562,6 +568,8 @@ fn handle_update(
         name,
         layer,
         boundary,
+        domain,
+        aspect,
         description,
         reword,
         reason,
@@ -598,6 +606,8 @@ fn handle_update(
         &name,
         &layer,
         &boundary,
+        &domain,
+        &aspect,
         &description,
         &criterion,
     )?;
@@ -628,6 +638,8 @@ struct UpdateChanges<'a> {
     name: Option<&'a str>,
     layer: Option<&'a str>,
     boundary: Option<&'a str>,
+    domain: Option<&'a str>,
+    aspect: Option<&'a str>,
     description: Option<&'a str>,
     criterion: Option<&'a str>,
 }
@@ -653,6 +665,8 @@ fn update_changes<'a>(
     name: &'a Option<String>,
     layer: &'a Option<String>,
     boundary: &'a Option<String>,
+    domain: &'a Option<String>,
+    aspect: &'a Option<String>,
     description: &'a Option<String>,
     criterion: &'a Option<String>,
 ) -> Result<UpdateChanges<'a>> {
@@ -666,6 +680,12 @@ fn update_changes<'a>(
         boundary: boundary
             .as_deref()
             .filter(|candidate| *candidate != intent.boundary.as_str()),
+        domain: domain
+            .as_deref()
+            .filter(|candidate| *candidate != intent.domain.as_str()),
+        aspect: aspect
+            .as_deref()
+            .filter(|candidate| *candidate != intent.aspect.as_str()),
         description: description
             .as_deref()
             .filter(|candidate| *candidate != intent.description.as_str()),
@@ -676,11 +696,13 @@ fn update_changes<'a>(
     if changes.name.is_none()
         && changes.layer.is_none()
         && changes.boundary.is_none()
+        && changes.domain.is_none()
+        && changes.aspect.is_none()
         && changes.description.is_none()
         && changes.criterion.is_none()
     {
         anyhow::bail!(
-            "Nothing to change: pass --name, --layer, --boundary, --description, and/or --criterion with a value that differs from the current one (`loom intent show {}` prints them).",
+            "Nothing to change: pass --name, --layer, --boundary, --domain, --aspect, --description, and/or --criterion with a value that differs from the current one (`loom intent show {}` prints them).",
             id
         );
     }
@@ -698,6 +720,13 @@ fn update_changes<'a>(
     if let Some(boundary) = changes.boundary {
         if !matches!(boundary, "inbound" | "outbound" | "") {
             anyhow::bail!("Invalid --boundary '{boundary}'. Valid: inbound | outbound | \"\".");
+        }
+    }
+    if let Some(aspect) = changes.aspect {
+        if !matches!(aspect, "happy" | "sad" | "fallback" | "edge_case" | "") {
+            anyhow::bail!(
+                "Invalid --aspect '{aspect}'. Valid: happy | sad | fallback | edge_case | \"\"."
+            );
         }
     }
     Ok(changes)
@@ -773,6 +802,52 @@ fn record_update_notes_and_ripple(
                 } else {
                     boundary
                 },
+                ctx.reason
+            ),
+            author: ctx.by.to_string(),
+            target_kind: "intent".into(),
+            target_id: ctx.id.to_string(),
+            resolution: String::new(),
+            audience: String::new(),
+            created_at: ctx.now.to_string(),
+        })?;
+    }
+    if let Some(domain) = changes.domain {
+        store.set_intent_domain(ctx.id, domain, ctx.now)?;
+        store.insert_note(&crate::types::Note {
+            id: Uuid::new_v4().to_string(),
+            kind: "decision".into(),
+            text: format!(
+                "domain changed: '{}' -> '{}' ({})",
+                if ctx.intent.domain.is_empty() {
+                    "<unknown>"
+                } else {
+                    &ctx.intent.domain
+                },
+                if domain.is_empty() { "<unknown>" } else { domain },
+                ctx.reason
+            ),
+            author: ctx.by.to_string(),
+            target_kind: "intent".into(),
+            target_id: ctx.id.to_string(),
+            resolution: String::new(),
+            audience: String::new(),
+            created_at: ctx.now.to_string(),
+        })?;
+    }
+    if let Some(aspect) = changes.aspect {
+        store.set_intent_aspect(ctx.id, aspect, ctx.now)?;
+        store.insert_note(&crate::types::Note {
+            id: Uuid::new_v4().to_string(),
+            kind: "decision".into(),
+            text: format!(
+                "aspect changed: '{}' -> '{}' ({})",
+                if ctx.intent.aspect.is_empty() {
+                    "<none>"
+                } else {
+                    &ctx.intent.aspect
+                },
+                if aspect.is_empty() { "<none>" } else { aspect },
                 ctx.reason
             ),
             author: ctx.by.to_string(),
