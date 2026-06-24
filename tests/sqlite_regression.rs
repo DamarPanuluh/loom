@@ -9300,3 +9300,116 @@ fn sqlite_sync_precise_for_unchanged_top_level_sibling() {
         "exactly ONE proof (alpha's) must flip — beta's untouched top-level grounding stays precise: {sync}"
     );
 }
+
+/// REGRESSION: a `to_be_removed` build item is dispatched to the BUILDER lane,
+/// not the fixer. The REMOVE recipe's mutating steps (`edge unimplement`,
+/// `codefile remove`, `intent retire`) are all builder-only, so dispatching
+/// removal to the fixer would hand the operator a recipe whose every command its
+/// own role is denied — the mirror of the validate-step lane violation the
+/// planned recipe avoids by handing off.
+#[test]
+fn sqlite_remove_recipe_is_dispatched_to_the_builder_lane_it_needs() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("remove-lane");
+    // A planned leaf grounded in a fresh file, then flipped to to_be_removed —
+    // the sole build candidate on the fully-implemented fixture (deterministic).
+    write_scratch_file(
+        &graph.root,
+        "scratch/legacy.rs",
+        "pub fn legacy_path() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/legacy.rs", "--json"],
+        "llm:builder",
+    );
+    let added = run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "add",
+            "--name",
+            "legacy behavior slated for deletion",
+            "--description",
+            "an obsolete behavior whose code should be removed",
+            "--criterion",
+            "the legacy path no longer exists anywhere in the code",
+            "--level",
+            "feature",
+            "--lifecycle",
+            "planned",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    let id = added["id"].as_str().expect("new intent id").to_string();
+    run_json_as(
+        &graph.root,
+        &[
+            "edge",
+            "implement",
+            &id,
+            "scratch/legacy.rs",
+            "--locator",
+            "legacy_path",
+            "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "mark",
+            &id,
+            "--lifecycle",
+            "to_be_removed",
+            "--reason",
+            "obsolete; superseded by the v2 path",
+            "--json",
+        ],
+        "llm:fixer",
+    );
+
+    // The removal item is dispatched to the BUILDER (whose lane owns every step
+    // of its recipe), not the fixer who flipped its lifecycle.
+    let item = run_json(&graph.root, &["next", "--mode", "build", "--json"]);
+    assert_eq!(
+        item["owner_role"].as_str(),
+        Some("builder"),
+        "to_be_removed removal work is builder-lane, not fixer: {item}"
+    );
+    let action = item["suggested_action"].as_str().expect("suggested_action");
+    assert!(
+        action.contains("REMOVE the code for this intent"),
+        "the REMOVE recipe is served for a to_be_removed leaf: {action}"
+    );
+
+    // The negation of the contradiction: walk the recipe's mutating steps AS the
+    // dispatched owner (llm:builder). `run_json_as` panics on a non-zero exit, so
+    // a lane violation on any step fails this test — the owner is never told a
+    // step it will be denied. (Recipe order: unimplement → codefile remove →
+    // retire, each with a substantive reason the evidence gate accepts.)
+    run_json_as(
+        &graph.root,
+        &["edge", "unimplement", &id, "scratch/legacy.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "remove", "scratch/legacy.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "intent",
+            "retire",
+            &id,
+            "--reason",
+            "all groundings deleted; behavior removed from the code",
+            "--json",
+        ],
+        "llm:builder",
+    );
+}

@@ -109,18 +109,26 @@ pub(super) fn run_build(
     let implements_total = cap_section(&mut implements);
     let mut validations = db.validations_for_intent(&intent.id)?;
     let validations_total = cap_section(&mut validations);
-    // planned → builder constructs it; needs_change → fixer changes it.
-    // Effort names the work: writing NEW code from a criterion (planned leaf)
-    // and repairing existing code (needs_change) are high; verifying a
-    // roll-up is mid.
-    let (role, effort) =
-        if intent.lifecycle == "needs_change" || intent.lifecycle == "to_be_removed" {
-            ("fixer", "high")
-        } else if c.rollup {
-            ("builder", "mid")
-        } else {
-            ("builder", "high")
-        };
+    // planned → builder constructs it; needs_change → fixer repairs it;
+    // to_be_removed → builder tears it down. Removal is the INVERSE of
+    // construction and lives in the SAME lane: `loom edge unimplement`,
+    // `loom codefile remove`, and `loom intent retire` — every mutating step of
+    // the REMOVE recipe — are builder-only (see src/gate.rs). Dispatching removal
+    // to the fixer would hand the operator a recipe whose every command its own
+    // role is denied, the mirror of the validate-step lane violation the planned
+    // recipe avoids by handing off.
+    // Effort names the work: writing NEW code from a criterion (planned leaf),
+    // repairing existing code (needs_change), and removing it (to_be_removed)
+    // are high; verifying a roll-up is mid.
+    let (role, effort) = if intent.lifecycle == "needs_change" {
+        ("fixer", "high")
+    } else if intent.lifecycle == "to_be_removed" {
+        ("builder", "high")
+    } else if c.rollup {
+        ("builder", "mid")
+    } else {
+        ("builder", "high")
+    };
     let (notes, notes_total) = note_surfaces(db.notes_for_target(&intent.id)?, role);
     let action = build_action(intent, c.rollup);
 
@@ -467,7 +475,7 @@ fn build_action(intent: &crate::types::Intent, rollup: bool) -> String {
   \
              4. Flag the ripple: loom sync   (stales claims the deletion touched)
   \
-             5. When no grounding remains, this intent reads done; retire it: loom intent retire {id} --reason \"removed\"",
+             5. When no grounding remains, this intent reads done; retire it: loom intent retire {id} --reason \"all groundings deleted; behavior removed\"",
             id = intent.id,
         ),
         other => format!("Intent '{}' has lifecycle '{}' — review it.", intent.name, other),

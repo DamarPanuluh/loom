@@ -93319,7 +93319,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-24T17:43:59.084394+00:00",
+  "last_synced": "2026-06-24T18:06:23.120641+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -102268,12 +102268,12 @@
         ]
       },
       {
-        "content_hash": "beb8331f31479a22",
+        "content_hash": "37dcaf498f636663",
         "extractor_grade": "high",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-24T17:33:56.244792751+00:00",
+        "last_modified": "2026-06-24T18:02:48.695893654+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -120948,6 +120948,287 @@
             "visibility": "private"
           },
           {
+            "body_hash": "5264a902f5859ec1",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_remove_recipe_is_dispatched_to_the_builder_lane_it_needs",
+            "line_end": 9415,
+            "line_start": 9311,
+            "name": "sqlite_remove_recipe_is_dispatched_to_the_builder_lane_it_needs",
+            "panic_marker_count": 2,
+            "panic_markers": [
+              "expect"
+            ],
+            "shape_hash": "98b4ee818fdbe4ae",
+            "string_literals": [
+              {
+                "line": 9313,
+                "value": "remove-lane"
+              },
+              {
+                "line": 9318,
+                "value": "scratch/legacy.rs"
+              },
+              {
+                "line": 9319,
+                "value": "pub fn legacy_path() -> u8 { 1 }\\n"
+              },
+              {
+                "line": 9323,
+                "value": "codefile"
+              },
+              {
+                "line": 9323,
+                "value": "add"
+              },
+              {
+                "line": 9323,
+                "value": "scratch/legacy.rs"
+              },
+              {
+                "line": 9323,
+                "value": "--json"
+              },
+              {
+                "line": 9324,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9329,
+                "value": "intent"
+              },
+              {
+                "line": 9330,
+                "value": "add"
+              },
+              {
+                "line": 9331,
+                "value": "--name"
+              },
+              {
+                "line": 9332,
+                "value": "legacy behavior slated for deletion"
+              },
+              {
+                "line": 9333,
+                "value": "--description"
+              },
+              {
+                "line": 9334,
+                "value": "an obsolete behavior whose code should be removed"
+              },
+              {
+                "line": 9335,
+                "value": "--criterion"
+              },
+              {
+                "line": 9336,
+                "value": "the legacy path no longer exists anywhere in the code"
+              },
+              {
+                "line": 9337,
+                "value": "--level"
+              },
+              {
+                "line": 9338,
+                "value": "feature"
+              },
+              {
+                "line": 9339,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9340,
+                "value": "planned"
+              },
+              {
+                "line": 9341,
+                "value": "--json"
+              },
+              {
+                "line": 9343,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9345,
+                "value": "id"
+              },
+              {
+                "line": 9345,
+                "value": "new intent id"
+              },
+              {
+                "line": 9349,
+                "value": "edge"
+              },
+              {
+                "line": 9350,
+                "value": "implement"
+              },
+              {
+                "line": 9352,
+                "value": "scratch/legacy.rs"
+              },
+              {
+                "line": 9353,
+                "value": "--locator"
+              },
+              {
+                "line": 9354,
+                "value": "legacy_path"
+              },
+              {
+                "line": 9355,
+                "value": "--json"
+              },
+              {
+                "line": 9357,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9362,
+                "value": "intent"
+              },
+              {
+                "line": 9363,
+                "value": "mark"
+              },
+              {
+                "line": 9365,
+                "value": "--lifecycle"
+              },
+              {
+                "line": 9366,
+                "value": "to_be_removed"
+              },
+              {
+                "line": 9367,
+                "value": "--reason"
+              },
+              {
+                "line": 9368,
+                "value": "obsolete; superseded by the v2 path"
+              },
+              {
+                "line": 9369,
+                "value": "--json"
+              },
+              {
+                "line": 9371,
+                "value": "llm:fixer"
+              },
+              {
+                "line": 9376,
+                "value": "next"
+              },
+              {
+                "line": 9376,
+                "value": "--mode"
+              },
+              {
+                "line": 9376,
+                "value": "build"
+              },
+              {
+                "line": 9376,
+                "value": "--json"
+              },
+              {
+                "line": 9378,
+                "value": "owner_role"
+              },
+              {
+                "line": 9379,
+                "value": "builder"
+              },
+              {
+                "line": 9380,
+                "value": "to_be_removed removal work is builder-lane, not fixer: {item}"
+              },
+              {
+                "line": 9382,
+                "value": "suggested_action"
+              },
+              {
+                "line": 9382,
+                "value": "suggested_action"
+              },
+              {
+                "line": 9384,
+                "value": "REMOVE the code for this intent"
+              },
+              {
+                "line": 9385,
+                "value": "the REMOVE recipe is served for a to_be_removed leaf: {action}"
+              },
+              {
+                "line": 9395,
+                "value": "edge"
+              },
+              {
+                "line": 9395,
+                "value": "unimplement"
+              },
+              {
+                "line": 9395,
+                "value": "scratch/legacy.rs"
+              },
+              {
+                "line": 9395,
+                "value": "--json"
+              },
+              {
+                "line": 9396,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9400,
+                "value": "codefile"
+              },
+              {
+                "line": 9400,
+                "value": "remove"
+              },
+              {
+                "line": 9400,
+                "value": "scratch/legacy.rs"
+              },
+              {
+                "line": 9400,
+                "value": "--json"
+              },
+              {
+                "line": 9401,
+                "value": "llm:builder"
+              },
+              {
+                "line": 9406,
+                "value": "intent"
+              },
+              {
+                "line": 9407,
+                "value": "retire"
+              },
+              {
+                "line": 9409,
+                "value": "--reason"
+              },
+              {
+                "line": 9410,
+                "value": "all groundings deleted; behavior removed from the code"
+              },
+              {
+                "line": 9411,
+                "value": "--json"
+              },
+              {
+                "line": 9413,
+                "value": "llm:builder"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
             "body_hash": "d8a7a416f82cf049",
             "is_test": true,
             "kind": "fn",
@@ -128875,6 +129156,7 @@
           "fn sqlite_quality_kind_rejects_non_quality_mode",
           "fn sqlite_read_commands_do_not_mutate_the_graph",
           "fn sqlite_reciprocal_relates_to_not_double_counted",
+          "fn sqlite_remove_recipe_is_dispatched_to_the_builder_lane_it_needs",
           "fn sqlite_report_json_caps_unbounded_lists",
           "fn sqlite_report_uninspected_not_contradictory",
           "fn sqlite_review_take_drains_low_confidence_in_bulk",
@@ -139941,70 +140223,70 @@
         ]
       },
       {
-        "content_hash": "11d84e8bb7005d87",
+        "content_hash": "aaa71a9044267830",
         "extractor_grade": "high",
         "id": "4740eabd-74f5-4e1a-8671-477859fcc65b",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-24T16:28:54.385165982+00:00",
+        "last_modified": "2026-06-24T17:58:42.889101187+00:00",
         "path": "src/commands/next/modes.rs",
         "symbol_facts": [
           {
-            "body_hash": "602ebe1c72ba19d8",
+            "body_hash": "ef3358cfb0ae678f",
             "kind": "fn",
             "label": "fn build_action",
-            "line_end": 475,
-            "line_start": 420,
+            "line_end": 483,
+            "line_start": 428,
             "name": "build_action",
             "shape_hash": "7069269b3ac89692",
             "string_literals": [
               {
-                "line": 424,
+                "line": 432,
                 "value": "planned"
               },
               {
-                "line": 425,
+                "line": 433,
                 "value": "ROLL UP this intent — all its children are implemented; nothing is built \\\n             at this altitude directly.\n\\\n             1. Check each child fulfils its criterion (`loom intent show {id}` lists children).\n  \\\n             2. If satisfied: loom intent mark {id} --lifecycle implemented\n  \\\n             3. If a child falls short: loom intent mark <child-id> --lifecycle needs_change --reason \\\"…\\\""
               },
               {
-                "line": 435,
+                "line": 443,
                 "value": "planned"
               },
               {
-                "line": 436,
+                "line": 444,
                 "value": "BUILD this intent — its description + criterion ARE the spec and the acceptance check.\\n\\\n             1. Write the code.\\n  \\\n             2. Register it: loom codefile add <path>\\n  \\\n             3. Ground it: loom edge implement {id} <codefile> --locator \\\"<symbol>\\\"\\n     \\\n                (the locator is verified against the file NOW — a typo'd or renamed symbol is rejected here, not silently staled at the next sync).\\n  \\\n             4. Mark built: loom intent mark {id} --lifecycle implemented   (a leaf marked implemented with NO proof is flagged implemented-but-unproven until step 6 lands).\\n  \\\n             5. Baseline it: loom sync   (stamps the new files; future edits ripple correctly).\\n  \\\n             6. PROVE the criterion — this is VALIDATOR work, so HAND OFF rather than run it from the build lane: `loom next --mode validate` serves this leaf next. Encode the criterion as a real check (loom validation add --name \\\"<criterion, as a check>\\\" --type test --command \\\"<cmd>\\\" --intent {id}), then a validator runs `loom validate {id}` (no runnable proof? record a manual verdict: loom validation mark <id> --result passed --evidence \\\"…\\\"; an endpoint-reachable criterion proves best as a consumer saga: loom saga add <spec.yaml>).\\n  \\\n             Noticed a relationship while coding (this calls or depends on another intent)? Capture it now so discovery need not re-find it: loom note add --intent {id} --for analyzer --text \\\"relates to <other intent>: <how>\\\"."
               },
               {
-                "line": 447,
+                "line": 455,
                 "value": "needs_change"
               },
               {
-                "line": 448,
+                "line": 456,
                 "value": "CHANGE the code for this intent (the description/criteria + notes describe the desired end state).\n\\\n             1. Make the minimal change.\n  \\\n             2. Flag the ripple: loom sync   (stales every claim the change touched)\n  \\\n             3. Mark done: loom intent mark {id} --lifecycle implemented\n  \\\n             4. Re-verify what sync flagged: loom next --mode fix"
               },
               {
-                "line": 459,
+                "line": 467,
                 "value": "to_be_removed"
               },
               {
-                "line": 460,
-                "value": "REMOVE the code for this intent — cleanup is done by ABSENCE (its criterion is \\\"this is gone\\\").\n\\\n             1. Delete the code it grounds (`loom intent show {id}` / `loom explain {id}` list the files/symbols).\n  \\\n             2. Unground each file: loom edge unimplement {id} <codefile>\n  \\\n             3. Drop now-dead files from the graph: loom codefile remove <path>\n  \\\n             4. Flag the ripple: loom sync   (stales claims the deletion touched)\n  \\\n             5. When no grounding remains, this intent reads done; retire it: loom intent retire {id} --reason \\\"removed\\\""
+                "line": 468,
+                "value": "REMOVE the code for this intent — cleanup is done by ABSENCE (its criterion is \\\"this is gone\\\").\n\\\n             1. Delete the code it grounds (`loom intent show {id}` / `loom explain {id}` list the files/symbols).\n  \\\n             2. Unground each file: loom edge unimplement {id} <codefile>\n  \\\n             3. Drop now-dead files from the graph: loom codefile remove <path>\n  \\\n             4. Flag the ripple: loom sync   (stales claims the deletion touched)\n  \\\n             5. When no grounding remains, this intent reads done; retire it: loom intent retire {id} --reason \\\"all groundings deleted; behavior removed\\\""
               },
               {
-                "line": 473,
+                "line": 481,
                 "value": "Intent '{}' has lifecycle '{}' — review it."
               }
             ],
             "visibility": "private"
           },
           {
-            "body_hash": "a94ee53c06eb217c",
+            "body_hash": "1baafae0b604c7cc",
             "kind": "fn",
             "label": "pub(super) fn run_build",
-            "line_end": 222,
+            "line_end": 230,
             "line_start": 8,
             "name": "run_build",
-            "shape_hash": "4d477ec165e97fcd",
+            "shape_hash": "1ce5264470c4c050",
             "string_literals": [
               {
                 "line": 13,
@@ -140159,127 +140441,135 @@
                 "value": "  → Next: {}"
               },
               {
-                "line": 117,
+                "line": 123,
                 "value": "needs_change"
               },
               {
-                "line": 117,
-                "value": "to_be_removed"
-              },
-              {
-                "line": 118,
+                "line": 124,
                 "value": "fixer"
               },
               {
-                "line": 118,
+                "line": 124,
                 "value": "high"
               },
               {
-                "line": 120,
+                "line": 125,
+                "value": "to_be_removed"
+              },
+              {
+                "line": 126,
                 "value": "builder"
               },
               {
-                "line": 120,
-                "value": "mid"
-              },
-              {
-                "line": 122,
-                "value": "builder"
-              },
-              {
-                "line": 122,
+                "line": 126,
                 "value": "high"
               },
               {
                 "line": 128,
+                "value": "builder"
+              },
+              {
+                "line": 128,
+                "value": "mid"
+              },
+              {
+                "line": 130,
+                "value": "builder"
+              },
+              {
+                "line": 130,
+                "value": "high"
+              },
+              {
+                "line": 136,
                 "value": "BUILD"
               },
               {
-                "line": 149,
+                "line": 157,
                 "value": "next_step"
               },
               {
-                "line": 150,
+                "line": 158,
                 "value": "graph_state"
               },
               {
-                "line": 151,
+                "line": 159,
                 "value": "notes_total"
               },
               {
-                "line": 152,
+                "line": 160,
                 "value": "implements_total"
               },
               {
-                "line": 153,
+                "line": 161,
                 "value": "validations_total"
               },
               {
-                "line": 161,
+                "line": 169,
                 "value": "── Next Build Item  [{}  priority={:.2}] ───────────────────────────────"
               },
               {
-                "line": 165,
+                "line": 173,
                 "value": "── Intent ──────────────────────────────────────────────────────────"
               },
               {
-                "line": 166,
+                "line": 174,
                 "value": "{}"
               },
               {
-                "line": 169,
+                "line": 177,
                 "value": "── Currently grounded at ───────────────────────────────────────────"
               },
               {
-                "line": 174,
+                "line": 182,
                 "value": "  @ {}"
               },
               {
-                "line": 176,
+                "line": 184,
                 "value": "  {}{}"
               },
               {
-                "line": 181,
+                "line": 189,
                 "value": "loom intent show {}"
               },
               {
-                "line": 183,
+                "line": 191,
                 "value": "  {m}"
               },
               {
-                "line": 190,
+                "line": 198,
                 "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
               },
               {
-                "line": 196,
+                "line": 204,
                 "value": "── Notes ({}) ──────────────────────────────────────────────────────"
               },
               {
-                "line": 202,
+                "line": 210,
                 "value": "  [{}] {}  ({}, ×{})"
               },
               {
-                "line": 204,
+                "line": 212,
                 "value": "  [{}] {}  ({})"
               },
               {
-                "line": 212,
+                "line": 220,
                 "value": "  {m}"
               },
               {
-                "line": 216,
+                "line": 224,
                 "value": "── Suggested Action ────────────────────────────────────────────────"
               },
               {
-                "line": 217,
+                "line": 225,
                 "value": "{}"
               },
               {
-                "line": 219,
+                "line": 227,
                 "value": "  Dispatch — {}"
               },
               {
-                "line": 220,
+                "line": 228,
                 "value": "  {}"
               }
             ],
@@ -140289,261 +140579,261 @@
             "body_hash": "09b9b3e793a4bf9d",
             "kind": "fn",
             "label": "pub(super) fn run_prove",
-            "line_end": 652,
-            "line_start": 483,
+            "line_end": 660,
+            "line_start": 491,
             "name": "run_prove",
             "shape_hash": "3c0ba6b6d45519cd",
             "string_literals": [
               {
-                "line": 495,
+                "line": 503,
                 "value": "status"
               },
               {
-                "line": 495,
+                "line": 503,
                 "value": "empty"
               },
               {
-                "line": 495,
+                "line": 503,
                 "value": "mode"
               },
               {
-                "line": 495,
+                "line": 503,
                 "value": "prove"
               },
               {
-                "line": 496,
+                "line": 504,
                 "value": "message"
               },
               {
-                "line": 496,
+                "line": 504,
                 "value": "No proposed hypotheses and no stale support — the pre-decision plane is clear."
               },
               {
-                "line": 497,
+                "line": 505,
                 "value": "next_step"
               },
               {
-                "line": 498,
+                "line": 506,
                 "value": "graph_state"
               },
               {
-                "line": 502,
+                "line": 510,
                 "value": "✓ No proposed hypotheses and no stale support — the pre-decision plane is clear."
               },
               {
-                "line": 505,
+                "line": 513,
                 "value": "  {}"
               },
               {
-                "line": 506,
+                "line": 514,
                 "value": "  → Next: {}"
               },
               {
-                "line": 517,
+                "line": 525,
                 "value": "analyzer"
               },
               {
-                "line": 520,
+                "line": 528,
                 "value": "needs_reverification"
               },
               {
-                "line": 523,
+                "line": 531,
                 "value": "supported"
               },
               {
-                "line": 525,
+                "line": 533,
                 "value": "RE-PROVE this hypothesis — its support was earned against code that has since changed \\\n             (stale target(s): {stale}; the TARGETS transition notes name the files).\\n\\\n             Re-check the claim against the code as it is NOW, then re-record:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what still holds>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<the change resolved it>\\\" --confidence 0.9\\\n             \\nRe-proving re-stamps every TARGETS edge, clearing the staleness."
               },
               {
-                "line": 532,
+                "line": 540,
                 "value": ", "
               },
               {
-                "line": 536,
+                "line": 544,
                 "value": "PROVE this hypothesis — is the claimed problem real in the code as it is NOW?\\n\\\n             Read the targeted intents' groundings, check the claim, record what you found:\\n\\\n             \\n  loom hypothesis prove {id} --verdict supported --evidence \\\"<what you found>\\\" --confidence 0.9\\\n             \\n  loom hypothesis prove {id} --verdict refuted  --evidence \\\"<why the claim doesn't hold>\\\" --confidence 0.9\\\n             \\nThe proposer was '{author}' — the prover must be someone else (when roles are declared). \\\n             A supported verdict hands the adopt/reject decision to the builder lane."
               },
               {
-                "line": 551,
+                "line": 559,
                 "value": "mode"
               },
               {
-                "line": 551,
+                "line": 559,
                 "value": "prove"
               },
               {
-                "line": 552,
+                "line": 560,
                 "value": "priority_score"
               },
               {
-                "line": 553,
+                "line": 561,
                 "value": "hypothesis"
               },
               {
-                "line": 554,
+                "line": 562,
                 "value": "targets"
               },
               {
-                "line": 555,
+                "line": 563,
                 "value": "implements"
               },
               {
-                "line": 556,
+                "line": 564,
                 "value": "notes"
               },
               {
-                "line": 557,
+                "line": 565,
                 "value": "targets_total"
               },
               {
-                "line": 558,
+                "line": 566,
                 "value": "implements_total"
               },
               {
-                "line": 559,
+                "line": 567,
                 "value": "notes_total"
               },
               {
-                "line": 560,
+                "line": 568,
                 "value": "suggested_action"
               },
               {
-                "line": 561,
+                "line": 569,
                 "value": "owner_role"
               },
               {
-                "line": 561,
+                "line": 569,
                 "value": "analyzer"
-              },
-              {
-                "line": 562,
-                "value": "effort"
-              },
-              {
-                "line": 562,
-                "value": "high"
-              },
-              {
-                "line": 563,
-                "value": "dispatch"
-              },
-              {
-                "line": 563,
-                "value": "analyzer"
-              },
-              {
-                "line": 564,
-                "value": "graph_state"
               },
               {
                 "line": 570,
-                "value": "── Next Prove Item  [{}  priority={:.2}] ─────────────────────────"
+                "value": "effort"
+              },
+              {
+                "line": 570,
+                "value": "high"
               },
               {
                 "line": 571,
-                "value": "supported"
+                "value": "dispatch"
               },
               {
-                "line": 572,
-                "value": "stale support"
-              },
-              {
-                "line": 574,
-                "value": "proposed"
-              },
-              {
-                "line": 579,
-                "value": "  hypothesis:        {}  ({})"
-              },
-              {
-                "line": 580,
-                "value": "  claim:             {}"
-              },
-              {
-                "line": 581,
-                "value": "  proposal:          {}"
-              },
-              {
-                "line": 582,
-                "value": "  predicted_outcome: {}"
-              },
-              {
-                "line": 583,
-                "value": "  proposed by:       {}"
-              },
-              {
-                "line": 587,
-                "value": "── Targets ({}) ─────────────────────────────────────────────────────"
-              },
-              {
-                "line": 591,
-                "value": "  → {}  ({})"
-              },
-              {
-                "line": 596,
-                "value": "loom hypothesis show {}"
-              },
-              {
-                "line": 598,
-                "value": "  {m}"
-              },
-              {
-                "line": 603,
-                "value": "── Targeted code ───────────────────────────────────────────────────"
-              },
-              {
-                "line": 608,
-                "value": "  @ {}"
-              },
-              {
-                "line": 610,
-                "value": "  {}{}"
-              },
-              {
-                "line": 615,
-                "value": "loom hypothesis show {}"
-              },
-              {
-                "line": 617,
-                "value": "  {m}"
-              },
-              {
-                "line": 624,
-                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
-              },
-              {
-                "line": 630,
-                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
-              },
-              {
-                "line": 636,
-                "value": "  [{}] {}  ({}, ×{})"
-              },
-              {
-                "line": 638,
-                "value": "  [{}] {}  ({})"
-              },
-              {
-                "line": 642,
-                "value": "  {m}"
-              },
-              {
-                "line": 646,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 647,
-                "value": "{}"
-              },
-              {
-                "line": 649,
-                "value": "  Dispatch — {}  [effort: high]"
-              },
-              {
-                "line": 649,
+                "line": 571,
                 "value": "analyzer"
               },
               {
+                "line": 572,
+                "value": "graph_state"
+              },
+              {
+                "line": 578,
+                "value": "── Next Prove Item  [{}  priority={:.2}] ─────────────────────────"
+              },
+              {
+                "line": 579,
+                "value": "supported"
+              },
+              {
+                "line": 580,
+                "value": "stale support"
+              },
+              {
+                "line": 582,
+                "value": "proposed"
+              },
+              {
+                "line": 587,
+                "value": "  hypothesis:        {}  ({})"
+              },
+              {
+                "line": 588,
+                "value": "  claim:             {}"
+              },
+              {
+                "line": 589,
+                "value": "  proposal:          {}"
+              },
+              {
+                "line": 590,
+                "value": "  predicted_outcome: {}"
+              },
+              {
+                "line": 591,
+                "value": "  proposed by:       {}"
+              },
+              {
+                "line": 595,
+                "value": "── Targets ({}) ─────────────────────────────────────────────────────"
+              },
+              {
+                "line": 599,
+                "value": "  → {}  ({})"
+              },
+              {
+                "line": 604,
+                "value": "loom hypothesis show {}"
+              },
+              {
+                "line": 606,
+                "value": "  {m}"
+              },
+              {
+                "line": 611,
+                "value": "── Targeted code ───────────────────────────────────────────────────"
+              },
+              {
+                "line": 616,
+                "value": "  @ {}"
+              },
+              {
+                "line": 618,
+                "value": "  {}{}"
+              },
+              {
+                "line": 623,
+                "value": "loom hypothesis show {}"
+              },
+              {
+                "line": 625,
+                "value": "  {m}"
+              },
+              {
+                "line": 632,
+                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
+              },
+              {
+                "line": 638,
+                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
+              },
+              {
+                "line": 644,
+                "value": "  [{}] {}  ({}, ×{})"
+              },
+              {
+                "line": 646,
+                "value": "  [{}] {}  ({})"
+              },
+              {
                 "line": 650,
+                "value": "  {m}"
+              },
+              {
+                "line": 654,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 655,
+                "value": "{}"
+              },
+              {
+                "line": 657,
+                "value": "  Dispatch — {}  [effort: high]"
+              },
+              {
+                "line": 657,
+                "value": "analyzer"
+              },
+              {
+                "line": 658,
                 "value": "  {}"
               }
             ],
@@ -140553,277 +140843,277 @@
             "body_hash": "90599812024727e3",
             "kind": "fn",
             "label": "pub(super) fn run_validate",
-            "line_end": 418,
-            "line_start": 228,
+            "line_end": 426,
+            "line_start": 236,
             "name": "run_validate",
             "shape_hash": "f2c413689ab817e5",
             "string_literals": [
               {
-                "line": 243,
+                "line": 251,
                 "value": "status"
               },
               {
-                "line": 243,
+                "line": 251,
                 "value": "empty"
               },
               {
-                "line": 243,
+                "line": 251,
                 "value": "mode"
-              },
-              {
-                "line": 243,
-                "value": "validate"
-              },
-              {
-                "line": 244,
-                "value": "message"
-              },
-              {
-                "line": 244,
-                "value": "Every intent's proof is green — nothing to validate."
-              },
-              {
-                "line": 245,
-                "value": "next_step"
-              },
-              {
-                "line": 246,
-                "value": "graph_state"
               },
               {
                 "line": 251,
-                "value": "✓ Every intent's proof is green — nothing to validate."
-              },
-              {
-                "line": 253,
-                "value": "  {}"
-              },
-              {
-                "line": 254,
-                "value": "  → Next: {}"
-              },
-              {
-                "line": 261,
-                "value": "validator"
-              },
-              {
-                "line": 262,
-                "value": "missing journey proof"
-              },
-              {
-                "line": 264,
-                "value": "PROVE this user-visible journey boundary.\\n\\\n             1. Add or extend a consumer saga with a step bound to this intent:\\n     \\\n                loom saga add <spec.yaml>\\n  \\\n             2. Run the saga against the live boundary:\\n     \\\n                BASE_URL=<url> loom saga run <name>\\n  \\\n             3. If this is not actually user-visible, correct the audience ruling:\\n     \\\n                loom intent confirm {id} --visibility internal"
-              },
-              {
-                "line": 275,
-                "value": "PROVE this intent — it has no validations:\\n\\\n             1. Decide how it can be proven (test | assertion | benchmark | manual_check —\\n     \\\n                or, if it's part of an endpoint-reachable journey, a consumer saga:\\n     \\\n                `loom saga add <spec.yaml>` proves the whole chain by executing it).\\n  \\\n             2. loom validation add --name \\\"…\\\" --type test --command \\\"…\\\" --intent {id}\\n  \\\n             3. loom validate {id}"
-              },
-              {
-                "line": 288,
-                "value": "not_run"
-              },
-              {
-                "line": 296,
-                "value": "  - {}: loom validation update {} --command \\\"…\\\"  OR  loom validation mark {} --result passed|failed --evidence \\\"…\\\""
-              },
-              {
-                "line": 301,
-                "value": "\\n"
-              },
-              {
-                "line": 303,
-                "value": "This intent has validation(s) with no command; `loom validate {id}` will skip them.\\n\\\n                 Add commands or record manual verdicts:\\n{fixes}"
-              },
-              {
-                "line": 310,
-                "value": "saga"
-              },
-              {
-                "line": 312,
-                "value": "\\nA saga proof is linked — triage failures without stamping via `loom saga diagnose {}`, then stamp proof with `loom saga run {}`."
-              },
-              {
-                "line": 318,
-                "value": "Run this intent's validations and record the verdicts:\\n\\\n                 \\n  loom validate {id}\\n\\\n                 \\nIf one fails the behavior is broken — never accept a red proof: FIX the code \\\n                 and re-validate, fix the PROOF if the test is wrong, or DEFER as tracked work \\\n                 (`loom intent mark {id} --lifecycle needs_change --reason \\\"<failure>\\\"`).{saga_hint}"
-              },
-              {
-                "line": 331,
-                "value": "mode"
-              },
-              {
-                "line": 331,
                 "value": "validate"
               },
               {
-                "line": 332,
-                "value": "reason"
+                "line": 252,
+                "value": "message"
               },
               {
-                "line": 333,
-                "value": "priority_score"
+                "line": 252,
+                "value": "Every intent's proof is green — nothing to validate."
               },
               {
-                "line": 334,
-                "value": "intent"
+                "line": 253,
+                "value": "next_step"
               },
               {
-                "line": 335,
-                "value": "validations"
-              },
-              {
-                "line": 336,
-                "value": "validations_total"
-              },
-              {
-                "line": 337,
-                "value": "notes"
-              },
-              {
-                "line": 338,
-                "value": "notes_total"
-              },
-              {
-                "line": 339,
-                "value": "suggested_action"
-              },
-              {
-                "line": 340,
-                "value": "owner_role"
-              },
-              {
-                "line": 340,
-                "value": "validator"
-              },
-              {
-                "line": 341,
-                "value": "effort"
-              },
-              {
-                "line": 341,
-                "value": "mid"
-              },
-              {
-                "line": 341,
-                "value": "low"
-              },
-              {
-                "line": 342,
-                "value": "dispatch"
-              },
-              {
-                "line": 342,
-                "value": "validator"
-              },
-              {
-                "line": 343,
+                "line": 254,
                 "value": "graph_state"
               },
               {
-                "line": 349,
-                "value": "── Next Validation Item  [priority={:.2}] ──────────────────────────────"
+                "line": 259,
+                "value": "✓ Every intent's proof is green — nothing to validate."
               },
               {
-                "line": 353,
-                "value": "  why: {}"
+                "line": 261,
+                "value": "  {}"
               },
               {
-                "line": 355,
-                "value": "── Intent ──────────────────────────────────────────────────────────"
+                "line": 262,
+                "value": "  → Next: {}"
               },
               {
-                "line": 356,
-                "value": "{}"
-              },
-              {
-                "line": 359,
-                "value": "── Linked Validations ──────────────────────────────────────────────"
-              },
-              {
-                "line": 362,
-                "value": "passed"
-              },
-              {
-                "line": 362,
-                "value": "✓"
-              },
-              {
-                "line": 363,
-                "value": "failed"
-              },
-              {
-                "line": 363,
-                "value": "✗"
-              },
-              {
-                "line": 364,
-                "value": "blocked"
-              },
-              {
-                "line": 364,
-                "value": "⊘"
-              },
-              {
-                "line": 365,
-                "value": "?"
-              },
-              {
-                "line": 368,
-                "value": "  {} {}  [{}]  cmd: {}"
-              },
-              {
-                "line": 372,
-                "value": "loom validation list"
-              },
-              {
-                "line": 373,
-                "value": "  {m}"
-              },
-              {
-                "line": 382,
-                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
-              },
-              {
-                "line": 388,
-                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
-              },
-              {
-                "line": 394,
-                "value": "  [{}] {}  ({}, ×{})"
-              },
-              {
-                "line": 396,
-                "value": "  [{}] {}  ({})"
-              },
-              {
-                "line": 404,
-                "value": "  {m}"
-              },
-              {
-                "line": 408,
-                "value": "── Suggested Action ────────────────────────────────────────────────"
-              },
-              {
-                "line": 409,
-                "value": "{}"
-              },
-              {
-                "line": 412,
-                "value": "  Dispatch — {}  [effort: {}]"
-              },
-              {
-                "line": 413,
+                "line": 269,
                 "value": "validator"
               },
               {
-                "line": 414,
+                "line": 270,
+                "value": "missing journey proof"
+              },
+              {
+                "line": 272,
+                "value": "PROVE this user-visible journey boundary.\\n\\\n             1. Add or extend a consumer saga with a step bound to this intent:\\n     \\\n                loom saga add <spec.yaml>\\n  \\\n             2. Run the saga against the live boundary:\\n     \\\n                BASE_URL=<url> loom saga run <name>\\n  \\\n             3. If this is not actually user-visible, correct the audience ruling:\\n     \\\n                loom intent confirm {id} --visibility internal"
+              },
+              {
+                "line": 283,
+                "value": "PROVE this intent — it has no validations:\\n\\\n             1. Decide how it can be proven (test | assertion | benchmark | manual_check —\\n     \\\n                or, if it's part of an endpoint-reachable journey, a consumer saga:\\n     \\\n                `loom saga add <spec.yaml>` proves the whole chain by executing it).\\n  \\\n             2. loom validation add --name \\\"…\\\" --type test --command \\\"…\\\" --intent {id}\\n  \\\n             3. loom validate {id}"
+              },
+              {
+                "line": 296,
+                "value": "not_run"
+              },
+              {
+                "line": 304,
+                "value": "  - {}: loom validation update {} --command \\\"…\\\"  OR  loom validation mark {} --result passed|failed --evidence \\\"…\\\""
+              },
+              {
+                "line": 309,
+                "value": "\\n"
+              },
+              {
+                "line": 311,
+                "value": "This intent has validation(s) with no command; `loom validate {id}` will skip them.\\n\\\n                 Add commands or record manual verdicts:\\n{fixes}"
+              },
+              {
+                "line": 318,
+                "value": "saga"
+              },
+              {
+                "line": 320,
+                "value": "\\nA saga proof is linked — triage failures without stamping via `loom saga diagnose {}`, then stamp proof with `loom saga run {}`."
+              },
+              {
+                "line": 326,
+                "value": "Run this intent's validations and record the verdicts:\\n\\\n                 \\n  loom validate {id}\\n\\\n                 \\nIf one fails the behavior is broken — never accept a red proof: FIX the code \\\n                 and re-validate, fix the PROOF if the test is wrong, or DEFER as tracked work \\\n                 (`loom intent mark {id} --lifecycle needs_change --reason \\\"<failure>\\\"`).{saga_hint}"
+              },
+              {
+                "line": 339,
+                "value": "mode"
+              },
+              {
+                "line": 339,
+                "value": "validate"
+              },
+              {
+                "line": 340,
+                "value": "reason"
+              },
+              {
+                "line": 341,
+                "value": "priority_score"
+              },
+              {
+                "line": 342,
+                "value": "intent"
+              },
+              {
+                "line": 343,
+                "value": "validations"
+              },
+              {
+                "line": 344,
+                "value": "validations_total"
+              },
+              {
+                "line": 345,
+                "value": "notes"
+              },
+              {
+                "line": 346,
+                "value": "notes_total"
+              },
+              {
+                "line": 347,
+                "value": "suggested_action"
+              },
+              {
+                "line": 348,
+                "value": "owner_role"
+              },
+              {
+                "line": 348,
+                "value": "validator"
+              },
+              {
+                "line": 349,
+                "value": "effort"
+              },
+              {
+                "line": 349,
                 "value": "mid"
               },
               {
-                "line": 414,
+                "line": 349,
                 "value": "low"
               },
               {
+                "line": 350,
+                "value": "dispatch"
+              },
+              {
+                "line": 350,
+                "value": "validator"
+              },
+              {
+                "line": 351,
+                "value": "graph_state"
+              },
+              {
+                "line": 357,
+                "value": "── Next Validation Item  [priority={:.2}] ──────────────────────────────"
+              },
+              {
+                "line": 361,
+                "value": "  why: {}"
+              },
+              {
+                "line": 363,
+                "value": "── Intent ──────────────────────────────────────────────────────────"
+              },
+              {
+                "line": 364,
+                "value": "{}"
+              },
+              {
+                "line": 367,
+                "value": "── Linked Validations ──────────────────────────────────────────────"
+              },
+              {
+                "line": 370,
+                "value": "passed"
+              },
+              {
+                "line": 370,
+                "value": "✓"
+              },
+              {
+                "line": 371,
+                "value": "failed"
+              },
+              {
+                "line": 371,
+                "value": "✗"
+              },
+              {
+                "line": 372,
+                "value": "blocked"
+              },
+              {
+                "line": 372,
+                "value": "⊘"
+              },
+              {
+                "line": 373,
+                "value": "?"
+              },
+              {
+                "line": 376,
+                "value": "  {} {}  [{}]  cmd: {}"
+              },
+              {
+                "line": 380,
+                "value": "loom validation list"
+              },
+              {
+                "line": 381,
+                "value": "  {m}"
+              },
+              {
+                "line": 390,
+                "value": "── Notes ({}, showing {}) ─────────────────────────────────────────"
+              },
+              {
+                "line": 396,
+                "value": "── Notes ({}) ──────────────────────────────────────────────────────"
+              },
+              {
+                "line": 402,
+                "value": "  [{}] {}  ({}, ×{})"
+              },
+              {
+                "line": 404,
+                "value": "  [{}] {}  ({})"
+              },
+              {
+                "line": 412,
+                "value": "  {m}"
+              },
+              {
                 "line": 416,
+                "value": "── Suggested Action ────────────────────────────────────────────────"
+              },
+              {
+                "line": 417,
+                "value": "{}"
+              },
+              {
+                "line": 420,
+                "value": "  Dispatch — {}  [effort: {}]"
+              },
+              {
+                "line": 421,
+                "value": "validator"
+              },
+              {
+                "line": 422,
+                "value": "mid"
+              },
+              {
+                "line": 422,
+                "value": "low"
+              },
+              {
+                "line": 424,
                 "value": "  {}"
               }
             ],
