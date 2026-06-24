@@ -9,9 +9,13 @@ use crate::types::{Validation, ValidationResult};
 pub fn run(cmd: ValidationCmd, printer: &Printer) -> Result<()> {
     let cwd = crate::db::resolve_root()?;
     match cmd {
-        ValidationCmd::List { result, limit } => {
+        ValidationCmd::List {
+            result,
+            intent,
+            limit,
+        } => {
             let db = GraphReadHandle::open(&cwd)?;
-            run_list_with_db(&db, result, limit, printer)
+            run_list_with_db(&db, result, intent, limit, printer)
         }
         ValidationCmd::Show { id } => {
             let db = GraphReadHandle::open(&cwd)?;
@@ -343,15 +347,32 @@ fn run_delete_with_sqlite(root: &std::path::Path, id: String, printer: &Printer)
 fn run_list_with_db(
     db: &dyn GraphReadRepository,
     result: Option<String>,
+    intent: Option<String>,
     limit: usize,
     printer: &Printer,
 ) -> Result<()> {
-    let mut validations = db.query_snapshot()?.validations;
+    let snapshot = db.query_snapshot()?;
+    let mut validations = snapshot.validations.clone();
     let result_filter = if let Some(result) = result {
         let parsed: ValidationResult = result.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
         let result = parsed.to_string();
         validations.retain(|validation| validation.last_result == result);
         Some(result)
+    } else {
+        None
+    };
+    // Filter to one intent's proofs via its VALIDATES edges — parity with the
+    // `--intent` selector `validate` / `validation add` already take.
+    let intent_filter = if let Some(intent_key) = intent {
+        let intent_id = crate::db::queries::resolve_intent_from_snapshot(&snapshot, &intent_key)?;
+        let linked: std::collections::HashSet<&str> = snapshot
+            .validates
+            .iter()
+            .filter(|ve| ve.intent_id == intent_id)
+            .map(|ve| ve.validation_id.as_str())
+            .collect();
+        validations.retain(|v| linked.contains(v.id.as_str()));
+        Some(intent_id)
     } else {
         None
     };
@@ -362,9 +383,12 @@ fn run_list_with_db(
             "total":       total,
             "truncated":   validations.len() < total,
             "result_filter": result_filter,
+            "intent_filter": intent_filter,
         }));
     } else if validations.is_empty() {
-        if let Some(result) = result_filter {
+        if let Some(intent_id) = intent_filter {
+            println!("(no validations linked to intent {intent_id})");
+        } else if let Some(result) = result_filter {
             println!("(no validations with result={result})");
         } else {
             println!("(no validations defined)");

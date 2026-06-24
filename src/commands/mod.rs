@@ -48,6 +48,7 @@ pub mod tour;
 pub mod validate;
 pub mod validation;
 pub mod vocab;
+pub mod whoami;
 pub mod wiki;
 
 pub(crate) const POPULATE_NEXT_COMMAND: &str = "loom next --mode populate";
@@ -74,6 +75,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Init        { path, name, observed, no_hook } =>
             init::run(&path, name.as_deref(), observed, no_hook, &printer),
         Command::Status                     => status::run(&printer),
+        Command::Whoami                     => whoami::run(&printer),
         Command::Corpus      { subcommand } => corpus::run(subcommand, &printer),
         Command::Inbox       { subcommand } => inbox::run(subcommand, &printer),
         Command::Intent      { subcommand } => intent::run(subcommand, &printer),

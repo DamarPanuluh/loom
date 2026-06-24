@@ -83,6 +83,11 @@ pub enum Command {
     /// Show graph health: intent count, edge coverage, open issues.
     Status,
 
+    /// Report the acting identity ($LOOM_AGENT) and resolved role — and whether
+    /// lane enforcement is ON (a role is set) or OFF (solo). The pulse footer's
+    /// `as <role>` / `solo` stamp answers this in passing; `whoami` asks directly.
+    Whoami,
+
     /// Inspect and resolve documented source-corpus coverage.
     Corpus {
         #[command(subcommand)]
@@ -2391,6 +2396,12 @@ pub enum ValidationCmd {
         /// Filter by last result: passed | failed | blocked | not_run.
         #[arg(long)]
         result: Option<String>,
+
+        /// Filter to the proofs linked (VALIDATES) to ONE intent (id / name /
+        /// fragment) — the same `--intent` selector `validate` and `validation
+        /// add` accept.
+        #[arg(long)]
+        intent: Option<String>,
 
         /// Max rows (0 = all).
         #[arg(long, default_value_t = crate::output::LIST_LIMIT)]

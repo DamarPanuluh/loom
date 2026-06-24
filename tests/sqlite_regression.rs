@@ -9413,3 +9413,71 @@ fn sqlite_remove_recipe_is_dispatched_to_the_builder_lane_it_needs() {
         "llm:builder",
     );
 }
+
+/// `loom validation list --intent <id>` filters to one intent's VALIDATES proofs
+/// — parity with the `--intent` selector `validate` / `validation add` take.
+#[test]
+fn sqlite_validation_list_filters_by_intent() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("vlist-intent");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "a.py", "def f():\n    return 1\n");
+    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
+    let mk = |name: &str| {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent", "add", "--name", name, "--description", "x", "--level", "feature",
+                "--lifecycle", "implemented", "--json",
+            ],
+            "llm:builder",
+        )["id"]
+            .as_str()
+            .expect("id")
+            .to_string()
+    };
+    let aid = mk("alpha");
+    let bid = mk("beta");
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "alpha-proof", "--type", "test", "--command",
+            "pytest -k alpha", "--intent", &aid, "--json",
+        ],
+        "llm:builder",
+    );
+    run_json_as(
+        &graph.root,
+        &[
+            "validation", "add", "--name", "beta-proof", "--type", "test", "--command",
+            "pytest -k beta", "--intent", &bid, "--json",
+        ],
+        "llm:builder",
+    );
+
+    let only_a = run_json(&graph.root, &["validation", "list", "--intent", &aid, "--json"]);
+    let names: Vec<&str> = only_a["validations"]
+        .as_array()
+        .expect("validations")
+        .iter()
+        .map(|v| v["name"].as_str().unwrap_or(""))
+        .collect();
+    assert_eq!(names, vec!["alpha-proof"], "--intent must show only that intent's proof: {only_a}");
+    assert_eq!(only_a["intent_filter"].as_str(), Some(aid.as_str()), "intent_filter echoes the resolved id: {only_a}");
+
+    let all = run_json(&graph.root, &["validation", "list", "--json"]);
+    assert_eq!(all["validations"].as_array().map(|a| a.len()), Some(2), "bare list shows both: {all}");
+}
+
+/// `loom whoami` reports the acting identity, resolved role, and lane-enforcement
+/// state. With a role set, lane enforcement is ON.
+#[test]
+fn sqlite_whoami_reports_role_and_lane_enforcement() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("whoami");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let me = run_json_as(&graph.root, &["whoami", "--json"], "llm:fixer");
+    assert_eq!(me["role"].as_str(), Some("fixer"), "whoami resolves the role from $LOOM_AGENT: {me}");
+    assert_eq!(me["lane_enforcement"], serde_json::json!(true), "a role means lane enforcement is ON: {me}");
+    assert_eq!(me["acting"].as_str(), Some("llm:fixer"), "{me}");
+}
