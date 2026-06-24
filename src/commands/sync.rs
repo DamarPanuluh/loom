@@ -483,6 +483,21 @@ fn flag_relates(
             if edge.inspection_status == "independent" {
                 return coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
             }
+            // A PASSING edge coupled solely by `imports` is mechanically
+            // re-derivable: a behavior-preserving edit to a grounded file (a hub
+            // like the storage trait or output printer that dozens of intents
+            // import) does NOT change the import, so re-staling it into a manual
+            // re-verification is laundering-prone busywork — the exact tension
+            // that re-opened hundreds of edges on a cosmetic change. Re-derive it
+            // instead: keep it passing while the import is still present; stale it
+            // ONLY when the import is now GONE (the structural basis disappeared),
+            // mirroring how an `independent` edge re-opens only when a coupling
+            // appears. Judgment couplings (calls/inheritance/…) still stale.
+            if edge.inspection_status == "passing"
+                && crate::types::relates_is_import_only_coupling(&edge.kinds)
+            {
+                return !coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
+            }
             crate::types::relates_stales_on_code_change(&edge.kinds)
         })
     {

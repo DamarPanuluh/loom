@@ -733,6 +733,26 @@ pub fn relates_stales_on_code_change(kinds: &[String]) -> bool {
         })
 }
 
+/// Whether a PASSING edge is coupled SOLELY by `imports` — i.e. every one of its
+/// code-staling kinds is `imports`. Such a coupling is MECHANICALLY re-derivable:
+/// "A's file imports B's file" is a structural fact a behavior-preserving edit
+/// (a renamed string, a new sibling function, a reformatted body) does NOT
+/// change. So the sync ripple should NOT stale it into a laundering-prone manual
+/// re-verification on every edit to a hub file; it can re-derive the import from
+/// current extraction and keep the edge passing as long as the import is still
+/// present (the caller checks the live `coupled` set). An edge that ALSO carries
+/// a JUDGMENT coupling (`calls`/`inheritance`/`shares_state`/`manual`) — whose
+/// truth a body change CAN flip — is excluded and stales as before. `shares_file`
+/// (co-location, not re-derivable here) and empty-kinds (unknown) also stale.
+pub fn relates_is_import_only_coupling(kinds: &[String]) -> bool {
+    let parsed: Vec<RelationKind> = kinds.iter().filter_map(|k| k.parse().ok()).collect();
+    parsed.iter().any(|rk| matches!(rk, RelationKind::Imports))
+        && parsed
+            .iter()
+            .filter(|rk| rk.stales_on_code_change())
+            .all(|rk| matches!(rk, RelationKind::Imports))
+}
+
 impl std::str::FromStr for RelationKind {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> anyhow::Result<Self> {

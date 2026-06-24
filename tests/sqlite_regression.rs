@@ -9481,3 +9481,71 @@ fn sqlite_whoami_reports_role_and_lane_enforcement() {
     assert_eq!(me["lane_enforcement"], serde_json::json!(true), "a role means lane enforcement is ON: {me}");
     assert_eq!(me["acting"].as_str(), Some("llm:fixer"), "{me}");
 }
+
+/// SYSTEMIC: a PASSING RELATES_TO coupled SOLELY by `imports` must NOT be staled
+/// by a behavior-preserving edit to a grounded file — its basis (the import) is
+/// mechanically intact, so re-staling it is laundering-prone busywork (the
+/// tension that re-opened hundreds of hub-file edges on a cosmetic change). It
+/// MUST still stale when the import is actually REMOVED (the basis disappears).
+#[test]
+fn sqlite_sync_keeps_intact_import_coupling_stales_when_import_removed() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("import-stable");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "b.py", "def helper():\n    return 1\n");
+    write_scratch_file(&graph.root, "a.py", "import b\n\ndef use():\n    return b.helper()\n");
+    run_json_as(&graph.root, &["codefile", "add", "a.py", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["codefile", "add", "b.py", "--json"], "llm:builder");
+    let mk = |name: &str| {
+        run_json_as(
+            &graph.root,
+            &[
+                "intent", "add", "--name", name, "--description", "x", "--level", "feature",
+                "--lifecycle", "implemented", "--json",
+            ],
+            "llm:builder",
+        )["id"]
+            .as_str()
+            .expect("id")
+            .to_string()
+    };
+    let a = mk("consumer A");
+    let b = mk("helper B");
+    run_json_as(&graph.root, &["edge", "implement", &a, "a.py", "--locator", "def use", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", &b, "b.py", "--locator", "def helper", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    // Ground the import-coupling RELATES_TO passing, then backfill the mechanical
+    // `imports` kind (the populate tier, exactly as discovery does on a real repo).
+    write_scratch_file(
+        &graph.root,
+        "v.jsonl",
+        &format!(
+            "{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\"criterion\":\"A imports B's module\",\"evidence\":\"a.py imports b; calls b.helper()\",\"confidence\":0.9}}\n"
+        ),
+    );
+    run_text_as(&graph.root, &["batch", "v.jsonl"], "llm:analyzer");
+    run_json_as(&graph.root, &["populate", "kinds", "--json"], "llm:builder");
+
+    // Behavior-preserving edit to a.py: import unchanged. The coupling is intact →
+    // the edge must NOT be flagged.
+    write_scratch_file(&graph.root, "a.py", "import b\n\n# a harmless comment\ndef use():\n    return b.helper()\n");
+    let cosmetic = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        cosmetic["relates_to_edges_flagged"], serde_json::json!(0),
+        "an intact import coupling must NOT be staled by a behavior-preserving edit: {cosmetic}"
+    );
+    let stale_after_cosmetic = run_json(&graph.root, &["edge", "list", "--status", "needs_reverification", "--json"]);
+    assert_eq!(
+        stale_after_cosmetic["edges"].as_array().map(|a| a.len()),
+        Some(0),
+        "no edge should be stale after a behavior-preserving edit: {stale_after_cosmetic}"
+    );
+
+    // REMOVE the import: the structural basis is gone → the edge MUST stale.
+    write_scratch_file(&graph.root, "a.py", "def use():\n    return 1\n");
+    let removed = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        removed["relates_to_edges_flagged"].as_i64().unwrap_or(0) >= 1,
+        "removing the import must stale the now-baseless coupling: {removed}"
+    );
+}
