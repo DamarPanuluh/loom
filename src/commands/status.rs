@@ -607,6 +607,12 @@ fn alarm_strip(
             disk.total
         ));
     }
+    if disk.drifted > 0 {
+        a.push(format!(
+            "{} codefile(s) DRIFTED (content changed since sync) — source-fact reads (`loom smells`, `loom coverage`) are computed from stale facts and UNDER-REPORT the current code until `loom sync`",
+            disk.drifted
+        ));
+    }
     if intake.untriaged > 0 {
         a.push(format!(
             "{} untriaged inbox item(s) — `loom inbox`",

@@ -8252,9 +8252,6 @@ fn sqlite_quality_kind_rejects_non_quality_mode() {
         &["next", "--mode", "discovery", "--kind", "security", "--json"],
         "llm:analyzer",
     );
-    let stderr = result.get("error")
-        .and_then(|e| e.as_str())
-        .unwrap_or("");
     // The failure message should name --kind and quality.
     // (run_json_failure_as returns JSON from stdout; the error is on stderr.
     // We check the command failed — the exact message is tested in unit tests.)
@@ -8746,5 +8743,60 @@ fn sqlite_inbox_file_link_to_non_codefile_resolves() {
     assert_eq!(
         result["status"], "ok",
         "file: link to a non-codefile doc should resolve: {result}"
+    );
+}
+
+/// Honesty guard: `loom smells` computes findings from the LAST-SYNCED extracted
+/// facts. If a file drifts on disk without a sync, those findings UNDER-REPORT the
+/// real code — and a silently-clean count is the cardinal sin for an "honest read"
+/// tool (proven live: `smells` showed the same count before/after a real `todo!()`
+/// was added on disk). This pins the `stale_facts` block: a freshly-synced file is
+/// NOT drifted; editing it on disk without sync flags it and sets under_reporting.
+#[test]
+fn sqlite_smells_flags_under_reporting_when_facts_drift() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("smells-drift");
+
+    write_scratch_file(
+        &graph.root,
+        "scratch/drift_probe.rs",
+        "pub fn ok() -> u8 { 1 }\n",
+    );
+    run_json_as(
+        &graph.root,
+        &["codefile", "add", "scratch/drift_probe.rs", "--json"],
+        "llm:builder",
+    );
+    run_json_as(&graph.root, &["sync", "--json"], "llm:analyzer");
+
+    // freshly synced: the probe is NOT in the drifted set
+    let fresh = run_json(&graph.root, &["smells", "--json"]);
+    let fresh_drifted = fresh["stale_facts"]["drifted_codefiles"]
+        .as_array()
+        .expect("stale_facts.drifted_codefiles array");
+    assert!(
+        !fresh_drifted.iter().any(|p| p == "scratch/drift_probe.rs"),
+        "a freshly-synced file must not be reported as drifted: {fresh_drifted:?}"
+    );
+
+    // drift the file on disk WITHOUT syncing — the stored facts are now stale
+    write_scratch_file(
+        &graph.root,
+        "scratch/drift_probe.rs",
+        "pub fn ok() -> u8 { todo!() }\n",
+    );
+    let stale = run_json(&graph.root, &["smells", "--json"]);
+    assert_eq!(
+        stale["stale_facts"]["under_reporting"],
+        serde_json::json!(true),
+        "drift must flag under_reporting — a silently-stale clean count is the honesty bug this guards: {}",
+        stale["stale_facts"]
+    );
+    let drifted = stale["stale_facts"]["drifted_codefiles"]
+        .as_array()
+        .expect("drifted array");
+    assert!(
+        drifted.iter().any(|p| p == "scratch/drift_probe.rs"),
+        "the drifted file must be named in stale_facts.drifted_codefiles: {drifted:?}"
     );
 }

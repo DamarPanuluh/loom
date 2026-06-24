@@ -406,6 +406,62 @@ fn adjudicated_kind_counts(
     counts
 }
 
+/// Files whose on-disk content no longer matches the synced snapshot, so every
+/// source-fact finding is computed from stale facts. Reuses the disk-reconciliation
+/// drift pass (drift only inspects already-registered codefiles, so ignores and
+/// delegations don't apply — an empty disk list and empty ignore/deleg sets suffice).
+fn drifted_since_sync(root: &std::path::Path, codefiles: &[crate::types::CodeFile]) -> Vec<String> {
+    crate::db::queries::integrity::disk_reconciliation_from_parts(
+        &[],
+        codefiles,
+        &[],
+        &[],
+        &|p| {
+            std::fs::read(root.join(p))
+                .ok()
+                .map(|b| crate::repo::content_hash(&b))
+        },
+    )
+    .drifted_codefiles
+}
+
+/// The loud human banner that `loom smells` findings UNDER-REPORT because facts
+/// drifted on disk since the last sync. Empty input ⇒ no banner. Printed at the
+/// TOP so a cold reader (or LLM) can't trust a clean-looking count over a stale
+/// graph — the cardinal sin for a tool whose pitch is an honest read of the code.
+fn print_stale_facts_banner(drifted: &[String]) {
+    if drifted.is_empty() {
+        return;
+    }
+    println!(
+        "⚠ STALE FACTS — {} file(s) changed on disk since the last `loom sync`.",
+        drifted.len()
+    );
+    println!("  Every finding below is computed from the last-synced snapshot and");
+    println!("  UNDER-REPORTS the current code. Run `loom sync`, then re-run `loom smells`.");
+    for p in drifted.iter().take(8) {
+        println!("    drifted: {p}");
+    }
+    if drifted.len() > 8 {
+        println!("    … and {} more", drifted.len() - 8);
+    }
+    println!();
+}
+
+/// JSON counterpart of the banner — a machine-readable `stale_facts` block so a
+/// `--json` consumer sees `under_reporting: true` instead of trusting the count.
+fn stale_facts_json(drifted: &[String]) -> serde_json::Value {
+    serde_json::json!({
+        "under_reporting": !drifted.is_empty(),
+        "drifted_codefiles": drifted,
+        "note": if drifted.is_empty() {
+            "facts are fresh; counts reflect the code on disk"
+        } else {
+            "findings are computed from the last-synced snapshot and UNDER-REPORT the current code — run `loom sync` first"
+        },
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 fn render(
     root: &std::path::Path,
@@ -426,6 +482,9 @@ fn render(
     // green. Bounded to recent history; degrades silently with no git.
     let paths: std::collections::HashSet<String> =
         snapshot.codefiles.iter().map(|c| c.path.clone()).collect();
+    // Honesty guard (computed before anything is printed): if files drifted on
+    // disk since the last sync, every finding below under-reports the real code.
+    let drifted_facts = drifted_since_sync(root, &snapshot.codefiles);
     let cc = crate::repo::git_cochange(root, &paths, 800);
     let (mut suggestions, mut advisory_adjudicated) = split_advisories_for_adjudication(
         snapshot,
@@ -524,6 +583,7 @@ fn render(
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "summary": true,
+                "stale_facts": stale_facts_json(&drifted_facts),
                 "total": total,
                 "shown": smells.len(),
                 "open_by_kind": open_by_kind,
@@ -551,6 +611,7 @@ fn render(
                 "note": "Summary mode omits per-finding evidence, teaching, adjudication bodies, and advisory bodies. Advisory totals count open advisories after current decision-note adjudication; code_clones_total counts physical clone groups and code_clones_* reports their dispositions.",
             }));
         } else {
+            print_stale_facts_banner(&drifted_facts);
             println!("── loom smells summary ──────────────────────────────────────────────");
             println!("  open findings: {total}");
             for (kind, count) in &open_by_kind {
@@ -582,6 +643,7 @@ fn render(
     if printer.json {
         let batch_template = batch_template_lines(&smells);
         printer.print_json(&serde_json::json!({
+            "stale_facts": stale_facts_json(&drifted_facts),
             "total": total,
             "shown": smells.len(),
             "smells": smells.iter().map(smell_json).collect::<Vec<_>>(),
@@ -611,6 +673,7 @@ fn render(
         return Ok(());
     }
 
+    print_stale_facts_banner(&drifted_facts);
     println!("── loom smells (derived from graph structure — suspicions, not verdicts) ──");
     println!();
     if smells.is_empty() {
