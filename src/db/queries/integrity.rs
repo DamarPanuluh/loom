@@ -430,6 +430,25 @@ pub fn check_graph_from_parts(
         );
     }
 
+    // 8. Metadata-completeness debt: intents still at domain:unknown carry an
+    // un-discharged product/business facet. This is NOT an integrity defect — a
+    // HINT that never fails the check — but doctor was reporting healthy:true
+    // over it, so the debt stayed invisible. Now dischargeable with the
+    // `intent update --domain` tooling. (Empty ASPECT is deliberately not
+    // surfaced here: most intents are not behaviour leaves and correctly carry
+    // no aspect — a blanket count would be noise; genuine aspect gaps in a
+    // happy/sad family are the `happy_path_only` audit's job.)
+    let unknown_domain = query_snapshot
+        .intents
+        .iter()
+        .filter(|i| i.domain.is_empty() || i.domain == "unknown")
+        .count();
+    if unknown_domain > 0 {
+        hints.push(format!(
+            "{unknown_domain} intent(s) carry domain:unknown — un-discharged product-facet metadata (not an integrity defect). Discharge with `loom intent update <intent> --domain <facet> --reason '<why>'`."
+        ));
+    }
+
     Ok(DoctorReport {
         expected_version,
         found_version: inputs.found_version,

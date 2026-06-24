@@ -8884,3 +8884,37 @@ fn sqlite_intent_update_sets_domain_and_aspect() {
         "an out-of-vocabulary aspect must be rejected: {bad}"
     );
 }
+
+/// Proposal #2: doctor surfaces domain:unknown as a metadata-debt HINT (never an
+/// integrity issue — `healthy` stays true), so the debt the new `intent update
+/// --domain` tooling discharges is visible instead of hidden under healthy:true.
+#[test]
+fn sqlite_doctor_surfaces_domain_unknown_as_hint_not_issue() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("doctor-domain-debt");
+    let out = run_json(&graph.root, &["doctor", "--json"]);
+    let in_hints = out["hints"].as_array().is_some_and(|a| {
+        a.iter()
+            .any(|h| h.as_str().unwrap_or("").contains("domain:unknown"))
+    });
+    assert!(
+        in_hints,
+        "doctor must surface domain:unknown as a hint: {}",
+        out["hints"]
+    );
+    // It is a HINT, never an integrity ISSUE — the health check stays green.
+    assert_eq!(
+        out["healthy"],
+        serde_json::json!(true),
+        "metadata debt must not fail the health check: {out}"
+    );
+    let in_issues = out["issues"].as_array().is_some_and(|a| {
+        a.iter()
+            .any(|i| i.as_str().unwrap_or("").contains("domain:unknown"))
+    });
+    assert!(
+        !in_issues,
+        "domain debt must be a hint, not an integrity issue: {}",
+        out["issues"]
+    );
+}

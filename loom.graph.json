@@ -8814,7 +8814,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:30:19.135601+00:00",
+        "last_inspected": "2026-06-24T11:29:42.006255+00:00",
         "notes": "",
         "priority_score": 0.0,
         "stable": "",
@@ -14734,7 +14734,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:56.992417+00:00",
+        "last_inspected": "2026-06-24T11:29:42.109236+00:00",
         "notes": "graded decaying sync ripple grounded to src/db/queries/scoring.rs @ripple_bump_by_intent and src/commands/sync.rs; no imports of vertical_completeness or completeness functions in either file",
         "priority_score": 0.0,
         "stable": "",
@@ -17301,7 +17301,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:30:19.468793+00:00",
+        "last_inspected": "2026-06-24T11:29:42.209244+00:00",
         "notes": "",
         "priority_score": 0.0,
         "stable": "",
@@ -20180,7 +20180,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:30:19.571807+00:00",
+        "last_inspected": "2026-06-24T11:29:42.308895+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'sync flag engine' ↔ 'SQLite query and search implementation': foundation-hub coupling (shared utility every consumer touches). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
         "priority_score": 0.0,
         "stable": "",
@@ -20565,7 +20565,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:19.690079+00:00",
+        "last_inspected": "2026-06-24T11:29:42.408307+00:00",
         "notes": "searched src/db/queries/snapshot.rs; shares_file co-location with sync ripple logic, no direct anchor symbol coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -20597,7 +20597,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:19.791229+00:00",
+        "last_inspected": "2026-06-24T11:29:42.508226+00:00",
         "notes": "searched src/db/queries/snapshot.rs; shares_file co-location in query analysis, no concrete symbol-level link - smell detection uses snapshot as data structure, not anchor-specific coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -20661,7 +20661,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:30:19.890440+00:00",
+        "last_inspected": "2026-06-24T11:29:42.606627+00:00",
         "notes": "searched src/db/queries/snapshot.rs; structural infrastructure imports, not specific anchor symbol call - graph targeting pin determines which intents to query",
         "priority_score": 0.0,
         "stable": "",
@@ -20708,7 +20708,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:19.992611+00:00",
+        "last_inspected": "2026-06-24T11:29:42.705895+00:00",
         "notes": "searched src/db/queries/scoring.rs; shares_file structural infrastructure usage, not specific betweenness-anchor symbol link",
         "priority_score": 0.0,
         "stable": "",
@@ -20740,7 +20740,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:20.091279+00:00",
+        "last_inspected": "2026-06-24T11:29:42.811210+00:00",
         "notes": "searched src/db/queries/ and src/commands/status.rs; shares_file co-location with distinct status surface logic - no direct anchor symbol import",
         "priority_score": 0.0,
         "stable": "",
@@ -20787,7 +20787,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:20.190104+00:00",
+        "last_inspected": "2026-06-24T11:29:42.912904+00:00",
         "notes": "searched src/db/queries/; structural infrastructure usage for reachability analysis, not anchor-specific coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -20804,7 +20804,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:20.289384+00:00",
+        "last_inspected": "2026-06-24T11:29:43.014314+00:00",
         "notes": "searched src/db/queries/snapshot.rs; foundation-hub coupling (confirmation property accessed through shared intent storage, not direct anchor query method call)",
         "priority_score": 0.0,
         "stable": "",
@@ -20920,7 +20920,7 @@
           "shares_file",
           "shares_vocab"
         ],
-        "last_inspected": "2026-06-24T09:30:20.398465+00:00",
+        "last_inspected": "2026-06-24T11:29:43.114341+00:00",
         "notes": "searched src/db/ and test files; structural infrastructure usage (tests use queries helpers), not anchor-specific test-logic coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -20984,7 +20984,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:57:38.695317+00:00",
+        "last_inspected": "2026-06-24T11:29:43.214458+00:00",
         "notes": "searched src/db/queries/find.rs; src/db/sqlite/reads.rs; no shared symbol/call — domain-level only",
         "priority_score": 0.0,
         "stable": "",
@@ -21002,7 +21002,7 @@
           "imports",
           "same_domain"
         ],
-        "last_inspected": "2026-06-24T09:30:20.620103+00:00",
+        "last_inspected": "2026-06-24T11:29:43.315641+00:00",
         "notes": "Re-inspected after clone-disposition feature plus betweenness/outcome regression-test additions (behavior-preserving for intent relationships; 282 default / 270 no-default tests green)",
         "priority_score": 0.0,
         "stable": "",
@@ -21097,7 +21097,7 @@
           "shares_file",
           "shares_vocab"
         ],
-        "last_inspected": "2026-06-24T09:30:20.718940+00:00",
+        "last_inspected": "2026-06-24T11:29:43.415371+00:00",
         "notes": "searched 4 source files (src/db/queries/snapshot.rs, src/db/queries/find.rs) — no concrete imports of db/commands modules",
         "priority_score": 0.0,
         "stable": "",
@@ -21114,7 +21114,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:30:20.820939+00:00",
+        "last_inspected": "2026-06-24T11:29:43.515712+00:00",
         "notes": "searched src/db/queries/; structural infrastructure for hypothesis targeting, no direct anchor query symbol call",
         "priority_score": 0.0,
         "stable": "",
@@ -21133,7 +21133,7 @@
           "shares_file",
           "shares_vocab"
         ],
-        "last_inspected": "2026-06-24T09:30:20.919992+00:00",
+        "last_inspected": "2026-06-24T11:29:43.615396+00:00",
         "notes": "searched src/db/sqlite.rs and reads.rs; foundation-hub coupling (concurrency policy is shared db infrastructure), not anchor-specific",
         "priority_score": 0.0,
         "stable": "",
@@ -21247,7 +21247,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.022734+00:00",
+        "last_inspected": "2026-06-24T11:29:43.722730+00:00",
         "notes": "searched src/db/queries/; structural infrastructure for layering checks, no anchor query method call",
         "priority_score": 0.0,
         "stable": "",
@@ -21328,7 +21328,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.123276+00:00",
+        "last_inspected": "2026-06-24T11:29:43.822175+00:00",
         "notes": "searched src/db/queries/scoring.rs; shares_file co-location with alignment queue, no direct anchor symbol import",
         "priority_score": 0.0,
         "stable": "",
@@ -21380,7 +21380,7 @@
           "imports",
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.224492+00:00",
+        "last_inspected": "2026-06-24T11:29:43.920716+00:00",
         "notes": "searched src/db/queries/; structural infrastructure usage for query safety checks, not anchor-specific coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -21410,7 +21410,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:57:38.793465+00:00",
+        "last_inspected": "2026-06-24T11:29:44.020604+00:00",
         "notes": "searched src/commands/; write handlers operate through command dispatch, not direct anchor query coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -21428,7 +21428,7 @@
           "imports",
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.423964+00:00",
+        "last_inspected": "2026-06-24T11:29:44.121630+00:00",
         "notes": "searched src/commands/; foundation-hub coupling (handoff notes propagate through shared command/query infrastructure)",
         "priority_score": 0.0,
         "stable": "",
@@ -21460,7 +21460,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.526856+00:00",
+        "last_inspected": "2026-06-24T11:29:44.222261+00:00",
         "notes": "searched src/db/queries/; structural infrastructure for integrity checks, no anchor method call",
         "priority_score": 0.0,
         "stable": "",
@@ -21477,7 +21477,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:30:21.626829+00:00",
+        "last_inspected": "2026-06-24T11:29:44.341479+00:00",
         "notes": "searched src/output.rs; imports command dispatch/output infrastructure, not anchor query symbols",
         "priority_score": 0.0,
         "stable": "",
@@ -21529,7 +21529,7 @@
           "same_domain",
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.726002+00:00",
+        "last_inspected": "2026-06-24T11:29:44.441286+00:00",
         "notes": "searched src/db/; foundation-hub coupling (interface schema vocabulary is foundational substrate), not anchor-specific",
         "priority_score": 0.0,
         "stable": "",
@@ -21674,7 +21674,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.824339+00:00",
+        "last_inspected": "2026-06-24T11:29:44.540635+00:00",
         "notes": "searched src/db/queries/scoring.rs; shares_file co-location with discovery ranking, no anchor symbol import",
         "priority_score": 0.0,
         "stable": "",
@@ -21736,7 +21736,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:30:21.924571+00:00",
+        "last_inspected": "2026-06-24T11:29:44.640999+00:00",
         "notes": "searched src/db/queries/; shares_file co-location with signal derivation, no anchor method call",
         "priority_score": 0.0,
         "stable": "",
@@ -21784,7 +21784,7 @@
           "imports",
           "same_domain"
         ],
-        "last_inspected": "2026-06-24T09:30:22.024578+00:00",
+        "last_inspected": "2026-06-24T11:29:44.741159+00:00",
         "notes": "searched src/db/; foundation-hub coupling (snapshot analysis helpers used by all query consumers)",
         "priority_score": 0.0,
         "stable": "",
@@ -21831,7 +21831,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:30:22.125244+00:00",
+        "last_inspected": "2026-06-24T11:29:44.842348+00:00",
         "notes": "searched src/commands/; imports command dispatch infrastructure, not anchor query symbols",
         "priority_score": 0.0,
         "stable": "",
@@ -22984,7 +22984,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:10:57.525725+00:00",
+        "last_inspected": "2026-06-24T11:29:44.942783+00:00",
         "notes": "graph targeting pin grounded to src/db/mod.rs @resolve_root; no imports of completeness modules or symbols",
         "priority_score": 0.0,
         "stable": "",
@@ -26233,7 +26233,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:57.734327+00:00",
+        "last_inspected": "2026-06-24T11:29:45.042647+00:00",
         "notes": "betweenness centrality grounded to src/db/queries/snapshot.rs @betweenness and src/db/queries/scoring.rs @BRIDGE_WEIGHT; no imports of vertical_completeness or completeness functions in either file",
         "priority_score": 0.0,
         "stable": "",
@@ -30810,7 +30810,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:57.942416+00:00",
+        "last_inspected": "2026-06-24T11:29:45.142134+00:00",
         "notes": "confirmation stamps freshness grounded to src/commands/intent.rs @handle_confirm and src/db/queries/scoring.rs; no direct uses of completeness symbols in either file",
         "priority_score": 0.0,
         "stable": "",
@@ -32169,7 +32169,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:10:58.151069+00:00",
+        "last_inspected": "2026-06-24T11:29:45.241857+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'UI state coverage via aspect' ↔ 'completeness and integrity checking': shared-file co-location (same module, distinct locators — not shared logic). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
         "priority_score": 0.0,
         "stable": "",
@@ -40376,7 +40376,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:58.361790+00:00",
+        "last_inspected": "2026-06-24T11:29:45.342088+00:00",
         "notes": "corpus sad-path (corpus.rs failure reporting) shares only the foundation query/snapshot layer with 'completeness and integrity checking', no concrete peer coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -43065,7 +43065,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:57:43.060422+00:00",
+        "last_inspected": "2026-06-24T11:29:45.443742+00:00",
         "notes": "searched src/commands/coverage.rs; no shared symbol/call — domain-level only",
         "priority_score": 0.0,
         "stable": "",
@@ -44065,7 +44065,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:10:58.673617+00:00",
+        "last_inspected": "2026-06-24T11:29:45.543740+00:00",
         "notes": "universal substrate coupling; completeness and integrity checking imports shared foundation (src/types.rs structs, src/db/schema.rs consts) but not schema-defining logic @completeness and integrity checking",
         "priority_score": 0.0,
         "stable": "",
@@ -47323,7 +47323,7 @@
           "imports",
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:10:58.880095+00:00",
+        "last_inspected": "2026-06-24T11:29:45.881943+00:00",
         "notes": "searched ungrounded intent; no source code files to inspect",
         "priority_score": 0.0,
         "stable": "",
@@ -48336,7 +48336,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:10:59.085910+00:00",
+        "last_inspected": "2026-06-24T11:29:46.002305+00:00",
         "notes": "hypothesis node and TARGETS edge grounded to src/db/schema.rs @pub const HYPOTHESIS and src/types.rs @pub struct Hypothesis; no imports of completeness symbols",
         "priority_score": 0.0,
         "stable": "",
@@ -49427,7 +49427,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:10:59.295460+00:00",
+        "last_inspected": "2026-06-24T11:29:46.123002+00:00",
         "notes": "SQLite direct concurrency policy grounded to src/commands/mod.rs @orient, docs/daemon-design.md, src/db/sqlite.rs @configure_connection; no completeness coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -59256,7 +59256,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:59.521348+00:00",
+        "last_inspected": "2026-06-24T11:29:46.226417+00:00",
         "notes": "align queue ranks user-intent drift suspicion grounded to src/commands/next/align.rs @run_align and src/db/queries/scoring.rs; no direct completeness symbol usage",
         "priority_score": 0.0,
         "stable": "",
@@ -61656,7 +61656,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:59.624543+00:00",
+        "last_inspected": "2026-06-24T11:29:46.331518+00:00",
         "notes": "advisory buckets honor decision adjudication grounded to src/db/queries/smells/advisory_tests.inc, src/db/queries/smells.rs, src/commands/smells.rs; notes explicitly state 'no shared code, no import coupling, no shared vocabulary, no co-change signal'",
         "priority_score": 0.0,
         "stable": "",
@@ -64521,7 +64521,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:59.727402+00:00",
+        "last_inspected": "2026-06-24T11:29:46.432549+00:00",
         "notes": "directed handoff notes foundation-hub coupling only; analyzed as shared utility that many consumers touch but not specific peer interaction with completeness intent",
         "priority_score": 0.0,
         "stable": "",
@@ -67626,7 +67626,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:10:59.830522+00:00",
+        "last_inspected": "2026-06-24T11:29:46.541675+00:00",
         "notes": "smells propose hypotheses grounded to src/db/queries/smells/lifecycle.rs @detect_hypothesis_accumulation; separate analysis path - completeness is read-path, smells-to-hypotheses is smell bridge",
         "priority_score": 0.0,
         "stable": "",
@@ -67703,7 +67703,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:10:59.936217+00:00",
+        "last_inspected": "2026-06-24T11:29:46.645452+00:00",
         "notes": "Re-confirm independent after this session's behavior-preserving edits (layer/edge guards, wiki positional-path parity, smells teaching_for→const TEACHING_TABLE). 'completeness and integrity checking' ↔ 'status surfaces populate gaps': shared-file co-location (same module, distinct locators — not shared logic). The staling file changed neither side's grounded logic, so the prior independent verdict holds.",
         "priority_score": 0.0,
         "stable": "",
@@ -68003,7 +68003,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:00.041958+00:00",
+        "last_inspected": "2026-06-24T11:29:46.748973+00:00",
         "notes": "transitive layering-violation detection grounded to src/db/queries/smells.rs @transitive_layering_violation; completeness is read-path analysis, transitive layering is separate graph-traversal analysis",
         "priority_score": 0.0,
         "stable": "",
@@ -68093,7 +68093,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:57:47.677583+00:00",
+        "last_inspected": "2026-06-24T11:29:46.851878+00:00",
         "notes": "completeness and integrity checking is read-path analysis; graph-write command handlers are write path — they share the store but do not interact functionally",
         "priority_score": 0.0,
         "stable": "",
@@ -68110,7 +68110,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:11:00.244281+00:00",
+        "last_inspected": "2026-06-24T11:29:46.953771+00:00",
         "notes": "dual-mode output grounded to src/output.rs, src/commands/wiki.rs, src/commands/tour.rs; universal render plumbing used by all commands, not specific completeness coupling",
         "priority_score": 0.0,
         "stable": "",
@@ -68140,7 +68140,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "passing",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:00.347680+00:00",
+        "last_inspected": "2026-06-24T11:29:47.055593+00:00",
         "notes": "Foundation coupling: one side consumes a universal hub (storage-boundary read trait, schema vocabulary, or shared types) — no specific call path, cohesive module, or single shared data structure beyond that foundation. Not specific peer ...",
         "priority_score": 0.0,
         "stable": "",
@@ -68157,7 +68157,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:11:00.482641+00:00",
+        "last_inspected": "2026-06-24T11:29:47.159374+00:00",
         "notes": "interface surface schema vocabulary grounded to src/db/schema.rs, src/types.rs, src/db/sqlite.rs; foundation-hub coupling via shared types but no specific intent-level dependency",
         "priority_score": 0.0,
         "stable": "",
@@ -68189,7 +68189,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:11:00.585084+00:00",
+        "last_inspected": "2026-06-24T11:29:47.260576+00:00",
         "notes": "scale: hot commands bounded grounded to src/db/queries/stats.rs @top_intents_by_centrality_from_snapshot; completeness-adjacent but not directly coupled",
         "priority_score": 0.0,
         "stable": "",
@@ -68264,7 +68264,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:00.685659+00:00",
+        "last_inspected": "2026-06-24T11:29:47.362595+00:00",
         "notes": "discovery queue ranks pairs by plausibility grounded to src/db/queries/scoring.rs @unexplored_pairs_scored_from_snapshot; foundation/substrate coupling via shared snapshot, not specific peer interaction",
         "priority_score": 0.0,
         "stable": "",
@@ -68309,7 +68309,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:00.790058+00:00",
+        "last_inspected": "2026-06-24T11:29:47.463596+00:00",
         "notes": "source corpus coverage grounded to src/commands/corpus.rs @pub fn run, src/db/queries/corpus.rs @pub fn source_corpus_coverage; no shared code, no import coupling with completeness",
         "priority_score": 0.0,
         "stable": "",
@@ -68324,7 +68324,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:30:23.155718+00:00",
+        "last_inspected": "2026-06-24T11:29:47.567344+00:00",
         "notes": "derived problem signals grounded to src/db/queries/smells/normative.rs, src/commands/layer.rs, src/commands/domain.rs, src/commands/smells.rs; no shared code imports or domain coupling with completeness intent",
         "priority_score": 0.0,
         "stable": "",
@@ -68339,7 +68339,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:00.994734+00:00",
+        "last_inspected": "2026-06-24T11:29:47.679206+00:00",
         "notes": "intent-spectrum seed-flow guidance grounded to src/commands/seed.rs @pub fn run; import coupling via src/db/queries/comprehensiveness.rs, separate intake flow from completeness checking",
         "priority_score": 0.0,
         "stable": "",
@@ -68371,7 +68371,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:11:01.097761+00:00",
+        "last_inspected": "2026-06-24T11:29:47.797678+00:00",
         "notes": "snapshot analysis and annotation helpers grounded to src/db/queries/mod.rs, src/db/queries/meta.rs, src/commands/explain.rs; foundation-hub coupling via QuerySnapshot, not specific peer interaction",
         "priority_score": 0.0,
         "stable": "",
@@ -68403,7 +68403,7 @@
         "kinds": [
           "imports"
         ],
-        "last_inspected": "2026-06-24T09:11:01.199881+00:00",
+        "last_inspected": "2026-06-24T11:29:47.920869+00:00",
         "notes": "interface surface inspection commands grounded to src/commands/interface.rs, src/commands/mod.rs, src/cli.rs; routing/interface plane separate from completeness analysis",
         "priority_score": 0.0,
         "stable": "",
@@ -68480,7 +68480,7 @@
         "kinds": [
           "shares_file"
         ],
-        "last_inspected": "2026-06-24T09:11:01.305972+00:00",
+        "last_inspected": "2026-06-24T11:29:48.023665+00:00",
         "notes": "seed guide teaches the user interview grounded to src/commands/guide.rs @fn seed, docs/intent-spectrum-proposal.md, src/db/queries/stats.rs @autonomous_validation_count; shared-file co-location but distinct locators/logic",
         "priority_score": 0.0,
         "stable": "",
@@ -68495,7 +68495,7 @@
         "inspected_by": "llm:analyzer",
         "inspection_status": "independent",
         "kinds": [],
-        "last_inspected": "2026-06-24T09:11:01.421455+00:00",
+        "last_inspected": "2026-06-24T11:29:48.130653+00:00",
         "notes": "inbox intake boundary grounded to src/commands/inbox.rs @pub fn run, src/commands/seed.rs @pub fn run; import coupling via comprehensiveness, separate intake boundary",
         "priority_score": 0.0,
         "stable": "",
@@ -93319,7 +93319,7 @@
   },
   "graph_id": "3a42f035-bb96-48d4-8565-5aa667f0019a",
   "graph_name": "loom",
-  "last_synced": "2026-06-24T09:57:35.141362+00:00",
+  "last_synced": "2026-06-24T11:29:40.047867+00:00",
   "layer_order": [],
   "loom_export": 1,
   "nodes": {
@@ -102194,12 +102194,12 @@
         ]
       },
       {
-        "content_hash": "c70cd932dd559593",
+        "content_hash": "d963a4a675b41b51",
         "extractor_grade": "high",
         "id": "1571ec80-16fb-419b-983f-faab4aab2221",
         "imports": [],
         "language": "rust",
-        "last_modified": "2026-06-24T09:53:22.551353918+00:00",
+        "last_modified": "2026-06-24T11:26:23.288821432+00:00",
         "path": "tests/sqlite_regression.rs",
         "symbol_facts": [
           {
@@ -108327,6 +108327,79 @@
               {
                 "line": 4753,
                 "value": "doctor must flag a passing edge grounded only by weak kinds: {hints}"
+              }
+            ],
+            "visibility": "private"
+          },
+          {
+            "body_hash": "cea6450683927be6",
+            "is_test": true,
+            "kind": "fn",
+            "label": "fn sqlite_doctor_surfaces_domain_unknown_as_hint_not_issue",
+            "line_end": 8920,
+            "line_start": 8892,
+            "name": "sqlite_doctor_surfaces_domain_unknown_as_hint_not_issue",
+            "shape_hash": "3f5c93dcad4576bf",
+            "string_literals": [
+              {
+                "line": 8894,
+                "value": "doctor-domain-debt"
+              },
+              {
+                "line": 8895,
+                "value": "doctor"
+              },
+              {
+                "line": 8895,
+                "value": "--json"
+              },
+              {
+                "line": 8896,
+                "value": "hints"
+              },
+              {
+                "line": 8898,
+                "value": ""
+              },
+              {
+                "line": 8898,
+                "value": "domain:unknown"
+              },
+              {
+                "line": 8902,
+                "value": "doctor must surface domain:unknown as a hint: {}"
+              },
+              {
+                "line": 8903,
+                "value": "hints"
+              },
+              {
+                "line": 8907,
+                "value": "healthy"
+              },
+              {
+                "line": 8909,
+                "value": "metadata debt must not fail the health check: {out}"
+              },
+              {
+                "line": 8911,
+                "value": "issues"
+              },
+              {
+                "line": 8913,
+                "value": ""
+              },
+              {
+                "line": 8913,
+                "value": "domain:unknown"
+              },
+              {
+                "line": 8917,
+                "value": "domain debt must be a hint, not an integrity issue: {}"
+              },
+              {
+                "line": 8918,
+                "value": "issues"
               }
             ],
             "visibility": "private"
@@ -127078,6 +127151,7 @@
           "fn sqlite_doctor_audits_serves_edges",
           "fn sqlite_doctor_clean_orphans_dry_run_then_yes_removes_relics",
           "fn sqlite_doctor_flags_weak_only_grounding",
+          "fn sqlite_doctor_surfaces_domain_unknown_as_hint_not_issue",
           "fn sqlite_door_captures_inbox_item_before_routing",
           "fn sqlite_edge_implement_verifies_locator_at_ground_time",
           "fn sqlite_edge_unexplored_enumerates_the_counted_pairs",
@@ -175216,7 +175290,7 @@
         ]
       },
       {
-        "content_hash": "51d783c2b52a3939",
+        "content_hash": "885c3becda74b98a",
         "extractor_grade": "high",
         "id": "bec5a791-c098-48e4-8444-bd7de2b7c465",
         "imports": [
@@ -175227,15 +175301,15 @@
           "src/types.rs"
         ],
         "language": "rust",
-        "last_modified": "2026-06-23T11:52:35.300273192+00:00",
+        "last_modified": "2026-06-24T11:24:40.509223188+00:00",
         "path": "src/db/queries/integrity.rs",
         "symbol_facts": [
           {
             "body_hash": "af115341c7185803",
             "kind": "const",
             "label": "const SMELL_TEMPLATE_CLUSTER_MIN",
-            "line_end": 463,
-            "line_start": 463,
+            "line_end": 482,
+            "line_start": 482,
             "name": "SMELL_TEMPLATE_CLUSTER_MIN",
             "shape_hash": "82eff434213ba678",
             "visibility": "private"
@@ -175245,13 +175319,13 @@
             "is_test": true,
             "kind": "const",
             "label": "const TEMPLATE",
-            "line_end": 1252,
-            "line_start": 1251,
+            "line_end": 1271,
+            "line_start": 1270,
             "name": "TEMPLATE",
             "shape_hash": "65c55dfceb68f926",
             "string_literals": [
               {
-                "line": 1252,
+                "line": 1271,
                 "value": "Deliberate: this file serves several subcommand intents in one cohesive command module surface."
               }
             ],
@@ -175261,169 +175335,169 @@
             "body_hash": "8cab256d8f7ce636",
             "kind": "fn",
             "label": "fn audit_inspectable_edges",
-            "line_end": 816,
-            "line_start": 556,
+            "line_end": 835,
+            "line_start": 575,
             "name": "audit_inspectable_edges",
             "shape_hash": "651692d0b4d24a23",
             "string_literals": [
               {
-                "line": 582,
+                "line": 601,
                 "value": "{} → {}"
               },
               {
-                "line": 597,
+                "line": 616,
                 "value": "{} → {}"
               },
               {
-                "line": 611,
+                "line": 630,
                 "value": "{} → {}"
               },
               {
-                "line": 625,
+                "line": 644,
                 "value": "{} → {}"
               },
               {
-                "line": 639,
+                "line": 658,
                 "value": "{} → {}"
               },
               {
-                "line": 654,
+                "line": 673,
                 "value": "uninspected"
               },
               {
-                "line": 654,
+                "line": 673,
                 "value": "passing"
               },
               {
-                "line": 654,
+                "line": 673,
                 "value": "failing"
               },
               {
-                "line": 654,
+                "line": 673,
                 "value": "needs_reverification"
               },
               {
-                "line": 657,
+                "line": 676,
                 "value": "VALIDATES edge {} → {} has invalid inspection_status '{}'"
               },
               {
-                "line": 666,
+                "line": 685,
                 "value": "uninspected"
               },
               {
-                "line": 670,
+                "line": 689,
                 "value": "uninspected"
               },
               {
-                "line": 674,
+                "line": 693,
                 "value": "all {verdicts} verdict(s) were recorded in solo mode (bare llm/human) — \\\n             for real separation of duties, declare roles per agent \\\n             (LOOM_AGENT=llm:analyzer|quality|…); see `loom guide`"
               },
               {
-                "line": 698,
+                "line": 717,
                 "value": "uninspected"
               },
               {
-                "line": 698,
+                "line": 717,
                 "value": "passing"
               },
               {
-                "line": 698,
+                "line": 717,
                 "value": "failing"
               },
               {
-                "line": 698,
+                "line": 717,
                 "value": "needs_reverification"
               },
               {
-                "line": 698,
+                "line": 717,
                 "value": "partial"
               },
               {
-                "line": 699,
+                "line": 718,
                 "value": "independent"
               },
               {
-                "line": 702,
+                "line": 721,
                 "value": "{} edge {} has invalid inspection_status '{}'"
               },
               {
-                "line": 708,
+                "line": 727,
                 "value": "{} edge {} has confidence {} outside [0.0, 1.0]"
               },
               {
-                "line": 715,
+                "line": 734,
                 "value": "passing"
               },
               {
-                "line": 715,
+                "line": 734,
                 "value": "failing"
               },
               {
-                "line": 719,
+                "line": 738,
                 "value": "{} edge {} is '{}' but its criterion is empty/vacuous ('{}')"
               },
               {
-                "line": 733,
+                "line": 752,
                 "value": "passing"
               },
               {
-                "line": 733,
+                "line": 752,
                 "value": "failing"
               },
               {
-                "line": 735,
+                "line": 754,
                 "value": "{} edge {} is '{}' with confidence 0.0 — the uninspected default \\\n                     leaked into a verdict (re-record it with a real --confidence)"
               },
               {
-                "line": 740,
+                "line": 759,
                 "value": "passing"
               },
               {
-                "line": 740,
+                "line": 759,
                 "value": "failing"
               },
               {
-                "line": 740,
+                "line": 759,
                 "value": "independent"
               },
               {
-                "line": 744,
+                "line": 763,
                 "value": "{} edge {} is '{}' but last_inspected is empty — \\\n                     the verdict has no inspection timestamp"
               },
               {
-                "line": 750,
+                "line": 769,
                 "value": "independent"
               },
               {
-                "line": 758,
+                "line": 777,
                 "value": "{} edge {} is 'independent' but records no why (notes: '{}')"
               },
               {
-                "line": 766,
+                "line": 785,
                 "value": "GOVERNS edge {} is 'independent' (rule doesn't apply) but records no why (evidence: '{}')"
               },
               {
-                "line": 772,
+                "line": 791,
                 "value": "uninspected"
               },
               {
-                "line": 779,
+                "line": 798,
                 "value": "{} edge {} was inspected by '{}' — out of lane (expected {}); \\\n                         separation of duties is broken"
               },
               {
-                "line": 784,
+                "line": 803,
                 "value": " or "
               },
               {
-                "line": 789,
+                "line": 808,
                 "value": "{} edge {} was inspected by '{}' — bare known role '{}' has no provenance prefix; \\\n                     use 'llm:{}' so lane gates can enforce separation of duties"
               },
               {
-                "line": 800,
+                "line": 819,
                 "value": "passing"
               },
               {
-                "line": 800,
+                "line": 819,
                 "value": "failing"
               }
             ],
@@ -175433,29 +175507,29 @@
             "body_hash": "1a61c6348643bd0a",
             "kind": "fn",
             "label": "fn audit_smell_adjudications",
-            "line_end": 548,
-            "line_start": 472,
+            "line_end": 567,
+            "line_start": 491,
             "name": "audit_smell_adjudications",
             "shape_hash": "5f8122ba3915ced9",
             "string_literals": [
               {
-                "line": 482,
+                "line": 501,
                 "value": "decision"
               },
               {
-                "line": 482,
+                "line": 501,
                 "value": "smell"
               },
               {
-                "line": 507,
+                "line": 526,
                 "value": "Smell adjudication on '{target}' is vacuous/too short ('{got}') — a finding ruled \\\n                 deliberate must name the decomposition considered and why it is wrong HERE; \\\n                 re-inspect and re-rule, or let the finding re-open"
               },
               {
-                "line": 535,
+                "line": 554,
                 "value": "{}…"
               },
               {
-                "line": 540,
+                "line": 559,
                 "value": "{} smell adjudications share one ruling template (e.g. \\\"{sample}\\\") — that \\\n                 uniformity is the signature of batch rubber-stamping, not per-finding inspection. \\\n                 Re-audit each on its own code (`loom smells --json`); a real ruling is true only of \\\n                 its own finding."
               }
             ],
@@ -175466,37 +175540,37 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn audits_active_adjudication_not_superseded_history",
-            "line_end": 1289,
-            "line_start": 1268,
+            "line_end": 1308,
+            "line_start": 1287,
             "name": "audits_active_adjudication_not_superseded_history",
             "shape_hash": "6fd2ce415050b01a",
             "string_literals": [
               {
-                "line": 1270,
+                "line": 1289,
                 "value": "tangled_file:a.rs"
               },
               {
-                "line": 1271,
+                "line": 1290,
                 "value": "tangled_file:b.rs"
               },
               {
-                "line": 1272,
+                "line": 1291,
                 "value": "tangled_file:c.rs"
               },
               {
-                "line": 1276,
+                "line": 1295,
                 "value": "2026-01-01T00:00:00Z"
               },
               {
-                "line": 1277,
+                "line": 1296,
                 "value": "2026-02-01T00:00:00Z"
               },
               {
-                "line": 1283,
+                "line": 1302,
                 "value": "genuine active rulings are not vacuous: {issues:?}"
               },
               {
-                "line": 1287,
+                "line": 1306,
                 "value": "superseded templated history must NOT cluster — only active distinct rulings count: {hints:?}"
               }
             ],
@@ -175507,17 +175581,17 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn cf",
-            "line_end": 1154,
-            "line_start": 1142,
+            "line_end": 1173,
+            "line_start": 1161,
             "name": "cf",
             "shape_hash": "b072527940a504c0",
             "string_literals": [
               {
-                "line": 1144,
+                "line": 1163,
                 "value": "cf:{path}"
               },
               {
-                "line": 1146,
+                "line": 1165,
                 "value": "rust"
               }
             ],
@@ -175527,13 +175601,13 @@
             "body_hash": "90a85aed702dc64f",
             "kind": "fn",
             "label": "fn confidence_concentration_hints",
-            "line_end": 986,
-            "line_start": 928,
+            "line_end": 1005,
+            "line_start": 947,
             "name": "confidence_concentration_hints",
             "shape_hash": "d695cbce7214084d",
             "string_literals": [
               {
-                "line": 979,
+                "line": 998,
                 "value": "epistemic: '{author}' recorded {n} {etype} passing/failing verdict(s) at \\\n                 near-uniform confidence (~{conf:.2}, {distinct} distinct value(s)) backed by only \\\n                 {evidence} distinct evidence string(s) — a lane that rates everything the same with \\\n                 copied evidence is the laundering smell; sample it with `loom next --mode review`"
               }
             ],
@@ -175544,25 +175618,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn delegation",
-            "line_end": 1174,
-            "line_start": 1164,
+            "line_end": 1193,
+            "line_start": 1183,
             "name": "delegation",
             "shape_hash": "e3eb04072ab33324",
             "string_literals": [
               {
-                "line": 1166,
+                "line": 1185,
                 "value": "dg:{pattern}"
               },
               {
-                "line": 1168,
+                "line": 1187,
                 "value": "child/loom.graph.json"
               },
               {
-                "line": 1171,
+                "line": 1190,
                 "value": "test"
               },
               {
-                "line": 1172,
+                "line": 1191,
                 "value": "t"
               }
             ],
@@ -175573,8 +175647,8 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn empty_disk_and_empty_codefiles_is_clean",
-            "line_end": 1229,
-            "line_start": 1225,
+            "line_end": 1248,
+            "line_start": 1244,
             "name": "empty_disk_and_empty_codefiles_is_clean",
             "shape_hash": "561e8e4fef6a9601",
             "visibility": "private"
@@ -175584,37 +175658,37 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_copied_evidence_even_with_spread_confidence",
-            "line_end": 1053,
-            "line_start": 1031,
+            "line_end": 1072,
+            "line_start": 1050,
             "name": "flags_copied_evidence_even_with_spread_confidence",
             "shape_hash": "a00d736397a9f794",
             "string_literals": [
               {
-                "line": 1036,
+                "line": 1055,
                 "value": "llm:scout"
               },
               {
-                "line": 1036,
+                "line": 1055,
                 "value": "GOVERNS"
               },
               {
-                "line": 1041,
+                "line": 1060,
                 "value": "A"
               },
               {
-                "line": 1041,
+                "line": 1060,
                 "value": "B"
               },
               {
-                "line": 1050,
+                "line": 1069,
                 "value": "copied evidence should flag even with spread confidence: {hints:?}"
               },
               {
-                "line": 1052,
+                "line": 1071,
                 "value": "distinct evidence"
               },
               {
-                "line": 1052,
+                "line": 1071,
                 "value": "got: {hints:?}"
               }
             ],
@@ -175625,33 +175699,33 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_templated_active_rulings",
-            "line_end": 1312,
-            "line_start": 1294,
+            "line_end": 1331,
+            "line_start": 1313,
             "name": "flags_templated_active_rulings",
             "shape_hash": "31ca82a01f7c5dc5",
             "string_literals": [
               {
-                "line": 1296,
+                "line": 1315,
                 "value": "tangled_file:a.rs"
               },
               {
-                "line": 1297,
+                "line": 1316,
                 "value": "tangled_file:b.rs"
               },
               {
-                "line": 1298,
+                "line": 1317,
                 "value": "tangled_file:c.rs"
               },
               {
-                "line": 1302,
+                "line": 1321,
                 "value": "2026-01-01T00:00:00Z"
               },
               {
-                "line": 1303,
+                "line": 1322,
                 "value": "2026-02-01T00:00:00Z"
               },
               {
-                "line": 1310,
+                "line": 1329,
                 "value": "3 templated active rulings must cluster into one hint: {hints:?}"
               }
             ],
@@ -175662,65 +175736,65 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn flags_uniform_confidence_lane_but_spares_spread",
-            "line_end": 1028,
-            "line_start": 996,
+            "line_end": 1047,
+            "line_start": 1015,
             "name": "flags_uniform_confidence_lane_but_spares_spread",
             "shape_hash": "65c94eb75220e900",
             "string_literals": [
               {
-                "line": 1001,
+                "line": 1020,
                 "value": "llm:scout"
               },
               {
-                "line": 1001,
+                "line": 1020,
                 "value": "GOVERNS"
-              },
-              {
-                "line": 1002,
-                "value": "evidence {i}"
-              },
-              {
-                "line": 1006,
-                "value": "llm:analyzer"
-              },
-              {
-                "line": 1006,
-                "value": "RELATES_TO"
-              },
-              {
-                "line": 1008,
-                "value": "evidence {i}"
-              },
-              {
-                "line": 1013,
-                "value": "llm:fixer"
-              },
-              {
-                "line": 1013,
-                "value": "RELATES_TO"
-              },
-              {
-                "line": 1014,
-                "value": "evidence {i}"
               },
               {
                 "line": 1021,
-                "value": "only the uniform lane should flag: {hints:?}"
-              },
-              {
-                "line": 1023,
-                "value": "llm:scout"
-              },
-              {
-                "line": 1023,
-                "value": "got: {hints:?}"
+                "value": "evidence {i}"
               },
               {
                 "line": 1025,
+                "value": "llm:analyzer"
+              },
+              {
+                "line": 1025,
+                "value": "RELATES_TO"
+              },
+              {
+                "line": 1027,
+                "value": "evidence {i}"
+              },
+              {
+                "line": 1032,
+                "value": "llm:fixer"
+              },
+              {
+                "line": 1032,
+                "value": "RELATES_TO"
+              },
+              {
+                "line": 1033,
+                "value": "evidence {i}"
+              },
+              {
+                "line": 1040,
+                "value": "only the uniform lane should flag: {hints:?}"
+              },
+              {
+                "line": 1042,
+                "value": "llm:scout"
+              },
+              {
+                "line": 1042,
+                "value": "got: {hints:?}"
+              },
+              {
+                "line": 1044,
                 "value": "GOVERNS"
               },
               {
-                "line": 1026,
+                "line": 1045,
                 "value": "names the edge type: {hints:?}"
               }
             ],
@@ -175731,21 +175805,21 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn genuine",
-            "line_end": 1260,
-            "line_start": 1254,
+            "line_end": 1279,
+            "line_start": 1273,
             "name": "genuine",
             "shape_hash": "77e6951bdd71dded",
             "string_literals": [
               {
-                "line": 1256,
+                "line": 1275,
                 "value": "Audited intent.rs: a flat match over eight Intent lifecycle verbs, each a linear resolve-mutate-render arm."
               },
               {
-                "line": 1257,
+                "line": 1276,
                 "value": "Audited rule.rs: dispatch add/seed/verdict/list/detect/show, expanding const pack tables into governable rules."
               },
               {
-                "line": 1258,
+                "line": 1277,
                 "value": "Audited saga.rs: add/run/diagnose/list/show over consumer-plane proofs; the runner invokes diagnose on failure."
               }
             ],
@@ -175756,25 +175830,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn ignore",
-            "line_end": 1163,
-            "line_start": 1155,
+            "line_end": 1182,
+            "line_start": 1174,
             "name": "ignore",
             "shape_hash": "1561112312cd035c",
             "string_literals": [
               {
-                "line": 1157,
+                "line": 1176,
                 "value": "ig:{pattern}"
               },
               {
-                "line": 1159,
+                "line": 1178,
                 "value": "test"
               },
               {
-                "line": 1160,
+                "line": 1179,
                 "value": "test"
               },
               {
-                "line": 1161,
+                "line": 1180,
                 "value": "t"
               }
             ],
@@ -175784,8 +175858,8 @@
             "body_hash": "d0fca59131744bdb",
             "kind": "fn",
             "label": "fn is_line_anchor",
-            "line_end": 825,
-            "line_start": 820,
+            "line_end": 844,
+            "line_start": 839,
             "name": "is_line_anchor",
             "shape_hash": "2cb76c53eb0c0ee2",
             "visibility": "private"
@@ -175794,81 +175868,81 @@
             "body_hash": "050982d1b653ba30",
             "kind": "fn",
             "label": "fn is_symbol_style_locator",
-            "line_end": 855,
-            "line_start": 832,
+            "line_end": 874,
+            "line_start": 851,
             "name": "is_symbol_style_locator",
             "shape_hash": "0bda983a337e09c3",
             "string_literals": [
               {
-                "line": 837,
+                "line": 856,
                 "value": ""
               },
               {
-                "line": 838,
+                "line": 857,
                 "value": "fn"
               },
               {
-                "line": 838,
+                "line": 857,
                 "value": "pub"
               },
               {
-                "line": 839,
+                "line": 858,
                 "value": "def"
               },
               {
-                "line": 840,
+                "line": 859,
                 "value": "struct"
               },
               {
-                "line": 841,
+                "line": 860,
                 "value": "impl"
               },
               {
-                "line": 842,
+                "line": 861,
                 "value": "const"
               },
               {
-                "line": 843,
+                "line": 862,
                 "value": "static"
               },
               {
-                "line": 844,
+                "line": 863,
                 "value": "type"
               },
               {
-                "line": 845,
+                "line": 864,
                 "value": "enum"
               },
               {
-                "line": 846,
+                "line": 865,
                 "value": "trait"
               },
               {
-                "line": 847,
+                "line": 866,
                 "value": "macro"
               },
               {
-                "line": 848,
+                "line": 867,
                 "value": "func"
               },
               {
-                "line": 849,
+                "line": 868,
                 "value": "class"
               },
               {
-                "line": 850,
+                "line": 869,
                 "value": "async"
               },
               {
-                "line": 851,
+                "line": 870,
                 "value": "unsafe"
               },
               {
-                "line": 852,
+                "line": 871,
                 "value": "extern"
               },
               {
-                "line": 853,
+                "line": 872,
                 "value": "mod"
               }
             ],
@@ -175879,121 +175953,121 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn reconciles_unmapped_drifted_missing_without_over_firing",
-            "line_end": 1222,
-            "line_start": 1182,
+            "line_end": 1241,
+            "line_start": 1201,
             "name": "reconciles_unmapped_drifted_missing_without_over_firing",
             "shape_hash": "8961fde72607039a",
             "string_literals": [
               {
-                "line": 1184,
+                "line": 1203,
                 "value": "src/mapped.rs"
               },
               {
-                "line": 1185,
+                "line": 1204,
                 "value": "src/drifted.rs"
-              },
-              {
-                "line": 1186,
-                "value": "src/legacy.rs"
-              },
-              {
-                "line": 1187,
-                "value": "src/ignored.rs"
-              },
-              {
-                "line": 1188,
-                "value": "sub/child.rs"
-              },
-              {
-                "line": 1189,
-                "value": "src/phantom.rs"
-              },
-              {
-                "line": 1190,
-                "value": "src/unmapped.rs"
-              },
-              {
-                "line": 1193,
-                "value": "src/mapped.rs"
-              },
-              {
-                "line": 1193,
-                "value": "h-mapped"
-              },
-              {
-                "line": 1194,
-                "value": "src/drifted.rs"
-              },
-              {
-                "line": 1194,
-                "value": "h-old"
-              },
-              {
-                "line": 1195,
-                "value": "src/legacy.rs"
-              },
-              {
-                "line": 1195,
-                "value": ""
-              },
-              {
-                "line": 1196,
-                "value": "src/phantom.rs"
-              },
-              {
-                "line": 1196,
-                "value": "h-phantom"
-              },
-              {
-                "line": 1198,
-                "value": "src/ignored.rs"
-              },
-              {
-                "line": 1199,
-                "value": "sub/**"
               },
               {
                 "line": 1205,
-                "value": "src/phantom.rs"
-              },
-              {
-                "line": 1206,
-                "value": "src/mapped.rs"
-              },
-              {
-                "line": 1206,
-                "value": "h-mapped"
-              },
-              {
-                "line": 1207,
-                "value": "src/drifted.rs"
-              },
-              {
-                "line": 1207,
-                "value": "h-new"
-              },
-              {
-                "line": 1208,
-                "value": "h-disk"
-              },
-              {
-                "line": 1213,
-                "value": "src/unmapped.rs"
-              },
-              {
-                "line": 1214,
-                "value": "src/drifted.rs"
-              },
-              {
-                "line": 1216,
                 "value": "src/legacy.rs"
               },
               {
+                "line": 1206,
+                "value": "src/ignored.rs"
+              },
+              {
+                "line": 1207,
+                "value": "sub/child.rs"
+              },
+              {
+                "line": 1208,
+                "value": "src/phantom.rs"
+              },
+              {
+                "line": 1209,
+                "value": "src/unmapped.rs"
+              },
+              {
+                "line": 1212,
+                "value": "src/mapped.rs"
+              },
+              {
+                "line": 1212,
+                "value": "h-mapped"
+              },
+              {
+                "line": 1213,
+                "value": "src/drifted.rs"
+              },
+              {
+                "line": 1213,
+                "value": "h-old"
+              },
+              {
+                "line": 1214,
+                "value": "src/legacy.rs"
+              },
+              {
+                "line": 1214,
+                "value": ""
+              },
+              {
+                "line": 1215,
+                "value": "src/phantom.rs"
+              },
+              {
+                "line": 1215,
+                "value": "h-phantom"
+              },
+              {
                 "line": 1217,
+                "value": "src/ignored.rs"
+              },
+              {
+                "line": 1218,
+                "value": "sub/**"
+              },
+              {
+                "line": 1224,
+                "value": "src/phantom.rs"
+              },
+              {
+                "line": 1225,
+                "value": "src/mapped.rs"
+              },
+              {
+                "line": 1225,
+                "value": "h-mapped"
+              },
+              {
+                "line": 1226,
+                "value": "src/drifted.rs"
+              },
+              {
+                "line": 1226,
+                "value": "h-new"
+              },
+              {
+                "line": 1227,
+                "value": "h-disk"
+              },
+              {
+                "line": 1232,
+                "value": "src/unmapped.rs"
+              },
+              {
+                "line": 1233,
+                "value": "src/drifted.rs"
+              },
+              {
+                "line": 1235,
+                "value": "src/legacy.rs"
+              },
+              {
+                "line": 1236,
                 "value": "an EMPTY recorded hash is grandfathered, not drifted: {:?}"
               },
               {
-                "line": 1220,
+                "line": 1239,
                 "value": "src/phantom.rs"
               }
             ],
@@ -176004,25 +176078,25 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn smell_note",
-            "line_end": 1249,
-            "line_start": 1237,
+            "line_end": 1268,
+            "line_start": 1256,
             "name": "smell_note",
             "shape_hash": "b221695e3c036e28",
             "string_literals": [
               {
-                "line": 1239,
+                "line": 1258,
                 "value": "n:{target}:{created_at}"
               },
               {
-                "line": 1240,
+                "line": 1259,
                 "value": "decision"
               },
               {
-                "line": 1242,
+                "line": 1261,
                 "value": "llm"
               },
               {
-                "line": 1243,
+                "line": 1262,
                 "value": "smell"
               }
             ],
@@ -176033,117 +176107,117 @@
             "is_test": true,
             "kind": "fn",
             "label": "fn unresolved_locator_flags_fabricated_symbol",
-            "line_end": 1134,
-            "line_start": 1061,
+            "line_end": 1153,
+            "line_start": 1080,
             "name": "unresolved_locator_flags_fabricated_symbol",
             "shape_hash": "513ad8e7e2daa09f",
             "string_literals": [
               {
-                "line": 1064,
+                "line": 1083,
                 "value": "fn real_sym"
               },
               {
-                "line": 1065,
+                "line": 1084,
                 "value": "real_sym"
               },
               {
-                "line": 1066,
+                "line": 1085,
                 "value": "fn"
               },
               {
-                "line": 1067,
+                "line": 1086,
                 "value": "public"
               },
               {
-                "line": 1078,
+                "line": 1097,
                 "value": "cf1"
               },
               {
-                "line": 1079,
+                "line": 1098,
                 "value": "src/a.rs"
               },
               {
-                "line": 1080,
+                "line": 1099,
                 "value": "rust"
               },
               {
-                "line": 1086,
+                "line": 1105,
                 "value": "high"
               },
               {
-                "line": 1089,
+                "line": 1108,
                 "value": "imp:{loc}"
               },
               {
-                "line": 1090,
+                "line": 1109,
                 "value": "i"
               },
               {
-                "line": 1091,
+                "line": 1110,
                 "value": "cf1"
               },
               {
-                "line": 1092,
+                "line": 1111,
                 "value": "intent"
               },
               {
-                "line": 1093,
+                "line": 1112,
                 "value": "src/a.rs"
               },
               {
-                "line": 1094,
+                "line": 1113,
                 "value": "passing"
               },
               {
-                "line": 1102,
+                "line": 1121,
                 "value": "t"
               },
               {
-                "line": 1106,
+                "line": 1125,
                 "value": "fn ghost_sym"
-              },
-              {
-                "line": 1107,
-                "value": "{flagged:?}"
-              },
-              {
-                "line": 1108,
-                "value": "anchors nothing"
-              },
-              {
-                "line": 1108,
-                "value": "{flagged:?}"
-              },
-              {
-                "line": 1114,
-                "value": "fn real_sym"
-              },
-              {
-                "line": 1115,
-                "value": ""
-              },
-              {
-                "line": 1116,
-                "value": "42-50"
-              },
-              {
-                "line": 1117,
-                "value": "mockup is contract, not realization"
-              },
-              {
-                "line": 1121,
-                "value": "{clean:?}"
               },
               {
                 "line": 1126,
+                "value": "{flagged:?}"
+              },
+              {
+                "line": 1127,
+                "value": "anchors nothing"
+              },
+              {
+                "line": 1127,
+                "value": "{flagged:?}"
+              },
+              {
+                "line": 1133,
+                "value": "fn real_sym"
+              },
+              {
+                "line": 1134,
+                "value": ""
+              },
+              {
+                "line": 1135,
+                "value": "42-50"
+              },
+              {
+                "line": 1136,
+                "value": "mockup is contract, not realization"
+              },
+              {
+                "line": 1140,
+                "value": "{clean:?}"
+              },
+              {
+                "line": 1145,
                 "value": "low"
               },
               {
-                "line": 1130,
+                "line": 1149,
                 "value": "fn ghost_sym"
               },
               {
-                "line": 1132,
+                "line": 1151,
                 "value": "a low/ungraded file must not be judged"
               }
             ],
@@ -176153,37 +176227,37 @@
             "body_hash": "0edadab2dffd5aaf",
             "kind": "fn",
             "label": "fn unresolved_locator_hints",
-            "line_end": 919,
-            "line_start": 867,
+            "line_end": 938,
+            "line_start": 886,
             "name": "unresolved_locator_hints",
             "shape_hash": "a43e7e91e90e823f",
             "string_literals": [
               {
-                "line": 874,
+                "line": 893,
                 "value": "high"
               },
               {
-                "line": 879,
+                "line": 898,
                 "value": "passing"
               },
               {
-                "line": 879,
+                "line": 898,
                 "value": "failing"
               },
               {
-                "line": 892,
+                "line": 911,
                 "value": "'{}' @ {} '{loc}'"
               },
               {
-                "line": 906,
+                "line": 925,
                 "value": "; "
               },
               {
-                "line": 909,
+                "line": 928,
                 "value": "epistemic: {} passing/failing IMPLEMENTS locator(s) name a symbol NOT in the \\\n         (tree-sitter-extracted) file's facts — a grounding that reads green but anchors nothing \\\n         (symbol renamed/moved — re-ground or `loom sync`). Sample: {shown}{}"
               },
               {
-                "line": 914,
+                "line": 933,
                 "value": "; … +{more} more"
               }
             ],
@@ -176230,13 +176304,13 @@
             "visibility": "public"
           },
           {
-            "body_hash": "c12ea7686f9aee33",
+            "body_hash": "f36243889e29616c",
             "kind": "fn",
             "label": "pub fn check_graph_from_parts",
-            "line_end": 442,
+            "line_end": 461,
             "line_start": 139,
             "name": "check_graph_from_parts",
-            "shape_hash": "f4f5435525a0a799",
+            "shape_hash": "5210495a6e8353c2",
             "string_literals": [
               {
                 "line": 151,
@@ -176421,6 +176495,14 @@
               {
                 "line": 429,
                 "value": "HIERARCHY contains a cycle — the hierarchy must be an acyclic tree."
+              },
+              {
+                "line": 444,
+                "value": "unknown"
+              },
+              {
+                "line": 448,
+                "value": "{unknown_domain} intent(s) carry domain:unknown — un-discharged product-facet metadata (not an integrity defect). Discharge with `loom intent update <intent> --domain <facet> --reason '<why>'`."
               }
             ],
             "visibility": "public"
@@ -176469,8 +176551,8 @@
             "body_hash": "ec5567f6681982e8",
             "kind": "struct",
             "label": "struct EdgeClaim",
-            "line_end": 459,
-            "line_start": 446,
+            "line_end": 478,
+            "line_start": 465,
             "name": "EdgeClaim",
             "shape_hash": "4a2654c6f26c8cba",
             "visibility": "private"
@@ -176480,8 +176562,8 @@
             "is_test": true,
             "kind": "type",
             "label": "type ConfMap",
-            "line_end": 993,
-            "line_start": 993,
+            "line_end": 1012,
+            "line_start": 1012,
             "name": "ConfMap",
             "shape_hash": "39f6c0cfc411c732",
             "visibility": "private"
@@ -213345,9 +213427,9 @@
         "description": "Proves next fix compact command parity: the SQLite-backed next --mode fix with take withholds ground templates from failing edges.",
         "discrimination_status": "discriminating",
         "id": "079a0e32-44b0-4fa4-bb9d-ebb1ae1135f6",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next fix compact command parity",
         "validation_type": "test"
       },
@@ -213367,9 +213449,9 @@
         "description": "Proves next --all command parity: the SQLite-backed next command rejects take=0 and serves the compass phase default, exercising the real command path.",
         "discrimination_status": "discriminating",
         "id": "07d67b29-0c47-4d4b-9dba-315d811087b2",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next all command parity",
         "validation_type": "test"
       },
@@ -213400,9 +213482,9 @@
         "description": "Proves next prove command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "0bca574a-059b-4c23-ae03-274a5cc7ebe3",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next prove command parity",
         "validation_type": "test"
       },
@@ -213455,9 +213537,9 @@
         "description": "Proves next discovery command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "1662f9ca-c05d-4e00-8846-06d9063c0fad",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next discovery take command parity",
         "validation_type": "test"
       },
@@ -213466,9 +213548,9 @@
         "description": "Proves door command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "1a2a4da6-5572-4721-971c-e0016513666b",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite door command parity",
         "validation_type": "test"
       },
@@ -213587,9 +213669,9 @@
         "description": "Proves next fix take command parity: the SQLite-backed next --mode fix --take withholds ground templates from failing edges.",
         "discrimination_status": "discriminating",
         "id": "316bbfe2-48d4-48f3-be07-722625cdfd84",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next fix take command parity",
         "validation_type": "test"
       },
@@ -213598,9 +213680,9 @@
         "description": "Proves smells command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "336a9745-854c-44ab-a81c-3f1edcb01b02",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite smells command parity",
         "validation_type": "test"
       },
@@ -213620,9 +213702,9 @@
         "description": "Proves find+door search command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "343a5cc7-9110-4641-9546-61c01eb0c2f4",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite find door search parity",
         "validation_type": "test"
       },
@@ -213642,9 +213724,9 @@
         "description": "Proves completeness and integrity checking: the doctor audit and completeness tests pass, excluding the pre-existing sqlite_doctor_flags_weak_only_grounding test that fails because it sets a passing edge without a criterion (a test isolation issue, not a code defect).",
         "discrimination_status": "discriminating",
         "id": "36b8bbf6-7baf-4f57-88fd-a49901d0cced",
-        "last_executed_run": "2026-06-24T09:11:03.733457+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:11:03.733457+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "completeness + doctor tests",
         "validation_type": "test"
       },
@@ -213730,9 +213812,9 @@
         "description": "Proves doctor command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "42171f15-04d2-4e74-99ea-327ca2bc6f58",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite doctor command parity",
         "validation_type": "test"
       },
@@ -213862,9 +213944,9 @@
         "description": "Proves snapshot command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "5f1a017b-d22e-4255-826f-beb7d5610a1e",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite snapshot parity",
         "validation_type": "test"
       },
@@ -213895,9 +213977,9 @@
         "description": "Proves status command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "6428558b-e405-48c3-abd8-9e255da16b48",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite status command parity",
         "validation_type": "test"
       },
@@ -214016,9 +214098,9 @@
         "description": "Proves next quality command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "747f2173-a6f2-4f37-8629-6bcf8999dba4",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next quality command parity",
         "validation_type": "test"
       },
@@ -214027,9 +214109,9 @@
         "description": "Proves SQLite-backed graph persistence: the migration reports the open-time schema contract, exercising the real SQLite store path.",
         "discrimination_status": "discriminating",
         "id": "762a20e2-142f-4d0e-9609-7675462908fb",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "hypothesis outcome: sqlite-backed graph persistence",
         "validation_type": "manual_check"
       },
@@ -214093,9 +214175,9 @@
         "description": "",
         "discrimination_status": "discriminating",
         "id": "7cd8e6be-91cc-486b-bea4-acf7ddbede79",
-        "last_executed_run": "2026-06-24T09:11:03.733457+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:11:03.733457+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "maturity ladder roll-up",
         "validation_type": "test"
       },
@@ -214126,9 +214208,9 @@
         "description": "Proves next validate command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "85244e24-e189-4cb8-a7e9-8745da673bb9",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next validate command parity",
         "validation_type": "test"
       },
@@ -214137,9 +214219,9 @@
         "description": "Proves next discovery command parity: the SQLite-backed next --mode discovery ranks boundary-crossing couplings first.",
         "discrimination_status": "discriminating",
         "id": "88fe328d-c9e1-4fa7-a931-3cde45e70bdf",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next discovery command parity",
         "validation_type": "test"
       },
@@ -214313,9 +214395,9 @@
         "description": "Proves next compact command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "a9a766e3-6b4c-4c74-a588-ac0081c09a80",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next compact command parity",
         "validation_type": "test"
       },
@@ -214445,9 +214527,9 @@
         "description": "Proves validation and saga storage isolation: saga runs don't pollute the validation table and vice versa.",
         "discrimination_status": "discriminating",
         "id": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next quality take command parity",
         "validation_type": "test"
       },
@@ -214467,9 +214549,9 @@
         "description": "Proves next review command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "b95cd4eb-b2b7-496f-9e82-0f18866a3201",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next review command parity",
         "validation_type": "test"
       },
@@ -214555,9 +214637,9 @@
         "description": "Proves next fix command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "c3dd4763-faaa-4fe7-bb3c-7ed005332ff9",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next fix command parity",
         "validation_type": "test"
       },
@@ -214643,9 +214725,9 @@
         "description": "Proves next build command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "cf2f39e2-3ed0-4853-9cdb-ba35b33678aa",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next build command parity",
         "validation_type": "test"
       },
@@ -214819,9 +214901,9 @@
         "description": "Proves report command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
         "id": "ebe73777-2de9-4cf2-900b-af4ea6324128",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite report command parity",
         "validation_type": "test"
       },
@@ -214863,9 +214945,9 @@
         "description": "Proves next align command parity: the SQLite-backed next --mode align serves the right queue with take capping.",
         "discrimination_status": "discriminating",
         "id": "eefa76b1-a35f-45fe-b459-5d5ee20a5e4c",
-        "last_executed_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_executed_run": "2026-06-24T11:29:48.618599+00:00",
         "last_result": "passed",
-        "last_run": "2026-06-24T09:30:25.300660+00:00",
+        "last_run": "2026-06-24T11:29:48.618599+00:00",
         "name": "sqlite next align command parity",
         "validation_type": "test"
       },
