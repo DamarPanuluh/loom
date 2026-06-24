@@ -90405,6 +90405,13 @@
         "to": "d7d485d7-c342-4c44-a57f-d08f7cf31941"
       },
       {
+        "created_at": "2026-06-24T04:41:43.731631+00:00",
+        "from": "04ecdf7c-1c70-469c-94e7-f821a2a6601d",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "bf39f175-67f8-4800-844a-68d7b7b34bdc"
+      },
+      {
         "created_at": "2026-06-11T15:19:08.706293+00:00",
         "from": "05b1ebce-8df0-4c9a-88ce-5506b81fba0d",
         "inspection_status": "passing",
@@ -90417,6 +90424,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "147f04bb-f2af-4cc8-b582-de003853b41c"
+      },
+      {
+        "created_at": "2026-06-24T04:41:44.612183+00:00",
+        "from": "067b6d01-2ae3-4440-82d1-cad44a6ffa9e",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f3a922b5-11ba-4bd8-80c9-9f1762e96b54"
       },
       {
         "created_at": "2026-06-16T13:17:27.378388+00:00",
@@ -90559,6 +90573,13 @@
         "to": "205377c4-ef33-4636-866d-f344e7dc1410"
       },
       {
+        "created_at": "2026-06-24T04:41:43.398838+00:00",
+        "from": "22253b87-96b8-43fe-82b9-e2ba3b64bf7f",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "246d039f-08d0-4b01-b194-5917bb3a3a25"
+      },
+      {
         "created_at": "2026-06-15T11:57:26.000899+00:00",
         "from": "242860fb-6c35-4416-8771-165569c8c38e",
         "inspection_status": "passing",
@@ -90678,6 +90699,13 @@
         "to": "9baf3a4e-51af-40c1-8c80-a5f745588092"
       },
       {
+        "created_at": "2026-06-24T04:41:42.708999+00:00",
+        "from": "3a8beb69-4b66-4f08-b632-9ca78c8143cc",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "3fe71c5a-d357-4c51-9363-e9874a755f83"
+      },
+      {
         "created_at": "2026-06-15T11:57:47.419543+00:00",
         "from": "3f881306-892c-46e0-a261-df6a95791bdf",
         "inspection_status": "passing",
@@ -90748,6 +90776,13 @@
         "to": "fcf2f089-6dbe-46f0-8296-d50512420ff8"
       },
       {
+        "created_at": "2026-06-24T04:41:44.942186+00:00",
+        "from": "4f8e8f44-3e4a-4d3c-881a-1427c59abf76",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "62a58a72-21d1-4509-81cb-538b757d21c2"
+      },
+      {
         "created_at": "2026-06-09T20:29:01.599993+00:00",
         "from": "50c0f54c-920b-41fc-8ed8-7b354e75a80d",
         "inspection_status": "passing",
@@ -90804,6 +90839,13 @@
         "to": "cf0d57d3-60d5-4c28-ad85-91bb448dd945"
       },
       {
+        "created_at": "2026-06-24T04:41:44.833530+00:00",
+        "from": "5b0b478c-5d93-4a98-a6e8-6d3266428274",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "bb8ee237-2d84-46ee-b254-c8bc39c16fc1"
+      },
+      {
         "created_at": "2026-06-11T06:53:07.474654+00:00",
         "from": "5d5a5d3d-6aef-4bdf-a3ff-a8ff21a38b8d",
         "inspection_status": "passing",
@@ -90816,6 +90858,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "80525ab5-087c-423d-ba64-40f2e06f7726"
+      },
+      {
+        "created_at": "2026-06-24T04:41:42.818726+00:00",
+        "from": "5e77ca54-08f4-46b7-be23-f27f3de22175",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "3080764f-7486-409e-87f7-75d5b6c08f31"
       },
       {
         "created_at": "2026-06-14T17:47:15.429623+00:00",
@@ -90907,6 +90956,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "3fe71c5a-d357-4c51-9363-e9874a755f83"
+      },
+      {
+        "created_at": "2026-06-24T04:41:42.378145+00:00",
+        "from": "6bd17cf6-ea51-418b-8ab8-8ed712d3bc8d",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "ebb7441b-bb63-4908-80bf-9c8cefe2c198"
       },
       {
         "created_at": "2026-06-11T03:16:28.325944+00:00",
@@ -91042,6 +91098,13 @@
         "to": "4c752ad2-e332-4148-87e2-88340991e2a5"
       },
       {
+        "created_at": "2026-06-24T04:41:42.597803+00:00",
+        "from": "79b70eba-bbca-4497-ae31-ab64fbb4acce",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "667e3b6c-cea2-4ab1-83cb-e0911c80efa9"
+      },
+      {
         "created_at": "2026-06-17T12:17:18.091939+00:00",
         "from": "7abaa5ac-604f-419d-b1df-c8d89374cc74",
         "inspection_status": "passing",
@@ -91068,6 +91131,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "ab4ac603-a14d-4ae4-b68b-a4bf9dce0cb2"
+      },
+      {
+        "created_at": "2026-06-24T04:41:44.280826+00:00",
+        "from": "7d946a66-1425-414b-80f9-3e2d79c0e585",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "936cf0e6-342e-4599-8d6c-92fb4e3901c8"
       },
       {
         "created_at": "2026-06-17T12:15:28.304751+00:00",
@@ -91126,6 +91196,13 @@
         "to": "ce30778a-2b20-4144-af37-51df5085c4cd"
       },
       {
+        "created_at": "2026-06-24T04:41:42.930562+00:00",
+        "from": "936dc5d8-bcd4-4100-b3a3-6f5010a362d9",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "616970c1-9a3a-4a92-bbf2-50b3bae2d9fd"
+      },
+      {
         "created_at": "2026-06-11T00:24:28.091508+00:00",
         "from": "9696ffae-aff5-47dd-8f6c-a8654a215b4d",
         "inspection_status": "passing",
@@ -91154,11 +91231,25 @@
         "to": "5f884be7-3515-4499-a6bb-857ae7eb1db7"
       },
       {
+        "created_at": "2026-06-24T04:41:42.265503+00:00",
+        "from": "9bbbff45-6547-4488-943d-064b524b9eda",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "3ca9ef72-e79b-4d89-a6ff-f51318e1b433"
+      },
+      {
         "created_at": "2026-06-09T19:09:11.821531+00:00",
         "from": "9c81436c-9bbc-42fb-bf3a-e9e3f2e35553",
         "inspection_status": "passing",
         "notes": "",
         "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
+      },
+      {
+        "created_at": "2026-06-24T04:41:45.269752+00:00",
+        "from": "9fbcd766-f73f-4dcd-ba24-e92a9b586086",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "82336903-25ba-4f43-95b6-88fb70cfc3c1"
       },
       {
         "created_at": "2026-06-15T11:58:17.410729+00:00",
@@ -91189,6 +91280,20 @@
         "to": "51bfa653-0b3a-46db-a3a1-c52f1609ff9c"
       },
       {
+        "created_at": "2026-06-24T04:41:45.052435+00:00",
+        "from": "ab37ff2a-4a6f-4d9d-b2db-8874ae322fec",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f93166ae-30d7-4708-ac50-f202c45cbbed"
+      },
+      {
+        "created_at": "2026-06-24T04:41:42.487710+00:00",
+        "from": "adf9e932-96e9-4ea9-9b86-758d73aa1b8a",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "888d9dcd-b8eb-4278-b493-5fdf16bf4f4c"
+      },
+      {
         "created_at": "2026-06-14T10:16:34.950403+00:00",
         "from": "b03c6629-1101-4982-9698-6ee8e11d782e",
         "inspection_status": "passing",
@@ -91201,6 +91306,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "f2995090-ba95-48d3-bb6d-21b4044c32dc"
+      },
+      {
+        "created_at": "2026-06-24T04:41:43.282914+00:00",
+        "from": "b1817681-e29b-4b44-81b2-384262883388",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "23305d3a-e72e-496d-b19b-fd292a0f3e37"
       },
       {
         "created_at": "2026-06-15T08:18:16.126792+00:00",
@@ -91238,6 +91350,13 @@
         "to": "344b406f-c0db-466f-b987-e30bf44322ab"
       },
       {
+        "created_at": "2026-06-24T04:41:44.503570+00:00",
+        "from": "b6cdf27f-7e4c-424a-965a-322fa9b50e9e",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "0071f786-c3da-438e-ac50-0c12aaec9f84"
+      },
+      {
         "created_at": "2026-06-14T19:55:38.101428+00:00",
         "from": "b6d3163c-9f86-4458-865e-b3ac74cbc85d",
         "inspection_status": "passing",
@@ -91264,6 +91383,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "23305d3a-e72e-496d-b19b-fd292a0f3e37"
+      },
+      {
+        "created_at": "2026-06-24T04:41:43.841492+00:00",
+        "from": "bbe70508-23df-4d4b-84b7-79af257571d9",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "382c288a-4846-46f6-93be-eb9e1f40faf3"
       },
       {
         "created_at": "2026-06-17T12:32:45.315639+00:00",
@@ -91320,6 +91446,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "be7990bd-7f82-40d9-8064-c72c52c0a04c"
+      },
+      {
+        "created_at": "2026-06-24T04:41:43.949931+00:00",
+        "from": "c8f75913-4bce-42f5-8e1d-3ccd4f927483",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "5567df9f-375b-4615-9cbc-499d36ea61a0"
       },
       {
         "created_at": "2026-06-14T10:16:34.598675+00:00",
@@ -91392,6 +91525,13 @@
         "to": "388117f6-e815-4185-9692-2587c68d9b1b"
       },
       {
+        "created_at": "2026-06-24T04:43:30.799296+00:00",
+        "from": "da62328c-f670-4ee3-a3c8-44240b0e168d",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "be2436f2-1072-454d-a4b7-bdcab2658594"
+      },
+      {
         "created_at": "2026-06-12T04:15:20.860159+00:00",
         "from": "df34506c-5f6c-416d-a4dd-0beddcba668d",
         "inspection_status": "passing",
@@ -91439,6 +91579,13 @@
         "inspection_status": "passing",
         "notes": "",
         "to": "2bd1db29-7898-4800-a450-3dc084409197"
+      },
+      {
+        "created_at": "2026-06-24T04:41:44.721530+00:00",
+        "from": "ed4f4df4-c565-4c09-a532-9c1639dd673a",
+        "inspection_status": "passing",
+        "notes": "",
+        "to": "f05e3b28-0cfb-4294-b5ad-739cb2dfdfc4"
       },
       {
         "created_at": "2026-06-14T19:43:54.242200+00:00",
@@ -206498,6 +206645,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test db::sqlite::tests::sqlite_interface_surface_calls_round_trip",
+        "description": "Lines 846-852 assert InterfaceSurface node schema exports to JSON; Line 853 asserts CALLS edge exports; Lines 856-861 assert successful import and round-trip pr",
+        "discrimination_status": "discriminating",
+        "id": "04ecdf7c-1c70-469c-94e7-f821a2a6601d",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_interface_surface_calls_round_trip",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test vocab",
         "description": "",
         "discrimination_status": "discriminating",
@@ -206517,6 +206675,17 @@
         "last_result": "passed",
         "last_run": "2026-06-22T10:04:58.239588+00:00",
         "name": "session offer-menu recommendation logic",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --bin loom sqlite_targets_status_update_records_confidence",
+        "description": "assert_eq!(targets[0].confidence, 0.87); at src/db/sqlite/tests.rs:932",
+        "discrimination_status": "discriminating",
+        "id": "067b6d01-2ae3-4440-82d1-cad44a6ffa9e",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_targets_status_update_records_confidence",
         "validation_type": "test"
       },
       {
@@ -206674,6 +206843,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_teaching_commands_match_behavior",
+        "description": "line.contains('--predicted-outcome'), where line is filtered for 'loom hypothesis add --name' from loom smells output (lines 3840-3847 in tests/sqlite_regressio",
+        "discrimination_status": "discriminating",
+        "id": "22253b87-96b8-43fe-82b9-e2ba3b64bf7f",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_teaching_commands_match_behavior",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_large_graph_read_commands_stay_under_budget",
         "description": "Proves the structure_version cache: topology-keyed metrics are cached and reads stay under budget.",
         "discrimination_status": "discriminating",
@@ -206749,6 +206929,17 @@
         "last_run": "2026-06-23T07:19:07.668421+00:00",
         "name": "mockup is contract not realization — acceptance",
         "validation_type": "manual_check"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_discovery_candidate_path_matches_full_scan",
+        "description": "Lines 3700 and 3701-3707: assert!(suspected > 0, 'loom's graph has signal-bearing pairs'); assert_eq!(suspected, all - impact, 'candidate-path suspected-couplin",
+        "discrimination_status": "discriminating",
+        "id": "2ce9cc6b-f1ef-463a-b14d-b8aac45b195a",
+        "last_executed_run": "2026-06-24T04:43:31.612855+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:43:31.612855+00:00",
+        "name": "test: sqlite_discovery_candidate_path_matches_full_scan",
+        "validation_type": "test"
       },
       {
         "command": "cargo test --test sqlite_regression sqlite_fix_take_withholds_ground_template_from_failing_edges",
@@ -206850,6 +207041,28 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test 'db::queries::smells::cycle_island_tests::a_fully_connected_graph_has_no_islands'",
+        "description": "assert!(of_kind(&r, 'intent_island').is_empty()); — line 262 in src/db/queries/smells/graph_tests.inc. This assertion directly validates the criterion: when a g",
+        "discrimination_status": "discriminating",
+        "id": "3a8beb69-4b66-4f08-b632-9ca78c8143cc",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: a_fully_connected_graph_has_no_islands",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_imported_export_read_surface",
+        "description": "Line 428: assert!(status['total_intents'].as_i64().unwrap_or_default() > 0); - Status command returns valid JSON with intents on imported scratch graph. Lines 4",
+        "discrimination_status": "discriminating",
+        "id": "3d79876b-3cd1-4015-b764-6cdd2f7f1617",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_imported_export_read_surface",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_seed_suggest_mines_candidate_intents",
         "description": "Proves the seed ladder stages: want to contract to logic to physical.",
         "discrimination_status": "discriminating",
@@ -206927,6 +207140,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_validate_timeout_kills_the_process_tree",
+        "description": "Line 2330-2334: assert!(start.elapsed() < std::time::Duration::from_secs(5), ...) proves validate returned promptly; Line 2337-2340: assert!(!canary.exists(), .",
+        "discrimination_status": "discriminating",
+        "id": "4f8e8f44-3e4a-4d3c-881a-1427c59abf76",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_validate_timeout_kills_the_process_tree",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_teaching_commands_match_behavior",
         "description": "Proves CLI dispatch: every command teaching matches documented behavior.",
         "discrimination_status": "discriminating",
@@ -206936,6 +207160,17 @@
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "CLI parses and dispatches: --help exits 0",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test output::tests::anchor_json_carries_next_step_and_graph_state",
+        "description": "Line 720: assert_eq!(v['next_step'], '`loom next`') — verifies next_step field is present. Line 722: assert!(v['graph_state'].get('phase').is_some(), 'the pulse",
+        "discrimination_status": "discriminating",
+        "id": "5b0b478c-5d93-4a98-a6e8-6d3266428274",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: anchor_json_carries_next_step_and_graph_state",
+        "validation_type": "test"
       },
       {
         "command": "cargo test --test sqlite_regression sqlite_discovery_vocab_weight_prose_matches_field",
@@ -206960,6 +207195,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_loom_graph_pin_survives_foreign_cwd",
+        "description": "Line 7869-7872: assert!(out.status.success(), 'LOOM_GRAPH must win over cwd: {}') — validates that a command from foreign cwd '/' with LOOM_GRAPH pinned succeed",
+        "discrimination_status": "discriminating",
+        "id": "5e77ca54-08f4-46b7-be23-f27f3de22175",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_loom_graph_pin_survives_foreign_cwd",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_export_import_round_trips_relationship_kinds",
         "description": "Proves snapshot command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
@@ -206968,6 +207214,17 @@
         "last_result": "passed",
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "sqlite snapshot parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test db::queries::scoring::tests::fix_lane_count_matches_scored_len_without_betweenness -- --exact",
+        "description": "Lines 1601-1605 assert that relates_candidate_count_from_snapshot(&snapshot, 'fix') equals scored_candidates_from_snapshot(&snapshot, 'fix').len() with message ",
+        "discrimination_status": "discriminating",
+        "id": "620238c2-d4ef-400a-b38c-f006646223ad",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: fix_lane_count_matches_scored_len_without_betweenness",
         "validation_type": "test"
       },
       {
@@ -207070,6 +207327,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_populate_backfills_interface_calls_from_existing_sagas",
+        "description": "Lines 5662-5687: The test calls `loom interface list --json` and asserts:\n- Line 5663: `assert_eq!(initial['total'], 1);` - asserts interface list command retur",
+        "discrimination_status": "discriminating",
+        "id": "6bd17cf6-ea51-418b-8ab8-8ed712d3bc8d",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_populate_backfills_interface_calls_from_existing_saga",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_smell_adjudication_rejects_batch_rubber_stamp",
         "description": "Proves smell remedies are specific: adjudication rejects batch rubber-stamp rulings.",
         "discrimination_status": "discriminating",
@@ -207136,6 +207404,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_discovery_vocab_weight_prose_matches_field",
+        "description": "Lines 3721-3722 and 3726-3729: The test finds a 'shared_vocab' discovery signal in the JSON output, extracts its weight field, then asserts that the same weight",
+        "discrimination_status": "discriminating",
+        "id": "79b70eba-bbca-4497-ae31-ab64fbb4acce",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_discovery_vocab_weight_prose_matches_field",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_imported_export_read_surface",
         "description": "",
         "discrimination_status": "discriminating",
@@ -207166,6 +207445,17 @@
         "last_result": "passed",
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "maturity ladder roll-up",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test \"shape_hash_decision_adjudicates_clone_without_lowering_total_and_shape_change_reopens\"",
+        "description": "Lines 725-733: assert_eq!(deliberate.deliberate, 1); assert_eq!(deliberate.open, 0); assert!(deliberate.open_advisories.is_empty()); assert_eq!(deliberate.adjud",
+        "discrimination_status": "discriminating",
+        "id": "7d946a66-1425-414b-80f9-3e2d79c0e585",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: shape_hash_decision_adjudicates_clone_without_lowering_total",
         "validation_type": "test"
       },
       {
@@ -207257,6 +207547,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_bad_input_guards_refuse_silent_noops",
+        "description": "At line 3996: `expect_refused(&['intent', 'show', ''], 'can't be empty');` — this assertion directly verifies that the empty-key guard in resolve_intent_with_db",
+        "discrimination_status": "discriminating",
+        "id": "936dc5d8-bcd4-4100-b3a3-6f5010a362d9",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_bad_input_guards_refuse_silent_noops",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_delegated_coverage_counts_child_export",
         "description": "Temp-graph delegation smoke using this repo's local target/debug/loom binary, not the globally installed loom.",
         "discrimination_status": "discriminating",
@@ -207290,6 +207591,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_edge_implement_verifies_locator_at_ground_time",
+        "description": "Lines 1979-1991 and 1993-2003: `run_json_as(&graph.root, &['edge', 'implement', 'r1 real owner', 'scratch/r1.rs', '--locator', 'fn real_sym', '--json'], 'llm:bu",
+        "discrimination_status": "discriminating",
+        "id": "9bbbff45-6547-4488-943d-064b524b9eda",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_edge_implement_verifies_locator_at_ground_time",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_detect_routes_to_init_in_both_forms",
         "description": "Proves detect runs pre-init: routes to init in both forms and reports the recommended stack.",
         "discrimination_status": "discriminating",
@@ -207299,6 +207611,17 @@
         "last_run": "2026-06-23T11:58:32.795386+00:00",
         "name": "detect runs pre-init and reports the stack",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test repo::tests::tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imports",
+        "description": "assert_eq!(imports, vec!['web/lib/barrel.ts'.to_string(), 'web/lib/lazy.ts'.to_string(), 'web/lib/legacy.js'.to_string(), 'web/lib/util.ts'.to_string()]) — this",
+        "discrimination_status": "discriminating",
+        "id": "9fbcd766-f73f-4dcd-ba24-e92a9b586086",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: tree_sitter_js_ts_extracts_multiline_exports_and_dynamic_imp",
+        "validation_type": "test"
       },
       {
         "command": "cargo test --test sqlite_regression sqlite_taxonomy_kinds_persist_and_doctor_validates",
@@ -207345,6 +207668,28 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_seed_guide_routes_to_interview",
+        "description": "text.contains('terminate on completeness') || text.contains('interview') — the seed guide must teach the user interview loop (line 8004-8005 in tests/sqlite_reg",
+        "discrimination_status": "discriminating",
+        "id": "ab37ff2a-4a6f-4d9d-b2db-8874ae322fec",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_seed_guide_routes_to_interview",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_hypothesis_adoption_outcome_validation_confirms_then_settles_targets",
+        "description": "Lines 5207-5210: assert_eq!(in_flight_sync['targets_edges_flagged'], 1, 'an in-flight (pre-confirm) hypothesis's TARGETS stales on a target code change: {in_fli",
+        "discrimination_status": "discriminating",
+        "id": "adf9e932-96e9-4ea9-9b86-758d73aa1b8a",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_hypothesis_adoption_outcome_validation_confirms_then_",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_imported_export_read_surface",
         "description": "SQLite rollback/read-surface smoke: import the committed export into a scratch SQLite graph and verify read commands/export still work.",
         "discrimination_status": "",
@@ -207365,6 +207710,17 @@
         "last_run": "2026-06-23T20:35:25.022916+00:00",
         "name": "orientation + guide + schema emit valid JSON",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_import_blocks_unvetted_commands_from_bulk_validate",
+        "description": "assert!(!ran, '`loom validate --all` must NOT execute a command from an imported graph (RCE footgun)') at line 2267-2270; This assertion specifically proves tha",
+        "discrimination_status": "discriminating",
+        "id": "b1817681-e29b-4b44-81b2-384262883388",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_import_blocks_unvetted_commands_from_bulk_validate",
+        "validation_type": "test"
       },
       {
         "command": "env -u LOOM_AGENT cargo test --test sqlite_regression sqlite_noop_sync_keeps_export_check_green",
@@ -207411,6 +207767,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_delegated_coverage_counts_child_export",
+        "description": "Lines 7909-7913: assert_eq!(missing['delegation_targets_missing'], serde_json::json!(['services/api/loom.graph.json']), ...) — proves missing child export is re",
+        "discrimination_status": "discriminating",
+        "id": "b6cdf27f-7e4c-424a-965a-322fa9b50e9e",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_delegated_coverage_counts_child_export",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_take_template_confidence_placeholder_and_hints_json",
         "description": "Proves validation and saga storage isolation: saga runs don't pollute the validation table and vice versa.",
         "discrimination_status": "discriminating",
@@ -207453,6 +207820,17 @@
         "last_run": "2026-06-22T17:25:17.920196+00:00",
         "name": "validate --all smoke drains pending proofs",
         "validation_type": "assertion"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_service_pack_detects_axum_framework",
+        "description": "assert!(packs.contains(&'service'), 'service pack should be recommended when axum is detected: {packs:?}') at line 8415-8418 of tests/sqlite_regression.rs — thi",
+        "discrimination_status": "discriminating",
+        "id": "bbe70508-23df-4d4b-84b7-79af257571d9",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_service_pack_detects_axum_framework",
+        "validation_type": "test"
       },
       {
         "command": "cargo test db::sqlite::tests::sqlite_implements_regrounding_updates_locator_and_status",
@@ -207543,6 +207921,17 @@
         "validation_type": "manual_check"
       },
       {
+        "command": "cargo test db::sqlite::tests::sqlite_import_export_round_trip",
+        "description": "assert_eq!(normalized_for_semantic_compare(data), normalized_for_semantic_compare(exported)); (line 606-609 in src/db/sqlite/tests.rs)",
+        "discrimination_status": "discriminating",
+        "id": "c8f75913-4bce-42f5-8e1d-3ccd4f927483",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_import_export_round_trip",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_migrate_reports_open_time_schema_contract",
         "description": "Proves migration command parity: the SQLite-backed command produces correct output for its specific behavior.",
         "discrimination_status": "discriminating",
@@ -207562,6 +207951,17 @@
         "last_result": "passed",
         "last_run": "2026-06-23T11:58:32.795386+00:00",
         "name": "sqlite storage schema contract",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_smells_take_kind_returns_finding_ids_and_batch_template",
+        "description": "json['smells'][0]['evidence'].as_str().expect('evidence').contains('scratch/take_kind_a.rs → scratch/take_kind_b.rs') at line 1693-1695 — asserts that the smell",
+        "discrimination_status": "discriminating",
+        "id": "cbc48427-71cf-43cb-aa36-0708614f0507",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_smells_take_kind_returns_finding_ids_and_batch_templa",
         "validation_type": "test"
       },
       {
@@ -207653,6 +208053,17 @@
         "validation_type": "test"
       },
       {
+        "command": "cargo test --test sqlite_regression sqlite_large_graph_read_commands_stay_under_budget",
+        "description": "Lines 2647-2650: assert!(elapsed < BUDGET, 'loom {args:?} took {elapsed:?}, over the {BUDGET:?} budget — a superlinear regression?') — validates that status, ne",
+        "discrimination_status": "discriminating",
+        "id": "da62328c-f670-4ee3-a3c8-44240b0e168d",
+        "last_executed_run": "2026-06-24T04:43:31.612855+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:43:31.612855+00:00",
+        "name": "test: sqlite_large_graph_read_commands_stay_under_budget",
+        "validation_type": "test"
+      },
+      {
         "command": "cargo test --test sqlite_regression sqlite_sync_skips_meaning_only_edges_on_code_change",
         "description": "Proves the redefinition ripple: intent meaning update ripples one-hop while skipping meaning-only edges.",
         "discrimination_status": "discriminating",
@@ -207716,6 +208127,28 @@
         "last_result": "passed",
         "last_run": "2026-06-23T21:05:51.275332+00:00",
         "name": "sqlite report command parity",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_independent_edge_survives_unrelated_code_change",
+        "description": "Line 7771-7774: assert_eq!(relates_status(&graph.root, &a, &b), 'independent', 'an independent verdict must SURVIVE an unrelated code change — the N×N grid must",
+        "discrimination_status": "discriminating",
+        "id": "ecab6006-593f-4562-a562-0ade5988845d",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_independent_edge_survives_unrelated_code_change",
+        "validation_type": "test"
+      },
+      {
+        "command": "cargo test --test sqlite_regression sqlite_interface_gaps_detect_call_without_validates",
+        "description": "Line 6232-6233: `assert_eq!(gaps['interface_gaps']['call_without_validates'], 1);` and `assert_eq!(gaps['interface_gaps']['total'], 1);` prove that saga add res",
+        "discrimination_status": "discriminating",
+        "id": "ed4f4df4-c565-4c09-a532-9c1639dd673a",
+        "last_executed_run": "2026-06-24T04:41:45.285397+00:00",
+        "last_result": "passed",
+        "last_run": "2026-06-24T04:41:45.285397+00:00",
+        "name": "test: sqlite_interface_gaps_detect_call_without_validates",
         "validation_type": "test"
       },
       {
