@@ -21,7 +21,9 @@ use uuid::Uuid;
 use crate::cli::SagaCmd;
 use crate::db::{ensure_initialized, GraphReadHandle, GraphReadRepository};
 use crate::output::Printer;
-use crate::saga::diagnose::{diagnose_missing_env, diagnose_report, SagaDiagnosis};
+use crate::saga::diagnose::{
+    diagnose_missing_env, diagnose_report, SagaDiagnosis, SagaTrivialWarning,
+};
 use crate::saga::spec::{load_spec_file, SagaSpec};
 use crate::saga::{run_saga, SagaRunReport};
 use crate::types::{CodeFile, Intent, Validation};
@@ -191,10 +193,90 @@ fn mapping_score(
     score
 }
 
-/// True when the saga step hits a TRIVIAL/health-check-style endpoint
-/// (`/ping`, `/health`, `/status`, `/version`, …) that the bound intent does NOT
-/// itself describe — the signature of a forged Proven rung (a saga that "passes"
-/// by hitting a trivial endpoint instead of exercising the real journey).
+/// Runtime-configurable list of endpoints that do NOT exercise a real consumer
+/// journey. Loaded from `.loom/trivial-endpoints.yml` when present and merged
+/// with the built-in conservative defaults. The matcher is deliberately narrow
+/// by default: only the final path segment is matched exactly, so compound
+/// paths like `/status/orders` are not flagged unless explicitly configured.
+#[derive(Debug, Default, serde::Deserialize)]
+struct TrivialEndpointConfig {
+    /// Final path segments that are trivial by default (e.g. `ping`, `health`).
+    #[serde(default)]
+    segments: Vec<String>,
+    /// Full paths that are trivial for this project (e.g. `/_/health`).
+    #[serde(default)]
+    paths: Vec<String>,
+    /// Substring tokens that flag any URL containing them. Use sparingly:
+    /// this broadens the gate and can false-warn honest journeys.
+    #[serde(default)]
+    substring_tokens: Vec<String>,
+}
+
+impl TrivialEndpointConfig {
+    fn default_segments() -> Vec<String> {
+        vec![
+            "ping",
+            "health",
+            "healthz",
+            "healthcheck",
+            "heartbeat",
+            "status",
+            "version",
+            "ready",
+            "readyz",
+            "live",
+            "livez",
+            "liveness",
+            "readiness",
+            "alive",
+            "ok",
+            "echo",
+            "metrics",
+            "info",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect()
+    }
+}
+
+fn load_trivial_endpoint_config(root: &std::path::Path) -> TrivialEndpointConfig {
+    let mut config = TrivialEndpointConfig {
+        segments: TrivialEndpointConfig::default_segments(),
+        paths: Vec::new(),
+        substring_tokens: Vec::new(),
+    };
+    let path = crate::db::loom_dir(root).join("trivial-endpoints.yml");
+    if path.exists() {
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_yaml::from_str::<TrivialEndpointConfig>(&content) {
+                Ok(overrides) => {
+                    config.segments.extend(overrides.segments);
+                    config.paths.extend(overrides.paths);
+                    config.substring_tokens.extend(overrides.substring_tokens);
+                }
+                Err(e) => {
+                    eprintln!("⚠ Invalid .loom/trivial-endpoints.yml: {e}. Using defaults only.")
+                }
+            },
+            Err(e) => {
+                eprintln!("⚠ Cannot read .loom/trivial-endpoints.yml: {e}. Using defaults only.")
+            }
+        }
+    }
+    config
+}
+
+/// True when the saga step hits a TRIVIAL/health-check-style endpoint that the
+/// bound intent does NOT itself describe — the signature of a forged Proven rung
+/// (a saga that "passes" by hitting a trivial endpoint instead of exercising the
+/// real journey).
+///
+/// By default only the FINAL path segment is checked, exact against the
+/// configured segment list. Compound paths like `/status/orders` are treated as
+/// real journeys unless the project config explicitly lists them. Project-specific
+/// paths (`/_/health`, `/service/ready`) can be added via
+/// `.loom/trivial-endpoints.yml`.
 ///
 /// Deliberately NARROW: lexical non-overlap alone is NOT a forge signal — it
 /// false-warns the most common real endpoints (`/login` for "sign in",
@@ -202,36 +284,102 @@ fn mapping_score(
 /// honest journey and diluting the genuine signal. So we flag ONLY the
 /// trivial-endpoint pattern, and not when the intent itself is about that
 /// endpoint (a real "health check" journey hitting `/health` is fine).
-fn step_hits_trivial_endpoint(url: &str, intent: &crate::types::Intent) -> bool {
-    const TRIVIAL: [&str; 18] = [
-        "ping",
-        "health",
-        "healthz",
-        "healthcheck",
-        "heartbeat",
-        "status",
-        "version",
-        "ready",
-        "readyz",
-        "live",
-        "livez",
-        "liveness",
-        "readiness",
-        "alive",
-        "ok",
-        "echo",
-        "metrics",
-        "info",
-    ];
-    let haystack = format!("{} {} {}", intent.name, intent.description, intent.criterion)
-        .to_ascii_lowercase();
+fn step_hits_trivial_endpoint(
+    url: &str,
+    intent: &crate::types::Intent,
+    config: &TrivialEndpointConfig,
+) -> bool {
+    let haystack = format!(
+        "{} {} {}",
+        intent.name, intent.description, intent.criterion
+    )
+    .to_ascii_lowercase();
     let path = url
         .split(['?', '#'])
         .next()
         .unwrap_or(url)
         .to_ascii_lowercase();
-    path.split(|c: char| !c.is_ascii_alphanumeric())
-        .any(|tok| TRIVIAL.contains(&tok) && !haystack.contains(tok))
+
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    let last = segments.last().copied().unwrap_or("").to_string();
+
+    // Exact final-segment match against defaults + configured segments.
+    if !last.is_empty()
+        && config
+            .segments
+            .iter()
+            .any(|s| s.to_ascii_lowercase() == last)
+        && !haystack.contains(&last)
+    {
+        return true;
+    }
+
+    // Exact full-path match against configured project paths.
+    if !path.is_empty() {
+        for p in &config.paths {
+            let p_low = p.to_ascii_lowercase();
+            if path == p_low && !haystack.contains(&p_low) {
+                return true;
+            }
+        }
+    }
+
+    // Configured substring tokens (broad; user-opt-in only).
+    for tok in &config.substring_tokens {
+        let tok_low = tok.to_ascii_lowercase();
+        if path.contains(&tok_low) && !haystack.contains(&tok_low) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Collect trivial-endpoint warnings for a saga spec, using the same matcher
+/// and config as `loom saga add` so diagnose and add agree on what counts as a
+/// forged Proven rung.
+fn trivial_warnings_for_spec(
+    spec: &crate::saga::spec::SagaSpec,
+    store: &crate::db::sqlite::SqliteGraphStore,
+    config: &TrivialEndpointConfig,
+) -> Result<Vec<SagaTrivialWarning>> {
+    let snapshot = store.query_snapshot()?;
+    let by_id: std::collections::HashMap<String, crate::types::Intent> = snapshot
+        .intents
+        .iter()
+        .cloned()
+        .map(|intent| (intent.id.clone(), intent))
+        .collect();
+    let mut warnings = Vec::new();
+    for (idx, step) in spec.steps.iter().enumerate() {
+        let key = step.intent.trim();
+        if key.is_empty() {
+            continue;
+        }
+        let resolved = crate::db::queries::try_resolve_intent_from_snapshot(&snapshot, key)
+            .with_context(|| {
+                format!(
+                    "step {} ('{}'): intent binding '{}'",
+                    idx + 1,
+                    step.name,
+                    key
+                )
+            })?;
+        let Some(iid) = resolved else { continue };
+        let Some(intent) = by_id.get(&iid) else {
+            continue;
+        };
+        if step_hits_trivial_endpoint(&step.request.url, intent, config) {
+            warnings.push(SagaTrivialWarning {
+                step: idx + 1,
+                name: step.name.clone(),
+                method: step.request.method.clone(),
+                url: step.request.url.clone(),
+                intent: step.intent.clone(),
+            });
+        }
+    }
+    Ok(warnings)
 }
 
 fn mapping_tokens(text: &str) -> Vec<String> {
@@ -329,6 +477,7 @@ fn add_sqlite(
     let cwd = crate::db::resolve_root()?;
     ensure_initialized(&cwd)?;
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
+    let trivial_config = load_trivial_endpoint_config(&cwd);
 
     if spawn_missing {
         crate::gate::acting_in_lane(&crate::gate::lane::SPAWN_JOURNEY_INTENTS, None)?;
@@ -467,7 +616,7 @@ fn add_sqlite(
         }
         if let Some(intent) = by_id.get(iid) {
             let url = &spec.steps[idx].request.url;
-            if step_hits_trivial_endpoint(url, intent) {
+            if step_hits_trivial_endpoint(url, intent, &trivial_config) {
                 unmatched_steps.push((
                     idx + 1,
                     spec.steps[idx].request.method.clone(),
@@ -729,9 +878,12 @@ fn diagnose_sqlite(arg: &str, printer: &Printer) -> Result<()> {
         std::process::exit(1);
     }
 
+    let trivial_config = load_trivial_endpoint_config(&cwd);
+    let trivial_warnings = trivial_warnings_for_spec(&spec, &store, &trivial_config)?;
+
     drop(store);
     let report = run_saga(&spec)?;
-    let diagnosis = diagnose_report(&spec, &report);
+    let diagnosis = diagnose_report(&spec, &report, trivial_warnings);
     let store = crate::db::sqlite::SqliteGraphStore::open(&crate::db::sqlite_db_path(&cwd))?;
     print_diagnosis_sqlite(&diagnosis, &store, printer)?;
     if !diagnosis.passed {
@@ -802,6 +954,19 @@ fn print_diagnosis_sqlite(
                 }
             }
         }
+    }
+    if !diagnosis.trivial_warnings.is_empty() {
+        println!(
+            "⚠ {} step(s) hit a TRIVIAL/health-check endpoint while bound to a real journey intent — a passing saga would forge the Proven rung:",
+            diagnosis.trivial_warnings.len()
+        );
+        for w in &diagnosis.trivial_warnings {
+            println!(
+                "    step {}: {} {} → intent '{}'",
+                w.step, w.method, w.url, w.intent
+            );
+        }
+        println!();
     }
     println!();
     println!("── Summary ─────────────────────────────────────────");

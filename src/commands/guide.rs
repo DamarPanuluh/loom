@@ -32,6 +32,7 @@ const DEEPER_RULES: &[&str] = &[
     "DESIGN CHANGES: `loom intent retire <id> --reason … [--replaced-by …]` — never delete (delete is for mistakes). `loom note add --for <role>` for handoffs.",
     "HYPOTHESIS PLANE: `loom hypothesis add --claim … --proposal … --predicted-outcome …` → `loom next --mode prove` → `loom hypothesis adopt|reject`. Proposer ≠ prover.",
     "CONSUMER PLANE (sagas): `loom saga add <spec.yaml>` → `loom saga diagnose` (triage) → `loom saga run` (stamp proof). Missing env = blocked, not failed.",
+    "PROOF RELEVANCE: `loom validate` checks whether a passing test actually exercises the grounded code — static import/symbol-usage analysis by default. For a DEFINITIVE answer (the test imports but never calls the symbol), enable coverage: `LOOM_COVERAGE_FILE=<lcov-path> loom validate <intent>` — an LCOV report showing the grounded symbol's lines were executed confirms executed-proven regardless of imports.",
     "EXPORT: `loom export` before committing. `loom export --check` verifies freshness. `loom wiki` for human-readable architecture doc.",
 ];
 
@@ -502,6 +503,22 @@ fn import_idea() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+/// SAGA: authoring a consumer-plane proof. A saga is not "tests for the API";
+/// it is an executable journey that proves a user-visible intent path by
+/// running it against the live boundary. Each step binds to an intent; a passing
+/// run stamps RUNTIME evidence on the path edges.
+fn saga() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("saga authoring is proof authoring", "A saga proves a USER-VISIBLE journey by EXECUTING it against the live boundary. The spec binds each step to an intent; a passing `loom saga run` stamps runtime evidence on the intent path."),
+        ("design the journey first", "Break the user story into steps that each exercise a real intent. If a step's intent doesn't exist, `loom saga add <spec.yaml> --spawn-missing [--under <parent>]` creates it as planned; `loom next --mode build` later realizes it and the saga becomes its acceptance test."),
+        ("write the spec", "YAML: `saga: <name>` and a list of `steps` with `name`, `intent`, `request { method, url }`, and `expect { status, body? }`. Capture values from responses with JSONPath and thread them into later steps. Run `loom schema` for the full spec shape."),
+        ("add the saga", "`loom saga add <spec.yaml>` registers the Validation, links VALIDATES and path RELATES_TO edges, records interface CALLS, and warns if a step hits a trivial/health-check endpoint unrelated to its intent."),
+        ("diagnose before stamping", "`loom saga diagnose <name>` runs the chain WITHOUT stamping proof. Use it to triangulate env/base-url/handler problems. Missing required env is `blocked`, not `failed`."),
+        ("stamp proof", "`BASE_URL=<url> loom saga run <name>` executes the journey and stamps PASSING or FAILING evidence. Only a passing run can prove a user-visible boundary intent — a forged Proven rung is a honesty bug."),
+        ("rerun when the boundary changes", "`loom sync` re-opens saga proofs when registered files change. Re-run `loom saga run` to re-earn the Proven rung after edits."),
+    ]
+}
+
 fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
     if let Some(m) = mode {
         return match m {
@@ -511,8 +528,9 @@ fn resolve_mode(mode: Option<&str>) -> Result<&'static str> {
             "port" => Ok("port"),
             "seed" => Ok("seed"),
             "import" | "adopt" => Ok("import"),
+            "saga" => Ok("saga"),
             other => anyhow::bail!(
-                "Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed, import",
+                "Unknown mode '{}'. Valid: greenfield, brownfield, refactor, port, seed, import, saga",
                 other
             ),
         };
@@ -693,6 +711,7 @@ pub fn run(mode: Option<&str>, role: Option<&str>, all: bool, printer: &Printer)
         "port" => port(),
         "seed" => seed(),
         "import" => import_idea(),
+        "saga" => saga(),
         _ => brownfield(),
     };
 

@@ -10270,3 +10270,189 @@ fn sqlite_saga_add_warns_on_trivial_endpoint_not_real_journeys() {
     assert_eq!(flagged(&add_step("ok3", &profile, "/profile")), 0, "/profile for 'view profile' must NOT warn");
     assert_eq!(flagged(&add_step("ok4", &signin, "/api/v2/checkout")), 0, "/api/v2/checkout must NOT false-warn");
 }
+
+/// A test that IMPORTS the grounded module but never USES the grounded symbol
+/// in its body must be demoted to asserted-only. File-level relevance is not
+/// enough: importing `mod` proves nothing about `compute`. This is the symbol-level
+/// forge gap that static import analysis alone cannot close.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_import_without_symbol_usage_is_not_executed_proven() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("import-no-use-proof");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    // Imports `compute` but never calls it; `compute` only appears in the import.
+    write_scratch_file(&graph.root, "test_imports_no_use.py", "from mod import compute\ndef test_imports_but_does_not_use():\n    assert 1 + 1 == 2\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["validation", "add", "--name", "import-no-use", "--type", "test", "--command", "sh runner.sh test_imports_no_use.py", "--intent", &id, "--json"],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "a test that imports the module but never uses the grounded symbol must be asserted-only: {v}"
+    );
+}
+
+/// A multi-line `from mod import (compute,)` must still be treated as an import,
+/// not as a use of `compute` in the test body.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_multiline_import_without_use_is_not_executed_proven() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("multiline-import-proof");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    write_scratch_file(
+        &graph.root,
+        "test_multi.py",
+        "from mod import (\n    compute,\n)\ndef test_multi():\n    assert 1 + 1 == 2\n",
+    );
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["validation", "add", "--name", "multi-import", "--type", "test", "--command", "sh runner.sh test_multi.py", "--intent", &id, "--json"],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "multi-line import without use must be asserted-only: {v}"
+    );
+}
+
+/// COVERAGE-BASED RELEVANCE (definitive Tier 1): when an LCOV report is
+/// present and shows the grounded symbol's lines were EXECUTED, the proof is
+/// Confirmed even if the static gate would fail. When the report shows the
+/// symbol was NOT executed, the proof is Irrelevant — the definitive answer
+/// the static heuristic could only approximate.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_coverage_proves_symbol_executed() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("cov-executed");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    // This test imports mod but never uses compute in its body — the static
+    // gate would demote it. But the coverage report shows line 2 was hit.
+    write_scratch_file(&graph.root, "test_cov.py", "from mod import compute\ndef test_cov():\n    assert 1 + 1 == 2\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    // LCOV: mod.py line 2 (the return) was executed.
+    write_scratch_file(&graph.root, "coverage.lcov", "SF:mod.py\nDA:2,1\nend_of_record\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["validation", "add", "--name", "cov", "--type", "test", "--command", "sh runner.sh test_cov.py", "--intent", &id, "--json"],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "discriminating",
+        "coverage showing the grounded symbol executed must confirm executed-proven: {v}"
+    );
+}
+
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_coverage_proves_symbol_not_executed() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("cov-not-executed");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    // This test imports compute AND uses it — the static gate would confirm
+    // it. But the coverage report shows line 2 was NOT hit.
+    write_scratch_file(&graph.root, "test_cov.py", "from mod import compute\ndef test_cov():\n    assert compute(2) == 4\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    // LCOV: mod.py line 2 has 0 hits — the function was never called.
+    write_scratch_file(&graph.root, "coverage.lcov", "SF:mod.py\nDA:2,0\nend_of_record\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["validation", "add", "--name", "cov", "--type", "test", "--command", "sh runner.sh test_cov.py", "--intent", &id, "--json"],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "coverage showing the grounded symbol NOT executed must demote to asserted-only: {v}"
+    );
+}
+
+/// No coverage report → falls back to the static heuristic (the existing
+/// behavior). This proves the coverage layer is purely additive.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_no_coverage_falls_back_to_static_heuristic() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("no-cov-fallback");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    write_scratch_file(&graph.root, "test_real.py", "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(
+        &graph.root,
+        &["validation", "add", "--name", "real", "--type", "test", "--command", "sh runner.sh test_real.py", "--intent", &id, "--json"],
+        "llm:validator",
+    );
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "discriminating",
+        "no coverage report → static heuristic confirms a real test: {v}"
+    );
+}

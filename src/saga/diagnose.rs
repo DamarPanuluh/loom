@@ -20,6 +20,7 @@ pub struct SagaDiagnosis {
     pub executed: usize,
     pub steps: Vec<StepDiagnosis>,
     pub summary: DiagnosisSummary,
+    pub trivial_warnings: Vec<SagaTrivialWarning>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -33,6 +34,15 @@ pub struct StepDiagnosis {
     pub http_status: Option<u16>,
     pub detail: String,
     pub root_cause: Option<RootCause>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct SagaTrivialWarning {
+    pub step: usize,
+    pub name: String,
+    pub method: String,
+    pub url: String,
+    pub intent: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -66,7 +76,11 @@ pub struct DiagnosisCount {
     pub count: usize,
 }
 
-pub fn diagnose_report(spec: &SagaSpec, report: &SagaRunReport) -> SagaDiagnosis {
+pub fn diagnose_report(
+    spec: &SagaSpec,
+    report: &SagaRunReport,
+    trivial_warnings: Vec<SagaTrivialWarning>,
+) -> SagaDiagnosis {
     let mut steps = Vec::new();
     let mut vars = spec.vars.clone();
     for outcome in &report.outcomes {
@@ -116,6 +130,7 @@ pub fn diagnose_report(spec: &SagaSpec, report: &SagaRunReport) -> SagaDiagnosis
         executed: report.executed,
         steps,
         summary,
+        trivial_warnings,
     }
 }
 
@@ -166,6 +181,7 @@ pub fn diagnose_missing_env(
         executed: 0,
         steps,
         summary,
+        trivial_warnings: Vec::new(),
     }
 }
 
@@ -633,7 +649,7 @@ steps:
                 captured: Default::default(),
             }],
         };
-        let diagnosis = diagnose_report(&spec, &report);
+        let diagnosis = diagnose_report(&spec, &report, Vec::new());
         assert_eq!(
             diagnosis.steps[0].root_cause.as_ref().unwrap().kind,
             "auth_forbidden"
@@ -686,7 +702,7 @@ steps:
                 captured: Default::default(),
             }],
         };
-        let diagnosis = diagnose_report(&spec, &report);
+        let diagnosis = diagnose_report(&spec, &report, Vec::new());
         let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
         assert_eq!(root.kind, "token_scope_missing");
         assert!(root
@@ -739,7 +755,7 @@ steps:
                 captured: Default::default(),
             }],
         };
-        let diagnosis = diagnose_report(&spec, &report);
+        let diagnosis = diagnose_report(&spec, &report, Vec::new());
         let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
         assert_eq!(root.kind, "body_mismatch");
     }
@@ -782,7 +798,7 @@ steps:
                 captured: Default::default(),
             }],
         };
-        let diagnosis = diagnose_report(&spec, &report);
+        let diagnosis = diagnose_report(&spec, &report, Vec::new());
         let root = diagnosis.steps[0].root_cause.as_ref().unwrap();
         assert_ne!(
             root.kind, "auth_forbidden",

@@ -369,7 +369,8 @@ pub enum Command {
         /// greenfield (design first) | brownfield (map existing code) |
         /// refactor (change existing) | port (re-realize a mapped system in a
         /// new language/repo) | seed (interview user) | import (adopt a
-        /// pattern/subsystem/contract from another repo). Auto-detected from the repo if omitted.
+        /// pattern/subsystem/contract from another repo) | saga (author a
+        /// consumer-plane proof). Auto-detected from the repo if omitted.
         #[arg(long)]
         mode: Option<String>,
         /// Adopt a role: print the charge for builder|analyzer|fixer|validator|quality

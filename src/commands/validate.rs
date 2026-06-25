@@ -120,7 +120,7 @@ fn execute_and_record(
     printer: &Printer,
     scope: (&str, serde_json::Value),
     marker: &str,
-    grounding: &std::collections::HashMap<String, (Vec<String>, Vec<String>)>,
+    grounding: &std::collections::HashMap<String, Grounding>,
 ) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     let mut results: Vec<serde_json::Value> = Vec::new();
@@ -266,7 +266,7 @@ fn execute_and_record(
             && validation.validation_type == "test"
             && grounding
                 .get(&validation.id)
-                .map(|(files, locs)| proof_relevance(cwd, &validation.command, files, locs))
+                .map(|g| proof_relevance(cwd, &validation.command, g))
                 == Some(ProofRelevance::Irrelevant);
         let discrimination = if forged_signal || irrelevant_proof {
             "ran_inert"
@@ -315,13 +315,14 @@ fn execute_and_record(
                 );
             } else if new_result == "passed" && irrelevant_proof {
                 println!(
-                    "    ⚠ passed but IRRELEVANT: loom's static import analysis found no path from \
-                     this test to the intent's grounded code (its imports all resolved, none reach \
-                     the grounding), so it counts ASSERTED-only, NOT executed-proven. Point the proof \
-                     at a test that imports/drives the grounded file; if it exercises the code \
-                     indirectly (subprocess / e2e), record it as an `assertion` or `saga` validation \
-                     instead of `test`. (If this IS a real test loom mis-read, that's a bug — its \
-                     imports should have resolved.)"
+                    "    ⚠ passed but IRRELEVANT: loom found no evidence the test exercises the \
+                     grounded symbol. This is based on static import/symbol-usage analysis. For a \
+                     DEFINITIVE answer, enable coverage: `LOOM_COVERAGE_FILE=<lcov-path> loom \
+                     validate {}` — an LCOV report showing the grounded symbol's lines were \
+                     executed will confirm it regardless of imports. If the test exercises the \
+                     code indirectly (subprocess / e2e), record it as an `assertion` or `saga` \
+                     validation instead of `test`.",
+                    scope.1
                 );
             } else if new_result == "passed"
                 && discrimination == "ran_inert"
@@ -535,9 +536,9 @@ fn command_only_prints(command: &str) -> bool {
     }
     segments.iter().all(|seg| {
         // Skip leading `VAR=val` env-assignments, then take the command word.
-        let word = seg.split_whitespace().find(|t| {
-            !(t.contains('=') && t.split('=').next().is_some_and(is_env_var_name))
-        });
+        let word = seg
+            .split_whitespace()
+            .find(|t| !(t.contains('=') && t.split('=').next().is_some_and(is_env_var_name)));
         match word {
             None => true, // pure env-assignment segment runs nothing
             Some(w) => NOOP.contains(&w.rsplit('/').next().unwrap_or(w)),
@@ -546,7 +547,9 @@ fn command_only_prints(command: &str) -> bool {
 }
 
 fn is_env_var_name(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_') && !s.starts_with(|c: char| c.is_ascii_digit())
+    !s.is_empty()
+        && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+        && !s.starts_with(|c: char| c.is_ascii_digit())
 }
 
 /// How well a `test`-type proof can be confirmed to EXERCISE the intent's grounded
@@ -569,17 +572,44 @@ enum ProofRelevance {
     Unconfirmed,
 }
 
-fn proof_relevance(
-    root: &std::path::Path,
-    command: &str,
-    grounded_files: &[String],
-    _locators: &[String],
-) -> ProofRelevance {
-    if grounded_files.is_empty() {
+fn proof_relevance(root: &std::path::Path, command: &str, grounding: &Grounding) -> ProofRelevance {
+    if grounding.files.is_empty() {
         return ProofRelevance::Unconfirmed;
     }
     let grounded: std::collections::HashSet<&str> =
-        grounded_files.iter().map(String::as_str).collect();
+        grounding.files.iter().map(String::as_str).collect();
+
+    // ── TIER 1: Coverage data (definitive) ──────────────────────────────
+    // If an LCOV/coverage report exists and is fresh (mtime after the test
+    // ran), consult it. A grounded symbol whose line range was EXECUTED is
+    // Confirmed regardless of imports/text. A symbol whose range was NOT
+    // executed is Irrelevant — the definitive answer the static gate could
+    // only approximate.
+    if let Some(cov) = discover_coverage(root) {
+        if !grounding.symbol_ranges.is_empty() {
+            let mut any_executed = false;
+            let mut any_not_executed = false;
+            for (file, start, end) in &grounding.symbol_ranges {
+                match cov.symbol_executed(file, *start, *end) {
+                    CoverageVerdict::Executed => any_executed = true,
+                    CoverageVerdict::NotExecuted => any_not_executed = true,
+                    CoverageVerdict::FileNotInReport | CoverageVerdict::RangeNotInReport => {}
+                }
+            }
+            if any_executed {
+                return ProofRelevance::Confirmed;
+            }
+            // No symbol was executed, but at least one was instrumented and
+            // NOT hit → the test ran but never executed the grounded behavior.
+            if any_not_executed {
+                return ProofRelevance::Irrelevant;
+            }
+            // File not in the coverage report, or symbol range not instrumented
+            // → fall through to the static heuristic.
+        }
+    }
+
+    // ── TIER 2: Static import + symbol-usage analysis (heuristic) ───────
     let named = command_source_files(root, command);
     if named.is_empty() {
         return ProofRelevance::Unconfirmed;
@@ -587,32 +617,28 @@ fn proof_relevance(
     if named.iter().any(|f| grounded.contains(f.as_str())) {
         return ProofRelevance::Confirmed; // the grounded file IS the test target
     }
-    // Transitive import reachability from the named test files (+ their pytest
-    // conftest chain, auto-loaded and able to wire the system-under-test).
     let mut roots = named.clone();
     for f in &named {
         roots.extend(conftest_chain(root, f));
     }
-    if transitive_imports(root, &roots)
-        .iter()
-        .any(|f| grounded.contains(f.as_str()))
-    {
-        return ProofRelevance::Confirmed;
-    }
-    // Relevance is decided by the IMPORT graph only — NOT by the grounded symbol's
-    // name appearing in the test source (a comment/string mention can't EXECUTE
-    // the code; that was a forge crack). But the import graph is only as good as
-    // loom's import RESOLUTION: a genuine test under the src-layout
-    // (`from mypkg.foo import x` where the file is `src/mypkg/foo.py` on sys.path),
-    // or a dynamic/importlib import, has imports loom can't follow — demoting it
-    // would be a FALSE-DEMOTE that blocks a real Realized rung. So only conclude
-    // IRRELEVANT when the test's imports are FULLY ACCOUNTED FOR (every raw import
-    // statement resolved to a repo file) and none reached the grounding. If ANY
-    // import is unresolved, the proof might reach the grounding by a path loom
-    // can't see → Unconfirmed (benefit of the doubt, never a false-demote).
+    let reachable = transitive_imports(root, &roots);
+    let file_reachable = reachable.iter().any(|f| grounded.contains(f.as_str()));
+
+    let target_symbols: Vec<String> = {
+        let mut set = std::collections::HashSet::new();
+        for loc in &grounding.locators {
+            let sym = crate::repo::last_identifier(loc);
+            if !sym.is_empty() {
+                set.insert(sym);
+            }
+        }
+        set.into_iter().collect()
+    };
+
     let mut raw_imports = 0usize;
     let mut resolved_imports = 0usize;
     let mut read_any = false;
+    let mut symbol_used = false;
     for f in &named {
         let Ok(content) = std::fs::read_to_string(root.join(f)) else {
             continue;
@@ -622,12 +648,26 @@ fn proof_relevance(
         resolved_imports += crate::repo::extract_physical_facts(root, f, &content)
             .imports
             .len();
+        if file_reachable && !symbol_used && !target_symbols.is_empty() {
+            for sym in &target_symbols {
+                if symbol_used_in_source_file(root, f, sym) {
+                    symbol_used = true;
+                    break;
+                }
+            }
+        }
     }
-    if read_any && raw_imports <= resolved_imports {
-        ProofRelevance::Irrelevant
-    } else {
-        ProofRelevance::Unconfirmed
+
+    if file_reachable && symbol_used {
+        return ProofRelevance::Confirmed;
     }
+    if !read_any {
+        return ProofRelevance::Unconfirmed;
+    }
+    if raw_imports > resolved_imports {
+        return ProofRelevance::Unconfirmed;
+    }
+    ProofRelevance::Irrelevant
 }
 
 /// Count of import-like statements in `content`, by language — used to detect
@@ -652,6 +692,274 @@ fn count_raw_imports(content: &str, file: &str) -> usize {
             _ => false,
         })
         .count()
+}
+
+/// Strip string literals and line/block comments from source text, replacing
+/// them with whitespace so identifier positions remain contiguous. This is a
+/// language-agnostic best-effort filter: it catches the common "symbol name in a
+/// string/comment" forgeries without needing a full per-language parser.
+fn strip_literals_and_comments(content: &str) -> String {
+    let mut out = String::with_capacity(content.len());
+    let mut chars = content.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => {
+                while let Some(d) = chars.next() {
+                    if d == '\\' {
+                        chars.next();
+                    } else if d == '"' {
+                        break;
+                    }
+                }
+                out.push(' ');
+            }
+            '\'' => {
+                while let Some(d) = chars.next() {
+                    if d == '\\' {
+                        chars.next();
+                    } else if d == '\'' {
+                        break;
+                    }
+                }
+                out.push(' ');
+            }
+            '/' if chars.peek() == Some(&'/') => {
+                while let Some(d) = chars.next() {
+                    if d == '\n' {
+                        out.push('\n');
+                        break;
+                    }
+                }
+            }
+            '#' => {
+                while let Some(d) = chars.next() {
+                    if d == '\n' {
+                        out.push('\n');
+                        break;
+                    }
+                }
+            }
+            '/' if chars.peek() == Some(&'*') => {
+                chars.next(); // consume '*'
+                loop {
+                    match chars.next() {
+                        Some('*') if chars.peek() == Some(&'/') => {
+                            chars.next();
+                            break;
+                        }
+                        Some(_) => {}
+                        None => break,
+                    }
+                }
+                out.push(' ');
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// Remove import-like lines (and their continuations) from source text. This lets
+/// us ask "is the symbol USED in the test body?" rather than "is it imported?".
+/// Multi-line `from x import (\n  a,\n  b,\n)` and similar bracketed forms are
+/// skipped as one statement.
+fn remove_import_lines(content: &str, file: &str) -> String {
+    let ext = std::path::Path::new(file)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    let import_starts: &[&str] = match ext {
+        "py" => &["from ", "import "],
+        "rs" => &["use ", "extern "],
+        "go" | "java" | "kt" => &["import "],
+        "js" | "jsx" | "ts" | "tsx" | "mjs" | "cjs" | "mts" | "cts" => &["import ", "require("],
+        "c" | "cpp" | "h" | "hpp" => &["#include ", "import "],
+        _ => &["import "],
+    };
+    let mut out = Vec::new();
+    let mut bracket_depth = 0i64;
+    let mut in_import = false;
+    for line in content.lines() {
+        let trim = line.trim_start();
+        if in_import {
+            for c in line.chars() {
+                match c {
+                    '(' | '[' | '{' => bracket_depth += 1,
+                    ')' | ']' | '}' => bracket_depth = bracket_depth.saturating_sub(1),
+                    _ => {}
+                }
+            }
+            let ends = line.trim_end();
+            if bracket_depth <= 0
+                && !ends.ends_with(',')
+                && !ends.ends_with('\\')
+                && !ends.ends_with("from ")
+            {
+                in_import = false;
+            }
+            continue;
+        }
+        if import_starts.iter().any(|p| trim.starts_with(p)) {
+            bracket_depth = 0;
+            for c in line.chars() {
+                match c {
+                    '(' | '[' | '{' => bracket_depth += 1,
+                    ')' | ']' | '}' => bracket_depth = bracket_depth.saturating_sub(1),
+                    _ => {}
+                }
+            }
+            let ends = line.trim_end();
+            if bracket_depth > 0
+                || ends.ends_with(',')
+                || ends.ends_with('\\')
+                || ends.ends_with("from ")
+            {
+                in_import = true;
+            }
+            continue;
+        }
+        out.push(line);
+    }
+    out.join("\n")
+}
+
+/// True if `symbol` appears as an identifier in `file` outside of import
+/// statements and outside of string/comment literals.
+fn symbol_used_in_source_file(root: &std::path::Path, file: &str, symbol: &str) -> bool {
+    if symbol.is_empty() {
+        return false;
+    }
+    let Ok(content) = std::fs::read_to_string(root.join(file)) else {
+        return false;
+    };
+    let body = remove_import_lines(&content, file);
+    let code_text = strip_literals_and_comments(&body);
+    crate::db::queries::symbol_match::contains_identifier_word(&code_text, symbol)
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Coverage-based relevance (Tier 1 — definitive)
+// ─────────────────────────────────────────────────────────────────────
+
+/// A parsed LCOV report: file → (instrumented lines, executed lines).
+/// Built from `SF:`/`DA:` records. Tracks ALL DA lines (not just hits) so we
+/// can distinguish "instrumented but not executed" (→ NotExecuted) from "not
+/// instrumented at all" (→ RangeNotInReport). Definitive for the question
+/// "was line N of file F executed during the test run?".
+struct CoverageReport {
+    /// file → (all instrumented line numbers, executed line numbers)
+    files: std::collections::HashMap<
+        String,
+        (
+            std::collections::HashSet<usize>,
+            std::collections::HashSet<usize>,
+        ),
+    >,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CoverageVerdict {
+    /// At least one line in the symbol's range was executed.
+    Executed,
+    /// The file is in the report and the symbol's range has instrumented lines,
+    /// but NONE were executed — the test ran but never hit the grounded code.
+    NotExecuted,
+    /// The file is in the report but the symbol's line range has NO instrumented
+    /// lines (the coverage tool didn't track this region — e.g., stripped or
+    /// generated code). Can't conclude either way.
+    RangeNotInReport,
+    /// The grounded file is not in the coverage report at all.
+    FileNotInReport,
+}
+
+impl CoverageReport {
+    fn symbol_executed(&self, file: &str, start: usize, end: usize) -> CoverageVerdict {
+        let Some((instrumented, executed)) = self.files.get(file) else {
+            return CoverageVerdict::FileNotInReport;
+        };
+        // Is any line in the symbol's range instrumented?
+        let range_instrumented = (start..=end).any(|ln| instrumented.contains(&ln));
+        if !range_instrumented {
+            return CoverageVerdict::RangeNotInReport;
+        }
+        // Is any line in the range executed?
+        if (start..=end).any(|ln| executed.contains(&ln)) {
+            return CoverageVerdict::Executed;
+        }
+        // The range was instrumented but no line was hit → the test ran but
+        // never executed this symbol's code.
+        CoverageVerdict::NotExecuted
+    }
+}
+
+/// Parse an LCOV.info-format coverage report. Handles `SF:<path>` and
+/// `DA:<line>,<count>` records. Paths are normalized to repo-relative.
+fn parse_lcov(root: &std::path::Path, content: &str) -> CoverageReport {
+    let mut files: std::collections::HashMap<
+        String,
+        (
+            std::collections::HashSet<usize>,
+            std::collections::HashSet<usize>,
+        ),
+    > = std::collections::HashMap::new();
+    let mut current_file: Option<String> = None;
+    for line in content.lines() {
+        if let Some(path) = line.strip_prefix("SF:") {
+            let rel = crate::repo::confine(root, std::path::Path::new(path.trim()))
+                .unwrap_or_else(|| path.trim().to_string());
+            current_file = Some(rel.clone());
+            files.entry(rel).or_default();
+        } else if let Some(rest) = line.strip_prefix("DA:") {
+            // DA:<line>,<count>[,<checksum>]
+            let mut parts = rest.split(',');
+            if let (Some(line_str), Some(count_str)) = (parts.next(), parts.next()) {
+                if let (Ok(ln), Ok(count)) = (
+                    line_str.trim().parse::<usize>(),
+                    count_str.trim().parse::<u64>(),
+                ) {
+                    if let Some(f) = &current_file {
+                        let entry = files.entry(f.clone()).or_default();
+                        entry.0.insert(ln); // instrumented
+                        if count > 0 {
+                            entry.1.insert(ln); // executed
+                        }
+                    }
+                }
+            }
+        }
+    }
+    CoverageReport { files }
+}
+
+/// Discover a coverage report for this repo, consulting (in order):
+///   1. `LOOM_COVERAGE_FILE` env var (explicit override)
+///   2. Common LCOV paths relative to root (coverage.lcov, lcov.info, etc.)
+/// Returns None if no report is found or it can't be parsed.
+fn discover_coverage(root: &std::path::Path) -> Option<CoverageReport> {
+    let candidates: Vec<std::path::PathBuf> =
+        if let Some(env_path) = std::env::var_os("LOOM_COVERAGE_FILE") {
+            vec![std::path::PathBuf::from(env_path)]
+        } else {
+            let mut v = Vec::new();
+            for name in &["coverage.lcov", "lcov.info", "coverage.info", "cov.info"] {
+                v.push(root.join(name));
+            }
+            // target/tarpaulin/coverage.lcov (Rust), htmlcov/coverage.lcov (Python)
+            v.push(root.join("target/tarpaulin/coverage.lcov"));
+            v.push(root.join("htmlcov/coverage.lcov"));
+            // .coverage/ (custom convention)
+            v.push(root.join(".coverage/coverage.lcov"));
+            v
+        };
+    for path in &candidates {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            // Basic sanity: must contain at least one SF: record.
+            if content.contains("SF:") {
+                return Some(parse_lcov(root, &content));
+            }
+        }
+    }
+    None
 }
 
 /// Existing source files under `root` named as path tokens in `command`.
@@ -729,20 +1037,53 @@ fn transitive_imports(
     visited
 }
 
-/// Map each validation to the (grounded files, locators) of the intent it proves —
-/// the context the proof-relevance gate needs.
+/// Per-validation grounding context: the grounded files, locators, and the
+/// line ranges of the grounded symbols (from SymbolFacts). The line ranges
+/// let the coverage-based relevance gate answer "was the grounded symbol's
+/// code actually EXECUTED?" definitively — the only resolution that doesn't
+/// guess via static import/text analysis.
+#[derive(Clone, Default)]
+struct Grounding {
+    files: Vec<String>,
+    locators: Vec<String>,
+    /// (file, line_start, line_end) for each grounded symbol whose range
+    /// could be resolved from the CodeFile's SymbolFacts.
+    symbol_ranges: Vec<(String, usize, usize)>,
+}
+
+/// Map each validation to the grounding context of the intent it proves.
+/// Carries symbol line ranges (from tree-sitter/heuristic SymbolFacts) so the
+/// relevance gate can consult coverage data when available.
 fn grounding_by_validation(
     snapshot: &crate::db::queries::QuerySnapshot,
-) -> std::collections::HashMap<String, (Vec<String>, Vec<String>)> {
-    let mut by_intent: std::collections::HashMap<&str, (Vec<String>, Vec<String>)> =
+) -> std::collections::HashMap<String, Grounding> {
+    let mut facts_by_cf: std::collections::HashMap<&str, &[crate::types::SymbolFact]> =
+        std::collections::HashMap::new();
+    for cf in &snapshot.codefiles {
+        facts_by_cf.insert(cf.id.as_str(), &cf.symbol_facts);
+    }
+
+    let mut by_intent: std::collections::HashMap<&str, Grounding> =
         std::collections::HashMap::new();
     for im in &snapshot.implements {
-        let e = by_intent.entry(im.intent_id.as_str()).or_default();
-        if !e.0.contains(&im.codefile_path) {
-            e.0.push(im.codefile_path.clone());
+        let g = by_intent.entry(im.intent_id.as_str()).or_default();
+        if !g.files.contains(&im.codefile_path) {
+            g.files.push(im.codefile_path.clone());
         }
-        if !im.locator.trim().is_empty() && !e.1.contains(&im.locator) {
-            e.1.push(im.locator.clone());
+        if !im.locator.trim().is_empty() && !g.locators.contains(&im.locator) {
+            g.locators.push(im.locator.clone());
+        }
+        // Resolve the locator to a symbol line range via the CodeFile's facts.
+        if let Some(facts) = facts_by_cf.get(im.codefile_id.as_str()) {
+            let loc_ident = crate::repo::last_identifier(&im.locator);
+            if !loc_ident.is_empty() {
+                for f in *facts {
+                    if f.name == loc_ident && f.line_end > f.line_start {
+                        g.symbol_ranges
+                            .push((im.codefile_path.clone(), f.line_start, f.line_end));
+                    }
+                }
+            }
         }
     }
     let mut out = std::collections::HashMap::new();
@@ -844,7 +1185,10 @@ mod tests {
             "FOO=1 echo '2 passing'",
             ":",
         ] {
-            assert!(command_only_prints(forged), "must be flagged as non-executing: {forged}");
+            assert!(
+                command_only_prints(forged),
+                "must be flagged as non-executing: {forged}"
+            );
         }
         // Real test invocations run something — never flagged.
         for real in [
@@ -889,5 +1233,53 @@ mod tests {
             "ran_inert"
         );
         assert_eq!(proof_discrimination("0 passed"), "ran_inert");
+    }
+
+    #[test]
+    fn lcov_parser_reads_sf_and_da_records() {
+        let root = std::path::Path::new("/tmp");
+        let lcov = "SF:src/lib.rs\nDA:1,1\nDA:2,0\nDA:3,1\nend_of_record\nSF:src/other.rs\nDA:10,1\nend_of_record\n";
+        let report = super::parse_lcov(root, lcov);
+        // src/lib.rs: instrumented = {1,2,3}, executed = {1,3}
+        let (inst, exec) = report.files.get("src/lib.rs").unwrap();
+        assert!(inst.contains(&1) && inst.contains(&2) && inst.contains(&3));
+        assert!(exec.contains(&1) && exec.contains(&3));
+        assert!(!exec.contains(&2)); // line 2 was instrumented but not executed
+                                     // A file not in the report.
+        assert!(!report.files.contains_key("src/absent.rs"));
+    }
+
+    #[test]
+    fn coverage_verdict_distinguishes_executed_not_executed_range_absent() {
+        // mod.rs: line 5 instrumented+executed, line 10 instrumented+not-executed.
+        let mut inst = std::collections::HashSet::new();
+        inst.insert(5);
+        inst.insert(10);
+        let mut exec = std::collections::HashSet::new();
+        exec.insert(5); // line 5 hit, line 10 not
+        let mut m = std::collections::HashMap::new();
+        m.insert("mod.rs".to_string(), (inst, exec));
+        let report = super::CoverageReport { files: m };
+
+        // Symbol on lines 5–7: line 5 was hit → Executed.
+        assert_eq!(
+            report.symbol_executed("mod.rs", 5, 7),
+            super::CoverageVerdict::Executed
+        );
+        // Symbol on lines 10–12: line 10 instrumented but not hit → NotExecuted.
+        assert_eq!(
+            report.symbol_executed("mod.rs", 10, 12),
+            super::CoverageVerdict::NotExecuted
+        );
+        // Symbol on lines 20–25: no instrumented lines in range → RangeNotInReport.
+        assert_eq!(
+            report.symbol_executed("mod.rs", 20, 25),
+            super::CoverageVerdict::RangeNotInReport
+        );
+        // File not in the report at all → FileNotInReport.
+        assert_eq!(
+            report.symbol_executed("other.rs", 1, 5),
+            super::CoverageVerdict::FileNotInReport
+        );
     }
 }
