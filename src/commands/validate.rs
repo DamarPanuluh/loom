@@ -315,7 +315,7 @@ fn execute_and_record(
                 );
             } else if new_result == "passed" && irrelevant_proof {
                 println!(
-                    "    ⚠ passed but IRRELEVANT: this test does not import, reach, or name the \
+                    "    ⚠ passed but IRRELEVANT: this test does not import or reach the \
                      intent's grounded code — it cannot exercise the criterion, so it counts \
                      ASSERTED-only, NOT executed-proven (it would pass even if the grounded code were \
                      broken). Point the proof at a test that drives the grounded file/symbol; if it \
@@ -572,7 +572,7 @@ fn proof_relevance(
     root: &std::path::Path,
     command: &str,
     grounded_files: &[String],
-    locators: &[String],
+    _locators: &[String],
 ) -> ProofRelevance {
     if grounded_files.is_empty() {
         return ProofRelevance::Unconfirmed;
@@ -598,22 +598,16 @@ fn proof_relevance(
     {
         return ProofRelevance::Confirmed;
     }
-    // Lenient confirmer: a grounded locator symbol (>=3 chars, so a 1-2 char name
-    // can't match by chance) named verbatim in a read test file.
-    let mut read_any = false;
-    for f in &named {
-        let Ok(content) = std::fs::read_to_string(root.join(f)) else {
-            continue;
-        };
-        read_any = true;
-        for loc in locators {
-            let name = crate::repo::last_identifier(loc);
-            if name.chars().count() >= 3 && crate::repo::locator_present(&content, &name) {
-                return ProofRelevance::Confirmed;
-            }
-        }
-    }
-    if read_any {
+    // Relevance is decided by the IMPORT graph only — NOT by the grounded symbol's
+    // name appearing in the test source. A bare mention (especially in a comment or
+    // string literal) cannot EXECUTE the code, so name-presence must never qualify
+    // a `test` proof as executed-proven (that was a forge crack). If we could read
+    // a named test file and none reaches the grounding, it is Irrelevant; if none
+    // was readable we can't analyze it → Unconfirmed (benefit of the doubt).
+    if named
+        .iter()
+        .any(|f| std::fs::read_to_string(root.join(f)).is_ok())
+    {
         ProofRelevance::Irrelevant
     } else {
         ProofRelevance::Unconfirmed

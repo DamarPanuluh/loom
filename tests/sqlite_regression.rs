@@ -10120,3 +10120,35 @@ fn sqlite_irrelevant_test_does_not_earn_executed_proven() {
     assert_eq!(disc("irrelevant"), "ran_inert", "an irrelevant test must be asserted-only, not executed-proven: {v}");
     assert_eq!(disc("relevant"), "discriminating", "a test that imports the grounded module is executed-proven: {v}");
 }
+
+/// A test that merely NAMES the grounded symbol in a comment/string (no import,
+/// no call) must NOT be confirmed relevant — naming a symbol cannot execute it.
+/// Relevance is the import graph, never raw-text symbol presence.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_symbol_mention_in_comment_does_not_confirm_proof() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("namedrop-proof");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    // Names `compute` in a comment, but never imports mod.
+    write_scratch_file(&graph.root, "t_comment.py", "# this test names compute in a comment but never imports mod\ndef test_x():\n    assert True\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(&graph.root, &["validation", "add", "--name", "namedrop", "--type", "test", "--command", "sh runner.sh t_comment.py", "--intent", &id, "--json"], "llm:validator");
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "naming the symbol in a comment must NOT qualify a test as executed-proven: {v}"
+    );
+}
