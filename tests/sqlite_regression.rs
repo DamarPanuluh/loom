@@ -10073,3 +10073,50 @@ fn sqlite_import_refuses_to_overwrite_nonempty_graph() {
     let names: Vec<String> = after["intents"].as_array().unwrap().iter().filter_map(|i| i["name"].as_str().map(str::to_string)).collect();
     assert!(names.iter().any(|n| n == "PRECIOUS"), "the existing graph must survive a refused import: {names:?}");
 }
+
+// ── QA wave 8: proof-relevance gate (executed-proven) ─────────────────────────
+
+/// A passing `test`-type proof that does NOT reach the intent's grounded code
+/// (static import graph) must NOT earn executed-proven — it would pass even if the
+/// grounded code were broken. A test that DOES import the grounding still does.
+/// Uses a sh runner (deterministic, no pytest dependency); the relevance check is
+/// STATIC (reads the named test file's imports), independent of what the command
+/// prints.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_irrelevant_test_does_not_earn_executed_proven() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("irrelevant-proof");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "mod.py", "def compute(x):\n    return x * 2\n");
+    write_scratch_file(&graph.root, "test_irrelevant.py", "def test_irrelevant():\n    assert 1 + 1 == 2\n");
+    write_scratch_file(&graph.root, "test_real.py", "from mod import compute\ndef test_real():\n    assert compute(2) == 4\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "mod.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Compute", "--description", "compute doubles x", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "mod.py", "--locator", "def compute", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    // Both proofs print the SAME pass-string; only the import graph differs.
+    run_json_as(&graph.root, &["validation", "add", "--name", "irrelevant", "--type", "test", "--command", "sh runner.sh test_irrelevant.py", "--intent", &id, "--json"], "llm:validator");
+    run_json_as(&graph.root, &["validation", "add", "--name", "relevant", "--type", "test", "--command", "sh runner.sh test_real.py", "--intent", &id, "--json"], "llm:validator");
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    let disc = |name: &str| -> String {
+        v["results"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["name"] == name)
+            .and_then(|r| r["discrimination"].as_str())
+            .unwrap_or("MISSING")
+            .to_string()
+    };
+    assert_eq!(disc("irrelevant"), "ran_inert", "an irrelevant test must be asserted-only, not executed-proven: {v}");
+    assert_eq!(disc("relevant"), "discriminating", "a test that imports the grounded module is executed-proven: {v}");
+}

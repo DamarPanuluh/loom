@@ -46,6 +46,7 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
         return Ok(());
     }
 
+    let grounding = grounding_by_validation(&snapshot);
     drop(store);
 
     execute_and_record(
@@ -55,6 +56,7 @@ pub fn run(intent_id: &str, timeout_secs: u64, printer: &Printer) -> Result<()> 
         printer,
         ("intent_id", serde_json::json!(intent_id)),
         &marker,
+        &grounding,
     )
 }
 
@@ -92,6 +94,7 @@ pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
     if !printer.json {
         println!("Running {} pending validation(s)…", to_run.len());
     }
+    let grounding = grounding_by_validation(&store.query_snapshot()?);
     drop(store);
 
     execute_and_record(
@@ -101,6 +104,7 @@ pub fn run_all(timeout_secs: u64, printer: &Printer) -> Result<()> {
         printer,
         ("scope", serde_json::json!("all")),
         &marker,
+        &grounding,
     )
 }
 
@@ -116,6 +120,7 @@ fn execute_and_record(
     printer: &Printer,
     scope: (&str, serde_json::Value),
     marker: &str,
+    grounding: &std::collections::HashMap<String, (Vec<String>, Vec<String>)>,
 ) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
     let mut results: Vec<serde_json::Value> = Vec::new();
@@ -249,7 +254,21 @@ fn execute_and_record(
         // always invokes a runner/interpreter/script, which this detects).
         let forged_signal =
             raw_discrimination == "discriminating" && command_only_prints(&validation.command);
-        let discrimination = if forged_signal {
+        // RELEVANCE GATE (test-type only): a passing test that does not REACH the
+        // intent's grounded code (statically — by import graph, conftest, or naming
+        // the locator symbol) cannot exercise its criterion. `pytest
+        // test_irrelevant.py` passing `1+1==2` while grounded on mod.py is the
+        // forge this closes. Whole-suite runners (`cargo test`, no named file) are
+        // Unconfirmed → benefit of the doubt; only a NAMED test demonstrably
+        // missing the grounding is demoted.
+        let irrelevant_proof = raw_discrimination == "discriminating"
+            && !forged_signal
+            && validation.validation_type == "test"
+            && grounding
+                .get(&validation.id)
+                .map(|(files, locs)| proof_relevance(cwd, &validation.command, files, locs))
+                == Some(ProofRelevance::Irrelevant);
+        let discrimination = if forged_signal || irrelevant_proof {
             "ran_inert"
         } else {
             raw_discrimination
@@ -293,6 +312,15 @@ fn execute_and_record(
                      (pytest / cargo test / go test / node --test / …) against the grounded code; \
                      an echoed pass-line counts as ASSERTED-only, NOT executed-proven, and will NOT \
                      advance the Realized rung."
+                );
+            } else if new_result == "passed" && irrelevant_proof {
+                println!(
+                    "    ⚠ passed but IRRELEVANT: this test does not import, reach, or name the \
+                     intent's grounded code — it cannot exercise the criterion, so it counts \
+                     ASSERTED-only, NOT executed-proven (it would pass even if the grounded code were \
+                     broken). Point the proof at a test that drives the grounded file/symbol; if it \
+                     exercises the code indirectly (subprocess / e2e), record it as an `assertion` or \
+                     `saga` validation instead of `test`."
                 );
             } else if new_result == "passed"
                 && discrimination == "ran_inert"
@@ -518,6 +546,178 @@ fn command_only_prints(command: &str) -> bool {
 
 fn is_env_var_name(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_') && !s.starts_with(|c: char| c.is_ascii_digit())
+}
+
+/// How well a `test`-type proof can be confirmed to EXERCISE the intent's grounded
+/// code, by static import graph. Defends the executed-proven rung against a
+/// passing-but-IRRELEVANT test (`pytest test_irrelevant.py` that never touches the
+/// grounded module) — which slips past the stdout pass-signal check and even the
+/// `nonlocal_proof` smell (a co-located but irrelevant test is "local").
+#[derive(PartialEq, Clone, Copy)]
+enum ProofRelevance {
+    /// A grounded file is reachable from the proof's named test files (transitively
+    /// via imports), the grounded file IS the test target, or a grounded locator
+    /// symbol is named in a test file → it plausibly exercises the code.
+    Confirmed,
+    /// We read >=1 of the proof's NAMED test files via the extractor and none
+    /// reaches the grounding (nor names a locator) → it cannot exercise it.
+    Irrelevant,
+    /// The command names no resolvable source file (a whole-suite runner like
+    /// `cargo test` / `go test ./...` / bare `pytest`), or nothing was readable →
+    /// benefit of the doubt (the relevant test may be among those it discovers).
+    Unconfirmed,
+}
+
+fn proof_relevance(
+    root: &std::path::Path,
+    command: &str,
+    grounded_files: &[String],
+    locators: &[String],
+) -> ProofRelevance {
+    if grounded_files.is_empty() {
+        return ProofRelevance::Unconfirmed;
+    }
+    let grounded: std::collections::HashSet<&str> =
+        grounded_files.iter().map(String::as_str).collect();
+    let named = command_source_files(root, command);
+    if named.is_empty() {
+        return ProofRelevance::Unconfirmed;
+    }
+    if named.iter().any(|f| grounded.contains(f.as_str())) {
+        return ProofRelevance::Confirmed; // the grounded file IS the test target
+    }
+    // Transitive import reachability from the named test files (+ their pytest
+    // conftest chain, auto-loaded and able to wire the system-under-test).
+    let mut roots = named.clone();
+    for f in &named {
+        roots.extend(conftest_chain(root, f));
+    }
+    if transitive_imports(root, &roots)
+        .iter()
+        .any(|f| grounded.contains(f.as_str()))
+    {
+        return ProofRelevance::Confirmed;
+    }
+    // Lenient confirmer: a grounded locator symbol (>=3 chars, so a 1-2 char name
+    // can't match by chance) named verbatim in a read test file.
+    let mut read_any = false;
+    for f in &named {
+        let Ok(content) = std::fs::read_to_string(root.join(f)) else {
+            continue;
+        };
+        read_any = true;
+        for loc in locators {
+            let name = crate::repo::last_identifier(loc);
+            if name.chars().count() >= 3 && crate::repo::locator_present(&content, &name) {
+                return ProofRelevance::Confirmed;
+            }
+        }
+    }
+    if read_any {
+        ProofRelevance::Irrelevant
+    } else {
+        ProofRelevance::Unconfirmed
+    }
+}
+
+/// Existing source files under `root` named as path tokens in `command`.
+fn command_source_files(root: &std::path::Path, command: &str) -> Vec<String> {
+    const EXTS: &[&str] = &[
+        ".py", ".rs", ".go", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".rb",
+        ".java", ".kt", ".swift", ".dart",
+    ];
+    let mut out: Vec<String> = Vec::new();
+    for raw in command.split_whitespace() {
+        let tok =
+            raw.trim_matches(|c: char| !c.is_alphanumeric() && !matches!(c, '/' | '.' | '_' | '-'));
+        if tok.is_empty() || tok.starts_with('-') {
+            continue;
+        }
+        // strip a rust `path::module::test` / pytest `file::node` selector tail.
+        let path_part = tok.split("::").next().unwrap_or(tok);
+        if !EXTS.iter().any(|e| path_part.ends_with(e)) {
+            continue;
+        }
+        if let Some(rel) = crate::repo::confine(root, std::path::Path::new(path_part)) {
+            if root.join(&rel).is_file() && !out.contains(&rel) {
+                out.push(rel);
+            }
+        }
+    }
+    out
+}
+
+/// `conftest.py` in the file's directory and each ancestor up to the root.
+fn conftest_chain(root: &std::path::Path, file: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut dir = std::path::Path::new(file).parent();
+    while let Some(d) = dir {
+        let rel = if d.as_os_str().is_empty() {
+            "conftest.py".to_string()
+        } else {
+            format!("{}/conftest.py", d.to_string_lossy())
+        };
+        if root.join(&rel).is_file() {
+            out.push(rel);
+        }
+        if d.as_os_str().is_empty() {
+            break;
+        }
+        dir = d.parent();
+    }
+    out
+}
+
+/// Transitive set of files reachable from `roots` via static imports (BFS, capped).
+fn transitive_imports(
+    root: &std::path::Path,
+    roots: &[String],
+) -> std::collections::HashSet<String> {
+    let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut queue: std::collections::VecDeque<String> = roots.iter().cloned().collect();
+    let mut steps = 0usize;
+    while let Some(f) = queue.pop_front() {
+        if !visited.insert(f.clone()) {
+            continue;
+        }
+        steps += 1;
+        if steps > 500 {
+            break; // runaway guard on a pathological import graph
+        }
+        if let Ok(content) = std::fs::read_to_string(root.join(&f)) {
+            for imp in crate::repo::extract_physical_facts(root, &f, &content).imports {
+                if !visited.contains(&imp) {
+                    queue.push_back(imp);
+                }
+            }
+        }
+    }
+    visited
+}
+
+/// Map each validation to the (grounded files, locators) of the intent it proves —
+/// the context the proof-relevance gate needs.
+fn grounding_by_validation(
+    snapshot: &crate::db::queries::QuerySnapshot,
+) -> std::collections::HashMap<String, (Vec<String>, Vec<String>)> {
+    let mut by_intent: std::collections::HashMap<&str, (Vec<String>, Vec<String>)> =
+        std::collections::HashMap::new();
+    for im in &snapshot.implements {
+        let e = by_intent.entry(im.intent_id.as_str()).or_default();
+        if !e.0.contains(&im.codefile_path) {
+            e.0.push(im.codefile_path.clone());
+        }
+        if !im.locator.trim().is_empty() && !e.1.contains(&im.locator) {
+            e.1.push(im.locator.clone());
+        }
+    }
+    let mut out = std::collections::HashMap::new();
+    for ve in &snapshot.validates {
+        if let Some(g) = by_intent.get(ve.intent_id.as_str()) {
+            out.insert(ve.validation_id.clone(), g.clone());
+        }
+    }
+    out
 }
 
 /// node:test / TAP pass summary: a line like `# pass 2` or `ℹ pass 2` → 2.
