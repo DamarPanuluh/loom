@@ -308,8 +308,13 @@ fn suggested_action(path: &str, fact: &SymbolFact, owners: &[Owner]) -> String {
         );
     }
     format!(
-        "`loom codefile show {qpath}`; decide which owner claims `{}` and refine that IMPLEMENTS locator, split the intent, or record a decision note if broad file ownership is deliberate",
-        fact.label
+        "`{}` is an unclaimed public symbol and {} intents already ground {} at other symbols — do NOT re-`implement` an existing owner onto it (that REPLACES that owner's locator). Give it its OWN owner (`loom intent add … --parent <parent>`, then `loom edge implement <new-intent> {} --locator \"{}\"`), split an existing intent, or record a decision note if broad file ownership is deliberate (`loom codefile show {}` lists the owners).",
+        fact.label,
+        owners.len(),
+        qpath,
+        qpath,
+        fact.label,
+        qpath
     )
 }
 

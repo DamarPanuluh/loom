@@ -333,6 +333,13 @@ fn coupling_tag(c: &Coupling) -> &'static str {
     // the impact summary, which counts only active edges).
     if !c.active {
         "not an asserted relationship — won't re-open"
+    } else if c.kinds.iter().any(|k| k == "imports")
+        && crate::types::relates_is_import_only_coupling(&c.kinds)
+    {
+        // Mechanically re-derived: re-opens only when the import itself is
+        // added/removed, NOT on a behavior-preserving edit (the over-staling
+        // exemption). Saying "ripples on code change" here would be false.
+        "re-derived from imports — re-opens only if the import is added/removed"
     } else if c.ripples {
         "ripples on code change"
     } else {

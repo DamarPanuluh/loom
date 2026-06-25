@@ -110,7 +110,14 @@ fn prepare_additions(
             })?
             .flatten()
         {
-            if p.is_file() {
+            // Skip symlinks: registering a link AND its target (both glob-matched)
+            // would confine to the same canonical path and hit a raw UNIQUE error
+            // mid-batch. `is_file()` follows links, so check symlink_metadata.
+            let is_symlink = p
+                .symlink_metadata()
+                .map(|m| m.file_type().is_symlink())
+                .unwrap_or(false);
+            if p.is_file() && !is_symlink {
                 v.push(p.display().to_string());
             }
         }
@@ -133,6 +140,10 @@ fn prepare_additions(
 
     let mut added: Vec<CodeFile> = Vec::new();
     let mut skipped = 0usize;
+    // Two glob matches can confine to the SAME root-relative path (a symlink and
+    // its target, or `**` reaching one file two ways). Dedupe within the batch so
+    // the second never reaches the INSERT and trips a raw UNIQUE constraint.
+    let mut seen_this_batch: std::collections::HashSet<String> = std::collections::HashSet::new();
     for p in targets {
         // Normalize against the graph root: `..`-escapes and outside paths are
         // rejected, absolute-under-root comes back relative (the stored
@@ -145,7 +156,7 @@ fn prepare_additions(
                 root.display()
             );
         };
-        if existing.contains(&p) {
+        if existing.contains(&p) || !seen_this_batch.insert(p.clone()) {
             skipped += 1;
             continue;
         }

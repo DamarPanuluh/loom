@@ -9874,3 +9874,95 @@ fn sqlite_cjs_recognized_as_javascript() {
         "a .cjs file must be inferred as javascript, not unknown: {show}"
     );
 }
+
+// ── QA wave 4: exemption reachability, federation, robustness ─────────────────
+
+/// The import-coupling staling EXEMPTION must be reachable via the NORMAL loop —
+/// an UN-KINDED RELATES_TO (what `loom edge … ground` produces) between
+/// import-coupled files must NOT re-stale on a comment-only edit, and sync must
+/// backfill the `imports` kind so `loom explain` is honest. Previously this only
+/// worked after a hidden `loom populate kinds`.
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_import_exemption_reachable_for_unkinded_edge() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("unkinded-exempt");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "config.py", "DEFAULT = 30\ndef get_timeout():\n    return DEFAULT\n");
+    write_scratch_file(&graph.root, "client.py", "from config import get_timeout\ndef fetch():\n    return get_timeout()\n");
+    for f in ["config.py", "client.py"] {
+        run_json_as(&graph.root, &["codefile", "add", f, "--json"], "llm:builder");
+    }
+    let a = run_json_as(&graph.root, &["intent", "add", "--name", "Config", "--level", "component", "--description", "config", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    let b = run_json_as(&graph.root, &["intent", "add", "--name", "Client", "--level", "component", "--description", "client", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &a, "config.py", "--locator", "get_timeout", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", &b, "client.py", "--locator", "fetch", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    // Ground an UN-KINDED RELATES_TO (the normal analyzer flow — no `populate kinds`).
+    write_scratch_file(&graph.root, "v.jsonl", &format!("{{\"op\":\"ground\",\"a\":\"{a}\",\"b\":\"{b}\",\"criterion\":\"client depends on config timeout\",\"evidence\":\"client.py imports config; calls get_timeout()\",\"confidence\":0.9}}\n"));
+    run_text_as(&graph.root, &["batch", "v.jsonl"], "llm:analyzer");
+    run_json(&graph.root, &["sync", "--json"]);
+    // Comment-only edit to the imported file: the coupling is intact → 0 flagged.
+    write_scratch_file(&graph.root, "config.py", "DEFAULT = 30\n# harmless comment\ndef get_timeout():\n    return DEFAULT\n");
+    let cosmetic = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(
+        cosmetic["relates_to_edges_flagged"], serde_json::json!(0),
+        "an un-kinded import-coupled edge must be exempt from cosmetic re-staling WITHOUT `populate kinds`: {cosmetic}"
+    );
+    // Removing the import must still re-open it.
+    write_scratch_file(&graph.root, "client.py", "def fetch():\n    return 30\n");
+    let removed = run_json(&graph.root, &["sync", "--json"]);
+    assert!(
+        removed["relates_to_edges_flagged"].as_i64().unwrap_or(0) >= 1,
+        "removing the import must re-open the coupling: {removed}"
+    );
+}
+
+/// `loom codefile add '<glob>'` must not crash on a raw UNIQUE error when a
+/// symlink and its target both match — the symlink is skipped, the target kept.
+#[test]
+fn sqlite_codefile_add_glob_skips_symlink_no_crash() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("glob-symlink");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/real.py", "def real():\n    return 1\n");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink("real.py", graph.root.join("src/alias.py")).unwrap();
+    let out = run_json_as(&graph.root, &["codefile", "add", "src/*.py", "--json"], "llm:builder");
+    // Must succeed (status ok), not a raw SQLite error.
+    assert_ne!(out["status"], "error", "glob add over a symlink+target must not crash: {out}");
+    let list = run_json(&graph.root, &["codefile", "list", "--json"]);
+    let paths: Vec<String> = list["codefiles"].as_array().unwrap().iter().filter_map(|c| c["path"].as_str().map(str::to_string)).collect();
+    assert!(paths.contains(&"src/real.py".to_string()), "the real file is registered: {paths:?}");
+    #[cfg(unix)]
+    assert!(!paths.contains(&"src/alias.py".to_string()), "the symlink is skipped, not double-registered: {paths:?}");
+}
+
+/// A multi-owner file's unclaimed-symbol suggestion must WARN against clobbering
+/// an existing locator, not say "refine that IMPLEMENTS locator".
+#[test]
+fn sqlite_multiowner_symbol_gap_warns_against_clobber() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("multiowner");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(&graph.root, "m.go", "package m\nfunc Alpha() {}\nfunc Beta() {}\nfunc Gamma() {}\n");
+    run_json_as(&graph.root, &["codefile", "add", "m.go", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let a = run_json_as(&graph.root, &["intent", "add", "--name", "IA", "--level", "feature", "--description", "a", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    let b = run_json_as(&graph.root, &["intent", "add", "--name", "IB", "--level", "feature", "--description", "b", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &a, "m.go", "--locator", "func Alpha", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["edge", "implement", &b, "m.go", "--locator", "func Beta", "--json"], "llm:builder");
+    let cov = run_json(&graph.root, &["coverage", "--json"]);
+    let gap = cov["actionable_symbol_gaps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["name"] == "Gamma")
+        .expect("Gamma gap");
+    let action = gap["suggested_action"].as_str().unwrap();
+    assert!(
+        action.contains("do NOT re-") && action.contains("REPLACES"),
+        "a multi-owner unclaimed-symbol suggestion must warn against clobbering an existing locator: {action}"
+    );
+}

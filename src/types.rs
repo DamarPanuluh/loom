@@ -733,24 +733,30 @@ pub fn relates_stales_on_code_change(kinds: &[String]) -> bool {
         })
 }
 
-/// Whether a PASSING edge is coupled SOLELY by `imports` — i.e. every one of its
-/// code-staling kinds is `imports`. Such a coupling is MECHANICALLY re-derivable:
-/// "A's file imports B's file" is a structural fact a behavior-preserving edit
-/// (a renamed string, a new sibling function, a reformatted body) does NOT
-/// change. So the sync ripple should NOT stale it into a laundering-prone manual
-/// re-verification on every edit to a hub file; it can re-derive the import from
-/// current extraction and keep the edge passing as long as the import is still
-/// present (the caller checks the live `coupled` set). An edge that ALSO carries
-/// a JUDGMENT coupling (`calls`/`inheritance`/`shares_state`/`manual`) — whose
-/// truth a body change CAN flip — is excluded and stales as before. `shares_file`
-/// (co-location, not re-derivable here) and empty-kinds (unknown) also stale.
+/// Whether a PASSING edge has NO code-staling coupling other than `imports` —
+/// i.e. none of its kinds is a behavior-sensitive coupling. An `imports` coupling
+/// is MECHANICALLY re-derivable: "A's file imports B's file" is a structural fact
+/// a behavior-preserving edit (a renamed string, a new sibling function, a
+/// reformatted body) does NOT change. So the sync ripple should NOT stale such an
+/// edge into a laundering-prone manual re-verification on every edit to a hub
+/// file; the caller keeps it passing while the import is still present (the live
+/// `coupled` set).
+///
+/// Crucially this returns true for an UN-KINDED edge too: the analyzer ground
+/// flow (`loom edge explore … ground`) leaves edges un-kinded — the mechanical
+/// `imports` kind is only stamped later by `loom populate kinds`, which is NOT in
+/// the documented loop — so requiring the `imports` kind to be PRESENT made the
+/// exemption unreachable in practice. Pairing this with the live import-coupling
+/// signal restores it: an un-kinded edge between import-coupled files is exempt.
+/// An edge that carries a JUDGMENT coupling (`calls`/`inheritance`/`shares_state`/
+/// `manual`) or `shares_file` (co-location) — whose truth a body change CAN flip —
+/// is excluded and stales as before. An unparseable kind is treated as staling.
 pub fn relates_is_import_only_coupling(kinds: &[String]) -> bool {
-    let parsed: Vec<RelationKind> = kinds.iter().filter_map(|k| k.parse().ok()).collect();
-    parsed.iter().any(|rk| matches!(rk, RelationKind::Imports))
-        && parsed
-            .iter()
-            .filter(|rk| rk.stales_on_code_change())
-            .all(|rk| matches!(rk, RelationKind::Imports))
+    kinds.iter().all(|k| {
+        k.parse::<RelationKind>()
+            .map(|rk| !rk.stales_on_code_change() || matches!(rk, RelationKind::Imports))
+            .unwrap_or(false)
+    })
 }
 
 impl std::str::FromStr for RelationKind {
@@ -1664,4 +1670,8 @@ pub struct SyncReport {
     /// old "ungraded forever / unverifiable" dead-end.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub non_utf8_lossy: Vec<String>,
+    /// Seam-intent groundings re-opened because a delegated child's committed
+    /// export (its contract) changed — the cross-service federation ripple.
+    #[serde(default)]
+    pub seam_groundings_reopened: usize,
 }

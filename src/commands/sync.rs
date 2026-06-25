@@ -69,6 +69,15 @@ fn run_with_sqlite(
         &code_ripple_targets,
         &coupled_intent_pairs,
     )?;
+    // After re-extraction, stamp mechanical relationship kinds from current
+    // physical facts (the `loom populate kinds` derivation, folded into the loop).
+    // Only on a code-changing sync — kinds derive from imports, which only move
+    // when files do. This keeps the import-coupling staling exemption HONEST in
+    // `loom explain` (an un-kinded edge between import-coupled files becomes
+    // `[imports]`) instead of requiring a separate manual command.
+    if !code_ripple_targets.is_empty() {
+        backfill_mechanical_kinds(store, &mut state)?;
+    }
     flag_unverifiable_files(store, &codefiles, &ctx, &mut state, &coupled_intent_pairs)?;
     ripple_delegations(store, base, &ctx, &mut state, &coupled_intent_pairs)?;
     flush_pending_hash_updates(store, &state.pending_hash_updates)?;
@@ -88,6 +97,8 @@ fn run_with_sqlite(
     // timestamp on a genuine no-op is safe and makes sync idempotent.
     let anything_changed = state.files_changed > 0
         || state.facts_rewritten > 0
+        || state.kinds_backfilled > 0
+        || state.seam_groundings_reopened > 0
         || state.targets_flagged > 0
         || state.relates_to_flagged > 0
         || state.governs_flagged > 0
@@ -148,6 +159,14 @@ struct SyncState {
     /// change on a file whose content didn't move — can never masquerade as a
     /// no-op and silently drift the committed export out from under `export --check`.
     facts_rewritten: usize,
+    /// RELATES_TO edges that got mechanical kinds (imports/shares_file/…) stamped
+    /// from current physical facts this sync — `loom populate kinds`, folded into
+    /// the loop so the import-coupling staling exemption is HONEST in `loom
+    /// explain` without a separate manual step.
+    kinds_backfilled: usize,
+    /// Seam-intent IMPLEMENTS edges re-opened because a delegated child's export
+    /// (its contract) changed — the cross-service federation ripple.
+    seam_groundings_reopened: usize,
     changes: Vec<String>,
     missing_files: Vec<String>,
     escaped_files: Vec<String>,
@@ -493,22 +512,34 @@ fn flag_relates(
             if edge.inspection_status == "independent" {
                 return coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
             }
-            // A PASSING edge coupled solely by `imports` is mechanically
-            // re-derivable: a behavior-preserving edit to a grounded file (a hub
-            // like the storage trait or output printer that dozens of intents
-            // import) does NOT change the import, so re-staling it into a manual
-            // re-verification is laundering-prone busywork — the exact tension
-            // that re-opened hundreds of edges on a cosmetic change. Re-derive it
-            // instead: keep it passing while the import is still present; stale it
-            // ONLY when the import is now GONE (the structural basis disappeared),
-            // mirroring how an `independent` edge re-opens only when a coupling
-            // appears. Judgment couplings (calls/inheritance/…) still stale.
+            // A meaning-only edge (every kind is shares_vocab/same_domain/
+            // doc_reference) tracks concept overlap, not code — never re-open it.
+            // Checked FIRST so the import-only branch below can't mistake a
+            // no-staling-kind edge for an import coupling.
+            if !crate::types::relates_stales_on_code_change(&edge.kinds) {
+                return false;
+            }
+            // A PASSING edge with no behavior-sensitive coupling (only `imports`,
+            // or un-kinded) is mechanically re-derivable: a behavior-preserving
+            // edit to a grounded hub file (the storage trait, the output printer)
+            // does NOT change the import, so re-staling it into a manual
+            // re-verification is laundering-prone busywork — the exact tension that
+            // re-opened hundreds of edges on a cosmetic change. Re-derive it from
+            // the LIVE coupling instead: keep it passing while the pair is still
+            // import-coupled; stale it ONLY when the import is now GONE, mirroring
+            // how an `independent` edge re-opens only when a coupling appears. This
+            // uses the live `coupled` set, NOT the stored kind, so it fires for the
+            // un-kinded edges the analyzer ground flow produces (before `loom
+            // populate kinds` ever runs). Judgment couplings (calls/inheritance/
+            // shares_state) and `shares_file` still stale.
             if edge.inspection_status == "passing"
                 && crate::types::relates_is_import_only_coupling(&edge.kinds)
             {
                 return !coupled.contains(&sorted_pair(&edge.from_id, &edge.to_id));
             }
-            crate::types::relates_stales_on_code_change(&edge.kinds)
+            // Reaching here means it stales (a non-passing edge, or a judgment
+            // coupling on a passing edge).
+            true
         })
     {
         if state.related_edges_flagged.insert(edge.id.clone())
@@ -667,6 +698,56 @@ fn update_physical_facts_and_flag_locators(
     Ok(())
 }
 
+/// Stamp mechanical relationship kinds (imports/shares_file/shares_vocab/
+/// same_domain) onto RELATES_TO edges from CURRENT physical facts — the same
+/// derivation `loom populate kinds` does, folded into the sync loop so the
+/// import-coupling staling exemption is HONEST in `loom explain` (an un-kinded
+/// edge between import-coupled files becomes `[imports]`) without a separate
+/// manual step. Judgment kinds (analyzer-asserted: calls/inheritance/…) are
+/// preserved; only the mechanical tier is (re)derived.
+fn backfill_mechanical_kinds(store: &mut SqliteStore, state: &mut SyncState) -> Result<()> {
+    let snapshot = store.query_snapshot()?;
+    let discovery = crate::db::queries::DiscoverySnapshot::from_query(&snapshot)?;
+    let by_id: HashMap<&str, &crate::types::Intent> = snapshot
+        .intents
+        .iter()
+        .map(|i| (i.id.as_str(), i))
+        .collect();
+    for e in &snapshot.relates {
+        let (Some(a), Some(b)) = (by_id.get(e.from_id.as_str()), by_id.get(e.to_id.as_str()))
+        else {
+            continue;
+        };
+        let mechanical: Vec<String> = crate::db::queries::mechanical_kinds_for_pair(&discovery, a, b)
+            .into_iter()
+            .map(|k| k.as_str().to_string())
+            .collect();
+        let mut new_kinds: Vec<String> = e
+            .kinds
+            .iter()
+            .filter(|k| {
+                k.parse::<crate::types::RelationKind>()
+                    .map(|rk| !rk.is_mechanical())
+                    .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        for m in mechanical {
+            if !new_kinds.contains(&m) {
+                new_kinds.push(m);
+            }
+        }
+        new_kinds.sort();
+        let mut current = e.kinds.clone();
+        current.sort();
+        if new_kinds != current {
+            store.update_relates_to_kinds(&e.from_id, &e.to_id, &new_kinds)?;
+            state.kinds_backfilled += 1;
+        }
+    }
+    Ok(())
+}
+
 fn flag_unverifiable_files(
     store: &mut SqliteStore,
     codefiles: &[CodeFile],
@@ -751,6 +832,22 @@ fn ripple_delegations(
             {
                 flag_relates(store, ctx, state, iid, &cause, false, coupled)?;
                 invalidate_delegation_validations(store, ctx, state, iid)?;
+                // Re-open the seam intent's GROUNDINGS too: its binding code
+                // claims to use the child contract correctly, and that contract
+                // just moved. A seam grounded ONLY via IMPLEMENTS (no RELATES_TO,
+                // no delegation validation) would otherwise never re-open — the
+                // cross-service ripple silently never firing.
+                for im in ctx
+                    .all_implements
+                    .iter()
+                    .filter(|im| im.intent_id == **iid)
+                {
+                    if store
+                        .flag_implements_needs_reverification(&im.intent_id, &im.codefile_id)?
+                    {
+                        state.seam_groundings_reopened += 1;
+                    }
+                }
             }
         }
         store.set_delegation_export_hash(&delegation.id, &new_hash)?;
@@ -840,6 +937,7 @@ fn build_sync_report(
             v.sort();
             v
         },
+        seam_groundings_reopened: state.seam_groundings_reopened,
     }
 }
 
@@ -863,6 +961,7 @@ fn next_sync_step(report: &SyncReport) -> String {
         && report.missing_files.is_empty()
         && report.escaped_files.is_empty()
         && report.locators_stale.is_empty()
+        && report.seam_groundings_reopened == 0
     {
         "`loom status` (or `loom next --all` for closeout)".to_string()
     } else if report.files_changed == 0
@@ -870,7 +969,9 @@ fn next_sync_step(report: &SyncReport) -> String {
         && report.escaped_files.is_empty()
         && !report.locators_stale.is_empty()
     {
-        "`loom next --mode fix` to re-inspect IMPLEMENTS edges with stale locators.".to_string()
+        // A stale IMPLEMENTS locator is RE-GROUNDED, not re-verified — the fix
+        // lane does not serve it (see the ⚠ STALE locators recovery line above).
+        "re-ground each stale locator: `loom edge implement <intent> <file> --locator \"<current symbol>\"`.".to_string()
     } else {
         format!(
             "`loom next --mode fix{}` to re-inspect flagged edges{}",
@@ -972,11 +1073,19 @@ fn print_sync_text(
             println!("    {p}");
         }
     }
+    if report.seam_groundings_reopened > 0 {
+        println!();
+        println!(
+            "  ⚠ {} seam grounding(s) re-opened — a delegated child's contract (committed export) changed; re-verify the binding code against it.",
+            report.seam_groundings_reopened
+        );
+    }
     println!();
     if report.files_changed == 0
         && report.missing_files.is_empty()
         && report.escaped_files.is_empty()
         && report.locators_stale.is_empty()
+        && report.seam_groundings_reopened == 0
     {
         println!("  ✓ All files up to date — no edges need reverification.");
     } else if report.relates_to_edges_flagged + report.governs_edges_flagged > 0 {
@@ -1045,6 +1154,13 @@ fn print_stale_locators(locators_stale: &[String]) {
     for l in locators_stale.iter().take(REPORT_CAP) {
         println!("    {}", l);
     }
+    // A stale IMPLEMENTS locator is RE-GROUNDED, not re-verified — the fixer lane
+    // (`loom next --mode fix`) does NOT serve it, so don't send the driver to an
+    // empty lane. Name the actual recovery.
+    println!(
+        "  → re-ground each: `loom edge implement <intent> <file> --locator \"<current symbol>\"` \
+         (list the file's current symbols with `loom codefile show <file>`; the intent id is on its `loom explain`/`loom intent show`)."
+    );
 }
 
 // ---------------------------------------------------------------------------

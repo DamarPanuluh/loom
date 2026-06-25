@@ -92,7 +92,7 @@ fn detect_undeclared_coupling(
             }
         }
     }
-    for (_key, (importer, imported, examples)) in pair_files {
+    for ((key_a, key_b), (importer, imported, examples)) in pair_files {
         let (n_importer, n_imported) = (
             name_of
                 .get(importer.as_str())
@@ -111,9 +111,14 @@ fn detect_undeclared_coupling(
                 n_importer, n_imported
             ),
             evidence: format!("imports: {}", examples.join(", ")),
+            // The remedy drives the finding IDENTITY (`smell_identity`/`intent_ids`
+            // parse it), so it MUST use the id-sorted pair — a stable identity that
+            // doesn't flip with import direction (decision notes are keyed on it).
+            // `loom edge explore A B` is undirected, so order is functionally moot;
+            // the SUMMARY above carries the human-facing direction.
             remedy: format!(
                 "loom edge explore {} {}  → the code says they touch; ground the contract (or untangle the import)",
-                importer, imported
+                key_a, key_b
             ),
             teaching: teaching_for("undeclared_coupling"),
         });
