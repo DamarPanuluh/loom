@@ -957,21 +957,31 @@ fn print_sync_report(
 }
 
 fn next_sync_step(report: &SyncReport) -> String {
+    let stale_or_seam =
+        !report.locators_stale.is_empty() || report.seam_groundings_reopened > 0;
+    let fix_lane = report.relates_to_edges_flagged + report.governs_edges_flagged > 0;
     if report.files_changed == 0
         && report.missing_files.is_empty()
         && report.escaped_files.is_empty()
-        && report.locators_stale.is_empty()
-        && report.seam_groundings_reopened == 0
+        && !stale_or_seam
+        && !fix_lane
     {
         "`loom status` (or `loom next --all` for closeout)".to_string()
-    } else if report.files_changed == 0
-        && report.missing_files.is_empty()
-        && report.escaped_files.is_empty()
-        && !report.locators_stale.is_empty()
-    {
-        // A stale IMPLEMENTS locator is RE-GROUNDED, not re-verified — the fix
-        // lane does not serve it (see the ⚠ STALE locators recovery line above).
-        "re-ground each stale locator: `loom edge implement <intent> <file> --locator \"<current symbol>\"`.".to_string()
+    } else if stale_or_seam {
+        // A stale/re-opened IMPLEMENTS grounding is RE-GROUNDED, not re-verified —
+        // the fix lane does NOT serve it. This is the PRIMARY directive (and the
+        // JSON next_step an orchestrator parses), so it must name the actual
+        // recovery REGARDLESS of files_changed — previously a rename (a code change)
+        // fell through to the empty `--mode fix` route. Mention the fix lane only as
+        // a secondary step when there are also flagged RELATES_TO/GOVERNS edges.
+        let mut s = String::from(
+            "re-ground each re-opened grounding: `loom edge implement <intent> <file> --locator \"<current symbol>\"` (`loom codefile show <file>` lists current symbols)",
+        );
+        if fix_lane {
+            s.push_str("; then `loom next --mode fix` for the flagged RELATES_TO/GOVERNS edges");
+        }
+        s.push('.');
+        s
     } else {
         format!(
             "`loom next --mode fix{}` to re-inspect flagged edges{}",

@@ -9966,3 +9966,58 @@ fn sqlite_multiowner_symbol_gap_warns_against_clobber() {
         "a multi-owner unclaimed-symbol suggestion must warn against clobbering an existing locator: {action}"
     );
 }
+
+// ── QA wave 5: directive routing + bulk-glob non-destructiveness ──────────────
+
+/// After a top-level RENAME, sync's primary directive (`next_step`, which an
+/// orchestrator parses) must name the actual RE-GROUND recovery, NOT the empty
+/// `loom next --mode fix` lane (which does not serve stale IMPLEMENTS locators).
+#[test]
+fn sqlite_sync_rename_directive_names_reground_not_fix_lane() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("reground-route");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(&graph.root, "s.go", "package s\nfunc Alpha() int { return 1 }\n");
+    run_json_as(&graph.root, &["codefile", "add", "s.go", "--json"], "llm:builder");
+    let id = run_json_as(&graph.root, &["intent", "add", "--name", "a", "--description", "d", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(&graph.root, &["edge", "implement", &id, "s.go", "--locator", "func Alpha", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    write_scratch_file(&graph.root, "s.go", "package s\nfunc Beta() int { return 1 }\n"); // rename
+    let sync = run_json(&graph.root, &["sync", "--json"]);
+    assert_eq!(sync["locators_stale_total"].as_u64(), Some(1), "the rename must flag the locator stale: {sync}");
+    let next = sync["next_step"].as_str().unwrap();
+    assert!(
+        next.contains("edge implement") && !next.contains("--mode fix"),
+        "the primary directive must name the re-ground recovery, not the empty --mode fix lane: {next}"
+    );
+}
+
+/// A file-level glob `loom edge implement <intent> '<glob>'` must NOT silently
+/// CLOBBER an existing precise locator on a matched file.
+#[test]
+fn sqlite_glob_implement_preserves_existing_precise_locator() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("glob-no-clobber");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "go.mod", "module ex\n\ngo 1.22\n");
+    write_scratch_file(&graph.root, "f.go", "package f\nfunc A() {}\nfunc B() {}\n");
+    write_scratch_file(&graph.root, "g.go", "package g\nfunc C() {}\n");
+    run_json_as(&graph.root, &["codefile", "add", "f.go", "--json"], "llm:builder");
+    run_json_as(&graph.root, &["codefile", "add", "g.go", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    let id = run_json_as(&graph.root, &["intent", "add", "--name", "Feat", "--description", "owns A", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "f.go", "--locator", "func A", "--json"], "llm:builder");
+    // Bulk-glob file-level grounding over both files.
+    let out = run_json_as(&graph.root, &["edge", "implement", &id, "*.go", "--json"], "llm:builder");
+    let preserved: Vec<String> = out["preserved_precise_locators"].as_array().cloned().unwrap_or_default().iter().filter_map(|p| p.as_str().map(str::to_string)).collect();
+    assert!(
+        preserved.iter().any(|p| p.contains("f.go") && p.contains("func A")),
+        "the existing precise locator on f.go must be preserved, not clobbered: {out}"
+    );
+    // Confirm the stored locator is still precise.
+    let show = run_json(&graph.root, &["codefile", "show", "f.go", "--json"]);
+    let owners = serde_json::to_string(&show).unwrap();
+    assert!(owners.contains("func A"), "f.go must still be grounded at `func A`: {show}");
+}

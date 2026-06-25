@@ -420,23 +420,57 @@ fn run_implement_with_sqlite(
                 locator.trim(),
             );
         }
+        // A file-level glob grounding must NOT silently CLOBBER a precise locator
+        // the intent already has on a matched file (insert_implements upserts to an
+        // empty locator). Preserve those; only newly ground files not already owned
+        // at a symbol. Report both so the spread (incl. any unintended glob matches)
+        // is visible, never a silent mass-mutation.
+        let prior: std::collections::HashMap<String, String> = store
+            .list_implements_for_intent(&intent_id)?
+            .into_iter()
+            .map(|e| (e.codefile_id, e.locator))
+            .collect();
+        let mut newly_grounded: Vec<String> = Vec::new();
+        let mut preserved: Vec<String> = Vec::new();
         for cf in &targets {
-            store.insert_implements(&intent_id, &cf.id, "", &notes, &now)?;
+            match prior.get(&cf.id) {
+                Some(loc) if !loc.trim().is_empty() => {
+                    preserved.push(format!("{} @ {}", cf.path, loc.trim()))
+                }
+                _ => {
+                    store.insert_implements(&intent_id, &cf.id, "", &notes, &now)?;
+                    newly_grounded.push(cf.path.clone());
+                }
+            }
         }
         if printer.json {
             printer.print_json(&serde_json::json!({
                 "status": "ok",
                 "intent_id": intent_id,
-                "grounded": targets.iter().map(|codefile| codefile.path.clone()).collect::<Vec<_>>(),
+                "grounded": newly_grounded,
+                "preserved_precise_locators": preserved,
                 "count": targets.len(),
                 "next_step": next_step,
             }));
         } else {
             println!(
-                "✓ Grounded intent in {} registered file(s) matching '{}'.",
+                "✓ File-level grounded {} of {} file(s) matching '{}'.",
+                newly_grounded.len(),
                 targets.len(),
                 codefile_key
             );
+            for p in &newly_grounded {
+                println!("    + {p}");
+            }
+            if !preserved.is_empty() {
+                println!(
+                    "  ⚠ kept {} existing PRECISE locator(s) (a file-level glob does not clobber them):",
+                    preserved.len()
+                );
+                for p in &preserved {
+                    println!("    · {p}");
+                }
+            }
             println!("  → Next: {}", next_step);
         }
     } else {
