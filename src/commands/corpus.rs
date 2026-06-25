@@ -137,9 +137,7 @@ fn resolve_id(
         raw_text: format!(
             "corpus:{id}\nsource:resolve\nresolve documented requirement {id} to intent {resolved}"
         ),
-        normalized_claim: format!(
-            "Documented requirement {id} is modeled by intent '{resolved}'."
-        ),
+        normalized_claim: format!("Documented requirement {id} is modeled by intent '{resolved}'."),
         kind: "docs_gap".to_string(),
         status: "rejected".to_string(),
         source: "import".to_string(),
@@ -147,9 +145,7 @@ fn resolve_id(
         tags: Vec::new(),
         links: Vec::new(),
         route_kind: "resolve".to_string(),
-        route_command: format!(
-            "loom corpus resolve {id} --intent {resolved} --reason \"…\""
-        ),
+        route_command: format!("loom corpus resolve {id} --intent {resolved} --reason \"…\""),
         route_target_kind: "intent".to_string(),
         route_target_id: resolved.clone(),
         resolution: reason.to_string(),

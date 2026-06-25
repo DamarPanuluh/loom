@@ -30,10 +30,12 @@ fn detect_unmeasured_intents(
 ) {
     let considered: HashSet<(&str, &str)> = governs
         .iter()
-        .filter(|g| matches!(
-            g.inspection_status.as_str(),
-            "passing" | "failing" | "independent" | "partial"
-        ))
+        .filter(|g| {
+            matches!(
+                g.inspection_status.as_str(),
+                "passing" | "failing" | "independent" | "partial"
+            )
+        })
         .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
     let covers_set = super::super::scoring::covers_descendants_set(governs);
@@ -43,7 +45,11 @@ fn detect_unmeasured_intents(
         .collect();
     let considered_up = |rule_id: &str, intent_id: &str| -> bool {
         super::super::scoring::governs_covers_intent(
-            rule_id, intent_id, &considered, &covers_set, &parent_of,
+            rule_id,
+            intent_id,
+            &considered,
+            &covers_set,
+            &parent_of,
         )
     };
     for r in rules {

@@ -492,8 +492,18 @@ pub fn is_vacuous(value: &str) -> bool {
     }
     // Opens with a "I'll fill this in later" marker → a promise, not a claim.
     const LEADING: &[&str] = &[
-        "todo", "fixme", "tbd", "tba", "wip", "n/a", "placeholder", "fill in", "fill this",
-        "to be ", "xxx", "...",
+        "todo",
+        "fixme",
+        "tbd",
+        "tba",
+        "wip",
+        "n/a",
+        "placeholder",
+        "fill in",
+        "fill this",
+        "to be ",
+        "xxx",
+        "...",
     ];
     if LEADING.iter().any(|p| v.starts_with(p)) {
         return true;
@@ -509,7 +519,12 @@ pub fn is_vacuous(value: &str) -> bool {
     }
     // One token repeated (`n/a n/a n/a`, `foo foo foo`).
     let tokens: Vec<&str> = v.split_whitespace().collect();
-    tokens.len() >= 2 && tokens.iter().collect::<std::collections::HashSet<_>>().len() == 1
+    tokens.len() >= 2
+        && tokens
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            == 1
 }
 
 /// Reject an empty/placeholder/too-short value for a required evidence field.
@@ -895,14 +910,14 @@ mod tests {
         // Obvious placeholders — rejected.
         for v in [
             "",
-            "asdf",                  // too short
-            "criterion",             // exact-blocklist
+            "asdf",      // too short
+            "criterion", // exact-blocklist
             "TODO fill this in later",
             "FIXME later",
             "n/a n/a n/a n/a",
-            "xxxxxxxxxxxxxxxxxxxx",   // one distinct letter
+            "xxxxxxxxxxxxxxxxxxxx", // one distinct letter
             "tbd",
-            "same same same same",   // one token repeated
+            "same same same same", // one token repeated
         ] {
             assert!(is_vacuous(v), "must be vacuous: {v:?}");
         }

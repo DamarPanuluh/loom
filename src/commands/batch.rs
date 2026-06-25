@@ -282,18 +282,10 @@ fn apply_line_sqlite(
                 .map(|edge| edge.criterion)
                 .unwrap_or_default();
             let criterion = criterion_or_stored(&v, op, &stored_criterion)?;
-            gate::require_substantive(
-                "criterion",
-                criterion,
-                gate::RELATES_TO_CRITERION_PURPOSE,
-            )?;
+            gate::require_substantive("criterion", criterion, gate::RELATES_TO_CRITERION_PURPOSE)?;
             let evidence = v.get("evidence").and_then(|x| x.as_str()).unwrap_or("");
             if !evidence.trim().is_empty() {
-                gate::require_substantive(
-                    "evidence",
-                    evidence,
-                    gate::RELATES_TO_EVIDENCE_PURPOSE,
-                )?;
+                gate::require_substantive("evidence", evidence, gate::RELATES_TO_EVIDENCE_PURPOSE)?;
             }
             gate::require_locators_resolve(root, &locators_field(&v))?;
             let evidence = gate::compose_evidence(&locators_field(&v), evidence)?;
@@ -401,8 +393,14 @@ fn apply_line_sqlite(
                 str_field(&v, op, "intent")?,
             )?;
             let status = str_field(&v, op, "status")?;
-            if status != "passing" && status != "failing" && status != "independent" && status != "partial" {
-                anyhow::bail!("invalid status '{status}' (passing | failing | independent | partial)");
+            if status != "passing"
+                && status != "failing"
+                && status != "independent"
+                && status != "partial"
+            {
+                anyhow::bail!(
+                    "invalid status '{status}' (passing | failing | independent | partial)"
+                );
             }
             let stored_criterion = store
                 .list_governs_for_intent(&intent)?
@@ -426,7 +424,8 @@ fn apply_line_sqlite(
             gate::require_confidence(confidence)?;
             gate::require_passing_locator(status, &locators_field(&v))?;
             gate::require_locators_resolve(root, &locators_field(&v))?;
-            let covers_descendants = v.get("covers_descendants")
+            let covers_descendants = v
+                .get("covers_descendants")
                 .and_then(|x| x.as_bool())
                 .unwrap_or(false);
             if covers_descendants && evidence.trim().is_empty() {
@@ -440,7 +439,14 @@ fn apply_line_sqlite(
                 ));
             }
             store.upsert_governs_verdict(
-                &rule, &intent, status, criterion, &evidence, confidence, &by, &now,
+                &rule,
+                &intent,
+                status,
+                criterion,
+                &evidence,
+                confidence,
+                &by,
+                &now,
                 covers_descendants,
             )?;
             Ok((

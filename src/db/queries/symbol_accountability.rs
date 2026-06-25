@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use super::symbol_match::{contains_identifier_word, symbol_identifier};
 use crate::types::{CodeFile, Implements, Intent, Note, SymbolFact};
 
-pub(crate) const ANTI_CREATE_INTENTS_PER_HELPER: &str = "do not create intents for every private helper";
+pub(crate) const ANTI_CREATE_INTENTS_PER_HELPER: &str =
+    "do not create intents for every private helper";
 pub(crate) const ANTI_BULK_GROUND_SYMBOLS: &str =
     "do not bulk-ground symbols without checking intent meaning";
 

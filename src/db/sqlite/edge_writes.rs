@@ -32,11 +32,7 @@ impl SqliteGraphStore {
         if changed == 0 {
             let intent_exists = self
                 .conn
-                .query_row(
-                    SQL_INTENT_EXISTS,
-                    params![intent_id],
-                    |_| Ok(()),
-                )
+                .query_row(SQL_INTENT_EXISTS, params![intent_id], |_| Ok(()))
                 .optional()?
                 .is_some();
             if !intent_exists {
@@ -439,11 +435,7 @@ impl SqliteGraphStore {
             }
             let intent_exists = self
                 .conn
-                .query_row(
-                    SQL_INTENT_EXISTS,
-                    params![intent_id],
-                    |_| Ok(()),
-                )
+                .query_row(SQL_INTENT_EXISTS, params![intent_id], |_| Ok(()))
                 .optional()?
                 .is_some();
             if !intent_exists {
@@ -839,25 +831,15 @@ impl SqliteGraphStore {
         if changed == 0 {
             let rule_exists = self
                 .conn
-                .query_row(
-                    SQL_RULE_EXISTS,
-                    params![rule_id],
-                    |_| Ok(()),
-                )
+                .query_row(SQL_RULE_EXISTS, params![rule_id], |_| Ok(()))
                 .optional()?
                 .is_some();
             if !rule_exists {
-                anyhow::bail!(
-                    err_rule_not_found(rule_id)
-                );
+                anyhow::bail!(err_rule_not_found(rule_id));
             }
             let intent_exists = self
                 .conn
-                .query_row(
-                    SQL_INTENT_EXISTS,
-                    params![intent_id],
-                    |_| Ok(()),
-                )
+                .query_row(SQL_INTENT_EXISTS, params![intent_id], |_| Ok(()))
                 .optional()?
                 .is_some();
             if !intent_exists {
@@ -943,24 +925,14 @@ impl SqliteGraphStore {
             )?;
             if changed == 0 {
                 let rule_exists = tx
-                    .query_row(
-                        SQL_RULE_EXISTS,
-                        params![rule_id],
-                        |_| Ok(()),
-                    )
+                    .query_row(SQL_RULE_EXISTS, params![rule_id], |_| Ok(()))
                     .optional()?
                     .is_some();
                 if !rule_exists {
-                    anyhow::bail!(
-                        err_rule_not_found(rule_id)
-                    );
+                    anyhow::bail!(err_rule_not_found(rule_id));
                 }
                 let intent_exists = tx
-                    .query_row(
-                        SQL_INTENT_EXISTS,
-                        params![intent_id],
-                        |_| Ok(()),
-                    )
+                    .query_row(SQL_INTENT_EXISTS, params![intent_id], |_| Ok(()))
                     .optional()?
                     .is_some();
                 if !intent_exists {

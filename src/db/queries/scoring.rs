@@ -410,13 +410,20 @@ pub fn review_candidates_from_snapshot(snapshot: &QuerySnapshot) -> Vec<(ReviewC
         let base_review = needs_review(&edge.inspection_status, edge.confidence, &edge.evidence);
         // Additional GOVERNS-specific triggers that route to review EVEN at
         // high confidence — the verdict looks green but carries a risk pattern:
-        let severity = rule_severity.get(edge.rule_id.as_str()).copied().unwrap_or("");
-        let altitude = intent_altitude.get(edge.intent_id.as_str()).copied().unwrap_or("");
+        let severity = rule_severity
+            .get(edge.rule_id.as_str())
+            .copied()
+            .unwrap_or("");
+        let altitude = intent_altitude
+            .get(edge.intent_id.as_str())
+            .copied()
+            .unwrap_or("");
         let is_high_severity = severity == "error";
         let is_high_altitude = altitude == "system" || altitude == "cross_cutting";
         // A `partial` verdict is inherently not-fully-discharged — always review.
         let is_partial = edge.inspection_status == "partial";
-        let extra_review = (edge.inspection_status == "passing" || edge.inspection_status == "partial")
+        let extra_review = (edge.inspection_status == "passing"
+            || edge.inspection_status == "partial")
             && (is_high_severity || is_high_altitude || is_partial)
             && edge.confidence > 0.0;
         if !base_review && !extra_review {
@@ -444,10 +451,12 @@ pub fn normative_coverage_from_snapshot(snapshot: &QuerySnapshot) -> NormativeCo
     let considered: std::collections::HashSet<(&str, &str)> = snapshot
         .governs
         .iter()
-        .filter(|g| matches!(
-            g.inspection_status.as_str(),
-            "passing" | "failing" | "independent" | "partial"
-        ))
+        .filter(|g| {
+            matches!(
+                g.inspection_status.as_str(),
+                "passing" | "failing" | "independent" | "partial"
+            )
+        })
         .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
         .collect();
     let covers_set = covers_descendants_set(&snapshot.governs);
@@ -543,9 +552,7 @@ pub fn governs_covers_intent(
 }
 
 /// Build the set of (rule_id, intent_id) pairs where `covers_descendants=true`.
-pub fn covers_descendants_set(
-    governs: &[Governs],
-) -> std::collections::HashSet<(&str, &str)> {
+pub fn covers_descendants_set(governs: &[Governs]) -> std::collections::HashSet<(&str, &str)> {
     governs
         .iter()
         .filter(|g| g.covers_descendants == "true")
@@ -1436,13 +1443,17 @@ mod tests {
     }
 
     fn rule(id: &str) -> QualityRule {
-        QualityRule { evidence_examples: String::new(), signal_expectations: String::new(), id: id.to_string(),
-        name: id.to_string(),
-        description: String::new(),
-        detection_logic: String::new(),
-        kind: String::new(),
-        severity: "medium".to_string(),
-        inspection_effort: "mid".to_string(), }
+        QualityRule {
+            evidence_examples: String::new(),
+            signal_expectations: String::new(),
+            id: id.to_string(),
+            name: id.to_string(),
+            description: String::new(),
+            detection_logic: String::new(),
+            kind: String::new(),
+            severity: "medium".to_string(),
+            inspection_effort: "mid".to_string(),
+        }
     }
 
     fn relates(id: &str, status: &str, confidence: f64) -> RelatesTo {
@@ -1476,18 +1487,21 @@ mod tests {
     }
 
     fn governs(id: &str, status: &str, confidence: f64) -> Governs {
-        Governs { covers_descendants: String::new(), id: id.to_string(),
-        rule_id: "rule".to_string(),
-        intent_id: "a".to_string(),
-        rule_name: "rule".to_string(),
-        intent_name: "a".to_string(),
-        inspection_status: status.to_string(),
-        criterion: String::new(),
-        confidence,
-        evidence: String::new(),
-        last_inspected: String::new(),
-        inspected_by: "llm:quality".to_string(),
-        notes: String::new(), }
+        Governs {
+            covers_descendants: String::new(),
+            id: id.to_string(),
+            rule_id: "rule".to_string(),
+            intent_id: "a".to_string(),
+            rule_name: "rule".to_string(),
+            intent_name: "a".to_string(),
+            inspection_status: status.to_string(),
+            criterion: String::new(),
+            confidence,
+            evidence: String::new(),
+            last_inspected: String::new(),
+            inspected_by: "llm:quality".to_string(),
+            notes: String::new(),
+        }
     }
 
     impl Governs {

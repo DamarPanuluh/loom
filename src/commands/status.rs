@@ -261,10 +261,12 @@ pub fn run_with_db(
         let considered: HashSet<(&str, &str)> = snapshot
             .governs
             .iter()
-            .filter(|g| matches!(
-                g.inspection_status.as_str(),
-                "passing" | "failing" | "independent" | "partial"
-            ))
+            .filter(|g| {
+                matches!(
+                    g.inspection_status.as_str(),
+                    "passing" | "failing" | "independent" | "partial"
+                )
+            })
             .map(|g| (g.rule_id.as_str(), g.intent_id.as_str()))
             .collect();
         let covers_set = covers_descendants_set(&snapshot.governs);
@@ -723,7 +725,15 @@ fn render_status(
             );
             obj.insert(
                 "alarms".to_string(),
-                serde_json::json!(alarm_strip(report, &audit, disk, intake, export_freshness, unmeasured_intents, gs.intents)),
+                serde_json::json!(alarm_strip(
+                    report,
+                    &audit,
+                    disk,
+                    intake,
+                    export_freshness,
+                    unmeasured_intents,
+                    gs.intents
+                )),
             );
             obj.insert("human_gated".to_string(), serde_json::json!({
                 "total": human_gated,
@@ -788,7 +798,15 @@ fn render_plain_status(
     totals: CompletionTotals,
 ) {
     // The alarm strip — urgent signals that preempt the focus rung (cold readers
-    let alarms = alarm_strip(report, audit, disk, intake, export_freshness, unmeasured_intents, gs.intents);
+    let alarms = alarm_strip(
+        report,
+        audit,
+        disk,
+        intake,
+        export_freshness,
+        unmeasured_intents,
+        gs.intents,
+    );
     if !alarms.is_empty() {
         println!("⚠ ALARMS — handle these before the focus rung:");
         for line in &alarms {

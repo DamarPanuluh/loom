@@ -718,10 +718,11 @@ fn backfill_mechanical_kinds(store: &mut SqliteStore, state: &mut SyncState) -> 
         else {
             continue;
         };
-        let mechanical: Vec<String> = crate::db::queries::mechanical_kinds_for_pair(&discovery, a, b)
-            .into_iter()
-            .map(|k| k.as_str().to_string())
-            .collect();
+        let mechanical: Vec<String> =
+            crate::db::queries::mechanical_kinds_for_pair(&discovery, a, b)
+                .into_iter()
+                .map(|k| k.as_str().to_string())
+                .collect();
         let mut new_kinds: Vec<String> = e
             .kinds
             .iter()
@@ -837,14 +838,8 @@ fn ripple_delegations(
                 // just moved. A seam grounded ONLY via IMPLEMENTS (no RELATES_TO,
                 // no delegation validation) would otherwise never re-open — the
                 // cross-service ripple silently never firing.
-                for im in ctx
-                    .all_implements
-                    .iter()
-                    .filter(|im| im.intent_id == **iid)
-                {
-                    if store
-                        .flag_implements_needs_reverification(&im.intent_id, &im.codefile_id)?
-                    {
+                for im in ctx.all_implements.iter().filter(|im| im.intent_id == **iid) {
+                    if store.flag_implements_needs_reverification(&im.intent_id, &im.codefile_id)? {
                         state.seam_groundings_reopened += 1;
                     }
                 }
@@ -957,8 +952,7 @@ fn print_sync_report(
 }
 
 fn next_sync_step(report: &SyncReport) -> String {
-    let stale_or_seam =
-        !report.locators_stale.is_empty() || report.seam_groundings_reopened > 0;
+    let stale_or_seam = !report.locators_stale.is_empty() || report.seam_groundings_reopened > 0;
     let fix_lane = report.relates_to_edges_flagged + report.governs_edges_flagged > 0;
     if report.files_changed == 0
         && report.missing_files.is_empty()

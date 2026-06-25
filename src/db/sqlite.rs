@@ -48,15 +48,22 @@ pub(crate) fn err_intent_not_found(id: &str) -> String {
 pub(crate) const SQL_DELETE_EDGE_NOTES: &str = "DELETE FROM note
              WHERE target_kind = 'edge'
                AND instr(target_id, ?1) > 0";
-pub(crate) const SQL_UPDATE_INTENT_TAGS: &str = "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_UPDATE_INTENT_TAGS: &str =
+    "UPDATE intent SET tags = ?1, updated_at = ?2 WHERE id = ?3";
 pub(crate) const SQL_FLAG_IMPLEMENTS_STALE: &str =
     "UPDATE implements SET inspection_status = 'needs_reverification' WHERE intent_id = ?1 AND codefile_id = ?2";
-pub(crate) const SQL_UPDATE_INTENT_SOURCE_REFS: &str = "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3";
-pub(crate) const SQL_UPDATE_INTENT_VISIBILITY: &str = "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3";
-pub(crate) const SQL_SELECT_VALIDATION_LAST_RESULT: &str = "SELECT last_result FROM validation WHERE id = ?1";
-pub(crate) const SQL_VOCAB_TERM_EXISTS: &str = "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)";
-pub(crate) const SQL_COUNT_VALIDATES: &str = "SELECT count(*) FROM validates WHERE validation_id = ?1";
-pub(crate) const SQL_RESET_VALIDATION: &str = "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1";
+pub(crate) const SQL_UPDATE_INTENT_SOURCE_REFS: &str =
+    "UPDATE intent SET source_refs = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_UPDATE_INTENT_VISIBILITY: &str =
+    "UPDATE intent SET visibility = ?1, updated_at = ?2 WHERE id = ?3";
+pub(crate) const SQL_SELECT_VALIDATION_LAST_RESULT: &str =
+    "SELECT last_result FROM validation WHERE id = ?1";
+pub(crate) const SQL_VOCAB_TERM_EXISTS: &str =
+    "SELECT EXISTS(SELECT 1 FROM vocab_term WHERE name = ?1)";
+pub(crate) const SQL_COUNT_VALIDATES: &str =
+    "SELECT count(*) FROM validates WHERE validation_id = ?1";
+pub(crate) const SQL_RESET_VALIDATION: &str =
+    "UPDATE validation SET last_result = 'not_run', last_run = '' WHERE id = ?1";
 pub(crate) const SQL_UPDATE_RELATES_PASSING: &str = "UPDATE relates_to
              SET inspection_status = 'passing',
                  criterion = ?1,

@@ -138,10 +138,7 @@ impl SqliteGraphStore {
             params![uuid::Uuid::new_v4().to_string(), author, id, now],
         )?;
         if let Some(visibility) = visibility {
-            tx.execute(
-                SQL_UPDATE_INTENT_VISIBILITY,
-                params![visibility, now, id],
-            )?;
+            tx.execute(SQL_UPDATE_INTENT_VISIBILITY, params![visibility, now, id])?;
             tx.execute(
                 "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience)
                  VALUES(?1, 'decision', ?2, ?3, 'intent', ?4, ?5, '')",
@@ -529,10 +526,7 @@ impl SqliteGraphStore {
         }
         let tx = self.write_tx()?;
         tx.execute("DELETE FROM note WHERE target_id = ?1", params![id])?;
-        tx.execute(
-            SQL_DELETE_EDGE_NOTES,
-            params![id],
-        )?;
+        tx.execute(SQL_DELETE_EDGE_NOTES, params![id])?;
         tx.execute("DELETE FROM intent WHERE id = ?1", params![id])?;
         tx.commit()?;
         Ok(true)
@@ -645,10 +639,7 @@ impl SqliteGraphStore {
             return Ok(None);
         };
         let tx = self.write_tx()?;
-        tx.execute(
-            SQL_DELETE_EDGE_NOTES,
-            params![codefile.id],
-        )?;
+        tx.execute(SQL_DELETE_EDGE_NOTES, params![codefile.id])?;
         tx.execute("DELETE FROM codefile WHERE id = ?1", params![codefile.id])?;
         tx.commit()?;
         Ok(Some(codefile))
@@ -930,21 +921,14 @@ impl SqliteGraphStore {
     }
     pub fn merge_vocab_terms(&mut self, from: &str, to: &str, now: &str) -> Result<usize> {
         let tx = self.write_tx()?;
-        let from_exists: bool = tx.query_row(
-            SQL_VOCAB_TERM_EXISTS,
-            params![from],
-            |row| row.get(0),
-        )?;
+        let from_exists: bool =
+            tx.query_row(SQL_VOCAB_TERM_EXISTS, params![from], |row| row.get(0))?;
         if !from_exists {
             anyhow::bail!(
                 "Term '{from}' is not registered — `loom vocab list` shows the registry."
             );
         }
-        let to_exists: bool = tx.query_row(
-            SQL_VOCAB_TERM_EXISTS,
-            params![to],
-            |row| row.get(0),
-        )?;
+        let to_exists: bool = tx.query_row(SQL_VOCAB_TERM_EXISTS, params![to], |row| row.get(0))?;
         if !to_exists {
             anyhow::bail!(
                 "Target term '{to}' is not registered — merge dissolves '{from}' INTO an existing term; register '{to}' first if it should exist."
@@ -1027,11 +1011,10 @@ impl SqliteGraphStore {
                 params![last_result, now, validation.id],
             )?;
         }
-        let intents_updated: i64 = tx.query_row(
-            SQL_COUNT_VALIDATES,
-            params![validation.id],
-            |row| row.get(0),
-        )?;
+        let intents_updated: i64 =
+            tx.query_row(SQL_COUNT_VALIDATES, params![validation.id], |row| {
+                row.get(0)
+            })?;
         tx.execute(
             "UPDATE validates SET inspection_status = ?1, notes = ?2 WHERE validation_id = ?3",
             params![edge_status, edge_note, validation.id],
@@ -1091,15 +1074,10 @@ impl SqliteGraphStore {
         }
         let mut reset_edges = 0usize;
         if command_changed {
-            tx.execute(
-                SQL_RESET_VALIDATION,
-                params![validation.id],
-            )?;
-            let count: i64 = tx.query_row(
-                SQL_COUNT_VALIDATES,
-                params![validation.id],
-                |row| row.get(0),
-            )?;
+            tx.execute(SQL_RESET_VALIDATION, params![validation.id])?;
+            let count: i64 = tx.query_row(SQL_COUNT_VALIDATES, params![validation.id], |row| {
+                row.get(0)
+            })?;
             tx.execute(
                 "UPDATE validates
                  SET inspection_status = 'uninspected', notes = 'command updated — proof must be re-run'
@@ -1119,10 +1097,7 @@ impl SqliteGraphStore {
         // Edge rows cascade via FK, but edge NOTES are not FK-linked — drop them
         // too (the id is embedded in the edge id, e.g. call:<validation>:<id>),
         // mirroring delete_validation, so no orphan notes survive in listings.
-        tx.execute(
-            SQL_DELETE_EDGE_NOTES,
-            params![id],
-        )?;
+        tx.execute(SQL_DELETE_EDGE_NOTES, params![id])?;
         let changed = tx.execute("DELETE FROM interface_surface WHERE id = ?1", params![id])?;
         tx.commit()?;
         Ok(changed > 0)
@@ -1131,10 +1106,7 @@ impl SqliteGraphStore {
     pub fn delete_persona(&mut self, id: &str) -> Result<bool> {
         let tx = self.write_tx()?;
         // Drop orphan edge notes (srv:<id>:… / jrn:<id>:…) the FK cascade leaves.
-        tx.execute(
-            SQL_DELETE_EDGE_NOTES,
-            params![id],
-        )?;
+        tx.execute(SQL_DELETE_EDGE_NOTES, params![id])?;
         let changed = tx.execute("DELETE FROM persona WHERE id = ?1", params![id])?;
         tx.commit()?;
         Ok(changed > 0)
@@ -1142,10 +1114,7 @@ impl SqliteGraphStore {
     pub fn delete_validation(&mut self, key: &str) -> Result<String> {
         let validation = self.resolve_validation(key)?;
         let tx = self.write_tx()?;
-        tx.execute(
-            SQL_DELETE_EDGE_NOTES,
-            params![validation.id],
-        )?;
+        tx.execute(SQL_DELETE_EDGE_NOTES, params![validation.id])?;
         tx.execute(
             "DELETE FROM validation WHERE id = ?1",
             params![validation.id],
@@ -1237,10 +1206,7 @@ impl SqliteGraphStore {
         if last_result == "not_run" || last_result == "blocked" || last_result.is_empty() {
             return Ok(false);
         }
-        self.write_one(
-            SQL_RESET_VALIDATION,
-            params![validation_id],
-        )?;
+        self.write_one(SQL_RESET_VALIDATION, params![validation_id])?;
         Ok(true)
     }
     pub fn set_last_synced(&self, now: &str) -> Result<()> {

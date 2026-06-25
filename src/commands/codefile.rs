@@ -105,9 +105,7 @@ fn prepare_additions(
         let rooted = root.join(&path);
         let pattern = rooted.to_string_lossy();
         for p in glob::glob(&pattern)
-            .map_err(|e| {
-                anyhow::anyhow!(crate::output::invalid_glob_msg(&path, &e))
-            })?
+            .map_err(|e| anyhow::anyhow!(crate::output::invalid_glob_msg(&path, &e)))?
             .flatten()
         {
             // Skip symlinks: registering a link AND its target (both glob-matched)

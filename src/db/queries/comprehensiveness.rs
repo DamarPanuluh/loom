@@ -50,11 +50,7 @@ pub fn doc_only_realizations(snapshot: &QuerySnapshot) -> Vec<String> {
     // groundings); the umbrella grounded only to its plan/spec doc is that plan's
     // home, not a spec-as-built smell. Exempt any intent that has children — only a
     // LEAF grounded solely to docs is the real "spec marked built" risk.
-    let parents: HashSet<&str> = snapshot
-        .hierarchy
-        .iter()
-        .map(|(p, _)| p.as_str())
-        .collect();
+    let parents: HashSet<&str> = snapshot.hierarchy.iter().map(|(p, _)| p.as_str()).collect();
     // intent_id -> (has any grounding, all groundings are docs)
     let mut g: HashMap<&str, (bool, bool)> = HashMap::new();
     for im in &snapshot.implements {

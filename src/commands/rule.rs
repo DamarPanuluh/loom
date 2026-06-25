@@ -370,7 +370,9 @@ pub fn pack_names() -> Vec<&'static str> {
 fn pack_rule_effort(name: &str) -> &'static str {
     match name {
         // Near-mechanical scans.
-        ISO5055_SEC_NO_HARDCODED_SECRETS | ISO5055_MAIN_NO_DEAD_OR_DUPLICATE | "sec-dependency-squatting" => "low",
+        ISO5055_SEC_NO_HARDCODED_SECRETS
+        | ISO5055_MAIN_NO_DEAD_OR_DUPLICATE
+        | "sec-dependency-squatting" => "low",
         // Deep semantic reading.
         "conc-atomic-multi-step"
         | "conc-deadlock-ordering"
@@ -469,8 +471,11 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
                     pack_names().join(", ")
                 );
             };
-            let existing: std::collections::HashMap<String, QualityRule> =
-                store.list_rules()?.into_iter().map(|r| (r.name.clone(), r)).collect();
+            let existing: std::collections::HashMap<String, QualityRule> = store
+                .list_rules()?
+                .into_iter()
+                .map(|r| (r.name.clone(), r))
+                .collect();
             let mut created: Vec<QualityRule> = Vec::new();
             let mut skipped = 0usize;
             let mut updated_count = 0usize;
@@ -591,7 +596,11 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             let by = gate::acting_in_lane(&gate::lane::GOVERNS_VERDICT, inspected_by.as_deref())?;
             let rule_id = store.resolve_rule(&rule_id)?;
             let intent_id = resolve_intent_with_db(&store, &intent_id)?;
-            if status != "passing" && status != "failing" && status != "independent" && status != "partial" {
+            if status != "passing"
+                && status != "failing"
+                && status != "independent"
+                && status != "partial"
+            {
                 anyhow::bail!(
                     "Invalid --status '{}'. A verdict is passing, failing, independent, or partial.",
                     status
@@ -620,14 +629,28 @@ fn run_with_sqlite(root: &std::path::Path, cmd: RuleCmd, printer: &Printer) -> R
             let evidence = gate::compose_evidence(&evidence_locator, &evidence)?;
             let now = chrono::Utc::now().to_rfc3339();
             let mut found = store.update_governs_verdict(
-                &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                &rule_id,
+                &intent_id,
+                &status,
+                &criterion,
+                &evidence,
+                confidence,
+                &by,
+                &now,
                 covers_descendants,
             )?;
             let mut edge_created = false;
             if !found {
                 store.insert_governs(&rule_id, &intent_id, &criterion, &now)?;
                 found = store.update_governs_verdict(
-                    &rule_id, &intent_id, &status, &criterion, &evidence, confidence, &by, &now,
+                    &rule_id,
+                    &intent_id,
+                    &status,
+                    &criterion,
+                    &evidence,
+                    confidence,
+                    &by,
+                    &now,
                     covers_descendants,
                 )?;
                 edge_created = true;
@@ -766,7 +789,8 @@ fn run_show_with_db(
         println!("  description:        {}", rule.description);
         println!("  detection_logic:    {}", rule.detection_logic);
         if !rule.evidence_examples.is_empty() {
-            if let Ok(examples) = serde_json::from_str::<serde_json::Value>(&rule.evidence_examples) {
+            if let Ok(examples) = serde_json::from_str::<serde_json::Value>(&rule.evidence_examples)
+            {
                 println!("  evidence examples:");
                 if let Some(pass) = examples.get("pass").and_then(|v| v.as_str()) {
                     println!("    pass:                {pass}");
@@ -774,15 +798,21 @@ fn run_show_with_db(
                 if let Some(indep) = examples.get("independent").and_then(|v| v.as_str()) {
                     println!("    independent:         {indep}");
                 }
-                if let Some(fp) = examples.get("common_false_positive").and_then(|v| v.as_str()) {
+                if let Some(fp) = examples
+                    .get("common_false_positive")
+                    .and_then(|v| v.as_str())
+                {
                     println!("    common false pos:    {fp}");
                 }
             }
         }
         if !rule.signal_expectations.is_empty() && rule.signal_expectations != "[]" {
-            if let Ok(signals) = serde_json::from_str::<Vec<Vec<String>>>(&rule.signal_expectations) {
+            if let Ok(signals) = serde_json::from_str::<Vec<Vec<String>>>(&rule.signal_expectations)
+            {
                 if !signals.is_empty() {
-                    println!("  signal expectations (keywords that should appear in passing evidence):");
+                    println!(
+                        "  signal expectations (keywords that should appear in passing evidence):"
+                    );
                     for (i, group) in signals.iter().enumerate() {
                         println!("    group {}: {}", i + 1, group.join(" | "));
                     }

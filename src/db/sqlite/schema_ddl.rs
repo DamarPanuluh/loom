@@ -354,8 +354,16 @@ impl SqliteGraphStore {
                 "discrimination_status",
                 "TEXT NOT NULL DEFAULT ''",
             ),
-            ("quality_rule", "evidence_examples", "TEXT NOT NULL DEFAULT ''"),
-            ("quality_rule", "signal_expectations", "TEXT NOT NULL DEFAULT '[]'"),
+            (
+                "quality_rule",
+                "evidence_examples",
+                "TEXT NOT NULL DEFAULT ''",
+            ),
+            (
+                "quality_rule",
+                "signal_expectations",
+                "TEXT NOT NULL DEFAULT '[]'",
+            ),
             ("governs", "covers_descendants", "TEXT NOT NULL DEFAULT ''"),
             ("codefile", "extractor_grade", "TEXT NOT NULL DEFAULT ''"),
             ("note", "resolution", "TEXT NOT NULL DEFAULT ''"),
@@ -525,10 +533,12 @@ PRAGMA foreign_keys=ON;
             .optional()?;
         if match create_sql.as_deref() {
             None => true,
-            Some(sql) => schema::INBOX_KINDS
-                .iter()
-                .all(|kind| sql.contains(&sql_string_literal(kind)))
-                && sql.contains("'resolve'"),
+            Some(sql) => {
+                schema::INBOX_KINDS
+                    .iter()
+                    .all(|kind| sql.contains(&sql_string_literal(kind)))
+                    && sql.contains("'resolve'")
+            }
         } {
             return Ok(());
         }

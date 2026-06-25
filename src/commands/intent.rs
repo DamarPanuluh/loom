@@ -848,7 +848,11 @@ fn record_update_notes_and_ripple(
                 } else {
                     &ctx.intent.domain
                 },
-                if domain.is_empty() { "<unknown>" } else { domain },
+                if domain.is_empty() {
+                    "<unknown>"
+                } else {
+                    domain
+                },
                 ctx.reason
             ),
             author: ctx.by.to_string(),

@@ -231,11 +231,7 @@ fn run_explore_with_sqlite(
         }) => {
             let now = chrono::Utc::now().to_rfc3339();
             let by = gate::acting_in_lane(&gate::lane::GROUND_RELATES_TO, inspected_by.as_deref())?;
-            gate::require_substantive(
-                "criterion",
-                &criterion,
-                gate::RELATES_TO_CRITERION_PURPOSE,
-            )?;
+            gate::require_substantive("criterion", &criterion, gate::RELATES_TO_CRITERION_PURPOSE)?;
             if !evidence.trim().is_empty() {
                 gate::require_substantive(
                     "evidence",
@@ -1057,9 +1053,8 @@ fn resolve_codefiles_with_db(db: &dyn GraphReadRepository, key: &str) -> Result<
     let codefiles = db.query_snapshot()?.codefiles;
     let is_glob = key.contains('*') || key.contains('?') || key.contains('[');
     if is_glob {
-        let pat = glob::Pattern::new(key).map_err(|e| {
-            anyhow::anyhow!(crate::output::invalid_glob_msg(key, &e))
-        })?;
+        let pat = glob::Pattern::new(key)
+            .map_err(|e| anyhow::anyhow!(crate::output::invalid_glob_msg(key, &e)))?;
         let matched: Vec<_> = codefiles
             .into_iter()
             .filter(|codefile| pat.matches(&codefile.path))

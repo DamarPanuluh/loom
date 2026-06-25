@@ -636,7 +636,6 @@ pub struct QualityRule {
     pub signal_expectations: String,
 }
 
-
 /// The RELATES_TO relationship taxonomy. The single home for each kind's
 /// strategy: whether it's mechanically derivable, how much it should be trusted,
 /// and whether a code change stales it. Stored as validated strings in the edge
@@ -1272,7 +1271,6 @@ pub struct Governs {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub covers_descendants: String,
 }
-
 
 /// TARGETS: Hypothesis → Intent — which intents an improvement hypothesis
 /// would touch. Mirrors GOVERNS: full inspectable meta, so per-target

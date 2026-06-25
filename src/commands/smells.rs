@@ -411,17 +411,11 @@ fn adjudicated_kind_counts(
 /// drift pass (drift only inspects already-registered codefiles, so ignores and
 /// delegations don't apply — an empty disk list and empty ignore/deleg sets suffice).
 fn drifted_since_sync(root: &std::path::Path, codefiles: &[crate::types::CodeFile]) -> Vec<String> {
-    crate::db::queries::integrity::disk_reconciliation_from_parts(
-        &[],
-        codefiles,
-        &[],
-        &[],
-        &|p| {
-            std::fs::read(root.join(p))
-                .ok()
-                .map(|b| crate::repo::content_hash(&b))
-        },
-    )
+    crate::db::queries::integrity::disk_reconciliation_from_parts(&[], codefiles, &[], &[], &|p| {
+        std::fs::read(root.join(p))
+            .ok()
+            .map(|b| crate::repo::content_hash(&b))
+    })
     .drifted_codefiles
 }
 
@@ -721,7 +715,9 @@ fn render(
     if !debt.is_empty() {
         println!("  ── metadata debt (dischargeable — surfaced, NEVER gates Hardened) ──");
         println!("    Discharge by supplying the missing metadata (tag intents / enrich vocab),");
-        println!("    or leave it visible — debt is paid down over time, never a green-or-launder gate.");
+        println!(
+            "    or leave it visible — debt is paid down over time, never a green-or-launder gate."
+        );
         for s in &debt {
             println!("  [{}]  {}", s.kind, s.summary);
             println!("    remedy: {}", s.remedy);
