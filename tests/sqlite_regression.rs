@@ -10152,3 +10152,103 @@ fn sqlite_symbol_mention_in_comment_does_not_confirm_proof() {
         "naming the symbol in a comment must NOT qualify a test as executed-proven: {v}"
     );
 }
+
+/// A GENUINE test under the PyPA src-layout (`src/` on sys.path, so
+/// `src/mypkg/foo.py` imports as `mypkg.foo`) must NOT be false-demoted — loom
+/// resolves the source root, so the test reaches the grounding and stays
+/// executed-proven. (Regression: the wave-8 gate demoted these, blocking the
+/// Realized rung for the modern recommended Python layout.)
+#[cfg(feature = "treesitter")]
+#[test]
+fn sqlite_src_layout_test_is_not_false_demoted() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("src-layout");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "src/mypkg/__init__.py", "");
+    write_scratch_file(&graph.root, "src/mypkg/hash.py", "def checksum(s):\n    return sum(s.encode()) % 256\n");
+    write_scratch_file(&graph.root, "tests/test_hash.py", "from mypkg.hash import checksum\ndef test_c():\n    assert checksum('a') == 97\n");
+    write_scratch_file(&graph.root, "runner.sh", "echo 'test result: ok. 1 passed'\n");
+    run_json_as(&graph.root, &["codefile", "add", "src/mypkg/hash.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "Checksum", "--description", "checksum of a string", "--level", "feature", "--lifecycle", "implemented", "--json"],
+        "llm:builder",
+    )["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "src/mypkg/hash.py", "--locator", "def checksum", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(&graph.root, &["validation", "add", "--name", "h", "--type", "test", "--command", "sh runner.sh tests/test_hash.py", "--intent", &id, "--json"], "llm:validator");
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_ne!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "a genuine src-layout test must NOT be false-demoted: {v}"
+    );
+}
+
+/// A RELATES_TO path edge proven by a SAGA RUN carries RUNTIME evidence; a manual
+/// `loom edge fix` prose claim must NOT be able to launder it back to passing
+/// while the service may still be broken — only a passing saga re-run can. (The
+/// fixer found `edge fix` overwriting `runtime: saga … failed` with a manual
+/// "Repair verified" note and flipping the edge green against a broken service.)
+#[test]
+fn sqlite_edge_fix_refuses_to_launder_saga_runtime_evidence() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("edge-fix-saga-eviction");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    let a = run_json_as(&graph.root, &["intent", "add", "--name", "A", "--description", "alpha behavior", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    let b = run_json_as(&graph.root, &["intent", "add", "--name", "B", "--description", "beta behavior", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "INSERT INTO relates_to(from_id,to_id,inspection_status,criterion,confidence,evidence,last_inspected,inspected_by,priority_score,notes,kinds,stable,created_at) \
+             VALUES(?1,?2,'failing','A calls B',0.9,'runtime: saga checkout step 2 (POST /checkout) failed — expected status 200, got 500','2026-06-25T00:00:00+00:00','loom',0.0,'','[\"calls\"]',0,'2026-06-25T00:00:00+00:00')",
+            rusqlite::params![a, b],
+        ).expect("craft a saga-failed RELATES_TO edge");
+    }
+    let out = Command::new(loom_bin())
+        .args(["edge", "fix", &format!("rt:{a}:{b}"), "--description", "moved auth middleware ahead of dispatch"])
+        .current_dir(&graph.root)
+        .env("LOOM_AGENT", "llm:fixer")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom edge fix on a saga-evidence edge");
+    assert!(!out.status.success(), "edge fix must REFUSE to launder runtime saga evidence: {:?}", out.status);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("SAGA RUN") && stderr.to_ascii_lowercase().contains("re-run the saga"),
+        "the refusal must point the driver at re-running the saga, not a manual fix: {stderr}"
+    );
+}
+
+/// A saga step bound to a real journey intent but hitting a TRIVIAL/UNRELATED URL
+/// (e.g. /ping for a "view profile" intent) would pass and forge the Proven rung
+/// without exercising the journey. `loom saga add` must surface the mismatch
+/// (advisory) rather than accept it silently.
+#[test]
+fn sqlite_saga_add_warns_on_step_url_unrelated_to_intent() {
+    let _guard = sqlite_test_lock();
+    let graph = ScratchGraph::new("saga-forge-warn");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
+    run_json_as(&graph.root, &["codefile", "add", "app.py", "--json"], "llm:builder");
+    let id = run_json_as(
+        &graph.root,
+        &["intent", "add", "--name", "view profile", "--description", "An authenticated user GETs /profile and sees their username and email", "--level", "feature", "--lifecycle", "implemented", "--boundary", "inbound", "--json"],
+        "llm:builder",
+    )["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "app.py", "--locator", "def do_GET", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    // forged: the step hits /ping, unrelated to the bound /profile intent.
+    write_scratch_file(&graph.root, "forge.yaml", &format!("saga: forge\nsteps:\n  - name: view profile\n    intent: {id}\n    request: {{ method: GET, url: /ping }}\n    expect: {{ status: 200 }}\n"));
+    let forged = run_json_as(&graph.root, &["saga", "add", "forge.yaml", "--json"], "llm:validator");
+    let unmatched = forged["unmatched_steps"].as_array().expect("unmatched_steps present");
+    assert_eq!(unmatched.len(), 1, "the /ping step must be flagged as unrelated to the /profile intent: {forged}");
+    assert_eq!(unmatched[0]["url"], "/ping");
+    // control: a step that hits /profile must NOT be flagged.
+    write_scratch_file(&graph.root, "ok.yaml", &format!("saga: okjourney\nsteps:\n  - name: view profile\n    intent: {id}\n    request: {{ method: GET, url: /profile }}\n    expect: {{ status: 200 }}\n"));
+    let ok = run_json_as(&graph.root, &["saga", "add", "ok.yaml", "--json"], "llm:validator");
+    assert!(ok["unmatched_steps"].as_array().unwrap().is_empty(), "a step hitting the real /profile endpoint must not be flagged: {ok}");
+}

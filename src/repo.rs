@@ -947,6 +947,23 @@ fn resolve_python_spec(
             format!("{dir}/{as_path}/__init__.py"),
         );
     }
+    // Absolute import under a SOURCE ROOT on sys.path: the PyPA-recommended
+    // src-layout puts `src/` on the path, so `from mypkg.foo import x` (a test in
+    // tests/) resolves to `src/mypkg/foo.py`, and bare `import calc` to
+    // `src/calc.py` — neither root- nor importer-dir-relative. Try the common
+    // roots (only a path that EXISTS is added, so it stays conservative). Without
+    // this, genuine src-layout tests look like they never reach the grounded code.
+    if !spec.starts_with('.') {
+        for src_root in ["src", "lib", "app"] {
+            push_if_file(root, rel_path, found, format!("{src_root}/{as_path}.py"));
+            push_if_file(
+                root,
+                rel_path,
+                found,
+                format!("{src_root}/{as_path}/__init__.py"),
+            );
+        }
+    }
 }
 
 fn resolve_dart_spec(root: &Path, rel_path: &str, dir: &str, spec: &str, found: &mut Vec<String>) {

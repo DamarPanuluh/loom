@@ -995,6 +995,20 @@ fn run_fix_with_sqlite(
         edge.id,
         edge.inspection_status
     );
+    // A saga-proven boundary edge carries RUNTIME evidence ("runtime: saga …") — it
+    // was proven by EXECUTING the journey against the live surface. A prose
+    // `edge fix` claim cannot re-establish a runtime boundary (the service may
+    // still be broken); only a passing `loom saga run` can. Refuse to launder it.
+    if edge.evidence.trim_start().starts_with("runtime: saga ") {
+        anyhow::bail!(
+            "Edge '{}' was proven by a SAGA RUN — its evidence is RUNTIME (it executed the journey \
+             against the live surface). A manual `loom edge fix` description cannot re-establish a \
+             runtime boundary; the service may still be broken. Fix the code/service, then re-run \
+             the saga: `loom saga run <saga>` — it re-stamps this path edge passing ONLY if the \
+             journey actually passes end-to-end.",
+            edge.id
+        );
+    }
     let now = chrono::Utc::now().to_rfc3339();
     let criterion = if edge.criterion.trim().is_empty() {
         "the relationship remains valid after the repair"

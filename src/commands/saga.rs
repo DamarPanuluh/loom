@@ -191,6 +191,47 @@ fn mapping_score(
     score
 }
 
+/// Heuristic (advisory only): does the saga step's URL look RELATED to the intent
+/// it's bound to? True if the literal path, or any non-trivial path token, appears
+/// in the intent's name/description/criterion/grounding refs. Used to WARN on a
+/// likely forged Proven rung (a saga hitting an unrelated endpoint), never to
+/// block. When the path has no token loom can judge by (only ids/versions/`api`),
+/// it returns true (don't warn — can't tell).
+fn step_url_relates_to_intent(url: &str, intent: &crate::types::Intent) -> bool {
+    let haystack = format!(
+        "{} {} {} {}",
+        intent.name,
+        intent.description,
+        intent.criterion,
+        intent.source_refs.join(" ")
+    )
+    .to_ascii_lowercase();
+    let path = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .trim_end_matches('/')
+        .to_ascii_lowercase();
+    if path.len() > 1 && haystack.contains(&path) {
+        return true; // the literal path is named in the intent
+    }
+    // URL-structural tokens carry no intent meaning — don't judge by them.
+    const STRUCTURAL: [&str; 9] = [
+        "api", "v1", "v2", "v3", "http", "https", "www", "rest", "graphql",
+    ];
+    let mut judged_any = false;
+    for tok in path.split(|c: char| !c.is_ascii_alphanumeric()) {
+        if tok.len() < 3 || tok.chars().all(|c| c.is_ascii_digit()) || STRUCTURAL.contains(&tok) {
+            continue;
+        }
+        judged_any = true;
+        if haystack.contains(tok) {
+            return true;
+        }
+    }
+    !judged_any // no judgeable token → can't tell → don't warn
+}
+
 fn mapping_tokens(text: &str) -> Vec<String> {
     let mut tokens = text
         .split(|c: char| !c.is_ascii_alphanumeric())
@@ -402,6 +443,39 @@ fn add_sqlite(
         interface_calls += 1;
     }
 
+    // Flag a step bound to an EXISTING intent whose endpoint looks UNRELATED to it.
+    // A saga that hits a trivial/unrelated URL (e.g. /ping) but is bound to a real
+    // journey intent would stamp Proven ✓ on a pass WITHOUT exercising the journey
+    // — a forged Proven rung. loom can't prove the saga exercises the intent (the
+    // validator authored it), so this is advisory: it surfaces the mismatch rather
+    // than silently accepting it. Spawned intents embed their step's URL in their
+    // own description, so they never trip this.
+    let by_id: std::collections::HashMap<String, crate::types::Intent> = store
+        .query_snapshot()?
+        .intents
+        .into_iter()
+        .map(|intent| (intent.id.clone(), intent))
+        .collect();
+    let spawned_ids: std::collections::HashSet<&str> =
+        spawned.iter().map(|(id, _)| id.as_str()).collect();
+    let mut unmatched_steps: Vec<(usize, String, String, String)> = Vec::new();
+    for (idx, (iid, iname)) in step_intents.iter().enumerate() {
+        if spawned_ids.contains(iid.as_str()) {
+            continue;
+        }
+        if let Some(intent) = by_id.get(iid) {
+            let url = &spec.steps[idx].request.url;
+            if !step_url_relates_to_intent(url, intent) {
+                unmatched_steps.push((
+                    idx + 1,
+                    spec.steps[idx].request.method.clone(),
+                    url.clone(),
+                    iname.clone(),
+                ));
+            }
+        }
+    }
+
     let mut registered_spec = false;
     if !store
         .list_codefiles()?
@@ -444,6 +518,12 @@ fn add_sqlite(
             "Run it: `{}`.",
             run_invocation(&spec.saga, &required_env)
         ));
+        if !unmatched_steps.is_empty() {
+            next_steps.push(format!(
+                "⚠ {} step(s) hit a URL with no token in common with the intent they're bound to — verify the saga exercises the REAL journey, not a trivial endpoint (a saga that passes against an unrelated URL forges the Proven rung).",
+                unmatched_steps.len()
+            ));
+        }
         printer.print_json(&serde_json::json!({
             "status": "ok",
             "saga": spec.saga,
@@ -469,6 +549,9 @@ fn add_sqlite(
             })).collect::<Vec<_>>(),
             "spec_registered_as_codefile": registered_spec,
             "requires_env": required_env,
+            "unmatched_steps": unmatched_steps.iter().map(|(step, method, url, name)| serde_json::json!({
+                "step": step, "method": method, "url": url, "intent": name,
+            })).collect::<Vec<_>>(),
             "next_steps": next_steps,
         }));
     } else {
@@ -495,6 +578,15 @@ fn add_sqlite(
         println!(
             "  VALIDATES edges added: {linked} · path RELATES_TO ensured: {path_edges} · interface CALLS recorded: {interface_calls}"
         );
+        if !unmatched_steps.is_empty() {
+            println!(
+                "  ⚠ {} step(s) hit a URL unrelated to the bound intent (no shared token) — a saga that passes against a trivial/unrelated endpoint forges the Proven rung. Verify each exercises the REAL journey:",
+                unmatched_steps.len()
+            );
+            for (step, method, url, name) in &unmatched_steps {
+                println!("      step {step}: {method} {url} → intent '{name}'");
+            }
+        }
         if registered_spec {
             println!("  Spec registered as a CodeFile — ground it under a consumer-journeys intent when you have one.");
         }
@@ -741,7 +833,16 @@ fn print_report_sqlite(
     let next_step = if report.passed {
         "`loom next --mode validate` continues the proof queue".to_string()
     } else {
-        "the failing edge carries the evidence: `loom next --mode fix` will serve it.".to_string()
+        // A saga boundary is RUNTIME-proven (it executed the journey against the
+        // live surface), so the recovery is to fix the code/service and RE-RUN the
+        // saga — NOT `loom next --mode fix` (which serves manual RELATES_TO repairs
+        // and, for a single-step/boundary failure, is empty), and NOT a manual
+        // `loom edge fix` (refused on saga-runtime evidence). Only a passing saga
+        // run re-establishes the boundary.
+        format!(
+            "fix the code/service at the failing step, then RE-RUN the saga to re-prove: `loom saga run {}`. (A saga boundary is runtime-proven — `loom next --mode fix` / manual `loom edge fix` cannot re-establish it.)",
+            report.saga
+        )
     };
     if printer.json {
         printer.print_json(&crate::output::with_read_anchor(

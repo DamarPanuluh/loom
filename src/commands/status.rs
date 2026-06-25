@@ -597,7 +597,7 @@ fn alarm_strip(
     }
     if report.failing_edges > 0 {
         a.push(format!(
-            "{} failing edge(s) — recovery depends on the edge family: re-run failed proofs (`loom validate --all`), fix failing relationships / needs_change (`loom next --mode fix`), or re-earn failing quality verdicts (`loom next --mode quality`). `loom next --all` lists each lane's outstanding work.",
+            "{} failing edge(s) — recovery depends on the edge family: re-run a failed proof after fixing the code (`loom validate <intent>`, or `loom saga run <saga>` for a saga boundary — note `loom validate --all` only runs NOT-yet-run proofs, not settled failures), fix failing relationships / needs_change (`loom next --mode fix`), or re-earn failing quality verdicts (`loom next --mode quality`). `loom next --all` lists each lane's outstanding work.",
             report.failing_edges
         ));
     }

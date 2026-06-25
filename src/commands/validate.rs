@@ -315,12 +315,13 @@ fn execute_and_record(
                 );
             } else if new_result == "passed" && irrelevant_proof {
                 println!(
-                    "    ⚠ passed but IRRELEVANT: this test does not import or reach the \
-                     intent's grounded code — it cannot exercise the criterion, so it counts \
-                     ASSERTED-only, NOT executed-proven (it would pass even if the grounded code were \
-                     broken). Point the proof at a test that drives the grounded file/symbol; if it \
-                     exercises the code indirectly (subprocess / e2e), record it as an `assertion` or \
-                     `saga` validation instead of `test`."
+                    "    ⚠ passed but IRRELEVANT: loom's static import analysis found no path from \
+                     this test to the intent's grounded code (its imports all resolved, none reach \
+                     the grounding), so it counts ASSERTED-only, NOT executed-proven. Point the proof \
+                     at a test that imports/drives the grounded file; if it exercises the code \
+                     indirectly (subprocess / e2e), record it as an `assertion` or `saga` validation \
+                     instead of `test`. (If this IS a real test loom mis-read, that's a bug — its \
+                     imports should have resolved.)"
                 );
             } else if new_result == "passed"
                 && discrimination == "ran_inert"
@@ -599,19 +600,58 @@ fn proof_relevance(
         return ProofRelevance::Confirmed;
     }
     // Relevance is decided by the IMPORT graph only — NOT by the grounded symbol's
-    // name appearing in the test source. A bare mention (especially in a comment or
-    // string literal) cannot EXECUTE the code, so name-presence must never qualify
-    // a `test` proof as executed-proven (that was a forge crack). If we could read
-    // a named test file and none reaches the grounding, it is Irrelevant; if none
-    // was readable we can't analyze it → Unconfirmed (benefit of the doubt).
-    if named
-        .iter()
-        .any(|f| std::fs::read_to_string(root.join(f)).is_ok())
-    {
+    // name appearing in the test source (a comment/string mention can't EXECUTE
+    // the code; that was a forge crack). But the import graph is only as good as
+    // loom's import RESOLUTION: a genuine test under the src-layout
+    // (`from mypkg.foo import x` where the file is `src/mypkg/foo.py` on sys.path),
+    // or a dynamic/importlib import, has imports loom can't follow — demoting it
+    // would be a FALSE-DEMOTE that blocks a real Realized rung. So only conclude
+    // IRRELEVANT when the test's imports are FULLY ACCOUNTED FOR (every raw import
+    // statement resolved to a repo file) and none reached the grounding. If ANY
+    // import is unresolved, the proof might reach the grounding by a path loom
+    // can't see → Unconfirmed (benefit of the doubt, never a false-demote).
+    let mut raw_imports = 0usize;
+    let mut resolved_imports = 0usize;
+    let mut read_any = false;
+    for f in &named {
+        let Ok(content) = std::fs::read_to_string(root.join(f)) else {
+            continue;
+        };
+        read_any = true;
+        raw_imports += count_raw_imports(&content, f);
+        resolved_imports += crate::repo::extract_physical_facts(root, f, &content)
+            .imports
+            .len();
+    }
+    if read_any && raw_imports <= resolved_imports {
         ProofRelevance::Irrelevant
     } else {
         ProofRelevance::Unconfirmed
     }
+}
+
+/// Count of import-like statements in `content`, by language — used to detect
+/// imports loom could NOT resolve (raw count > resolved count), so an unresolvable
+/// import (src-layout alias, dynamic import) never causes a false-demote.
+fn count_raw_imports(content: &str, file: &str) -> usize {
+    let ext = std::path::Path::new(file)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    content
+        .lines()
+        .map(str::trim_start)
+        .filter(|t| match ext {
+            "py" => t.starts_with("import ") || t.starts_with("from "),
+            "rs" => t.starts_with("use ") || t.starts_with("pub use "),
+            "go" => t.starts_with("import ") || t.starts_with("\t\"") || t.starts_with("\t_ \""),
+            "js" | "jsx" | "mjs" | "cjs" | "ts" | "tsx" | "mts" | "cts" => {
+                t.starts_with("import ") || t.contains("require(")
+            }
+            "rb" => t.starts_with("require") || t.starts_with("require_relative"),
+            _ => false,
+        })
+        .count()
 }
 
 /// Existing source files under `root` named as path tokens in `command`.
