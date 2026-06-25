@@ -27,6 +27,19 @@ fn run_with_sqlite(
         (0, 0)
     };
     let mut store = crate::db::sqlite::SqliteGraphStore::open(&sqlite_db_path(root))?;
+    // `loom import` RESTORES into a fresh graph — it REPLACES all content, it does
+    // not merge. Refuse to SILENTLY destroy a non-empty graph (the help even says
+    // "into a fresh loom init"): a cold LLM told to "import this graph" must not
+    // lose existing intents with a cheerful status:ok.
+    let existing_intents = store.query_snapshot()?.intents.len();
+    if existing_intents > 0 {
+        anyhow::bail!(
+            "graph is not empty: {existing_intents} intent(s) here would be DESTROYED — \
+             `loom import` RESTORES into a FRESH graph, it does not merge.\n\
+             Import into a clean `loom init` (a new directory, or remove `.loom/` and re-init). \
+             If you meant to keep THIS graph, `loom export` it first."
+        );
+    }
     store.import_export_json(&data)?;
     // SECURITY: an imported graph carries shell commands that `loom validate`
     // executes — a supply-chain footgun (a PR-merged / federated / cloned

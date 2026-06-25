@@ -236,10 +236,23 @@ fn execute_and_record(
         // G2: only a PASSED run whose captured output shows a runner ASSERTING
         // earns `discriminating` (→ EXECUTED tier). A passed-but-inert run
         // (exit 0, no assertion signal) or any non-pass run is `ran_inert`.
-        let discrimination = if result == ValidationResult::Passed {
+        let raw_discrimination = if result == ValidationResult::Passed {
             proof_discrimination(&output)
         } else {
             "ran_inert"
+        };
+        // FORGERY GUARD: a runner pass-signal in stdout only earns EXECUTED-proven
+        // if the command actually RAN a test. A command whose every segment is a
+        // pure print/no-op (`echo 'N passed'`, `printf …`, `cat … ; true`) prints
+        // the phrase a runner would, but executes nothing — it must NOT mint a
+        // green executed-proven rung. Demote it to asserted-only (a real test
+        // always invokes a runner/interpreter/script, which this detects).
+        let forged_signal =
+            raw_discrimination == "discriminating" && command_only_prints(&validation.command);
+        let discrimination = if forged_signal {
+            "ran_inert"
+        } else {
+            raw_discrimination
         };
         outcomes.push((
             validation.id.clone(),
@@ -273,7 +286,15 @@ fn execute_and_record(
             // A command that exits 0 but asserts nothing loom recognizes is
             // ASSERTED-only, not EXECUTED — it never advances the Realized rung,
             // and a driver who isn't told here only discovers it via `loom status`.
-            if new_result == "passed"
+            if new_result == "passed" && forged_signal {
+                println!(
+                    "    ⚠ passed but NON-EXECUTING: the command only PRINTS a test-runner \
+                     pass-string — it runs NO test. A `test` proof must invoke a runner \
+                     (pytest / cargo test / go test / node --test / …) against the grounded code; \
+                     an echoed pass-line counts as ASSERTED-only, NOT executed-proven, and will NOT \
+                     advance the Realized rung."
+                );
+            } else if new_result == "passed"
                 && discrimination == "ran_inert"
                 && !validation.command.trim().is_empty()
             {
@@ -461,6 +482,44 @@ fn count_before(line: &str, word: &str) -> Option<u64> {
         .ok()
 }
 
+/// True when a command is PROVABLY non-executing — every segment (split on shell
+/// sequencing) is a pure print / no-op builtin (`echo`/`printf`/`cat`/`true`/`:`).
+/// Such a command can PRINT a runner's pass-string but ran no test, so it must not
+/// earn EXECUTED-proven (the `echo 'N passed'` forgery). This is the line loom can
+/// defend honestly: a bare print builtin CANNOT have run a test. A command that
+/// invokes a process/interpreter/script (`sh -c …`, `pytest`, `./run.sh`) is given
+/// the benefit of the doubt — loom cannot prove from stdout alone whether it ran a
+/// real test, so the executed/asserted gate is a heuristic, not a security
+/// boundary against a determined forger.
+fn command_only_prints(command: &str) -> bool {
+    const NOOP: &[&str] = &[
+        "echo", "printf", "true", "false", ":", "cat", "test", "[", "sleep", "env", "head", "tail",
+        "yes", "tee",
+    ];
+    let segments: Vec<&str> = command
+        .split([';', '|', '&', '\n'])
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    if segments.is_empty() {
+        return false;
+    }
+    segments.iter().all(|seg| {
+        // Skip leading `VAR=val` env-assignments, then take the command word.
+        let word = seg.split_whitespace().find(|t| {
+            !(t.contains('=') && t.split('=').next().is_some_and(is_env_var_name))
+        });
+        match word {
+            None => true, // pure env-assignment segment runs nothing
+            Some(w) => NOOP.contains(&w.rsplit('/').next().unwrap_or(w)),
+        }
+    })
+}
+
+fn is_env_var_name(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_alphanumeric() || c == '_') && !s.starts_with(|c: char| c.is_ascii_digit())
+}
+
 /// node:test / TAP pass summary: a line like `# pass 2` or `ℹ pass 2` → 2.
 fn tap_pass_count(line: &str) -> Option<u64> {
     let rest = line
@@ -538,7 +597,35 @@ fn validation_result_edge_status(validation_result: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::proof_discrimination;
+    use super::{command_only_prints, proof_discrimination};
+
+    #[test]
+    fn forged_print_commands_run_nothing_real_runners_do() {
+        // Pure print / no-op commands run no test — they can only FORGE a pass-string.
+        for forged in [
+            "echo '1 passed in 0.01s'",
+            "printf 'test result: ok. 1 passed'",
+            "cat results.txt; echo '1 passed'",
+            "true; echo '--- PASS: TestX'",
+            "FOO=1 echo '2 passing'",
+            ":",
+        ] {
+            assert!(command_only_prints(forged), "must be flagged as non-executing: {forged}");
+        }
+        // Real test invocations run something — never flagged.
+        for real in [
+            "pytest test_m.py -q",
+            "python3 -m pytest",
+            "cargo test",
+            "go test ./...",
+            "node --test",
+            "./run_tests.sh",
+            "make test",
+            "npm test && echo done",
+        ] {
+            assert!(!command_only_prints(real), "must NOT be flagged: {real}");
+        }
+    }
 
     #[test]
     fn discrimination_recognizes_real_runners_and_demotes_inert() {

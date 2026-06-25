@@ -793,7 +793,14 @@ fn audit_inspectable_edges(
                 // Same source of truth as the write-time gate (gate.rs), so the
                 // audit can't drift from what the gate actually enforces.
                 let allowed = crate::gate::inspector_roles_for_edge(c.etype);
-                if !allowed.contains(&r) {
+                // `loom saga run` is validator-only BY DESIGN and stamps the
+                // RELATES_TO path edges between consecutive steps with runtime
+                // evidence ("runtime: saga '…'"). That validator provenance is
+                // IN-lane for a saga — flagging it would contradict the compass,
+                // which hard-gates saga runs to the validator lane. Exempt it.
+                let saga_origin = c.etype == schema::edge::RELATES_TO
+                    && c.evidence.trim_start().starts_with("runtime: saga ");
+                if !allowed.contains(&r) && !saga_origin {
                     issues.push(format!(
                         "{} edge {} was inspected by '{}' — out of lane (expected {}); \
                          separation of duties is broken",

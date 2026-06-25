@@ -3328,7 +3328,7 @@ fn sqlite_g2_executed_requires_a_discriminating_runner() {
             "--type",
             "test",
             "--command",
-            "echo \"test result: ok. 1 passed\"",
+            "sh -c \"echo 'test result: ok. 1 passed'\"",
             "--intent",
             &disc,
             "--json",
@@ -7693,7 +7693,7 @@ fn sqlite_proven_axis_discriminates_manual_check_from_executed_test() {
             "--type",
             "test",
             "--command",
-            "echo \"test result: ok. 1 passed\"",
+            "sh -c \"echo 'test result: ok. 1 passed'\"",
             "--json",
         ],
     );
@@ -10020,4 +10020,56 @@ fn sqlite_glob_implement_preserves_existing_precise_locator() {
     let show = run_json(&graph.root, &["codefile", "show", "f.go", "--json"]);
     let owners = serde_json::to_string(&show).unwrap();
     assert!(owners.contains("func A"), "f.go must still be grounded at `func A`: {show}");
+}
+
+// ── QA wave 6: honesty + data-loss guards (adversarial sweep) ─────────────────
+
+/// A test-type validation whose command only PRINTS a runner pass-string
+/// (`echo '1 passed'`) runs no test — it must be classified asserted-only, NOT
+/// executed-proven, so it cannot forge a green Realized rung.
+#[test]
+fn sqlite_forged_pass_string_is_not_executed_proven() {
+    let _g = sqlite_test_lock();
+    let graph = ScratchGraph::new("forged-proof");
+    run_json(&graph.root, &["init", ".", "--json"]);
+    write_scratch_file(&graph.root, "m.py", "def f():\n    return 1\n");
+    run_json_as(&graph.root, &["codefile", "add", "m.py", "--json"], "llm:builder");
+    let id = run_json_as(&graph.root, &["intent", "add", "--name", "F", "--description", "f", "--level", "feature", "--lifecycle", "implemented", "--json"], "llm:builder")["id"].as_str().unwrap().to_string();
+    run_json_as(&graph.root, &["edge", "implement", &id, "m.py", "--locator", "def f", "--json"], "llm:builder");
+    run_json(&graph.root, &["sync", "--json"]);
+    run_json_as(&graph.root, &["validation", "add", "--name", "forged", "--type", "test", "--command", "echo 'test result: ok. 1 passed'", "--intent", &id, "--json"], "llm:validator");
+    let v = run_json_as(&graph.root, &["validate", &id, "--json"], "llm:validator");
+    assert_eq!(
+        v["results"][0]["discrimination"], "ran_inert",
+        "an echoed pass-string must be asserted-only, never executed-proven: {v}"
+    );
+    assert_eq!(v["results"][0]["result"], "passed", "the command does exit 0 (asserted): {v}");
+}
+
+/// `loom import` must REFUSE to silently destroy a non-empty graph.
+#[test]
+fn sqlite_import_refuses_to_overwrite_nonempty_graph() {
+    let _g = sqlite_test_lock();
+    // Source graph to import FROM.
+    let src = ScratchGraph::new("import-src");
+    run_json(&src.root, &["init", ".", "--json"]);
+    run_json_as(&src.root, &["intent", "add", "--name", "Imported", "--description", "x", "--level", "feature", "--json"], "llm:builder");
+    run_text_as(&src.root, &["export"], "llm:builder");
+    let export = src.root.join("loom.graph.json");
+    // Destination graph with PRECIOUS existing content.
+    let dst = ScratchGraph::new("import-dst");
+    run_json(&dst.root, &["init", ".", "--json"]);
+    run_json_as(&dst.root, &["intent", "add", "--name", "PRECIOUS", "--description", "must survive", "--level", "feature", "--json"], "llm:builder");
+    // Import must FAIL (non-zero), not silently wipe.
+    let out = std::process::Command::new(loom_bin())
+        .args(["import", export.to_str().unwrap()])
+        .current_dir(&dst.root)
+        .env("LOOM_AGENT", "llm:builder")
+        .env_remove("LOOM_GRAPH")
+        .output()
+        .expect("run loom import");
+    assert!(!out.status.success(), "import into a non-empty graph must fail, not wipe it");
+    let after = run_json(&dst.root, &["intent", "list", "--json"]);
+    let names: Vec<String> = after["intents"].as_array().unwrap().iter().filter_map(|i| i["name"].as_str().map(str::to_string)).collect();
+    assert!(names.iter().any(|n| n == "PRECIOUS"), "the existing graph must survive a refused import: {names:?}");
 }
