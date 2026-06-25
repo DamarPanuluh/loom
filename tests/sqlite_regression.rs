@@ -10223,32 +10223,50 @@ fn sqlite_edge_fix_refuses_to_launder_saga_runtime_evidence() {
     );
 }
 
-/// A saga step bound to a real journey intent but hitting a TRIVIAL/UNRELATED URL
-/// (e.g. /ping for a "view profile" intent) would pass and forge the Proven rung
-/// without exercising the journey. `loom saga add` must surface the mismatch
-/// (advisory) rather than accept it silently.
+/// A saga step bound to a real journey intent but hitting a TRIVIAL/health-check
+/// endpoint (/ping, /health, …) would pass and forge the Proven rung without
+/// exercising the journey — `loom saga add` must flag it. Crucially it must NOT
+/// flag a real business endpoint just because it shares no word with the intent
+/// text (/login for "sign in", /checkout for "place an order") — that false-warn
+/// would nag every honest journey and dilute the real signal.
 #[test]
-fn sqlite_saga_add_warns_on_step_url_unrelated_to_intent() {
+fn sqlite_saga_add_warns_on_trivial_endpoint_not_real_journeys() {
     let _guard = sqlite_test_lock();
     let graph = ScratchGraph::new("saga-forge-warn");
     run_json(&graph.root, &["init", ".", "--json"]);
     write_scratch_file(&graph.root, "app.py", "def do_GET(self):\n    pass\n");
     run_json_as(&graph.root, &["codefile", "add", "app.py", "--json"], "llm:builder");
-    let id = run_json_as(
-        &graph.root,
-        &["intent", "add", "--name", "view profile", "--description", "An authenticated user GETs /profile and sees their username and email", "--level", "feature", "--lifecycle", "implemented", "--boundary", "inbound", "--json"],
-        "llm:builder",
-    )["id"].as_str().unwrap().to_string();
-    run_json_as(&graph.root, &["edge", "implement", &id, "app.py", "--locator", "def do_GET", "--json"], "llm:builder");
+    let mk = |name: &str, desc: &str| -> String {
+        run_json_as(
+            &graph.root,
+            &["intent", "add", "--name", name, "--description", desc, "--level", "feature", "--lifecycle", "implemented", "--boundary", "inbound", "--json"],
+            "llm:builder",
+        )["id"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+    let profile = mk("view profile", "An authenticated user GETs their profile and sees their username and email");
+    let signin = mk("user sign in", "User establishes an authenticated session by providing credentials");
+    run_json_as(&graph.root, &["edge", "implement", &profile, "app.py", "--locator", "def do_GET", "--json"], "llm:builder");
     run_json(&graph.root, &["sync", "--json"]);
-    // forged: the step hits /ping, unrelated to the bound /profile intent.
-    write_scratch_file(&graph.root, "forge.yaml", &format!("saga: forge\nsteps:\n  - name: view profile\n    intent: {id}\n    request: {{ method: GET, url: /ping }}\n    expect: {{ status: 200 }}\n"));
-    let forged = run_json_as(&graph.root, &["saga", "add", "forge.yaml", "--json"], "llm:validator");
-    let unmatched = forged["unmatched_steps"].as_array().expect("unmatched_steps present");
-    assert_eq!(unmatched.len(), 1, "the /ping step must be flagged as unrelated to the /profile intent: {forged}");
-    assert_eq!(unmatched[0]["url"], "/ping");
-    // control: a step that hits /profile must NOT be flagged.
-    write_scratch_file(&graph.root, "ok.yaml", &format!("saga: okjourney\nsteps:\n  - name: view profile\n    intent: {id}\n    request: {{ method: GET, url: /profile }}\n    expect: {{ status: 200 }}\n"));
-    let ok = run_json_as(&graph.root, &["saga", "add", "ok.yaml", "--json"], "llm:validator");
-    assert!(ok["unmatched_steps"].as_array().unwrap().is_empty(), "a step hitting the real /profile endpoint must not be flagged: {ok}");
+    let add_step = |saga: &str, intent: &str, url: &str| -> Value {
+        let f = format!("{saga}.yaml");
+        write_scratch_file(&graph.root, &f, &format!("saga: {saga}\nsteps:\n  - name: step\n    intent: {intent}\n    request: {{ method: POST, url: {url} }}\n    expect: {{ status: 200 }}\n"));
+        run_json_as(&graph.root, &["saga", "add", &f, "--json"], "llm:validator")
+    };
+    let flagged = |v: &Value| v["unmatched_steps"].as_array().map(|a| a.len()).unwrap_or(0);
+
+    // FORGE: a trivial/health endpoint bound to a real journey → must be flagged.
+    let forged = add_step("forge", &profile, "/ping");
+    assert_eq!(flagged(&forged), 1, "a /ping step bound to a real journey must be flagged: {forged}");
+    assert_eq!(forged["unmatched_steps"][0]["url"], "/ping");
+    assert_eq!(flagged(&add_step("forgeh", &profile, "/health")), 1, "/health must be flagged too");
+
+    // NOT a forge: real business endpoints that simply share no word with the
+    // intent text — must NEVER be flagged (the false-warn the cold-drive caught).
+    assert_eq!(flagged(&add_step("ok1", &signin, "/login")), 0, "/login for 'sign in' must NOT false-warn");
+    assert_eq!(flagged(&add_step("ok2", &signin, "/auth/session")), 0, "/auth/session for 'sign in' must NOT false-warn");
+    assert_eq!(flagged(&add_step("ok3", &profile, "/profile")), 0, "/profile for 'view profile' must NOT warn");
+    assert_eq!(flagged(&add_step("ok4", &signin, "/api/v2/checkout")), 0, "/api/v2/checkout must NOT false-warn");
 }

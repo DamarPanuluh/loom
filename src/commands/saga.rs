@@ -191,45 +191,47 @@ fn mapping_score(
     score
 }
 
-/// Heuristic (advisory only): does the saga step's URL look RELATED to the intent
-/// it's bound to? True if the literal path, or any non-trivial path token, appears
-/// in the intent's name/description/criterion/grounding refs. Used to WARN on a
-/// likely forged Proven rung (a saga hitting an unrelated endpoint), never to
-/// block. When the path has no token loom can judge by (only ids/versions/`api`),
-/// it returns true (don't warn — can't tell).
-fn step_url_relates_to_intent(url: &str, intent: &crate::types::Intent) -> bool {
-    let haystack = format!(
-        "{} {} {} {}",
-        intent.name,
-        intent.description,
-        intent.criterion,
-        intent.source_refs.join(" ")
-    )
-    .to_ascii_lowercase();
+/// True when the saga step hits a TRIVIAL/health-check-style endpoint
+/// (`/ping`, `/health`, `/status`, `/version`, …) that the bound intent does NOT
+/// itself describe — the signature of a forged Proven rung (a saga that "passes"
+/// by hitting a trivial endpoint instead of exercising the real journey).
+///
+/// Deliberately NARROW: lexical non-overlap alone is NOT a forge signal — it
+/// false-warns the most common real endpoints (`/login` for "sign in",
+/// `/checkout` for "place an order", `/auth/session` for "log in"), nagging every
+/// honest journey and diluting the genuine signal. So we flag ONLY the
+/// trivial-endpoint pattern, and not when the intent itself is about that
+/// endpoint (a real "health check" journey hitting `/health` is fine).
+fn step_hits_trivial_endpoint(url: &str, intent: &crate::types::Intent) -> bool {
+    const TRIVIAL: [&str; 18] = [
+        "ping",
+        "health",
+        "healthz",
+        "healthcheck",
+        "heartbeat",
+        "status",
+        "version",
+        "ready",
+        "readyz",
+        "live",
+        "livez",
+        "liveness",
+        "readiness",
+        "alive",
+        "ok",
+        "echo",
+        "metrics",
+        "info",
+    ];
+    let haystack = format!("{} {} {}", intent.name, intent.description, intent.criterion)
+        .to_ascii_lowercase();
     let path = url
         .split(['?', '#'])
         .next()
         .unwrap_or(url)
-        .trim_end_matches('/')
         .to_ascii_lowercase();
-    if path.len() > 1 && haystack.contains(&path) {
-        return true; // the literal path is named in the intent
-    }
-    // URL-structural tokens carry no intent meaning — don't judge by them.
-    const STRUCTURAL: [&str; 9] = [
-        "api", "v1", "v2", "v3", "http", "https", "www", "rest", "graphql",
-    ];
-    let mut judged_any = false;
-    for tok in path.split(|c: char| !c.is_ascii_alphanumeric()) {
-        if tok.len() < 3 || tok.chars().all(|c| c.is_ascii_digit()) || STRUCTURAL.contains(&tok) {
-            continue;
-        }
-        judged_any = true;
-        if haystack.contains(tok) {
-            return true;
-        }
-    }
-    !judged_any // no judgeable token → can't tell → don't warn
+    path.split(|c: char| !c.is_ascii_alphanumeric())
+        .any(|tok| TRIVIAL.contains(&tok) && !haystack.contains(tok))
 }
 
 fn mapping_tokens(text: &str) -> Vec<String> {
@@ -465,7 +467,7 @@ fn add_sqlite(
         }
         if let Some(intent) = by_id.get(iid) {
             let url = &spec.steps[idx].request.url;
-            if !step_url_relates_to_intent(url, intent) {
+            if step_hits_trivial_endpoint(url, intent) {
                 unmatched_steps.push((
                     idx + 1,
                     spec.steps[idx].request.method.clone(),
@@ -520,7 +522,7 @@ fn add_sqlite(
         ));
         if !unmatched_steps.is_empty() {
             next_steps.push(format!(
-                "⚠ {} step(s) hit a URL with no token in common with the intent they're bound to — verify the saga exercises the REAL journey, not a trivial endpoint (a saga that passes against an unrelated URL forges the Proven rung).",
+                "⚠ {} step(s) hit a TRIVIAL/health-check endpoint (ping/health/status/…) while bound to a real journey intent — a saga that passes against a trivial endpoint forges the Proven rung. Point each step at the endpoint that actually exercises the journey.",
                 unmatched_steps.len()
             ));
         }
@@ -580,7 +582,7 @@ fn add_sqlite(
         );
         if !unmatched_steps.is_empty() {
             println!(
-                "  ⚠ {} step(s) hit a URL unrelated to the bound intent (no shared token) — a saga that passes against a trivial/unrelated endpoint forges the Proven rung. Verify each exercises the REAL journey:",
+                "  ⚠ {} step(s) hit a TRIVIAL/health-check endpoint (ping/health/status/…) while bound to a real journey intent — a saga that passes against a trivial endpoint forges the Proven rung. Point each at the endpoint that exercises the journey:",
                 unmatched_steps.len()
             );
             for (step, method, url, name) in &unmatched_steps {
