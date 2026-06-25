@@ -478,11 +478,38 @@ pub const PLACEHOLDERS: &[&str] = &[
     "-",
 ];
 
-/// True when a recorded value is empty or a known placeholder — used by both
-/// the write-time gates here and the `loom doctor` audit.
+/// True when a recorded value is empty or an obvious placeholder — used by both
+/// the write-time gates here and the `loom doctor` audit. This is a SYNTACTIC
+/// filter (empty / too-short / known-placeholder / leading TODO / low-entropy /
+/// one-word-repeated). It CANNOT catch a grammatical-but-content-free criterion
+/// ("they are related yes indeed") — judging whether a criterion is truly
+/// falsifiable is the review lane's job, not a write gate; the guide says so.
 pub fn is_vacuous(value: &str) -> bool {
     let v = value.trim().to_lowercase();
-    v.is_empty() || v.chars().count() < MIN_SUBSTANTIVE_LEN || PLACEHOLDERS.contains(&v.as_str())
+    if v.is_empty() || v.chars().count() < MIN_SUBSTANTIVE_LEN || PLACEHOLDERS.contains(&v.as_str())
+    {
+        return true;
+    }
+    // Opens with a "I'll fill this in later" marker → a promise, not a claim.
+    const LEADING: &[&str] = &[
+        "todo", "fixme", "tbd", "tba", "wip", "n/a", "placeholder", "fill in", "fill this",
+        "to be ", "xxx", "...",
+    ];
+    if LEADING.iter().any(|p| v.starts_with(p)) {
+        return true;
+    }
+    // Low information: too few distinct LETTERS (`xxxxxxxxxx`, `aaaa aaaa`).
+    let distinct_letters = v
+        .chars()
+        .filter(|c| c.is_alphabetic())
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    if distinct_letters < 4 {
+        return true;
+    }
+    // One token repeated (`n/a n/a n/a`, `foo foo foo`).
+    let tokens: Vec<&str> = v.split_whitespace().collect();
+    tokens.len() >= 2 && tokens.iter().collect::<std::collections::HashSet<_>>().len() == 1
 }
 
 /// Reject an empty/placeholder/too-short value for a required evidence field.
@@ -862,6 +889,32 @@ pub fn compose_evidence(locators: &[String], evidence: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn is_vacuous_catches_obvious_placeholders_not_real_criteria() {
+        // Obvious placeholders — rejected.
+        for v in [
+            "",
+            "asdf",                  // too short
+            "criterion",             // exact-blocklist
+            "TODO fill this in later",
+            "FIXME later",
+            "n/a n/a n/a n/a",
+            "xxxxxxxxxxxxxxxxxxxx",   // one distinct letter
+            "tbd",
+            "same same same same",   // one token repeated
+        ] {
+            assert!(is_vacuous(v), "must be vacuous: {v:?}");
+        }
+        // Real, substantive criteria — accepted.
+        for v in [
+            "returns the doubled value for positive integer inputs",
+            "A imports B's pricing module and calls compute_tax",
+            "rejects a request with a missing auth header (401)",
+        ] {
+            assert!(!is_vacuous(v), "must be substantive: {v:?}");
+        }
+    }
 
     /// Build a throwaway lane for the mechanics tests, so they don't couple to
     /// the production table's contents.

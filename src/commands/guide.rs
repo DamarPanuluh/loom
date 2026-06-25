@@ -14,7 +14,7 @@ const CORE_RULES: &[&str] = &[
     "HONEST confidence: 0.5-and-true beats 0.9-and-guessed. <0.7 routes to review. Empty evidence = laundered claim.",
     "Batch by neighborhood: `loom cluster <intent>` lists every unresolved edge on one node — work those while context is loaded.",
     "`→ Next:` is DIRECTIVE (just do it); `→ Recommended:` is DISCRETIONARY (your call — override when you hold priorities the graph can't see).",
-    "Evidence and criteria must be substantive — loom rejects placeholders, doctor audits provenance.",
+    "Evidence and criteria must be substantive. The write gate is SYNTACTIC — it rejects empty / too-short / obvious-placeholder values (TODO, n/a, xxxx, one word repeated), NOT a grammatical-but-content-free criterion ('they are related yes indeed'); judging whether a criterion is truly FALSIFIABLE is the review lane's job (a <0.7 confidence routes to `loom next --mode review`). doctor audits provenance + vacuity, not semantic substance.",
     "CLOSE OUT: `loom next --all` → `loom export` → `loom export --check`.",
 ];
 
