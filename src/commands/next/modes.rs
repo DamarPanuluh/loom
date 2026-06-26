@@ -1,4 +1,4 @@
-use super::scoring::{add_dispatch, dispatch_line};
+use super::scoring::{add_dispatch, dispatch_line, dispatch_line_for_lane};
 use super::*;
 
 // ---------------------------------------------------------------------------
@@ -568,7 +568,7 @@ pub(super) fn run_prove(
             "suggested_action": action,
             "owner_role":       "analyzer",
             "effort":           "high",
-            "dispatch":         dispatch_line("analyzer"),
+            "dispatch":         dispatch_line_for_lane("analyzer", "prove"),
             "graph_state":      pulse_json(&gs),
         }), take_note));
         return Ok(());
@@ -654,7 +654,10 @@ pub(super) fn run_prove(
     println!("── Suggested Action ────────────────────────────────────────────────");
     println!("{}", action);
     println!();
-    println!("  Dispatch — {}  [effort: high]", dispatch_line("analyzer"));
+    println!(
+        "  Dispatch — {}  [effort: high]",
+        dispatch_line_for_lane("analyzer", "prove")
+    );
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }

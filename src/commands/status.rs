@@ -57,6 +57,17 @@ struct PopulatePulse {
     next_command: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+struct OneTurnPlan {
+    focus_rung: String,
+    focus_lane: String,
+    agent_role: String,
+    agent_export: String,
+    guide_command: String,
+    next_command: String,
+    rule: String,
+}
+
 /// `honesty-next #2`: map-vs-territory, surfaced ALWAYS — not only at the
 /// audit gate. On a red graph (e.g. phase=fix) the compass used to hide that
 /// real files on disk weren't in the graph; the information existed (loom
@@ -479,6 +490,51 @@ fn gate_reason_counts(
     serde_json::json!(counts)
 }
 
+fn role_for_lane(lane: &str) -> &'static str {
+    match lane {
+        "build" | "populate" | "export" | "wiki" | "refactor" => "builder",
+        "discovery" | "prove" | "review" => "analyzer",
+        "fix" => "fixer",
+        "validate" | "align" => "validator",
+        "quality" => "quality",
+        _ => "analyzer",
+    }
+}
+
+fn first_backticked_command(text: &str) -> Option<String> {
+    let start = text.find('`')?;
+    let rest = &text[start + 1..];
+    let end = rest.find('`')?;
+    Some(rest[..end].to_string())
+}
+
+fn one_turn_plan(gs: &GraphState, ladder: &MaturityLadder) -> OneTurnPlan {
+    let (focus_rung, lane) = match ladder.focus_rung() {
+        Some(rung) => (
+            rung.name.to_string(),
+            rung.lane.unwrap_or(gs.phase.as_str()).to_string(),
+        ),
+        None => ("Production-ready".to_string(), gs.phase.clone()),
+    };
+    let role = role_for_lane(&lane).to_string();
+    let next_command = first_backticked_command(&gs.next_action).unwrap_or_else(|| {
+        if lane == "export" {
+            "loom export".to_string()
+        } else {
+            format!("loom next --mode {lane}")
+        }
+    });
+    OneTurnPlan {
+        focus_rung,
+        focus_lane: lane,
+        agent_export: format!("export LOOM_AGENT=llm:{role}"),
+        guide_command: format!("loom guide --role {role}"),
+        agent_role: role,
+        next_command,
+        rule: "ALARMS above preempt this plan. Otherwise ignore other debt counters this turn: run the next command, complete and record exactly one item, run `loom sync`/`loom export` when applicable, then rerun `loom status`.".to_string(),
+    }
+}
+
 /// Autonomous lanes that don't gate "green" but MUST stay visible. The single
 /// compass pointer names one lane; `other_lanes` covers the *required* closable
 /// queues; `horizontal ○` flags optional discovery. Review (the tiered
@@ -641,11 +697,6 @@ fn alarm_strip(
                 .to_string(),
         );
     }
-    if unmeasured_intents > 0 {
-        a.push(format!(
-            "{unmeasured_intents} coded intent(s) with zero direct GOVERNS — rules exist but never measured against this code: `loom next --mode quality`"
-        ));
-    }
     a
 }
 
@@ -722,6 +773,10 @@ fn render_status(
             );
             // The maturity ladder — loom's single ordinal "done" (rung-vector).
             obj.insert("maturity".to_string(), serde_json::to_value(ladder)?);
+            obj.insert(
+                "one_turn".to_string(),
+                serde_json::to_value(one_turn_plan(gs, ladder))?,
+            );
             obj.insert(
                 "source_corpus".to_string(),
                 serde_json::to_value(source_corpus)?,
@@ -831,6 +886,12 @@ fn render_plain_status(
         "→ Next"
     };
     println!("  {anchor}: {}", gs.next_action);
+    let turn = one_turn_plan(gs, ladder);
+    println!("  one turn:");
+    println!("    1. {}", turn.agent_export);
+    println!("    2. {}", turn.guide_command);
+    println!("    3. {}", turn.next_command);
+    println!("    rule: {}", turn.rule);
     // JIT: status is the index; the depth (this rung's queue + skill) loads on
     // demand, so the frame stays constant and the prompt never becomes a firehose.
     println!("  → how: `loom guide` (this rung's skill — bare `guide` is focus-scoped, JIT)");

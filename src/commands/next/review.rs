@@ -1,4 +1,4 @@
-use super::scoring::dispatch_line;
+use super::scoring::dispatch_line_for_lane;
 use super::*;
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
                     "notes_total": notes_total,
                     "suggested_action": action,
                     "owner_role": "analyzer", "effort": "high",
-                    "dispatch": dispatch_line("analyzer"),
+                    "dispatch": dispatch_line_for_lane("analyzer", "review"),
                     "graph_state": pulse_json(&gs),
                 }));
                 return Ok(());
@@ -87,7 +87,10 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             println!("── Suggested Action ────────────────────────────────────────────────");
             println!("{action}");
             println!();
-            println!("  Dispatch — {}  [effort: high]", dispatch_line("analyzer"));
+            println!(
+                "  Dispatch — {}  [effort: high]",
+                dispatch_line_for_lane("analyzer", "review")
+            );
             println!("  {}", fmt_pulse(&gs));
         }
         ReviewCandidate::Governs(g) => {
@@ -106,7 +109,7 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
                     "notes_total": notes_total,
                     "suggested_action": action,
                     "owner_role": "quality", "effort": "high",
-                    "dispatch": dispatch_line("quality"),
+                    "dispatch": dispatch_line_for_lane("quality", "review"),
                     "graph_state": pulse_json(&gs),
                 }));
                 return Ok(());
@@ -126,7 +129,10 @@ review). Then re-record: confirm with your own confidence (≥ 0.7 resolves this
             println!("── Suggested Action ────────────────────────────────────────────────");
             println!("{action}");
             println!();
-            println!("  Dispatch — {}  [effort: high]", dispatch_line("quality"));
+            println!(
+                "  Dispatch — {}  [effort: high]",
+                dispatch_line_for_lane("quality", "review")
+            );
             println!("  {}", fmt_pulse(&gs));
         }
     }

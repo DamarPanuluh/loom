@@ -18,13 +18,13 @@ symbols:
 provenance:
   src/commands/batch.rs: fdeac7cb8993fabd
   src/commands/codefile.rs: d887ca066e4fa091
-  src/commands/export.rs: 2b5ac56cf0a0e5d8
+  src/commands/export.rs: 35756c578400e3a2
   src/commands/ignore.rs: 7997dfb337dad444
   src/commands/import.rs: 93f197ec9bd9b116
-  src/commands/intent.rs: 259ab327032e17d3
+  src/commands/intent.rs: ec7ad101ea150ed2
   src/commands/note.rs: 04649ff93c77aedd
   src/commands/rule.rs: 869b1d2e87b7bf3d
-  src/commands/validation.rs: f0e50da0531773a4
+  src/commands/validation.rs: d726cbcb95e66827
 ---
 
 # graph-write command handlers
@@ -53,6 +53,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

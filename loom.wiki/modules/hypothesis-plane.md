@@ -29,14 +29,14 @@ symbols:
   - run_with_sqlite
   - set_targets_status_for_hypothesis
 provenance:
-  src/cli.rs: 71d8a255ece6db6b
+  src/cli.rs: 55a1c8e397f8534e
   src/commands/hypothesis.rs: a8cf4a070e0b66b9
-  src/commands/next/modes.rs: aaa71a9044267830
+  src/commands/next/modes.rs: 3501df180644d7c4
   src/commands/sync.rs: 93ff4e43a7481814
-  src/commands/validation.rs: f0e50da0531773a4
+  src/commands/validation.rs: d726cbcb95e66827
   src/db/queries/smells.rs: d2f464066e661a2d
   src/db/queries/smells/lifecycle.rs: 407a6815b60abe72
-  src/db/schema.rs: 6c3341dcc983cc82
+  src/db/schema.rs: e561ff6cbb65f572
   src/db/sqlite/edge_writes.rs: a5823037fd573ddb
   src/types.rs: 6c6ae58e65299ae4
 ---
@@ -67,6 +67,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

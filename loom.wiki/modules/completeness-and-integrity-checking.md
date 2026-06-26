@@ -30,20 +30,20 @@ symbols:
   - the maturity ladder
 provenance:
   docs/maturity-ladder-proposal.md: 6b14490c69e38219
-  src/commands/complete.rs: 955050fa12167cc5
+  src/commands/complete.rs: fb58d619fcf45469
   src/commands/coverage.rs: 087c7096985d7202
   src/commands/doctor.rs: 7455e3f6b39aa8a5
   src/commands/hotspots.rs: 67cf959d9d79973e
-  src/commands/impact.rs: abec649357dcd0a8
+  src/commands/impact.rs: 70ccf23ab4f89775
   src/commands/report.rs: 971ee5ab621f9632
-  src/commands/status.rs: e312120d29b48cf6
+  src/commands/status.rs: a69f37ff67f2cd79
   src/db/queries/completeness.rs: 0b326860a21cc0cd
   src/db/queries/comprehensiveness.rs: 92ecbff1ee84ea92
-  src/db/queries/integrity.rs: 81139576134ab3cd
-  src/db/queries/maturity.rs: 0173c217ebf03065
-  src/db/queries/maturity/tests.rs: f15ea1757d7598f5
-  src/db/queries/stats.rs: 2fe08411a3d0554c
-  src/db/queries/stats/tests.rs: 237bb5afe3129c22
+  src/db/queries/integrity.rs: 5e30b7279342d771
+  src/db/queries/maturity.rs: 0685a4666057bf0e
+  src/db/queries/maturity/tests.rs: d5acae9d4d85d6ad
+  src/db/queries/stats.rs: 9cc813faa83897ef
+  src/db/queries/stats/tests.rs: 1f6d19b81465589b
   src/db/queries/symbol_accountability.rs: ec99242453ccb962
 ---
 
@@ -73,6 +73,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

@@ -1,4 +1,4 @@
-use super::scoring::dispatch_line;
+use super::scoring::dispatch_line_for_lane;
 use super::*;
 
 // ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ pub(super) fn run_refactor(
                 "suggested_action": &top.remedy,
                 "owner_role": "builder",
                 "effort": "high",
-                "dispatch": dispatch_line("builder"),
+                "dispatch": dispatch_line_for_lane("builder", "refactor"),
                 "next_step": &top.remedy,
                 "note": "ADVISORY — refactor findings never gate green. Resolve each by fixing now, deferring as tracked work (`loom hypothesis add` → `loom hypothesis adopt --spawned`), or ruling it deliberate (`loom note add --smell …`).",
                 "graph_state": pulse_json(&gs),
@@ -147,7 +147,10 @@ pub(super) fn run_refactor(
         println!("  {m}");
     }
     println!();
-    println!("  Dispatch — {}  [effort: high]", dispatch_line("builder"));
+    println!(
+        "  Dispatch — {}  [effort: high]",
+        dispatch_line_for_lane("builder", "refactor")
+    );
     println!("  {}", fmt_pulse(&gs));
     Ok(())
 }

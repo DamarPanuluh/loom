@@ -11,7 +11,7 @@ symbols:
   - pub fn source_corpus_coverage
 provenance:
   src/commands/corpus.rs: 12d7a98755b400aa
-  src/db/queries/corpus.rs: 9d9109341c9b2d74
+  src/db/queries/corpus.rs: 6797abfbf278a67a
 ---
 
 # source corpus coverage
@@ -40,6 +40,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

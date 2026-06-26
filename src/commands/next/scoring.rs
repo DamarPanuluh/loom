@@ -88,6 +88,16 @@ fn role_fills(role: &str) -> &'static str {
 /// and what it fills. Used in both `--json` (as `owner_role`/`dispatch`) and human.
 pub(super) fn dispatch_line(role: &str) -> String {
     let lane = crate::gate::mode_for_role(role).unwrap_or("");
+    dispatch_line_for_lane(role, lane)
+}
+
+/// Same dispatch hint, but with the concrete queue that served the item.
+/// Most roles have one canonical lane, but `loom next --mode fix` deliberately
+/// mixes fixer work (failing edges) with analyzer work (stale edge reinspection).
+/// In that case the ROLE is analyzer, while the correct NEXT QUEUE is still
+/// `fix`; telling a goldfish agent to jump to the analyzer's discovery queue is
+/// instruction drift.
+pub(super) fn dispatch_line_for_lane(role: &str, lane: &str) -> String {
     format!(
         "this is {role} work — fills {fills}. ADOPT the lane's discipline JIT: `loom guide --role {role}` \
          (the binary serves the full loom-{role} skill — no install). Declares `LOOM_AGENT=llm:{role}` \
@@ -146,10 +156,25 @@ pub(super) fn add_dispatch(
     role: &str,
     effort: &str,
 ) {
+    add_dispatch_for_lane(
+        obj,
+        role,
+        effort,
+        crate::gate::mode_for_role(role).unwrap_or(""),
+    );
+}
+
+/// Inject dispatch fields with a mode override for mixed queues.
+pub(super) fn add_dispatch_for_lane(
+    obj: &mut serde_json::Map<String, serde_json::Value>,
+    role: &str,
+    effort: &str,
+    lane: &str,
+) {
     obj.insert("owner_role".to_string(), serde_json::json!(role));
     obj.insert("effort".to_string(), serde_json::json!(effort));
     obj.insert(
         "dispatch".to_string(),
-        serde_json::json!(dispatch_line(role)),
+        serde_json::json!(dispatch_line_for_lane(role, lane)),
     );
 }

@@ -1189,6 +1189,18 @@ fn sqlite_next_refactor_mode_serves_advisories_without_gating() {
         status == "ok" || status == "empty",
         "refactor envelope must be ok or empty: {single}"
     );
+    if status == "ok" {
+        let dispatch = single["dispatch"].as_str().unwrap_or("");
+        assert!(
+            dispatch.contains("loom guide --role builder")
+                && dispatch.contains("loom next --mode refactor"),
+            "refactor items use builder discipline but must keep the agent in the refactor queue: {dispatch}"
+        );
+        assert!(
+            !dispatch.contains("loom next --mode build"),
+            "refactor dispatch must not send the agent to build: {dispatch}"
+        );
+    }
 
     // Bulk read of the same queue (refactor is a bulk mode — no take cap note).
     let bulk = run_json(
@@ -4314,6 +4326,91 @@ fn sqlite_next_cues_jit_skill_adoption() {
     );
 }
 
+#[test]
+fn sqlite_fix_reverification_dispatch_keeps_agent_in_fix_queue() {
+    let _guard = sqlite_test_lock();
+    let graph = setup_imported_graph("fix-reverify-dispatch");
+    {
+        let db = graph.root.join(".loom").join("graph.sqlite");
+        let conn = rusqlite::Connection::open(&db).expect("open scratch sqlite graph");
+        conn.execute(
+            "UPDATE relates_to SET inspection_status='passing' WHERE inspection_status IN \
+             ('needs_reverification','failing')",
+            [],
+        )
+        .expect("clear pre-existing fix queue");
+        conn.execute(
+            "UPDATE relates_to SET inspection_status='needs_reverification', \
+             criterion='the stale edge still needs one deterministic recheck' \
+             WHERE rowid=(SELECT rowid FROM relates_to LIMIT 1)",
+            [],
+        )
+        .expect("seed one stale edge");
+        let (a, b): (String, String) = conn
+            .query_row(
+                "SELECT from_id, to_id FROM relates_to WHERE inspection_status='needs_reverification' LIMIT 1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("seeded stale edge ids");
+        conn.execute(
+            "INSERT INTO note(id, kind, text, author, target_kind, target_id, created_at, audience) \
+             VALUES('fix-reverify-note', 'transition', \
+             'passing → needs_reverification (sync: src/commands/next/scoring.rs changed)', \
+             'loom', 'edge', ?1, '2026-01-01T00:00:00+00:00', '')",
+            [format!("rt:{a}:{b}")],
+        )
+        .expect("seed sync transition note");
+    }
+
+    let item = run_json(&graph.root, &["next", "--mode", "fix", "--json"]);
+    let dispatch = item["dispatch"].as_str().unwrap_or("");
+    assert_eq!(item["owner_role"], "analyzer");
+    assert!(
+        dispatch.contains("loom guide --role analyzer"),
+        "stale-edge reinspection is analyzer discipline: {dispatch}"
+    );
+    assert!(
+        dispatch.contains("loom next --mode fix"),
+        "the item came from the fix queue, so the dispatch must not send a \
+         goldfish agent to analyzer/discovery and lose the stale item: {dispatch}"
+    );
+    assert!(
+        !dispatch.contains("loom next --mode discovery"),
+        "mixed fix/analyzer routing must not point at discovery: {dispatch}"
+    );
+    assert_eq!(
+        item["staled_by"], "src/commands/next/scoring.rs",
+        "single-item fix output must surface the staling file, not force the \
+         agent to infer it from transition-note history: {item}"
+    );
+    assert_eq!(
+        item["classification_needed"], true,
+        "empty-kinds stale edges must tell a goldfish agent to classify the \
+         relationship while re-inspecting, not preserve unknown-kind churn: {item}"
+    );
+    assert!(
+        item["kind_hint"]
+            .as_str()
+            .is_some_and(|h| h.contains("--kind calls") && h.contains("mechanical kinds")),
+        "the kind hint must teach judgment-vs-mechanical kinds: {item}"
+    );
+
+    let take = run_json(
+        &graph.root,
+        &["next", "--mode", "fix", "--take", "10", "--json"],
+    );
+    let first = take["groups"][0]["items"][0].clone();
+    assert_eq!(first["classification_needed"], true);
+    assert!(
+        take["guidance"]
+            .as_str()
+            .is_some_and(|g| g.contains("classification_needed")
+                && g.contains("manual` is not a churn silencer")),
+        "bulk fix guidance must teach classification instead of blind re-ground churn: {take}"
+    );
+}
+
 // The review/prove lanes are AUTONOMOUS (an agent drains them), not human-gated,
 // and were previously invisible in `loom status` — a status-driven driver was
 // blind to them. The compass must now surface them honestly (visible, autonomous,
@@ -4352,11 +4449,40 @@ fn sqlite_status_surfaces_optional_autonomous_lanes() {
         Some(false),
         "review is optional, not required for green: {opt}"
     );
+    let one_turn = &st["one_turn"];
+    let agent_export = one_turn["agent_export"].as_str().unwrap_or("");
+    let guide_command = one_turn["guide_command"].as_str().unwrap_or("");
+    let next_command = one_turn["next_command"].as_str().unwrap_or("");
+    assert!(
+        agent_export.starts_with("export LOOM_AGENT=llm:"),
+        "status gives a copy-paste role setup for the focus lane: {one_turn}"
+    );
+    assert!(
+        guide_command.starts_with("loom guide --role "),
+        "status tells a cold agent which lane skill to adopt: {one_turn}"
+    );
+    assert!(
+        !next_command.trim().is_empty(),
+        "status gives the single next command for this turn: {one_turn}"
+    );
+    assert!(
+        one_turn["rule"]
+            .as_str()
+            .is_some_and(|s| s.contains("ALARMS") && s.contains("exactly one item")),
+        "status teaches the goldfish loop instead of encouraging lane thrash: {one_turn}"
+    );
     // Human parity: the line names it and says an AGENT (not a human) drains it.
     let text = run_text_as(&graph.root, &["status"], "llm");
     assert!(
         text.contains("optional autonomous") && text.contains("review") && text.contains("AGENT"),
         "the human compass surfaces review as agent-drained autonomous work: {text}"
+    );
+    assert!(
+        text.contains("one turn:")
+            && text.contains("export LOOM_AGENT=llm:")
+            && text.contains("loom guide --role")
+            && text.contains("exactly one item"),
+        "the human compass gives a compact one-turn driver plan: {text}"
     );
 }
 
@@ -4436,6 +4562,17 @@ fn sqlite_review_take_drains_low_confidence_in_bulk() {
         "a re-record template line per item: {take}"
     );
     assert_eq!(take["dispatch"]["effort"], "high");
+
+    let item = run_json(&graph.root, &["next", "--mode", "review", "--json"]);
+    let dispatch = item["dispatch"].as_str().unwrap_or("");
+    assert!(
+        dispatch.contains("loom guide --role analyzer") && dispatch.contains("loom next --mode review"),
+        "single review item adopts analyzer discipline but must keep the agent in the review queue: {dispatch}"
+    );
+    assert!(
+        !dispatch.contains("loom next --mode discovery"),
+        "review dispatch must not send the agent to discovery: {dispatch}"
+    );
 }
 
 fn intent_id_by_name(root: &Path, name: &str) -> String {
@@ -6669,6 +6806,7 @@ fn sqlite_status_json_top_level_keys_are_frozen() {
         "map_vs_territory",
         "maturity",
         "needs_reverification",
+        "one_turn",
         "open_issues",
         "open_todos",
         "optional_autonomous",
@@ -8399,6 +8537,15 @@ fn sqlite_hypothesis_prove_queue_surfaces_proposed() {
             .is_some_and(|n| n.contains("prove queue")),
         "prove queue serves the seeded hypothesis: {prove}"
     );
+    let dispatch = prove["dispatch"].as_str().unwrap_or("");
+    assert!(
+        dispatch.contains("loom guide --role analyzer") && dispatch.contains("loom next --mode prove"),
+        "prove items use analyzer discipline but must keep the agent in the prove queue: {dispatch}"
+    );
+    assert!(
+        !dispatch.contains("loom next --mode discovery"),
+        "prove dispatch must not send the agent to discovery: {dispatch}"
+    );
 }
 
 // The hypothesis lifecycle commands enforce the separation-of-duties gate:
@@ -8646,11 +8793,22 @@ fn sqlite_alarm_fires_for_unmeasured_governs_when_rules_exist() {
     let alarms = status["alarms"].as_array().expect("alarms array");
     let found = alarms.iter().any(|a| {
         a.as_str()
-            .is_some_and(|s| s.contains("zero direct GOVERNS"))
+            .is_some_and(|s| s.contains("not covered by any inspected GOVERNS"))
     });
     assert!(
         found,
         "alarm must fire when coded intents have zero GOVERNS and rules exist: {alarms:?}"
+    );
+    let duplicates = alarms
+        .iter()
+        .filter(|a| {
+            a.as_str()
+                .is_some_and(|s| s.contains("GOVERNS") && s.contains("coded intent"))
+        })
+        .count();
+    assert_eq!(
+        duplicates, 1,
+        "the GOVERNS blind-spot alarm should be a single accurate directive: {alarms:?}"
     );
 }
 
@@ -8670,7 +8828,7 @@ fn sqlite_alarm_silent_when_no_rules_seeded() {
     let alarms = status["alarms"].as_array().expect("alarms array");
     let found = alarms.iter().any(|a| {
         a.as_str()
-            .is_some_and(|s| s.contains("zero direct GOVERNS"))
+            .is_some_and(|s| s.contains("not covered by any inspected GOVERNS"))
     });
     assert!(
         !found,

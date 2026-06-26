@@ -11,7 +11,7 @@ symbols:
   - pub fn run_with_db
 provenance:
   src/commands/explain.rs: f4b96fd76b56627e
-  src/db/queries/meta.rs: c73815e90ca9c615
+  src/db/queries/meta.rs: 5cd15e776c9e445a
   src/db/queries/mod.rs: 4fe0b3e26d53c011
 ---
 
@@ -41,6 +41,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

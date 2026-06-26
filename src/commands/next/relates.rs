@@ -1,11 +1,13 @@
 use super::scoring::{
-    add_dispatch, build_suggested_action, build_suggested_action_compact, dispatch_line,
-    effort_rank, relates_dispatch,
+    add_dispatch_for_lane, build_suggested_action, build_suggested_action_compact,
+    dispatch_line_for_lane, effort_rank, relates_dispatch,
 };
 use super::*;
 use crate::db::queries::{
     bucket_disclosure_line, capped_discovery_buckets, inject_capped_buckets, CappedBucket,
 };
+
+const RELATION_KIND_HINT: &str = "This RELATES_TO edge has no relationship kind yet. While inspecting, add `--kind calls|inheritance|shares_state|doc_reference|manual` only when that judgment kind is true. Do NOT assert mechanical kinds (`imports`, `shares_file`, `shares_vocab`, `same_domain`); sync/populate derives those. Use `independent` when there is no real relationship.";
 
 pub(super) fn run_relates_with_repo(
     store: &dyn GraphReadRepository,
@@ -147,6 +149,7 @@ pub(super) fn run_relates_with_repo(
     notes.extend(store.notes_for_target(&top_edge.from_id)?);
     notes.extend(store.notes_for_target(&top_edge.to_id)?);
     notes.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+    let staled_by = latest_staled_by(&notes);
     let (notes, notes_total) = note_surfaces(notes, role);
     let suggested_action = build_suggested_action(top_edge, score);
 
@@ -189,7 +192,18 @@ pub(super) fn run_relates_with_repo(
             obj.insert("notes_total".to_string(), notes_total.into());
             obj.insert("implements_total".to_string(), implements_total.into());
             obj.insert("validations_total".to_string(), validations_total.into());
-            add_dispatch(obj, role, effort);
+            obj.insert("kinds".to_string(), serde_json::json!(&top_edge.kinds));
+            obj.insert(
+                "classification_needed".to_string(),
+                serde_json::json!(top_edge.kinds.is_empty()),
+            );
+            if top_edge.kinds.is_empty() {
+                obj.insert("kind_hint".to_string(), RELATION_KIND_HINT.into());
+            }
+            if let Some(staled_by) = staled_by.as_deref() {
+                obj.insert("staled_by".to_string(), staled_by.into());
+            }
+            add_dispatch_for_lane(obj, role, effort, mode);
             inject_capped_buckets(obj, &capped);
         }
         printer.print_json(&v);
@@ -204,6 +218,7 @@ pub(super) fn run_relates_with_repo(
         implements_total,
         validations_total,
         notes_total,
+        staled_by.as_deref(),
         role,
         effort,
         &gs,
@@ -222,6 +237,7 @@ fn render_relates_human(
     implements_total: usize,
     validations_total: usize,
     notes_total: usize,
+    staled_by: Option<&str>,
     role: &str,
     effort: &str,
     gs: &GraphState,
@@ -245,6 +261,10 @@ fn render_relates_human(
 
     println!("── Edge  [RELATES_TO] ──────────────────────────────────────────────");
     println!("{}", fmt_edge_detail(top_edge));
+    if top_edge.kinds.is_empty() {
+        println!();
+        println!("  classification:   needed — {RELATION_KIND_HINT}");
+    }
     println!();
 
     if !item.implements.is_empty() {
@@ -322,9 +342,16 @@ fn render_relates_human(
     }
 
     println!("── Suggested Action ────────────────────────────────────────────────");
+    if let Some(staled_by) = staled_by {
+        println!("  Staled by: {staled_by}");
+        println!();
+    }
     println!("{}", item.suggested_action);
     println!();
-    println!("  Dispatch — {}  [effort: {effort}]", dispatch_line(role));
+    println!(
+        "  Dispatch — {}  [effort: {effort}]",
+        dispatch_line_for_lane(role, mode)
+    );
     println!("  {}", fmt_pulse(gs));
     if let Some(line) = bucket_disclosure_line(capped) {
         println!("  {line}");
@@ -489,6 +516,9 @@ fn run_take(
             "inspection_status": edge.inspection_status,
             "owner_role": role,
             "effort": effort,
+            "kinds": &edge.kinds,
+            "classification_needed": edge.kinds.is_empty(),
+            "kind_hint": if edge.kinds.is_empty() { RELATION_KIND_HINT } else { "" },
             "criterion": edge.criterion,
             "notes": edge.notes,
             "discovery_class": edge.discovery_class,
@@ -522,9 +552,9 @@ fn run_take(
     // own context inline, so the re-verification "read the staling file once /
     // batch reuses the recorded criterion" text is actively wrong for them.
     let guidance = if mode == "discovery" {
-        "Per item: these are UNEXPLORED pairs (no relationship recorded yet). Each carries both intents' `description`, `sources`, and code `groundings` (path + locator + status) inline above — read those (open the grounded code at the locators if you need more) and judge whether the two actually interact. Then fill EACH `<criterion>` slot with a falsifiable coexistence criterion you wrote from the code — these are NOT re-verifications, so every line needs a real criterion (the gate rejects the `<criterion>` placeholder) — or change `op` to `issue` (+`evidence`) / `independent` (+`notes`). Apply all lines in ONE call: paste them into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up). You have everything here; you should not need a per-pair `loom intent show`."
+        "Per item: these are UNEXPLORED pairs (no relationship recorded yet). Each carries both intents' `description`, `sources`, and code `groundings` (path + locator + status) inline above — read those (open the grounded code at the locators if you need more) and judge whether the two actually interact. Then fill EACH `<criterion>` slot with a falsifiable coexistence criterion you wrote from the code — these are NOT re-verifications, so every line needs a real criterion (the gate rejects the `<criterion>` placeholder) — or change `op` to `issue` (+`evidence`) / `independent` (+`notes`). If `classification_needed` is true, add `kinds:[…]` only for a true judgment coupling (`calls`, `inheritance`, `shares_state`, `doc_reference`, `manual`); mechanical kinds are derived, and `manual` is not a churn silencer. Apply all lines in ONE call: paste them into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, nothing to clean up). You have everything here; you should not need a per-pair `loom intent show`."
     } else {
-        "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix)."
+        "Per group: read the staling file ONCE, decide each claim — keep `ground` if it still holds, rewrite to `issue` (+evidence) on breakage, `independent` if there is no relationship — then apply every verdict in ONE call: paste the edited lines into a heredoc, `loom batch - <<'EOF' … EOF` (no scratch file, no repo pollution, nothing to clean up; a file path works for very large batches). Template lines omit `criterion`: `loom batch` reuses the recorded one; write a criterion only to REVISE the claim. If `classification_needed` is true, classify while re-verdicting: add `kinds:[…]` only for a true judgment coupling (`calls`, `inheritance`, `shares_state`, `doc_reference`, `manual`); mechanical kinds are derived, and `manual` is not a churn silencer. Each item carries its own `owner_role`: re-inspection is analyzer work (these are the template lines); items marked `fixer` are FAILING edges — repair the code at root cause first, then re-ground them by hand. A failing edge is deliberately NOT in the ground template (no marking it passing without a fix)."
     };
 
     if printer.json {
@@ -563,6 +593,14 @@ fn run_take(
         capped,
     );
     Ok(())
+}
+
+fn latest_staled_by(notes: &[crate::types::Note]) -> Option<String> {
+    notes
+        .iter()
+        .rev()
+        .filter(|note| note.kind == "transition")
+        .find_map(|note| parse_sync_cause(&note.text).map(str::to_string))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -668,6 +706,11 @@ fn run_compact(
 
     let (role, effort) = relates_dispatch(mode, edge, score);
     let suggested_action = build_suggested_action_compact(edge);
+    let staled_by = if edge.inspection_status == "needs_reverification" && !edge.id.is_empty() {
+        latest_staled_by(&db.notes_for_target(&edge.id)?)
+    } else {
+        None
+    };
     let dig = if edge.id.is_empty() {
         format!(
             "loom next --mode {mode} (full item) · loom intent show {}",
@@ -696,6 +739,10 @@ fn run_compact(
             "suggested_action": suggested_action,
             "owner_role": role,
             "effort": effort,
+            "kinds": &edge.kinds,
+            "classification_needed": edge.kinds.is_empty(),
+            "kind_hint": if edge.kinds.is_empty() { RELATION_KIND_HINT } else { "" },
+            "staled_by": staled_by,
             "dig": dig,
         });
         if let Some(obj) = v.as_object_mut() {

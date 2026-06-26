@@ -11,8 +11,8 @@ symbols:
   - pub fn run
 provenance:
   src/commands/tour.rs: 087ff8074208007c
-  src/commands/wiki.rs: d2407d301446f892
-  src/output.rs: aa536b42730aa031
+  src/commands/wiki.rs: 2d252a4acf19f957
+  src/output.rs: 8ab6c57ceb366c05
 ---
 
 # dual-mode output
@@ -41,6 +41,7 @@ _(LLM-authored: gotchas, edge cases, and failure modes.)_
 
 
 <!-- loom:prose-start -->
+
 
 
 

@@ -192,7 +192,7 @@ Intents grouped by domain, with where each is grounded in code.
 - **hypothesis lifecycle commands** — loom hypothesis add/list/show/prove/adopt/reject drives the state machine with gates: claim and predicted_outcome must be substantive and falsifiable, the prover's provenance must differ from the proposer's, only a proposed hypothesis can be proven, and only a supported one adopted. Every transition is recorded as an append-only note.  `src/cli.rs`, `src/commands/hypothesis.rs`
 - **hypothesis node and TARGETS edge** — Schema v4 adds a Hypothesis node (claim, proposal, predicted_outcome, status: proposed/supported/refuted/adopted/rejected, provenance) and a TARGETS edge (Hypothesis to Intent) carrying the standard inspectable meta. Both persist through the deterministic export/import round-trip with two-phase validation, and loom doctor audits their required properties and value vocabularies.  `src/db/schema.rs`, `src/types.rs`
 - **hypothesis plane** — The pre-decision plane: improvement hypotheses that any lane can propose, an analyzer proves against current code, and a builder adopts into planned intents. Speculation stays invisible to coverage and completeness until adoption converts it into the existing lifecycle.
-- **priority-scored work queues** — loom next: one queue per agent role (discovery/fix/build/validate/quality), scored by centrality + urgency - staleness; returns one item with full context so no second lookup is needed  `src/commands/cluster.rs`
+- **priority-scored work queues** — loom next: one queue per agent role (discovery/fix/build/validate/quality), scored by centrality + urgency - staleness; returns one item with full context so no second lookup is needed  `src/commands/cluster.rs`, `src/commands/next/refactor.rs`
 - **scale benchmark harness** — The run-loom benchmark scripts generate a synthetic graph and fail when status, next, smells, or next --all exceed the hot-command budget.  `.claude/skills/run-loom/bench.sh`, `.claude/skills/run-loom/gen_synth_graph.py`
 - **shared graph query snapshot layer** — A read-only graph projection bulk-loads shared node and edge slices once and serves status, next, report, doctor, and smells through a common query surface.  `src/db/queries/snapshot.rs`
 - **smells propose hypotheses** — Structural findings that call for redesign rather than a patch (recurrent trouble, scattered intents, twin intents) emit loom hypothesis add as their remedy command, so the graph's own signals feed the proposal plane instead of dying in notes.  `src/db/queries/smells.rs`, `src/db/queries/smells/lifecycle.rs`
@@ -203,6 +203,7 @@ Intents grouped by domain, with where each is grounded in code.
 
 
 <!-- loom:prose-start -->
+
 
 
 
